@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Custom theme colors matching mobile app */
+:root {
+  --color-primary: #4A90D9;
+  --color-participation: #4A90D9;
+  --color-bavardage: #E57373;
+  --color-absence: #9E9E9E;
+  --color-remarque: #FFB74D;
+  --color-sortie: #81C784;
+  --color-error: #EF5350;
+  --color-background: #F5F5F5;
+  --color-surface: #FFFFFF;
+  --color-text: #212121;
+  --color-text-secondary: #757575;
+  --color-text-tertiary: #9E9E9E;
+  --color-border: #E0E0E0;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Modern cursor & interactions */
+button,
+[role="button"],
+a,
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="button"],
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Smooth transitions globally */
+button,
+a,
+input,
+select,
+textarea {
+  transition: all 0.2s ease;
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
