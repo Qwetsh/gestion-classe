@@ -87,6 +87,15 @@ interface ClassFilter {
   name: string;
 }
 
+interface ClassStats {
+  id: string;
+  name: string;
+  studentCount: number;
+  averageGrade: number;
+  totalParticipations: number;
+  totalAbsences: number;
+}
+
 type SortField = 'pseudo' | 'grade' | 'participations' | 'bonus';
 type SortOrder = 'asc' | 'desc';
 
@@ -97,14 +106,13 @@ export function Students() {
   const [classConfigs, setClassConfigs] = useState<Map<string, ClassConfig>>(new Map());
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
   // Trimester state
   const [trimesterSettings, setTrimesterSettings] = useState<TrimesterSettings>({
     current_trimester: 1,
     school_year: getCurrentSchoolYear(),
   });
-  const [trimesterBoundaries, setTrimesterBoundaries] = useState<TrimesterBoundary[]>([]);
+  const [, setTrimesterBoundaries] = useState<TrimesterBoundary[]>([]);
 
   // Sort state
   const [sortField, setSortField] = useState<SortField>('pseudo');
@@ -129,11 +137,13 @@ export function Students() {
   const [manualReason, setManualReason] = useState('');
   const [manualCount, setManualCount] = useState(1);
 
+  // Sidebar collapsed state for mobile
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   function getCurrentSchoolYear(): string {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    // School year starts in September
     if (month >= 8) {
       return `${year}-${year + 1}`;
     }
@@ -157,7 +167,6 @@ export function Students() {
         school_year: settingsData.school_year,
       });
     } else {
-      // Create default settings
       const defaultSettings = {
         user_id: user.id,
         current_trimester: 1,
@@ -180,7 +189,6 @@ export function Students() {
 
     setTrimesterBoundaries(boundariesData || []);
 
-    // Create boundary for current trimester if not exists
     const currentBoundary = boundariesData?.find(
       b => b.trimester === (settingsData?.current_trimester || 1)
     );
@@ -201,6 +209,11 @@ export function Students() {
       .order('name');
 
     setClasses(classesData || []);
+
+    // Auto-select first class if none selected (use ref to avoid dependency)
+    if (classesData && classesData.length > 0) {
+      setSelectedClassId(prev => prev || classesData[0].id);
+    }
 
     // Load class configs
     const { data: configsData } = await supabase
@@ -306,33 +319,27 @@ export function Students() {
       const bavardages = studentEvents.filter(e => e.type === 'bavardage').length;
       const absences = studentEvents.filter(e => e.type === 'absence').length;
 
-      // Get manual participations for this student
       const studentManualParticipations = (manualParticipationsData || [])
         .filter(mp => mp.student_id === student.id);
       const manualParticipationsCount = studentManualParticipations.reduce((sum, mp) => sum + mp.count, 0);
       const totalParticipations = participations + manualParticipationsCount;
 
-      // Get class config
       const config = configMap.get(student.class_id);
       const targetParticipations = config?.target_participations || 15;
       const totalSessionsExpected = config?.total_sessions_expected || 60;
       const bavardagePenalty = config?.bavardage_penalty ?? false;
 
-      // Calculate effective participations (with bavardage penalty if enabled)
       const effectiveParticipations = bavardagePenalty
         ? Math.max(0, totalParticipations - bavardages)
         : totalParticipations;
 
-      // Calculate adjusted target based on absences
       const reductionPerAbsence = targetParticipations / totalSessionsExpected;
       const adjustedTarget = Math.max(1, targetParticipations - (absences * reductionPerAbsence));
 
-      // Calculate grade using effective participations
       const rawGrade = (effectiveParticipations / adjustedTarget) * 20;
       const grade = Math.min(20, Math.max(0, rawGrade));
       const bonus = rawGrade > 20 ? effectiveParticipations - adjustedTarget : 0;
 
-      // Get archived grades for this student
       const studentArchivedGrades = (archivedGradesData || [])
         .filter(g => g.student_id === student.id)
         .map(g => ({
@@ -381,7 +388,29 @@ export function Students() {
     loadData();
   }, [loadData]);
 
-  // Filter and sort students
+  // Calculate stats for each class
+  const classStats = useMemo((): ClassStats[] => {
+    return classes.map(cls => {
+      const classStudents = studentGrades.filter(s => s.student.class_id === cls.id);
+      const studentCount = classStudents.length;
+      const averageGrade = studentCount > 0
+        ? classStudents.reduce((sum, s) => sum + s.grade, 0) / studentCount
+        : 0;
+      const totalParticipations = classStudents.reduce((sum, s) => sum + s.totalParticipations, 0);
+      const totalAbsences = classStudents.reduce((sum, s) => sum + s.absences, 0);
+
+      return {
+        id: cls.id,
+        name: cls.name,
+        studentCount,
+        averageGrade,
+        totalParticipations,
+        totalAbsences,
+      };
+    });
+  }, [classes, studentGrades]);
+
+  // Filter and sort students for selected class
   const filteredAndSortedGrades = useMemo(() => {
     let filtered = studentGrades;
 
@@ -392,8 +421,7 @@ export function Students() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(s =>
-        s.student.pseudo.toLowerCase().includes(query) ||
-        s.student.class_name.toLowerCase().includes(query)
+        s.student.pseudo.toLowerCase().includes(query)
       );
     }
 
@@ -472,7 +500,6 @@ export function Students() {
     if (!user) return;
     setIsSaving(true);
 
-    // Archive current grades for all students (totalParticipations includes manual)
     const gradesToArchive = studentGrades.map(sg => ({
       student_id: sg.student.id,
       class_id: sg.student.class_id,
@@ -493,18 +520,15 @@ export function Students() {
       });
     }
 
-    // Calculate next trimester
     let nextTrimester = trimesterSettings.current_trimester + 1;
     let nextSchoolYear = trimesterSettings.school_year;
 
     if (nextTrimester > 3) {
       nextTrimester = 1;
-      // Increment school year
       const [startYear] = trimesterSettings.school_year.split('-').map(Number);
       nextSchoolYear = `${startYear + 1}-${startYear + 2}`;
     }
 
-    // Update trimester settings
     await supabase
       .from('trimester_settings')
       .update({
@@ -514,7 +538,6 @@ export function Students() {
       })
       .eq('user_id', user.id);
 
-    // Create new trimester boundary
     await supabase.from('trimester_boundaries').insert({
       user_id: user.id,
       trimester: nextTrimester,
@@ -568,7 +591,6 @@ export function Students() {
     try {
       await supabase.from('manual_participations').delete().eq('id', mpId);
       loadData();
-      // Close and reopen to refresh data
       setShowStudentDetailModal(false);
     } catch (error) {
       console.error('Failed to delete manual participation:', error);
@@ -606,6 +628,13 @@ export function Students() {
     return 'bg-red-100';
   };
 
+  const getGradeBorderColor = (grade: number) => {
+    if (grade >= 16) return 'border-green-300';
+    if (grade >= 12) return 'border-blue-300';
+    if (grade >= 8) return 'border-orange-300';
+    return 'border-red-300';
+  };
+
   const getEventTypeLabel = (type: string, subtype: string | null) => {
     const labels: Record<string, string> = {
       participation: 'Participation',
@@ -638,28 +667,7 @@ export function Students() {
     return colors[type] || 'bg-gray-100 text-gray-700';
   };
 
-  const SortButton = ({ field, label }: { field: SortField; label: string }) => (
-    <button
-      onClick={() => handleSort(field)}
-      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-        sortField === field
-          ? 'bg-[var(--color-primary)] text-white'
-          : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-background)]'
-      }`}
-    >
-      {label}
-      {sortField === field && (
-        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-      )}
-    </button>
-  );
-
-  // Calculate class average grade
-  const classAverageGrade = useMemo(() => {
-    if (filteredAndSortedGrades.length === 0) return 0;
-    const sum = filteredAndSortedGrades.reduce((acc, s) => acc + s.grade, 0);
-    return sum / filteredAndSortedGrades.length;
-  }, [filteredAndSortedGrades]);
+  const selectedClassStats = classStats.find(c => c.id === selectedClassId);
 
   if (isLoading) {
     return (
@@ -673,9 +681,9 @@ export function Students() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header with Trimester Info */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col h-[calc(100vh-120px)]">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl font-bold text-[var(--color-text)]">Notes de participation</h1>
             <p className="text-[var(--color-text-secondary)] mt-1">
@@ -684,221 +692,258 @@ export function Students() {
           </div>
           <button
             onClick={() => setShowNextTrimesterModal(true)}
-            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors"
+            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors whitespace-nowrap"
           >
             Passer au trimestre suivant
           </button>
         </div>
 
-        {/* Filters and Search */}
-        <div className="bg-[var(--color-surface)] rounded-xl p-4 space-y-4">
-          {/* Search */}
-          <div>
-            <input
-              type="text"
-              placeholder="Rechercher un eleve..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-            />
-          </div>
-
-          {/* Class filter with config buttons */}
-          {classes.length > 0 && (
-            <div className="flex gap-2 flex-wrap items-center">
-              <span className="text-sm text-[var(--color-text-secondary)] py-1.5">Classe:</span>
+        {/* Main content - Two columns */}
+        <div className="flex flex-1 gap-4 min-h-0">
+          {/* Sidebar - Classes */}
+          <div className={`${sidebarCollapsed ? 'w-12' : 'w-64'} flex-shrink-0 bg-[var(--color-surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200`}>
+            {/* Sidebar header */}
+            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+              {!sidebarCollapsed && (
+                <h2 className="font-semibold text-[var(--color-text)]">Classes</h2>
+              )}
               <button
-                onClick={() => setSelectedClassId(null)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  selectedClassId === null
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
-                }`}
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-1 hover:bg-[var(--color-background)] rounded text-[var(--color-text-secondary)]"
+                title={sidebarCollapsed ? 'Agrandir' : 'Reduire'}
               >
-                Toutes
+                {sidebarCollapsed ? '»' : '«'}
               </button>
-              {classes.map((cls) => (
-                <div key={cls.id} className="flex items-center gap-1">
-                  <button
-                    onClick={() => setSelectedClassId(cls.id)}
-                    className={`px-3 py-1.5 rounded-l-full text-sm font-medium transition-colors ${
-                      selectedClassId === cls.id
-                        ? 'bg-[var(--color-primary)] text-white'
-                        : 'bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
-                    }`}
-                  >
-                    {cls.name}
-                  </button>
-                  <button
-                    onClick={() => openConfigModal(cls.id)}
-                    className={`px-2 py-1.5 rounded-r-full text-sm transition-colors ${
-                      selectedClassId === cls.id
-                        ? 'bg-[var(--color-primary)]/80 text-white'
-                        : 'bg-[var(--color-background)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-border)]'
-                    }`}
-                    title="Configurer la classe"
-                  >
-                    ⚙️
-                  </button>
-                </div>
+            </div>
+
+            {/* Classes list */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {classStats.map((cls) => (
+                <button
+                  key={cls.id}
+                  onClick={() => setSelectedClassId(cls.id)}
+                  className={`w-full text-left rounded-lg transition-colors ${
+                    selectedClassId === cls.id
+                      ? 'bg-[var(--color-primary)] text-white'
+                      : 'hover:bg-[var(--color-background)] text-[var(--color-text)]'
+                  } ${sidebarCollapsed ? 'p-2' : 'p-3'}`}
+                >
+                  {sidebarCollapsed ? (
+                    <div className="text-center font-medium text-sm" title={cls.name}>
+                      {cls.name.substring(0, 2)}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium truncate">{cls.name}</span>
+                        <span className={`text-xs ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-tertiary)]'}`}>
+                          {cls.studentCount}
+                        </span>
+                      </div>
+                      <div className={`text-sm mt-1 ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-secondary)]'}`}>
+                        Moy: {cls.averageGrade.toFixed(1)}/20
+                      </div>
+                    </>
+                  )}
+                </button>
               ))}
-            </div>
-          )}
 
-          {/* Sort options */}
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-sm text-[var(--color-text-secondary)]">Trier par:</span>
-            <SortButton field="pseudo" label="Nom" />
-            <SortButton field="grade" label="Note" />
-            <SortButton field="participations" label="Participations" />
-            <SortButton field="bonus" label="Bonus" />
-          </div>
-        </div>
-
-        {/* Class summary if one is selected */}
-        {selectedClassId && (
-          <div className="bg-[var(--color-surface)] rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-[var(--color-text)]">
-                  {classes.find(c => c.id === selectedClassId)?.name}
-                </h3>
-                <p className="text-sm text-[var(--color-text-tertiary)]">
-                  {filteredAndSortedGrades.length} eleve{filteredAndSortedGrades.length > 1 ? 's' : ''}
-                </p>
-              </div>
-              <div className="text-right">
-                <div className={`text-2xl font-bold ${getGradeColor(classAverageGrade)}`}>
-                  {classAverageGrade.toFixed(1)}/20
+              {classes.length === 0 && !sidebarCollapsed && (
+                <div className="text-center py-8 text-[var(--color-text-tertiary)] text-sm">
+                  Aucune classe
                 </div>
-                <p className="text-sm text-[var(--color-text-tertiary)]">Moyenne de classe</p>
-              </div>
+              )}
             </div>
-            {classConfigs.get(selectedClassId) && (
-              <div className="mt-3 pt-3 border-t border-[var(--color-border)] text-sm text-[var(--color-text-secondary)]">
-                Objectif: {classConfigs.get(selectedClassId)?.target_participations} participations
-                pour 20/20 ({classConfigs.get(selectedClassId)?.total_sessions_expected} seances prevues)
+
+            {/* Sidebar footer - Stats */}
+            {!sidebarCollapsed && (
+              <div className="p-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-tertiary)]">
+                <div>{studentGrades.length} eleves au total</div>
               </div>
             )}
           </div>
-        )}
 
-        {/* Students List */}
-        {filteredAndSortedGrades.length === 0 ? (
-          <div className="bg-[var(--color-surface)] rounded-xl p-12 text-center">
-            <div className="text-4xl mb-4">👥</div>
-            <h2 className="text-lg font-medium text-[var(--color-text)]">
-              Aucun eleve
-            </h2>
-            <p className="text-[var(--color-text-tertiary)] mt-2">
-              {searchQuery ? 'Aucun resultat pour cette recherche' : 'Ajoutez des eleves dans la section Classes'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredAndSortedGrades.map((sg) => (
-              <div
-                key={sg.student.id}
-                className="bg-[var(--color-surface)] rounded-xl shadow-sm overflow-hidden"
-              >
-                <button
-                  onClick={() => openStudentDetail(sg)}
-                  className="w-full p-4 flex items-center gap-4 hover:bg-[var(--color-background)] transition-colors text-left"
-                >
-                  {/* Grade circle */}
-                  <div className={`w-14 h-14 rounded-full ${getGradeBgColor(sg.grade)} flex flex-col items-center justify-center flex-shrink-0`}>
-                    <span className={`text-lg font-bold ${getGradeColor(sg.grade)}`}>
-                      {sg.grade.toFixed(1)}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-tertiary)]">/20</span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-[var(--color-text)] truncate">
-                      {sg.student.pseudo}
+          {/* Main content - Students */}
+          <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface)] rounded-xl overflow-hidden">
+            {selectedClassId ? (
+              <>
+                {/* Class header */}
+                <div className="p-4 border-b border-[var(--color-border)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-xl font-semibold text-[var(--color-text)]">
+                        {selectedClassStats?.name}
+                      </h2>
+                      <button
+                        onClick={() => openConfigModal(selectedClassId)}
+                        className="p-1.5 hover:bg-[var(--color-background)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
+                        title="Configurer"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </button>
                     </div>
-                    <div className="text-sm text-[var(--color-text-tertiary)]">
-                      {sg.student.class_name}
+                    <div className={`text-2xl font-bold ${getGradeColor(selectedClassStats?.averageGrade || 0)}`}>
+                      {selectedClassStats?.averageGrade.toFixed(1)}/20
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-green-600">
-                        {sg.bavardagePenalty ? sg.effectiveParticipations : sg.totalParticipations}
-                      </div>
-                      <div className="text-xs text-[var(--color-text-tertiary)]">
-                        /{Math.round(sg.adjustedTarget)}
-                      </div>
+                  {/* Search and sort */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Rechercher un eleve..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
                     </div>
-                    {sg.bavardagePenalty && sg.bavardages > 0 && (
+                    <div className="flex gap-1">
+                      {(['pseudo', 'grade', 'participations', 'bonus'] as SortField[]).map((field) => (
+                        <button
+                          key={field}
+                          onClick={() => handleSort(field)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            sortField === field
+                              ? 'bg-[var(--color-primary)] text-white'
+                              : 'bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+                          }`}
+                        >
+                          {field === 'pseudo' ? 'Nom' : field === 'grade' ? 'Note' : field === 'participations' ? 'Part.' : 'Bonus'}
+                          {sortField === field && (
+                            <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Class config summary */}
+                  {classConfigs.get(selectedClassId) && (
+                    <div className="mt-3 text-sm text-[var(--color-text-tertiary)]">
+                      Objectif: {classConfigs.get(selectedClassId)?.target_participations} participations
+                      {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Students grid */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {filteredAndSortedGrades.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-4xl mb-4">👥</div>
+                      <h3 className="text-lg font-medium text-[var(--color-text)]">
+                        {searchQuery ? 'Aucun resultat' : 'Aucun eleve'}
+                      </h3>
+                      <p className="text-[var(--color-text-tertiary)] mt-2">
+                        {searchQuery ? 'Essayez une autre recherche' : 'Ajoutez des eleves dans la section Classes'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {filteredAndSortedGrades.map((sg) => (
+                        <button
+                          key={sg.student.id}
+                          onClick={() => openStudentDetail(sg)}
+                          className={`p-4 rounded-xl border-2 ${getGradeBorderColor(sg.grade)} ${getGradeBgColor(sg.grade)}/30 hover:${getGradeBgColor(sg.grade)}/50 transition-all text-left group`}
+                        >
+                          {/* Grade circle */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className={`w-12 h-12 rounded-full ${getGradeBgColor(sg.grade)} flex flex-col items-center justify-center`}>
+                              <span className={`text-lg font-bold ${getGradeColor(sg.grade)}`}>
+                                {sg.grade.toFixed(1)}
+                              </span>
+                            </div>
+                            {sg.bonus > 0 && (
+                              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                                +{sg.bonus.toFixed(1)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Student name */}
+                          <div className="font-medium text-[var(--color-text)] truncate mb-2">
+                            {sg.student.pseudo}
+                          </div>
+
+                          {/* Stats row */}
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-green-600 font-medium">
+                              {sg.bavardagePenalty ? sg.effectiveParticipations : sg.totalParticipations}/{Math.round(sg.adjustedTarget)}
+                            </span>
+                            {sg.bavardagePenalty && sg.bavardages > 0 && (
+                              <span className="text-orange-600">-{sg.bavardages}</span>
+                            )}
+                            {sg.absences > 0 && (
+                              <span className="text-red-600">{sg.absences} abs</span>
+                            )}
+                          </div>
+
+                          {/* Hover indicator */}
+                          <div className="mt-2 text-xs text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity">
+                            Cliquer pour details
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer stats */}
+                {filteredAndSortedGrades.length > 0 && (
+                  <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-background)]">
+                    <div className="flex flex-wrap gap-6 justify-center text-sm">
                       <div className="text-center">
-                        <div className="text-sm font-medium text-orange-600">-{sg.bavardages}</div>
-                        <div className="text-xs text-[var(--color-text-tertiary)]">bav.</div>
+                        <div className="text-lg font-bold text-[var(--color-primary)]">
+                          {filteredAndSortedGrades.length}
+                        </div>
+                        <div className="text-[var(--color-text-tertiary)]">eleves</div>
                       </div>
-                    )}
-                    {sg.absences > 0 && (
                       <div className="text-center">
-                        <div className="text-sm font-medium text-red-600">{sg.absences}</div>
-                        <div className="text-xs text-[var(--color-text-tertiary)]">abs.</div>
+                        <div className="text-lg font-bold text-green-600">
+                          {filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)}
+                        </div>
+                        <div className="text-[var(--color-text-tertiary)]">participations</div>
                       </div>
-                    )}
-                    {sg.bonus > 0 && (
-                      <div className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm font-medium">
-                        +{sg.bonus.toFixed(1)} bonus
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-red-600">
+                          {filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)}
+                        </div>
+                        <div className="text-[var(--color-text-tertiary)]">absences</div>
                       </div>
-                    )}
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-yellow-600">
+                          {filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(1)}
+                        </div>
+                        <div className="text-[var(--color-text-tertiary)]">bonus total</div>
+                      </div>
+                    </div>
                   </div>
-
-                  <span className="text-xl text-[var(--color-text-tertiary)]">›</span>
-                </button>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-[var(--color-text-tertiary)]">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">📚</div>
+                  <h3 className="text-xl font-medium text-[var(--color-text)]">Selectionnez une classe</h3>
+                  <p className="mt-2">Choisissez une classe dans la liste a gauche</p>
+                </div>
               </div>
-            ))}
+            )}
           </div>
-        )}
-
-        {/* Global Summary */}
-        {filteredAndSortedGrades.length > 0 && !selectedClassId && (
-          <div className="bg-[var(--color-surface)] rounded-xl p-4">
-            <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">
-              Resume global - Trimestre {trimesterSettings.current_trimester}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[var(--color-primary)]">
-                  {classAverageGrade.toFixed(1)}/20
-                </div>
-                <div className="text-sm text-[var(--color-text-tertiary)]">Moyenne generale</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)}
-                </div>
-                <div className="text-sm text-[var(--color-text-tertiary)]">Participations</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">
-                  {filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)}
-                </div>
-                <div className="text-sm text-[var(--color-text-tertiary)]">Absences</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(1)}
-                </div>
-                <div className="text-sm text-[var(--color-text-tertiary)]">Total bonus</div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Config Modal */}
       {showConfigModal && configClassId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
               Configuration - {classes.find(c => c.id === configClassId)?.name}
             </h3>
@@ -981,8 +1026,8 @@ export function Students() {
 
       {/* Next Trimester Modal */}
       {showNextTrimesterModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
               Passer au trimestre suivant
             </h3>
@@ -1047,9 +1092,11 @@ export function Students() {
                 </div>
                 <button
                   onClick={() => setShowStudentDetailModal(false)}
-                  className="text-2xl text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
+                  className="p-2 hover:bg-[var(--color-background)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
                 >
-                  ×
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -1156,10 +1203,12 @@ export function Students() {
                         </div>
                         <button
                           onClick={() => deleteManualParticipation(mp.id)}
-                          className="text-red-500 hover:text-red-700 text-sm px-2 py-1"
+                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg"
                           title="Supprimer"
                         >
-                          🗑️
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     ))}
@@ -1237,8 +1286,8 @@ export function Students() {
 
       {/* Add Manual Participation Modal */}
       {showAddManualModal && selectedStudentForDetail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
               Ajouter une participation manuelle
             </h3>

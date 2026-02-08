@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
@@ -16,6 +16,7 @@ interface Room {
   name: string;
   grid_rows: number;
   grid_cols: number;
+  disabled_cells: string[];
 }
 
 interface Student {
@@ -24,11 +25,14 @@ interface Student {
   created_at: string;
 }
 
+// Positions format: "row-col" -> studentId (compatible with mobile app)
+type Positions = Record<string, string>;
+
 interface ClassRoomPlan {
   id: string;
   class_id: string;
   room_id: string;
-  positions: Record<string, { row: number; col: number }>;
+  positions: Positions;
 }
 
 type DragItem = { studentId: string; fromCell?: { row: number; col: number } };
@@ -41,7 +45,7 @@ export function Classes() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [plan, setPlan] = useState<ClassRoomPlan | null>(null);
-  const [positions, setPositions] = useState<Record<string, { row: number; col: number }>>({});
+  const [positions, setPositions] = useState<Positions>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -109,7 +113,10 @@ export function Classes() {
       .select('*')
       .eq('user_id', user.id)
       .order('name');
-    setRooms(data || []);
+    setRooms((data || []).map(r => ({
+      ...r,
+      disabled_cells: r.disabled_cells || []
+    })));
   };
 
   // Load students when class changes
@@ -158,15 +165,20 @@ export function Classes() {
     setHasChanges(false);
   };
 
-  // Computed: students not placed
-  const unplacedStudents = students.filter(s => !positions[s.id]);
+  // Computed: students not placed (check if student ID is in any position value)
+  const placedStudentIds = new Set(Object.values(positions));
+  const unplacedStudents = students.filter(s => !placedStudentIds.has(s.id));
 
-  // Computed: grid with placed students
+  // Computed: grid with placed students (key is "row-col", value is studentId)
   const getStudentAtCell = (row: number, col: number): Student | undefined => {
-    const studentId = Object.entries(positions).find(
-      ([, pos]) => pos.row === row && pos.col === col
-    )?.[0];
-    return students.find(s => s.id === studentId);
+    const key = `${row}-${col}`;
+    const studentId = positions[key];
+    return studentId ? students.find(s => s.id === studentId) : undefined;
+  };
+
+  // Check if a cell is disabled (aisle)
+  const isCellDisabled = (row: number, col: number): boolean => {
+    return selectedRoom?.disabled_cells?.includes(`${row},${col}`) || false;
   };
 
   // Drag & Drop handlers
@@ -186,21 +198,40 @@ export function Classes() {
   const handleDrop = (row: number, col: number) => {
     if (!dragItem) return;
 
+    // Don't allow dropping on disabled cells (aisles)
+    if (isCellDisabled(row, col)) {
+      setDragItem(null);
+      setDragOverCell(null);
+      return;
+    }
+
+    const targetKey = `${row}-${col}`;
     const existingStudentAtTarget = getStudentAtCell(row, col);
 
     setPositions(prev => {
       const newPositions = { ...prev };
 
-      // If there's a student at target and we're moving from another cell, swap them
-      if (existingStudentAtTarget && dragItem.fromCell) {
-        newPositions[existingStudentAtTarget.id] = dragItem.fromCell;
-      } else if (existingStudentAtTarget) {
-        // Moving from unplaced list to occupied cell - remove target from positions
-        delete newPositions[existingStudentAtTarget.id];
+      // Remove the dragged student from their previous position (if any)
+      for (const [key, studentId] of Object.entries(newPositions)) {
+        if (studentId === dragItem.studentId) {
+          // If swapping with existing student at target, move them to this position
+          if (existingStudentAtTarget) {
+            newPositions[key] = existingStudentAtTarget.id;
+          } else {
+            delete newPositions[key];
+          }
+          break;
+        }
       }
 
-      // Place the dragged student
-      newPositions[dragItem.studentId] = { row, col };
+      // If there was a student at target and we're NOT swapping (dragging from unplaced), remove them
+      if (existingStudentAtTarget && !dragItem.fromCell) {
+        // Don't remove - they were moved to dragged student's old position or removed above
+        delete newPositions[targetKey];
+      }
+
+      // Place the dragged student at target
+      newPositions[targetKey] = dragItem.studentId;
 
       return newPositions;
     });
@@ -213,7 +244,13 @@ export function Classes() {
   const handleRemoveFromSeat = (studentId: string) => {
     setPositions(prev => {
       const newPositions = { ...prev };
-      delete newPositions[studentId];
+      // Find and remove the key that has this student ID as value
+      for (const [key, id] of Object.entries(newPositions)) {
+        if (id === studentId) {
+          delete newPositions[key];
+          break;
+        }
+      }
       return newPositions;
     });
     setHasChanges(true);
@@ -557,13 +594,6 @@ export function Classes() {
                 </span>
               </div>
 
-              {/* Teacher desk indicator */}
-              <div className="mb-6 flex justify-center">
-                <div className="px-8 py-2 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg text-slate-600 text-sm font-medium">
-                  Tableau
-                </div>
-              </div>
-
               {/* Grid */}
               <div
                 className="grid gap-3 justify-center"
@@ -574,6 +604,21 @@ export function Classes() {
                   const col = i % selectedRoom.grid_cols;
                   const student = getStudentAtCell(row, col);
                   const isOver = dragOverCell?.row === row && dragOverCell?.col === col;
+                  const isDisabled = isCellDisabled(row, col);
+
+                  // Disabled cell (aisle)
+                  if (isDisabled) {
+                    return (
+                      <div
+                        key={`${row}-${col}`}
+                        className="aspect-square rounded-xl border border-slate-300 dark:border-slate-600 flex items-center justify-center bg-slate-200 dark:bg-slate-700"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.08) 4px, rgba(0,0,0,0.08) 8px)'
+                        }}
+                        title="Allee (non disponible)"
+                      />
+                    );
+                  }
 
                   return (
                     <div
@@ -614,6 +659,13 @@ export function Classes() {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Teacher desk indicator */}
+              <div className="mt-6 flex justify-center">
+                <div className="px-8 py-2 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg text-slate-600 text-sm font-medium">
+                  Tableau
+                </div>
               </div>
             </div>
 
@@ -727,7 +779,7 @@ export function Classes() {
                         <div className="flex-1">
                           <div className="font-medium text-[var(--color-text)]">{student.pseudo}</div>
                           <div className="text-xs text-[var(--color-text-tertiary)]">
-                            {positions[student.id] ? `Placé: rang ${positions[student.id].row + 1}, col ${positions[student.id].col + 1}` : 'Non placé'}
+                            {placedStudentIds.has(student.id) ? 'Placé' : 'Non placé'}
                           </div>
                         </div>
                         <button
