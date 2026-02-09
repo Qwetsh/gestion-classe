@@ -16,6 +16,7 @@ export function Rooms() {
   const { user } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -34,18 +35,27 @@ export function Rooms() {
   const loadRooms = async () => {
     if (!user) return;
     setIsLoading(true);
+    setLoadError(null);
 
-    const { data } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name');
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
 
-    setRooms((data || []).map(r => ({
-      ...r,
-      disabled_cells: r.disabled_cells || []
-    })));
-    setIsLoading(false);
+      if (error) throw error;
+
+      setRooms((data || []).map(r => ({
+        ...r,
+        disabled_cells: r.disabled_cells || []
+      })));
+    } catch (err) {
+      console.error('Error loading rooms:', err);
+      setLoadError('Erreur lors du chargement des salles.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -214,6 +224,22 @@ export function Rooms() {
 
   return (
     <Layout>
+      {/* Error banner */}
+      {loadError && (
+        <div
+          className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 mb-4 flex items-center justify-between"
+          style={{ borderRadius: 'var(--radius-lg)' }}
+        >
+          <span>{loadError}</span>
+          <button
+            onClick={() => setLoadError(null)}
+            className="text-[var(--color-error)] hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Page title */}
         <div className="flex justify-between items-center">

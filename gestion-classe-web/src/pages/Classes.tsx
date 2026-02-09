@@ -49,6 +49,7 @@ export function Classes() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Drag state
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
@@ -84,39 +85,54 @@ export function Classes() {
   const loadClasses = async () => {
     if (!user) return;
     setIsLoading(true);
+    setLoadError(null);
 
-    const { data: classesData } = await supabase
-      .from('classes')
-      .select('id, name, created_at')
-      .eq('user_id', user.id)
-      .order('name');
+    try {
+      const { data: classesData, error } = await supabase
+        .from('classes')
+        .select('id, name, created_at')
+        .eq('user_id', user.id)
+        .order('name');
 
-    if (classesData) {
-      const classesWithCounts = await Promise.all(
-        classesData.map(async (cls) => {
-          const { count } = await supabase
-            .from('students')
-            .select('*', { count: 'exact', head: true })
-            .eq('class_id', cls.id);
-          return { ...cls, students_count: count || 0 };
-        })
-      );
-      setClasses(classesWithCounts);
+      if (error) throw error;
+
+      if (classesData) {
+        const classesWithCounts = await Promise.all(
+          classesData.map(async (cls) => {
+            const { count } = await supabase
+              .from('students')
+              .select('*', { count: 'exact', head: true })
+              .eq('class_id', cls.id);
+            return { ...cls, students_count: count || 0 };
+          })
+        );
+        setClasses(classesWithCounts);
+      }
+    } catch (err) {
+      console.error('Error loading classes:', err);
+      setLoadError('Erreur lors du chargement des classes.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const loadRooms = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name');
-    setRooms((data || []).map(r => ({
-      ...r,
-      disabled_cells: r.disabled_cells || []
-    })));
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
+      if (error) throw error;
+      setRooms((data || []).map(r => ({
+        ...r,
+        disabled_cells: r.disabled_cells || []
+      })));
+    } catch (err) {
+      console.error('Error loading rooms:', err);
+      setLoadError('Erreur lors du chargement des salles.');
+    }
   };
 
   // Load students when class changes
@@ -261,25 +277,33 @@ export function Classes() {
     if (!selectedClass || !selectedRoom || !user) return;
     setIsSaving(true);
 
-    if (plan) {
-      // Update existing
-      await supabase
-        .from('class_room_plans')
-        .update({ positions, updated_at: new Date().toISOString() })
-        .eq('id', plan.id);
-    } else {
-      // Create new
-      await supabase.from('class_room_plans').insert({
-        class_id: selectedClass.id,
-        room_id: selectedRoom.id,
-        user_id: user.id,
-        positions,
-      });
-    }
+    try {
+      if (plan) {
+        // Update existing
+        const { error } = await supabase
+          .from('class_room_plans')
+          .update({ positions, updated_at: new Date().toISOString() })
+          .eq('id', plan.id);
+        if (error) throw error;
+      } else {
+        // Create new
+        const { error } = await supabase.from('class_room_plans').insert({
+          class_id: selectedClass.id,
+          room_id: selectedRoom.id,
+          user_id: user.id,
+          positions,
+        });
+        if (error) throw error;
+      }
 
-    await loadPlan(selectedClass.id, selectedRoom.id);
-    setIsSaving(false);
-    setHasChanges(false);
+      await loadPlan(selectedClass.id, selectedRoom.id);
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      alert('Erreur lors de la sauvegarde du plan de classe.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // CRUD Classes
@@ -303,18 +327,26 @@ export function Classes() {
     setIsSubmitting(true);
     setFormError('');
 
-    if (editingClass) {
-      await supabase
-        .from('classes')
-        .update({ name: className.trim(), updated_at: new Date().toISOString() })
-        .eq('id', editingClass.id);
-    } else {
-      await supabase.from('classes').insert({ name: className.trim(), user_id: user!.id });
-    }
+    try {
+      if (editingClass) {
+        const { error } = await supabase
+          .from('classes')
+          .update({ name: className.trim(), updated_at: new Date().toISOString() })
+          .eq('id', editingClass.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('classes').insert({ name: className.trim(), user_id: user!.id });
+        if (error) throw error;
+      }
 
-    setShowClassModal(false);
-    setIsSubmitting(false);
-    loadClasses();
+      setShowClassModal(false);
+      loadClasses();
+    } catch (error) {
+      console.error('Error saving class:', error);
+      setFormError('Erreur lors de la sauvegarde. Veuillez reessayer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // CRUD Students
@@ -346,23 +378,31 @@ export function Classes() {
     setIsSubmitting(true);
     const pseudo = generatePseudo(studentFirstName, studentLastName);
 
-    if (editingStudent) {
-      await supabase
-        .from('students')
-        .update({ pseudo, updated_at: new Date().toISOString() })
-        .eq('id', editingStudent.id);
-    } else {
-      await supabase.from('students').insert({
-        pseudo,
-        class_id: selectedClass.id,
-        user_id: user!.id,
-      });
-    }
+    try {
+      if (editingStudent) {
+        const { error } = await supabase
+          .from('students')
+          .update({ pseudo, updated_at: new Date().toISOString() })
+          .eq('id', editingStudent.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('students').insert({
+          pseudo,
+          class_id: selectedClass.id,
+          user_id: user!.id,
+        });
+        if (error) throw error;
+      }
 
-    setShowStudentModal(false);
-    setIsSubmitting(false);
-    loadStudents(selectedClass.id);
-    loadClasses();
+      setShowStudentModal(false);
+      loadStudents(selectedClass.id);
+      loadClasses();
+    } catch (error) {
+      console.error('Error saving student:', error);
+      setFormError('Erreur lors de la sauvegarde. Veuillez reessayer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Delete
@@ -375,30 +415,44 @@ export function Classes() {
     if (!deleteTarget) return;
     setIsSubmitting(true);
 
-    if (deleteTarget.type === 'class') {
-      await supabase.from('students').delete().eq('class_id', deleteTarget.item.id);
-      await supabase.from('class_room_plans').delete().eq('class_id', deleteTarget.item.id);
-      await supabase.from('classes').delete().eq('id', deleteTarget.item.id);
-      setSelectedClass(null);
-      setSelectedRoom(null);
-    } else {
-      await supabase.from('students').delete().eq('id', deleteTarget.item.id);
-      // Remove from positions if placed
-      if (positions[deleteTarget.item.id]) {
-        setPositions(prev => {
-          const newPos = { ...prev };
-          delete newPos[deleteTarget.item.id];
-          return newPos;
-        });
-        setHasChanges(true);
+    try {
+      if (deleteTarget.type === 'class') {
+        const { error: studentsError } = await supabase.from('students').delete().eq('class_id', deleteTarget.item.id);
+        if (studentsError) throw studentsError;
+        const { error: plansError } = await supabase.from('class_room_plans').delete().eq('class_id', deleteTarget.item.id);
+        if (plansError) throw plansError;
+        const { error: classError } = await supabase.from('classes').delete().eq('id', deleteTarget.item.id);
+        if (classError) throw classError;
+        setSelectedClass(null);
+        setSelectedRoom(null);
+      } else {
+        const { error } = await supabase.from('students').delete().eq('id', deleteTarget.item.id);
+        if (error) throw error;
+        // Remove from positions if placed (positions are keyed by "row-col", value is student ID)
+        // Find the key first, then update state separately
+        const keyToDelete = Object.entries(positions).find(
+          ([, studentId]) => studentId === deleteTarget.item.id
+        )?.[0];
+        if (keyToDelete) {
+          setPositions(prev => {
+            const newPos = { ...prev };
+            delete newPos[keyToDelete];
+            return newPos;
+          });
+          setHasChanges(true);
+        }
+        if (selectedClass) loadStudents(selectedClass.id);
       }
-      if (selectedClass) loadStudents(selectedClass.id);
-    }
 
-    setShowDeleteModal(false);
-    setDeleteTarget(null);
-    setIsSubmitting(false);
-    loadClasses();
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
+      loadClasses();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      alert('Erreur lors de la suppression. Veuillez reessayer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Parse Pronote CSV format
@@ -486,6 +540,22 @@ export function Classes() {
 
   return (
     <Layout>
+      {/* Error banner */}
+      {loadError && (
+        <div
+          className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 mb-4 flex items-center justify-between"
+          style={{ borderRadius: 'var(--radius-lg)' }}
+        >
+          <span>{loadError}</span>
+          <button
+            onClick={() => setLoadError(null)}
+            className="text-[var(--color-error)] hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="space-y-4">
         {/* Header */}
         <div className="flex flex-wrap items-center gap-4">

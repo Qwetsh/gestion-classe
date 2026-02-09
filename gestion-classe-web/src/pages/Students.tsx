@@ -53,6 +53,25 @@ interface ArchivedGrade {
   archived_at: string;
 }
 
+interface OralEvaluation {
+  id: string;
+  student_id: string;
+  class_id: string;
+  user_id: string;
+  trimester: number;
+  school_year: string;
+  grade: number;
+  evaluated_at: string;
+}
+
+const ORAL_GRADE_LABELS: Record<number, string> = {
+  1: 'Insuffisant',
+  2: 'Fragile',
+  3: 'Satisfaisant',
+  4: 'Bien',
+  5: 'Tres bien',
+};
+
 interface ManualParticipation {
   id: string;
   student_id: string;
@@ -80,6 +99,7 @@ interface StudentGrade {
   events: Event[];
   manualParticipationsList: ManualParticipation[];
   archivedGrades: ArchivedGrade[];
+  oralEvaluation: OralEvaluation | null;
 }
 
 interface ClassFilter {
@@ -106,6 +126,7 @@ export function Students() {
   const [classConfigs, setClassConfigs] = useState<Map<string, ClassConfig>>(new Map());
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Trimester state
   const [trimesterSettings, setTrimesterSettings] = useState<TrimesterSettings>({
@@ -153,7 +174,9 @@ export function Students() {
   const loadData = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
+    setError(null);
 
+    try {
     // Load trimester settings
     const { data: settingsData } = await supabase
       .from('trimester_settings')
@@ -299,6 +322,14 @@ export function Students() {
       .in('student_id', studentIds)
       .order('school_year', { ascending: false });
 
+    // Load oral evaluations for current trimester
+    const { data: oralEvaluationsData } = await supabase
+      .from('oral_evaluations')
+      .select('*')
+      .in('student_id', studentIds)
+      .eq('trimester', currentTrimester)
+      .eq('school_year', currentSchoolYear);
+
     // Build grades for each student
     const grades: StudentGrade[] = studentsData.map(student => {
       const studentEvents = (eventsData || [])
@@ -354,6 +385,9 @@ export function Students() {
           archived_at: g.archived_at,
         }));
 
+      const studentOralEvaluation = (oralEvaluationsData || [])
+        .find(oe => oe.student_id === student.id) || null;
+
       return {
         student: {
           id: student.id,
@@ -377,11 +411,17 @@ export function Students() {
         events: studentEvents,
         manualParticipationsList: studentManualParticipations,
         archivedGrades: studentArchivedGrades,
+        oralEvaluation: studentOralEvaluation,
       };
     });
 
     setStudentGrades(grades);
-    setIsLoading(false);
+    } catch (err) {
+      console.error('Error loading students data:', err);
+      setError('Erreur lors du chargement des donnees.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -471,83 +511,100 @@ export function Students() {
     if (!configClassId) return;
     setIsSaving(true);
 
-    const existing = classConfigs.get(configClassId);
-    if (existing) {
-      await supabase
-        .from('class_trimester_config')
-        .update({
+    try {
+      const existing = classConfigs.get(configClassId);
+      if (existing) {
+        const { error } = await supabase
+          .from('class_trimester_config')
+          .update({
+            target_participations: configTarget,
+            total_sessions_expected: configSessions,
+            bavardage_penalty: configBavardagePenalty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('class_id', configClassId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('class_trimester_config').insert({
+          class_id: configClassId,
           target_participations: configTarget,
           total_sessions_expected: configSessions,
           bavardage_penalty: configBavardagePenalty,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('class_id', configClassId);
-    } else {
-      await supabase.from('class_trimester_config').insert({
-        class_id: configClassId,
-        target_participations: configTarget,
-        total_sessions_expected: configSessions,
-        bavardage_penalty: configBavardagePenalty,
-      });
-    }
+        });
+        if (error) throw error;
+      }
 
-    setShowConfigModal(false);
-    setIsSaving(false);
-    loadData();
+      setShowConfigModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error saving config:', error);
+      alert('Erreur lors de la sauvegarde de la configuration.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleNextTrimester = async () => {
     if (!user) return;
     setIsSaving(true);
 
-    const gradesToArchive = studentGrades.map(sg => ({
-      student_id: sg.student.id,
-      class_id: sg.student.class_id,
-      user_id: user.id,
-      trimester: trimesterSettings.current_trimester,
-      school_year: trimesterSettings.school_year,
-      participations: sg.totalParticipations,
-      absences: sg.absences,
-      target_participations: sg.targetParticipations,
-      adjusted_target: sg.adjustedTarget,
-      grade: sg.grade,
-      bonus: sg.bonus,
-    }));
+    try {
+      const gradesToArchive = studentGrades.map(sg => ({
+        student_id: sg.student.id,
+        class_id: sg.student.class_id,
+        user_id: user.id,
+        trimester: trimesterSettings.current_trimester,
+        school_year: trimesterSettings.school_year,
+        participations: sg.totalParticipations,
+        absences: sg.absences,
+        target_participations: sg.targetParticipations,
+        adjusted_target: sg.adjustedTarget,
+        grade: sg.grade,
+        bonus: sg.bonus,
+      }));
 
-    if (gradesToArchive.length > 0) {
-      await supabase.from('trimester_grades').upsert(gradesToArchive, {
-        onConflict: 'student_id,trimester,school_year',
-      });
-    }
+      if (gradesToArchive.length > 0) {
+        const { error: archiveError } = await supabase.from('trimester_grades').upsert(gradesToArchive, {
+          onConflict: 'student_id,trimester,school_year',
+        });
+        if (archiveError) throw archiveError;
+      }
 
-    let nextTrimester = trimesterSettings.current_trimester + 1;
-    let nextSchoolYear = trimesterSettings.school_year;
+      let nextTrimester = trimesterSettings.current_trimester + 1;
+      let nextSchoolYear = trimesterSettings.school_year;
 
-    if (nextTrimester > 3) {
-      nextTrimester = 1;
-      const [startYear] = trimesterSettings.school_year.split('-').map(Number);
-      nextSchoolYear = `${startYear + 1}-${startYear + 2}`;
-    }
+      if (nextTrimester > 3) {
+        nextTrimester = 1;
+        const [startYear] = trimesterSettings.school_year.split('-').map(Number);
+        nextSchoolYear = `${startYear + 1}-${startYear + 2}`;
+      }
 
-    await supabase
-      .from('trimester_settings')
-      .update({
-        current_trimester: nextTrimester,
+      const { error: settingsError } = await supabase
+        .from('trimester_settings')
+        .update({
+          current_trimester: nextTrimester,
+          school_year: nextSchoolYear,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id);
+      if (settingsError) throw settingsError;
+
+      const { error: boundaryError } = await supabase.from('trimester_boundaries').insert({
+        user_id: user.id,
+        trimester: nextTrimester,
         school_year: nextSchoolYear,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
+        started_at: new Date().toISOString(),
+      });
+      if (boundaryError) throw boundaryError;
 
-    await supabase.from('trimester_boundaries').insert({
-      user_id: user.id,
-      trimester: nextTrimester,
-      school_year: nextSchoolYear,
-      started_at: new Date().toISOString(),
-    });
-
-    setShowNextTrimesterModal(false);
-    setIsSaving(false);
-    loadData();
+      setShowNextTrimesterModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error advancing trimester:', error);
+      alert('Erreur lors du passage au trimestre suivant.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openStudentDetail = (studentGrade: StudentGrade) => {
@@ -580,20 +637,23 @@ export function Students() {
       loadData();
     } catch (error) {
       console.error('Failed to add manual participation:', error);
+      alert('Erreur lors de l\'ajout de l\'implication manuelle.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const deleteManualParticipation = async (mpId: string) => {
-    if (!confirm('Supprimer cette participation manuelle ?')) return;
+    if (!confirm('Supprimer cette implication manuelle ?')) return;
 
     try {
-      await supabase.from('manual_participations').delete().eq('id', mpId);
+      const { error } = await supabase.from('manual_participations').delete().eq('id', mpId);
+      if (error) throw error;
       loadData();
       setShowStudentDetailModal(false);
     } catch (error) {
       console.error('Failed to delete manual participation:', error);
+      alert('Erreur lors de la suppression.');
     }
   };
 
@@ -637,7 +697,7 @@ export function Students() {
 
   const getEventTypeLabel = (type: string, subtype: string | null) => {
     const labels: Record<string, string> = {
-      participation: 'Participation',
+      participation: 'Implication',
       bavardage: 'Bavardage',
       absence: 'Absence',
       remarque: 'Remarque',
@@ -681,11 +741,27 @@ export function Students() {
 
   return (
     <Layout>
+      {/* Error banner */}
+      {error && (
+        <div
+          className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 mb-4 flex items-center justify-between"
+          style={{ borderRadius: 'var(--radius-lg)' }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-[var(--color-error)] hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">Notes de participation</h1>
+            <h1 className="text-2xl font-bold text-[var(--color-text)]">Notes d'implication</h1>
             <p className="text-[var(--color-text-secondary)] mt-1">
               Trimestre {trimesterSettings.current_trimester} - {trimesterSettings.school_year}
             </p>
@@ -827,7 +903,7 @@ export function Students() {
                   {/* Class config summary */}
                   {classConfigs.get(selectedClassId) && (
                     <div className="mt-3 text-sm text-[var(--color-text-tertiary)]">
-                      Objectif: {classConfigs.get(selectedClassId)?.target_participations} participations
+                      Objectif: {classConfigs.get(selectedClassId)?.target_participations} implications
                       {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
                     </div>
                   )}
@@ -883,6 +959,11 @@ export function Students() {
                             {sg.absences > 0 && (
                               <span className="text-red-600">{sg.absences} abs</span>
                             )}
+                            {sg.oralEvaluation && (
+                              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                Oral: {sg.oralEvaluation.grade}/5
+                              </span>
+                            )}
                           </div>
 
                           {/* Hover indicator */}
@@ -909,7 +990,7 @@ export function Students() {
                         <div className="text-lg font-bold text-green-600">
                           {filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)}
                         </div>
-                        <div className="text-[var(--color-text-tertiary)]">participations</div>
+                        <div className="text-[var(--color-text-tertiary)]">implications</div>
                       </div>
                       <div className="text-center">
                         <div className="text-lg font-bold text-red-600">
@@ -951,7 +1032,7 @@ export function Students() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  Participations pour avoir 20/20
+                  Implications pour avoir 20/20
                 </label>
                 <input
                   type="number"
@@ -976,7 +1057,7 @@ export function Students() {
                   className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
                 />
                 <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
-                  Reduction par absence: {(configTarget / configSessions).toFixed(2)} participation
+                  Reduction par absence: {(configTarget / configSessions).toFixed(2)} implication
                 </p>
               </div>
 
@@ -986,7 +1067,7 @@ export function Students() {
                     Penalite bavardages
                   </label>
                   <p className="text-xs text-[var(--color-text-tertiary)]">
-                    1 bavardage = -1 participation
+                    1 bavardage = -1 implication
                   </p>
                 </div>
                 <button
@@ -1035,7 +1116,7 @@ export function Students() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-yellow-800">
                 <strong>Attention :</strong> Cette action va archiver les notes actuelles
-                et reinitialiser les compteurs de participation pour le nouveau trimestre.
+                et reinitialiser les compteurs d'implication pour le nouveau trimestre.
               </p>
             </div>
 
@@ -1122,7 +1203,7 @@ export function Students() {
                   <div className="text-right space-y-1">
                     <p className="text-sm">
                       <span className="text-green-600 font-semibold">{selectedStudentForDetail.totalParticipations}</span>
-                      <span className="text-[var(--color-text-tertiary)]"> participations totales</span>
+                      <span className="text-[var(--color-text-tertiary)]"> implications totales</span>
                     </p>
                     <p className="text-xs text-[var(--color-text-tertiary)]">
                       ({selectedStudentForDetail.participations} seance + {selectedStudentForDetail.manualParticipations} manuelles)
@@ -1156,7 +1237,7 @@ export function Students() {
                   </p>
                   {selectedStudentForDetail.bavardagePenalty && selectedStudentForDetail.bavardages > 0 && (
                     <p className="text-[var(--color-text-secondary)]">
-                      Participations effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.bavardages} bavardages = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
+                      Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.bavardages} bavardages = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
                     </p>
                   )}
                   <p className="text-[var(--color-text-secondary)]">
@@ -1167,11 +1248,37 @@ export function Students() {
                 </div>
               </div>
 
-              {/* Manual Participations Section */}
+              {/* Oral Evaluation Section */}
+              <div className="bg-purple-50 rounded-xl p-4">
+                <h4 className="font-medium text-purple-900 mb-2">Evaluation orale</h4>
+                {selectedStudentForDetail.oralEvaluation ? (
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-purple-700">
+                        {selectedStudentForDetail.oralEvaluation.grade}/5
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-purple-700">
+                        {ORAL_GRADE_LABELS[selectedStudentForDetail.oralEvaluation.grade]}
+                      </p>
+                      <p className="text-sm text-purple-600">
+                        Evalue le {formatDate(selectedStudentForDetail.oralEvaluation.evaluated_at)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-purple-600 text-sm">
+                    Pas encore evalue ce trimestre
+                  </p>
+                )}
+              </div>
+
+              {/* Manual Implications Section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-medium text-[var(--color-text)]">
-                    Participations manuelles ({selectedStudentForDetail.manualParticipations})
+                    Implications manuelles ({selectedStudentForDetail.manualParticipations})
                   </h4>
                   <button
                     onClick={openAddManualModal}
@@ -1182,7 +1289,7 @@ export function Students() {
                 </div>
                 {selectedStudentForDetail.manualParticipationsList.length === 0 ? (
                   <p className="text-[var(--color-text-tertiary)] text-sm text-center py-3 bg-[var(--color-background)] rounded-lg">
-                    Aucune participation manuelle ce trimestre
+                    Aucune implication manuelle ce trimestre
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1194,7 +1301,7 @@ export function Students() {
                           </span>
                           <div>
                             <span className="text-sm text-[var(--color-text)]">
-                              {mp.reason || 'Participation manuelle'}
+                              {mp.reason || 'Implication manuelle'}
                             </span>
                             <span className="text-xs text-[var(--color-text-tertiary)] block">
                               {formatDate(mp.created_at)}
@@ -1284,12 +1391,12 @@ export function Students() {
         </div>
       )}
 
-      {/* Add Manual Participation Modal */}
+      {/* Add Manual Implication Modal */}
       {showAddManualModal && selectedStudentForDetail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
-              Ajouter une participation manuelle
+              Ajouter une implication manuelle
             </h3>
             <p className="text-sm text-[var(--color-text-secondary)] mb-4">
               Pour: <strong>{selectedStudentForDetail.student.pseudo}</strong>
@@ -1298,7 +1405,7 @@ export function Students() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  Nombre de participations
+                  Nombre d'implications
                 </label>
                 <input
                   type="number"

@@ -54,6 +54,9 @@ export function Sessions() {
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
+  // Error state
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     loadSessions();
   }, [user, selectedClassId]);
@@ -61,55 +64,63 @@ export function Sessions() {
   const loadSessions = async () => {
     if (!user) return;
     setIsLoading(true);
+    setError(null);
 
-    const { data: classesData } = await supabase
-      .from('classes')
-      .select('id, name')
-      .eq('user_id', user.id)
-      .order('name');
+    try {
+      const { data: classesData, error: classesError } = await supabase
+        .from('classes')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('name');
 
-    setClasses(classesData || []);
+      if (classesError) throw classesError;
+      setClasses(classesData || []);
 
-    let query = supabase
-      .from('sessions')
-      .select(`id, class_id, started_at, ended_at, classes (name)`)
-      .eq('user_id', user.id)
-      .order('started_at', { ascending: false });
+      let query = supabase
+        .from('sessions')
+        .select(`id, class_id, started_at, ended_at, classes (name)`)
+        .eq('user_id', user.id)
+        .order('started_at', { ascending: false });
 
-    if (selectedClassId) {
-      query = query.eq('class_id', selectedClassId);
+      if (selectedClassId) {
+        query = query.eq('class_id', selectedClassId);
+      }
+
+      const { data: sessionsData, error: sessionsError } = await query;
+      if (sessionsError) throw sessionsError;
+
+      if (sessionsData) {
+        const sessionsWithCounts = await Promise.all(
+          sessionsData.map(async (session) => {
+            const { data: events } = await supabase
+              .from('events')
+              .select('type')
+              .eq('session_id', session.id);
+
+            const eventsData = events || [];
+            return {
+              id: session.id,
+              class_id: session.class_id,
+              class_name: (session.classes as any)?.name || 'Classe inconnue',
+              started_at: session.started_at,
+              ended_at: session.ended_at,
+              events_count: eventsData.length,
+              participations: eventsData.filter(e => e.type === 'participation').length,
+              bavardages: eventsData.filter(e => e.type === 'bavardage').length,
+              absences: eventsData.filter(e => e.type === 'absence').length,
+              remarques: eventsData.filter(e => e.type === 'remarque').length,
+              sorties: eventsData.filter(e => e.type === 'sortie').length,
+            };
+          })
+        );
+        setSessions(sessionsWithCounts);
+      }
+    } catch (err) {
+      console.error('Error loading sessions:', err);
+      setError('Erreur lors du chargement des seances.');
+    } finally {
+      setIsLoading(false);
     }
-
-    const { data: sessionsData } = await query;
-
-    if (sessionsData) {
-      const sessionsWithCounts = await Promise.all(
-        sessionsData.map(async (session) => {
-          const { data: events } = await supabase
-            .from('events')
-            .select('type')
-            .eq('session_id', session.id);
-
-          const eventsData = events || [];
-          return {
-            id: session.id,
-            class_id: session.class_id,
-            class_name: (session.classes as any)?.name || 'Classe inconnue',
-            started_at: session.started_at,
-            ended_at: session.ended_at,
-            events_count: eventsData.length,
-            participations: eventsData.filter(e => e.type === 'participation').length,
-            bavardages: eventsData.filter(e => e.type === 'bavardage').length,
-            absences: eventsData.filter(e => e.type === 'absence').length,
-            remarques: eventsData.filter(e => e.type === 'remarque').length,
-            sorties: eventsData.filter(e => e.type === 'sortie').length,
-          };
-        })
-      );
-      setSessions(sessionsWithCounts);
-    }
-
-    setIsLoading(false);
   };
 
   const handleOpenDeleteModal = (e: React.MouseEvent, session: Session) => {
@@ -124,13 +135,16 @@ export function Sessions() {
     setIsDeleting(true);
 
     try {
-      await supabase.from('events').delete().eq('session_id', deleteTarget.id);
-      await supabase.from('sessions').delete().eq('id', deleteTarget.id);
+      const { error: eventsError } = await supabase.from('events').delete().eq('session_id', deleteTarget.id);
+      if (eventsError) throw eventsError;
+      const { error: sessionError } = await supabase.from('sessions').delete().eq('id', deleteTarget.id);
+      if (sessionError) throw sessionError;
       setShowDeleteModal(false);
       setDeleteTarget(null);
       loadSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
+      alert('Erreur lors de la suppression de la seance.');
     } finally {
       setIsDeleting(false);
     }
@@ -224,6 +238,22 @@ export function Sessions() {
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Error banner */}
+        {error && (
+          <div
+            className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 flex items-center justify-between"
+            style={{ borderRadius: 'var(--radius-lg)' }}
+          >
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="text-[var(--color-error)] hover:opacity-70"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -588,7 +618,7 @@ export function Sessions() {
                 <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Resume des evenements</h4>
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { key: 'participations', label: 'Participations', color: 'participation' },
+                    { key: 'participations', label: 'Implications', color: 'participation' },
                     { key: 'bavardages', label: 'Bavardages', color: 'bavardage' },
                     { key: 'absences', label: 'Absences', color: 'absence' },
                     { key: 'remarques', label: 'Remarques', color: 'remarque' },

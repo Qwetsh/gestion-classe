@@ -26,6 +26,7 @@ export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -94,9 +95,10 @@ export function Dashboard() {
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
+        setError('Erreur lors du chargement du tableau de bord.');
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     }
 
     loadData();
@@ -128,6 +130,22 @@ export function Dashboard() {
   return (
     <Layout>
       <div className="space-y-8">
+        {/* Error banner */}
+        {error && (
+          <div
+            className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 flex items-center justify-between"
+            style={{ borderRadius: 'var(--radius-lg)' }}
+          >
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="text-[var(--color-error)] hover:opacity-70"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Page title */}
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text)]">Tableau de bord</h1>
@@ -167,7 +185,7 @@ export function Dashboard() {
             iconColor="var(--color-absence)"
           />
           <StatCard
-            label="Participations"
+            label="Implications"
             value={stats?.participations || 0}
             icon="+"
             bgColor="var(--color-participation-soft)"
@@ -282,7 +300,7 @@ export function Dashboard() {
           />
           <QuickActionCard
             title="Voir les eleves"
-            description="Notes de participation"
+            description="Notes d'implication"
             icon="👥"
             link="/students"
             color="var(--color-sortie)"

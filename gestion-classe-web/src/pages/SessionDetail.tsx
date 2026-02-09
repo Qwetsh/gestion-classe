@@ -22,7 +22,7 @@ interface Event {
 }
 
 const EVENT_CONFIG: Record<string, { label: string; color: string; softColor: string; icon: string }> = {
-  participation: { label: 'Participation', color: 'var(--color-participation)', softColor: 'var(--color-participation-soft)', icon: '+' },
+  participation: { label: 'Implication', color: 'var(--color-participation)', softColor: 'var(--color-participation-soft)', icon: '+' },
   bavardage: { label: 'Bavardage', color: 'var(--color-bavardage)', softColor: 'var(--color-bavardage-soft)', icon: '-' },
   absence: { label: 'Absence', color: 'var(--color-absence)', softColor: 'var(--color-absence-soft)', icon: 'A' },
   remarque: { label: 'Remarque', color: 'var(--color-remarque)', softColor: 'var(--color-remarque-soft)', icon: '!' },
@@ -37,6 +37,7 @@ export function SessionDetail() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   // Load photo URL when an event with photo is selected
   const handleEventClick = async (event: Event) => {
@@ -59,6 +60,31 @@ export function SessionDetail() {
   const closeModal = () => {
     setSelectedEvent(null);
     setPhotoUrl(null);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cet evenement ?')) {
+      return;
+    }
+
+    setDeletingEventId(eventId);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) {
+        console.error('Error deleting event:', error);
+        alert('Erreur lors de la suppression');
+        return;
+      }
+
+      // Remove from local state
+      setEvents(events.filter(e => e.id !== eventId));
+    } finally {
+      setDeletingEventId(null);
+    }
   };
 
   useEffect(() => {
@@ -375,6 +401,18 @@ export function SessionDetail() {
                     {isClickable && (
                       <span className="text-[var(--color-text-tertiary)]">›</span>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteEvent(event.id);
+                      }}
+                      disabled={deletingEventId === event.id}
+                      className="ml-2 p-2 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors shrink-0 disabled:opacity-50"
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      title="Supprimer"
+                    >
+                      {deletingEventId === event.id ? '...' : '🗑️'}
+                    </button>
                   </div>
                 );
               })}

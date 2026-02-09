@@ -10,7 +10,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/gestion-classe">
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
