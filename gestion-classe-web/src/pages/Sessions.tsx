@@ -89,31 +89,42 @@ export function Sessions() {
       const { data: sessionsData, error: sessionsError } = await query;
       if (sessionsError) throw sessionsError;
 
-      if (sessionsData) {
-        const sessionsWithCounts = await Promise.all(
-          sessionsData.map(async (session) => {
-            const { data: events } = await supabase
-              .from('events')
-              .select('type')
-              .eq('session_id', session.id);
+      if (sessionsData && sessionsData.length > 0) {
+        // Fetch ALL events for all sessions in ONE query
+        const sessionIds = sessionsData.map(s => s.id);
+        const { data: allEvents } = await supabase
+          .from('events')
+          .select('session_id, type')
+          .in('session_id', sessionIds);
 
-            const eventsData = events || [];
-            return {
-              id: session.id,
-              class_id: session.class_id,
-              class_name: (session.classes as any)?.name || 'Classe inconnue',
-              started_at: session.started_at,
-              ended_at: session.ended_at,
-              events_count: eventsData.length,
-              participations: eventsData.filter(e => e.type === 'participation').length,
-              bavardages: eventsData.filter(e => e.type === 'bavardage').length,
-              absences: eventsData.filter(e => e.type === 'absence').length,
-              remarques: eventsData.filter(e => e.type === 'remarque').length,
-              sorties: eventsData.filter(e => e.type === 'sortie').length,
-            };
-          })
-        );
+        // Group events by session_id
+        const eventsBySession = new Map<string, { type: string }[]>();
+        (allEvents || []).forEach(event => {
+          const existing = eventsBySession.get(event.session_id) || [];
+          existing.push(event);
+          eventsBySession.set(event.session_id, existing);
+        });
+
+        // Map sessions with counts (no async needed now)
+        const sessionsWithCounts = sessionsData.map((session) => {
+          const eventsData = eventsBySession.get(session.id) || [];
+          return {
+            id: session.id,
+            class_id: session.class_id,
+            class_name: (session.classes as any)?.name || 'Classe inconnue',
+            started_at: session.started_at,
+            ended_at: session.ended_at,
+            events_count: eventsData.length,
+            participations: eventsData.filter(e => e.type === 'participation').length,
+            bavardages: eventsData.filter(e => e.type === 'bavardage').length,
+            absences: eventsData.filter(e => e.type === 'absence').length,
+            remarques: eventsData.filter(e => e.type === 'remarque').length,
+            sorties: eventsData.filter(e => e.type === 'sortie').length,
+          };
+        });
         setSessions(sessionsWithCounts);
+      } else {
+        setSessions([]);
       }
     } catch (err) {
       console.error('Error loading sessions:', err);
@@ -490,8 +501,8 @@ export function Sessions() {
                           {day}
                         </span>
                       </div>
-                      <div className="space-y-1">
-                        {daySessions.slice(0, 3).map((session) => (
+                      <div className="space-y-1 max-h-[80px] overflow-y-auto scrollbar-thin">
+                        {daySessions.map((session) => (
                           <button
                             key={session.id}
                             onClick={() => { setSelectedSession(session); setShowSessionModal(true); }}
@@ -503,9 +514,6 @@ export function Sessions() {
                             <span className="ml-1 opacity-80">{formatTime(session.started_at)}</span>
                           </button>
                         ))}
-                        {daySessions.length > 3 && (
-                          <div className="text-xs text-[var(--color-text-tertiary)] text-center">+{daySessions.length - 3}</div>
-                        )}
                       </div>
                     </div>
                   );
