@@ -538,15 +538,32 @@ export function Sessions() {
             </div>
           ) : (
             <div
-              className="bg-[var(--color-surface)] divide-y divide-[var(--color-border)]"
+              className="bg-[var(--color-surface)]"
               style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
             >
-              {sessions.map((session) => (
-                <Link
-                  key={session.id}
-                  to={`/sessions/${session.id}`}
-                  className="block p-4 hover:bg-[var(--color-surface-hover)] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                >
+              {sessions.map((session, index) => {
+                const currentDate = new Date(session.started_at).toDateString();
+                const prevDate = index > 0 ? new Date(sessions[index - 1].started_at).toDateString() : null;
+                const isNewDay = index === 0 || currentDate !== prevDate;
+                const isFirstItem = index === 0;
+                const isLastItem = index === sessions.length - 1;
+
+                return (
+                  <div key={session.id}>
+                    {/* Day separator */}
+                    {isNewDay && !isFirstItem && (
+                      <div className="flex items-center gap-3 px-4 py-2 bg-[var(--color-surface-secondary)]/50">
+                        <div className="flex-1 h-px bg-[var(--color-border)]" />
+                        <span className="text-xs text-[var(--color-text-tertiary)] font-medium">
+                          {formatDate(session.started_at)}
+                        </span>
+                        <div className="flex-1 h-px bg-[var(--color-border)]" />
+                      </div>
+                    )}
+                    <Link
+                      to={`/sessions/${session.id}`}
+                      className={`block p-4 hover:bg-[var(--color-surface-hover)] transition-colors border-b border-[var(--color-border)] ${isFirstItem ? 'rounded-t-xl' : ''} ${isLastItem ? 'rounded-b-xl border-b-0' : ''}`}
+                    >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-4">
                       <div
@@ -609,7 +626,9 @@ export function Sessions() {
                     </div>
                   </div>
                 </Link>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )
         )}
