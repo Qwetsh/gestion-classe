@@ -7,6 +7,7 @@ interface Session {
   id: string;
   class_name: string;
   room_name: string;
+  topic: string | null;
   started_at: string;
   ended_at: string | null;
 }
@@ -39,6 +40,11 @@ export function SessionDetail() {
   const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
+  // Topic editing states
+  const [isEditingTopic, setIsEditingTopic] = useState(false);
+  const [editedTopic, setEditedTopic] = useState('');
+  const [isSavingTopic, setIsSavingTopic] = useState(false);
+
   // Load photo URL when an event with photo is selected
   const handleEventClick = async (event: Event) => {
     if (event.type !== 'remarque' || (!event.note && !event.photo_path)) return;
@@ -60,6 +66,40 @@ export function SessionDetail() {
   const closeModal = () => {
     setSelectedEvent(null);
     setPhotoUrl(null);
+  };
+
+  const handleStartEditTopic = () => {
+    setEditedTopic(session?.topic || '');
+    setIsEditingTopic(true);
+  };
+
+  const handleCancelEditTopic = () => {
+    setIsEditingTopic(false);
+    setEditedTopic('');
+  };
+
+  const handleSaveTopic = async () => {
+    if (!session) return;
+
+    setIsSavingTopic(true);
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({ topic: editedTopic.trim() || null })
+        .eq('id', session.id);
+
+      if (error) {
+        console.error('Error saving topic:', error);
+        alert('Erreur lors de la sauvegarde du theme');
+        return;
+      }
+
+      // Update local state
+      setSession({ ...session, topic: editedTopic.trim() || null });
+      setIsEditingTopic(false);
+    } finally {
+      setIsSavingTopic(false);
+    }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -98,6 +138,7 @@ export function SessionDetail() {
         .from('sessions')
         .select(`
           id,
+          topic,
           started_at,
           ended_at,
           classes (name),
@@ -111,6 +152,7 @@ export function SessionDetail() {
           id: sessionData.id,
           class_name: (sessionData.classes as any)?.name || 'Classe inconnue',
           room_name: (sessionData.rooms as any)?.name || 'Salle inconnue',
+          topic: sessionData.topic,
           started_at: sessionData.started_at,
           ended_at: sessionData.ended_at,
         });
@@ -266,6 +308,69 @@ export function SessionDetail() {
                   {getDuration(session.started_at, session.ended_at)}
                 </p>
               </div>
+            </div>
+
+            {/* Topic section */}
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-[var(--color-text-secondary)]">📝 Theme de la seance</span>
+                {!isEditingTopic && (
+                  <button
+                    onClick={handleStartEditTopic}
+                    className="text-xs text-[var(--color-primary)] hover:underline"
+                  >
+                    {session.topic ? 'Modifier' : 'Ajouter'}
+                  </button>
+                )}
+              </div>
+              {isEditingTopic ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={editedTopic}
+                    onChange={(e) => setEditedTopic(e.target.value)}
+                    placeholder="Ex: Chapitre 3 - Les fonctions lineaires..."
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    rows={2}
+                    maxLength={200}
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[var(--color-text-tertiary)]">
+                      {editedTopic.length}/200
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCancelEditTopic}
+                        className="px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                        style={{ borderRadius: 'var(--radius-lg)' }}
+                        disabled={isSavingTopic}
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={handleSaveTopic}
+                        className="px-3 py-1.5 text-sm text-white hover:opacity-90 transition-colors disabled:opacity-50"
+                        style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                        disabled={isSavingTopic}
+                      >
+                        {isSavingTopic ? 'Sauvegarde...' : 'Enregistrer'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : session.topic ? (
+                <p
+                  className="text-[var(--color-text)] p-3 bg-[var(--color-surface-secondary)] italic"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  {session.topic}
+                </p>
+              ) : (
+                <p className="text-[var(--color-text-tertiary)] text-sm italic">
+                  Aucun theme defini
+                </p>
+              )}
             </div>
 
             {!session.ended_at && (
