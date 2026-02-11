@@ -10,6 +10,7 @@ interface Session {
   class_name: string;
   started_at: string;
   ended_at: string | null;
+  room_id?: string;
   events_count: number;
   participations: number;
   bavardages: number;
@@ -17,6 +18,30 @@ interface Session {
   remarques: number;
   sorties: number;
 }
+
+interface SessionEvent {
+  id: string;
+  student_id: string;
+  type: string;
+  subtype: string | null;
+  note: string | null;
+  timestamp: string;
+}
+
+interface ClassroomData {
+  room: { grid_rows: number; grid_cols: number; disabled_cells: string[] } | null;
+  positions: Record<string, string>; // "row-col" -> studentId
+  students: { id: string; pseudo: string }[];
+  events: SessionEvent[];
+}
+
+const EVENT_CONFIG: Record<string, { label: string; color: string; softColor: string; icon: string }> = {
+  participation: { label: 'Implication', color: 'var(--color-participation)', softColor: 'var(--color-participation-soft)', icon: '+' },
+  bavardage: { label: 'Bavardage', color: 'var(--color-bavardage)', softColor: 'var(--color-bavardage-soft)', icon: '-' },
+  absence: { label: 'Absence', color: 'var(--color-absence)', softColor: 'var(--color-absence-soft)', icon: 'A' },
+  remarque: { label: 'Remarque', color: 'var(--color-remarque)', softColor: 'var(--color-remarque-soft)', icon: '!' },
+  sortie: { label: 'Sortie', color: 'var(--color-sortie)', softColor: 'var(--color-sortie-soft)', icon: 'S' },
+};
 
 interface ClassFilter {
   id: string;
@@ -53,6 +78,11 @@ export function Sessions() {
   // Session detail modal state
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+
+  // Classroom modal state
+  const [classroomData, setClassroomData] = useState<ClassroomData | null>(null);
+  const [isLoadingClassroom, setIsLoadingClassroom] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -133,6 +163,117 @@ export function Sessions() {
       setIsLoading(false);
     }
   };
+
+  const loadClassroomData = async (session: Session) => {
+    setIsLoadingClassroom(true);
+    setClassroomData(null);
+
+    try {
+      // Fetch session with room info to get room_id
+      const { data: sessionWithRoom } = await supabase
+        .from('sessions')
+        .select('room_id, rooms (grid_rows, grid_cols, disabled_cells)')
+        .eq('id', session.id)
+        .single();
+
+      const roomId = sessionWithRoom?.room_id;
+      // Supabase returns rooms as object for foreign key relation, cast via any
+      const roomData = (sessionWithRoom?.rooms as any) as { grid_rows: number; grid_cols: number; disabled_cells: string[] } | null;
+
+      // Parallel fetch: plan, students, events
+      const [planResult, studentsResult, eventsResult] = await Promise.all([
+        // Fetch class room plan (only if we have a room)
+        roomId
+          ? supabase
+              .from('class_room_plans')
+              .select('positions')
+              .eq('class_id', session.class_id)
+              .eq('room_id', roomId)
+              .single()
+          : Promise.resolve({ data: null }),
+        // Fetch students
+        supabase
+          .from('students')
+          .select('id, pseudo')
+          .eq('class_id', session.class_id)
+          .order('pseudo'),
+        // Fetch events
+        supabase
+          .from('events')
+          .select('id, student_id, type, subtype, note, timestamp')
+          .eq('session_id', session.id)
+          .order('timestamp', { ascending: true }),
+      ]);
+
+      setClassroomData({
+        room: roomData || null,
+        positions: planResult.data?.positions || {},
+        students: studentsResult.data || [],
+        events: eventsResult.data || [],
+      });
+    } catch (err) {
+      console.error('Error loading classroom data:', err);
+      setClassroomData({
+        room: null,
+        positions: {},
+        students: [],
+        events: [],
+      });
+    } finally {
+      setIsLoadingClassroom(false);
+    }
+  };
+
+  const handleOpenSessionModal = async (session: Session) => {
+    setSelectedSession(session);
+    setShowSessionModal(true);
+    await loadClassroomData(session);
+  };
+
+  const handleCloseSessionModal = () => {
+    setShowSessionModal(false);
+    setSelectedSession(null);
+    setClassroomData(null);
+    setSelectedStudentId(null);
+  };
+
+  // Computed: events grouped by student
+  const eventsByStudent = useMemo(() => {
+    if (!classroomData) return new Map<string, SessionEvent[]>();
+    const map = new Map<string, SessionEvent[]>();
+    classroomData.events.forEach((event) => {
+      const existing = map.get(event.student_id) || [];
+      existing.push(event);
+      map.set(event.student_id, existing);
+    });
+    return map;
+  }, [classroomData]);
+
+  // Computed: absent student IDs (O(1) lookup)
+  const absentStudentIds = useMemo(() => {
+    if (!classroomData) return new Set<string>();
+    return new Set(
+      classroomData.events
+        .filter((e) => e.type === 'absence')
+        .map((e) => e.student_id)
+    );
+  }, [classroomData]);
+
+  // Computed: student map for fast lookup
+  const studentsMap = useMemo(() => {
+    if (!classroomData) return new Map<string, { id: string; pseudo: string }>();
+    return new Map(classroomData.students.map((s) => [s.id, s]));
+  }, [classroomData]);
+
+  // Computed: students with events but not placed on the grid
+  const unplacedStudentsWithEvents = useMemo(() => {
+    if (!classroomData) return [];
+    const placedStudentIds = new Set(Object.values(classroomData.positions));
+    const studentIdsWithEvents = new Set(classroomData.events.map((e) => e.student_id));
+    return classroomData.students.filter(
+      (s) => studentIdsWithEvents.has(s.id) && !placedStudentIds.has(s.id)
+    );
+  }, [classroomData]);
 
   const handleOpenDeleteModal = (e: React.MouseEvent, session: Session) => {
     e.preventDefault();
@@ -505,7 +646,7 @@ export function Sessions() {
                         {daySessions.map((session) => (
                           <button
                             key={session.id}
-                            onClick={() => { setSelectedSession(session); setShowSessionModal(true); }}
+                            onClick={() => handleOpenSessionModal(session)}
                             className="w-full text-left px-1.5 py-0.5 text-xs text-white truncate hover:opacity-80 transition-opacity"
                             style={{ background: getClassGradient(session.class_name), borderRadius: 'var(--radius-sm)' }}
                             title={`${session.class_name} - ${formatTime(session.started_at)}`}
@@ -581,11 +722,12 @@ export function Sessions() {
         </div>
       )}
 
-      {/* Session Modal */}
+      {/* Session/Classroom Modal */}
       {showSessionModal && selectedSession && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] w-full max-w-lg overflow-hidden" style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}>
-            <div className="p-5 text-white" style={{ background: getClassGradient(selectedSession.class_name) }}>
+          <div className="bg-[var(--color-surface)] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}>
+            {/* Header */}
+            <div className="p-5 text-white shrink-0" style={{ background: getClassGradient(selectedSession.class_name) }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-white/20 flex items-center justify-center font-bold text-lg" style={{ borderRadius: 'var(--radius-lg)' }}>
@@ -593,11 +735,14 @@ export function Sessions() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold">{selectedSession.class_name}</h3>
-                    <p className="text-white/80 text-sm mt-0.5">{formatDate(selectedSession.started_at)}</p>
+                    <p className="text-white/80 text-sm mt-0.5">
+                      {formatDate(selectedSession.started_at)} · {formatTime(selectedSession.started_at)}
+                      {selectedSession.ended_at && ` - ${formatTime(selectedSession.ended_at)}`}
+                    </p>
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowSessionModal(false)}
+                  onClick={handleCloseSessionModal}
                   className="w-10 h-10 flex items-center justify-center hover:bg-white/20 transition-colors"
                   style={{ borderRadius: 'var(--radius-lg)' }}
                 >
@@ -606,64 +751,324 @@ export function Sessions() {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="flex items-center gap-6 text-sm">
-                <div><span className="text-[var(--color-text-tertiary)]">Debut:</span> <span className="font-semibold text-[var(--color-text)]">{formatTime(selectedSession.started_at)}</span></div>
-                {selectedSession.ended_at ? (
-                  <>
-                    <div><span className="text-[var(--color-text-tertiary)]">Fin:</span> <span className="font-semibold text-[var(--color-text)]">{formatTime(selectedSession.ended_at)}</span></div>
-                    <div><span className="text-[var(--color-text-tertiary)]">Duree:</span> <span className="font-semibold text-[var(--color-text)]">{getDuration(selectedSession.started_at, selectedSession.ended_at)}</span></div>
-                  </>
-                ) : (
-                  <span className="px-3 py-1 bg-[var(--color-success-soft)] text-[var(--color-success)] text-xs font-semibold flex items-center gap-1" style={{ borderRadius: 'var(--radius-full)' }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse" />
-                    En cours
-                  </span>
-                )}
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Resume des evenements</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { key: 'participations', label: 'Implications', color: 'participation' },
-                    { key: 'bavardages', label: 'Bavardages', color: 'bavardage' },
-                    { key: 'absences', label: 'Absences', color: 'absence' },
-                    { key: 'remarques', label: 'Remarques', color: 'remarque' },
-                    { key: 'sorties', label: 'Sorties', color: 'sortie' },
-                    { key: 'events_count', label: 'Total', color: 'text' },
-                  ].map(({ key, label, color }) => (
-                    <div
-                      key={key}
-                      className="p-3 text-center"
-                      style={{ background: color === 'text' ? 'var(--color-surface-secondary)' : `var(--color-${color}-soft)`, borderRadius: 'var(--radius-lg)' }}
-                    >
-                      <div className="text-2xl font-bold" style={{ color: color === 'text' ? 'var(--color-text)' : `var(--color-${color})` }}>
-                        {selectedSession[key as keyof Session]}
-                      </div>
-                      <div className="text-xs" style={{ color: color === 'text' ? 'var(--color-text-tertiary)' : `var(--color-${color})` }}>{label}</div>
-                    </div>
-                  ))}
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingClassroom ? (
+                <div className="flex justify-center items-center h-48">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[var(--color-text-secondary)]">Chargement du plan...</span>
+                  </div>
                 </div>
-              </div>
+              ) : classroomData?.room ? (
+                <div className="space-y-6">
+                  {/* Classroom Grid */}
+                  <div
+                    className="grid gap-2 justify-center"
+                    style={{
+                      gridTemplateColumns: `repeat(${classroomData.room.grid_cols}, minmax(70px, 90px))`,
+                    }}
+                  >
+                    {Array.from({ length: classroomData.room.grid_rows * classroomData.room.grid_cols }).map((_, i) => {
+                      const row = Math.floor(i / classroomData.room!.grid_cols);
+                      const col = i % classroomData.room!.grid_cols;
+                      const cellKey = `${row}-${col}`;
+                      const isDisabled = classroomData.room?.disabled_cells?.includes(`${row},${col}`);
+                      const studentId = classroomData.positions[cellKey];
+                      const student = studentId ? studentsMap.get(studentId) : undefined;
+                      const isAbsent = student && absentStudentIds.has(student.id);
+                      const studentEvents = student ? eventsByStudent.get(student.id) || [] : [];
+                      const eventCount = studentEvents.length;
 
-              <div className="flex gap-3 pt-2">
-                <Link
-                  to={`/sessions/${selectedSession.id}`}
-                  className="flex-1 px-4 py-2.5 text-white text-center hover:opacity-90 transition-all font-medium"
-                  style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
-                >
-                  Voir les details
-                </Link>
-                <button
-                  onClick={(e) => { setShowSessionModal(false); handleOpenDeleteModal(e, selectedSession); }}
-                  className="px-4 py-2.5 border border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors font-medium"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
-                >
-                  Supprimer
-                </button>
-              </div>
+                      // Disabled cell (aisle)
+                      if (isDisabled) {
+                        return (
+                          <div
+                            key={cellKey}
+                            className="h-20 bg-[var(--color-surface-secondary)]/50"
+                            style={{ borderRadius: 'var(--radius-lg)' }}
+                          />
+                        );
+                      }
+
+                      // Empty cell
+                      if (!student) {
+                        return (
+                          <div
+                            key={cellKey}
+                            className="h-20 border-2 border-dashed border-[var(--color-border)]"
+                            style={{ borderRadius: 'var(--radius-lg)' }}
+                          />
+                        );
+                      }
+
+                      // Student cell
+                      return (
+                        <button
+                          key={cellKey}
+                          onClick={() => setSelectedStudentId(student.id)}
+                          className={`h-20 relative flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 ${
+                            isAbsent
+                              ? 'border-2 border-[#EF4444]'
+                              : 'border border-[var(--color-border)]'
+                          }`}
+                          style={{
+                            borderRadius: 'var(--radius-lg)',
+                            background: isAbsent ? '#FEE2E2' : 'var(--color-surface)',
+                          }}
+                        >
+                          {/* Absent badge */}
+                          {isAbsent && (
+                            <span
+                              className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[10px] font-bold text-white bg-[#EF4444]"
+                              style={{ borderRadius: 'var(--radius-sm)' }}
+                            >
+                              ABS
+                            </span>
+                          )}
+
+                          {/* Event count badge */}
+                          {eventCount > 0 && !isAbsent && (
+                            <span
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white"
+                              style={{
+                                borderRadius: 'var(--radius-full)',
+                                background: 'var(--gradient-primary)',
+                              }}
+                            >
+                              {eventCount}
+                            </span>
+                          )}
+
+                          {/* Student avatar */}
+                          <div
+                            className="w-8 h-8 flex items-center justify-center text-xs font-bold text-white"
+                            style={{
+                              borderRadius: 'var(--radius-full)',
+                              background: isAbsent ? '#DC2626' : 'var(--gradient-primary)',
+                            }}
+                          >
+                            {student.pseudo.substring(0, 2).toUpperCase()}
+                          </div>
+
+                          {/* Student name */}
+                          <span
+                            className="text-xs font-medium truncate max-w-full px-1"
+                            style={{ color: isAbsent ? '#DC2626' : 'var(--color-text)' }}
+                          >
+                            {student.pseudo}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Unplaced students with events */}
+                  {unplacedStudentsWithEvents.length > 0 && (
+                    <div className="pt-4 border-t border-[var(--color-border)]">
+                      <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">
+                        Eleves non places ({unplacedStudentsWithEvents.length})
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {unplacedStudentsWithEvents.map((student) => {
+                          const isAbsent = absentStudentIds.has(student.id);
+                          const studentEvents = eventsByStudent.get(student.id) || [];
+                          return (
+                            <button
+                              key={student.id}
+                              onClick={() => setSelectedStudentId(student.id)}
+                              className={`px-3 py-2 flex items-center gap-2 transition-all hover:scale-105 ${
+                                isAbsent
+                                  ? 'border-2 border-[#EF4444]'
+                                  : 'border border-[var(--color-border)]'
+                              }`}
+                              style={{
+                                borderRadius: 'var(--radius-lg)',
+                                background: isAbsent ? '#FEE2E2' : 'var(--color-surface)',
+                              }}
+                            >
+                              <span
+                                className="font-medium text-sm"
+                                style={{ color: isAbsent ? '#DC2626' : 'var(--color-text)' }}
+                              >
+                                {student.pseudo}
+                              </span>
+                              {isAbsent && (
+                                <span
+                                  className="px-1.5 py-0.5 text-[10px] font-bold text-white bg-[#EF4444]"
+                                  style={{ borderRadius: 'var(--radius-sm)' }}
+                                >
+                                  ABS
+                                </span>
+                              )}
+                              {studentEvents.length > 0 && !isAbsent && (
+                                <span
+                                  className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white"
+                                  style={{
+                                    borderRadius: 'var(--radius-full)',
+                                    background: 'var(--gradient-primary)',
+                                  }}
+                                >
+                                  {studentEvents.length}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* No room/plan fallback */
+                <div className="text-center py-8">
+                  <div
+                    className="w-16 h-16 mx-auto mb-4 bg-[var(--color-surface-secondary)] flex items-center justify-center"
+                    style={{ borderRadius: 'var(--radius-full)' }}
+                  >
+                    <span className="text-3xl">🏫</span>
+                  </div>
+                  <p className="text-[var(--color-text-secondary)] mb-2">
+                    Aucun plan de classe disponible
+                  </p>
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                    Consultez les details pour voir les evenements de cette seance.
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[var(--color-border)] shrink-0 flex gap-3">
+              <Link
+                to={`/sessions/${selectedSession.id}`}
+                className="flex-1 px-4 py-2.5 text-white text-center hover:opacity-90 transition-all font-medium"
+                style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+              >
+                Voir les details
+              </Link>
+              <button
+                onClick={(e) => { handleCloseSessionModal(); handleOpenDeleteModal(e, selectedSession); }}
+                className="px-4 py-2.5 border border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors font-medium"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Events Sub-Modal */}
+      {selectedStudentId && classroomData && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
+          onClick={() => setSelectedStudentId(null)}
+        >
+          <div
+            className="bg-[var(--color-surface)] w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col"
+            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            {(() => {
+              const student = studentsMap.get(selectedStudentId);
+              const isAbsent = absentStudentIds.has(selectedStudentId);
+              const studentEvents = eventsByStudent.get(selectedStudentId) || [];
+              if (!student) return null;
+
+              return (
+                <>
+                  <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center font-bold text-white"
+                        style={{
+                          borderRadius: 'var(--radius-lg)',
+                          background: isAbsent ? '#DC2626' : 'var(--gradient-primary)',
+                        }}
+                      >
+                        {student.pseudo.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3
+                          className="text-lg font-semibold"
+                          style={{ color: isAbsent ? '#DC2626' : 'var(--color-text)' }}
+                        >
+                          {student.pseudo}
+                        </h3>
+                        <p className="text-sm text-[var(--color-text-tertiary)]">
+                          {studentEvents.length} evenement{studentEvents.length > 1 ? 's' : ''} cette seance
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedStudentId(null)}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto">
+                    {studentEvents.length === 0 ? (
+                      <div className="p-8 text-center text-[var(--color-text-tertiary)]">
+                        Aucun evenement enregistre
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-[var(--color-border)]">
+                        {studentEvents.map((event) => {
+                          const config = EVENT_CONFIG[event.type] || {
+                            label: event.type,
+                            color: 'var(--color-text-tertiary)',
+                            softColor: 'var(--color-surface-secondary)',
+                            icon: '?',
+                          };
+                          return (
+                            <div key={event.id} className="p-4 flex items-start gap-3">
+                              <div
+                                className="w-10 h-10 flex items-center justify-center text-sm font-bold shrink-0"
+                                style={{
+                                  background: config.softColor,
+                                  color: config.color,
+                                  borderRadius: 'var(--radius-lg)',
+                                }}
+                              >
+                                {config.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="text-xs px-2 py-0.5 font-medium"
+                                    style={{
+                                      background: config.softColor,
+                                      color: config.color,
+                                      borderRadius: 'var(--radius-full)',
+                                    }}
+                                  >
+                                    {config.label}
+                                    {event.subtype && ` - ${event.subtype}`}
+                                  </span>
+                                  <span className="text-xs text-[var(--color-text-tertiary)]">
+                                    {formatTime(event.timestamp)}
+                                  </span>
+                                </div>
+                                {event.note && (
+                                  <p className="text-sm text-[var(--color-text-secondary)] mt-1 italic">
+                                    "{event.note}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

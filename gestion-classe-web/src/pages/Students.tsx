@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Student {
   id: string;
@@ -18,9 +19,16 @@ interface Event {
   type: string;
   subtype: string | null;
   note: string | null;
+  photo_path: string | null;
   timestamp: string;
   session_date: string;
   class_name: string;
+}
+
+interface WeeklyData {
+  week: string;
+  participation: number;
+  bavardage: number;
 }
 
 interface TrimesterSettings {
@@ -33,6 +41,7 @@ interface ClassConfig {
   target_participations: number;
   total_sessions_expected: number;
   bavardage_penalty: boolean;
+  base_grade: number | null;
 }
 
 interface TrimesterBoundary {
@@ -94,6 +103,7 @@ interface StudentGrade {
   totalSessionsExpected: number;
   adjustedTarget: number;
   bavardagePenalty: boolean;
+  baseGrade: number | null;
   grade: number;
   bonus: number;
   events: Event[];
@@ -151,6 +161,7 @@ export function Students() {
   const [configTarget, setConfigTarget] = useState(15);
   const [configSessions, setConfigSessions] = useState(60);
   const [configBavardagePenalty, setConfigBavardagePenalty] = useState(false);
+  const [configBaseGrade, setConfigBaseGrade] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Manual participation modal state
@@ -250,6 +261,7 @@ export function Students() {
         target_participations: c.target_participations,
         total_sessions_expected: c.total_sessions_expected,
         bavardage_penalty: c.bavardage_penalty ?? false,
+        base_grade: c.base_grade ?? null,
       });
     });
     setClassConfigs(configMap);
@@ -291,6 +303,7 @@ export function Students() {
         type,
         subtype,
         note,
+        photo_path,
         timestamp,
         sessions (
           started_at,
@@ -341,6 +354,7 @@ export function Students() {
           type: e.type,
           subtype: e.subtype,
           note: e.note,
+          photo_path: e.photo_path,
           timestamp: e.timestamp,
           session_date: (e.sessions as any)?.started_at || e.timestamp,
           class_name: (e.sessions as any)?.classes?.name || 'Classe inconnue',
@@ -359,6 +373,7 @@ export function Students() {
       const targetParticipations = config?.target_participations || 15;
       const totalSessionsExpected = config?.total_sessions_expected || 60;
       const bavardagePenalty = config?.bavardage_penalty ?? false;
+      const baseGrade = config?.base_grade ?? null;
 
       const effectiveParticipations = bavardagePenalty
         ? Math.max(0, totalParticipations - bavardages)
@@ -367,9 +382,25 @@ export function Students() {
       const reductionPerAbsence = targetParticipations / totalSessionsExpected;
       const adjustedTarget = Math.max(1, targetParticipations - (absences * reductionPerAbsence));
 
-      const rawGrade = (effectiveParticipations / adjustedTarget) * 20;
-      const grade = Math.min(20, Math.max(0, rawGrade));
-      const bonus = rawGrade > 20 ? effectiveParticipations - adjustedTarget : 0;
+      // Calculate grade based on mode: base_grade or target-based
+      let rawGrade: number;
+      let grade: number;
+      let bonus: number;
+
+      if (baseGrade !== null && baseGrade > 0) {
+        // Mode "note de base" : note = base + participations - bavardages (si pénalité active)
+        const modifier = bavardagePenalty
+          ? totalParticipations - bavardages
+          : totalParticipations;
+        rawGrade = baseGrade + modifier;
+        grade = Math.min(20, Math.max(0, rawGrade));
+        bonus = rawGrade > 20 ? rawGrade - 20 : 0;
+      } else {
+        // Mode "objectif" : note = (participations / objectif) * 20
+        rawGrade = (effectiveParticipations / adjustedTarget) * 20;
+        grade = Math.min(20, Math.max(0, rawGrade));
+        bonus = rawGrade > 20 ? effectiveParticipations - adjustedTarget : 0;
+      }
 
       const studentArchivedGrades = (archivedGradesData || [])
         .filter(g => g.student_id === student.id)
@@ -406,6 +437,7 @@ export function Students() {
         totalSessionsExpected,
         adjustedTarget,
         bavardagePenalty,
+        baseGrade,
         grade,
         bonus,
         events: studentEvents,
@@ -504,6 +536,7 @@ export function Students() {
     setConfigTarget(config?.target_participations || 15);
     setConfigSessions(config?.total_sessions_expected || 60);
     setConfigBavardagePenalty(config?.bavardage_penalty ?? false);
+    setConfigBaseGrade(config?.base_grade ?? null);
     setShowConfigModal(true);
   };
 
@@ -520,6 +553,7 @@ export function Students() {
             target_participations: configTarget,
             total_sessions_expected: configSessions,
             bavardage_penalty: configBavardagePenalty,
+            base_grade: configBaseGrade,
             updated_at: new Date().toISOString(),
           })
           .eq('class_id', configClassId);
@@ -530,6 +564,7 @@ export function Students() {
           target_participations: configTarget,
           total_sessions_expected: configSessions,
           bavardage_penalty: configBavardagePenalty,
+          base_grade: configBaseGrade,
         });
         if (error) throw error;
       }
@@ -727,6 +762,45 @@ export function Students() {
     return colors[type] || 'bg-gray-100 text-gray-700';
   };
 
+  // Calculate weekly evolution data for chart
+  const getWeeklyEvolution = (events: Event[]): WeeklyData[] => {
+    const weeks: Map<string, { participation: number; bavardage: number }> = new Map();
+
+    // Get last 8 weeks
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay() + 1);
+      const weekKey = `S${8 - i}`;
+      weeks.set(weekKey, { participation: 0, bavardage: 0 });
+    }
+
+    // Count events per week
+    events.forEach(event => {
+      const eventDate = new Date(event.timestamp);
+      const weeksDiff = Math.floor((now.getTime() - eventDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      if (weeksDiff < 8 && weeksDiff >= 0) {
+        const weekKey = `S${8 - weeksDiff}`;
+        const weekData = weeks.get(weekKey);
+        if (weekData) {
+          if (event.type === 'participation') weekData.participation++;
+          if (event.type === 'bavardage') weekData.bavardage++;
+        }
+      }
+    });
+
+    return Array.from(weeks.entries()).map(([week, data]) => ({
+      week,
+      participation: data.participation,
+      bavardage: data.bavardage,
+    }));
+  };
+
+  // Get remarks with photos
+  const getRemarks = (events: Event[]) => {
+    return events.filter(e => e.type === 'remarque');
+  };
+
   const selectedClassStats = classStats.find(c => c.id === selectedClassId);
 
   if (isLoading) {
@@ -903,8 +977,17 @@ export function Students() {
                   {/* Class config summary */}
                   {classConfigs.get(selectedClassId) && (
                     <div className="mt-3 text-sm text-[var(--color-text-tertiary)]">
-                      Objectif: {classConfigs.get(selectedClassId)?.target_participations} implications
-                      {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
+                      {classConfigs.get(selectedClassId)?.base_grade !== null ? (
+                        <>
+                          Note de base: {classConfigs.get(selectedClassId)?.base_grade}/20
+                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
+                        </>
+                      ) : (
+                        <>
+                          Objectif: {classConfigs.get(selectedClassId)?.target_participations} implications
+                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1084,6 +1167,52 @@ export function Students() {
                   />
                 </button>
               </div>
+
+              {/* Note de base */}
+              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-indigo-900">
+                      Mode "Note de base"
+                    </label>
+                    <p className="text-xs text-indigo-600">
+                      Chaque eleve commence avec cette note
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConfigBaseGrade(configBaseGrade === null ? 10 : null)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      configBaseGrade !== null ? 'bg-indigo-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        configBaseGrade !== null ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {configBaseGrade !== null && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-indigo-700 mb-1">
+                      Note de depart (/20)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="20"
+                      step="0.5"
+                      value={configBaseGrade}
+                      onChange={(e) => setConfigBaseGrade(parseFloat(e.target.value) || 10)}
+                      className="w-full px-3 py-2 border border-indigo-300 rounded-lg bg-white text-[var(--color-text)] text-sm"
+                    />
+                    <p className="text-xs text-indigo-600 mt-2">
+                      Note = {configBaseGrade} + participations {configBavardagePenalty ? '- bavardages' : ''}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-3 justify-end mt-6">
@@ -1221,36 +1350,144 @@ export function Students() {
                       <span className="text-red-600 font-semibold">{selectedStudentForDetail.absences}</span>
                       <span className="text-[var(--color-text-tertiary)]"> absences</span>
                     </p>
-                    <p className="text-sm text-[var(--color-text-tertiary)]">
-                      Objectif ajuste: {selectedStudentForDetail.adjustedTarget.toFixed(1)}
-                    </p>
+                    {selectedStudentForDetail.baseGrade === null && (
+                      <p className="text-sm text-[var(--color-text-tertiary)]">
+                        Objectif ajuste: {selectedStudentForDetail.adjustedTarget.toFixed(1)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Calculation breakdown */}
                 <div className="mt-4 pt-4 border-t border-black/10 text-sm">
-                  <p className="text-[var(--color-text-secondary)]">
-                    <strong>Calcul:</strong> Objectif de base = {selectedStudentForDetail.targetParticipations}
-                    {selectedStudentForDetail.absences > 0 && (
-                      <> - ({selectedStudentForDetail.absences} abs × {(selectedStudentForDetail.targetParticipations / selectedStudentForDetail.totalSessionsExpected).toFixed(2)}) = {selectedStudentForDetail.adjustedTarget.toFixed(1)}</>
-                    )}
-                  </p>
-                  {selectedStudentForDetail.bavardagePenalty && selectedStudentForDetail.bavardages > 0 && (
-                    <p className="text-[var(--color-text-secondary)]">
-                      Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.bavardages} bavardages = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
-                    </p>
+                  {selectedStudentForDetail.baseGrade !== null ? (
+                    <>
+                      <p className="text-[var(--color-text-secondary)]">
+                        <strong>Mode note de base:</strong> {selectedStudentForDetail.baseGrade}/20
+                      </p>
+                      <p className="text-[var(--color-text-secondary)]">
+                        Note = {selectedStudentForDetail.baseGrade} + {selectedStudentForDetail.totalParticipations} part.
+                        {selectedStudentForDetail.bavardagePenalty && selectedStudentForDetail.bavardages > 0 && (
+                          <> - {selectedStudentForDetail.bavardages} bav.</>
+                        )}
+                        {' '}= <strong>{(selectedStudentForDetail.baseGrade + (selectedStudentForDetail.bavardagePenalty ? selectedStudentForDetail.totalParticipations - selectedStudentForDetail.bavardages : selectedStudentForDetail.totalParticipations)).toFixed(1)}</strong>
+                        {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
+                        {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[var(--color-text-secondary)]">
+                        <strong>Calcul:</strong> Objectif de base = {selectedStudentForDetail.targetParticipations}
+                        {selectedStudentForDetail.absences > 0 && (
+                          <> - ({selectedStudentForDetail.absences} abs × {(selectedStudentForDetail.targetParticipations / selectedStudentForDetail.totalSessionsExpected).toFixed(2)}) = {selectedStudentForDetail.adjustedTarget.toFixed(1)}</>
+                        )}
+                      </p>
+                      {selectedStudentForDetail.bavardagePenalty && selectedStudentForDetail.bavardages > 0 && (
+                        <p className="text-[var(--color-text-secondary)]">
+                          Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.bavardages} bavardages = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
+                        </p>
+                      )}
+                      <p className="text-[var(--color-text-secondary)]">
+                        Note = ({selectedStudentForDetail.effectiveParticipations} / {selectedStudentForDetail.adjustedTarget.toFixed(1)}) × 20 = {((selectedStudentForDetail.effectiveParticipations / selectedStudentForDetail.adjustedTarget) * 20).toFixed(2)}
+                        {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
+                        {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
+                      </p>
+                    </>
                   )}
-                  <p className="text-[var(--color-text-secondary)]">
-                    Note = ({selectedStudentForDetail.effectiveParticipations} / {selectedStudentForDetail.adjustedTarget.toFixed(1)}) × 20 = {((selectedStudentForDetail.effectiveParticipations / selectedStudentForDetail.adjustedTarget) * 20).toFixed(2)}
-                    {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
-                    {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
-                  </p>
                 </div>
               </div>
 
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-green-50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600">+{selectedStudentForDetail.participations}</div>
+                  <div className="text-xs text-green-700">Participations</div>
+                </div>
+                <div className="bg-orange-50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-orange-600">-{selectedStudentForDetail.bavardages}</div>
+                  <div className="text-xs text-orange-700">Bavardages</div>
+                </div>
+                <div className="bg-red-50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-red-600">{selectedStudentForDetail.absences}</div>
+                  <div className="text-xs text-red-700">Absences</div>
+                </div>
+                <div className={`rounded-xl p-4 text-center ${
+                  (selectedStudentForDetail.participations - selectedStudentForDetail.bavardages) >= 0
+                    ? 'bg-green-100'
+                    : 'bg-orange-100'
+                }`}>
+                  <div className={`text-2xl font-bold ${
+                    (selectedStudentForDetail.participations - selectedStudentForDetail.bavardages) >= 0
+                      ? 'text-green-700'
+                      : 'text-orange-700'
+                  }`}>
+                    {selectedStudentForDetail.participations - selectedStudentForDetail.bavardages >= 0 ? '+' : ''}
+                    {selectedStudentForDetail.participations - selectedStudentForDetail.bavardages}
+                  </div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">Score global</div>
+                </div>
+              </div>
+
+              {/* Weekly Evolution Chart */}
+              {selectedStudentForDetail.events.length > 0 && (
+                <div className="bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)]">
+                  <h4 className="font-medium text-[var(--color-text)] mb-4 flex items-center gap-2">
+                    <span>📈</span> Evolution (8 semaines)
+                  </h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={getWeeklyEvolution(selectedStudentForDetail.events)}>
+                      <XAxis
+                        dataKey="week"
+                        tick={{ fontSize: 12, fill: 'var(--color-text-tertiary)' }}
+                        axisLine={{ stroke: 'var(--color-border)' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12, fill: 'var(--color-text-tertiary)' }}
+                        axisLine={false}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-surface)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="participation"
+                        name="Participation"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: '#22c55e' }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="bavardage"
+                        name="Bavardage"
+                        stroke="#f97316"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: '#f97316' }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
               {/* Oral Evaluation Section */}
               <div className="bg-purple-50 rounded-xl p-4">
-                <h4 className="font-medium text-purple-900 mb-2">Evaluation orale</h4>
+                <h4 className="font-medium text-purple-900 mb-2 flex items-center gap-2">
+                  <span>🎤</span> Evaluation orale
+                </h4>
                 {selectedStudentForDetail.oralEvaluation ? (
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center">
@@ -1273,6 +1510,43 @@ export function Students() {
                   </p>
                 )}
               </div>
+
+              {/* Remarks Section */}
+              {(() => {
+                const remarks = getRemarks(selectedStudentForDetail.events);
+                if (remarks.length === 0) return null;
+                return (
+                  <div className="bg-blue-50 rounded-xl p-4">
+                    <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                      <span>📝</span> Remarques ({remarks.length})
+                    </h4>
+                    <div className="space-y-3">
+                      {remarks.map((remark) => (
+                        <div key={remark.id} className="bg-white rounded-lg p-3 border border-blue-100">
+                          <div className="text-xs text-blue-600 font-medium mb-1">
+                            {formatDate(remark.timestamp)}
+                          </div>
+                          {remark.note && (
+                            <p className="text-sm text-[var(--color-text)]">{remark.note}</p>
+                          )}
+                          {remark.photo_path && (
+                            <div className="mt-2">
+                              <img
+                                src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/student-photos/${remark.photo_path}`}
+                                alt="Photo remarque"
+                                className="rounded-lg max-h-40 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Manual Implications Section */}
               <div>
