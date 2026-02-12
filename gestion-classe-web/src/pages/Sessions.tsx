@@ -585,6 +585,11 @@ export function Sessions() {
                             </span>
                           )}
                         </div>
+                        {session.topic && (
+                          <div className="text-sm text-[var(--color-text-secondary)] italic truncate max-w-md">
+                            {session.topic}
+                          </div>
+                        )}
                         <div className="text-sm text-[var(--color-text-tertiary)]">
                           {formatDate(session.started_at)} a {formatTime(session.started_at)}
                           {session.ended_at && ` · ${getDuration(session.started_at, session.ended_at)}`}
@@ -713,7 +718,7 @@ export function Sessions() {
                             onClick={() => handleOpenSessionModal(session)}
                             className="w-full text-left px-1.5 py-0.5 text-xs text-white truncate hover:opacity-80 transition-opacity"
                             style={{ background: getClassGradient(session.class_name), borderRadius: 'var(--radius-sm)' }}
-                            title={`${session.class_name} - ${formatTime(session.started_at)}`}
+                            title={`${session.class_name} - ${formatTime(session.started_at)}${session.topic ? `\n${session.topic}` : ''}`}
                           >
                             <span className="font-medium">{getClassInitials(session.class_name)}</span>
                             <span className="ml-1 opacity-80">{formatTime(session.started_at)}</span>
