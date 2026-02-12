@@ -25,12 +25,6 @@ interface Event {
   class_name: string;
 }
 
-interface WeeklyData {
-  week: string;
-  participation: number;
-  bavardage: number;
-}
-
 interface SessionEvolutionData {
   sessionDate: string;
   label: string;
@@ -767,40 +761,6 @@ export function Students() {
       sortie: 'bg-purple-100 text-purple-700',
     };
     return colors[type] || 'bg-gray-100 text-gray-700';
-  };
-
-  // Calculate weekly evolution data for chart
-  const getWeeklyEvolution = (events: Event[]): WeeklyData[] => {
-    const weeks: Map<string, { participation: number; bavardage: number }> = new Map();
-
-    // Get last 8 weeks
-    const now = new Date();
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay() + 1);
-      const weekKey = `S${8 - i}`;
-      weeks.set(weekKey, { participation: 0, bavardage: 0 });
-    }
-
-    // Count events per week
-    events.forEach(event => {
-      const eventDate = new Date(event.timestamp);
-      const weeksDiff = Math.floor((now.getTime() - eventDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksDiff < 8 && weeksDiff >= 0) {
-        const weekKey = `S${8 - weeksDiff}`;
-        const weekData = weeks.get(weekKey);
-        if (weekData) {
-          if (event.type === 'participation') weekData.participation++;
-          if (event.type === 'bavardage') weekData.bavardage++;
-        }
-      }
-    });
-
-    return Array.from(weeks.entries()).map(([week, data]) => ({
-      week,
-      participation: data.participation,
-      bavardage: data.bavardage,
-    }));
   };
 
   // Calculate session-by-session evolution data for chart
