@@ -31,6 +31,13 @@ interface WeeklyData {
   bavardage: number;
 }
 
+interface SessionEvolutionData {
+  sessionDate: string;
+  label: string;
+  participation: number;
+  bavardage: number;
+}
+
 interface TrimesterSettings {
   current_trimester: number;
   school_year: string;
@@ -796,6 +803,37 @@ export function Students() {
     }));
   };
 
+  // Calculate session-by-session evolution data for chart
+  const getSessionEvolution = (events: Event[]): SessionEvolutionData[] => {
+    const sessions: Map<string, { date: string; participation: number; bavardage: number }> = new Map();
+
+    // Group events by session
+    events.forEach(event => {
+      const sessionId = event.session_id;
+      const sessionDate = event.session_date;
+
+      if (!sessions.has(sessionId)) {
+        sessions.set(sessionId, { date: sessionDate, participation: 0, bavardage: 0 });
+      }
+
+      const sessionData = sessions.get(sessionId)!;
+      if (event.type === 'participation') sessionData.participation++;
+      if (event.type === 'bavardage') sessionData.bavardage++;
+    });
+
+    // Sort by date and take last 12 sessions
+    const sortedSessions = Array.from(sessions.entries())
+      .sort((a, b) => new Date(a[1].date).getTime() - new Date(b[1].date).getTime())
+      .slice(-12);
+
+    return sortedSessions.map(([, data]) => ({
+      sessionDate: data.date,
+      label: new Date(data.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+      participation: data.participation,
+      bavardage: data.bavardage,
+    }));
+  };
+
   // Get remarks with photos
   const getRemarks = (events: Event[]) => {
     return events.filter(e => e.type === 'remarque');
@@ -1429,19 +1467,23 @@ export function Students() {
                 </div>
               </div>
 
-              {/* Weekly Evolution Chart */}
+              {/* Session Evolution Chart */}
               {selectedStudentForDetail.events.length > 0 && (
                 <div className="bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)]">
                   <h4 className="font-medium text-[var(--color-text)] mb-4 flex items-center gap-2">
-                    <span>📈</span> Evolution (8 semaines)
+                    <span>📈</span> Evolution par seance
                   </h4>
                   <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={getWeeklyEvolution(selectedStudentForDetail.events)}>
+                    <LineChart data={getSessionEvolution(selectedStudentForDetail.events)}>
                       <XAxis
-                        dataKey="week"
-                        tick={{ fontSize: 12, fill: 'var(--color-text-tertiary)' }}
+                        dataKey="label"
+                        tick={{ fontSize: 11, fill: 'var(--color-text-tertiary)' }}
                         axisLine={{ stroke: 'var(--color-border)' }}
                         tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
                       />
                       <YAxis
                         tick={{ fontSize: 12, fill: 'var(--color-text-tertiary)' }}
@@ -1456,6 +1498,7 @@ export function Students() {
                           borderRadius: '8px',
                           fontSize: '12px',
                         }}
+                        labelFormatter={(label) => `Seance du ${label}`}
                       />
                       <Legend
                         wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
