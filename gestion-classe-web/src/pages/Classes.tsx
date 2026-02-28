@@ -96,17 +96,30 @@ export function Classes() {
 
       if (error) throw error;
 
-      if (classesData) {
-        const classesWithCounts = await Promise.all(
-          classesData.map(async (cls) => {
-            const { count } = await supabase
-              .from('students')
-              .select('*', { count: 'exact', head: true })
-              .eq('class_id', cls.id);
-            return { ...cls, students_count: count || 0 };
-          })
-        );
+      if (classesData && classesData.length > 0) {
+        // Batch fetch ALL student counts in ONE query (fixes N+1)
+        const classIds = classesData.map(c => c.id);
+        const { data: allStudents, error: studentsError } = await supabase
+          .from('students')
+          .select('class_id')
+          .in('class_id', classIds);
+
+        if (studentsError) throw studentsError;
+
+        // Count students per class
+        const countByClass = new Map<string, number>();
+        (allStudents || []).forEach(s => {
+          const count = countByClass.get(s.class_id) || 0;
+          countByClass.set(s.class_id, count + 1);
+        });
+
+        const classesWithCounts = classesData.map((cls) => ({
+          ...cls,
+          students_count: countByClass.get(cls.id) || 0,
+        }));
         setClasses(classesWithCounts);
+      } else {
+        setClasses([]);
       }
     } catch (err) {
       console.error('Error loading classes:', err);
@@ -145,12 +158,20 @@ export function Classes() {
   }, [selectedClass]);
 
   const loadStudents = async (classId: string) => {
-    const { data } = await supabase
-      .from('students')
-      .select('id, pseudo, created_at')
-      .eq('class_id', classId)
-      .order('pseudo');
-    setStudents(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, pseudo, created_at')
+        .eq('class_id', classId)
+        .order('pseudo');
+
+      if (error) throw error;
+      setStudents(data || []);
+    } catch (err) {
+      console.error('Error loading students:', err);
+      setLoadError('Erreur lors du chargement des eleves.');
+      setStudents([]);
+    }
   };
 
   // Load plan when class+room changes
@@ -164,21 +185,31 @@ export function Classes() {
   }, [selectedClass, selectedRoom]);
 
   const loadPlan = async (classId: string, roomId: string) => {
-    const { data } = await supabase
-      .from('class_room_plans')
-      .select('*')
-      .eq('class_id', classId)
-      .eq('room_id', roomId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('class_room_plans')
+        .select('*')
+        .eq('class_id', classId)
+        .eq('room_id', roomId)
+        .single();
 
-    if (data) {
-      setPlan(data);
-      setPositions(data.positions || {});
-    } else {
+      // PGRST116 = no rows found, which is expected for new plans
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data) {
+        setPlan(data);
+        setPositions(data.positions || {});
+      } else {
+        setPlan(null);
+        setPositions({});
+      }
+      setHasChanges(false);
+    } catch (err) {
+      console.error('Error loading plan:', err);
+      setLoadError('Erreur lors du chargement du plan de classe.');
       setPlan(null);
       setPositions({});
     }
-    setHasChanges(false);
   };
 
   // Computed: students not placed (check if student ID is in any position value)
@@ -320,8 +351,17 @@ export function Classes() {
   };
 
   const handleSaveClass = async () => {
-    if (!className.trim()) {
+    const trimmedName = className.trim();
+    if (!trimmedName) {
       setFormError('Le nom de la classe est requis');
+      return;
+    }
+    if (trimmedName.length > 50) {
+      setFormError('Le nom de la classe ne peut pas depasser 50 caracteres');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      setFormError('Le nom de la classe doit contenir au moins 2 caracteres');
       return;
     }
     setIsSubmitting(true);
@@ -369,14 +409,25 @@ export function Classes() {
   };
 
   const handleSaveStudent = async () => {
-    if (!studentFirstName.trim() || !studentLastName.trim()) {
+    const trimmedFirst = studentFirstName.trim();
+    const trimmedLast = studentLastName.trim();
+
+    if (!trimmedFirst || !trimmedLast) {
       setFormError('Le prenom et le nom sont requis');
+      return;
+    }
+    if (trimmedFirst.length > 50 || trimmedLast.length > 50) {
+      setFormError('Le prenom et le nom ne peuvent pas depasser 50 caracteres');
+      return;
+    }
+    if (trimmedFirst.length < 2) {
+      setFormError('Le prenom doit contenir au moins 2 caracteres');
       return;
     }
     if (!selectedClass) return;
 
     setIsSubmitting(true);
-    const pseudo = generatePseudo(studentFirstName, studentLastName);
+    const pseudo = generatePseudo(trimmedFirst, trimmedLast);
 
     try {
       if (editingStudent) {

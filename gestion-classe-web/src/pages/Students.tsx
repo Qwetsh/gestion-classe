@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
@@ -144,14 +144,31 @@ export function Students() {
     current_trimester: 1,
     school_year: getCurrentSchoolYear(),
   });
-  const [, setTrimesterBoundaries] = useState<TrimesterBoundary[]>([]);
 
   // Sort state
   const [sortField, setSortField] = useState<SortField>('pseudo');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
-  // Search state
+  // Search state (with debounce)
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search query (300ms delay)
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   // Modal states
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -221,8 +238,6 @@ export function Students() {
       .eq('user_id', user.id)
       .eq('school_year', settingsData?.school_year || getCurrentSchoolYear())
       .order('trimester');
-
-    setTrimesterBoundaries(boundariesData || []);
 
     const currentBoundary = boundariesData?.find(
       b => b.trimester === (settingsData?.current_trimester || 1)
@@ -491,8 +506,8 @@ export function Students() {
       filtered = filtered.filter(s => s.student.class_id === selectedClassId);
     }
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(s =>
         s.student.pseudo.toLowerCase().includes(query)
       );
@@ -520,7 +535,7 @@ export function Students() {
     });
 
     return sorted;
-  }, [studentGrades, selectedClassId, searchQuery, sortField, sortOrder]);
+  }, [studentGrades, selectedClassId, debouncedSearchQuery, sortField, sortOrder]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

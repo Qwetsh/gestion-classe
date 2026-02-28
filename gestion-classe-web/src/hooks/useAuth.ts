@@ -18,8 +18,11 @@ export function useAuth() {
   });
 
   useEffect(() => {
+    let isMounted = true;
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!isMounted) return;
       if (error) {
         setState(prev => ({ ...prev, error: error.message, isLoading: false }));
       } else {
@@ -34,6 +37,7 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setState({
         user: session?.user ?? null,
         session,
@@ -42,7 +46,10 @@ export function useAuth() {
       });
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

@@ -62,7 +62,7 @@ export function Dashboard() {
         });
 
         // Load recent sessions
-        const { data: sessions } = await supabase
+        const { data: sessions, error: sessionsError } = await supabase
           .from('sessions')
           .select(`
             id,
@@ -74,23 +74,32 @@ export function Dashboard() {
           .order('started_at', { ascending: false })
           .limit(5);
 
-        if (sessions) {
-          const sessionsWithCounts = await Promise.all(
-            sessions.map(async (session) => {
-              const { count } = await supabase
-                .from('events')
-                .select('*', { count: 'exact', head: true })
-                .eq('session_id', session.id);
+        if (sessionsError) throw sessionsError;
 
-              return {
-                id: session.id,
-                class_name: (session.classes as any)?.name || 'Classe inconnue',
-                started_at: session.started_at,
-                ended_at: session.ended_at,
-                events_count: count || 0,
-              };
-            })
-          );
+        if (sessions && sessions.length > 0) {
+          // Batch fetch ALL event counts in ONE query (fixes N+1)
+          const sessionIds = sessions.map(s => s.id);
+          const { data: allEvents, error: eventsError } = await supabase
+            .from('events')
+            .select('session_id')
+            .in('session_id', sessionIds);
+
+          if (eventsError) throw eventsError;
+
+          // Count events per session
+          const eventCountBySession = new Map<string, number>();
+          (allEvents || []).forEach(event => {
+            const count = eventCountBySession.get(event.session_id) || 0;
+            eventCountBySession.set(event.session_id, count + 1);
+          });
+
+          const sessionsWithCounts = sessions.map((session) => ({
+            id: session.id,
+            class_name: (session.classes as { name: string } | null)?.name || 'Classe inconnue',
+            started_at: session.started_at,
+            ended_at: session.ended_at,
+            events_count: eventCountBySession.get(session.id) || 0,
+          }));
           setRecentSessions(sessionsWithCounts);
         }
       } catch (error) {
