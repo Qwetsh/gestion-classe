@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
 import * as XLSX from 'xlsx';
 
 interface Class {
@@ -23,6 +24,21 @@ interface Student {
   id: string;
   pseudo: string;
   created_at: string;
+}
+
+interface StudentGradeData {
+  studentId: string;
+  participations: number;
+  bavardages: number;
+  absences: number;
+  grade: number;
+}
+
+interface ClassConfig {
+  target_participations: number;
+  total_sessions_expected: number;
+  bavardage_penalty: boolean;
+  base_grade: number | null;
 }
 
 // Positions format: "row-col" -> studentId (compatible with mobile app)
@@ -54,6 +70,11 @@ export function Classes() {
   // Drag state
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
+
+  // Student grades for visual display
+  const [studentGrades, setStudentGrades] = useState<Map<string, StudentGradeData>>(new Map());
+  const [classConfig, setClassConfig] = useState<ClassConfig | null>(null);
+  const [showGrades, setShowGrades] = useState(true);
 
   // Modal states
   const [showClassModal, setShowClassModal] = useState(false);
@@ -167,10 +188,131 @@ export function Classes() {
 
       if (error) throw error;
       setStudents(data || []);
+
+      // Also load grades for this class
+      if (data && data.length > 0) {
+        await loadStudentGrades(classId, data.map(s => s.id));
+      } else {
+        setStudentGrades(new Map());
+      }
     } catch (err) {
       console.error('Error loading students:', err);
       setLoadError('Erreur lors du chargement des eleves.');
       setStudents([]);
+    }
+  };
+
+  // Load student grades for visual display on seating chart
+  const loadStudentGrades = async (classId: string, studentIds: string[]) => {
+    if (!user || studentIds.length === 0) return;
+
+    try {
+      // Load class config
+      const { data: configData } = await supabase
+        .from('class_trimester_config')
+        .select('*')
+        .eq('class_id', classId)
+        .single();
+
+      const config: ClassConfig = configData ? {
+        target_participations: configData.target_participations,
+        total_sessions_expected: configData.total_sessions_expected,
+        bavardage_penalty: configData.bavardage_penalty ?? false,
+        base_grade: configData.base_grade ?? null,
+      } : {
+        target_participations: GRADE_CONFIG.DEFAULT_TARGET_PARTICIPATIONS,
+        total_sessions_expected: GRADE_CONFIG.DEFAULT_SESSIONS_EXPECTED,
+        bavardage_penalty: false,
+        base_grade: null,
+      };
+      setClassConfig(config);
+
+      // Load trimester settings to get current trimester boundary
+      const { data: settingsData } = await supabase
+        .from('trimester_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentTrimester = settingsData?.current_trimester || 1;
+      const currentSchoolYear = settingsData?.school_year || getCurrentSchoolYear();
+
+      // Load trimester boundary to filter events
+      const { data: boundaryData } = await supabase
+        .from('trimester_boundaries')
+        .select('started_at')
+        .eq('user_id', user.id)
+        .eq('trimester', currentTrimester)
+        .eq('school_year', currentSchoolYear)
+        .single();
+
+      const trimesterStartDate = boundaryData?.started_at || new Date(0).toISOString();
+
+      // Load events for all students in this class
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('student_id, type')
+        .in('student_id', studentIds)
+        .gte('timestamp', trimesterStartDate);
+
+      // Load manual participations
+      const { data: manualData } = await supabase
+        .from('manual_participations')
+        .select('student_id, count')
+        .in('student_id', studentIds)
+        .eq('trimester', currentTrimester)
+        .eq('school_year', currentSchoolYear);
+
+      // Calculate grades for each student
+      const gradesMap = new Map<string, StudentGradeData>();
+
+      studentIds.forEach(studentId => {
+        const studentEvents = (eventsData || []).filter(e => e.student_id === studentId);
+        const participations = studentEvents.filter(e => e.type === 'participation').length;
+        const bavardages = studentEvents.filter(e => e.type === 'bavardage').length;
+        const absences = studentEvents.filter(e => e.type === 'absence').length;
+
+        // Add manual participations
+        const manualCount = (manualData || [])
+          .filter(m => m.student_id === studentId)
+          .reduce((sum, m) => sum + m.count, 0);
+
+        const totalParticipations = participations + manualCount;
+
+        // Calculate grade
+        let grade: number;
+
+        if (config.base_grade !== null && config.base_grade > 0) {
+          // Base grade mode
+          const modifier = config.bavardage_penalty
+            ? totalParticipations - bavardages
+            : totalParticipations;
+          grade = Math.min(20, Math.max(0, config.base_grade + modifier));
+        } else {
+          // Target mode
+          const effectiveParticipations = config.bavardage_penalty
+            ? Math.max(0, totalParticipations - bavardages)
+            : totalParticipations;
+
+          const reductionPerAbsence = config.target_participations / config.total_sessions_expected;
+          const adjustedTarget = Math.max(1, config.target_participations - (absences * reductionPerAbsence));
+
+          grade = Math.min(20, Math.max(0, (effectiveParticipations / adjustedTarget) * 20));
+        }
+
+        gradesMap.set(studentId, {
+          studentId,
+          participations: totalParticipations,
+          bavardages,
+          absences,
+          grade,
+        });
+      });
+
+      setStudentGrades(gradesMap);
+    } catch (err) {
+      console.error('Error loading student grades:', err);
+      // Non-blocking error - grades are just visual enhancement
     }
   };
 
@@ -226,6 +368,44 @@ export function Classes() {
   // Check if a cell is disabled (aisle)
   const isCellDisabled = (row: number, col: number): boolean => {
     return selectedRoom?.disabled_cells?.includes(`${row},${col}`) || false;
+  };
+
+  // Grade color helpers
+  const getGradeColor = (grade: number): { bg: string; border: string; avatar: string; text: string } => {
+    if (grade >= 16) {
+      return {
+        bg: 'from-green-50 to-green-100',
+        border: 'border-green-400',
+        avatar: 'from-green-500 to-green-600',
+        text: 'text-green-700',
+      };
+    }
+    if (grade >= 12) {
+      return {
+        bg: 'from-blue-50 to-blue-100',
+        border: 'border-blue-400',
+        avatar: 'from-blue-500 to-blue-600',
+        text: 'text-blue-700',
+      };
+    }
+    if (grade >= 8) {
+      return {
+        bg: 'from-orange-50 to-orange-100',
+        border: 'border-orange-400',
+        avatar: 'from-orange-500 to-orange-600',
+        text: 'text-orange-700',
+      };
+    }
+    return {
+      bg: 'from-red-50 to-red-100',
+      border: 'border-red-400',
+      avatar: 'from-red-500 to-red-600',
+      text: 'text-red-700',
+    };
+  };
+
+  const getStudentGradeData = (studentId: string): StudentGradeData | undefined => {
+    return studentGrades.get(studentId);
   };
 
   // Drag & Drop handlers
@@ -710,10 +890,47 @@ export function Classes() {
                 <h2 className="font-semibold text-[var(--color-text)]">
                   Plan de classe - {selectedClass.name} / {selectedRoom.name}
                 </h2>
-                <span className="text-sm text-[var(--color-text-tertiary)]">
-                  {students.length - unplacedStudents.length}/{students.length} placés
-                </span>
+                <div className="flex items-center gap-4">
+                  {/* Toggle grades display */}
+                  <button
+                    onClick={() => setShowGrades(!showGrades)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                      showGrades
+                        ? 'bg-[var(--color-primary)] text-white'
+                        : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]'
+                    }`}
+                    title={showGrades ? 'Masquer les notes' : 'Afficher les notes'}
+                  >
+                    📊 Notes
+                  </button>
+                  <span className="text-sm text-[var(--color-text-tertiary)]">
+                    {students.length - unplacedStudents.length}/{students.length} placés
+                  </span>
+                </div>
               </div>
+
+              {/* Grade legend */}
+              {showGrades && studentGrades.size > 0 && (
+                <div className="mb-4 flex items-center gap-4 text-xs">
+                  <span className="text-[var(--color-text-tertiary)]">Légende:</span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-br from-green-500 to-green-600" />
+                    <span className="text-green-700">16-20</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600" />
+                    <span className="text-blue-700">12-16</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-br from-orange-500 to-orange-600" />
+                    <span className="text-orange-700">8-12</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-500 to-red-600" />
+                    <span className="text-red-700">&lt;8</span>
+                  </span>
+                </div>
+              )}
 
               {/* Grid */}
               <div
@@ -741,15 +958,19 @@ export function Classes() {
                     );
                   }
 
+                  // Get grade data and colors for student
+                  const gradeData = student && showGrades ? getStudentGradeData(student.id) : undefined;
+                  const gradeColors = gradeData ? getGradeColor(gradeData.grade) : null;
+
                   return (
                     <div
                       key={`${row}-${col}`}
                       className={`
-                        aspect-square rounded-xl border-2 border-dashed flex items-center justify-center
+                        aspect-square rounded-xl border-2 flex items-center justify-center
                         transition-all duration-200
                         ${student
-                          ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300 cursor-grab'
-                          : 'bg-slate-50 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                          ? `bg-gradient-to-br ${gradeColors ? gradeColors.bg : 'from-blue-50 to-blue-100'} ${gradeColors ? gradeColors.border : 'border-blue-300'} cursor-grab border-solid`
+                          : 'bg-slate-50 border-slate-200 border-dashed hover:border-blue-300 hover:bg-blue-50'
                         }
                         ${isOver ? 'border-blue-500 bg-blue-100 scale-105' : ''}
                       `}
@@ -760,13 +981,27 @@ export function Classes() {
                       onDrop={() => handleDrop(row, col)}
                     >
                       {student ? (
-                        <div className="text-center p-2 relative group">
-                          <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm mb-1">
+                        <div className="text-center p-1 relative group w-full">
+                          <div className={`w-9 h-9 mx-auto rounded-full bg-gradient-to-br ${gradeColors ? gradeColors.avatar : 'from-blue-400 to-blue-600'} flex items-center justify-center text-white font-bold text-sm mb-0.5 relative`}>
                             {student.pseudo.charAt(0)}
+                            {/* Grade badge */}
+                            {gradeData && showGrades && (
+                              <span className={`absolute -bottom-1 -right-1 min-w-[20px] h-[16px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-white shadow-sm ${gradeColors?.text}`}>
+                                {gradeData.grade.toFixed(0)}
+                              </span>
+                            )}
                           </div>
-                          <div className="text-xs font-medium text-[var(--color-text)] truncate max-w-[80px]">
+                          <div className="text-[10px] font-medium text-[var(--color-text)] truncate max-w-[75px] mx-auto leading-tight">
                             {student.pseudo}
                           </div>
+                          {/* Stats tooltip on hover */}
+                          {gradeData && showGrades && (
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              <div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
+                                +{gradeData.participations} / -{gradeData.bavardages}
+                              </div>
+                            </div>
+                          )}
                           <button
                             onClick={(e) => { e.stopPropagation(); handleRemoveFromSeat(student.id); }}
                             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
@@ -799,21 +1034,42 @@ export function Classes() {
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-2">
-                {unplacedStudents.map(student => (
-                  <div
-                    key={student.id}
-                    draggable
-                    onDragStart={() => handleDragStart(student.id)}
-                    className="flex items-center gap-3 p-3 bg-white/80 rounded-xl cursor-grab hover:shadow-md transition-shadow border border-white/50"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white font-bold text-sm">
-                      {student.pseudo.charAt(0)}
+                {unplacedStudents.map(student => {
+                  const gradeData = showGrades ? getStudentGradeData(student.id) : undefined;
+                  const gradeColors = gradeData ? getGradeColor(gradeData.grade) : null;
+
+                  return (
+                    <div
+                      key={student.id}
+                      draggable
+                      onDragStart={() => handleDragStart(student.id)}
+                      className={`flex items-center gap-3 p-3 rounded-xl cursor-grab hover:shadow-md transition-shadow border ${
+                        gradeColors
+                          ? `bg-gradient-to-br ${gradeColors.bg} ${gradeColors.border}`
+                          : 'bg-white/80 border-white/50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${gradeColors ? gradeColors.avatar : 'from-slate-400 to-slate-600'} flex items-center justify-center text-white font-bold text-sm relative`}>
+                        {student.pseudo.charAt(0)}
+                        {gradeData && showGrades && (
+                          <span className={`absolute -bottom-1 -right-1 min-w-[18px] h-[14px] px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center bg-white shadow-sm ${gradeColors?.text}`}>
+                            {gradeData.grade.toFixed(0)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-[var(--color-text)] truncate block">
+                          {student.pseudo}
+                        </span>
+                        {gradeData && showGrades && (
+                          <span className="text-[10px] text-[var(--color-text-tertiary)]">
+                            +{gradeData.participations} / -{gradeData.bavardages}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="flex-1 text-sm font-medium text-[var(--color-text)] truncate">
-                      {student.pseudo}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
                 {unplacedStudents.length === 0 && (
                   <div className="text-center text-[var(--color-text-tertiary)] py-8">
                     Tous les élèves sont placés

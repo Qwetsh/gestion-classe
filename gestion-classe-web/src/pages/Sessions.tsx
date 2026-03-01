@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { EVENT_CONFIG, getClassGradient, getClassInitials } from '../lib/constants';
 
 interface Session {
   id: string;
@@ -36,13 +37,7 @@ interface ClassroomData {
   events: SessionEvent[];
 }
 
-const EVENT_CONFIG: Record<string, { label: string; color: string; softColor: string; icon: string }> = {
-  participation: { label: 'Implication', color: 'var(--color-participation)', softColor: 'var(--color-participation-soft)', icon: '+' },
-  bavardage: { label: 'Bavardage', color: 'var(--color-bavardage)', softColor: 'var(--color-bavardage-soft)', icon: '-' },
-  absence: { label: 'Absence', color: 'var(--color-absence)', softColor: 'var(--color-absence-soft)', icon: 'A' },
-  remarque: { label: 'Remarque', color: 'var(--color-remarque)', softColor: 'var(--color-remarque-soft)', icon: '!' },
-  sortie: { label: 'Sortie', color: 'var(--color-sortie)', softColor: 'var(--color-sortie-soft)', icon: 'S' },
-};
+// EVENT_CONFIG imported from lib/constants
 
 interface ClassFilter {
   id: string;
@@ -51,14 +46,7 @@ interface ClassFilter {
 
 type ViewMode = 'list' | 'calendar';
 
-const CLASS_GRADIENTS = [
-  'linear-gradient(135deg, #4A90D9 0%, #357ABD 100%)',
-  'linear-gradient(135deg, #81C784 0%, #66BB6A 100%)',
-  'linear-gradient(135deg, #9575CD 0%, #7E57C2 100%)',
-  'linear-gradient(135deg, #FFB74D 0%, #FFA726 100%)',
-  'linear-gradient(135deg, #E57373 0%, #EF5350 100%)',
-  'linear-gradient(135deg, #4DB6AC 0%, #26A69A 100%)',
-];
+// CLASS_GRADIENTS imported from lib/constants
 
 export function Sessions() {
   const { user } = useAuth();
@@ -407,17 +395,7 @@ export function Sessions() {
     return map;
   }, [sessions]);
 
-  const getClassGradient = (className: string) => {
-    let hash = 0;
-    for (let i = 0; i < className.length; i++) {
-      hash = className.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return CLASS_GRADIENTS[Math.abs(hash) % CLASS_GRADIENTS.length];
-  };
-
-  const getClassInitials = (className: string) => {
-    return className.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
-  };
+  // getClassGradient and getClassInitials imported from lib/constants
 
   if (isLoading) {
     return (

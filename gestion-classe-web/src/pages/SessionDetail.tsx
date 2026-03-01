@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
+import { EVENT_CONFIG } from '../lib/constants';
 
 interface Session {
   id: string;
@@ -22,13 +23,7 @@ interface Event {
   timestamp: string;
 }
 
-const EVENT_CONFIG: Record<string, { label: string; color: string; softColor: string; icon: string }> = {
-  participation: { label: 'Implication', color: 'var(--color-participation)', softColor: 'var(--color-participation-soft)', icon: '+' },
-  bavardage: { label: 'Bavardage', color: 'var(--color-bavardage)', softColor: 'var(--color-bavardage-soft)', icon: '-' },
-  absence: { label: 'Absence', color: 'var(--color-absence)', softColor: 'var(--color-absence-soft)', icon: 'A' },
-  remarque: { label: 'Remarque', color: 'var(--color-remarque)', softColor: 'var(--color-remarque-soft)', icon: '!' },
-  sortie: { label: 'Sortie', color: 'var(--color-sortie)', softColor: 'var(--color-sortie-soft)', icon: 'S' },
-};
+// EVENT_CONFIG imported from lib/constants
 
 export function SessionDetail() {
   const { id } = useParams<{ id: string }>();

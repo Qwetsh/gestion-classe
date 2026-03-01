@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Classes } from './pages/Classes';
@@ -10,6 +11,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
+    <AuthProvider>
     <BrowserRouter basename="/gestion-classe">
       <Routes>
         {/* Public routes */}
@@ -69,6 +71,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   );
 }
 

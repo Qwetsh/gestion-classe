@@ -9,9 +9,9 @@ interface LayoutProps {
 const navItems = [
   { path: '/', label: 'Tableau de bord', icon: '📊' },
   { path: '/classes', label: 'Classes', icon: '📚' },
-  { path: '/students', label: 'Eleves', icon: '👥' },
+  { path: '/students', label: 'Élèves', icon: '👥' },
   { path: '/rooms', label: 'Salles', icon: '🏫' },
-  { path: '/sessions', label: 'Seances', icon: '📅' },
+  { path: '/sessions', label: 'Séances', icon: '📅' },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -80,7 +80,7 @@ export function Layout({ children }: LayoutProps) {
                 onClick={signOut}
                 className="px-4 py-2 text-sm font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] rounded-xl transition-colors"
               >
-                Deconnexion
+                Déconnexion
               </button>
             </div>
           </div>
