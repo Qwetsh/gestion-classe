@@ -95,7 +95,7 @@ export function Dashboard() {
 
           const sessionsWithCounts = sessions.map((session) => ({
             id: session.id,
-            class_name: (session.classes as { name: string } | null)?.name || 'Classe inconnue',
+            class_name: (session.classes as unknown as { name: string } | null)?.name || 'Classe inconnue',
             started_at: session.started_at,
             ended_at: session.ended_at,
             events_count: eventCountBySession.get(session.id) || 0,

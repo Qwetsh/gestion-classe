@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
@@ -73,7 +73,6 @@ export function Classes() {
 
   // Student grades for visual display
   const [studentGrades, setStudentGrades] = useState<Map<string, StudentGradeData>>(new Map());
-  const [classConfig, setClassConfig] = useState<ClassConfig | null>(null);
   const [showGrades, setShowGrades] = useState(true);
 
   // Modal states
@@ -225,7 +224,6 @@ export function Classes() {
         bavardage_penalty: false,
         base_grade: null,
       };
-      setClassConfig(config);
 
       // Load trimester settings to get current trimester boundary
       const { data: settingsData } = await supabase

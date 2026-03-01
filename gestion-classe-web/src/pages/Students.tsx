@@ -45,11 +45,7 @@ interface ClassConfig {
   base_grade: number | null;
 }
 
-interface TrimesterBoundary {
-  trimester: number;
-  school_year: string;
-  started_at: string;
-}
+// TrimesterBoundary type inlined where needed
 
 interface ArchivedGrade {
   trimester: number;
