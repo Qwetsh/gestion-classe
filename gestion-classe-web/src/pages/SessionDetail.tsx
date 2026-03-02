@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
-import { EVENT_CONFIG } from '../lib/constants';
+import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 
 interface Session {
   id: string;
@@ -23,14 +23,41 @@ interface Event {
   timestamp: string;
 }
 
+interface SessionGroup {
+  id: string;
+  group_number: number;
+  created_at: string;
+  members: GroupMember[];
+  events: GroupEvent[];
+}
+
+interface GroupMember {
+  id: string;
+  student_id: string;
+  student_pseudo: string;
+  joined_at: string;
+}
+
+interface GroupEvent {
+  id: string;
+  type: 'remarque' | 'note';
+  note: string | null;
+  photo_path: string | null;
+  grade_value: number | null;
+  grade_max: number | null;
+  timestamp: string;
+}
+
 // EVENT_CONFIG imported from lib/constants
 
 export function SessionDetail() {
   const { id } = useParams<{ id: string }>();
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [groups, setGroups] = useState<SessionGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedGroupEvent, setSelectedGroupEvent] = useState<{ event: GroupEvent; groupNumber: number } | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
@@ -60,7 +87,25 @@ export function SessionDetail() {
 
   const closeModal = () => {
     setSelectedEvent(null);
+    setSelectedGroupEvent(null);
     setPhotoUrl(null);
+  };
+
+  const handleGroupEventClick = async (event: GroupEvent, groupNumber: number) => {
+    if (event.type !== 'remarque' || (!event.note && !event.photo_path)) return;
+
+    setSelectedGroupEvent({ event, groupNumber });
+
+    if (event.photo_path) {
+      setIsLoadingPhoto(true);
+      const { data } = await supabase.storage
+        .from('student-photos')
+        .createSignedUrl(event.photo_path, 3600);
+      setPhotoUrl(data?.signedUrl || null);
+      setIsLoadingPhoto(false);
+    } else {
+      setPhotoUrl(null);
+    }
   };
 
   const handleStartEditTopic = () => {
@@ -180,6 +225,61 @@ export function SessionDetail() {
             timestamp: e.timestamp,
           }))
         );
+      }
+
+      // Load session groups
+      const { data: groupsData } = await supabase
+        .from('session_groups')
+        .select('id, group_number, created_at')
+        .eq('session_id', id)
+        .order('group_number', { ascending: true });
+
+      if (groupsData && groupsData.length > 0) {
+        const groupsWithDetails: SessionGroup[] = [];
+
+        for (const group of groupsData) {
+          // Load members for this group
+          const { data: membersData } = await supabase
+            .from('group_members')
+            .select(`
+              id,
+              student_id,
+              joined_at,
+              students (pseudo)
+            `)
+            .eq('session_group_id', group.id)
+            .is('left_at', null);
+
+          // Load events for this group
+          const { data: groupEventsData } = await supabase
+            .from('group_events')
+            .select('id, type, note, photo_path, grade_value, grade_max, timestamp')
+            .eq('session_group_id', group.id)
+            .order('timestamp', { ascending: true });
+
+          groupsWithDetails.push({
+            id: group.id,
+            group_number: group.group_number,
+            created_at: group.created_at,
+            members: (membersData || []).map((m) => ({
+              id: m.id,
+              student_id: m.student_id,
+              student_pseudo: (m.students as any)?.pseudo || 'Eleve inconnu',
+              joined_at: m.joined_at,
+            })),
+            events: (groupEventsData || []).map((e) => ({
+              id: e.id,
+              type: e.type as 'remarque' | 'note',
+              note: e.note,
+              photo_path: e.photo_path,
+              grade_value: e.grade_value,
+              grade_max: e.grade_max,
+              timestamp: e.timestamp,
+            })),
+          });
+        }
+
+        setGroups(groupsWithDetails);
       }
 
       setIsLoading(false);
@@ -410,6 +510,156 @@ export function SessionDetail() {
           ))}
         </div>
 
+        {/* Groups section */}
+        {groups.length > 0 && (
+          <div
+            className="bg-[var(--color-surface)] overflow-hidden"
+            style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+          >
+            <div className="p-5 border-b border-[var(--color-border)] flex items-center gap-3">
+              <div
+                className="w-10 h-10 flex items-center justify-center text-xl"
+                style={{ background: 'var(--color-primary-soft)', borderRadius: 'var(--radius-lg)' }}
+              >
+                👥
+              </div>
+              <h2 className="font-semibold text-[var(--color-text)]">
+                Groupes ({groups.length})
+              </h2>
+            </div>
+
+            <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {groups.map((group) => {
+                const groupColor = getGroupColor(group.group_number);
+                const gradeEvents = group.events.filter((e) => e.type === 'note');
+                const remarkEvents = group.events.filter((e) => e.type === 'remarque');
+
+                return (
+                  <div
+                    key={group.id}
+                    className="border border-[var(--color-border)] overflow-hidden"
+                    style={{ borderRadius: 'var(--radius-xl)' }}
+                  >
+                    {/* Group header */}
+                    <div
+                      className="px-4 py-3 flex items-center gap-3"
+                      style={{ backgroundColor: groupColor + '15' }}
+                    >
+                      <div
+                        className="w-8 h-8 flex items-center justify-center text-white font-bold text-sm"
+                        style={{ backgroundColor: groupColor, borderRadius: 'var(--radius-lg)' }}
+                      >
+                        {group.group_number}
+                      </div>
+                      <span className="font-medium text-[var(--color-text)]">
+                        Groupe {group.group_number}
+                      </span>
+                      <span className="text-sm text-[var(--color-text-tertiary)] ml-auto">
+                        {group.members.length} eleve{group.members.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Members */}
+                    <div className="px-4 py-3 border-b border-[var(--color-border)]">
+                      <div className="flex flex-wrap gap-2">
+                        {group.members.map((member) => (
+                          <span
+                            key={member.id}
+                            className="px-2 py-1 text-sm bg-[var(--color-surface-secondary)] text-[var(--color-text)]"
+                            style={{ borderRadius: 'var(--radius-md)' }}
+                          >
+                            {member.student_pseudo}
+                          </span>
+                        ))}
+                        {group.members.length === 0 && (
+                          <span className="text-sm text-[var(--color-text-tertiary)] italic">
+                            Aucun membre
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Group events */}
+                    <div className="px-4 py-3 space-y-2">
+                      {/* Grades */}
+                      {gradeEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <span
+                            className="w-6 h-6 flex items-center justify-center text-xs font-bold"
+                            style={{
+                              backgroundColor: 'var(--color-participation-soft)',
+                              color: 'var(--color-participation)',
+                              borderRadius: 'var(--radius-md)'
+                            }}
+                          >
+                            N
+                          </span>
+                          <span className="font-medium text-[var(--color-text)]">
+                            {event.grade_value}/{event.grade_max}
+                          </span>
+                          {event.note && (
+                            <span className="text-[var(--color-text-tertiary)] truncate">
+                              - {event.note}
+                            </span>
+                          )}
+                          <span className="text-[var(--color-text-tertiary)] ml-auto text-xs">
+                            {formatTime(event.timestamp)}
+                          </span>
+                        </div>
+                      ))}
+
+                      {/* Remarks */}
+                      {remarkEvents.map((event) => {
+                        const isClickable = event.note || event.photo_path;
+                        return (
+                          <div
+                            key={event.id}
+                            className={`flex items-center gap-2 text-sm ${isClickable ? 'cursor-pointer hover:bg-[var(--color-surface-hover)] -mx-2 px-2 py-1 transition-colors' : ''}`}
+                            style={isClickable ? { borderRadius: 'var(--radius-md)' } : undefined}
+                            onClick={() => isClickable && handleGroupEventClick(event, group.group_number)}
+                          >
+                            <span
+                              className="w-6 h-6 flex items-center justify-center text-xs font-bold"
+                              style={{
+                                backgroundColor: 'var(--color-remarque-soft)',
+                                color: 'var(--color-remarque)',
+                                borderRadius: 'var(--radius-md)'
+                              }}
+                            >
+                              !
+                            </span>
+                            <span className="text-[var(--color-text)] truncate flex-1">
+                              {event.note || 'Remarque'}
+                            </span>
+                            {event.photo_path && (
+                              <span className="text-[var(--color-remarque)]" title="Photo attachee">
+                                📷
+                              </span>
+                            )}
+                            <span className="text-[var(--color-text-tertiary)] text-xs">
+                              {formatTime(event.timestamp)}
+                            </span>
+                          </div>
+                        );
+                      })}
+
+                      {/* No events */}
+                      {group.events.length === 0 && (
+                        <p className="text-sm text-[var(--color-text-tertiary)] italic">
+                          Aucun evenement
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Events list */}
         <div
           className="bg-[var(--color-surface)] overflow-hidden"
@@ -609,6 +859,106 @@ export function SessionDetail() {
 
               {/* No content fallback */}
               {!selectedEvent.note && !selectedEvent.photo_path && (
+                <p className="text-[var(--color-text-tertiary)] text-center py-4">
+                  Aucun contenu
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Group Event Modal */}
+      {selectedGroupEvent && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-[var(--color-surface)] max-w-lg w-full max-h-[90vh] overflow-hidden"
+            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 flex items-center justify-center text-white font-bold"
+                  style={{
+                    backgroundColor: getGroupColor(selectedGroupEvent.groupNumber),
+                    borderRadius: 'var(--radius-lg)'
+                  }}
+                >
+                  {selectedGroupEvent.groupNumber}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--color-text)]">
+                    Groupe {selectedGroupEvent.groupNumber}
+                  </h3>
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                    Remarque · {formatTime(selectedGroupEvent.event.timestamp)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeModal}
+                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* Note */}
+              {selectedGroupEvent.event.note && (
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    Note
+                  </p>
+                  <p
+                    className="text-[var(--color-text)] whitespace-pre-wrap p-4 bg-[var(--color-surface-secondary)]"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                  >
+                    {selectedGroupEvent.event.note}
+                  </p>
+                </div>
+              )}
+
+              {/* Photo */}
+              {selectedGroupEvent.event.photo_path && (
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    Photo
+                  </p>
+                  {isLoadingPhoto ? (
+                    <div
+                      className="flex items-center justify-center h-48 bg-[var(--color-surface-secondary)]"
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                    >
+                      <span className="text-[var(--color-text-tertiary)]">Chargement...</span>
+                    </div>
+                  ) : photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt="Photo de la remarque"
+                      className="w-full object-contain max-h-96"
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                    />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center h-48 bg-[var(--color-surface-secondary)]"
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                    >
+                      <span className="text-[var(--color-text-tertiary)]">Photo non disponible</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No content fallback */}
+              {!selectedGroupEvent.event.note && !selectedGroupEvent.event.photo_path && (
                 <p className="text-[var(--color-text-tertiary)] text-center py-4">
                   Aucun contenu
                 </p>

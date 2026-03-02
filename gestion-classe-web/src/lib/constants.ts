@@ -122,6 +122,27 @@ export function getCurrentSchoolYear(): string {
 }
 
 /**
+ * Group colors for visual differentiation (matching mobile app)
+ */
+export const GROUP_COLORS = [
+  '#3B82F6', // Blue
+  '#10B981', // Emerald
+  '#F59E0B', // Amber
+  '#8B5CF6', // Violet
+  '#EC4899', // Pink
+  '#06B6D4', // Cyan
+  '#EF4444', // Red
+  '#84CC16', // Lime
+] as const;
+
+/**
+ * Get color for a group number (1-indexed)
+ */
+export function getGroupColor(groupNumber: number): string {
+  return GROUP_COLORS[(groupNumber - 1) % GROUP_COLORS.length];
+}
+
+/**
  * Sanitize user input to prevent XSS
  */
 export function sanitizeInput(input: string): string {
