@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, session, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -20,8 +20,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
+  // Check both user existence AND valid session
+  // This prevents stale user objects from granting access when session has expired
+  if (!user || !session) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Additional check: verify session hasn't expired
+  // Supabase tokens have an expires_at field
+  if (session.expires_at) {
+    const expiresAt = new Date(session.expires_at * 1000); // expires_at is in seconds
+    if (expiresAt <= new Date()) {
+      console.warn('[ProtectedRoute] Session expired, redirecting to login');
+      return <Navigate to="/login" replace />;
+    }
   }
 
   return <>{children}</>;

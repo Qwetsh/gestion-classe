@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { validateRoomName, validateGridDimensions } from '../lib/security';
 
 interface Room {
   id: string;
@@ -121,16 +122,17 @@ export function Rooms() {
   };
 
   const handleSaveRoom = async () => {
-    if (!roomName.trim()) {
-      setFormError('Le nom de la salle est requis');
+    // Validate room name
+    const nameValidation = validateRoomName(roomName);
+    if (!nameValidation.isValid) {
+      setFormError(nameValidation.error || 'Nom invalide');
       return;
     }
-    if (roomRows < 1 || roomRows > 10) {
-      setFormError('Le nombre de rangees doit etre entre 1 et 10');
-      return;
-    }
-    if (roomColumns < 1 || roomColumns > 12) {
-      setFormError('Le nombre de colonnes doit etre entre 1 et 12');
+
+    // Validate grid dimensions
+    const gridValidation = validateGridDimensions(roomRows, roomColumns);
+    if (!gridValidation.isValid) {
+      setFormError(gridValidation.error || 'Dimensions invalides');
       return;
     }
 
@@ -181,6 +183,7 @@ export function Rooms() {
 
   const handleOpenDeleteModal = (room: Room) => {
     setDeleteTarget(room);
+    setFormError('');
     setShowDeleteModal(true);
   };
 
@@ -188,7 +191,14 @@ export function Rooms() {
     if (!deleteTarget) return;
     setIsSubmitting(true);
 
-    await supabase.from('rooms').delete().eq('id', deleteTarget.id);
+    const { error } = await supabase.from('rooms').delete().eq('id', deleteTarget.id);
+
+    if (error) {
+      console.error('Error deleting room:', error);
+      setFormError('Erreur lors de la suppression de la salle');
+      setIsSubmitting(false);
+      return;
+    }
 
     setShowDeleteModal(false);
     setDeleteTarget(null);
@@ -542,6 +552,9 @@ export function Rooms() {
               <p className="text-[var(--color-text-secondary)] mb-6">
                 Voulez-vous vraiment supprimer la salle "{deleteTarget.name}" ?
               </p>
+              {formError && (
+                <p className="text-red-500 text-sm mb-4">{formError}</p>
+              )}
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowDeleteModal(false)}

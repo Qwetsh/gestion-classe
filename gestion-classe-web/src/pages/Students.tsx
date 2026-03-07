@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { buildPhotoUrl } from '../lib/security';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Student {
@@ -144,6 +145,10 @@ export function Students() {
   // Sort state
   const [sortField, setSortField] = useState<SortField>('pseudo');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const STUDENTS_PER_PAGE = 50; // Limit to prevent DOM bloat
 
   // Search state (with debounce)
   const [searchQuery, setSearchQuery] = useState('');
@@ -494,6 +499,11 @@ export function Students() {
     });
   }, [classes, studentGrades]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedClassId, debouncedSearchQuery, sortField, sortOrder]);
+
   // Filter and sort students for selected class
   const filteredAndSortedGrades = useMemo(() => {
     let filtered = studentGrades;
@@ -532,6 +542,14 @@ export function Students() {
 
     return sorted;
   }, [studentGrades, selectedClassId, debouncedSearchQuery, sortField, sortOrder]);
+
+  // Paginated students to limit DOM size
+  const paginatedGrades = useMemo(() => {
+    const startIndex = (currentPage - 1) * STUDENTS_PER_PAGE;
+    return filteredAndSortedGrades.slice(startIndex, startIndex + STUDENTS_PER_PAGE);
+  }, [filteredAndSortedGrades, currentPage]);
+
+  const totalPages = Math.ceil(filteredAndSortedGrades.length / STUDENTS_PER_PAGE);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -1014,8 +1032,9 @@ export function Students() {
                       </p>
                     </div>
                   ) : (
+                    <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {filteredAndSortedGrades.map((sg) => (
+                      {paginatedGrades.map((sg) => (
                         <button
                           key={sg.student.id}
                           onClick={() => openStudentDetail(sg)}
@@ -1065,6 +1084,30 @@ export function Students() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Pagination controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 mt-4">
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1 rounded border border-[var(--color-border)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-surface-hover)]"
+                        >
+                          Precedent
+                        </button>
+                        <span className="text-sm text-[var(--color-text-secondary)]">
+                          Page {currentPage} / {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-1 rounded border border-[var(--color-border)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-surface-hover)]"
+                        >
+                          Suivant
+                        </button>
+                      </div>
+                    )}
+                    </>
                   )}
                 </div>
 
@@ -1543,10 +1586,10 @@ export function Students() {
                           {remark.note && (
                             <p className="text-sm text-[var(--color-text)]">{remark.note}</p>
                           )}
-                          {remark.photo_path && (
+                          {remark.photo_path && buildPhotoUrl(remark.photo_path, import.meta.env.VITE_SUPABASE_URL) && (
                             <div className="mt-2">
                               <img
-                                src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/student-photos/${remark.photo_path}`}
+                                src={buildPhotoUrl(remark.photo_path, import.meta.env.VITE_SUPABASE_URL)!}
                                 alt="Photo remarque"
                                 className="rounded-lg max-h-40 object-cover"
                                 onError={(e) => {

@@ -33,35 +33,93 @@ export function Dashboard() {
 
     async function loadData() {
       setIsLoading(true);
+      setError(null);
 
+      // Load stats with individual error handling per query
+      // This ensures partial data loads even if one query fails
+      let classesCount = 0;
+      let studentsCount = 0;
+      let sessionsCount = 0;
+      let eventsData: { type: string }[] = [];
+      const errors: string[] = [];
+
+      // Load each stat independently to avoid all-or-nothing failure
+      const loadPromises = [
+        supabase
+          .from('classes')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user!.id)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error('Error loading classes count:', error);
+              errors.push('classes');
+            } else {
+              classesCount = count || 0;
+            }
+          }),
+
+        supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user!.id)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error('Error loading students count:', error);
+              errors.push('eleves');
+            } else {
+              studentsCount = count || 0;
+            }
+          }),
+
+        supabase
+          .from('sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user!.id)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error('Error loading sessions count:', error);
+              errors.push('seances');
+            } else {
+              sessionsCount = count || 0;
+            }
+          }),
+
+        supabase
+          .from('events')
+          .select('type, session_id, sessions!inner(user_id)')
+          .eq('sessions.user_id', user!.id)
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Error loading events:', error);
+              errors.push('evenements');
+            } else {
+              eventsData = data || [];
+            }
+          }),
+      ];
+
+      // Wait for all queries (they won't throw thanks to individual handling)
+      await Promise.all(loadPromises);
+
+      // Show warning if some queries failed
+      if (errors.length > 0) {
+        setError(`Erreur de chargement partiel: ${errors.join(', ')}`);
+      }
+
+      const participations = eventsData.filter(e => e.type === 'participation').length;
+      const bavardages = eventsData.filter(e => e.type === 'bavardage').length;
+
+      setStats({
+        classesCount,
+        studentsCount,
+        sessionsCount,
+        eventsCount: eventsData.length,
+        participations,
+        bavardages,
+      });
+
+      // Load recent sessions (separate try-catch so stats are preserved if this fails)
       try {
-        // Load stats
-        const [
-          { count: classesCount },
-          { count: studentsCount },
-          { count: sessionsCount },
-          { data: events },
-        ] = await Promise.all([
-          supabase.from('classes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
-          supabase.from('students').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
-          supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
-          supabase.from('events').select('type, session_id, sessions!inner(user_id)').eq('sessions.user_id', user!.id),
-        ]);
-
-        const eventsData = events || [];
-        const participations = eventsData.filter(e => e.type === 'participation').length;
-        const bavardages = eventsData.filter(e => e.type === 'bavardage').length;
-
-        setStats({
-          classesCount: classesCount || 0,
-          studentsCount: studentsCount || 0,
-          sessionsCount: sessionsCount || 0,
-          eventsCount: eventsData.length,
-          participations,
-          bavardages,
-        });
-
-        // Load recent sessions
         const { data: sessions, error: sessionsError } = await supabase
           .from('sessions')
           .select(`
@@ -74,9 +132,10 @@ export function Dashboard() {
           .order('started_at', { ascending: false })
           .limit(5);
 
-        if (sessionsError) throw sessionsError;
-
-        if (sessions && sessions.length > 0) {
+        if (sessionsError) {
+          console.error('Error loading recent sessions:', sessionsError);
+          // Don't throw - just log and continue with empty sessions
+        } else if (sessions && sessions.length > 0) {
           // Batch fetch ALL event counts in ONE query (fixes N+1)
           const sessionIds = sessions.map(s => s.id);
           const { data: allEvents, error: eventsError } = await supabase
@@ -84,7 +143,9 @@ export function Dashboard() {
             .select('session_id')
             .in('session_id', sessionIds);
 
-          if (eventsError) throw eventsError;
+          if (eventsError) {
+            console.error('Error loading session events:', eventsError);
+          }
 
           // Count events per session
           const eventCountBySession = new Map<string, number>();
@@ -103,8 +164,11 @@ export function Dashboard() {
           setRecentSessions(sessionsWithCounts);
         }
       } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        setError('Erreur lors du chargement du tableau de bord.');
+        console.error('Error loading recent sessions:', error);
+        // Don't override existing error if stats already had issues
+        if (errors.length === 0) {
+          setError('Erreur lors du chargement des seances recentes.');
+        }
       } finally {
         setIsLoading(false);
       }

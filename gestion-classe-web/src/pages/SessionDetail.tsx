@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
+import { sanitizePhotoPath } from '../lib/security';
 
 interface Session {
   id: string;
@@ -73,11 +74,13 @@ export function SessionDetail() {
 
     setSelectedEvent(event);
 
-    if (event.photo_path) {
+    // Sanitize photo path to prevent path traversal attacks
+    const safePath = sanitizePhotoPath(event.photo_path);
+    if (safePath) {
       setIsLoadingPhoto(true);
       const { data } = await supabase.storage
         .from('student-photos')
-        .createSignedUrl(event.photo_path, 3600);
+        .createSignedUrl(safePath, 3600);
       setPhotoUrl(data?.signedUrl || null);
       setIsLoadingPhoto(false);
     } else {
@@ -96,11 +99,13 @@ export function SessionDetail() {
 
     setSelectedGroupEvent({ event, groupNumber });
 
-    if (event.photo_path) {
+    // Sanitize photo path to prevent path traversal attacks
+    const safePath = sanitizePhotoPath(event.photo_path);
+    if (safePath) {
       setIsLoadingPhoto(true);
       const { data } = await supabase.storage
         .from('student-photos')
-        .createSignedUrl(event.photo_path, 3600);
+        .createSignedUrl(safePath, 3600);
       setPhotoUrl(data?.signedUrl || null);
       setIsLoadingPhoto(false);
     } else {
