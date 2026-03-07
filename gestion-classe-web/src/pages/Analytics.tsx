@@ -383,7 +383,6 @@ export function Analytics() {
                 value={`${totals.participations + totals.bavardages > 0 ? Math.round((totals.participations / (totals.participations + totals.bavardages)) * 100) : 0}%`}
                 color="var(--color-primary)"
                 icon="%"
-                isPercentage
               />
             </div>
 
@@ -473,7 +472,7 @@ export function Analytics() {
                         outerRadius={100}
                         paddingAngle={2}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
                         {pieData.map((entry, index) => (
@@ -657,13 +656,11 @@ function SummaryCard({
   value,
   color,
   icon,
-  isPercentage = false,
 }: {
   label: string;
   value: number | string;
   color: string;
   icon: string;
-  isPercentage?: boolean;
 }) {
   return (
     <div
