@@ -10,6 +10,7 @@ interface Session {
   class_name: string;
   room_name: string;
   topic: string | null;
+  notes: string | null;
   started_at: string;
   ended_at: string | null;
 }
@@ -184,6 +185,7 @@ export function SessionDetail() {
         .select(`
           id,
           topic,
+          notes,
           started_at,
           ended_at,
           classes (name),
@@ -198,6 +200,7 @@ export function SessionDetail() {
           class_name: (sessionData.classes as any)?.name || 'Classe inconnue',
           room_name: (sessionData.rooms as any)?.name || 'Salle inconnue',
           topic: sessionData.topic,
+          notes: sessionData.notes,
           started_at: sessionData.started_at,
           ended_at: sessionData.ended_at,
         });
@@ -472,6 +475,21 @@ export function SessionDetail() {
                 </p>
               )}
             </div>
+
+            {/* Notes section (read-only, written from mobile) */}
+            {session.notes && (
+              <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-[var(--color-text-secondary)]">📋 Notes de seance</span>
+                </div>
+                <p
+                  className="text-[var(--color-text)] p-3 bg-[var(--color-surface-secondary)] whitespace-pre-wrap"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  {session.notes}
+                </p>
+              </div>
+            )}
 
             {!session.ended_at && (
               <span
