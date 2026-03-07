@@ -8,6 +8,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: 'Tableau de bord', icon: '📊' },
+  { path: '/analytics', label: 'Analyses', icon: '📈' },
   { path: '/classes', label: 'Classes', icon: '📚' },
   { path: '/students', label: 'Élèves', icon: '👥' },
   { path: '/rooms', label: 'Salles', icon: '🏫' },
