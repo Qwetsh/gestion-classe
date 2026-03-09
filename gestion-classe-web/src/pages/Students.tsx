@@ -221,17 +221,19 @@ export function Students() {
     setError(null);
 
     try {
-    // Load trimester settings
-    const { data: settingsData } = await supabase
+    // Phase 1: Load trimester settings first (needed for other queries)
+    let settingsData: { current_trimester: number; school_year: string } | null = null;
+    const { data: existingSettings } = await supabase
       .from('trimester_settings')
       .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (settingsData) {
+    if (existingSettings) {
+      settingsData = existingSettings;
       setTrimesterSettings({
-        current_trimester: settingsData.current_trimester,
-        school_year: settingsData.school_year,
+        current_trimester: existingSettings.current_trimester,
+        school_year: existingSettings.school_year,
       });
     } else {
       const defaultSettings = {
@@ -240,50 +242,69 @@ export function Students() {
         school_year: getCurrentSchoolYear(),
       };
       await supabase.from('trimester_settings').insert(defaultSettings);
+      settingsData = defaultSettings;
       setTrimesterSettings({
         current_trimester: defaultSettings.current_trimester,
         school_year: defaultSettings.school_year,
       });
     }
 
-    // Load trimester boundaries
-    const { data: boundariesData } = await supabase
-      .from('trimester_boundaries')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('school_year', settingsData?.school_year || getCurrentSchoolYear())
-      .order('trimester');
+    const currentTrimester = settingsData.current_trimester;
+    const currentSchoolYear = settingsData.school_year;
 
+    // Phase 2: Run independent queries in parallel
+    const [
+      { data: boundariesData },
+      { data: classesData },
+      { data: configsData },
+      { data: studentsData },
+    ] = await Promise.all([
+      supabase
+        .from('trimester_boundaries')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('school_year', currentSchoolYear)
+        .order('trimester'),
+      supabase
+        .from('classes')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('name'),
+      supabase
+        .from('class_trimester_config')
+        .select('*'),
+      supabase
+        .from('students')
+        .select(`
+          id,
+          pseudo,
+          class_id,
+          created_at,
+          classes (name)
+        `)
+        .eq('user_id', user.id)
+        .order('pseudo'),
+    ]);
+
+    // Handle boundary creation if needed (non-blocking for display)
     const currentBoundary = boundariesData?.find(
-      b => b.trimester === (settingsData?.current_trimester || 1)
+      b => b.trimester === currentTrimester
     );
     if (!currentBoundary) {
-      await supabase.from('trimester_boundaries').insert({
+      supabase.from('trimester_boundaries').insert({
         user_id: user.id,
-        trimester: settingsData?.current_trimester || 1,
-        school_year: settingsData?.school_year || getCurrentSchoolYear(),
+        trimester: currentTrimester,
+        school_year: currentSchoolYear,
         started_at: new Date().toISOString(),
       });
     }
 
-    // Load classes
-    const { data: classesData } = await supabase
-      .from('classes')
-      .select('id, name')
-      .eq('user_id', user.id)
-      .order('name');
-
     setClasses(classesData || []);
 
-    // Auto-select first class if none selected (use ref to avoid dependency)
+    // Auto-select first class if none selected
     if (classesData && classesData.length > 0) {
       setSelectedClassId(prev => prev || classesData[0].id);
     }
-
-    // Load class configs
-    const { data: configsData } = await supabase
-      .from('class_trimester_config')
-      .select('*');
 
     const configMap = new Map<string, ClassConfig>();
     (configsData || []).forEach(c => {
@@ -297,82 +318,65 @@ export function Students() {
     });
     setClassConfigs(configMap);
 
-    // Load students
-    const { data: studentsData } = await supabase
-      .from('students')
-      .select(`
-        id,
-        pseudo,
-        class_id,
-        created_at,
-        classes (name)
-      `)
-      .eq('user_id', user.id)
-      .order('pseudo');
-
-    if (!studentsData) {
+    if (!studentsData || studentsData.length === 0) {
       setStudentGrades([]);
       setIsLoading(false);
       return;
     }
 
-    // Get current trimester boundary
+    // Get current trimester boundary for date filtering
     const currentTrimesterBoundary = boundariesData?.find(
-      b => b.trimester === (settingsData?.current_trimester || 1) &&
-           b.school_year === (settingsData?.school_year || getCurrentSchoolYear())
+      b => b.trimester === currentTrimester && b.school_year === currentSchoolYear
     );
     const trimesterStartDate = currentTrimesterBoundary?.started_at || new Date(0).toISOString();
 
-    // Load events for current trimester only
+    // Phase 3: Load student-related data in parallel
     const studentIds = studentsData.map(s => s.id);
-    let eventsQuery = supabase
-      .from('events')
-      .select(`
-        id,
-        student_id,
-        session_id,
-        type,
-        subtype,
-        note,
-        photo_path,
-        timestamp,
-        sessions (
-          started_at,
-          classes (name)
-        )
-      `)
-      .in('student_id', studentIds)
-      .gte('timestamp', trimesterStartDate)
-      .order('timestamp', { ascending: false });
 
-    const { data: eventsData } = await eventsQuery;
-
-    // Load manual participations for current trimester
-    const currentTrimester = settingsData?.current_trimester || 1;
-    const currentSchoolYear = settingsData?.school_year || getCurrentSchoolYear();
-
-    const { data: manualParticipationsData } = await supabase
-      .from('manual_participations')
-      .select('*')
-      .in('student_id', studentIds)
-      .eq('trimester', currentTrimester)
-      .eq('school_year', currentSchoolYear)
-      .order('created_at', { ascending: false });
-
-    // Load archived grades for all students
-    const { data: archivedGradesData } = await supabase
-      .from('trimester_grades')
-      .select('*')
-      .in('student_id', studentIds)
-      .order('school_year', { ascending: false });
-
-    // Load oral evaluations for current trimester
-    const { data: oralEvaluationsData } = await supabase
-      .from('oral_evaluations')
-      .select('*')
-      .in('student_id', studentIds)
-      .eq('trimester', currentTrimester)
-      .eq('school_year', currentSchoolYear);
+    const [
+      { data: eventsData },
+      { data: manualParticipationsData },
+      { data: archivedGradesData },
+      { data: oralEvaluationsData },
+    ] = await Promise.all([
+      supabase
+        .from('events')
+        .select(`
+          id,
+          student_id,
+          session_id,
+          type,
+          subtype,
+          note,
+          photo_path,
+          timestamp,
+          sessions (
+            started_at,
+            classes (name)
+          )
+        `)
+        .in('student_id', studentIds)
+        .gte('timestamp', trimesterStartDate)
+        .order('timestamp', { ascending: false }),
+      supabase
+        .from('manual_participations')
+        .select('*')
+        .in('student_id', studentIds)
+        .eq('trimester', currentTrimester)
+        .eq('school_year', currentSchoolYear)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('trimester_grades')
+        .select('*')
+        .in('student_id', studentIds)
+        .order('school_year', { ascending: false }),
+      supabase
+        .from('oral_evaluations')
+        .select('*')
+        .in('student_id', studentIds)
+        .eq('trimester', currentTrimester)
+        .eq('school_year', currentSchoolYear),
+    ]);
 
     // Build grades for each student
     const grades: StudentGrade[] = studentsData.map(student => {
