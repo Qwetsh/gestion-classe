@@ -71,6 +71,16 @@ interface OralEvaluation {
   evaluated_at: string;
 }
 
+interface GroupSessionGrade {
+  session_id: string;
+  session_name: string;
+  class_name: string;
+  created_at: string;
+  group_name: string;
+  score: number;
+  max_points: number;
+}
+
 const ORAL_GRADE_LABELS: Record<number, string> = {
   1: 'Insuffisant',
   2: 'Fragile',
@@ -187,6 +197,10 @@ export function Students() {
   const [showAddManualModal, setShowAddManualModal] = useState(false);
   const [manualReason, setManualReason] = useState('');
   const [manualCount, setManualCount] = useState(1);
+
+  // Group session grades
+  const [groupSessionGrades, setGroupSessionGrades] = useState<GroupSessionGrade[]>([]);
+  const [isLoadingGroupGrades, setIsLoadingGroupGrades] = useState(false);
 
   // Sidebar collapsed state for mobile
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -672,9 +686,82 @@ export function Students() {
     }
   };
 
-  const openStudentDetail = (studentGrade: StudentGrade) => {
+  const openStudentDetail = async (studentGrade: StudentGrade) => {
     setSelectedStudentForDetail(studentGrade);
     setShowStudentDetailModal(true);
+    setGroupSessionGrades([]);
+    setIsLoadingGroupGrades(true);
+
+    try {
+      // Load group session grades for this student
+      const { data: membershipsData } = await supabase
+        .from('session_group_members')
+        .select(`
+          group_id,
+          session_groups (
+            id,
+            name,
+            conduct_malus,
+            session_id,
+            group_sessions (
+              id,
+              name,
+              created_at,
+              class_id,
+              classes (name)
+            )
+          )
+        `)
+        .eq('student_id', studentGrade.student.id);
+
+      if (membershipsData && membershipsData.length > 0) {
+        const groupIds = membershipsData.map(m => (m.session_groups as any)?.id).filter(Boolean);
+
+        // Get grades for these groups
+        const { data: gradesData } = await supabase
+          .from('group_grades')
+          .select('group_id, criteria_id, points_awarded')
+          .in('group_id', groupIds);
+
+        // Get criteria for max points
+        const sessionIds = [...new Set(membershipsData.map(m => (m.session_groups as any)?.session_id).filter(Boolean))];
+        const { data: criteriaData } = await supabase
+          .from('grading_criteria')
+          .select('id, session_id, max_points')
+          .in('session_id', sessionIds);
+
+        // Calculate scores
+        const grades: GroupSessionGrade[] = membershipsData.map(m => {
+          const group = m.session_groups as any;
+          if (!group || !group.group_sessions) return null;
+
+          const session = group.group_sessions;
+          const groupGrades = (gradesData || []).filter(g => g.group_id === group.id);
+          const sessionCriteria = (criteriaData || []).filter(c => c.session_id === session.id);
+
+          const score = groupGrades.reduce((sum, g) => sum + g.points_awarded, 0) - (group.conduct_malus || 0);
+          const maxPoints = sessionCriteria.reduce((sum, c) => sum + c.max_points, 0);
+
+          return {
+            session_id: session.id,
+            session_name: session.name,
+            class_name: session.classes?.name || 'Classe inconnue',
+            created_at: session.created_at,
+            group_name: group.name,
+            score,
+            max_points: maxPoints,
+          };
+        }).filter(Boolean) as GroupSessionGrade[];
+
+        // Sort by date descending
+        grades.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setGroupSessionGrades(grades);
+      }
+    } catch (err) {
+      console.error('Error loading group session grades:', err);
+    } finally {
+      setIsLoadingGroupGrades(false);
+    }
   };
 
   const openAddManualModal = () => {
@@ -1565,6 +1652,61 @@ export function Students() {
                   <p className="text-purple-600 text-sm">
                     Pas encore evalue ce trimestre
                   </p>
+                )}
+              </div>
+
+              {/* Group Session Grades Section */}
+              <div className="bg-amber-50 rounded-xl p-4">
+                <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
+                  <span>👥</span> Notes de groupe ({groupSessionGrades.length})
+                </h4>
+                {isLoadingGroupGrades ? (
+                  <div className="flex justify-center py-4">
+                    <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : groupSessionGrades.length === 0 ? (
+                  <p className="text-amber-600 text-sm">
+                    Aucune note de groupe pour cet eleve
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {groupSessionGrades.map((grade, idx) => {
+                      const percentage = grade.max_points > 0 ? Math.round((grade.score / grade.max_points) * 100) : 0;
+                      return (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <div>
+                              <span className="font-medium text-[var(--color-text)]">{grade.session_name}</span>
+                              <span className="text-xs text-[var(--color-text-tertiary)] ml-2">
+                                ({grade.group_name})
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className={`font-bold ${percentage >= 70 ? 'text-green-600' : percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                {grade.score.toFixed(1)}/{grade.max_points}
+                              </span>
+                              <span className="text-xs text-[var(--color-text-tertiary)] ml-1">
+                                ({percentage}%)
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-amber-100 rounded-full">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, percentage))}%`,
+                                backgroundColor: percentage >= 70 ? '#22c55e' : percentage >= 50 ? '#f59e0b' : '#ef4444',
+                              }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between mt-1 text-xs text-[var(--color-text-tertiary)]">
+                            <span>{grade.class_name}</span>
+                            <span>{formatDate(grade.created_at)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 

@@ -8,6 +8,7 @@ import { Classes } from './pages/Classes';
 import { Rooms } from './pages/Rooms';
 import { Sessions } from './pages/Sessions';
 import { SessionDetail } from './pages/SessionDetail';
+import { GroupSessions } from './pages/GroupSessions';
 import { Students } from './pages/Students';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -58,6 +59,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SessionDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/group-sessions"
+          element={
+            <ProtectedRoute>
+              <GroupSessions />
             </ProtectedRoute>
           }
         />

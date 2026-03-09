@@ -13,6 +13,7 @@ const navItems = [
   { path: '/students', label: 'Élèves', icon: '👥' },
   { path: '/rooms', label: 'Salles', icon: '🏫' },
   { path: '/sessions', label: 'Séances', icon: '📅' },
+  { path: '/group-sessions', label: 'Groupes', icon: '👥' },
 ];
 
 export function Layout({ children }: LayoutProps) {
