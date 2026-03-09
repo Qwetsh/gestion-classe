@@ -249,8 +249,8 @@ export function Students() {
       });
     }
 
-    const currentTrimester = settingsData.current_trimester;
-    const currentSchoolYear = settingsData.school_year;
+    const currentTrimester = settingsData!.current_trimester;
+    const currentSchoolYear = settingsData!.school_year;
 
     // Phase 2: Run independent queries in parallel
     const [
