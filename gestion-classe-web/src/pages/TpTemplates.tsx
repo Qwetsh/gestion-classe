@@ -11,13 +11,6 @@ interface TpTemplate {
   total_points: number;
 }
 
-interface TpCriteria {
-  id: string;
-  label: string;
-  max_points: number;
-  display_order: number;
-}
-
 interface EditingCriteria {
   id?: string;
   label: string;
