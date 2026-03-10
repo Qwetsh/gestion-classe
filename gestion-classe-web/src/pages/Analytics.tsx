@@ -665,7 +665,7 @@ export function Analytics() {
                         border: '1px solid var(--color-border)',
                         borderRadius: '8px',
                       }}
-                      formatter={(value: number) => [`${value} / élève`, '']}
+                      formatter={(value) => [`${value} / élève`]}
                     />
                     <Bar
                       dataKey="value"

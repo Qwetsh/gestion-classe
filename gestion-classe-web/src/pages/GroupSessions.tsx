@@ -11,8 +11,10 @@ interface GroupSession {
   name: string;
   class_id: string;
   class_name: string;
+  status: 'draft' | 'active' | 'completed';
   created_at: string;
-  criteria_count: number;
+  completed_at: string | null;
+  groups_count: number;
   total_points: number;
 }
 
