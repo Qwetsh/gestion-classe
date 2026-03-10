@@ -11,6 +11,7 @@ interface Student {
   class_id: string;
   class_name: string;
   created_at: string;
+  gender: 'M' | 'F';
 }
 
 interface Event {
@@ -280,6 +281,7 @@ export function Students() {
           pseudo,
           class_id,
           created_at,
+          gender,
           classes (name)
         `)
         .eq('user_id', user.id)
@@ -461,6 +463,7 @@ export function Students() {
           class_id: student.class_id,
           class_name: (student.classes as any)?.name || 'Classe inconnue',
           created_at: student.created_at,
+          gender: (student.gender as 'M' | 'F') || 'M',
         },
         participations,
         manualParticipations: manualParticipationsCount,
@@ -810,6 +813,37 @@ export function Students() {
     } catch (error) {
       console.error('Failed to delete manual participation:', error);
       alert('Erreur lors de la suppression.');
+    }
+  };
+
+  const toggleGender = async () => {
+    if (!selectedStudentForDetail) return;
+
+    const newGender = selectedStudentForDetail.student.gender === 'M' ? 'F' : 'M';
+
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ gender: newGender })
+        .eq('id', selectedStudentForDetail.student.id);
+
+      if (error) throw error;
+
+      // Update modal state
+      setSelectedStudentForDetail({
+        ...selectedStudentForDetail,
+        student: { ...selectedStudentForDetail.student, gender: newGender },
+      });
+
+      // Update list state without reloading
+      setStudentGrades(prev => prev.map(sg =>
+        sg.student.id === selectedStudentForDetail.student.id
+          ? { ...sg, student: { ...sg.student, gender: newGender } }
+          : sg
+      ));
+    } catch (error) {
+      console.error('Failed to update gender:', error);
+      alert('Erreur lors de la mise a jour.');
     }
   };
 
@@ -1435,13 +1469,23 @@ export function Students() {
             {/* Header */}
             <div className="p-6 border-b border-[var(--color-border)]">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold text-[var(--color-text)]">
-                    {selectedStudentForDetail.student.pseudo}
-                  </h3>
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
-                    {selectedStudentForDetail.student.class_name}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[var(--color-text)]">
+                      {selectedStudentForDetail.student.pseudo}
+                    </h3>
+                    <p className="text-sm text-[var(--color-text-tertiary)]">
+                      {selectedStudentForDetail.student.class_name}
+                    </p>
+                  </div>
+                  {/* Gender toggle button */}
+                  <button
+                    onClick={toggleGender}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]"
+                    title="Cliquer pour changer"
+                  >
+                    {selectedStudentForDetail.student.gender === 'F' ? '♀ Fille' : '♂ Garcon'}
+                  </button>
                 </div>
                 <button
                   onClick={() => setShowStudentDetailModal(false)}

@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -7,7 +8,7 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { path: '/', label: 'Tableau de bord', icon: '📊' },
+  { path: '/', label: 'Accueil', icon: '📊' },
   { path: '/analytics', label: 'Analyses', icon: '📈' },
   { path: '/classes', label: 'Classes', icon: '📚' },
   { path: '/students', label: 'Élèves', icon: '👥' },
@@ -20,6 +21,19 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fermer le menu si on clique ailleurs
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
@@ -42,24 +56,20 @@ export function Layout({ children }: LayoutProps) {
               </Link>
 
               {/* Navigation */}
-              <nav className="hidden md:flex gap-1">
+              <nav className="hidden md:flex items-center gap-1 h-full">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.path;
                   return (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                      className={`px-3 h-full flex items-center gap-1.5 text-sm font-medium transition-all duration-200 border-b-2 ${
                         isActive
-                          ? 'text-white'
-                          : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]'
+                          ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
+                          : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
                       }`}
-                      style={isActive ? {
-                        background: 'var(--gradient-primary)',
-                        boxShadow: 'var(--shadow-sm)'
-                      } : undefined}
                     >
-                      <span className="text-base">{item.icon}</span>
+                      <span>{item.icon}</span>
                       {item.label}
                     </Link>
                   );
@@ -68,23 +78,37 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* User menu */}
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-[var(--color-surface-secondary)] rounded-xl">
-                <div className="w-8 h-8 rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center">
-                  <span className="text-[var(--color-primary)] text-sm font-semibold">
-                    {user?.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-sm text-[var(--color-text-secondary)] max-w-[150px] truncate">
-                  {user?.email}
-                </span>
-              </div>
+            <div className="relative" ref={userMenuRef}>
               <button
-                onClick={signOut}
-                className="px-4 py-2 text-sm font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] rounded-xl transition-colors"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+                style={{ background: 'var(--gradient-primary)' }}
               >
-                Déconnexion
+                {user?.email?.charAt(0).toUpperCase()}
               </button>
+
+              {/* Dropdown menu */}
+              {isUserMenuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-64 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] py-2"
+                  style={{ boxShadow: 'var(--shadow-lg)' }}
+                >
+                  <div className="px-4 py-3 border-b border-[var(--color-border)]">
+                    <p className="text-sm font-medium text-[var(--color-text)]">Connecté en tant que</p>
+                    <p className="text-sm text-[var(--color-text-secondary)] truncate">{user?.email}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      signOut();
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors flex items-center gap-2"
+                  >
+                    <span>🚪</span>
+                    Déconnexion
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

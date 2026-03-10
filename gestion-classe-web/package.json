@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.94.1",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
-    "recharts": "^3.7.0",
+    "recharts": "^3.8.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

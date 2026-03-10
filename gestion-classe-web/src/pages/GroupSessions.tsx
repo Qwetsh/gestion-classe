@@ -3,16 +3,16 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { getClassGradient, getClassInitials } from '../lib/constants';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface GroupSession {
   id: string;
   name: string;
   class_id: string;
   class_name: string;
-  status: 'draft' | 'active' | 'completed';
   created_at: string;
-  completed_at: string | null;
-  groups_count: number;
+  criteria_count: number;
   total_points: number;
 }
 
@@ -278,6 +278,141 @@ export function GroupSessions() {
       month: 'long',
       year: 'numeric',
     });
+  };
+
+  const handleExportPDF = () => {
+    if (!sessionDetail) return;
+
+    const doc = new jsPDF();
+    const { session, criteria, groups } = sessionDetail;
+    const maxPoints = criteria.reduce((sum, c) => sum + c.max_points, 0);
+
+    // Build list of all students with their data
+    const students: {
+      name: string;
+      groupName: string;
+      teammates: string;
+      grades: { label: string; points: number; max: number }[];
+      total: number;
+      malus: number;
+    }[] = [];
+
+    groups.forEach(group => {
+      group.members.forEach(member => {
+        const teammates = group.members
+          .filter(m => m.id !== member.id)
+          .map(m => m.pseudo)
+          .join(', ') || '-';
+
+        const grades = criteria.map(c => {
+          const grade = group.grades.find(g => g.criteria_id === c.id);
+          return {
+            label: c.label,
+            points: grade?.points_awarded ?? 0,
+            max: c.max_points,
+          };
+        });
+
+        students.push({
+          name: member.pseudo,
+          groupName: group.name,
+          teammates,
+          grades,
+          total: group.total_score,
+          malus: group.conduct_malus,
+        });
+      });
+    });
+
+    // Sort alphabetically
+    students.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Config: 3 fiches par page (A4)
+    const cardHeight = 85; // mm
+    const cardWidth = 180; // mm
+    const marginLeft = 15;
+    const marginTop = 15;
+    const cardsPerPage = 3;
+
+    students.forEach((student, index) => {
+      const cardIndex = index % cardsPerPage;
+      const yOffset = marginTop + cardIndex * (cardHeight + 5);
+
+      // New page if needed
+      if (index > 0 && cardIndex === 0) {
+        doc.addPage();
+      }
+
+      // Draw card border (dashed for cutting)
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineDashPattern([2, 2], 0);
+      doc.rect(marginLeft - 3, yOffset - 3, cardWidth + 6, cardHeight);
+      doc.setLineDashPattern([], 0);
+
+      // Header: TP name + class
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(34, 197, 94);
+      doc.text(session.name, marginLeft, yOffset + 5);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${session.class_name} - ${formatDate(session.created_at)}`, marginLeft, yOffset + 10);
+
+      // Student name (big)
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text(student.name, marginLeft, yOffset + 20);
+
+      // Group + teammates
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Groupe: ${student.groupName}`, marginLeft, yOffset + 27);
+      doc.text(`Avec: ${student.teammates}`, marginLeft, yOffset + 33);
+
+      // Grades table
+      const tableData = student.grades.map(g => [g.label, `${g.points} / ${g.max}`]);
+      if (student.malus > 0) {
+        tableData.push(['Malus conduite', `-${student.malus}`]);
+      }
+      tableData.push(['TOTAL', `${student.total} / ${maxPoints}`]);
+
+      autoTable(doc, {
+        body: tableData,
+        startY: yOffset + 37,
+        margin: { left: marginLeft },
+        tableWidth: cardWidth,
+        styles: {
+          fontSize: 8,
+          cellPadding: 1.5,
+        },
+        columnStyles: {
+          0: { cellWidth: cardWidth - 30 },
+          1: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
+        },
+        bodyStyles: {
+          lineColor: [220, 220, 220],
+          lineWidth: 0.1,
+        },
+        didParseCell: (data) => {
+          // Style the TOTAL row
+          if (data.row.index === tableData.length - 1) {
+            data.cell.styles.fillColor = [34, 197, 94];
+            data.cell.styles.textColor = [255, 255, 255];
+            data.cell.styles.fontStyle = 'bold';
+          }
+          // Style malus row in red
+          if (data.row.index === tableData.length - 2 && student.malus > 0) {
+            data.cell.styles.textColor = [220, 38, 38];
+          }
+        },
+      });
+    });
+
+    // Save
+    doc.save(`${session.name.replace(/[^a-zA-Z0-9]/g, '_')}_fiches.pdf`);
   };
 
   const getStatusBadge = (status: string) => {
@@ -696,6 +831,13 @@ export function GroupSessions() {
                     style={{ borderRadius: 'var(--radius-lg)' }}
                   >
                     Supprimer
+                  </button>
+                  <button
+                    onClick={handleExportPDF}
+                    className="px-4 py-2.5 bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-colors font-medium flex items-center gap-2"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                  >
+                    <span>📄</span> Exporter PDF
                   </button>
                   <button
                     onClick={handleCloseDetail}

@@ -30,6 +30,17 @@ interface EventData {
   session_id: string;
   class_id: string;
   class_name: string;
+  student_id: string;
+}
+
+interface StudentGender {
+  id: string;
+  gender: 'M' | 'F';
+}
+
+interface GenderStats {
+  garcons: { participations: number; bavardages: number; absences: number; count: number };
+  filles: { participations: number; bavardages: number; absences: number; count: number };
 }
 
 interface DailyData {
@@ -47,12 +58,26 @@ interface ClassStats {
   ratio: number;
 }
 
+interface OralGradeData {
+  student_id: string;
+  class_id: string;
+  grade: number; // 1-5
+}
+
+interface ClassOralStats {
+  class_id: string;
+  class_name: string;
+  average: number;
+  count: number;
+}
+
 const COLORS = {
   participation: '#22c55e',
   bavardage: '#ef4444',
   absence: '#f59e0b',
   sortie: '#3b82f6',
   remarque: '#8b5cf6',
+  oral: '#6366f1',
 };
 
 export function Analytics() {
@@ -60,8 +85,11 @@ export function Analytics() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
+  const [oralGrades, setOralGrades] = useState<OralGradeData[]>([]);
+  const [studentGenders, setStudentGenders] = useState<StudentGender[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [genderMetric, setGenderMetric] = useState<'participations' | 'bavardages' | 'absences'>('participations');
 
   // Load classes
   useEffect(() => {
@@ -112,6 +140,7 @@ export function Analytics() {
           type,
           timestamp,
           session_id,
+          student_id,
           sessions!inner (
             class_id,
             user_id,
@@ -139,6 +168,7 @@ export function Analytics() {
           type: e.type,
           timestamp: e.timestamp,
           session_id: e.session_id,
+          student_id: e.student_id,
           class_id: e.sessions.class_id,
           class_name: e.sessions.classes?.name || 'Inconnu',
         }));
@@ -150,6 +180,66 @@ export function Analytics() {
 
     loadEvents();
   }, [user, selectedClasses, dateRange]);
+
+  // Load oral evaluations - simple query on oral_evaluations table
+  useEffect(() => {
+    if (!user) {
+      setOralGrades([]);
+      return;
+    }
+
+    async function loadOralGrades() {
+      try {
+        const { data, error } = await supabase
+          .from('oral_evaluations')
+          .select('student_id, class_id, grade')
+          .eq('user_id', user!.id);
+
+        if (error) {
+          console.error('Error loading oral evaluations:', error);
+          setOralGrades([]);
+          return;
+        }
+
+        setOralGrades(data || []);
+      } catch (err) {
+        console.error('Error loading oral grades:', err);
+        setOralGrades([]);
+      }
+    }
+
+    loadOralGrades();
+  }, [user]);
+
+  // Load student genders
+  useEffect(() => {
+    if (!user) {
+      setStudentGenders([]);
+      return;
+    }
+
+    async function loadStudentGenders() {
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('id, gender')
+          .eq('user_id', user!.id);
+
+        if (error) {
+          console.error('Error loading student genders:', error);
+          setStudentGenders([]);
+          return;
+        }
+
+        setStudentGenders((data || []).map(s => ({ id: s.id, gender: s.gender || 'M' })));
+      } catch (err) {
+        console.error('Error loading student genders:', err);
+        setStudentGenders([]);
+      }
+    }
+
+    loadStudentGenders();
+  }, [user]);
 
   // Compute daily data for line chart
   const dailyData = useMemo(() => {
@@ -218,6 +308,77 @@ export function Analytics() {
     { name: 'Sorties', value: totals.sorties, color: COLORS.sortie },
     { name: 'Remarques', value: totals.remarques, color: COLORS.remarque },
   ].filter((d) => d.value > 0);
+
+  // Compute gender statistics
+  const genderStats = useMemo((): GenderStats | null => {
+    if (events.length === 0 || studentGenders.length === 0) return null;
+
+    const genderMap = new Map(studentGenders.map(s => [s.id, s.gender]));
+    const studentsM = new Set<string>();
+    const studentsF = new Set<string>();
+
+    const stats: GenderStats = {
+      garcons: { participations: 0, bavardages: 0, absences: 0, count: 0 },
+      filles: { participations: 0, bavardages: 0, absences: 0, count: 0 },
+    };
+
+    events.forEach(event => {
+      const gender = genderMap.get(event.student_id);
+      if (!gender) return;
+
+      const target = gender === 'F' ? stats.filles : stats.garcons;
+      const studentSet = gender === 'F' ? studentsF : studentsM;
+
+      studentSet.add(event.student_id);
+
+      if (event.type === 'participation') target.participations++;
+      else if (event.type === 'bavardage') target.bavardages++;
+      else if (event.type === 'absence') target.absences++;
+    });
+
+    stats.garcons.count = studentsM.size;
+    stats.filles.count = studentsF.size;
+
+    return stats;
+  }, [events, studentGenders]);
+
+  // Compute oral grades statistics - filtered by selected classes
+  const oralStats = useMemo(() => {
+    // Filter by selected classes
+    const filteredGrades = oralGrades.filter(g => selectedClasses.includes(g.class_id));
+
+    if (filteredGrades.length === 0) {
+      return { globalAverage: null, byClass: [] as ClassOralStats[] };
+    }
+
+    // Global average (already on 5)
+    const globalSum = filteredGrades.reduce((sum, g) => sum + g.grade, 0);
+    const globalAverage = globalSum / filteredGrades.length;
+
+    // By class
+    const byClassMap = new Map<string, { sum: number; count: number }>();
+
+    filteredGrades.forEach(g => {
+      if (!byClassMap.has(g.class_id)) {
+        byClassMap.set(g.class_id, { sum: 0, count: 0 });
+      }
+      const entry = byClassMap.get(g.class_id)!;
+      entry.sum += g.grade;
+      entry.count++;
+    });
+
+    // Get class names
+    const classNameMap = new Map(classes.map(c => [c.id, c.name]));
+
+    const byClass: ClassOralStats[] = Array.from(byClassMap.entries()).map(([class_id, data]) => ({
+      class_id,
+      class_name: classNameMap.get(class_id) || 'Inconnu',
+      average: data.sum / data.count,
+      count: data.count,
+    })).sort((a, b) => b.average - a.average);
+
+    return { globalAverage, byClass };
+  }, [oralGrades, selectedClasses, classes]);
 
   const toggleClass = (classId: string) => {
     setSelectedClasses((prev) =>
@@ -386,6 +547,136 @@ export function Analytics() {
               />
             </div>
 
+            {/* Oral grades section */}
+            {oralStats.globalAverage !== null && (
+              <div
+                className="bg-[var(--color-surface)] p-5"
+                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              >
+                <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+                  Notes d'oral
+                </h3>
+                <div className="flex gap-4">
+                  {/* Left: Global average */}
+                  <div className="flex items-center gap-3 p-3 bg-[var(--color-surface-secondary)] shrink-0" style={{ borderRadius: 'var(--radius-lg)' }}>
+                    <div
+                      className="w-14 h-14 flex items-center justify-center text-lg font-bold text-white"
+                      style={{
+                        background: oralStats.globalAverage >= 3.5 ? COLORS.participation : oralStats.globalAverage >= 2.5 ? COLORS.absence : COLORS.bavardage,
+                        borderRadius: 'var(--radius-lg)',
+                      }}
+                    >
+                      {oralStats.globalAverage.toFixed(1)}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--color-text)]">Moyenne /5</div>
+                      <div className="text-xs text-[var(--color-text-tertiary)]">
+                        {oralStats.byClass.reduce((sum, c) => sum + c.count, 0)} eleves
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: By class - vertical scrollable (max 3 visible) */}
+                  <div className="flex-1 overflow-y-auto" style={{ maxHeight: '120px' }}>
+                    <div className="space-y-2">
+                      {oralStats.byClass.map((cls, idx) => (
+                        <div
+                          key={cls.class_id}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-surface-secondary)]"
+                          style={{ borderRadius: 'var(--radius-md)' }}
+                        >
+                          <span
+                            className="w-5 h-5 flex items-center justify-center text-xs font-bold text-white shrink-0"
+                            style={{
+                              backgroundColor: idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#cd7f32' : COLORS.oral,
+                              borderRadius: 'var(--radius-sm)',
+                            }}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span className="text-sm font-medium text-[var(--color-text)] flex-1">{cls.class_name}</span>
+                          <span
+                            className="text-sm font-bold px-1.5 py-0.5"
+                            style={{
+                              color: cls.average >= 3.5 ? COLORS.participation : cls.average >= 2.5 ? COLORS.absence : COLORS.bavardage,
+                              backgroundColor: cls.average >= 3.5 ? `${COLORS.participation}20` : cls.average >= 2.5 ? `${COLORS.absence}20` : `${COLORS.bavardage}20`,
+                              borderRadius: 'var(--radius-sm)',
+                            }}
+                          >
+                            {cls.average.toFixed(1)}/5
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Gender comparison card */}
+            {genderStats && (genderStats.garcons.count > 0 || genderStats.filles.count > 0) && (
+              <div
+                className="bg-[var(--color-surface)] p-5"
+                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                    Comparaison Filles / Garcons
+                  </h3>
+                  <div className="flex gap-1">
+                    {(['participations', 'bavardages', 'absences'] as const).map((metric) => (
+                      <button
+                        key={metric}
+                        onClick={() => setGenderMetric(metric)}
+                        className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
+                          genderMetric === metric
+                            ? 'bg-[var(--color-primary)] text-white'
+                            : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+                        }`}
+                      >
+                        {metric === 'participations' ? 'Implic.' : metric === 'bavardages' ? 'Bavard.' : 'Absences'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart
+                    data={[
+                      {
+                        name: `Filles (${genderStats.filles.count})`,
+                        value: genderStats.filles.count > 0 ? +(genderStats.filles[genderMetric] / genderStats.filles.count).toFixed(1) : 0,
+                      },
+                      {
+                        name: `Garcons (${genderStats.garcons.count})`,
+                        value: genderStats.garcons.count > 0 ? +(genderStats.garcons[genderMetric] / genderStats.garcons.count).toFixed(1) : 0,
+                      },
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis
+                      dataKey="name"
+                      stroke="var(--color-text-tertiary)"
+                      fontSize={12}
+                    />
+                    <YAxis stroke="var(--color-text-tertiary)" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [`${value} / élève`, '']}
+                    />
+                    <Bar
+                      dataKey="value"
+                      name={genderMetric === 'participations' ? 'Participations' : genderMetric === 'bavardages' ? 'Bavardages' : 'Absences'}
+                      fill={genderMetric === 'participations' ? COLORS.participation : genderMetric === 'bavardages' ? COLORS.bavardage : COLORS.absence}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
             {/* Charts grid */}
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Evolution chart */}
@@ -505,17 +796,18 @@ export function Analytics() {
                   Aucune donnee
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={Math.max(200, classStats.length * 50)}>
-                  <BarChart data={classStats} layout="vertical">
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={classStats}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis type="number" stroke="var(--color-text-tertiary)" fontSize={12} />
-                    <YAxis
-                      type="category"
+                    <XAxis
                       dataKey="class_name"
                       stroke="var(--color-text-tertiary)"
                       fontSize={12}
-                      width={100}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
                     />
+                    <YAxis stroke="var(--color-text-tertiary)" fontSize={12} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'var(--color-surface)',

@@ -36,6 +36,11 @@ export function TpTemplates() {
   const [templateToDelete, setTemplateToDelete] = useState<TpTemplate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Expanded criteria view
+  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
+  const [expandedCriteria, setExpandedCriteria] = useState<{ label: string; max_points: number }[]>([]);
+  const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
+
   useEffect(() => {
     loadTemplates();
   }, [user]);
@@ -233,6 +238,34 @@ export function TpTemplates() {
     setShowDeleteConfirm(true);
   };
 
+  const handleToggleCriteria = async (template: TpTemplate) => {
+    if (expandedTemplateId === template.id) {
+      // Collapse
+      setExpandedTemplateId(null);
+      setExpandedCriteria([]);
+      return;
+    }
+
+    // Expand and load criteria
+    setExpandedTemplateId(template.id);
+    setIsLoadingCriteria(true);
+
+    try {
+      const { data: criteriaData } = await supabase
+        .from('tp_template_criteria')
+        .select('label, max_points, display_order')
+        .eq('template_id', template.id)
+        .order('display_order');
+
+      setExpandedCriteria(criteriaData || []);
+    } catch (err) {
+      console.error('Error loading criteria:', err);
+      setExpandedCriteria([]);
+    } finally {
+      setIsLoadingCriteria(false);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!templateToDelete) return;
 
@@ -279,7 +312,34 @@ export function TpTemplates() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div
+        className="min-h-[calc(100vh-200px)] -mx-4 sm:-mx-6 lg:-mx-8 -my-8 px-4 sm:px-6 lg:px-8 py-8 relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #ecfdf5 100%)' }}
+      >
+        {/* Cercles décoratifs */}
+        <div
+          className="absolute -top-24 -right-24 w-96 h-96 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(74, 222, 128, 0.3) 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute top-1/2 -left-32 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(34, 197, 94, 0.2) 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute -bottom-20 right-1/4 w-80 h-80 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(134, 239, 172, 0.25) 0%, transparent 70%)' }}
+        />
+
+        {/* Grille subtile */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(34, 197, 94, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 197, 94, 0.05) 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }}
+        />
+
+        <div className="space-y-6 relative z-10">
         {/* Error banner */}
         {error && (
           <div
@@ -303,8 +363,8 @@ export function TpTemplates() {
           </div>
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 text-white font-medium transition-all hover:opacity-90"
-            style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+            className="px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)', borderRadius: 'var(--radius-lg)' }}
           >
             + Nouveau TP
           </button>
@@ -313,106 +373,149 @@ export function TpTemplates() {
         {/* Templates list */}
         {templates.length === 0 ? (
           <div
-            className="bg-[var(--color-surface)] p-12 text-center"
+            className="bg-gradient-to-br from-green-50 to-white p-12 text-center border border-green-100"
             style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
           >
             <div
-              className="w-20 h-20 mx-auto mb-4 bg-[var(--color-primary-soft)] flex items-center justify-center"
-              style={{ borderRadius: 'var(--radius-full)' }}
+              className="w-20 h-20 mx-auto mb-4 flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)', borderRadius: 'var(--radius-full)' }}
             >
               <span className="text-4xl">📋</span>
             </div>
-            <h2 className="text-lg font-medium text-[var(--color-text)]">Aucun modele de TP</h2>
-            <p className="text-[var(--color-text-tertiary)] mt-2">
+            <h2 className="text-lg font-semibold text-gray-800">Aucun modele de TP</h2>
+            <p className="text-gray-500 mt-2">
               Creez des modeles de TP avec leurs criteres de notation
             </p>
             <button
               onClick={handleOpenCreate}
-              className="mt-4 px-4 py-2.5 text-white font-medium transition-all hover:opacity-90"
-              style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+              className="mt-5 px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)', borderRadius: 'var(--radius-lg)' }}
             >
               Creer mon premier TP
             </button>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {templates.map(template => (
               <div
                 key={template.id}
-                className="bg-[var(--color-surface)] p-5 hover:shadow-md transition-shadow"
-                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+                className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                style={{
+                  borderRadius: 'var(--radius-xl)',
+                  boxShadow: 'var(--shadow-sm)',
+                  background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 50%, #ffffff 100%)',
+                }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div
-                    className="w-12 h-12 bg-[var(--color-primary-soft)] flex items-center justify-center"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
-                  >
-                    <span className="text-2xl">📋</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleOpenEdit(template)}
-                      className="p-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-                      style={{ borderRadius: 'var(--radius-md)' }}
-                      title="Modifier"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(template)}
-                      className="p-2 hover:bg-[var(--color-error-soft)] transition-colors"
-                      style={{ borderRadius: 'var(--radius-md)' }}
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
+                {/* Header avec nom et actions */}
+                <div className="p-4 pb-3">
+                  <div className="flex items-start justify-between">
+                    <h3 className="font-bold text-white text-lg leading-tight flex-1 mr-2 drop-shadow-sm">
+                      {template.name}
+                    </h3>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleOpenEdit(template)}
+                        className="p-1.5 bg-white/20 hover:bg-white/40 transition-colors backdrop-blur-sm"
+                        style={{ borderRadius: 'var(--radius-md)' }}
+                        title="Modifier"
+                      >
+                        <span className="text-sm">✏️</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(template)}
+                        className="p-1.5 bg-white/20 hover:bg-red-500/80 transition-colors backdrop-blur-sm"
+                        style={{ borderRadius: 'var(--radius-md)' }}
+                        title="Supprimer"
+                      >
+                        <span className="text-sm">🗑️</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <h3 className="font-semibold text-[var(--color-text)] text-lg mb-1">{template.name}</h3>
-                <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
-                  Cree le {formatDate(template.created_at)}
-                </p>
+                {/* Corps avec stats */}
+                <div className="bg-white/95 backdrop-blur-sm p-4 pt-5">
+                  <div className="flex gap-4 mb-4">
+                    {/* Points */}
+                    <div className="flex-1 text-center p-3 bg-gradient-to-br from-green-50 to-green-100 border border-green-200" style={{ borderRadius: 'var(--radius-lg)' }}>
+                      <div className="text-2xl font-bold text-green-600">{template.total_points}</div>
+                      <div className="text-xs text-green-600/70 font-medium">points</div>
+                    </div>
+                    {/* Critères - cliquable */}
+                    <button
+                      onClick={() => handleToggleCriteria(template)}
+                      className={`flex-1 text-center p-3 border transition-all ${
+                        expandedTemplateId === template.id
+                          ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300'
+                          : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-green-300 hover:from-green-50/50'
+                      }`}
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                    >
+                      <div className={`text-2xl font-bold ${expandedTemplateId === template.id ? 'text-green-600' : 'text-gray-600'}`}>
+                        {template.criteria_count}
+                      </div>
+                      <div className={`text-xs font-medium flex items-center justify-center gap-1 ${expandedTemplateId === template.id ? 'text-green-600/70' : 'text-gray-500'}`}>
+                        critere{template.criteria_count > 1 ? 's' : ''}
+                        <span className={`transition-transform ${expandedTemplateId === template.id ? 'rotate-180' : ''}`}>▼</span>
+                      </div>
+                    </button>
+                  </div>
 
-                <div className="flex gap-3">
-                  <span
-                    className="px-3 py-1.5 text-sm font-medium bg-[var(--color-surface-secondary)]"
-                    style={{ borderRadius: 'var(--radius-full)' }}
-                  >
-                    {template.criteria_count} critere{template.criteria_count > 1 ? 's' : ''}
-                  </span>
-                  <span
-                    className="px-3 py-1.5 text-sm font-medium bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-                    style={{ borderRadius: 'var(--radius-full)' }}
-                  >
-                    {template.total_points} pts
-                  </span>
+                  {/* Liste des critères dépliée */}
+                  {expandedTemplateId === template.id && (
+                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200" style={{ borderRadius: 'var(--radius-lg)' }}>
+                      {isLoadingCriteria ? (
+                        <div className="text-center text-sm text-gray-500 py-2">Chargement...</div>
+                      ) : expandedCriteria.length === 0 ? (
+                        <div className="text-center text-sm text-gray-500 py-2">Aucun critere</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {expandedCriteria.map((crit, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm">
+                              <span className="text-gray-700">{crit.label}</span>
+                              <span className="font-semibold text-green-600 bg-green-100 px-2 py-0.5" style={{ borderRadius: 'var(--radius-md)' }}>
+                                {crit.max_points} pts
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Date */}
+                  <div className="text-xs text-[var(--color-text-tertiary)] text-center">
+                    Cree le {formatDate(template.created_at)}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+        </div>
 
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div
-            className="bg-[var(--color-surface)] w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
+            className="bg-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
             style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
           >
-            {/* Header */}
-            <div className="p-5 border-b border-[var(--color-border)] shrink-0">
+            {/* Header avec dégradé vert */}
+            <div
+              className="p-5 shrink-0"
+              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)' }}
+            >
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-[var(--color-text)]">
+                <h3 className="text-xl font-bold text-white drop-shadow-sm">
                   {editingTemplate ? 'Modifier le TP' : 'Nouveau TP'}
                 </h3>
                 <button
                   onClick={handleCloseModal}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] transition-colors"
+                  className="w-10 h-10 flex items-center justify-center hover:bg-white/20 transition-colors text-white"
                   style={{ borderRadius: 'var(--radius-lg)' }}
                 >
-                  x
+                  ✕
                 </button>
               </div>
             </div>
@@ -421,7 +524,7 @@ export function TpTemplates() {
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {/* Template name */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
                   Nom du TP
                 </label>
                 <input
@@ -429,7 +532,7 @@ export function TpTemplates() {
                   value={templateName}
                   onChange={e => setTemplateName(e.target.value)}
                   placeholder="Ex: TP Circuits electriques"
-                  className="w-full px-4 py-2.5 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400"
                   style={{ borderRadius: 'var(--radius-lg)' }}
                 />
               </div>
@@ -437,23 +540,23 @@ export function TpTemplates() {
               {/* Criteria */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+                  <label className="text-sm font-medium text-gray-600">
                     Criteres de notation
                   </label>
-                  <span className="text-sm text-[var(--color-text-tertiary)]">
+                  <span className="text-sm font-semibold text-green-600 bg-green-100 px-2 py-1" style={{ borderRadius: 'var(--radius-md)' }}>
                     Total: {criteria.reduce((sum, c) => sum + (c.max_points || 0), 0)} pts
                   </span>
                 </div>
 
                 <div className="space-y-3">
                   {criteria.map((crit, index) => (
-                    <div key={index} className="flex gap-2 items-center">
+                    <div key={index} className="flex gap-2 items-center p-3 bg-gradient-to-r from-green-50 to-gray-50 border border-green-100" style={{ borderRadius: 'var(--radius-lg)' }}>
                       <input
                         type="text"
                         value={crit.label}
                         onChange={e => handleCriteriaChange(index, 'label', e.target.value)}
                         placeholder="Nom du critere"
-                        className="flex-1 px-3 py-2 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm"
+                        className="flex-1 px-3 py-2 bg-white border border-gray-200 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
                         style={{ borderRadius: 'var(--radius-md)' }}
                       />
                       <input
@@ -462,14 +565,14 @@ export function TpTemplates() {
                         onChange={e => handleCriteriaChange(index, 'max_points', parseFloat(e.target.value) || 0)}
                         min="0"
                         step="0.5"
-                        className="w-20 px-3 py-2 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm text-center"
+                        className="w-20 px-3 py-2 bg-white border border-gray-200 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm text-center font-semibold"
                         style={{ borderRadius: 'var(--radius-md)' }}
                       />
-                      <span className="text-sm text-[var(--color-text-tertiary)] w-8">pts</span>
+                      <span className="text-sm text-green-600 font-medium w-8">pts</span>
                       <button
                         onClick={() => handleRemoveCriteria(index)}
                         disabled={criteria.length <= 1}
-                        className="p-2 hover:bg-[var(--color-error-soft)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-2 hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         style={{ borderRadius: 'var(--radius-md)' }}
                       >
                         🗑️
@@ -480,7 +583,7 @@ export function TpTemplates() {
 
                 <button
                   onClick={handleAddCriteria}
-                  className="mt-3 w-full py-2 border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
+                  className="mt-3 w-full py-3 border-2 border-dashed border-green-300 text-green-600 hover:border-green-500 hover:bg-green-50 transition-colors text-sm font-medium"
                   style={{ borderRadius: 'var(--radius-lg)' }}
                 >
                   + Ajouter un critere
@@ -489,11 +592,11 @@ export function TpTemplates() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-[var(--color-border)] shrink-0 flex gap-3">
+            <div className="p-4 border-t border-gray-100 shrink-0 flex gap-3 bg-gray-50">
               <button
                 onClick={handleCloseModal}
                 disabled={isSaving}
-                className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
                 style={{ borderRadius: 'var(--radius-lg)' }}
               >
                 Annuler
@@ -502,7 +605,7 @@ export function TpTemplates() {
                 onClick={handleSave}
                 disabled={isSaving || !templateName.trim()}
                 className="flex-1 px-4 py-2.5 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                style={{ background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)', borderRadius: 'var(--radius-lg)' }}
               >
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
@@ -557,6 +660,7 @@ export function TpTemplates() {
           </div>
         </div>
       )}
+      </div>
     </Layout>
   );
 }
