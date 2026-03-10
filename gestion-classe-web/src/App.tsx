@@ -9,6 +9,7 @@ import { Rooms } from './pages/Rooms';
 import { Sessions } from './pages/Sessions';
 import { SessionDetail } from './pages/SessionDetail';
 import { GroupSessions } from './pages/GroupSessions';
+import { TpTemplates } from './pages/TpTemplates';
 import { Students } from './pages/Students';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -67,6 +68,14 @@ function App() {
           element={
             <ProtectedRoute>
               <GroupSessions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tp-templates"
+          element={
+            <ProtectedRoute>
+              <TpTemplates />
             </ProtectedRoute>
           }
         />

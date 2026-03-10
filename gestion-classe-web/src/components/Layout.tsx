@@ -14,6 +14,7 @@ const navItems = [
   { path: '/rooms', label: 'Salles', icon: '🏫' },
   { path: '/sessions', label: 'Séances', icon: '📅' },
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
+  { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
 ];
 
 export function Layout({ children }: LayoutProps) {

@@ -56,6 +56,10 @@ export function GroupSessions() {
   const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     loadSessions();
   }, [user, selectedClassId]);
@@ -241,6 +245,31 @@ export function GroupSessions() {
   const handleCloseDetail = () => {
     setShowDetailModal(false);
     setSessionDetail(null);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleDeleteSession = async () => {
+    if (!sessionDetail) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete cascade: group_sessions -> grading_criteria, session_groups -> session_group_members, group_grades
+      const { error } = await supabase
+        .from('group_sessions')
+        .delete()
+        .eq('id', sessionDetail.session.id);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setSessions(prev => prev.filter(s => s.id !== sessionDetail.session.id));
+      handleCloseDetail();
+    } catch (err) {
+      console.error('Error deleting session:', err);
+      alert('Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -449,6 +478,51 @@ export function GroupSessions() {
         )}
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && sessionDetail && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div
+            className="bg-[var(--color-surface)] w-full max-w-md p-6"
+            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+          >
+            <div className="text-center mb-6">
+              <div
+                className="w-16 h-16 mx-auto mb-4 bg-[var(--color-error-soft)] flex items-center justify-center"
+                style={{ borderRadius: 'var(--radius-full)' }}
+              >
+                <span className="text-3xl">🗑️</span>
+              </div>
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                Supprimer cette seance ?
+              </h3>
+              <p className="text-[var(--color-text-secondary)] mt-2">
+                La seance <strong>{sessionDetail.session.name}</strong> et toutes ses donnees
+                (groupes, notes, criteres) seront definitivement supprimees.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium disabled:opacity-50"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteSession}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-[var(--color-error)] text-white hover:opacity-90 transition-colors font-medium disabled:opacity-50"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                {isDeleting ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Detail Modal */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -615,10 +689,17 @@ export function GroupSessions() {
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-[var(--color-border)] shrink-0">
+                <div className="p-4 border-t border-[var(--color-border)] shrink-0 flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-4 py-2.5 bg-[var(--color-error-soft)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white transition-colors font-medium"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                  >
+                    Supprimer
+                  </button>
                   <button
                     onClick={handleCloseDetail}
-                    className="w-full px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium"
                     style={{ borderRadius: 'var(--radius-lg)' }}
                   >
                     Fermer
