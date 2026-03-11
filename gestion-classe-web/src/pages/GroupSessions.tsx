@@ -62,6 +62,9 @@ export function GroupSessions() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Mobile accordion for criteria
+  const [criteriaExpanded, setCriteriaExpanded] = useState(false);
+
   useEffect(() => {
     loadSessions();
   }, [user, selectedClassId]);
@@ -241,6 +244,7 @@ export function GroupSessions() {
 
   const handleOpenDetail = async (session: GroupSession) => {
     setShowDetailModal(true);
+    setCriteriaExpanded(false);
     await loadSessionDetail(session);
   };
 
@@ -706,24 +710,42 @@ export function GroupSessions() {
                   </div>
                 </div>
 
-                {/* Criteria summary */}
-                <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]/50">
-                  <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">
+                {/* Criteria summary - Accordion on mobile, always visible on desktop */}
+                <div className="px-6 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]/50">
+                  {/* Mobile: clickable header */}
+                  <button
+                    onClick={() => setCriteriaExpanded(!criteriaExpanded)}
+                    className="md:hidden w-full flex items-center justify-between text-left"
+                  >
+                    <h4 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                      Criteres ({sessionDetail.criteria.length}) - {sessionDetail.criteria.reduce((sum, c) => sum + c.max_points, 0)} pts
+                    </h4>
+                    <span className={`text-[var(--color-text-tertiary)] transition-transform ${criteriaExpanded ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </button>
+
+                  {/* Desktop: always visible header */}
+                  <h4 className="hidden md:block text-sm font-medium text-[var(--color-text-secondary)] mb-3">
                     Criteres de notation ({sessionDetail.criteria.length})
                   </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {sessionDetail.criteria.map(c => (
-                      <span
-                        key={c.id}
-                        className="px-3 py-1.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)]"
-                        style={{ borderRadius: 'var(--radius-lg)' }}
-                      >
-                        {c.label} <span className="text-[var(--color-text-tertiary)]">({c.max_points} pts)</span>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-2 text-sm text-[var(--color-text-tertiary)]">
-                    Total: {sessionDetail.criteria.reduce((sum, c) => sum + c.max_points, 0)} points
+
+                  {/* Content - hidden on mobile unless expanded, always visible on desktop */}
+                  <div className={`${criteriaExpanded ? 'mt-3' : 'hidden'} md:block`}>
+                    <div className="flex flex-wrap gap-2">
+                      {sessionDetail.criteria.map(c => (
+                        <span
+                          key={c.id}
+                          className="px-3 py-1.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)]"
+                          style={{ borderRadius: 'var(--radius-lg)' }}
+                        >
+                          {c.label} <span className="text-[var(--color-text-tertiary)]">({c.max_points} pts)</span>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-sm text-[var(--color-text-tertiary)]">
+                      Total: {sessionDetail.criteria.reduce((sum, c) => sum + c.max_points, 0)} points
+                    </div>
                   </div>
                 </div>
 

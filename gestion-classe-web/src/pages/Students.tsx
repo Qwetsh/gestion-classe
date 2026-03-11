@@ -543,9 +543,20 @@ export function Students() {
     const sorted = [...filtered].sort((a, b) => {
       let comparison = 0;
 
+      // Helper to extract last name initials from pseudo (e.g., "Marie DU." -> "DU.")
+      const getLastName = (pseudo: string) => {
+        const parts = pseudo.split(' ');
+        return parts.length > 1 ? parts[parts.length - 1] : pseudo;
+      };
+
       switch (sortField) {
         case 'pseudo':
-          comparison = a.student.pseudo.localeCompare(b.student.pseudo);
+          // Sort by last name (the 2-letter initials at the end)
+          comparison = getLastName(a.student.pseudo).localeCompare(getLastName(b.student.pseudo));
+          // If same last name initials, sort by first name
+          if (comparison === 0) {
+            comparison = a.student.pseudo.localeCompare(b.student.pseudo);
+          }
           break;
         case 'grade':
           comparison = a.grade - b.grade;
@@ -984,34 +995,38 @@ export function Students() {
       )}
 
       <div className="flex flex-col h-[calc(100vh-120px)]">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">Notes d'implication</h1>
-            <p className="text-[var(--color-text-secondary)] mt-1">
-              Trimestre {trimesterSettings.current_trimester} - {trimesterSettings.school_year}
+        {/* Header - compact on mobile */}
+        <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text)] truncate">
+              <span className="md:hidden">Notes</span>
+              <span className="hidden md:inline">Notes d'implication</span>
+            </h1>
+            <p className="text-xs md:text-base text-[var(--color-text-secondary)]">
+              T{trimesterSettings.current_trimester} - {trimesterSettings.school_year}
             </p>
           </div>
           <button
             onClick={() => setShowNextTrimesterModal(true)}
-            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors whitespace-nowrap"
+            className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-base bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors whitespace-nowrap shrink-0"
           >
-            Passer au trimestre suivant
+            <span className="md:hidden">Trimestre →</span>
+            <span className="hidden md:inline">Passer au trimestre suivant</span>
           </button>
         </div>
 
         {/* Main content - Two columns */}
         <div className="flex flex-1 gap-4 min-h-0">
-          {/* Sidebar - Classes */}
-          <div className={`${sidebarCollapsed ? 'w-12' : 'w-64'} flex-shrink-0 bg-[var(--color-surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200`}>
+          {/* Sidebar - Classes (always collapsed on mobile, respects state on desktop) */}
+          <div className={`w-12 flex-shrink-0 bg-[var(--color-surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200 ${sidebarCollapsed ? 'md:w-12' : 'md:w-64'}`}>
             {/* Sidebar header */}
-            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+            <div className="p-2 md:p-3 border-b border-[var(--color-border)] flex items-center justify-between">
               {!sidebarCollapsed && (
-                <h2 className="font-semibold text-[var(--color-text)]">Classes</h2>
+                <h2 className="hidden md:block font-semibold text-[var(--color-text)]">Classes</h2>
               )}
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="p-1 hover:bg-[var(--color-background)] rounded text-[var(--color-text-secondary)]"
+                className="hidden md:block p-1 hover:bg-[var(--color-background)] rounded text-[var(--color-text-secondary)]"
                 title={sidebarCollapsed ? 'Agrandir' : 'Reduire'}
               >
                 {sidebarCollapsed ? '»' : '«'}
@@ -1019,7 +1034,7 @@ export function Students() {
             </div>
 
             {/* Classes list */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto p-1 md:p-2 space-y-1">
               {classStats.map((cls) => (
                 <button
                   key={cls.id}
@@ -1028,38 +1043,45 @@ export function Students() {
                     selectedClassId === cls.id
                       ? 'bg-[var(--color-primary)] text-white'
                       : 'hover:bg-[var(--color-background)] text-[var(--color-text)]'
-                  } ${sidebarCollapsed ? 'p-2' : 'p-3'}`}
+                  } p-2 ${sidebarCollapsed ? 'md:p-2' : 'md:p-3'}`}
                 >
-                  {sidebarCollapsed ? (
-                    <div className="text-center font-medium text-sm" title={cls.name}>
-                      {cls.name.substring(0, 2)}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">{cls.name}</span>
-                        <span className={`text-xs ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-tertiary)]'}`}>
-                          {cls.studentCount}
-                        </span>
+                  {/* Mobile: always show compact */}
+                  <div className="md:hidden text-center font-medium text-xs" title={cls.name}>
+                    {cls.name.substring(0, 2)}
+                  </div>
+                  {/* Desktop: respect collapsed state */}
+                  <div className="hidden md:block">
+                    {sidebarCollapsed ? (
+                      <div className="text-center font-medium text-sm" title={cls.name}>
+                        {cls.name.substring(0, 2)}
                       </div>
-                      <div className={`text-sm mt-1 ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-secondary)]'}`}>
-                        Moy: {cls.averageGrade.toFixed(1)}/20
-                      </div>
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium truncate">{cls.name}</span>
+                          <span className={`text-xs ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-tertiary)]'}`}>
+                            {cls.studentCount}
+                          </span>
+                        </div>
+                        <div className={`text-sm mt-1 ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-secondary)]'}`}>
+                          Moy: {cls.averageGrade.toFixed(1)}/20
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </button>
               ))}
 
               {classes.length === 0 && !sidebarCollapsed && (
-                <div className="text-center py-8 text-[var(--color-text-tertiary)] text-sm">
+                <div className="hidden md:block text-center py-8 text-[var(--color-text-tertiary)] text-sm">
                   Aucune classe
                 </div>
               )}
             </div>
 
-            {/* Sidebar footer - Stats */}
+            {/* Sidebar footer - Stats (hidden on mobile) */}
             {!sidebarCollapsed && (
-              <div className="p-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-tertiary)]">
+              <div className="hidden md:block p-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-tertiary)]">
                 <div>{studentGrades.length} eleves au total</div>
               </div>
             )}
@@ -1069,66 +1091,71 @@ export function Students() {
           <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface)] rounded-xl overflow-hidden">
             {selectedClassId ? (
               <>
-                {/* Class header */}
-                <div className="p-4 border-b border-[var(--color-border)]">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-xl font-semibold text-[var(--color-text)]">
+                {/* Class header - compact on mobile */}
+                <div className="p-2 md:p-4 border-b border-[var(--color-border)]">
+                  <div className="flex items-center justify-between mb-2 md:mb-3">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <h2 className="text-base md:text-xl font-semibold text-[var(--color-text)]">
                         {selectedClassStats?.name}
                       </h2>
                       <button
                         onClick={() => openConfigModal(selectedClassId)}
-                        className="p-1.5 hover:bg-[var(--color-background)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
+                        className="p-1 md:p-1.5 hover:bg-[var(--color-background)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
                         title="Configurer"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </button>
                     </div>
-                    <div className={`text-2xl font-bold ${getGradeColor(selectedClassStats?.averageGrade || 0)}`}>
+                    <div className={`text-lg md:text-2xl font-bold ${getGradeColor(selectedClassStats?.averageGrade || 0)}`}>
                       {selectedClassStats?.averageGrade.toFixed(1)}/20
                     </div>
                   </div>
 
-                  {/* Search and sort */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
+                  {/* Search and sort - more compact on mobile */}
+                  <div className="flex gap-2 md:gap-3 items-center">
+                    <div className="relative flex-1 min-w-0">
                       <input
                         type="text"
-                        placeholder="Rechercher un eleve..."
+                        placeholder="Rechercher..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+                        className="w-full pl-8 md:pl-10 pr-2 md:pr-4 py-1.5 md:py-2 text-sm md:text-base border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
                       />
-                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[var(--color-text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-0.5 md:gap-1 shrink-0">
                       {(['pseudo', 'grade', 'participations', 'bonus'] as SortField[]).map((field) => (
                         <button
                           key={field}
                           onClick={() => handleSort(field)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          className={`px-1.5 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                             sortField === field
                               ? 'bg-[var(--color-primary)] text-white'
                               : 'bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
                           }`}
                         >
-                          {field === 'pseudo' ? 'Nom' : field === 'grade' ? 'Note' : field === 'participations' ? 'Part.' : 'Bonus'}
+                          <span className="md:hidden">
+                            {field === 'pseudo' ? 'N' : field === 'grade' ? '★' : field === 'participations' ? 'P' : 'B'}
+                          </span>
+                          <span className="hidden md:inline">
+                            {field === 'pseudo' ? 'Nom' : field === 'grade' ? 'Note' : field === 'participations' ? 'Part.' : 'Bonus'}
+                          </span>
                           {sortField === field && (
-                            <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                            <span className="ml-0.5 md:ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                           )}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Class config summary */}
+                  {/* Class config summary - hidden on mobile */}
                   {classConfigs.get(selectedClassId) && (
-                    <div className="mt-3 text-sm text-[var(--color-text-tertiary)]">
+                    <div className="hidden md:block mt-3 text-sm text-[var(--color-text-tertiary)]">
                       {classConfigs.get(selectedClassId)?.base_grade !== null ? (
                         <>
                           Note de base: {classConfigs.get(selectedClassId)?.base_grade}/20
@@ -1144,21 +1171,70 @@ export function Students() {
                   )}
                 </div>
 
-                {/* Students grid */}
-                <div className="flex-1 overflow-y-auto p-4">
+                {/* Students grid/list */}
+                <div className="flex-1 overflow-y-auto p-2 md:p-4">
                   {filteredAndSortedGrades.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="text-4xl mb-4">👥</div>
-                      <h3 className="text-lg font-medium text-[var(--color-text)]">
+                    <div className="text-center py-8 md:py-12">
+                      <div className="text-3xl md:text-4xl mb-3 md:mb-4">👥</div>
+                      <h3 className="text-base md:text-lg font-medium text-[var(--color-text)]">
                         {searchQuery ? 'Aucun resultat' : 'Aucun eleve'}
                       </h3>
-                      <p className="text-[var(--color-text-tertiary)] mt-2">
+                      <p className="text-[var(--color-text-tertiary)] mt-1 md:mt-2 text-sm">
                         {searchQuery ? 'Essayez une autre recherche' : 'Ajoutez des eleves dans la section Classes'}
                       </p>
                     </div>
                   ) : (
                     <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {/* Mobile: compact list view */}
+                    <div className="md:hidden space-y-1">
+                      {paginatedGrades.map((sg) => (
+                        <button
+                          key={sg.student.id}
+                          onClick={() => openStudentDetail(sg)}
+                          className={`w-full flex items-center gap-2 p-2 rounded-lg border ${getGradeBorderColor(sg.grade)} ${getGradeBgColor(sg.grade)}/20 active:${getGradeBgColor(sg.grade)}/40 transition-all text-left`}
+                        >
+                          {/* Grade badge */}
+                          <div className={`w-10 h-10 shrink-0 rounded-lg ${getGradeBgColor(sg.grade)} flex items-center justify-center`}>
+                            <span className={`text-sm font-bold ${getGradeColor(sg.grade)}`}>
+                              {sg.grade.toFixed(1)}
+                            </span>
+                          </div>
+
+                          {/* Name + stats */}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-[var(--color-text)] text-sm truncate">
+                              {sg.student.pseudo}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-green-600 font-medium">
+                                +{sg.bavardagePenalty ? sg.effectiveParticipations : sg.totalParticipations}
+                              </span>
+                              {sg.bavardages > 0 && (
+                                <span className="text-orange-600">-{sg.bavardages}</span>
+                              )}
+                              {sg.absences > 0 && (
+                                <span className="text-red-600">{sg.absences}abs</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Bonus if any */}
+                          {sg.bonus > 0 && (
+                            <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium shrink-0">
+                              +{sg.bonus.toFixed(0)}
+                            </span>
+                          )}
+
+                          {/* Arrow */}
+                          <svg className="w-4 h-4 text-[var(--color-text-tertiary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Desktop: card grid view */}
+                    <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {paginatedGrades.map((sg) => (
                         <button
                           key={sg.student.id}
@@ -1236,10 +1312,18 @@ export function Students() {
                   )}
                 </div>
 
-                {/* Footer stats */}
+                {/* Footer stats - compact on mobile */}
                 {filteredAndSortedGrades.length > 0 && (
-                  <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-background)]">
-                    <div className="flex flex-wrap gap-6 justify-center text-sm">
+                  <div className="p-1.5 md:p-4 border-t border-[var(--color-border)] bg-[var(--color-background)]">
+                    {/* Mobile: inline compact */}
+                    <div className="md:hidden flex items-center justify-center gap-3 text-xs">
+                      <span className="text-[var(--color-primary)] font-medium">{filteredAndSortedGrades.length} el.</span>
+                      <span className="text-green-600 font-medium">+{filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)}</span>
+                      <span className="text-red-600 font-medium">{filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)} abs</span>
+                      <span className="text-yellow-600 font-medium">+{filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(0)} bonus</span>
+                    </div>
+                    {/* Desktop: full display */}
+                    <div className="hidden md:flex flex-wrap gap-6 justify-center text-sm">
                       <div className="text-center">
                         <div className="text-lg font-bold text-[var(--color-primary)]">
                           {filteredAndSortedGrades.length}
