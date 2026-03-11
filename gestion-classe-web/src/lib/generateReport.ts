@@ -534,14 +534,6 @@ export function generateYearEndReport(data: YearEndReportData): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;
 
-  const addTitle = (text: string, size: number = 16) => {
-    doc.setFontSize(size);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(34, 34, 34);
-    doc.text(text, 14, yPos);
-    yPos += size * 0.5 + 4;
-  };
-
   const addSubtitle = (text: string) => {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
