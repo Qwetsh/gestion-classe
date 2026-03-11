@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { generateAnalysisReport, prepareReportData } from '../lib/generateReport';
 import {
   LineChart,
   Line,
@@ -36,6 +37,12 @@ interface EventData {
 interface StudentGender {
   id: string;
   gender: 'M' | 'F';
+}
+
+interface StudentData {
+  id: string;
+  pseudo: string;
+  class_id: string;
 }
 
 interface GenderStats {
@@ -87,8 +94,10 @@ export function Analytics() {
   const [events, setEvents] = useState<EventData[]>([]);
   const [oralGrades, setOralGrades] = useState<OralGradeData[]>([]);
   const [studentGenders, setStudentGenders] = useState<StudentGender[]>([]);
+  const [students, setStudents] = useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [genderMetric, setGenderMetric] = useState<'participations' | 'bavardages' | 'absences'>('participations');
 
   // Load classes
@@ -211,34 +220,38 @@ export function Analytics() {
     loadOralGrades();
   }, [user]);
 
-  // Load student genders
+  // Load student genders and student data
   useEffect(() => {
     if (!user) {
       setStudentGenders([]);
+      setStudents([]);
       return;
     }
 
-    async function loadStudentGenders() {
+    async function loadStudentData() {
       try {
         const { data, error } = await supabase
           .from('students')
-          .select('id, gender')
+          .select('id, pseudo, class_id, gender')
           .eq('user_id', user!.id);
 
         if (error) {
-          console.error('Error loading student genders:', error);
+          console.error('Error loading students:', error);
           setStudentGenders([]);
+          setStudents([]);
           return;
         }
 
         setStudentGenders((data || []).map(s => ({ id: s.id, gender: s.gender || 'M' })));
+        setStudents((data || []).map(s => ({ id: s.id, pseudo: s.pseudo, class_id: s.class_id })));
       } catch (err) {
-        console.error('Error loading student genders:', err);
+        console.error('Error loading students:', err);
         setStudentGenders([]);
+        setStudents([]);
       }
     }
 
-    loadStudentGenders();
+    loadStudentData();
   }, [user]);
 
   // Compute daily data for line chart
@@ -399,6 +412,51 @@ export function Analytics() {
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
   };
 
+  // Generate PDF report
+  const handleGenerateReport = () => {
+    if (selectedClasses.length === 0) return;
+
+    setIsGeneratingReport(true);
+    try {
+      // Filter classes and students by selection
+      const selectedClassObjects = classes.filter(c => selectedClasses.includes(c.id));
+      const selectedStudents = students.filter(s => selectedClasses.includes(s.class_id));
+      const selectedEvents = events.map(e => ({
+        type: e.type,
+        class_id: e.class_id,
+        student_id: e.student_id,
+      }));
+
+      // Get current school year
+      const now = new Date();
+      const schoolYear = now.getMonth() >= 8
+        ? `${now.getFullYear()}/${now.getFullYear() + 1}`
+        : `${now.getFullYear() - 1}/${now.getFullYear()}`;
+
+      // Estimate trimester from current month
+      const month = now.getMonth();
+      let trimester = 1;
+      if (month >= 0 && month <= 2) trimester = 2;
+      else if (month >= 3 && month <= 5) trimester = 3;
+
+      const reportData = prepareReportData(
+        selectedClassObjects,
+        selectedEvents,
+        selectedStudents,
+        genderStats,
+        trimester,
+        schoolYear,
+      );
+
+      generateAnalysisReport(reportData);
+    } catch (err) {
+      console.error('Error generating report:', err);
+      alert('Erreur lors de la generation du rapport');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   if (isLoading && classes.length === 0) {
     return (
       <Layout>
@@ -416,11 +474,23 @@ export function Analytics() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">Analyses</h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">
-            Statistiques detaillees de vos classes
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--color-text)]">Analyses</h1>
+            <p className="text-[var(--color-text-secondary)] mt-1">
+              Statistiques detaillees de vos classes
+            </p>
+          </div>
+          {selectedClasses.length > 0 && (
+            <button
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-50"
+            >
+              <span>📄</span>
+              {isGeneratingReport ? 'Generation...' : 'Generer rapport PDF'}
+            </button>
+          )}
         </div>
 
         {/* Filters */}
