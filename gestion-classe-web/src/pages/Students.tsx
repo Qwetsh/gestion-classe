@@ -1097,7 +1097,6 @@ export function Students() {
 
     try {
       // Load detailed events with session info (on demand, not at initial load)
-      const currentTrimesterBoundary = trimesterSettings;
       const { data: detailedEvents } = await supabase
         .from('events')
         .select(`
