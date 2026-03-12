@@ -205,6 +205,11 @@ export function Students() {
   const [manualReason, setManualReason] = useState('');
   const [manualCount, setManualCount] = useState(1);
 
+  // Student codes modal
+  const [showCodesModal, setShowCodesModal] = useState(false);
+  const [studentCodes, setStudentCodes] = useState<{ pseudo: string; code: string }[]>([]);
+  const [isLoadingCodes, setIsLoadingCodes] = useState(false);
+
   // Group session grades
   const [groupSessionGrades, setGroupSessionGrades] = useState<GroupSessionGrade[]>([]);
   const [isLoadingGroupGrades, setIsLoadingGroupGrades] = useState(false);
@@ -349,20 +354,7 @@ export function Students() {
     ] = await Promise.all([
       supabase
         .from('events')
-        .select(`
-          id,
-          student_id,
-          session_id,
-          type,
-          subtype,
-          note,
-          photo_path,
-          timestamp,
-          sessions (
-            started_at,
-            classes (name)
-          )
-        `)
+        .select('id, student_id, session_id, type, subtype, note, timestamp')
         .in('student_id', studentIds)
         .gte('timestamp', trimesterStartDate)
         .order('timestamp', { ascending: false }),
@@ -386,26 +378,36 @@ export function Students() {
         .eq('school_year', currentSchoolYear),
     ]);
 
+    // Pre-index events by student_id (O(n) instead of O(n²))
+    const eventsByStudent = new Map<string, typeof eventsData>();
+    (eventsData || []).forEach(e => {
+      const list = eventsByStudent.get(e.student_id);
+      if (list) {
+        list.push(e);
+      } else {
+        eventsByStudent.set(e.student_id, [e]);
+      }
+    });
+
     // Build grades for each student
     const grades: StudentGrade[] = studentsData.map(student => {
-      const studentEvents = (eventsData || [])
-        .filter(e => e.student_id === student.id)
-        .map(e => ({
-          id: e.id,
-          student_id: e.student_id,
-          session_id: e.session_id,
-          type: e.type,
-          subtype: e.subtype,
-          note: e.note,
-          photo_path: e.photo_path,
-          timestamp: e.timestamp,
-          session_date: (e.sessions as any)?.started_at || e.timestamp,
-          class_name: (e.sessions as any)?.classes?.name || 'Classe inconnue',
-        }));
+      const rawEvents = eventsByStudent.get(student.id) || [];
+      const studentEvents: Event[] = rawEvents.map(e => ({
+        id: e.id,
+        student_id: e.student_id,
+        session_id: e.session_id,
+        type: e.type,
+        subtype: e.subtype,
+        note: e.note,
+        photo_path: null,
+        timestamp: e.timestamp,
+        session_date: e.timestamp,
+        class_name: '',
+      }));
 
-      const participations = studentEvents.filter(e => e.type === 'participation').length;
-      const bavardages = studentEvents.filter(e => e.type === 'bavardage').length;
-      const absences = studentEvents.filter(e => e.type === 'absence').length;
+      const participations = rawEvents.filter(e => e.type === 'participation').length;
+      const bavardages = rawEvents.filter(e => e.type === 'bavardage').length;
+      const absences = rawEvents.filter(e => e.type === 'absence').length;
 
       const studentManualParticipations = (manualParticipationsData || [])
         .filter(mp => mp.student_id === student.id);
@@ -1061,6 +1063,32 @@ export function Students() {
     }
   };
 
+  const loadStudentCodes = async () => {
+    if (!user || !selectedClassId) return;
+    setIsLoadingCodes(true);
+    try {
+      const { data } = await supabase
+        .from('students')
+        .select('pseudo, student_code')
+        .eq('user_id', user.id)
+        .eq('class_id', selectedClassId)
+        .order('pseudo');
+      setStudentCodes((data || []).map(s => ({ pseudo: s.pseudo, code: s.student_code || '------' })));
+      setShowCodesModal(true);
+    } catch (err) {
+      console.error('Error loading student codes:', err);
+    } finally {
+      setIsLoadingCodes(false);
+    }
+  };
+
+  const copyAllCodes = () => {
+    const className = classes.find(c => c.id === selectedClassId)?.name || '';
+    const text = `Codes d'acces - ${className}\n${window.location.origin}/gestion-classe/eleve\n\n` +
+      studentCodes.map(s => `${s.pseudo} : ${s.code}`).join('\n');
+    navigator.clipboard.writeText(text);
+  };
+
   const openStudentDetail = async (studentGrade: StudentGrade) => {
     setSelectedStudentForDetail(studentGrade);
     setShowStudentDetailModal(true);
@@ -1068,6 +1096,36 @@ export function Students() {
     setIsLoadingGroupGrades(true);
 
     try {
+      // Load detailed events with session info (on demand, not at initial load)
+      const currentTrimesterBoundary = trimesterSettings;
+      const { data: detailedEvents } = await supabase
+        .from('events')
+        .select(`
+          id, student_id, session_id, type, subtype, note, photo_path, timestamp,
+          sessions (started_at, classes (name))
+        `)
+        .eq('student_id', studentGrade.student.id)
+        .order('timestamp', { ascending: false });
+
+      if (detailedEvents) {
+        const enrichedEvents: Event[] = detailedEvents.map(e => ({
+          id: e.id,
+          student_id: e.student_id,
+          session_id: e.session_id,
+          type: e.type,
+          subtype: e.subtype,
+          note: e.note,
+          photo_path: e.photo_path,
+          timestamp: e.timestamp,
+          session_date: (e.sessions as any)?.started_at || e.timestamp,
+          class_name: (e.sessions as any)?.classes?.name || 'Classe inconnue',
+        }));
+        setSelectedStudentForDetail({
+          ...studentGrade,
+          events: enrichedEvents,
+        });
+      }
+
       // Load group session grades for this student
       const { data: membershipsData } = await supabase
         .from('session_group_members')
@@ -1363,6 +1421,16 @@ export function Students() {
               T{trimesterSettings.current_trimester} - {trimesterSettings.school_year}
             </p>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={loadStudentCodes}
+            disabled={isLoadingCodes || !selectedClassId}
+            className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-base border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-background)] transition-colors whitespace-nowrap"
+            title="Codes d'acces eleves"
+          >
+            <span className="md:hidden">Codes</span>
+            <span className="hidden md:inline">Codes eleves</span>
+          </button>
           <button
             onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}
             className={`px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-base text-white rounded-lg transition-colors whitespace-nowrap shrink-0 ${
@@ -1383,6 +1451,7 @@ export function Students() {
               </>
             )}
           </button>
+          </div>
         </div>
 
         {/* Main content - Two columns */}
@@ -2529,6 +2598,52 @@ export function Students() {
                 className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 disabled:opacity-50"
               >
                 {isSaving ? 'Ajout...' : 'Ajouter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Student Codes Modal */}
+      {showCodesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                Codes d'acces eleves
+              </h3>
+              <button
+                onClick={() => setShowCodesModal(false)}
+                className="p-1 hover:bg-[var(--color-background)] rounded text-[var(--color-text-secondary)]"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-2">
+              Lien : <code className="bg-[var(--color-background)] px-1 rounded text-xs">/gestion-classe/eleve</code>
+            </p>
+            <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+              {studentCodes.map((s, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-[var(--color-background)]">
+                  <span className="text-sm text-[var(--color-text)]">{s.pseudo}</span>
+                  <code className="text-sm font-mono font-bold text-[var(--color-primary)] tracking-widest">{s.code}</code>
+                </div>
+              ))}
+              {studentCodes.length === 0 && (
+                <p className="text-center text-[var(--color-text-tertiary)] py-4">Aucun eleve</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={copyAllCodes}
+                className="flex-1 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 text-sm"
+              >
+                Copier tous les codes
+              </button>
+              <button
+                onClick={() => setShowCodesModal(false)}
+                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)] text-sm"
+              >
+                Fermer
               </button>
             </div>
           </div>

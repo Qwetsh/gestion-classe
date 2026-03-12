@@ -11,6 +11,7 @@ import { SessionDetail } from './pages/SessionDetail';
 import { GroupSessions } from './pages/GroupSessions';
 import { TpTemplates } from './pages/TpTemplates';
 import { Students } from './pages/Students';
+import { StudentDashboard } from './pages/StudentDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/eleve" element={<StudentDashboard />} />
 
         {/* Protected routes */}
         <Route
