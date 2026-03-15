@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { LiveSessionProvider } from './contexts/LiveSessionContext';
+import { GroupSessionProvider } from './contexts/GroupSessionContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -13,12 +15,18 @@ import { TpTemplates } from './pages/TpTemplates';
 import { Students } from './pages/Students';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
+import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
 
 function App() {
   return (
     <ErrorBoundary>
     <AuthProvider>
+    <LiveSessionProvider>
+    <GroupSessionProvider>
     <BrowserRouter basename="/gestion-classe">
+      <LiveSessionOverlay />
+      <GroupSessionOverlay />
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
@@ -102,6 +110,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </GroupSessionProvider>
+    </LiveSessionProvider>
     </AuthProvider>
     </ErrorBoundary>
   );

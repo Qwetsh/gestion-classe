@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
+import { GroupSessionLauncher } from '../components/live-session/GroupSessionLauncher';
 
 interface Stats {
   classesCount: number;
@@ -274,6 +276,10 @@ export function Dashboard() {
             isLarge
           />
         </div>
+
+        {/* Mobile: Start session buttons */}
+        <LiveSessionLauncher />
+        <GroupSessionLauncher />
 
         {/* Recent sessions */}
         <div
