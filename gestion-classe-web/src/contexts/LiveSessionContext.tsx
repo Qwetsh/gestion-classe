@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   fetchClassesForUser,
@@ -13,7 +13,6 @@ import {
   updateEventPhotoPath,
   updateSessionNotes,
   cancelSession,
-  fetchEventsForSession,
   fetchOralEvaluations,
   insertOralEvaluation,
   deleteOralEvaluationsForClass,

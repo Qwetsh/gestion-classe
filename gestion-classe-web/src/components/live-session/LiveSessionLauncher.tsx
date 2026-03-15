@@ -3,7 +3,7 @@ import { useLiveSession } from '../../contexts/LiveSessionContext';
 
 export function LiveSessionLauncher() {
   const isMobile = useIsMobile();
-  const { startFlow, restore, step, minimized, selectedClass, startedAt } = useLiveSession();
+  const { startFlow, restore, step, minimized, selectedClass } = useLiveSession();
 
   if (!isMobile) return null;
 
