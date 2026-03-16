@@ -20,6 +20,7 @@ interface UserActivity {
   user_email: string;
   last_seen_at: string;
   login_count: number;
+  device_info: string | null;
 }
 
 interface ErrorLog {
@@ -238,6 +239,7 @@ function UsersTab() {
             const days = daysSince(u.last_seen_at);
             const isRecent = days <= 7;
             const sessions = sessionCounts.get(u.user_id) || 0;
+            const device = parseDevice(u.device_info);
             return (
               <Card key={u.user_id}>
                 <div className="flex items-center justify-between">
@@ -246,7 +248,18 @@ function UsersTab() {
                       className={`w-3 h-3 rounded-full ${isRecent ? 'bg-green-500' : days <= 30 ? 'bg-yellow-500' : 'bg-gray-400'}`}
                     />
                     <div>
-                      <span className="font-medium text-[var(--color-text)]">{u.user_email}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[var(--color-text)]">{u.user_email}</span>
+                        {device.icon && (
+                          <span
+                            className="px-2 py-0.5 text-xs font-medium"
+                            style={{ background: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-md)' }}
+                            title={device.full}
+                          >
+                            {device.icon} {device.label}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-[var(--color-text-tertiary)]">
                         {u.login_count} connexion{u.login_count > 1 ? 's' : ''} · {sessions} seance{sessions > 1 ? 's' : ''}
                       </div>
@@ -605,4 +618,32 @@ function formatDate(dateString: string) {
 
 function daysSince(dateString: string) {
   return Math.floor((Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function parseDevice(ua: string | null): { icon: string; label: string; full: string } {
+  if (!ua) return { icon: '', label: '', full: 'Inconnu' };
+
+  const isIphone = /iPhone/i.test(ua);
+  const isIpad = /iPad/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isMac = /Macintosh/i.test(ua);
+  const isWindows = /Windows/i.test(ua);
+  const isLinux = /Linux/i.test(ua) && !isAndroid;
+
+  let icon = '🖥️';
+  let label = 'Desktop';
+
+  if (isIphone) { icon = '📱'; label = 'iPhone'; }
+  else if (isIpad) { icon = '📱'; label = 'iPad'; }
+  else if (isAndroid) {
+    icon = '📱';
+    // Try to extract device model
+    const match = ua.match(/Android[^;]*;\s*([^)]+)/);
+    label = match ? match[1].trim().split(' Build')[0] : 'Android';
+  }
+  else if (isMac) { icon = '💻'; label = 'Mac'; }
+  else if (isWindows) { icon = '🖥️'; label = 'Windows'; }
+  else if (isLinux) { icon = '🐧'; label = 'Linux'; }
+
+  return { icon, label, full: ua };
 }

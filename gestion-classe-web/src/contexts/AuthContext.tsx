@@ -148,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.rpc('track_user_activity', {
         p_user_id: data.user.id,
         p_user_email: data.user.email,
+        p_device_info: navigator.userAgent,
       }).then(({ error: actErr }) => {
         if (actErr) console.error('[Auth] Activity tracking error:', actErr);
       });
