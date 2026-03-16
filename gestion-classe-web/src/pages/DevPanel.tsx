@@ -5,7 +5,7 @@ import { Layout } from '../components/Layout';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
 
-type Tab = 'feedbacks' | 'users' | 'stats' | 'errors' | 'announcements';
+type Tab = 'feedbacks' | 'users' | 'devices' | 'stats' | 'errors' | 'announcements';
 
 interface Feedback {
   id: string;
@@ -40,6 +40,14 @@ interface Announcement {
   created_at: string;
 }
 
+interface DeviceConnection {
+  id: string;
+  user_email: string;
+  device_info: string;
+  platform: 'web' | 'mobile';
+  created_at: string;
+}
+
 interface TableStat {
   table_name: string;
   row_count: number;
@@ -62,6 +70,7 @@ export function DevPanel() {
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'feedbacks', label: 'Retours', icon: '💬' },
     { key: 'users', label: 'Utilisateurs', icon: '👥' },
+    { key: 'devices', label: 'Appareils', icon: '📱' },
     { key: 'stats', label: 'Stats DB', icon: '📊' },
     { key: 'errors', label: 'Erreurs', icon: '🐛' },
     { key: 'announcements', label: 'Annonces', icon: '📢' },
@@ -99,6 +108,7 @@ export function DevPanel() {
         {/* Tab content */}
         {tab === 'feedbacks' && <FeedbacksTab />}
         {tab === 'users' && <UsersTab />}
+        {tab === 'devices' && <DevicesTab />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'errors' && <ErrorsTab />}
         {tab === 'announcements' && <AnnouncementsTab />}
@@ -277,6 +287,163 @@ function UsersTab() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================
+// Devices Tab
+// ============================================
+function DevicesTab() {
+  const [connections, setConnections] = useState<DeviceConnection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'web' | 'mobile'>('all');
+
+  useEffect(() => {
+    supabase
+      .from('device_connections')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setConnections(data || []);
+        setIsLoading(false);
+      });
+  }, []);
+
+  if (isLoading) return <Loader />;
+
+  const filtered = platformFilter === 'all'
+    ? connections
+    : connections.filter(c => c.platform === platformFilter);
+
+  // Aggregate by device type
+  const deviceCounts = new Map<string, { count: number; icon: string; platform: Set<string> }>();
+  filtered.forEach(c => {
+    const device = parseDevice(c.device_info);
+    const key = device.label || 'Inconnu';
+    const existing = deviceCounts.get(key);
+    if (existing) {
+      existing.count++;
+      existing.platform.add(c.platform);
+    } else {
+      deviceCounts.set(key, { count: 1, icon: device.icon || '?', platform: new Set([c.platform]) });
+    }
+  });
+
+  const sortedDevices = [...deviceCounts.entries()].sort((a, b) => b[1].count - a[1].count);
+  const maxCount = sortedDevices.length > 0 ? sortedDevices[0][1].count : 0;
+
+  // Platform counts
+  const webCount = connections.filter(c => c.platform === 'web').length;
+  const mobileCount = connections.filter(c => c.platform === 'mobile').length;
+
+  // Unique users per device type
+  const deviceUsers = new Map<string, Set<string>>();
+  filtered.forEach(c => {
+    const device = parseDevice(c.device_info);
+    const key = device.label || 'Inconnu';
+    if (!deviceUsers.has(key)) deviceUsers.set(key, new Set());
+    deviceUsers.get(key)!.add(c.user_email);
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <MiniStat label="Total connexions" value={connections.length} />
+        <MiniStat label="Web" value={webCount} />
+        <MiniStat label="Mobile" value={mobileCount} />
+      </div>
+
+      {/* Platform filter */}
+      <div className="flex gap-2">
+        {(['all', 'web', 'mobile'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setPlatformFilter(f)}
+            className={`px-3 py-1.5 text-xs font-medium transition-all ${
+              platformFilter === f
+                ? 'text-white bg-[var(--color-primary)]'
+                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+            }`}
+            style={{ borderRadius: 'var(--radius-md)' }}
+          >
+            {f === 'all' ? 'Tous' : f === 'web' ? '🌐 Web' : '📱 Mobile'}
+          </button>
+        ))}
+      </div>
+
+      {/* Device list */}
+      {sortedDevices.length === 0 ? (
+        <EmptyState text="Aucune connexion enregistree." />
+      ) : (
+        <Card>
+          <h3 className="font-semibold text-[var(--color-text)] mb-4">Connexions par appareil</h3>
+          <div className="space-y-3">
+            {sortedDevices.map(([label, data]) => {
+              const pct = maxCount > 0 ? (data.count / maxCount) * 100 : 0;
+              const users = deviceUsers.get(label)?.size || 0;
+              return (
+                <div key={label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{data.icon}</span>
+                      <span className="text-sm font-medium text-[var(--color-text)]">{label}</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">
+                        ({users} utilisateur{users > 1 ? 's' : ''})
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-[var(--color-text)]">{data.count}</span>
+                  </div>
+                  <div className="h-6 bg-[var(--color-surface-secondary)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
+                    <div
+                      className="h-full transition-all flex items-center pl-2"
+                      style={{
+                        width: `${Math.max(pct, 3)}%`,
+                        background: 'var(--gradient-primary)',
+                        borderRadius: 'var(--radius-md)',
+                      }}
+                    >
+                      <span className="text-xs font-semibold text-white drop-shadow">
+                        {((data.count / filtered.length) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Recent connections */}
+      <Card>
+        <h3 className="font-semibold text-[var(--color-text)] mb-3">Dernieres connexions</h3>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {filtered.slice(0, 20).map(c => {
+            const device = parseDevice(c.device_info);
+            return (
+              <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="px-1.5 py-0.5 text-xs font-medium"
+                    style={{
+                      background: c.platform === 'mobile' ? 'var(--color-primary-soft)' : 'var(--color-surface-secondary)',
+                      color: c.platform === 'mobile' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      borderRadius: 'var(--radius-md)',
+                    }}
+                  >
+                    {c.platform === 'mobile' ? '📱' : '🌐'} {c.platform}
+                  </span>
+                  <span className="text-sm text-[var(--color-text)]">{device.icon} {device.label}</span>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">- {c.user_email}</span>
+                </div>
+                <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(c.created_at)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -623,6 +790,17 @@ function daysSince(dateString: string) {
 function parseDevice(ua: string | null): { icon: string; label: string; full: string } {
   if (!ua) return { icon: '', label: '', full: 'Inconnu' };
 
+  // Mobile app format: "android / 35 / SM-S926B / Samsung / ..."
+  if (ua.includes(' / ') && !ua.includes('Mozilla')) {
+    const parts = ua.split(' / ').map(p => p.trim());
+    const os = parts[0]?.toLowerCase();
+    const model = parts[2] || '';
+    if (os === 'ios') return { icon: '📱', label: model || 'iPhone', full: ua };
+    if (os === 'android') return { icon: '📱', label: model || 'Android', full: ua };
+    return { icon: '📱', label: model || os || 'Mobile', full: ua };
+  }
+
+  // Browser user-agent
   const isIphone = /iPhone/i.test(ua);
   const isIpad = /iPad/i.test(ua);
   const isAndroid = /Android/i.test(ua);
@@ -637,7 +815,6 @@ function parseDevice(ua: string | null): { icon: string; label: string; full: st
   else if (isIpad) { icon = '📱'; label = 'iPad'; }
   else if (isAndroid) {
     icon = '📱';
-    // Try to extract device model
     const match = ua.match(/Android[^;]*;\s*([^)]+)/);
     label = match ? match[1].trim().split(' Build')[0] : 'Android';
   }
