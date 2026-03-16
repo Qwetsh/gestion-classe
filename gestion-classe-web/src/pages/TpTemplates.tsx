@@ -314,28 +314,40 @@ export function TpTemplates() {
     <Layout>
       <div
         className="min-h-[calc(100vh-200px)] -mx-4 sm:-mx-6 lg:-mx-8 -my-8 px-4 sm:px-6 lg:px-8 py-8 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #ecfdf5 100%)' }}
+        style={{
+          background: 'linear-gradient(135deg, #8a8d9a 0%, #7e8290 50%, #8a8d9a 100%)',
+          maskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
+        }}
       >
-        {/* Cercles décoratifs */}
+        {/* Cercles décoratifs blueprint */}
         <div
           className="absolute -top-24 -right-24 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(74, 222, 128, 0.3) 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(100, 100, 120, 0.08) 0%, transparent 70%)' }}
         />
         <div
           className="absolute top-1/2 -left-32 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(34, 197, 94, 0.2) 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(80, 80, 100, 0.06) 0%, transparent 70%)' }}
         />
         <div
           className="absolute -bottom-20 right-1/4 w-80 h-80 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(134, 239, 172, 0.25) 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(90, 90, 110, 0.07) 0%, transparent 70%)' }}
         />
 
-        {/* Grille subtile */}
+        {/* Grille blueprint grise */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage: 'linear-gradient(rgba(34, 197, 94, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 197, 94, 0.05) 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(rgba(100, 100, 120, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 100, 120, 0.15) 1px, transparent 1px)',
             backgroundSize: '40px 40px'
+          }}
+        />
+        {/* Sous-grille fine */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(100, 100, 120, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 100, 120, 0.08) 1px, transparent 1px)',
+            backgroundSize: '10px 10px'
           }}
         />
 
@@ -356,8 +368,8 @@ export function TpTemplates() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">Mes TP</h1>
-            <p className="text-[var(--color-text-secondary)] mt-1">
+            <h1 className="text-2xl font-bold text-white/90">Mes TP</h1>
+            <p className="text-white/50 mt-1">
               {templates.length} modele{templates.length > 1 ? 's' : ''} de TP enregistre{templates.length > 1 ? 's' : ''}
             </p>
           </div>
@@ -373,7 +385,7 @@ export function TpTemplates() {
         {/* Templates list */}
         {templates.length === 0 ? (
           <div
-            className="bg-gradient-to-br from-green-50 to-white p-12 text-center border border-green-100"
+            className="bg-white/10 backdrop-blur-sm p-12 text-center border border-white/10"
             style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
           >
             <div
@@ -382,8 +394,8 @@ export function TpTemplates() {
             >
               <span className="text-4xl">📋</span>
             </div>
-            <h2 className="text-lg font-semibold text-gray-800">Aucun modele de TP</h2>
-            <p className="text-gray-500 mt-2">
+            <h2 className="text-lg font-semibold text-white/90">Aucun modele de TP</h2>
+            <p className="text-white/50 mt-2">
               Creez des modeles de TP avec leurs criteres de notation
             </p>
             <button

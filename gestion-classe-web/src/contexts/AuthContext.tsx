@@ -78,6 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Setup automatic token refresh if we have a session
         if (session) {
           setupTokenRefresh();
+
+          // Track activity on session restore (existing login)
+          if (session.user) {
+            supabase.rpc('track_user_activity', {
+              p_user_id: session.user.id,
+              p_user_email: session.user.email,
+            }).then(({ error: actErr }) => {
+              if (actErr) console.error('[Auth] Activity tracking error:', actErr);
+            });
+          }
         }
       }
     });
@@ -132,6 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       error: null,
     });
+
+    // Track user activity on login
+    if (data.user) {
+      supabase.rpc('track_user_activity', {
+        p_user_id: data.user.id,
+        p_user_email: data.user.email,
+      }).then(({ error: actErr }) => {
+        if (actErr) console.error('[Auth] Activity tracking error:', actErr);
+      });
+    }
+
     return true;
   }, []);
 

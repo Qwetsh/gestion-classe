@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { FeedbackButton } from './FeedbackButton';
+import { AnnouncementBanner } from './AnnouncementBanner';
+
+const DEV_EMAIL = 'tomicharles@gmail.com';
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,6 +27,8 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const isDev = user?.email === DEV_EMAIL;
+  const allNavItems = isDev ? [...navItems, { path: '/dev', label: 'Dev', icon: '🛠️' }] : navItems;
 
   // Fermer le menu si on clique ailleurs
   useEffect(() => {
@@ -57,7 +63,7 @@ export function Layout({ children }: LayoutProps) {
 
               {/* Navigation */}
               <nav className="hidden md:flex items-center gap-1 h-full">
-                {navItems.map((item) => {
+                {allNavItems.map((item) => {
                   const isActive = location.pathname === item.path;
                   return (
                     <Link
@@ -115,7 +121,7 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Mobile nav */}
         <nav className="md:hidden border-t border-[var(--color-border)] px-4 py-2 flex gap-2 overflow-x-auto bg-[var(--color-surface-secondary)]">
-          {navItems.map((item) => {
+          {allNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
@@ -139,10 +145,14 @@ export function Layout({ children }: LayoutProps) {
         </nav>
       </header>
 
+      <AnnouncementBanner />
+
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      <FeedbackButton />
     </div>
   );
 }

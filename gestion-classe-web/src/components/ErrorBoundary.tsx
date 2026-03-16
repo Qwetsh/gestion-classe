@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   children: ReactNode;
@@ -35,8 +36,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
     this.setState({ errorInfo });
 
-    // TODO: In production, send to error reporting service like Sentry
-    // Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+    // Log error to Supabase for dev panel
+    supabase.auth.getUser().then(({ data }) => {
+      const user = data?.user;
+      supabase.from('error_logs').insert({
+        user_id: user?.id || null,
+        user_email: user?.email || null,
+        error_message: error.message,
+        error_stack: (error.stack || '').slice(0, 2000),
+        page_url: window.location.href,
+      }).then(({ error: logErr }) => {
+        if (logErr) console.error('[ErrorBoundary] Failed to log error:', logErr);
+      });
+    });
   }
 
   handleRetry = (): void => {

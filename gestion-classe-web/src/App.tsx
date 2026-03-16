@@ -12,6 +12,7 @@ import { Sessions } from './pages/Sessions';
 import { SessionDetail } from './pages/SessionDetail';
 import { GroupSessions } from './pages/GroupSessions';
 import { TpTemplates } from './pages/TpTemplates';
+import { DevPanel } from './pages/DevPanel';
 import { Students } from './pages/Students';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -102,6 +103,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Analytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dev"
+          element={
+            <ProtectedRoute>
+              <DevPanel />
             </ProtectedRoute>
           }
         />
