@@ -7,7 +7,7 @@ interface ClassData {
   name: string;
   level: string; // "5e", "4e", "3e", "6e", "autre"
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
   sorties: number;
   ratio: number;
@@ -15,8 +15,8 @@ interface ClassData {
 }
 
 interface GenderStats {
-  garcons: { participations: number; bavardages: number; absences: number; count: number };
-  filles: { participations: number; bavardages: number; absences: number; count: number };
+  garcons: { participations: number; malus: number; absences: number; count: number };
+  filles: { participations: number; malus: number; absences: number; count: number };
 }
 
 interface StudentSortie {
@@ -30,7 +30,7 @@ interface LevelStats {
   level: string;
   classes: number;
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
   ratio: number;
 }
@@ -89,16 +89,16 @@ function extractLevel(className: string): string {
 
 // Calculate level statistics
 function calculateLevelStats(classes: ClassData[]): LevelStats[] {
-  const byLevel = new Map<string, { classes: number; participations: number; bavardages: number; absences: number }>();
+  const byLevel = new Map<string, { classes: number; participations: number; malus: number; absences: number }>();
 
   classes.forEach(cls => {
     if (!byLevel.has(cls.level)) {
-      byLevel.set(cls.level, { classes: 0, participations: 0, bavardages: 0, absences: 0 });
+      byLevel.set(cls.level, { classes: 0, participations: 0, malus: 0, absences: 0 });
     }
     const entry = byLevel.get(cls.level)!;
     entry.classes++;
     entry.participations += cls.participations;
-    entry.bavardages += cls.bavardages;
+    entry.malus += cls.malus;
     entry.absences += cls.absences;
   });
 
@@ -107,10 +107,10 @@ function calculateLevelStats(classes: ClassData[]): LevelStats[] {
       level,
       classes: data.classes,
       participations: data.participations,
-      bavardages: data.bavardages,
+      malus: data.malus,
       absences: data.absences,
-      ratio: data.participations + data.bavardages > 0
-        ? Math.round((data.participations / (data.participations + data.bavardages)) * 100)
+      ratio: data.participations + data.malus > 0
+        ? Math.round((data.participations / (data.participations + data.malus)) * 100)
         : 0,
     }))
     .sort((a, b) => {
@@ -127,21 +127,21 @@ function analyzeClass(cls: ClassData, allClasses: ClassData[]): { strengths: str
 
   // Calculate averages
   const avgRatio = allClasses.reduce((sum, c) => sum + c.ratio, 0) / allClasses.length;
-  const avgBavardages = allClasses.reduce((sum, c) => sum + c.bavardages, 0) / allClasses.length;
+  const avgMalus = allClasses.reduce((sum, c) => sum + c.malus, 0) / allClasses.length;
   const avgAbsences = allClasses.reduce((sum, c) => sum + c.absences, 0) / allClasses.length;
   const avgParticipations = allClasses.reduce((sum, c) => sum + c.participations, 0) / allClasses.length;
 
   // Strengths
-  if (cls.ratio >= avgRatio + 10) strengths.push('Excellent ratio participation/bavardage');
-  else if (cls.ratio >= avgRatio) strengths.push('Bon ratio participation/bavardage');
+  if (cls.ratio >= avgRatio + 10) strengths.push('Excellent ratio participation/malus');
+  else if (cls.ratio >= avgRatio) strengths.push('Bon ratio participation/malus');
 
-  if (cls.bavardages < avgBavardages * 0.7) strengths.push('Peu de bavardages');
+  if (cls.malus < avgMalus * 0.7) strengths.push('Peu de malus');
   if (cls.participations > avgParticipations * 1.3) strengths.push('Classe tres participative');
   if (cls.absences < avgAbsences * 0.5) strengths.push('Excellent taux de presence');
 
   // Weaknesses
-  if (cls.ratio < avgRatio - 15) weaknesses.push('Ratio participation/bavardage faible');
-  if (cls.bavardages > avgBavardages * 1.5) weaknesses.push('Taux de bavardage eleve');
+  if (cls.ratio < avgRatio - 15) weaknesses.push('Ratio participation/malus faible');
+  if (cls.malus > avgMalus * 1.5) weaknesses.push('Taux de malus eleve');
   if (cls.absences > avgAbsences * 1.5) weaknesses.push('Taux d\'absence eleve');
   if (cls.participations < avgParticipations * 0.5) weaknesses.push('Faible participation');
   if (cls.sorties > 10) weaknesses.push('Nombreuses sorties');
@@ -211,14 +211,14 @@ export function generateAnalysisReport(data: ReportData): void {
   const totals = data.classes.reduce(
     (acc, cls) => ({
       participations: acc.participations + cls.participations,
-      bavardages: acc.bavardages + cls.bavardages,
+      malus: acc.malus + cls.malus,
       absences: acc.absences + cls.absences,
       sorties: acc.sorties + cls.sorties,
     }),
-    { participations: 0, bavardages: 0, absences: 0, sorties: 0 }
+    { participations: 0, malus: 0, absences: 0, sorties: 0 }
   );
-  const globalRatio = totals.participations + totals.bavardages > 0
-    ? Math.round((totals.participations / (totals.participations + totals.bavardages)) * 100)
+  const globalRatio = totals.participations + totals.malus > 0
+    ? Math.round((totals.participations / (totals.participations + totals.malus)) * 100)
     : 0;
 
   // Add level to classes
@@ -246,10 +246,10 @@ export function generateAnalysisReport(data: ReportData): void {
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Participations', 'Bavardages', 'Absences', 'Sorties', 'Ratio +/-']],
+    head: [['Participations', 'Malus', 'Absences', 'Sorties', 'Ratio +/-']],
     body: [[
       totals.participations.toString(),
-      totals.bavardages.toString(),
+      totals.malus.toString(),
       totals.absences.toString(),
       totals.sorties.toString(),
       `${globalRatio}%`,
@@ -268,7 +268,7 @@ export function generateAnalysisReport(data: ReportData): void {
   } else if (globalRatio >= 50) {
     addText('Le ratio global est correct, avec une marge de progression possible.');
   } else {
-    addText('Le ratio global est faible, les bavardages sont trop frequents par rapport aux participations.');
+    addText('Le ratio global est faible, les malus sont trop frequents par rapport aux participations.');
   }
   yPos += 4;
 
@@ -279,12 +279,12 @@ export function generateAnalysisReport(data: ReportData): void {
   if (levelStats.length > 1) {
     autoTable(doc, {
       startY: yPos,
-      head: [['Niveau', 'Classes', 'Participations', 'Bavardages', 'Absences', 'Ratio']],
+      head: [['Niveau', 'Classes', 'Participations', 'Malus', 'Absences', 'Ratio']],
       body: levelStats.map(lvl => [
         lvl.level.toUpperCase(),
         lvl.classes.toString(),
         lvl.participations.toString(),
-        lvl.bavardages.toString(),
+        lvl.malus.toString(),
         lvl.absences.toString(),
         `${lvl.ratio}%`,
       ]),
@@ -334,7 +334,7 @@ export function generateAnalysisReport(data: ReportData): void {
     // Stats line
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
-    doc.text(`+${cls.participations} participations | -${cls.bavardages} bavardages | ${cls.absences} absences | ${cls.sorties} sorties`, 16, yPos);
+    doc.text(`+${cls.participations} participations | -${cls.malus} malus | ${cls.absences} absences | ${cls.sorties} sorties`, 16, yPos);
     yPos += 7;
 
     // Strengths and weaknesses
@@ -376,10 +376,10 @@ export function generateAnalysisReport(data: ReportData): void {
 
     autoTable(doc, {
       startY: yPos,
-      head: [['', 'Effectif', 'Participations', 'Moy/eleve', 'Bavardages', 'Absences']],
+      head: [['', 'Effectif', 'Participations', 'Moy/eleve', 'Malus', 'Absences']],
       body: [
-        ['Filles', gs.filles.count.toString(), gs.filles.participations.toString(), fillesAvg, gs.filles.bavardages.toString(), gs.filles.absences.toString()],
-        ['Garcons', gs.garcons.count.toString(), gs.garcons.participations.toString(), garconsAvg, gs.garcons.bavardages.toString(), gs.garcons.absences.toString()],
+        ['Filles', gs.filles.count.toString(), gs.filles.participations.toString(), fillesAvg, gs.filles.malus.toString(), gs.filles.absences.toString()],
+        ['Garcons', gs.garcons.count.toString(), gs.garcons.participations.toString(), garconsAvg, gs.garcons.malus.toString(), gs.garcons.absences.toString()],
       ],
       theme: 'grid',
       headStyles: { fillColor: [99, 102, 241], fontSize: 9 },
@@ -578,14 +578,14 @@ export function generateYearEndReport(data: YearEndReportData): void {
   const totals = data.classes.reduce(
     (acc, cls) => ({
       participations: acc.participations + cls.participations,
-      bavardages: acc.bavardages + cls.bavardages,
+      malus: acc.malus + cls.malus,
       absences: acc.absences + cls.absences,
       sorties: acc.sorties + cls.sorties,
     }),
-    { participations: 0, bavardages: 0, absences: 0, sorties: 0 }
+    { participations: 0, malus: 0, absences: 0, sorties: 0 }
   );
-  const globalRatio = totals.participations + totals.bavardages > 0
-    ? Math.round((totals.participations / (totals.participations + totals.bavardages)) * 100)
+  const globalRatio = totals.participations + totals.malus > 0
+    ? Math.round((totals.participations / (totals.participations + totals.malus)) * 100)
     : 0;
 
   // Add level to classes
@@ -619,9 +619,9 @@ export function generateYearEndReport(data: YearEndReportData): void {
 
   autoTable(doc, {
     startY: yPos,
-    head: [['', 'Participations', 'Bavardages', 'Absences', 'Sorties', 'Ratio']],
+    head: [['', 'Participations', 'Malus', 'Absences', 'Sorties', 'Ratio']],
     body: [
-      ['TOTAL ANNEE', totals.participations.toString(), totals.bavardages.toString(), totals.absences.toString(), totals.sorties.toString(), `${globalRatio}%`],
+      ['TOTAL ANNEE', totals.participations.toString(), totals.malus.toString(), totals.absences.toString(), totals.sorties.toString(), `${globalRatio}%`],
     ],
     theme: 'grid',
     headStyles: { fillColor: [99, 102, 241], fontSize: 10 },
@@ -702,12 +702,12 @@ export function generateYearEndReport(data: YearEndReportData): void {
   if (levelStats.length > 1) {
     autoTable(doc, {
       startY: yPos,
-      head: [['Niveau', 'Classes', 'Participations', 'Bavardages', 'Ratio annuel']],
+      head: [['Niveau', 'Classes', 'Participations', 'Malus', 'Ratio annuel']],
       body: levelStats.map(lvl => [
         lvl.level.toUpperCase(),
         lvl.classes.toString(),
         lvl.participations.toString(),
-        lvl.bavardages.toString(),
+        lvl.malus.toString(),
         `${lvl.ratio}%`,
       ]),
       theme: 'striped',
@@ -733,12 +733,12 @@ export function generateYearEndReport(data: YearEndReportData): void {
 
   autoTable(doc, {
     startY: yPos,
-    head: [['#', 'Classe', 'Participations', 'Bavardages', 'Absences', 'Ratio']],
+    head: [['#', 'Classe', 'Participations', 'Malus', 'Absences', 'Ratio']],
     body: sortedClasses.map((cls, idx) => [
       (idx + 1).toString(),
       cls.name,
       cls.participations.toString(),
-      cls.bavardages.toString(),
+      cls.malus.toString(),
       cls.absences.toString(),
       `${cls.ratio}%`,
     ]),
@@ -829,10 +829,10 @@ export function generateYearEndReport(data: YearEndReportData): void {
 
     autoTable(doc, {
       startY: yPos,
-      head: [['', 'Effectif', 'Participations totales', 'Moy/eleve', 'Bavardages', 'Absences']],
+      head: [['', 'Effectif', 'Participations totales', 'Moy/eleve', 'Malus', 'Absences']],
       body: [
-        ['Filles', gs.filles.count.toString(), gs.filles.participations.toString(), fillesAvg, gs.filles.bavardages.toString(), gs.filles.absences.toString()],
-        ['Garcons', gs.garcons.count.toString(), gs.garcons.participations.toString(), garconsAvg, gs.garcons.bavardages.toString(), gs.garcons.absences.toString()],
+        ['Filles', gs.filles.count.toString(), gs.filles.participations.toString(), fillesAvg, gs.filles.malus.toString(), gs.filles.absences.toString()],
+        ['Garcons', gs.garcons.count.toString(), gs.garcons.participations.toString(), garconsAvg, gs.garcons.malus.toString(), gs.garcons.absences.toString()],
       ],
       theme: 'grid',
       headStyles: { fillColor: [99, 102, 241], fontSize: 9 },
@@ -949,7 +949,7 @@ export function prepareYearEndReportData(
       name: cls.name,
       level: extractLevel(cls.name),
       participations: 0,
-      bavardages: 0,
+      malus: 0,
       absences: 0,
       sorties: 0,
       ratio: 0,
@@ -961,13 +961,13 @@ export function prepareYearEndReportData(
     const cls = classStatsMap.get(event.class_id);
     if (!cls) return;
     if (event.type === 'participation') cls.participations++;
-    else if (event.type === 'bavardage') cls.bavardages++;
+    else if (event.type === 'bavardage') cls.malus++;
     else if (event.type === 'absence') cls.absences++;
     else if (event.type === 'sortie') cls.sorties++;
   });
 
   classStatsMap.forEach(cls => {
-    const total = cls.participations + cls.bavardages;
+    const total = cls.participations + cls.malus;
     cls.ratio = total > 0 ? Math.round((cls.participations / total) * 100) : 0;
   });
 
@@ -1102,7 +1102,7 @@ export function prepareReportData(
       name: cls.name,
       level: extractLevel(cls.name),
       participations: 0,
-      bavardages: 0,
+      malus: 0,
       absences: 0,
       sorties: 0,
       ratio: 0,
@@ -1115,14 +1115,14 @@ export function prepareReportData(
     if (!cls) return;
 
     if (event.type === 'participation') cls.participations++;
-    else if (event.type === 'bavardage') cls.bavardages++;
+    else if (event.type === 'bavardage') cls.malus++;
     else if (event.type === 'absence') cls.absences++;
     else if (event.type === 'sortie') cls.sorties++;
   });
 
   // Calculate ratios
   classStatsMap.forEach(cls => {
-    const total = cls.participations + cls.bavardages;
+    const total = cls.participations + cls.malus;
     cls.ratio = total > 0 ? Math.round((cls.participations / total) * 100) : 0;
   });
 

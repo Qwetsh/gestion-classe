@@ -14,7 +14,7 @@ export const EVENT_CONFIG: Record<string, {
     icon: '+'
   },
   bavardage: {
-    label: 'Bavardage',
+    label: 'Malus',
     color: 'var(--color-bavardage)',
     softColor: 'var(--color-bavardage-soft)',
     icon: '-'

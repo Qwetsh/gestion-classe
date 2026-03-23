@@ -12,7 +12,7 @@ interface Stats {
   sessionsCount: number;
   eventsCount: number;
   participations: number;
-  bavardages: number;
+  malus: number;
 }
 
 interface RecentSession {
@@ -109,7 +109,7 @@ export function Dashboard() {
       }
 
       const participations = eventsData.filter(e => e.type === 'participation').length;
-      const bavardages = eventsData.filter(e => e.type === 'bavardage').length;
+      const malus = eventsData.filter(e => e.type === 'bavardage').length;
 
       setStats({
         classesCount,
@@ -117,7 +117,7 @@ export function Dashboard() {
         sessionsCount,
         eventsCount: eventsData.length,
         participations,
-        bavardages,
+        malus,
       });
 
       // Load recent sessions (separate try-catch so stats are preserved if this fails)
@@ -268,8 +268,8 @@ export function Dashboard() {
             isLarge
           />
           <StatCard
-            label="Bavardages"
-            value={stats?.bavardages || 0}
+            label="Malus"
+            value={stats?.malus || 0}
             icon="-"
             bgColor="var(--color-bavardage-soft)"
             iconColor="var(--color-bavardage)"

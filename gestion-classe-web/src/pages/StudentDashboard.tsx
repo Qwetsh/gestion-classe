@@ -8,7 +8,7 @@ interface DashboardData {
   school_year: string;
   grade: number;
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
   target: number;
   class_rank: number;
@@ -304,7 +304,7 @@ export function StudentDashboard() {
           marginBottom: '12px',
         }}>
           <StatCard label="Implications" value={data.participations} color="#22c55e" />
-          <StatCard label="Bavardages" value={data.bavardages} color="#f59e0b" />
+          <StatCard label="Malus" value={data.malus} color="#f59e0b" />
           <StatCard label="Absences" value={data.absences} color="#ef4444" />
         </div>
 

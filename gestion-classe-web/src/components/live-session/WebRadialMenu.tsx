@@ -10,7 +10,7 @@ interface RadialMenuProps {
 
 const ACTIONS = [
   { type: 'participation', label: '+', color: 'var(--color-participation)', fullLabel: 'Implication' },
-  { type: 'bavardage', label: '-', color: 'var(--color-bavardage)', fullLabel: 'Bavardage' },
+  { type: 'bavardage', label: '-', color: 'var(--color-bavardage)', fullLabel: 'Malus' },
   { type: 'absence', label: 'A', color: 'var(--color-absence)', fullLabel: 'Absence' },
   { type: 'remarque', label: '!', color: 'var(--color-remarque)', fullLabel: 'Remarque' },
   { type: 'sortie', label: 'S', color: 'var(--color-sortie)', fullLabel: 'Sortie' },

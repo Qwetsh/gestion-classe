@@ -29,7 +29,7 @@ interface Student {
 interface StudentGradeData {
   studentId: string;
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
   grade: number;
 }
@@ -267,7 +267,7 @@ export function Classes() {
       studentIds.forEach(studentId => {
         const studentEvents = (eventsData || []).filter(e => e.student_id === studentId);
         const participations = studentEvents.filter(e => e.type === 'participation').length;
-        const bavardages = studentEvents.filter(e => e.type === 'bavardage').length;
+        const malus = studentEvents.filter(e => e.type === 'bavardage').length;
         const absences = studentEvents.filter(e => e.type === 'absence').length;
 
         // Add manual participations
@@ -283,13 +283,13 @@ export function Classes() {
         if (config.base_grade !== null && config.base_grade > 0) {
           // Base grade mode
           const modifier = config.bavardage_penalty
-            ? totalParticipations - bavardages
+            ? totalParticipations - malus
             : totalParticipations;
           grade = Math.min(20, Math.max(0, config.base_grade + modifier));
         } else {
           // Target mode
           const effectiveParticipations = config.bavardage_penalty
-            ? Math.max(0, totalParticipations - bavardages)
+            ? Math.max(0, totalParticipations - malus)
             : totalParticipations;
 
           const reductionPerAbsence = config.target_participations / config.total_sessions_expected;
@@ -301,7 +301,7 @@ export function Classes() {
         gradesMap.set(studentId, {
           studentId,
           participations: totalParticipations,
-          bavardages,
+          malus,
           absences,
           grade,
         });
@@ -996,7 +996,7 @@ export function Classes() {
                           {gradeData && showGrades && (
                             <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
                               <div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                                +{gradeData.participations} / -{gradeData.bavardages}
+                                +{gradeData.participations} / -{gradeData.malus}
                               </div>
                             </div>
                           )}
@@ -1061,7 +1061,7 @@ export function Classes() {
                         </span>
                         {gradeData && showGrades && (
                           <span className="text-[10px] text-[var(--color-text-tertiary)]">
-                            +{gradeData.participations} / -{gradeData.bavardages}
+                            +{gradeData.participations} / -{gradeData.malus}
                           </span>
                         )}
                       </div>

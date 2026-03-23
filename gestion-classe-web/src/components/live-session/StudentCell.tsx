@@ -16,10 +16,14 @@ export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, on
   const lastTapRef = useRef<number>(0);
 
   const counts = useMemo(() => {
-    const c = { participation: 0, bavardage: 0, absence: 0, sortie: 0, remarque: 0 };
+    const c = { participation: 0, malus: 0, absence: 0, sortie: 0, remarque: 0 };
+    const typeMap: Record<string, keyof typeof c> = {
+      participation: 'participation', bavardage: 'malus', absence: 'absence', sortie: 'sortie', remarque: 'remarque',
+    };
     for (const e of events) {
-      if (e.student_id === studentId && e.type in c) {
-        c[e.type as keyof typeof c]++;
+      const key = typeMap[e.type];
+      if (e.student_id === studentId && key) {
+        c[key]++;
       }
     }
     return c;
@@ -27,7 +31,7 @@ export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, on
 
   const isAbsent = counts.absence > 0 && counts.absence % 2 === 1; // odd = absent
   const isOut = !!activeSortie;
-  const hasEvents = counts.participation + counts.bavardage + counts.sortie + counts.remarque > 0;
+  const hasEvents = counts.participation + counts.malus + counts.sortie + counts.remarque > 0;
 
   // Format elapsed time for sortie
   const sortieElapsed = useMemo(() => {
@@ -111,8 +115,8 @@ export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, on
           {counts.participation > 0 && (
             <Badge count={counts.participation} color="var(--color-participation)" />
           )}
-          {counts.bavardage > 0 && (
-            <Badge count={counts.bavardage} color="var(--color-bavardage)" />
+          {counts.malus > 0 && (
+            <Badge count={counts.malus} color="var(--color-bavardage)" />
           )}
           {counts.sortie > 0 && (
             <Badge count={counts.sortie} color="var(--color-sortie)" />

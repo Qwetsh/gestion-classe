@@ -209,7 +209,7 @@ export function RecordingView() {
   // Event summary counts
   const totalEvents = events.length;
   const participations = events.filter(e => e.type === 'participation').length;
-  const bavardages = events.filter(e => e.type === 'bavardage').length;
+  const malus = events.filter(e => e.type === 'bavardage').length;
   const absences = absentIds.size;
   const sortiesCount = Object.keys(activeSorties).length;
 
@@ -256,7 +256,7 @@ export function RecordingView() {
       <div className="flex items-center justify-center gap-3 py-1.5 px-4 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0">
         <span className="text-xs text-[var(--color-text-tertiary)]">{totalEvents} evt</span>
         <span className="text-xs font-bold" style={{ color: 'var(--color-participation)' }}>+{participations}</span>
-        <span className="text-xs font-bold" style={{ color: 'var(--color-bavardage)' }}>-{bavardages}</span>
+        <span className="text-xs font-bold" style={{ color: 'var(--color-bavardage)' }}>-{malus}</span>
         {absences > 0 && <span className="text-xs font-bold" style={{ color: 'var(--color-absence)' }}>A:{absences}</span>}
         {sortiesCount > 0 && <span className="text-xs font-bold" style={{ color: 'var(--color-sortie)' }}>S:{sortiesCount}</span>}
       </div>
@@ -707,7 +707,7 @@ function ModalBackdrop({ children, onClose }: { children: React.ReactNode; onClo
 function getEventLabel(type: string): string {
   const labels: Record<string, string> = {
     participation: 'Implication',
-    bavardage: 'Bavardage',
+    bavardage: 'Malus',
     absence: 'Absence',
     remarque: 'Remarque',
     sortie: 'Sortie',

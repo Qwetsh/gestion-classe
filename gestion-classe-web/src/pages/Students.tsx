@@ -32,7 +32,7 @@ interface SessionEvolutionData {
   sessionDate: string;
   label: string;
   participation: number;
-  bavardage: number;
+  malus: number;
 }
 
 interface TrimesterSettings {
@@ -106,13 +106,13 @@ interface StudentGrade {
   participations: number;
   manualParticipations: number;
   totalParticipations: number;
-  bavardages: number;
+  malus: number;
   effectiveParticipations: number;
   absences: number;
   targetParticipations: number;
   totalSessionsExpected: number;
   adjustedTarget: number;
-  bavardagePenalty: boolean;
+  malusPenalty: boolean;
   baseGrade: number | null;
   grade: number;
   bonus: number;
@@ -196,7 +196,7 @@ export function Students() {
   const [configClassId, setConfigClassId] = useState<string | null>(null);
   const [configTarget, setConfigTarget] = useState(15);
   const [configSessions, setConfigSessions] = useState(60);
-  const [configBavardagePenalty, setConfigBavardagePenalty] = useState(false);
+  const [configMalusPenalty, setConfigMalusPenalty] = useState(false);
   const [configBaseGrade, setConfigBaseGrade] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -406,7 +406,7 @@ export function Students() {
       }));
 
       const participations = rawEvents.filter(e => e.type === 'participation').length;
-      const bavardages = rawEvents.filter(e => e.type === 'bavardage').length;
+      const malus = rawEvents.filter(e => e.type === 'bavardage').length;
       const absences = rawEvents.filter(e => e.type === 'absence').length;
 
       const studentManualParticipations = (manualParticipationsData || [])
@@ -417,11 +417,11 @@ export function Students() {
       const config = configMap.get(student.class_id);
       const targetParticipations = config?.target_participations || 15;
       const totalSessionsExpected = config?.total_sessions_expected || 60;
-      const bavardagePenalty = config?.bavardage_penalty ?? false;
+      const malusPenalty = config?.bavardage_penalty ?? false;
       const baseGrade = config?.base_grade ?? null;
 
-      const effectiveParticipations = bavardagePenalty
-        ? Math.max(0, totalParticipations - bavardages)
+      const effectiveParticipations = malusPenalty
+        ? Math.max(0, totalParticipations - malus)
         : totalParticipations;
 
       const reductionPerAbsence = targetParticipations / totalSessionsExpected;
@@ -433,9 +433,9 @@ export function Students() {
       let bonus: number;
 
       if (baseGrade !== null && baseGrade > 0) {
-        // Mode "note de base" : note = base + participations - bavardages (si pénalité active)
-        const modifier = bavardagePenalty
-          ? totalParticipations - bavardages
+        // Mode "note de base" : note = base + participations - malus (si pénalité active)
+        const modifier = malusPenalty
+          ? totalParticipations - malus
           : totalParticipations;
         rawGrade = baseGrade + modifier;
         grade = Math.min(20, Math.max(0, rawGrade));
@@ -476,13 +476,13 @@ export function Students() {
         participations,
         manualParticipations: manualParticipationsCount,
         totalParticipations,
-        bavardages,
+        malus,
         effectiveParticipations,
         absences,
         targetParticipations,
         totalSessionsExpected,
         adjustedTarget,
-        bavardagePenalty,
+        malusPenalty,
         baseGrade,
         grade,
         bonus,
@@ -605,7 +605,7 @@ export function Students() {
     setConfigClassId(classId);
     setConfigTarget(config?.target_participations || 15);
     setConfigSessions(config?.total_sessions_expected || 60);
-    setConfigBavardagePenalty(config?.bavardage_penalty ?? false);
+    setConfigMalusPenalty(config?.bavardage_penalty ?? false);
     setConfigBaseGrade(config?.base_grade ?? null);
     setShowConfigModal(true);
   };
@@ -622,7 +622,7 @@ export function Students() {
           .update({
             target_participations: configTarget,
             total_sessions_expected: configSessions,
-            bavardage_penalty: configBavardagePenalty,
+            bavardage_penalty: configMalusPenalty,
             base_grade: configBaseGrade,
             updated_at: new Date().toISOString(),
           })
@@ -633,7 +633,7 @@ export function Students() {
           class_id: configClassId,
           target_participations: configTarget,
           total_sessions_expected: configSessions,
-          bavardage_penalty: configBavardagePenalty,
+          bavardage_penalty: configMalusPenalty,
           base_grade: configBaseGrade,
         });
         if (error) throw error;
@@ -682,15 +682,15 @@ export function Students() {
 
           // Prepare gender stats
           const genderStats = {
-            garcons: { participations: 0, bavardages: 0, absences: 0, count: 0 },
-            filles: { participations: 0, bavardages: 0, absences: 0, count: 0 },
+            garcons: { participations: 0, malus: 0, absences: 0, count: 0 },
+            filles: { participations: 0, malus: 0, absences: 0, count: 0 },
           };
           studentGrades.forEach(sg => {
             const target = sg.student.gender === 'F' ? genderStats.filles : genderStats.garcons;
             target.count++;
             target.participations += sg.totalParticipations;
             target.absences += sg.absences;
-            target.bavardages += sg.bavardages;
+            target.malus += sg.malus;
           });
 
           const reportData = prepareReportData(
@@ -818,15 +818,15 @@ export function Students() {
           }));
 
           const genderStats = {
-            garcons: { participations: 0, bavardages: 0, absences: 0, count: 0 },
-            filles: { participations: 0, bavardages: 0, absences: 0, count: 0 },
+            garcons: { participations: 0, malus: 0, absences: 0, count: 0 },
+            filles: { participations: 0, malus: 0, absences: 0, count: 0 },
           };
           studentGrades.forEach(sg => {
             const target = sg.student.gender === 'F' ? genderStats.filles : genderStats.garcons;
             target.count++;
             target.participations += sg.totalParticipations;
             target.absences += sg.absences;
-            target.bavardages += sg.bavardages;
+            target.malus += sg.malus;
           });
 
           const yearEndData = prepareYearEndReportData(
@@ -882,13 +882,13 @@ export function Students() {
 
         const stats = {
           participations: 0,
-          bavardages: 0,
+          malus: 0,
           absences: 0,
           sorties: 0,
         };
         (classEvents || []).forEach((e: any) => {
           if (e.type === 'participation') stats.participations++;
-          else if (e.type === 'bavardage') stats.bavardages++;
+          else if (e.type === 'bavardage') stats.malus++;
           else if (e.type === 'absence') stats.absences++;
           else if (e.type === 'sortie') stats.sorties++;
         });
@@ -896,8 +896,8 @@ export function Students() {
         const avgGrade = classStudents.length > 0
           ? classStudents.reduce((sum, s) => sum + s.grade, 0) / classStudents.length
           : 0;
-        const ratio = stats.participations + stats.bavardages > 0
-          ? Math.round((stats.participations / (stats.participations + stats.bavardages)) * 100)
+        const ratio = stats.participations + stats.malus > 0
+          ? Math.round((stats.participations / (stats.participations + stats.malus)) * 100)
           : 0;
 
         await supabase.from('yearly_class_summaries').upsert({
@@ -906,7 +906,7 @@ export function Students() {
           school_year: trimesterSettings.school_year,
           total_students: classStudents.length,
           total_participations: stats.participations,
-          total_bavardages: stats.bavardages,
+          total_bavardages: stats.malus,
           total_absences: stats.absences,
           total_sorties: stats.sorties,
           average_grade: avgGrade,
@@ -1313,7 +1313,7 @@ export function Students() {
   const getEventTypeLabel = (type: string, subtype: string | null) => {
     const labels: Record<string, string> = {
       participation: 'Implication',
-      bavardage: 'Bavardage',
+      bavardage: 'Malus',
       absence: 'Absence',
       remarque: 'Remarque',
       sortie: 'Sortie',
@@ -1344,7 +1344,7 @@ export function Students() {
 
   // Calculate session-by-session evolution data for chart
   const getSessionEvolution = (events: Event[]): SessionEvolutionData[] => {
-    const sessions: Map<string, { date: string; participation: number; bavardage: number }> = new Map();
+    const sessions: Map<string, { date: string; participation: number; malus: number }> = new Map();
 
     // Group events by session
     events.forEach(event => {
@@ -1352,12 +1352,12 @@ export function Students() {
       const sessionDate = event.session_date;
 
       if (!sessions.has(sessionId)) {
-        sessions.set(sessionId, { date: sessionDate, participation: 0, bavardage: 0 });
+        sessions.set(sessionId, { date: sessionDate, participation: 0, malus: 0 });
       }
 
       const sessionData = sessions.get(sessionId)!;
       if (event.type === 'participation') sessionData.participation++;
-      if (event.type === 'bavardage') sessionData.bavardage++;
+      if (event.type === 'bavardage') sessionData.malus++;
     });
 
     // Sort by date and take last 12 sessions
@@ -1369,7 +1369,7 @@ export function Students() {
       sessionDate: data.date,
       label: new Date(data.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
       participation: data.participation,
-      bavardage: data.bavardage,
+      malus: data.malus,
     }));
   };
 
@@ -1597,12 +1597,12 @@ export function Students() {
                       {classConfigs.get(selectedClassId)?.base_grade !== null ? (
                         <>
                           Note de base: {classConfigs.get(selectedClassId)?.base_grade}/20
-                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
+                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite malus active'}
                         </>
                       ) : (
                         <>
                           Objectif: {classConfigs.get(selectedClassId)?.target_participations} implications
-                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite bavardages active'}
+                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite malus active'}
                         </>
                       )}
                     </div>
@@ -1645,10 +1645,10 @@ export function Students() {
                             </div>
                             <div className="flex items-center gap-2 text-xs">
                               <span className="text-green-600 font-medium">
-                                +{sg.bavardagePenalty ? sg.effectiveParticipations : sg.totalParticipations}
+                                +{sg.malusPenalty ? sg.effectiveParticipations : sg.totalParticipations}
                               </span>
-                              {sg.bavardages > 0 && (
-                                <span className="text-orange-600">-{sg.bavardages}</span>
+                              {sg.malus > 0 && (
+                                <span className="text-orange-600">-{sg.malus}</span>
                               )}
                               {sg.absences > 0 && (
                                 <span className="text-red-600">{sg.absences}abs</span>
@@ -1701,10 +1701,10 @@ export function Students() {
                           {/* Stats row */}
                           <div className="flex items-center gap-3 text-sm">
                             <span className="text-green-600 font-medium">
-                              {sg.bavardagePenalty ? sg.effectiveParticipations : sg.totalParticipations}/{Math.round(sg.adjustedTarget)}
+                              {sg.malusPenalty ? sg.effectiveParticipations : sg.totalParticipations}/{Math.round(sg.adjustedTarget)}
                             </span>
-                            {sg.bavardagePenalty && sg.bavardages > 0 && (
-                              <span className="text-orange-600">-{sg.bavardages}</span>
+                            {sg.malusPenalty && sg.malus > 0 && (
+                              <span className="text-orange-600">-{sg.malus}</span>
                             )}
                             {sg.absences > 0 && (
                               <span className="text-red-600">{sg.absences} abs</span>
@@ -1846,22 +1846,22 @@ export function Students() {
               <div className="flex items-center justify-between p-3 bg-[var(--color-background)] rounded-lg">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text)]">
-                    Penalite bavardages
+                    Penalite malus
                   </label>
                   <p className="text-xs text-[var(--color-text-tertiary)]">
-                    1 bavardage = -1 implication
+                    1 malus = -1 implication
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setConfigBavardagePenalty(!configBavardagePenalty)}
+                  onClick={() => setConfigMalusPenalty(!configMalusPenalty)}
                   className={`relative w-12 h-6 rounded-full transition-colors ${
-                    configBavardagePenalty ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
+                    configMalusPenalty ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
                   }`}
                 >
                   <span
                     className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                      configBavardagePenalty ? 'translate-x-6' : 'translate-x-0'
+                      configMalusPenalty ? 'translate-x-6' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -1907,7 +1907,7 @@ export function Students() {
                       className="w-full px-3 py-2 border border-indigo-300 rounded-lg bg-white text-[var(--color-text)] text-sm"
                     />
                     <p className="text-xs text-indigo-600 mt-2">
-                      Note = {configBaseGrade} + participations {configBavardagePenalty ? '- bavardages' : ''}
+                      Note = {configBaseGrade} + participations {configMalusPenalty ? '- malus' : ''}
                     </p>
                   </div>
                 )}
@@ -2155,12 +2155,12 @@ export function Students() {
                     <p className="text-xs text-[var(--color-text-tertiary)]">
                       ({selectedStudentForDetail.participations} seance + {selectedStudentForDetail.manualParticipations} manuelles)
                     </p>
-                    {selectedStudentForDetail.bavardages > 0 && (
+                    {selectedStudentForDetail.malus > 0 && (
                       <p className="text-sm">
-                        <span className="text-orange-600 font-semibold">{selectedStudentForDetail.bavardages}</span>
-                        <span className="text-[var(--color-text-tertiary)]"> bavardages</span>
-                        {selectedStudentForDetail.bavardagePenalty && (
-                          <span className="text-orange-600"> (-{selectedStudentForDetail.bavardages})</span>
+                        <span className="text-orange-600 font-semibold">{selectedStudentForDetail.malus}</span>
+                        <span className="text-[var(--color-text-tertiary)]"> malus</span>
+                        {selectedStudentForDetail.malusPenalty && (
+                          <span className="text-orange-600"> (-{selectedStudentForDetail.malus})</span>
                         )}
                       </p>
                     )}
@@ -2185,10 +2185,10 @@ export function Students() {
                       </p>
                       <p className="text-[var(--color-text-secondary)]">
                         Note = {selectedStudentForDetail.baseGrade} + {selectedStudentForDetail.totalParticipations} part.
-                        {selectedStudentForDetail.bavardagePenalty && selectedStudentForDetail.bavardages > 0 && (
-                          <> - {selectedStudentForDetail.bavardages} bav.</>
+                        {selectedStudentForDetail.malusPenalty && selectedStudentForDetail.malus > 0 && (
+                          <> - {selectedStudentForDetail.malus} malus</>
                         )}
-                        {' '}= <strong>{(selectedStudentForDetail.baseGrade + (selectedStudentForDetail.bavardagePenalty ? selectedStudentForDetail.totalParticipations - selectedStudentForDetail.bavardages : selectedStudentForDetail.totalParticipations)).toFixed(1)}</strong>
+                        {' '}= <strong>{(selectedStudentForDetail.baseGrade + (selectedStudentForDetail.malusPenalty ? selectedStudentForDetail.totalParticipations - selectedStudentForDetail.malus : selectedStudentForDetail.totalParticipations)).toFixed(1)}</strong>
                         {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
                         {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
                       </p>
@@ -2201,9 +2201,9 @@ export function Students() {
                           <> - ({selectedStudentForDetail.absences} abs × {(selectedStudentForDetail.targetParticipations / selectedStudentForDetail.totalSessionsExpected).toFixed(2)}) = {selectedStudentForDetail.adjustedTarget.toFixed(1)}</>
                         )}
                       </p>
-                      {selectedStudentForDetail.bavardagePenalty && selectedStudentForDetail.bavardages > 0 && (
+                      {selectedStudentForDetail.malusPenalty && selectedStudentForDetail.malus > 0 && (
                         <p className="text-[var(--color-text-secondary)]">
-                          Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.bavardages} bavardages = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
+                          Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.malus} malus = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
                         </p>
                       )}
                       <p className="text-[var(--color-text-secondary)]">
@@ -2223,25 +2223,25 @@ export function Students() {
                   <div className="text-xs text-green-700">Participations</div>
                 </div>
                 <div className="bg-orange-50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-orange-600">-{selectedStudentForDetail.bavardages}</div>
-                  <div className="text-xs text-orange-700">Bavardages</div>
+                  <div className="text-2xl font-bold text-orange-600">-{selectedStudentForDetail.malus}</div>
+                  <div className="text-xs text-orange-700">Malus</div>
                 </div>
                 <div className="bg-red-50 rounded-xl p-4 text-center">
                   <div className="text-2xl font-bold text-red-600">{selectedStudentForDetail.absences}</div>
                   <div className="text-xs text-red-700">Absences</div>
                 </div>
                 <div className={`rounded-xl p-4 text-center ${
-                  (selectedStudentForDetail.participations - selectedStudentForDetail.bavardages) >= 0
+                  (selectedStudentForDetail.participations - selectedStudentForDetail.malus) >= 0
                     ? 'bg-green-100'
                     : 'bg-orange-100'
                 }`}>
                   <div className={`text-2xl font-bold ${
-                    (selectedStudentForDetail.participations - selectedStudentForDetail.bavardages) >= 0
+                    (selectedStudentForDetail.participations - selectedStudentForDetail.malus) >= 0
                       ? 'text-green-700'
                       : 'text-orange-700'
                   }`}>
-                    {selectedStudentForDetail.participations - selectedStudentForDetail.bavardages >= 0 ? '+' : ''}
-                    {selectedStudentForDetail.participations - selectedStudentForDetail.bavardages}
+                    {selectedStudentForDetail.participations - selectedStudentForDetail.malus >= 0 ? '+' : ''}
+                    {selectedStudentForDetail.participations - selectedStudentForDetail.malus}
                   </div>
                   <div className="text-xs text-[var(--color-text-secondary)]">Score global</div>
                 </div>
@@ -2294,8 +2294,8 @@ export function Students() {
                       />
                       <Line
                         type="monotone"
-                        dataKey="bavardage"
-                        name="Bavardage"
+                        dataKey="malus"
+                        name="Malus"
                         stroke="#f97316"
                         strokeWidth={2}
                         dot={{ r: 4, fill: '#f97316' }}

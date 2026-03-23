@@ -15,7 +15,7 @@ interface Session {
   room_id?: string;
   events_count: number;
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
   remarques: number;
   sorties: number;
@@ -141,7 +141,7 @@ export function Sessions() {
             ended_at: session.ended_at,
             events_count: eventsData.length,
             participations: eventsData.filter(e => e.type === 'participation').length,
-            bavardages: eventsData.filter(e => e.type === 'bavardage').length,
+            malus: eventsData.filter(e => e.type === 'bavardage').length,
             absences: eventsData.filter(e => e.type === 'absence').length,
             remarques: eventsData.filter(e => e.type === 'remarque').length,
             sorties: eventsData.filter(e => e.type === 'sortie').length,
@@ -589,7 +589,7 @@ export function Sessions() {
                             className="w-7 h-7 flex items-center justify-center text-xs font-bold"
                             style={{ background: 'var(--color-bavardage-soft)', color: 'var(--color-bavardage)', borderRadius: 'var(--radius-md)' }}
                           >-</span>
-                          <span className="text-[var(--color-text-secondary)] font-medium">{session.bavardages}</span>
+                          <span className="text-[var(--color-text-secondary)] font-medium">{session.malus}</span>
                         </span>
                         <span
                           className="px-2 py-1 text-xs font-medium text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"

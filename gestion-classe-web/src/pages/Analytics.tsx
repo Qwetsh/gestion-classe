@@ -46,21 +46,21 @@ interface StudentData {
 }
 
 interface GenderStats {
-  garcons: { participations: number; bavardages: number; absences: number; count: number };
-  filles: { participations: number; bavardages: number; absences: number; count: number };
+  garcons: { participations: number; malus: number; absences: number; count: number };
+  filles: { participations: number; malus: number; absences: number; count: number };
 }
 
 interface DailyData {
   date: string;
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
 }
 
 interface ClassStats {
   class_name: string;
   participations: number;
-  bavardages: number;
+  malus: number;
   absences: number;
   ratio: number;
 }
@@ -98,7 +98,7 @@ export function Analytics() {
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [genderMetric, setGenderMetric] = useState<'participations' | 'bavardages' | 'absences'>('participations');
+  const [genderMetric, setGenderMetric] = useState<'participations' | 'malus' | 'absences'>('participations');
 
   // Load classes
   useEffect(() => {
@@ -261,11 +261,11 @@ export function Analytics() {
     events.forEach((event) => {
       const date = event.timestamp.split('T')[0];
       if (!byDate.has(date)) {
-        byDate.set(date, { date, participations: 0, bavardages: 0, absences: 0 });
+        byDate.set(date, { date, participations: 0, malus: 0, absences: 0 });
       }
       const entry = byDate.get(date)!;
       if (event.type === 'participation') entry.participations++;
-      else if (event.type === 'bavardage') entry.bavardages++;
+      else if (event.type === 'bavardage') entry.malus++;
       else if (event.type === 'absence') entry.absences++;
     });
 
@@ -281,20 +281,20 @@ export function Analytics() {
         byClass.set(event.class_id, {
           class_name: event.class_name,
           participations: 0,
-          bavardages: 0,
+          malus: 0,
           absences: 0,
           ratio: 0,
         });
       }
       const entry = byClass.get(event.class_id)!;
       if (event.type === 'participation') entry.participations++;
-      else if (event.type === 'bavardage') entry.bavardages++;
+      else if (event.type === 'bavardage') entry.malus++;
       else if (event.type === 'absence') entry.absences++;
     });
 
     // Calculate ratio
     byClass.forEach((entry) => {
-      const total = entry.participations + entry.bavardages;
+      const total = entry.participations + entry.malus;
       entry.ratio = total > 0 ? Math.round((entry.participations / total) * 100) : 0;
     });
 
@@ -303,10 +303,10 @@ export function Analytics() {
 
   // Compute totals for pie chart
   const totals = useMemo(() => {
-    const result = { participations: 0, bavardages: 0, absences: 0, sorties: 0, remarques: 0 };
+    const result = { participations: 0, malus: 0, absences: 0, sorties: 0, remarques: 0 };
     events.forEach((event) => {
       if (event.type === 'participation') result.participations++;
-      else if (event.type === 'bavardage') result.bavardages++;
+      else if (event.type === 'bavardage') result.malus++;
       else if (event.type === 'absence') result.absences++;
       else if (event.type === 'sortie') result.sorties++;
       else if (event.type === 'remarque') result.remarques++;
@@ -316,7 +316,7 @@ export function Analytics() {
 
   const pieData = [
     { name: 'Participations', value: totals.participations, color: COLORS.participation },
-    { name: 'Bavardages', value: totals.bavardages, color: COLORS.bavardage },
+    { name: 'Malus', value: totals.malus, color: COLORS.bavardage },
     { name: 'Absences', value: totals.absences, color: COLORS.absence },
     { name: 'Sorties', value: totals.sorties, color: COLORS.sortie },
     { name: 'Remarques', value: totals.remarques, color: COLORS.remarque },
@@ -331,8 +331,8 @@ export function Analytics() {
     const studentsF = new Set<string>();
 
     const stats: GenderStats = {
-      garcons: { participations: 0, bavardages: 0, absences: 0, count: 0 },
-      filles: { participations: 0, bavardages: 0, absences: 0, count: 0 },
+      garcons: { participations: 0, malus: 0, absences: 0, count: 0 },
+      filles: { participations: 0, malus: 0, absences: 0, count: 0 },
     };
 
     events.forEach(event => {
@@ -345,7 +345,7 @@ export function Analytics() {
       studentSet.add(event.student_id);
 
       if (event.type === 'participation') target.participations++;
-      else if (event.type === 'bavardage') target.bavardages++;
+      else if (event.type === 'bavardage') target.malus++;
       else if (event.type === 'absence') target.absences++;
     });
 
@@ -592,8 +592,8 @@ export function Analytics() {
                 icon="+"
               />
               <SummaryCard
-                label="Bavardages"
-                value={totals.bavardages}
+                label="Malus"
+                value={totals.malus}
                 color={COLORS.bavardage}
                 icon="-"
               />
@@ -611,7 +611,7 @@ export function Analytics() {
               />
               <SummaryCard
                 label="Ratio +/-"
-                value={`${totals.participations + totals.bavardages > 0 ? Math.round((totals.participations / (totals.participations + totals.bavardages)) * 100) : 0}%`}
+                value={`${totals.participations + totals.malus > 0 ? Math.round((totals.participations / (totals.participations + totals.malus)) * 100) : 0}%`}
                 color="var(--color-primary)"
                 icon="%"
               />
@@ -694,7 +694,7 @@ export function Analytics() {
                     Comparaison Filles / Garcons
                   </h3>
                   <div className="flex gap-1">
-                    {(['participations', 'bavardages', 'absences'] as const).map((metric) => (
+                    {(['participations', 'malus', 'absences'] as const).map((metric) => (
                       <button
                         key={metric}
                         onClick={() => setGenderMetric(metric)}
@@ -704,7 +704,7 @@ export function Analytics() {
                             : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
                         }`}
                       >
-                        {metric === 'participations' ? 'Implic.' : metric === 'bavardages' ? 'Bavard.' : 'Absences'}
+                        {metric === 'participations' ? 'Implic.' : metric === 'malus' ? 'Malus' : 'Absences'}
                       </button>
                     ))}
                   </div>
@@ -739,8 +739,8 @@ export function Analytics() {
                     />
                     <Bar
                       dataKey="value"
-                      name={genderMetric === 'participations' ? 'Participations' : genderMetric === 'bavardages' ? 'Bavardages' : 'Absences'}
-                      fill={genderMetric === 'participations' ? COLORS.participation : genderMetric === 'bavardages' ? COLORS.bavardage : COLORS.absence}
+                      name={genderMetric === 'participations' ? 'Participations' : genderMetric === 'malus' ? 'Malus' : 'Absences'}
+                      fill={genderMetric === 'participations' ? COLORS.participation : genderMetric === 'malus' ? COLORS.bavardage : COLORS.absence}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -791,8 +791,8 @@ export function Analytics() {
                       />
                       <Line
                         type="monotone"
-                        dataKey="bavardages"
-                        name="Bavardages"
+                        dataKey="malus"
+                        name="Malus"
                         stroke={COLORS.bavardage}
                         strokeWidth={2}
                         dot={false}
@@ -887,7 +887,7 @@ export function Analytics() {
                     />
                     <Legend />
                     <Bar dataKey="participations" name="Participations" fill={COLORS.participation} />
-                    <Bar dataKey="bavardages" name="Bavardages" fill={COLORS.bavardage} />
+                    <Bar dataKey="malus" name="Malus" fill={COLORS.bavardage} />
                     <Bar dataKey="absences" name="Absences" fill={COLORS.absence} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -901,7 +901,7 @@ export function Analytics() {
             >
               <div className="p-5 border-b border-[var(--color-border)]">
                 <h3 className="text-lg font-semibold text-[var(--color-text)]">
-                  Classement par ratio participation/bavardage
+                  Classement par ratio participation/malus
                 </h3>
               </div>
               <div className="overflow-x-auto">
@@ -915,7 +915,7 @@ export function Analytics() {
                         Participations
                       </th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-[var(--color-text-secondary)]">
-                        Bavardages
+                        Malus
                       </th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-[var(--color-text-secondary)]">
                         Absences
@@ -966,7 +966,7 @@ export function Analytics() {
                               borderRadius: 'var(--radius-md)',
                             }}
                           >
-                            {cls.bavardages}
+                            {cls.malus}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
