@@ -141,10 +141,19 @@ function FeedbacksTab() {
 
   const handleArchive = async (id: string, archived: boolean) => {
     setArchivingId(id);
-    const { error } = await supabase.from('feedbacks').update({ archived: !archived }).eq('id', id);
+    const { data, error } = await supabase
+      .from('feedbacks')
+      .update({ archived: !archived })
+      .eq('id', id)
+      .select('id, archived');
     if (error) {
       console.error('Error archiving feedback:', error);
-      alert('Erreur: la colonne "archived" n\'existe peut-etre pas encore. Executez la migration SQL.');
+      alert('Erreur: colonne "archived" manquante ou probleme de migration.');
+      setArchivingId(null);
+      return;
+    }
+    if (!data || data.length === 0) {
+      alert('Erreur: mise a jour refusee. Verifiez la policy RLS UPDATE sur la table feedbacks.');
       setArchivingId(null);
       return;
     }
