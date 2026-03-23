@@ -11,6 +11,8 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<boolean>;
+  signUp: (email: string, password: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -174,6 +176,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const signUp = useCallback(async (email: string, password: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setState(prev => ({ ...prev, error: error.message, isLoading: false }));
+      return false;
+    }
+
+    // If email confirmation is required, user won't have a session yet
+    if (!data.session) {
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: null,
+      }));
+      return true;
+    }
+
+    setState({
+      user: data.user,
+      session: data.session,
+      isLoading: false,
+      error: null,
+    });
+
+    return true;
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/gestion-classe/login`,
+    });
+
+    if (error) {
+      setState(prev => ({ ...prev, error: error.message, isLoading: false }));
+      return false;
+    }
+
+    setState(prev => ({ ...prev, isLoading: false, error: null }));
+    return true;
+  }, []);
+
   const signOut = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true }));
     await supabase.auth.signOut();
@@ -190,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, clearError }}>
+    <AuthContext.Provider value={{ ...state, signIn, signUp, resetPassword, signOut, clearError }}>
       {children}
     </AuthContext.Provider>
   );

@@ -7,12 +7,18 @@ import { sanitizePhotoPath } from '../lib/security';
 
 interface Session {
   id: string;
+  class_id: string;
   class_name: string;
   room_name: string;
   topic: string | null;
   notes: string | null;
   started_at: string;
   ended_at: string | null;
+}
+
+interface Student {
+  id: string;
+  pseudo: string;
 }
 
 interface Event {
@@ -68,6 +74,15 @@ export function SessionDetail() {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [editedTopic, setEditedTopic] = useState('');
   const [isSavingTopic, setIsSavingTopic] = useState(false);
+
+  // Add event modal states
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [addEventStudent, setAddEventStudent] = useState('');
+  const [addEventType, setAddEventType] = useState('');
+  const [addEventSubtype, setAddEventSubtype] = useState('');
+  const [addEventNote, setAddEventNote] = useState('');
+  const [isAddingEvent, setIsAddingEvent] = useState(false);
 
   // Load photo URL when an event with photo is selected
   const handleEventClick = async (event: Event) => {
@@ -148,6 +163,63 @@ export function SessionDetail() {
     }
   };
 
+  const openAddEventModal = () => {
+    setAddEventStudent('');
+    setAddEventType('');
+    setAddEventSubtype('');
+    setAddEventNote('');
+    setShowAddEvent(true);
+  };
+
+  const handleAddEvent = async () => {
+    if (!session || !addEventStudent || !addEventType) return;
+
+    setIsAddingEvent(true);
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .insert({
+          session_id: session.id,
+          student_id: addEventStudent,
+          type: addEventType,
+          subtype: addEventSubtype || null,
+          note: addEventNote.trim() || null,
+          timestamp: new Date().toISOString(),
+        })
+        .select(`
+          id,
+          type,
+          subtype,
+          note,
+          photo_path,
+          timestamp,
+          students (pseudo)
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error adding event:', error);
+        alert('Erreur lors de l\'ajout');
+        return;
+      }
+
+      // Add to local state
+      setEvents(prev => [...prev, {
+        id: data.id,
+        student_pseudo: (data.students as any)?.pseudo || 'Eleve inconnu',
+        type: data.type,
+        subtype: data.subtype,
+        note: data.note,
+        photo_path: data.photo_path,
+        timestamp: data.timestamp,
+      }]);
+
+      setShowAddEvent(false);
+    } finally {
+      setIsAddingEvent(false);
+    }
+  };
+
   const handleDeleteEvent = async (eventId: string) => {
     if (!window.confirm('Voulez-vous vraiment supprimer cet evenement ?')) {
       return;
@@ -184,6 +256,7 @@ export function SessionDetail() {
         .from('sessions')
         .select(`
           id,
+          class_id,
           topic,
           notes,
           started_at,
@@ -197,6 +270,7 @@ export function SessionDetail() {
       if (sessionData) {
         setSession({
           id: sessionData.id,
+          class_id: sessionData.class_id,
           class_name: (sessionData.classes as any)?.name || 'Classe inconnue',
           room_name: (sessionData.rooms as any)?.name || 'Salle inconnue',
           topic: sessionData.topic,
@@ -204,6 +278,17 @@ export function SessionDetail() {
           started_at: sessionData.started_at,
           ended_at: sessionData.ended_at,
         });
+
+        // Load students for this class (for add event feature)
+        const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, pseudo')
+          .eq('class_id', sessionData.class_id)
+          .order('pseudo', { ascending: true });
+
+        if (studentsData) {
+          setStudents(studentsData);
+        }
       }
 
       // Load events
@@ -532,6 +617,24 @@ export function SessionDetail() {
             </div>
           ))}
         </div>
+
+        {/* Add event button */}
+        {session.ended_at && (
+          <div className="flex justify-center">
+            <button
+              onClick={openAddEventModal}
+              className="flex items-center gap-2 px-5 py-2.5 text-white font-medium transition-all duration-200 hover:opacity-90 hover:translate-y-[-1px] active:translate-y-0"
+              style={{
+                background: 'var(--gradient-primary)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-glow)',
+              }}
+            >
+              <span className="text-lg">+</span>
+              Ajouter un evenement
+            </button>
+          </div>
+        )}
 
         {/* Groups section */}
         {groups.length > 0 && (
@@ -986,6 +1089,157 @@ export function SessionDetail() {
                   Aucun contenu
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Event Modal */}
+      {showAddEvent && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowAddEvent(false)}
+        >
+          <div
+            className="bg-[var(--color-surface)] max-w-md w-full max-h-[90vh] overflow-hidden"
+            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
+              <h3 className="font-semibold text-[var(--color-text)]">
+                Ajouter un evenement
+              </h3>
+              <button
+                onClick={() => setShowAddEvent(false)}
+                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-160px)]">
+              {/* Student select */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  Eleve
+                </label>
+                <select
+                  value={addEventStudent}
+                  onChange={(e) => setAddEventStudent(e.target.value)}
+                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] text-[var(--color-text)] border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)]"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  <option value="">Selectionner un eleve...</option>
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>{s.pseudo}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Event type */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  Type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(EVENT_CONFIG).map(([type, config]) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => { setAddEventType(type); setAddEventSubtype(''); }}
+                      className={`flex items-center gap-3 p-3 border-2 transition-all ${
+                        addEventType === type
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
+                          : 'border-[var(--color-border)] hover:border-[var(--color-text-tertiary)]'
+                      }`}
+                      style={{ borderRadius: 'var(--radius-lg)' }}
+                    >
+                      <div
+                        className="w-8 h-8 flex items-center justify-center text-sm font-bold shrink-0"
+                        style={{
+                          background: config.softColor,
+                          color: config.color,
+                          borderRadius: 'var(--radius-md)'
+                        }}
+                      >
+                        {config.icon}
+                      </div>
+                      <span className="text-sm font-medium text-[var(--color-text)]">
+                        {config.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sortie subtype */}
+              {addEventType === 'sortie' && (
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    Type de sortie
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {['toilettes', 'infirmerie', 'bureau', 'autre'].map((sub) => (
+                      <button
+                        key={sub}
+                        type="button"
+                        onClick={() => setAddEventSubtype(sub)}
+                        className={`px-3 py-1.5 text-sm capitalize border-2 transition-all ${
+                          addEventSubtype === sub
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
+                            : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-tertiary)]'
+                        }`}
+                        style={{ borderRadius: 'var(--radius-lg)' }}
+                      >
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Note (for remarque type) */}
+              {addEventType === 'remarque' && (
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    Note (optionnel)
+                  </label>
+                  <textarea
+                    value={addEventNote}
+                    onChange={(e) => setAddEventNote(e.target.value)}
+                    placeholder="Ajouter une remarque..."
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    rows={3}
+                    maxLength={500}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 border-t border-[var(--color-border)] flex justify-end gap-3">
+              <button
+                onClick={() => setShowAddEvent(false)}
+                className="px-4 py-2.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleAddEvent}
+                disabled={isAddingEvent || !addEventStudent || !addEventType || (addEventType === 'sortie' && !addEventSubtype)}
+                className="px-5 py-2.5 text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:opacity-90"
+                style={{
+                  background: 'var(--gradient-primary)',
+                  borderRadius: 'var(--radius-lg)',
+                }}
+              >
+                {isAddingEvent ? 'Ajout...' : 'Ajouter'}
+              </button>
             </div>
           </div>
         </div>

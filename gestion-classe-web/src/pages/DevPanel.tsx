@@ -13,6 +13,7 @@ interface Feedback {
   type: 'bug' | 'suggestion' | 'autre';
   message: string;
   created_at: string;
+  archived?: boolean;
 }
 
 interface UserActivity {
@@ -124,24 +125,36 @@ function FeedbacksTab() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'bug' | 'suggestion' | 'autre'>('all');
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase
+  const loadFeedbacks = async () => {
+    const { data } = await supabase
       .from('feedbacks')
       .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setFeedbacks(data || []);
-        setIsLoading(false);
-      });
-  }, []);
+      .order('created_at', { ascending: false });
+    setFeedbacks(data || []);
+    setIsLoading(false);
+  };
 
-  const filtered = filter === 'all' ? feedbacks : feedbacks.filter(f => f.type === filter);
+  useEffect(() => { loadFeedbacks(); }, []);
+
+  const handleArchive = async (id: string, archived: boolean) => {
+    setArchivingId(id);
+    await supabase.from('feedbacks').update({ archived: !archived }).eq('id', id);
+    setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, archived: !archived } : f));
+    setArchivingId(null);
+  };
+
+  const activeFeedbacks = feedbacks.filter(f => !f.archived);
+  const archivedFeedbacks = feedbacks.filter(f => f.archived);
+  const displayFeedbacks = showArchived ? archivedFeedbacks : activeFeedbacks;
+  const filtered = filter === 'all' ? displayFeedbacks : displayFeedbacks.filter(f => f.type === filter);
   const counts = {
-    all: feedbacks.length,
-    bug: feedbacks.filter(f => f.type === 'bug').length,
-    suggestion: feedbacks.filter(f => f.type === 'suggestion').length,
-    autre: feedbacks.filter(f => f.type === 'autre').length,
+    all: displayFeedbacks.length,
+    bug: displayFeedbacks.filter(f => f.type === 'bug').length,
+    suggestion: displayFeedbacks.filter(f => f.type === 'suggestion').length,
+    autre: displayFeedbacks.filter(f => f.type === 'autre').length,
   };
 
   const typeConfig = {
@@ -154,25 +167,39 @@ function FeedbacksTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
-        {(['all', 'bug', 'suggestion', 'autre'] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 text-xs font-medium transition-all ${
-              filter === f
-                ? 'text-white bg-[var(--color-primary)]'
-                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
-            }`}
-            style={{ borderRadius: 'var(--radius-md)' }}
-          >
-            {f === 'all' ? '📋 Tous' : typeConfig[f].label} ({counts[f]})
-          </button>
-        ))}
+      {/* Archive toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 flex-wrap">
+          {(['all', 'bug', 'suggestion', 'autre'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 text-xs font-medium transition-all ${
+                filter === f
+                  ? 'text-white bg-[var(--color-primary)]'
+                  : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+              }`}
+              style={{ borderRadius: 'var(--radius-md)' }}
+            >
+              {f === 'all' ? '📋 Tous' : typeConfig[f].label} ({counts[f]})
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowArchived(!showArchived)}
+          className={`px-3 py-1.5 text-xs font-medium transition-all ${
+            showArchived
+              ? 'text-white bg-[var(--color-text-tertiary)]'
+              : 'text-[var(--color-text-tertiary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+          }`}
+          style={{ borderRadius: 'var(--radius-md)' }}
+        >
+          📦 Archives ({archivedFeedbacks.length})
+        </button>
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState text="Aucun retour pour ce filtre." />
+        <EmptyState text={showArchived ? "Aucun retour archive." : "Aucun retour pour ce filtre."} />
       ) : (
         <div className="space-y-3">
           {filtered.map(fb => {
@@ -189,7 +216,18 @@ function FeedbacksTab() {
                     </span>
                     <span className="text-sm text-[var(--color-text-secondary)]">{fb.user_email}</span>
                   </div>
-                  <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(fb.created_at)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(fb.created_at)}</span>
+                    <button
+                      onClick={() => handleArchive(fb.id, !!fb.archived)}
+                      disabled={archivingId === fb.id}
+                      className="px-2 py-1 text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+                      style={{ borderRadius: 'var(--radius-md)' }}
+                      title={fb.archived ? 'Desarchiver' : 'Archiver'}
+                    >
+                      {fb.archived ? '📥 Restaurer' : '📦 Archiver'}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-[var(--color-text)] whitespace-pre-wrap">{fb.message}</p>
               </Card>
