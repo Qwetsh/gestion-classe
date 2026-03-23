@@ -141,7 +141,13 @@ function FeedbacksTab() {
 
   const handleArchive = async (id: string, archived: boolean) => {
     setArchivingId(id);
-    await supabase.from('feedbacks').update({ archived: !archived }).eq('id', id);
+    const { error } = await supabase.from('feedbacks').update({ archived: !archived }).eq('id', id);
+    if (error) {
+      console.error('Error archiving feedback:', error);
+      alert('Erreur: la colonne "archived" n\'existe peut-etre pas encore. Executez la migration SQL.');
+      setArchivingId(null);
+      return;
+    }
     setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, archived: !archived } : f));
     setArchivingId(null);
   };

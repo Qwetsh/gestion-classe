@@ -25,16 +25,20 @@ function AnnouncementToast({ announcement, onDismiss }: { announcement: Announce
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const elRef = useRef<HTMLDivElement>(null);
 
+  const isExitingRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
   const dismiss = useCallback(() => {
-    if (isExiting) return;
+    if (isExitingRef.current) return;
+    isExitingRef.current = true;
     setIsExiting(true);
     if (timerRef.current) clearTimeout(timerRef.current);
-    setTimeout(onDismiss, 300);
-  }, [onDismiss, isExiting]);
+    setTimeout(() => onDismissRef.current(), 300);
+  }, []);
 
   // Auto-dismiss after 5s
   useEffect(() => {
-    // Animate in
     requestAnimationFrame(() => setIsVisible(true));
 
     timerRef.current = setTimeout(dismiss, AUTO_DISMISS_MS);
@@ -140,9 +144,26 @@ function AnnouncementToast({ announcement, onDismiss }: { announcement: Announce
   );
 }
 
+const SEEN_KEY = 'gc_announcements_seen';
+
+function getSeenIds(): Set<string> {
+  try {
+    const stored = sessionStorage.getItem(SEEN_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function markSeen(id: string) {
+  const seen = getSeenIds();
+  seen.add(id);
+  sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seen]));
+}
+
 export function AnnouncementBanner() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(getSeenIds);
 
   useEffect(() => {
     supabase
@@ -155,6 +176,11 @@ export function AnnouncementBanner() {
       });
   }, []);
 
+  const handleDismiss = (id: string) => {
+    markSeen(id);
+    setDismissed(prev => new Set(prev).add(id));
+  };
+
   const visible = announcements.filter(a => !dismissed.has(a.id));
   if (visible.length === 0) return null;
 
@@ -164,7 +190,7 @@ export function AnnouncementBanner() {
         <AnnouncementToast
           key={a.id}
           announcement={a}
-          onDismiss={() => setDismissed(prev => new Set(prev).add(a.id))}
+          onDismiss={() => handleDismiss(a.id)}
         />
       ))}
     </div>
