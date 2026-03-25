@@ -125,7 +125,7 @@ BEGIN
     FROM events e
     JOIN students st ON st.id = e.student_id
     WHERE st.user_id = v_user_id
-      AND (v_trim_start IS NULL OR e.timestamp >= v_trim_start::text)
+      AND (v_trim_start IS NULL OR e.timestamp >= v_trim_start)
     GROUP BY e.student_id
   ),
   student_manual AS (
