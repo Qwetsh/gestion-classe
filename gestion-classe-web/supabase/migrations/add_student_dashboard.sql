@@ -175,14 +175,28 @@ BEGIN
             GREATEST(1, target - (absences * (target::numeric / sessions_expected)))
             ) * 20
           ))
-      END as grade
+      END as grade,
+      -- Raw score without cap for ranking: allows sorting beyond 20/20
+      CASE
+        WHEN base_grade IS NOT NULL AND base_grade > 0 THEN
+          GREATEST(0,
+            base_grade + (participations + manual_participations) -
+            CASE WHEN bav_penalty THEN bavardages ELSE 0 END
+          )
+        ELSE
+          GREATEST(0,
+            (GREATEST(0, (participations + manual_participations) - CASE WHEN bav_penalty THEN bavardages ELSE 0 END)::numeric /
+            GREATEST(1, target - (absences * (target::numeric / sessions_expected)))
+            ) * 20
+          )
+      END as raw_score
     FROM all_students
   ),
   class_ranked AS (
     SELECT
       id,
       grade,
-      RANK() OVER (ORDER BY grade DESC) as rank,
+      RANK() OVER (ORDER BY raw_score DESC, (participations + manual_participations)::numeric / GREATEST(1, bavardages) DESC) as rank,
       COUNT(*) OVER () as total
     FROM graded_students
     WHERE class_id = v_class_id
@@ -191,7 +205,7 @@ BEGIN
     SELECT
       id,
       grade,
-      RANK() OVER (ORDER BY grade DESC) as rank,
+      RANK() OVER (ORDER BY raw_score DESC, (participations + manual_participations)::numeric / GREATEST(1, bavardages) DESC) as rank,
       COUNT(*) OVER () as total
     FROM graded_students
   ),
