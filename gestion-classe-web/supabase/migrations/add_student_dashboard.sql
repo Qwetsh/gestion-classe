@@ -194,6 +194,26 @@ BEGIN
       RANK() OVER (ORDER BY grade DESC) as rank,
       COUNT(*) OVER () as total
     FROM graded_students
+  ),
+  class_averages AS (
+    SELECT
+      gs.class_id,
+      c.name as class_name,
+      ROUND(AVG(gs.grade), 1) as avg_grade,
+      COUNT(*) as student_count
+    FROM graded_students gs
+    JOIN classes c ON c.id = gs.class_id
+    GROUP BY gs.class_id, c.name
+  ),
+  classes_ranked AS (
+    SELECT
+      class_id,
+      class_name,
+      avg_grade,
+      student_count,
+      RANK() OVER (ORDER BY avg_grade DESC) as rank,
+      COUNT(*) OVER () as total
+    FROM class_averages
   )
   SELECT json_build_object(
     'pseudo', v_pseudo,
@@ -217,6 +237,14 @@ BEGIN
     'top10_overall', COALESCE(
       (SELECT json_agg(json_build_object('rank', rank, 'grade', ROUND(grade, 1)))
        FROM (SELECT rank, grade FROM overall_ranked ORDER BY rank LIMIT 10) t),
+      '[]'::json
+    ),
+    'my_class_rank_among_classes', COALESCE((SELECT rank FROM classes_ranked WHERE class_id = v_class_id), 0),
+    'total_classes', COALESCE((SELECT total FROM classes_ranked LIMIT 1), 0),
+    'my_class_avg', COALESCE((SELECT avg_grade FROM classes_ranked WHERE class_id = v_class_id), 0),
+    'all_classes_ranking', COALESCE(
+      (SELECT json_agg(json_build_object('rank', rank, 'class_name', class_name, 'avg_grade', avg_grade, 'student_count', student_count))
+       FROM (SELECT rank, class_name, avg_grade, student_count FROM classes_ranked ORDER BY rank) t),
       '[]'::json
     )
   ) INTO v_result;

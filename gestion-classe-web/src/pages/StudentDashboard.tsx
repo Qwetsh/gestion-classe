@@ -17,6 +17,10 @@ interface DashboardData {
   overall_total: number;
   top10_class: { rank: number; grade: number }[];
   top10_overall: { rank: number; grade: number }[];
+  my_class_rank_among_classes: number;
+  total_classes: number;
+  my_class_avg: number;
+  all_classes_ranking: { rank: number; class_name: string; avg_grade: number; student_count: number }[];
 }
 
 export function StudentDashboard() {
@@ -353,6 +357,79 @@ export function StudentDashboard() {
             />
           </div>
         </div>
+
+        {/* Class vs Classes Ranking */}
+        {data.all_classes_ranking.length > 1 && (
+          <div style={{
+            background: '#1e293b',
+            borderRadius: '16px',
+            padding: '16px',
+            marginBottom: '12px',
+            border: '1px solid #334155',
+          }}>
+            <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+              Classement des classes
+            </p>
+            {/* Position de ma classe */}
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '12px',
+              padding: '8px',
+              background: '#0f172a',
+              borderRadius: '8px',
+            }}>
+              <span style={{ fontSize: '24px', fontWeight: 700, color: '#a78bfa' }}>
+                {data.my_class_rank_among_classes}<sup style={{ fontSize: '12px' }}>e</sup>
+              </span>
+              <span style={{ color: '#64748b', fontSize: '13px' }}> / {data.total_classes} classes</span>
+              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                Moyenne {data.class_name} : <span style={{ color: '#a78bfa', fontWeight: 600 }}>{data.my_class_avg.toFixed(1)}</span>
+              </div>
+            </div>
+            {/* Liste de toutes les classes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {data.all_classes_ranking.map((entry, index) => {
+                const isMyClass = entry.class_name === data.class_name;
+                const medalEmoji = (r: number) => {
+                  if (r === 1) return '\u{1F947}';
+                  if (r === 2) return '\u{1F948}';
+                  if (r === 3) return '\u{1F949}';
+                  return `${r}.`;
+                };
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      background: isMyClass ? '#2e1065' : 'transparent',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span style={{
+                      color: isMyClass ? '#c4b5fd' : '#94a3b8',
+                      fontWeight: isMyClass ? 700 : 400,
+                    }}>
+                      {medalEmoji(entry.rank)} {entry.class_name}
+                    </span>
+                    <span style={{
+                      color: isMyClass ? '#c4b5fd' : '#cbd5e1',
+                      fontWeight: isMyClass ? 700 : 400,
+                    }}>
+                      {entry.avg_grade.toFixed(1)}
+                      <span style={{ color: '#64748b', fontSize: '10px', marginLeft: '4px' }}>
+                        ({entry.student_count} el.)
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <p style={{
