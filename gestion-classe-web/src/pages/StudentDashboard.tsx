@@ -89,7 +89,15 @@ export function StudentDashboard() {
         return;
       }
 
-      setData(result as DashboardData);
+      setData({
+        ...result,
+        top10_class: result.top10_class || [],
+        top10_overall: result.top10_overall || [],
+        all_classes_ranking: result.all_classes_ranking || [],
+        my_class_rank_among_classes: result.my_class_rank_among_classes || 0,
+        total_classes: result.total_classes || 0,
+        my_class_avg: result.my_class_avg || 0,
+      } as DashboardData);
     } catch {
       setError('Erreur de connexion. Reessaye.');
     } finally {
