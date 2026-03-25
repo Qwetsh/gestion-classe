@@ -13,6 +13,7 @@ import { SessionDetail } from './pages/SessionDetail';
 import { GroupSessions } from './pages/GroupSessions';
 import { TpTemplates } from './pages/TpTemplates';
 import { DevPanel } from './pages/DevPanel';
+import { ToolGrid, ToolView } from './pages/Toolbox';
 import { Students } from './pages/Students';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -103,6 +104,22 @@ function App() {
           element={
             <ProtectedRoute>
               <Analytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools"
+          element={
+            <ProtectedRoute>
+              <ToolGrid />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools/:toolId"
+          element={
+            <ProtectedRoute>
+              <ToolView />
             </ProtectedRoute>
           }
         />

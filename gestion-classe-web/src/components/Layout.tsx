@@ -20,6 +20,7 @@ const navItems = [
   { path: '/sessions', label: 'Séances', icon: '📅' },
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
+  { path: '/tools', label: 'Outils', icon: '🧰' },
 ];
 
 export function Layout({ children }: LayoutProps) {
