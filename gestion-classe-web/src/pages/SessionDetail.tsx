@@ -1182,7 +1182,7 @@ export function SessionDetail() {
                     Type de sortie
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {['toilettes', 'infirmerie', 'bureau', 'autre'].map((sub) => (
+                    {['toilettes', 'infirmerie', 'convocation', 'exclusion'].map((sub) => (
                       <button
                         key={sub}
                         type="button"
