@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 
-const SIZES = [256, 512, 1024];
+const EXPORT_SIZE = 1024;
 const COLORS = [
   { label: 'Noir', dark: '#000000', light: '#ffffff' },
   { label: 'Bleu', dark: '#1a56db', light: '#ffffff' },
@@ -11,7 +11,6 @@ const COLORS = [
 
 export default function QrCodeGenerator() {
   const [url, setUrl] = useState('');
-  const [size, setSize] = useState(512);
   const [colorIdx, setColorIdx] = useState(0);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -77,7 +76,7 @@ export default function QrCodeGenerator() {
     const errorCorrectionLevel = logoSrc ? 'H' : 'M';
 
     QRCode.toCanvas(canvasRef.current, url, {
-      width: size,
+      width: EXPORT_SIZE,
       margin: 2,
       color: { dark: color.dark, light: color.light },
       errorCorrectionLevel,
@@ -90,7 +89,7 @@ export default function QrCodeGenerator() {
         setError('');
       })
       .catch(() => setError('Impossible de générer le QR code'));
-  }, [url, size, colorIdx, logoSrc, drawLogo]);
+  }, [url, colorIdx, logoSrc, drawLogo]);
 
   function handleLogoUpload(file: File) {
     const reader = new FileReader();
@@ -108,7 +107,7 @@ export default function QrCodeGenerator() {
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `qrcode-${size}px.png`;
+    a.download = `qrcode-${EXPORT_SIZE}px.png`;
     a.click();
   }
 
@@ -139,27 +138,6 @@ export default function QrCodeGenerator() {
 
       {/* Options row */}
       <div className="flex flex-wrap gap-4 items-end">
-        {/* Size */}
-        <div>
-          <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Taille</label>
-          <div className="flex gap-1">
-            {SIZES.map((s) => (
-              <button
-                key={s}
-                onClick={() => setSize(s)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  size === s
-                    ? 'text-white'
-                    : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] hover:bg-[var(--color-border)]'
-                }`}
-                style={size === s ? { background: 'var(--gradient-primary)' } : undefined}
-              >
-                {s}px
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Color */}
         <div>
           <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Couleur</label>
@@ -217,7 +195,7 @@ export default function QrCodeGenerator() {
           className={`rounded-2xl p-4 bg-white ${url.trim() ? '' : 'opacity-30'}`}
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
-          <canvas ref={canvasRef} className="max-w-full h-auto" style={{ maxWidth: Math.min(size, 400) }} />
+          <canvas ref={canvasRef} style={{ width: 300, height: 300 }} />
         </div>
 
         {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
