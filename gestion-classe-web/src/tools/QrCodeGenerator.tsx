@@ -18,14 +18,21 @@ export default function QrCodeGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logoRef = useRef<HTMLImageElement | null>(null);
 
+  const [logoReady, setLogoReady] = useState(false);
+
   // Load logo image when source changes
   useEffect(() => {
     if (!logoSrc) {
       logoRef.current = null;
+      setLogoReady(false);
       return;
     }
+    setLogoReady(false);
     const img = new Image();
-    img.onload = () => { logoRef.current = img; };
+    img.onload = () => {
+      logoRef.current = img;
+      setLogoReady(true);
+    };
     img.src = logoSrc;
   }, [logoSrc]);
 
@@ -89,7 +96,7 @@ export default function QrCodeGenerator() {
         setError('');
       })
       .catch(() => setError('Impossible de générer le QR code'));
-  }, [url, colorIdx, logoSrc, drawLogo]);
+  }, [url, colorIdx, logoSrc, logoReady, drawLogo]);
 
   function handleLogoUpload(file: File) {
     const reader = new FileReader();
