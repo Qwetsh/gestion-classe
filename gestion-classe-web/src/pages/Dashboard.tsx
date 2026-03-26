@@ -229,6 +229,10 @@ export function Dashboard() {
           </p>
         </div>
 
+        {/* Mobile: Start session buttons */}
+        <LiveSessionLauncher />
+        <GroupSessionLauncher />
+
         {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
@@ -276,10 +280,6 @@ export function Dashboard() {
             isLarge
           />
         </div>
-
-        {/* Mobile: Start session buttons */}
-        <LiveSessionLauncher />
-        <GroupSessionLauncher />
 
         {/* Recent sessions */}
         <div
