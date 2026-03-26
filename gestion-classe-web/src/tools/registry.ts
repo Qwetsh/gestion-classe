@@ -27,6 +27,14 @@ export const tools: Tool[] = [
     tags: ['jeu', 'vocabulaire', 'grille', 'svt', 'français', 'anglais', 'histoire', 'maths', 'allemand'],
   },
   {
+    id: 'wordsearch',
+    name: 'Mots mêlés',
+    description: 'Générer des mots mêlés (libre ou vocabulaire collège)',
+    icon: '🔍',
+    component: lazy(() => import('./WordSearchGenerator')),
+    tags: ['jeu', 'vocabulaire', 'grille', 'recherche'],
+  },
+  {
     id: 'iframe',
     name: 'Iframe',
     description: 'Générer un code iframe pour intégrer une page web',
