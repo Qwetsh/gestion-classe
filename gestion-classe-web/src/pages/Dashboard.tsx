@@ -42,7 +42,9 @@ export function Dashboard() {
       let classesCount = 0;
       let studentsCount = 0;
       let sessionsCount = 0;
-      let eventsData: { type: string }[] = [];
+      let eventsCount = 0;
+      let participations = 0;
+      let malus = 0;
       const errors: string[] = [];
 
       // Load each stat independently to avoid all-or-nothing failure
@@ -88,15 +90,33 @@ export function Dashboard() {
 
         supabase
           .from('events')
-          .select('type, session_id, sessions!inner(user_id)')
+          .select('*, sessions!inner(user_id)', { count: 'exact', head: true })
           .eq('sessions.user_id', user!.id)
-          .then(({ data, error }) => {
+          .then(({ count, error }) => {
             if (error) {
-              console.error('Error loading events:', error);
+              console.error('Error loading events count:', error);
               errors.push('evenements');
             } else {
-              eventsData = data || [];
+              eventsCount = count || 0;
             }
+          }),
+
+        supabase
+          .from('events')
+          .select('*, sessions!inner(user_id)', { count: 'exact', head: true })
+          .eq('sessions.user_id', user!.id)
+          .eq('type', 'participation')
+          .then(({ count, error }) => {
+            if (!error) participations = count || 0;
+          }),
+
+        supabase
+          .from('events')
+          .select('*, sessions!inner(user_id)', { count: 'exact', head: true })
+          .eq('sessions.user_id', user!.id)
+          .eq('type', 'bavardage')
+          .then(({ count, error }) => {
+            if (!error) malus = count || 0;
           }),
       ];
 
@@ -108,14 +128,11 @@ export function Dashboard() {
         setError(`Erreur de chargement partiel: ${errors.join(', ')}`);
       }
 
-      const participations = eventsData.filter(e => e.type === 'participation').length;
-      const malus = eventsData.filter(e => e.type === 'bavardage').length;
-
       setStats({
         classesCount,
         studentsCount,
         sessionsCount,
-        eventsCount: eventsData.length,
+        eventsCount,
         participations,
         malus,
       });
