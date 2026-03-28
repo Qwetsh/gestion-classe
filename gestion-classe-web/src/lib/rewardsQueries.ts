@@ -337,6 +337,8 @@ export async function awardStamp(userId: string, studentId: string, categoryId: 
     card = newCard;
   }
 
+  if (!card) throw new Error('Impossible de créer la carte');
+
   // Count current stamps
   const { count } = await supabase
     .from('stamps')
