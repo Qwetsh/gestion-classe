@@ -1,6 +1,6 @@
 # Story 8.3: Consultation des classes et eleves
 
-Status: review
+Status: complete
 
 ## Story
 

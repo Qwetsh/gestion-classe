@@ -1,6 +1,6 @@
 # Story 5.3: Detail d'une seance avec evenements horodates
 
-Status: review
+Status: complete
 
 ## Story
 

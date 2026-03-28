@@ -1,6 +1,6 @@
 # Story 4.6: Menu radial - Declenchement par long-press
 
-Status: review
+Status: complete
 
 ## Story
 

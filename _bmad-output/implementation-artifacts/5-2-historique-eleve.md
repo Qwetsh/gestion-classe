@@ -1,6 +1,6 @@
 # Story 5.2: Historique d'un eleve specifique
 
-Status: review
+Status: complete
 
 ## Story
 

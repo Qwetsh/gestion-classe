@@ -1,6 +1,6 @@
 # Story 4.13: Compteurs visibles par eleve
 
-Status: review
+Status: complete
 
 ## Story
 

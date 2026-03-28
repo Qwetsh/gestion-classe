@@ -1,6 +1,6 @@
 # Story 4.2: Selection de salle pour une seance
 
-Status: review
+Status: complete
 
 ## Story
 

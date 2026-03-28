@@ -1,6 +1,6 @@
 # Story 4.8: Menu radial - Enregistrer un bavardage
 
-Status: review
+Status: complete
 
 ## Story
 

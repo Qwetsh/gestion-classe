@@ -1,6 +1,6 @@
 # Story 7.2: Suppression definitive des donnees d'une classe/annee
 
-Status: review
+Status: complete
 
 ## Story
 

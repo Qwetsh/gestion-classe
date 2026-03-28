@@ -1,6 +1,6 @@
 # Story 8.4: Consultation des seances et historiques
 
-Status: review
+Status: complete
 
 ## Story
 

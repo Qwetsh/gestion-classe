@@ -1,5 +1,46 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+
+// ============================================
+// Stamp card types
+// ============================================
+
+interface StampData {
+  student_id: string;
+  active_card: {
+    id: string;
+    card_number: number;
+    status: string;
+    created_at: string;
+    stamps: {
+      id: string;
+      slot_number: number;
+      category_label: string;
+      category_icon: string;
+      category_color: string;
+      awarded_at: string;
+    }[];
+    stamp_count: number;
+  } | null;
+  completed_cards: {
+    id: string;
+    card_number: number;
+    completed_at: string;
+    bonus_label: string | null;
+    bonus_used: boolean;
+    selected_at: string | null;
+    used_at: string | null;
+  }[];
+  categories: {
+    label: string;
+    icon: string;
+    color: string;
+  }[];
+  available_bonuses: {
+    id: string;
+    label: string;
+  }[];
+}
 
 interface DashboardData {
   pseudo: string;
@@ -29,6 +70,14 @@ export function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [activeTab, setActiveTab] = useState<'grades' | 'stamps'>('grades');
+  const [stampData, setStampData] = useState<StampData | null>(null);
+  const [stampLoading, setStampLoading] = useState(false);
+  const [stampError, setStampError] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showBonusSelect, setShowBonusSelect] = useState(false);
+  const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; color: string; date: string } | null>(null);
+  const currentCodeRef = useRef('');
 
   const handleDigitChange = useCallback((index: number, value: string) => {
     if (value.length > 1) value = value.slice(-1);
@@ -77,6 +126,7 @@ export function StudentDashboard() {
 
     setIsLoading(true);
     setError(null);
+    currentCodeRef.current = fullCode;
 
     try {
       const { data: result, error: rpcError } = await supabase
@@ -105,10 +155,80 @@ export function StudentDashboard() {
     }
   };
 
+  const loadStampData = useCallback(async () => {
+    const fullCode = currentCodeRef.current;
+    if (!fullCode || fullCode.length !== 6) return;
+    setStampLoading(true);
+    setStampError(null);
+    try {
+      const { data: result, error: rpcError } = await supabase
+        .rpc('get_student_stamps', { p_code: fullCode });
+      if (rpcError) throw rpcError;
+      if (result?.error) {
+        setStampError(result.error);
+        return;
+      }
+      setStampData(result as StampData);
+    } catch {
+      setStampError('Erreur de chargement des tampons');
+    } finally {
+      setStampLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'stamps' && data && !stampData) {
+      loadStampData();
+    }
+  }, [activeTab, data, stampData, loadStampData]);
+
+  // Realtime subscription for stamp updates
+  useEffect(() => {
+    if (!data || !currentCodeRef.current) return;
+
+    const channel = supabase
+      .channel('student-stamps-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stamps' }, () => {
+        if (activeTab === 'stamps') loadStampData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_selections' }, () => {
+        if (activeTab === 'stamps') loadStampData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [data, activeTab, loadStampData]);
+
+  const handleSelectBonus = async (bonusId: string) => {
+    const fullCode = currentCodeRef.current;
+    if (!fullCode) return;
+    try {
+      const { data: result, error: rpcError } = await supabase
+        .rpc('select_student_bonus', { p_code: fullCode, p_bonus_id: bonusId });
+      if (rpcError) throw rpcError;
+      if (result?.error) {
+        setStampError(result.error);
+        return;
+      }
+      setShowBonusSelect(false);
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3000);
+      // Reload stamp data
+      await loadStampData();
+    } catch {
+      setStampError('Erreur lors de la sélection du bonus');
+    }
+  };
+
   const handleLogout = () => {
     setData(null);
+    setStampData(null);
     setCode(['', '', '', '', '', '']);
     setError(null);
+    setActiveTab('grades');
+    currentCodeRef.current = '';
     setTimeout(() => inputRefs.current[0]?.focus(), 100);
   };
 
@@ -268,6 +388,65 @@ export function StudentDashboard() {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          marginBottom: '16px',
+          background: '#0f172a',
+          borderRadius: '12px',
+          padding: '4px',
+        }}>
+          <button
+            onClick={() => setActiveTab('grades')}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              border: 'none',
+              background: activeTab === 'grades' ? '#3b82f6' : 'transparent',
+              color: activeTab === 'grades' ? '#fff' : '#94a3b8',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            📊 Notes
+          </button>
+          <button
+            onClick={() => setActiveTab('stamps')}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              border: 'none',
+              background: activeTab === 'stamps' ? '#f59e0b' : 'transparent',
+              color: activeTab === 'stamps' ? '#fff' : '#94a3b8',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            ⭐ Tampons
+          </button>
+        </div>
+
+        {activeTab === 'stamps' ? (
+          <StampCardView
+            stampData={stampData}
+            stampLoading={stampLoading}
+            stampError={stampError}
+            showCelebration={showCelebration}
+            showBonusSelect={showBonusSelect}
+            setShowBonusSelect={setShowBonusSelect}
+            onSelectBonus={handleSelectBonus}
+            selectedStampDetail={selectedStampDetail}
+            setSelectedStampDetail={setSelectedStampDetail}
+          />
+        ) : (
+        <>
         {/* Grade Card */}
         <div style={{
           background: '#1e293b',
@@ -439,6 +618,9 @@ export function StudentDashboard() {
           </div>
         )}
 
+        </>
+        )}
+
         {/* Footer */}
         <p style={{
           textAlign: 'center',
@@ -464,6 +646,349 @@ function StatCard({ label, value, color }: { label: string; value: number; color
     }}>
       <div style={{ fontSize: '28px', fontWeight: 700, color }}>{value}</div>
       <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{label}</div>
+    </div>
+  );
+}
+
+// ============================================
+// Stamp Card View (Student)
+// ============================================
+
+function StampCardView({
+  stampData, stampLoading, stampError, showCelebration, showBonusSelect, setShowBonusSelect, onSelectBonus, selectedStampDetail, setSelectedStampDetail,
+}: {
+  stampData: StampData | null;
+  stampLoading: boolean;
+  stampError: string | null;
+  showCelebration: boolean;
+  showBonusSelect: boolean;
+  setShowBonusSelect: (v: boolean) => void;
+  onSelectBonus: (bonusId: string) => void;
+  selectedStampDetail: { label: string; icon: string; color: string; date: string } | null;
+  setSelectedStampDetail: (v: { label: string; icon: string; color: string; date: string } | null) => void;
+}) {
+  if (stampLoading) {
+    return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>Chargement...</div>;
+  }
+
+  if (stampError) {
+    return <div style={{ textAlign: 'center', color: '#f87171', padding: '40px 0' }}>{stampError}</div>;
+  }
+
+  if (!stampData) {
+    return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>Aucune donnee</div>;
+  }
+
+  const card = stampData.active_card;
+  const stampCount = card?.stamp_count || 0;
+  const cardComplete = stampCount >= 10;
+  const stamps = card?.stamps || [];
+
+  return (
+    <div>
+      {/* Celebration overlay */}
+      {showCelebration && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.8)',
+          animation: 'fadeIn 0.3s ease',
+        }}>
+          {/* Confetti particles */}
+          {['🎊', '⭐', '🌟', '✨', '🎉', '💫', '🏆', '🎁'].map((emoji, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              fontSize: '28px',
+              left: `${12 + i * 11}%`,
+              top: '40%',
+              animation: `confetti ${1.2 + i * 0.15}s ease-out forwards`,
+              animationDelay: `${i * 0.1}s`,
+            }}>{emoji}</div>
+          ))}
+          <div style={{ textAlign: 'center', animation: 'pulse 1.5s ease infinite' }}>
+            <div style={{ fontSize: '80px', animation: 'bounce 0.6s ease infinite' }}>🎉</div>
+            <p style={{
+              color: '#fbbf24', fontSize: '24px', fontWeight: 700, marginTop: '16px',
+              textShadow: '0 0 20px rgba(251,191,36,0.5)',
+            }}>
+              Bravo ! Bonus enregistre !
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '8px' }}>
+              Ton enseignant le prendra en compte.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Stamp detail popup */}
+      {selectedStampDetail && (
+        <div
+          onClick={() => setSelectedStampDetail(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 90,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)',
+          }}
+        >
+          <div style={{
+            background: '#1e293b', borderRadius: '16px', padding: '24px',
+            border: '1px solid #334155', textAlign: 'center', maxWidth: '280px',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>{selectedStampDetail.icon}</div>
+            <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
+            <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px' }}>
+              {new Date(selectedStampDetail.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            <div style={{ width: '20px', height: '4px', borderRadius: '2px', background: selectedStampDetail.color, margin: '12px auto 0' }} />
+          </div>
+        </div>
+      )}
+
+      {/* Active Card */}
+      <div style={{
+        background: '#1e293b', borderRadius: '20px', padding: '24px',
+        marginBottom: '12px', border: cardComplete ? '1px solid #22c55e40' : '1px solid #334155',
+        animation: cardComplete ? 'cardComplete 2s ease infinite' : undefined,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 700 }}>
+            Carte n°{card?.card_number || 1}
+          </p>
+          <span style={{
+            padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+            background: cardComplete ? '#22c55e20' : '#3b82f620',
+            color: cardComplete ? '#22c55e' : '#60a5fa',
+          }}>
+            {stampCount}/10
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{
+          height: '6px', background: '#0f172a', borderRadius: '3px',
+          overflow: 'hidden', marginBottom: '20px',
+        }}>
+          <div style={{
+            height: '100%', borderRadius: '3px', transition: 'width 0.8s ease',
+            width: `${(stampCount / 10) * 100}%`,
+            background: cardComplete
+              ? 'linear-gradient(90deg, #22c55e, #4ade80, #22c55e)'
+              : 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+            backgroundSize: cardComplete ? '200% 100%' : undefined,
+            animation: cardComplete ? 'shimmer 2s linear infinite' : undefined,
+          }} />
+        </div>
+
+        {/* Stamp grid: 2 rows x 5 columns */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: '8px',
+        }}>
+          {Array.from({ length: 10 }, (_, i) => {
+            const stamp = stamps.find(s => s.slot_number === i + 1);
+            return (
+              <button
+                key={i}
+                onClick={() => stamp ? setSelectedStampDetail({
+                  label: stamp.category_label,
+                  icon: stamp.category_icon,
+                  color: stamp.category_color,
+                  date: stamp.awarded_at,
+                }) : undefined}
+                disabled={!stamp}
+                style={{
+                  aspectRatio: '1',
+                  borderRadius: '14px',
+                  border: stamp ? `2px solid ${stamp.category_color}40` : '2px dashed #334155',
+                  background: stamp ? `${stamp.category_color}15` : '#0f172a',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: stamp ? '24px' : '16px',
+                  cursor: stamp ? 'pointer' : 'default',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: stamp ? `0 2px 8px ${stamp.category_color}20` : 'none',
+                  animation: stamp ? `stampAppear 0.4s ease ${i * 0.05}s both` : undefined,
+                }}
+                onMouseEnter={e => { if (stamp) (e.currentTarget.style.transform = 'scale(1.1)'); }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                {stamp ? stamp.category_icon : (
+                  <span style={{ color: '#334155' }}>🔒</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Card complete: choose bonus */}
+        {cardComplete && !showBonusSelect && stampData.available_bonuses.length > 0 && (
+          <button
+            onClick={() => setShowBonusSelect(true)}
+            style={{
+              width: '100%', marginTop: '20px', padding: '14px',
+              borderRadius: '12px', border: 'none',
+              background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+              color: '#1e293b', fontSize: '15px', fontWeight: 700,
+              cursor: 'pointer', transition: 'transform 0.2s',
+              animation: 'pulse 2s ease infinite',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            🎁 Choisir ton bonus !
+          </button>
+        )}
+      </div>
+
+      {/* Bonus selection */}
+      {showBonusSelect && (
+        <div style={{
+          background: '#1e293b', borderRadius: '20px', padding: '20px',
+          marginBottom: '12px', border: '1px solid #f59e0b40',
+        }}>
+          <p style={{ color: '#fbbf24', fontSize: '16px', fontWeight: 700, marginBottom: '4px', textAlign: 'center' }}>
+            🎁 Choisis ton bonus !
+          </p>
+          <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '16px', textAlign: 'center' }}>
+            Tu as rempli ta carte, bravo ! Choisis ta recompense :
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {stampData.available_bonuses.map(bonus => (
+              <button
+                key={bonus.id}
+                onClick={() => {
+                  if (confirm(`Tu veux choisir : "${bonus.label}" ?`)) {
+                    onSelectBonus(bonus.id);
+                  }
+                }}
+                style={{
+                  padding: '14px 16px', borderRadius: '12px',
+                  border: '1px solid #334155', background: '#0f172a',
+                  color: '#f1f5f9', fontSize: '14px', fontWeight: 500,
+                  cursor: 'pointer', textAlign: 'left',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = '#fbbf24';
+                  e.currentTarget.style.background = '#1e293b';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = '#334155';
+                  e.currentTarget.style.background = '#0f172a';
+                }}
+              >
+                🎁 {bonus.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowBonusSelect(false)}
+            style={{
+              width: '100%', marginTop: '12px', padding: '10px',
+              borderRadius: '10px', border: '1px solid #334155',
+              background: 'transparent', color: '#94a3b8', fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {/* Completed cards history */}
+      {stampData.completed_cards.length > 0 && (
+        <div style={{
+          background: '#1e293b', borderRadius: '16px', padding: '16px',
+          marginBottom: '12px', border: '1px solid #334155',
+        }}>
+          <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
+            Historique des cartes
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {stampData.completed_cards.map(c => (
+              <div key={c.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 12px', borderRadius: '10px', background: '#0f172a',
+              }}>
+                <div>
+                  <span style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600 }}>
+                    Carte n°{c.card_number}
+                  </span>
+                  {c.completed_at && (
+                    <span style={{ color: '#64748b', fontSize: '11px', marginLeft: '8px' }}>
+                      {new Date(c.completed_at).toLocaleDateString('fr-FR')}
+                    </span>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  {c.bonus_label ? (
+                    <span style={{
+                      fontSize: '11px', fontWeight: 500,
+                      color: c.bonus_used ? '#22c55e' : '#fbbf24',
+                    }}>
+                      🎁 {c.bonus_label} {c.bonus_used ? '✓' : '⏳'}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>Pas de bonus</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* How to earn stamps */}
+      {stampData.categories.length > 0 && (
+        <div style={{
+          background: '#1e293b', borderRadius: '16px', padding: '16px',
+          marginBottom: '12px', border: '1px solid #334155',
+        }}>
+          <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
+            Comment gagner un tampon ?
+          </p>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px',
+          }}>
+            {stampData.categories.map((cat, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '6px 10px', borderRadius: '8px', background: '#0f172a',
+              }}>
+                <span style={{ fontSize: '16px' }}>{cat.icon}</span>
+                <span style={{ color: '#cbd5e1', fontSize: '11px' }}>{cat.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes stampAppear {
+          0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+          60% { transform: scale(1.3) rotate(10deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes confetti {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(-80px) rotate(720deg); opacity: 0; }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes cardComplete {
+          0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+          70% { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+      `}</style>
     </div>
   );
 }

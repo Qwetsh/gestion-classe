@@ -1,6 +1,6 @@
 # Story 8.1: Initialisation du projet web
 
-Status: review
+Status: complete
 
 ## Story
 

@@ -1,6 +1,6 @@
 # Story 5.4: Historique des seances par classe
 
-Status: review
+Status: complete
 
 ## Story
 

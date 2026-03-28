@@ -1,6 +1,6 @@
 # Story 6.4: Synchronisation manuelle
 
-Status: review
+Status: complete
 
 ## Story
 

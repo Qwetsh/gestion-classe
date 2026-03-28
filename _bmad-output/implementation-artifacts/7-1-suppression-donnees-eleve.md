@@ -1,6 +1,6 @@
 # Story 7.1: Suppression definitive des donnees d'un eleve
 
-Status: review
+Status: complete
 
 ## Story
 

@@ -1,6 +1,6 @@
 # Story 6.3: Synchronisation automatique
 
-Status: review
+Status: complete
 
 ## Story
 

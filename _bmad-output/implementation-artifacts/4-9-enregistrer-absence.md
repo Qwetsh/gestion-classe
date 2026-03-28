@@ -1,6 +1,6 @@
 # Story 4.9: Menu radial - Enregistrer une absence
 
-Status: review
+Status: complete
 
 ## Story
 

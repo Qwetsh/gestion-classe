@@ -1,6 +1,6 @@
 # Story 4.11: Menu radial - Sous-menu Sortie
 
-Status: review
+Status: complete
 
 ## Story
 

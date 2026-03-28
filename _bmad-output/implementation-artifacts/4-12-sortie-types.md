@@ -1,6 +1,6 @@
 # Story 4.12: Sous-menu Sortie - Infirmerie, Toilettes, Convocation, Exclusion
 
-Status: review
+Status: complete
 
 ## Story
 

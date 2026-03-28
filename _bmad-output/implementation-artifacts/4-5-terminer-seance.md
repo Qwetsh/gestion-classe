@@ -1,6 +1,6 @@
 # Story 4.5: Terminer une seance
 
-Status: review
+Status: complete
 
 ## Story
 

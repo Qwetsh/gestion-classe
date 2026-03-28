@@ -1,6 +1,6 @@
 # Story 4.3: Affichage du plan de classe en seance
 
-Status: review
+Status: complete
 
 ## Story
 

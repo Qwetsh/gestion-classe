@@ -1,6 +1,6 @@
 # Story 8.5: Statistiques et vue d'ensemble
 
-Status: review
+Status: complete
 
 ## Story
 

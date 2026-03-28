@@ -1,6 +1,6 @@
 # Story 8.2: Authentification web
 
-Status: review
+Status: complete
 
 ## Story
 

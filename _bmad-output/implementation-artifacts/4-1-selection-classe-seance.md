@@ -1,6 +1,6 @@
 # Story 4.1: Selection de classe pour une seance
 
-Status: review
+Status: complete
 
 ## Story
 

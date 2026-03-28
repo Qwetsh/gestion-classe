@@ -1,6 +1,6 @@
 # Story 6.1: Fonctionnement offline complet
 
-Status: review
+Status: complete
 
 ## Story
 

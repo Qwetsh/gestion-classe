@@ -64,6 +64,24 @@ Backend:
 | Frame rate | 60 FPS constant |
 | Setup initial | < 30 minutes |
 
+## Build Mobile (APK)
+
+**IMPORTANT : Le build EAS doit se faire HORS OneDrive !**
+
+OneDrive verrouille les fichiers et cause des erreurs "Permission denied" avec les dossiers `(auth)` et `(main)`.
+
+```bash
+# Dossier de build (hors OneDrive)
+C:\Users\Utilisateur\gestion-classe-build
+
+# Workflow de build :
+# 1. Copier les modifications vers le dossier de build
+cp -r gestion-classe-mobile/* /c/Users/Utilisateur/gestion-classe-build/
+
+# 2. Lancer le build depuis ce dossier
+cd /c/Users/Utilisateur/gestion-classe-build && npx eas build --platform android --profile preview
+```
+
 ## Commandes utiles
 
 ```bash

@@ -16,6 +16,7 @@ const navItems = [
   { path: '/analytics', label: 'Analyses', icon: '📈' },
   { path: '/classes', label: 'Classes', icon: '📚' },
   { path: '/students', label: 'Suivi élèves', icon: '👥' },
+  { path: '/rewards', label: 'Récompenses', icon: '⭐' },
   { path: '/sessions', label: 'Séances', icon: '📅' },
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },

@@ -1,6 +1,6 @@
 # Story 5.1: Liste des seances passees
 
-Status: review
+Status: complete
 
 ## Story
 

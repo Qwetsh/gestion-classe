@@ -1,6 +1,6 @@
 # Story 4.4: Demarrage d'une seance
 
-Status: review
+Status: complete
 
 ## Story
 

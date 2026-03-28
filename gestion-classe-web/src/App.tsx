@@ -14,6 +14,7 @@ import { TpTemplates } from './pages/TpTemplates';
 import { DevPanel } from './pages/DevPanel';
 import { ToolGrid, ToolView } from './pages/Toolbox';
 import { Students } from './pages/Students';
+import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
@@ -88,6 +89,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Students />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rewards"
+          element={
+            <ProtectedRoute>
+              <Rewards />
             </ProtectedRoute>
           }
         />

@@ -1,6 +1,6 @@
 # Story 6.2: Stockage local persistant
 
-Status: review
+Status: complete
 
 ## Story
 

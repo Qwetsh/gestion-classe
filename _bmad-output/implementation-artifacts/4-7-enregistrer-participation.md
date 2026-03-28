@@ -1,6 +1,6 @@
 # Story 4.7: Menu radial - Enregistrer une participation
 
-Status: review
+Status: complete
 
 ## Story
 

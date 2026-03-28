@@ -1,6 +1,6 @@
 # Story 4.10: Menu radial - Enregistrer une remarque
 
-Status: review
+Status: complete
 
 ## Story
 
