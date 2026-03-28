@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getCardTier } from '../lib/rewardsQueries';
 
 // ============================================
 // Stamp card types
@@ -683,6 +684,7 @@ function StampCardView({
   const stampCount = card?.stamp_count || 0;
   const cardComplete = stampCount >= 10;
   const stamps = card?.stamps || [];
+  const tier = getCardTier(card?.card_number || 1);
 
   return (
     <div>
@@ -746,18 +748,29 @@ function StampCardView({
 
       {/* Active Card */}
       <div style={{
-        background: '#1e293b', borderRadius: '20px', padding: '24px',
-        marginBottom: '12px', border: cardComplete ? '1px solid #22c55e40' : '1px solid #334155',
+        background: tier.gradient, borderRadius: '20px', padding: '24px',
+        marginBottom: '12px',
+        boxShadow: `0 8px 32px ${tier.borderColor}30`,
+        position: 'relative', overflow: 'hidden',
         animation: cardComplete ? 'cardComplete 2s ease infinite' : undefined,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 700 }}>
-            Carte n°{card?.card_number || 1}
-          </p>
+        {/* Background pattern */}
+        <div style={{ position: 'absolute', inset: 0, background: tier.bgPattern, pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '24px' }}>{tier.emoji}</span>
+            <div>
+              <p style={{ color: '#fff', fontSize: '16px', fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                Carte n°{card?.card_number || 1}
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}>{tier.name}</p>
+            </div>
+          </div>
           <span style={{
-            padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-            background: cardComplete ? '#22c55e20' : '#3b82f620',
-            color: cardComplete ? '#22c55e' : '#60a5fa',
+            padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
+            background: 'rgba(255,255,255,0.2)', color: '#fff',
+            backdropFilter: 'blur(4px)',
           }}>
             {stampCount}/10
           </span>
@@ -765,15 +778,13 @@ function StampCardView({
 
         {/* Progress bar */}
         <div style={{
-          height: '6px', background: '#0f172a', borderRadius: '3px',
+          position: 'relative', height: '8px', background: 'rgba(0,0,0,0.25)', borderRadius: '4px',
           overflow: 'hidden', marginBottom: '20px',
         }}>
           <div style={{
-            height: '100%', borderRadius: '3px', transition: 'width 0.8s ease',
+            height: '100%', borderRadius: '4px', transition: 'width 0.8s ease',
             width: `${(stampCount / 10) * 100}%`,
-            background: cardComplete
-              ? 'linear-gradient(90deg, #22c55e, #4ade80, #22c55e)'
-              : 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+            background: cardComplete ? tier.progressGradientComplete : tier.progressGradient,
             backgroundSize: cardComplete ? '200% 100%' : undefined,
             animation: cardComplete ? 'shimmer 2s linear infinite' : undefined,
           }} />
@@ -781,7 +792,7 @@ function StampCardView({
 
         {/* Stamp grid: 2 rows x 5 columns */}
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
+          position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
           gap: '8px',
         }}>
           {Array.from({ length: 10 }, (_, i) => {
@@ -799,20 +810,21 @@ function StampCardView({
                 style={{
                   aspectRatio: '1',
                   borderRadius: '14px',
-                  border: stamp ? `2px solid ${stamp.category_color}40` : '2px dashed #334155',
-                  background: stamp ? `${stamp.category_color}15` : '#0f172a',
+                  border: stamp ? `2px solid ${stamp.category_color}90` : '2px dashed rgba(255,255,255,0.3)',
+                  background: stamp ? `${stamp.category_color}25` : 'rgba(0,0,0,0.2)',
+                  backdropFilter: 'blur(4px)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: stamp ? '24px' : '16px',
                   cursor: stamp ? 'pointer' : 'default',
                   transition: 'transform 0.2s, box-shadow 0.2s',
-                  boxShadow: stamp ? `0 2px 8px ${stamp.category_color}20` : 'none',
+                  boxShadow: stamp ? `0 2px 8px ${stamp.category_color}30` : 'none',
                   animation: stamp ? `stampAppear 0.4s ease ${i * 0.05}s both` : undefined,
                 }}
                 onMouseEnter={e => { if (stamp) (e.currentTarget.style.transform = 'scale(1.1)'); }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
-                {stamp ? stamp.category_icon : (
-                  <span style={{ color: '#334155' }}>🔒</span>
+                {stamp ? <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>{stamp.category_icon}</span> : (
+                  <span style={{ color: 'rgba(255,255,255,0.3)' }}>{tier.emptyIcon}</span>
                 )}
               </button>
             );
@@ -824,7 +836,7 @@ function StampCardView({
           <button
             onClick={() => setShowBonusSelect(true)}
             style={{
-              width: '100%', marginTop: '20px', padding: '14px',
+              position: 'relative', width: '100%', marginTop: '20px', padding: '14px',
               borderRadius: '12px', border: 'none',
               background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
               color: '#1e293b', fontSize: '15px', fontWeight: 700,
@@ -904,35 +916,42 @@ function StampCardView({
             Historique des cartes
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {stampData.completed_cards.map(c => (
-              <div key={c.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '8px 12px', borderRadius: '10px', background: '#0f172a',
-              }}>
-                <div>
-                  <span style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600 }}>
-                    Carte n°{c.card_number}
-                  </span>
-                  {c.completed_at && (
-                    <span style={{ color: '#64748b', fontSize: '11px', marginLeft: '8px' }}>
-                      {new Date(c.completed_at).toLocaleDateString('fr-FR')}
+            {stampData.completed_cards.map(c => {
+              const cTier = getCardTier(c.card_number);
+              return (
+                <div key={c.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '8px 12px', borderRadius: '10px', background: '#0f172a',
+                }}>
+                  <div>
+                    <span style={{ fontSize: '14px', marginRight: '6px' }}>{cTier.emoji}</span>
+                    <span style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600 }}>
+                      Carte n°{c.card_number}
                     </span>
-                  )}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  {c.bonus_label ? (
-                    <span style={{
-                      fontSize: '11px', fontWeight: 500,
-                      color: c.bonus_used ? '#22c55e' : '#fbbf24',
-                    }}>
-                      🎁 {c.bonus_label} {c.bonus_used ? '✓' : '⏳'}
+                    <span style={{ color: '#64748b', fontSize: '11px', marginLeft: '6px' }}>
+                      {cTier.name}
                     </span>
-                  ) : (
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>Pas de bonus</span>
-                  )}
+                    {c.completed_at && (
+                      <span style={{ color: '#475569', fontSize: '10px', marginLeft: '8px' }}>
+                        {new Date(c.completed_at).toLocaleDateString('fr-FR')}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    {c.bonus_label ? (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 500,
+                        color: c.bonus_used ? '#22c55e' : '#fbbf24',
+                      }}>
+                        🎁 {c.bonus_label} {c.bonus_used ? '✓' : '⏳'}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>Pas de bonus</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -5,7 +5,7 @@ import { Layout } from '../components/Layout';
 import { buildPhotoUrl } from '../lib/security';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchStudentStampDetail, type StudentStampDetail } from '../lib/rewardsQueries';
+import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 
 interface Student {
   id: string;
@@ -2537,71 +2537,86 @@ export function Students() {
                   <p className="text-sm text-[var(--color-text-tertiary)] py-2">Chargement...</p>
                 ) : !studentStampDetail ? (
                   <p className="text-sm text-[var(--color-text-tertiary)] py-2">Pas de carte active</p>
-                ) : (
+                ) : (() => {
+                  const tier = getCardTier(studentStampDetail.card_number);
+                  const isComplete = studentStampDetail.stamp_count >= 10;
+                  return (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">
-                        Carte n°{studentStampDetail.card_number}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        studentStampDetail.stamp_count >= 10
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {studentStampDetail.stamp_count}/10
-                      </span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${(studentStampDetail.stamp_count / 10) * 100}%`,
-                          background: studentStampDetail.stamp_count >= 10 ? '#22c55e' : 'var(--gradient-primary)',
-                        }}
-                      />
-                    </div>
-                    {/* Stamp grid */}
-                    <div className="grid grid-cols-5 gap-2">
-                      {Array.from({ length: 10 }, (_, i) => {
-                        const stamp = studentStampDetail.stamps.find(s => s.slot_number === i + 1);
-                        return (
-                          <div
-                            key={i}
-                            className={`aspect-square rounded-xl flex items-center justify-center ${
-                              stamp
-                                ? 'border-2'
-                                : 'border-2 border-dashed border-[var(--color-border)] bg-[var(--color-background)]'
-                            }`}
-                            style={stamp ? {
-                              borderColor: stamp.category_color + '60',
-                              backgroundColor: stamp.category_color + '15',
-                            } : undefined}
-                            title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
-                          >
-                            <span className="text-lg">{stamp ? stamp.category_icon : '🔒'}</span>
+                    {/* Card visual */}
+                    <div
+                      className="rounded-2xl p-4 relative overflow-hidden"
+                      style={{
+                        background: tier.gradient,
+                        boxShadow: `0 4px 16px ${tier.borderColor}25`,
+                      }}
+                    >
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: tier.bgPattern }} />
+
+                      <div className="relative flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{tier.emoji}</span>
+                          <div>
+                            <p className="text-sm font-bold text-white drop-shadow-sm">Carte n°{studentStampDetail.card_number}</p>
+                            <p className="text-xs text-white/70">{tier.name}</p>
                           </div>
-                        );
-                      })}
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-white/20 text-white backdrop-blur-sm">
+                          {studentStampDetail.stamp_count}/10
+                        </span>
+                      </div>
+
+                      <div className="relative h-2 bg-black/20 rounded-full overflow-hidden mb-3">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${(studentStampDetail.stamp_count / 10) * 100}%`,
+                            background: isComplete ? tier.progressGradientComplete : tier.progressGradient,
+                          }}
+                        />
+                      </div>
+
+                      <div className="relative grid grid-cols-5 gap-1.5">
+                        {Array.from({ length: 10 }, (_, i) => {
+                          const stamp = studentStampDetail.stamps.find(s => s.slot_number === i + 1);
+                          return (
+                            <div
+                              key={i}
+                              className="aspect-square rounded-lg flex items-center justify-center"
+                              style={{
+                                border: stamp ? `2px solid ${stamp.category_color}90` : '2px dashed rgba(255,255,255,0.3)',
+                                backgroundColor: stamp ? `${stamp.category_color}25` : 'rgba(0,0,0,0.15)',
+                              }}
+                              title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
+                            >
+                              <span className="text-lg drop-shadow-sm">{stamp ? stamp.category_icon : tier.emptyIcon}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
+
                     {/* Completed cards */}
                     {studentStampDetail.completed_cards.length > 0 && (
-                      <div className="space-y-1 pt-2 border-t border-[var(--color-border)]">
+                      <div className="space-y-1">
                         <p className="text-xs text-[var(--color-text-secondary)]">
                           {studentStampDetail.completed_cards.length} carte(s) terminée(s)
                         </p>
-                        {studentStampDetail.completed_cards.map((c, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-[var(--color-background)]">
-                            <span className="text-[var(--color-text)]">Carte n°{c.card_number}</span>
-                            <span className="text-[var(--color-text-secondary)]">
-                              {c.bonus_label ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}` : 'Pas de bonus'}
-                            </span>
-                          </div>
-                        ))}
+                        {studentStampDetail.completed_cards.map((c, i) => {
+                          const cTier = getCardTier(c.card_number);
+                          return (
+                            <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-[var(--color-background)]">
+                              <span className="text-[var(--color-text)]">{cTier.emoji} Carte n°{c.card_number} ({cTier.name})</span>
+                              <span className="text-[var(--color-text-secondary)]">
+                                {c.bonus_label ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}` : 'Pas de bonus'}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Recent Events */}

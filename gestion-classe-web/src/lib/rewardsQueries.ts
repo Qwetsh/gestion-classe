@@ -69,6 +69,96 @@ export interface StudentStampOverview {
 }
 
 // ============================================
+// Card tier system (visual progression)
+// ============================================
+
+export interface CardTier {
+  name: string;
+  emoji: string;
+  gradient: string;
+  borderColor: string;
+  progressGradient: string;
+  progressGradientComplete: string;
+  bgPattern: string;
+  textColor: string;
+  badgeBg: string;
+  badgeText: string;
+  slotBorder: string;
+  slotBg: string;
+  emptyIcon: string;
+}
+
+export function getCardTier(cardNumber: number): CardTier {
+  if (cardNumber >= 4) return CARD_TIERS.gold;
+  if (cardNumber === 3) return CARD_TIERS.silver;
+  if (cardNumber === 2) return CARD_TIERS.bronze;
+  return CARD_TIERS.wood;
+}
+
+export const CARD_TIERS: Record<string, CardTier> = {
+  wood: {
+    name: 'Bois',
+    emoji: '🪵',
+    gradient: 'linear-gradient(135deg, #8B7355 0%, #6B4F36 30%, #A0826D 50%, #7C5B44 70%, #5C3D2E 100%)',
+    borderColor: '#8B7355',
+    progressGradient: 'linear-gradient(90deg, #8B7355, #A0826D)',
+    progressGradientComplete: 'linear-gradient(90deg, #6B8E23, #8FBC3B)',
+    bgPattern: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(139,115,85,0.08) 3px, rgba(139,115,85,0.08) 6px)',
+    textColor: '#5C3D2E',
+    badgeBg: '#8B735520',
+    badgeText: '#6B4F36',
+    slotBorder: '#8B735540',
+    slotBg: '#8B735508',
+    emptyIcon: '🌰',
+  },
+  bronze: {
+    name: 'Bronze',
+    emoji: '🥉',
+    gradient: 'linear-gradient(135deg, #CD7F32 0%, #A0522D 30%, #DDA15E 50%, #B87333 70%, #8B4513 100%)',
+    borderColor: '#CD7F32',
+    progressGradient: 'linear-gradient(90deg, #CD7F32, #DDA15E)',
+    progressGradientComplete: 'linear-gradient(90deg, #CD7F32, #FFD700, #CD7F32)',
+    bgPattern: 'radial-gradient(circle at 20% 80%, rgba(205,127,50,0.06) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(205,127,50,0.04) 0%, transparent 50%)',
+    textColor: '#8B4513',
+    badgeBg: '#CD7F3220',
+    badgeText: '#A0522D',
+    slotBorder: '#CD7F3240',
+    slotBg: '#CD7F3208',
+    emptyIcon: '🔸',
+  },
+  silver: {
+    name: 'Argent',
+    emoji: '🥈',
+    gradient: 'linear-gradient(135deg, #C0C0C0 0%, #808080 25%, #E8E8E8 50%, #A9A9A9 75%, #696969 100%)',
+    borderColor: '#A9A9A9',
+    progressGradient: 'linear-gradient(90deg, #A9A9A9, #D3D3D3)',
+    progressGradientComplete: 'linear-gradient(90deg, #A9A9A9, #F5F5F5, #A9A9A9)',
+    bgPattern: 'linear-gradient(135deg, rgba(192,192,192,0.08) 25%, transparent 25%, transparent 50%, rgba(192,192,192,0.08) 50%, rgba(192,192,192,0.08) 75%, transparent 75%)',
+    textColor: '#4A4A4A',
+    badgeBg: '#C0C0C020',
+    badgeText: '#696969',
+    slotBorder: '#C0C0C050',
+    slotBg: '#C0C0C00A',
+    emptyIcon: '◇',
+  },
+  gold: {
+    name: 'Or',
+    emoji: '🥇',
+    gradient: 'linear-gradient(135deg, #FFD700 0%, #DAA520 25%, #FFF8DC 45%, #FFD700 55%, #B8860B 75%, #DAA520 100%)',
+    borderColor: '#DAA520',
+    progressGradient: 'linear-gradient(90deg, #DAA520, #FFD700)',
+    progressGradientComplete: 'linear-gradient(90deg, #DAA520, #FFF8DC, #FFD700, #FFF8DC, #DAA520)',
+    bgPattern: 'radial-gradient(circle at 30% 30%, rgba(255,215,0,0.1) 0%, transparent 40%), radial-gradient(circle at 70% 70%, rgba(255,215,0,0.08) 0%, transparent 40%)',
+    textColor: '#8B6914',
+    badgeBg: '#FFD70025',
+    badgeText: '#B8860B',
+    slotBorder: '#FFD70050',
+    slotBg: '#FFD70010',
+    emptyIcon: '✦',
+  },
+};
+
+// ============================================
 // Default data
 // ============================================
 

@@ -18,6 +18,7 @@ import {
   initializeCardsForClass,
   fetchStudentStampDetail,
   removeStamp,
+  getCardTier,
   type StampCategory,
   type Bonus,
   type StudentStampOverview,
@@ -586,68 +587,85 @@ export function Rewards() {
             <div className="text-center py-8 text-[var(--color-text-secondary)]">Chargement...</div>
           ) : !stampDetail ? (
             <div className="text-center py-8 text-[var(--color-text-secondary)]">Pas de carte active</div>
-          ) : (
+          ) : (() => {
+            const tier = getCardTier(stampDetail.card_number);
+            const isComplete = stampDetail.stamp_count >= 10;
+            return (
             <div className="space-y-4">
-              {/* Card header */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-[var(--color-text)]">Carte n°{stampDetail.card_number}</span>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                  stampDetail.stamp_count >= 10
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-blue-100 text-blue-700'
-                }`}>
-                  {stampDetail.stamp_count}/10
-                </span>
-              </div>
+              {/* Card visual */}
+              <div
+                className="rounded-2xl p-4 relative overflow-hidden"
+                style={{
+                  background: tier.gradient,
+                  boxShadow: `0 4px 20px ${tier.borderColor}30`,
+                }}
+              >
+                {/* Background pattern */}
+                <div className="absolute inset-0 pointer-events-none" style={{ background: tier.bgPattern }} />
 
-              {/* Progress bar */}
-              <div className="h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${(stampDetail.stamp_count / 10) * 100}%`,
-                    background: stampDetail.stamp_count >= 10 ? '#22c55e' : 'var(--gradient-primary)',
-                  }}
-                />
-              </div>
-
-              {/* Stamp grid 2x5 */}
-              <div className="grid grid-cols-5 gap-2">
-                {Array.from({ length: 10 }, (_, i) => {
-                  const stamp = stampDetail.stamps.find(s => s.slot_number === i + 1);
-                  return (
-                    <div
-                      key={i}
-                      className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all ${
-                        stamp
-                          ? 'border-2 cursor-pointer hover:scale-105 group'
-                          : 'border-2 border-dashed border-[var(--color-border)] bg-[var(--color-background)]'
-                      }`}
-                      style={stamp ? {
-                        borderColor: stamp.category_color + '60',
-                        backgroundColor: stamp.category_color + '15',
-                      } : undefined}
-                      title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
-                    >
-                      <span className="text-xl">{stamp ? stamp.category_icon : '🔒'}</span>
-                      {stamp && (
-                        <button
-                          onClick={() => doRemoveStamp(stamp.id)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                          title="Retirer ce tampon"
-                        >
-                          x
-                        </button>
-                      )}
+                {/* Card header */}
+                <div className="relative flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{tier.emoji}</span>
+                    <div>
+                      <p className="text-sm font-bold text-white drop-shadow-sm">Carte n°{stampDetail.card_number}</p>
+                      <p className="text-xs text-white/70">{tier.name}</p>
                     </div>
-                  );
-                })}
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white backdrop-blur-sm">
+                    {stampDetail.stamp_count}/10
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="relative h-2.5 bg-black/20 rounded-full overflow-hidden mb-4">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${(stampDetail.stamp_count / 10) * 100}%`,
+                      background: isComplete ? tier.progressGradientComplete : tier.progressGradient,
+                      backgroundSize: isComplete ? '200% 100%' : undefined,
+                    }}
+                  />
+                </div>
+
+                {/* Stamp grid 2x5 */}
+                <div className="relative grid grid-cols-5 gap-2">
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const stamp = stampDetail.stamps.find(s => s.slot_number === i + 1);
+                    return (
+                      <div
+                        key={i}
+                        className={`relative aspect-square rounded-xl flex items-center justify-center transition-all ${
+                          stamp ? 'cursor-pointer hover:scale-110 group' : ''
+                        }`}
+                        style={{
+                          border: stamp ? `2px solid ${stamp.category_color}90` : '2px dashed rgba(255,255,255,0.3)',
+                          backgroundColor: stamp ? `${stamp.category_color}25` : 'rgba(0,0,0,0.15)',
+                          backdropFilter: 'blur(4px)',
+                        }}
+                        title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
+                      >
+                        <span className="text-xl drop-shadow-sm">{stamp ? stamp.category_icon : tier.emptyIcon}</span>
+                        {stamp && (
+                          <button
+                            onClick={() => doRemoveStamp(stamp.id)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md"
+                            title="Retirer ce tampon"
+                          >
+                            x
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Stamp list (details) */}
               {stampDetail.stamps.length > 0 && (
-                <div className="space-y-1 pt-2 border-t border-[var(--color-border)]">
-                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Détails</p>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Détails des tampons</p>
                   {stampDetail.stamps.map(s => (
                     <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--color-background)] group/row">
                       <span className="text-base">{s.category_icon}</span>
@@ -671,16 +689,21 @@ export function Rewards() {
                 <div className="pt-2 border-t border-[var(--color-border)]">
                   <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Cartes terminées</p>
                   <div className="space-y-1">
-                    {stampDetail.completed_cards.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-background)]">
-                        <span className="text-xs font-medium text-[var(--color-text)]">Carte n°{c.card_number}</span>
-                        <span className="text-xs text-[var(--color-text-secondary)]">
-                          {c.bonus_label
-                            ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}`
-                            : 'Pas de bonus'}
-                        </span>
-                      </div>
-                    ))}
+                    {stampDetail.completed_cards.map((c, i) => {
+                      const cTier = getCardTier(c.card_number);
+                      return (
+                        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-background)]">
+                          <span className="text-xs font-medium text-[var(--color-text)]">
+                            {cTier.emoji} Carte n°{c.card_number} <span className="text-[var(--color-text-secondary)]">({cTier.name})</span>
+                          </span>
+                          <span className="text-xs text-[var(--color-text-secondary)]">
+                            {c.bonus_label
+                              ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}`
+                              : 'Pas de bonus'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -699,7 +722,8 @@ export function Rewards() {
                 </button>
               )}
             </div>
-          )}
+            );
+          })()}
         </Modal>
       )}
     </Layout>
@@ -751,7 +775,9 @@ function OverviewTab({
                       </button>
                     </td>
                     <td className="px-4 py-3 text-[var(--color-text-secondary)]">{s.class_name}</td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">n°{s.card_number}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                      {getCardTier(s.card_number).emoji} n°{s.card_number}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden max-w-[120px]">
