@@ -956,17 +956,25 @@ function StampCardView({
         </div>
       )}
 
-      {/* How to earn stamps */}
+      {/* How to earn stamps (accordion) */}
       {stampData.categories.length > 0 && (
-        <div style={{
-          background: '#1e293b', borderRadius: '16px', padding: '16px',
+        <details style={{
+          background: '#1e293b', borderRadius: '16px',
           marginBottom: '12px', border: '1px solid #334155',
+          overflow: 'hidden',
         }}>
-          <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
-            Comment gagner un tampon ?
-          </p>
+          <summary style={{
+            padding: '14px 16px',
+            color: '#94a3b8', fontSize: '13px', fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            listStyle: 'none', userSelect: 'none',
+          }}>
+            <span>Comment gagner un tampon ?</span>
+            <span style={{ fontSize: '11px', transition: 'transform 0.2s' }} className="accordion-arrow">▼</span>
+          </summary>
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px',
+            padding: '0 16px 14px',
           }}>
             {stampData.categories.map((cat, i) => (
               <div key={i} style={{
@@ -978,11 +986,13 @@ function StampCardView({
               </div>
             ))}
           </div>
-        </div>
+        </details>
       )}
 
       {/* CSS animations */}
       <style>{`
+        details summary::-webkit-details-marker { display: none; }
+        details[open] .accordion-arrow { transform: rotate(180deg); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
         @keyframes stampAppear {
