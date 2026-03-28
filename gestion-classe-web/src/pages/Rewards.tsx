@@ -26,11 +26,12 @@ import {
   type StudentStampDetail,
 } from '../lib/rewardsQueries';
 
-type Tab = 'overview' | 'categories' | 'bonuses';
+type ConfigTab = 'categories' | 'bonuses';
 
 export function Rewards() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configTab, setConfigTab] = useState<ConfigTab>('categories');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -313,12 +314,6 @@ export function Rewards() {
 
   const activeCategories = categories.filter(c => c.is_active);
 
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'overview', label: 'Vue d\'ensemble', icon: '📋' },
-    { key: 'categories', label: 'Catégories', icon: '🏷️' },
-    { key: 'bonuses', label: 'Bonus', icon: '🎁' },
-  ];
-
   // Count stamps per class for sidebar display
   const classStampStats = classes.map(cls => {
     const classStudents = overview.filter(s => s.class_name === cls.name);
@@ -335,12 +330,25 @@ export function Rewards() {
             <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text)]">Récompenses</h1>
             <p className="text-xs md:text-sm text-[var(--color-text-secondary)]">Carte à tampons et bonus</p>
           </div>
-          <button
-            onClick={doResetAll}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-error)] border border-[var(--color-error)] hover:bg-red-50 transition-colors"
-          >
-            Reinitialiser toutes les cartes
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowConfigModal(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] transition-colors flex items-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="hidden md:inline">Catégories & Bonus</span>
+            </button>
+            <button
+              onClick={doResetAll}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-error)] border border-[var(--color-error)] hover:bg-red-50 transition-colors"
+            >
+              <span className="hidden md:inline">Reinitialiser les cartes</span>
+              <span className="md:hidden">Reset</span>
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -423,27 +431,13 @@ export function Rewards() {
 
           {/* MAIN CONTENT (right) */}
           <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface)] rounded-xl overflow-hidden">
-            {/* Tabs */}
-            <div className="flex gap-2 border-b border-[var(--color-border)] px-2 md:px-4 pt-2">
-              {tabs.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.key
-                      ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
-                      : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)]'
-                  }`}
-                >
-                  <span className="mr-1 md:mr-1.5">{tab.icon}</span>
-                  <span className="hidden md:inline">{tab.label}</span>
-                </button>
-              ))}
-              {/* Init cards button in tab bar */}
-              {classFilter && activeTab === 'overview' && (
+            {/* Header bar */}
+            <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 md:px-4 py-2">
+              <span className="text-sm font-medium text-[var(--color-text)]">Vue d'ensemble</span>
+              {classFilter && (
                 <button
                   onClick={doInitCards}
-                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)] hover:bg-blue-50 transition-colors self-center mb-1"
+                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)] hover:bg-blue-50 transition-colors"
                 >
                   Initialiser les cartes
                 </button>
@@ -455,34 +449,12 @@ export function Rewards() {
               {isLoading ? (
                 <div className="text-center py-12 text-[var(--color-text-secondary)]">Chargement...</div>
               ) : (
-                <>
-                  {activeTab === 'overview' && (
-                    <OverviewTab
-                      overview={filteredOverview}
-                      onAwardStamp={openStampModal}
-                      onMarkBonusUsed={doMarkBonusUsed}
-                      onStudentClick={openDetailModal}
-                    />
-                  )}
-                  {activeTab === 'categories' && (
-                    <CategoriesTab
-                      categories={categories}
-                      onAdd={() => openCategoryModal()}
-                      onEdit={openCategoryModal}
-                      onToggle={toggleCategory}
-                      onDelete={deleteCategory}
-                    />
-                  )}
-                  {activeTab === 'bonuses' && (
-                    <BonusesTab
-                      bonuses={bonuses}
-                      onAdd={() => openBonusModal()}
-                      onEdit={openBonusModal}
-                      onToggle={toggleBonus}
-                      onDelete={deleteBonusFn}
-                    />
-                  )}
-                </>
+                <OverviewTab
+                  overview={filteredOverview}
+                  onAwardStamp={openStampModal}
+                  onMarkBonusUsed={doMarkBonusUsed}
+                  onStudentClick={openDetailModal}
+                />
               )}
             </div>
           </div>
@@ -596,6 +568,58 @@ export function Rewards() {
                 <div className="w-3 h-3 rounded-full ml-auto flex-shrink-0" style={{ backgroundColor: cat.color }} />
               </button>
             ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Config Modal (Catégories & Bonus) */}
+      {showConfigModal && (
+        <Modal title="Configuration — Catégories & Bonus" onClose={() => setShowConfigModal(false)}>
+          <div className="space-y-4">
+            {/* Config tabs */}
+            <div className="flex gap-1 bg-[var(--color-background)] rounded-xl p-1">
+              <button
+                onClick={() => setConfigTab('categories')}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  configTab === 'categories'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-sm'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                ⭐ Catégories
+              </button>
+              <button
+                onClick={() => setConfigTab('bonuses')}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  configTab === 'bonuses'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-sm'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                🎁 Bonus
+              </button>
+            </div>
+
+            {/* Config content */}
+            <div className="max-h-[60vh] overflow-y-auto">
+              {configTab === 'categories' ? (
+                <CategoriesTab
+                  categories={categories}
+                  onAdd={() => openCategoryModal()}
+                  onEdit={openCategoryModal}
+                  onToggle={toggleCategory}
+                  onDelete={deleteCategory}
+                />
+              ) : (
+                <BonusesTab
+                  bonuses={bonuses}
+                  onAdd={() => openBonusModal()}
+                  onEdit={openBonusModal}
+                  onToggle={toggleBonus}
+                  onDelete={deleteBonusFn}
+                />
+              )}
+            </div>
           </div>
         </Modal>
       )}
