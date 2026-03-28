@@ -66,26 +66,30 @@ export function Rewards() {
       // Seed defaults if needed
       await seedDefaultData(user.id);
 
-      const [cats, bons, cls] = await Promise.all([
+      const [cats, bons, cls, ov] = await Promise.all([
         fetchCategories(user.id),
         fetchBonuses(user.id),
         fetchClasses(user.id),
+        fetchStudentStampOverview(user.id),
       ]);
 
       setCategories(cats);
       setBonuses(bons);
       setClasses(cls);
-
-      const ov = await fetchStudentStampOverview(user.id, classFilter || undefined);
       setOverview(ov);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de chargement');
     } finally {
       setIsLoading(false);
     }
-  }, [user, classFilter]);
+  }, [user]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Filter overview client-side based on selected class
+  const filteredOverview = classFilter
+    ? overview.filter(s => s.class_id === classFilter)
+    : overview;
 
   // ============================================
   // Category handlers
@@ -392,7 +396,7 @@ export function Rewards() {
                 <>
                   {activeTab === 'overview' && (
                     <OverviewTab
-                      overview={overview}
+                      overview={filteredOverview}
                       onAwardStamp={openStampModal}
                       onMarkBonusUsed={doMarkBonusUsed}
                     />
