@@ -16,6 +16,7 @@ interface GroupSession {
   completed_at: string | null;
   groups_count: number;
   total_points: number;
+  linked_session_id: string | null;
 }
 
 interface SessionGroup {
@@ -94,7 +95,7 @@ export function GroupSessions() {
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('group_sessions')
         .select(`
-          id, name, class_id, status, created_at, completed_at,
+          id, name, class_id, status, created_at, completed_at, linked_session_id,
           classes (name)
         `)
         .eq('user_id', user.id)
@@ -141,6 +142,7 @@ export function GroupSessions() {
           completed_at: session.completed_at,
           groups_count: groupsCountMap.get(session.id) || 0,
           total_points: pointsMap.get(session.id) || 0,
+          linked_session_id: (session as any).linked_session_id || null,
         }));
 
         setSessions(sessionsWithDetails);
@@ -299,13 +301,24 @@ export function GroupSessions() {
 
     setIsDeleting(true);
     try {
-      // Delete cascade: group_sessions -> grading_criteria, session_groups -> session_group_members, group_grades
+      const linkedSessionId = sessionDetail.session.linked_session_id;
+
+      // 1. Delete group session (cascade: grading_criteria, session_groups -> members, grades)
       const { error } = await supabase
         .from('group_sessions')
         .delete()
         .eq('id', sessionDetail.session.id);
 
       if (error) throw error;
+
+      // 2. If linked to a regular session, also delete events + session
+      if (linkedSessionId) {
+        const { error: eventsError } = await supabase.from('events').delete().eq('session_id', linkedSessionId);
+        if (eventsError) throw eventsError;
+
+        const { error: sessionError } = await supabase.from('sessions').delete().eq('id', linkedSessionId);
+        if (sessionError) throw sessionError;
+      }
 
       // Remove from local state
       setSessions(prev => prev.filter(s => s.id !== sessionDetail.session.id));
@@ -660,6 +673,11 @@ export function GroupSessions() {
                 La seance <strong>{sessionDetail.session.name}</strong> et toutes ses donnees
                 (groupes, notes, criteres) seront definitivement supprimees.
               </p>
+              {sessionDetail.session.linked_session_id && (
+                <p className="text-sm text-[var(--color-error)] mt-3 p-3 bg-[var(--color-error-soft)] font-medium text-left" style={{ borderRadius: 'var(--radius-lg)' }}>
+                  La seance classique liee et tous ses evenements (participations, bavardages, etc.) seront egalement supprimes.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">

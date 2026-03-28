@@ -63,6 +63,7 @@ export function Sessions() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Session | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [linkedGroupSession, setLinkedGroupSession] = useState<{ id: string; name: string } | null>(null);
 
   // Session detail modal state
   const [showSessionModal, setShowSessionModal] = useState(false);
@@ -308,10 +309,24 @@ export function Sessions() {
     );
   }, [classroomData]);
 
-  const handleOpenDeleteModal = (e: React.MouseEvent, session: Session) => {
+  const handleOpenDeleteModal = async (e: React.MouseEvent, session: Session) => {
     e.preventDefault();
     e.stopPropagation();
     setDeleteTarget(session);
+    setLinkedGroupSession(null);
+
+    // Check if there's a linked group session
+    const { data: linked } = await supabase
+      .from('group_sessions')
+      .select('id, name')
+      .eq('linked_session_id', session.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (linked) {
+      setLinkedGroupSession(linked);
+    }
+
     setShowDeleteModal(true);
   };
 
@@ -320,12 +335,23 @@ export function Sessions() {
     setIsDeleting(true);
 
     try {
+      // 1. Delete linked group session first (FK constraint)
+      if (linkedGroupSession) {
+        const { error: gsError } = await supabase.from('group_sessions').delete().eq('id', linkedGroupSession.id);
+        if (gsError) throw gsError;
+      }
+
+      // 2. Delete events
       const { error: eventsError } = await supabase.from('events').delete().eq('session_id', deleteTarget.id);
       if (eventsError) throw eventsError;
+
+      // 3. Delete session
       const { error: sessionError } = await supabase.from('sessions').delete().eq('id', deleteTarget.id);
       if (sessionError) throw sessionError;
+
       setShowDeleteModal(false);
       setDeleteTarget(null);
+      setLinkedGroupSession(null);
       loadSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
@@ -744,9 +770,15 @@ export function Sessions() {
             <p className="text-[var(--color-text-secondary)] mb-2">
               Voulez-vous vraiment supprimer cette seance du <strong>{formatDate(deleteTarget.started_at)}</strong> ?
             </p>
-            <p className="text-sm text-[var(--color-text-tertiary)] mb-6 p-3 bg-[var(--color-surface-secondary)]" style={{ borderRadius: 'var(--radius-lg)' }}>
+            <p className="text-sm text-[var(--color-text-tertiary)] mb-2 p-3 bg-[var(--color-surface-secondary)]" style={{ borderRadius: 'var(--radius-lg)' }}>
               {deleteTarget.events_count} evenement{deleteTarget.events_count > 1 ? 's' : ''} seront supprimes.
             </p>
+            {linkedGroupSession && (
+              <p className="text-sm text-[var(--color-error)] mb-4 p-3 bg-[var(--color-error-soft)] font-medium" style={{ borderRadius: 'var(--radius-lg)' }}>
+                La seance de groupe &laquo;&nbsp;{linkedGroupSession.name}&nbsp;&raquo; liee a cette seance sera egalement supprimee (groupes, notes, criteres).
+              </p>
+            )}
+            {!linkedGroupSession && <div className="mb-4" />}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteModal(false)}
