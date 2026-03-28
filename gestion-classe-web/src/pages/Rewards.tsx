@@ -249,6 +249,8 @@ export function Rewards() {
   // Render
   // ============================================
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   const activeCategories = categories.filter(c => c.is_active);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
@@ -257,81 +259,167 @@ export function Rewards() {
     { key: 'bonuses', label: 'Bonus', icon: '🎁' },
   ];
 
+  // Count stamps per class for sidebar display
+  const classStampStats = classes.map(cls => {
+    const classStudents = overview.filter(s => s.class_name === cls.name);
+    const totalStamps = classStudents.reduce((sum, s) => sum + s.stamp_count, 0);
+    return { ...cls, studentCount: classStudents.length, totalStamps };
+  });
+
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">Récompenses</h1>
-            <p className="text-sm text-[var(--color-text-secondary)]">Carte à tampons et bonus</p>
+            <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text)]">Récompenses</h1>
+            <p className="text-xs md:text-sm text-[var(--color-text-secondary)]">Carte à tampons et bonus</p>
           </div>
         </div>
 
         {/* Messages */}
         {error && (
-          <div className="p-3 rounded-xl bg-[var(--color-error-soft)] text-[var(--color-error)] text-sm">
+          <div className="p-3 rounded-xl bg-[var(--color-error-soft)] text-[var(--color-error)] text-sm mb-2">
             {error}
             <button onClick={() => setError(null)} className="ml-2 font-bold">x</button>
           </div>
         )}
         {successMsg && (
-          <div className="p-3 rounded-xl bg-green-50 text-green-700 text-sm">{successMsg}</div>
+          <div className="p-3 rounded-xl bg-green-50 text-green-700 text-sm mb-2">{successMsg}</div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-[var(--color-border)] pb-0">
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
-                  : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)]'
-              }`}
-            >
-              <span className="mr-1.5">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+        {/* Main content area - Two column layout */}
+        <div className="flex flex-1 gap-4 min-h-0">
+          {/* SIDEBAR: Classes list (left) */}
+          <div className={`w-12 flex-shrink-0 bg-[var(--color-surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200 ${sidebarCollapsed ? 'md:w-12' : 'md:w-56'}`}>
+            {/* Sidebar header */}
+            <div className="p-1 md:p-2 border-b border-[var(--color-border)] flex items-center justify-between">
+              <span className={`text-xs font-semibold text-[var(--color-text-secondary)] hidden ${sidebarCollapsed ? '' : 'md:block'}`}>
+                Classes
+              </span>
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="hidden md:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-[var(--color-background)] text-[var(--color-text-secondary)] text-xs"
+                title={sidebarCollapsed ? 'Déplier' : 'Replier'}
+              >
+                {sidebarCollapsed ? '»' : '«'}
+              </button>
+            </div>
+
+            {/* "All classes" button */}
+            <div className="flex-1 overflow-y-auto p-1 md:p-2 space-y-1">
+              <button
+                onClick={() => setClassFilter('')}
+                className={`w-full rounded-lg transition-colors ${
+                  !classFilter
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'hover:bg-[var(--color-background)] text-[var(--color-text-secondary)]'
+                }`}
+              >
+                {/* Mobile / collapsed */}
+                <div className={`flex items-center justify-center p-1.5 ${sidebarCollapsed ? '' : 'md:hidden'}`}>
+                  <span className="text-xs font-bold">All</span>
+                </div>
+                {/* Desktop expanded */}
+                <div className={`hidden ${sidebarCollapsed ? '' : 'md:flex'} items-center gap-2 px-3 py-2`}>
+                  <span className="text-sm font-medium truncate">Toutes</span>
+                  <span className={`ml-auto text-xs ${!classFilter ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>
+                    {overview.length}
+                  </span>
+                </div>
+              </button>
+
+              {classStampStats.map(cls => (
+                <button
+                  key={cls.id}
+                  onClick={() => setClassFilter(cls.id)}
+                  className={`w-full rounded-lg transition-colors ${
+                    classFilter === cls.id
+                      ? 'bg-[var(--color-primary)] text-white'
+                      : 'hover:bg-[var(--color-background)] text-[var(--color-text)]'
+                  }`}
+                >
+                  {/* Mobile / collapsed: abbreviation */}
+                  <div className={`flex items-center justify-center p-1.5 ${sidebarCollapsed ? '' : 'md:hidden'}`}>
+                    <span className="text-xs font-bold">{cls.name.slice(0, 2)}</span>
+                  </div>
+                  {/* Desktop expanded */}
+                  <div className={`hidden ${sidebarCollapsed ? '' : 'md:flex'} items-center gap-2 px-3 py-2`}>
+                    <span className="text-sm font-medium truncate">{cls.name}</span>
+                    <span className={`ml-auto text-xs ${classFilter === cls.id ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>
+                      {cls.studentCount}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* MAIN CONTENT (right) */}
+          <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface)] rounded-xl overflow-hidden">
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-[var(--color-border)] px-2 md:px-4 pt-2">
+              {tabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === tab.key
+                      ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
+                      : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)]'
+                  }`}
+                >
+                  <span className="mr-1 md:mr-1.5">{tab.icon}</span>
+                  <span className="hidden md:inline">{tab.label}</span>
+                </button>
+              ))}
+              {/* Init cards button in tab bar */}
+              {classFilter && activeTab === 'overview' && (
+                <button
+                  onClick={doInitCards}
+                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)] hover:bg-blue-50 transition-colors self-center mb-1"
+                >
+                  Initialiser les cartes
+                </button>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-2 md:p-4">
+              {isLoading ? (
+                <div className="text-center py-12 text-[var(--color-text-secondary)]">Chargement...</div>
+              ) : (
+                <>
+                  {activeTab === 'overview' && (
+                    <OverviewTab
+                      overview={overview}
+                      onAwardStamp={openStampModal}
+                      onMarkBonusUsed={doMarkBonusUsed}
+                    />
+                  )}
+                  {activeTab === 'categories' && (
+                    <CategoriesTab
+                      categories={categories}
+                      onAdd={() => openCategoryModal()}
+                      onEdit={openCategoryModal}
+                      onToggle={toggleCategory}
+                      onDelete={deleteCategory}
+                    />
+                  )}
+                  {activeTab === 'bonuses' && (
+                    <BonusesTab
+                      bonuses={bonuses}
+                      onAdd={() => openBonusModal()}
+                      onEdit={openBonusModal}
+                      onToggle={toggleBonus}
+                      onDelete={deleteBonusFn}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
-
-        {isLoading ? (
-          <div className="text-center py-12 text-[var(--color-text-secondary)]">Chargement...</div>
-        ) : (
-          <>
-            {activeTab === 'overview' && (
-              <OverviewTab
-                overview={overview}
-                classes={classes}
-                classFilter={classFilter}
-                setClassFilter={setClassFilter}
-                onAwardStamp={openStampModal}
-                onMarkBonusUsed={doMarkBonusUsed}
-                onInitCards={doInitCards}
-              />
-            )}
-            {activeTab === 'categories' && (
-              <CategoriesTab
-                categories={categories}
-                onAdd={() => openCategoryModal()}
-                onEdit={openCategoryModal}
-                onToggle={toggleCategory}
-                onDelete={deleteCategory}
-              />
-            )}
-            {activeTab === 'bonuses' && (
-              <BonusesTab
-                bonuses={bonuses}
-                onAdd={() => openBonusModal()}
-                onEdit={openBonusModal}
-                onToggle={toggleBonus}
-                onDelete={deleteBonusFn}
-              />
-            )}
-          </>
-        )}
       </div>
 
       {/* Category Modal */}
@@ -453,40 +541,14 @@ export function Rewards() {
 // ============================================
 
 function OverviewTab({
-  overview, classes, classFilter, setClassFilter, onAwardStamp, onMarkBonusUsed, onInitCards,
+  overview, onAwardStamp, onMarkBonusUsed,
 }: {
   overview: StudentStampOverview[];
-  classes: { id: string; name: string }[];
-  classFilter: string;
-  setClassFilter: (v: string) => void;
   onAwardStamp: (s: StudentStampOverview) => void;
   onMarkBonusUsed: (id: string) => void;
-  onInitCards: () => void;
 }) {
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <select
-          value={classFilter}
-          onChange={e => setClassFilter(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)]"
-        >
-          <option value="">Toutes les classes</option>
-          {classes.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        {classFilter && (
-          <button
-            onClick={onInitCards}
-            className="px-3 py-2 rounded-xl text-sm font-medium text-[var(--color-primary)] border border-[var(--color-primary)] hover:bg-blue-50 transition-colors"
-          >
-            Initialiser les cartes
-          </button>
-        )}
-      </div>
-
       {overview.length === 0 ? (
         <div className="text-center py-12 text-[var(--color-text-secondary)]">
           <p className="text-4xl mb-2">⭐</p>
