@@ -200,35 +200,39 @@ export const DEFAULT_BONUSES = [
 // ============================================
 
 export async function seedDefaultData(userId: string): Promise<void> {
-  // Check if already seeded
-  const { count } = await supabase
+  // Check if categories already exist
+  const { count: catCount } = await supabase
     .from('stamp_categories')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId);
 
-  if (count && count > 0) return;
+  if (!catCount || catCount === 0) {
+    const categories = DEFAULT_STAMP_CATEGORIES.map((cat, i) => ({
+      user_id: userId,
+      label: cat.label,
+      icon: cat.icon,
+      color: cat.color,
+      display_order: i,
+      is_active: true,
+    }));
+    await supabase.from('stamp_categories').insert(categories);
+  }
 
-  // Seed categories
-  const categories = DEFAULT_STAMP_CATEGORIES.map((cat, i) => ({
-    user_id: userId,
-    label: cat.label,
-    icon: cat.icon,
-    color: cat.color,
-    display_order: i,
-    is_active: true,
-  }));
+  // Check if bonuses already exist (separately — mobile sync may have added categories but not bonuses)
+  const { count: bonusCount } = await supabase
+    .from('bonuses')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
 
-  await supabase.from('stamp_categories').insert(categories);
-
-  // Seed bonuses
-  const bonuses = DEFAULT_BONUSES.map((label, i) => ({
-    user_id: userId,
-    label,
-    display_order: i,
-    is_active: true,
-  }));
-
-  await supabase.from('bonuses').insert(bonuses);
+  if (!bonusCount || bonusCount === 0) {
+    const bonuses = DEFAULT_BONUSES.map((label, i) => ({
+      user_id: userId,
+      label,
+      display_order: i,
+      is_active: true,
+    }));
+    await supabase.from('bonuses').insert(bonuses);
+  }
 }
 
 // ============================================
@@ -243,7 +247,13 @@ export async function fetchCategories(userId: string): Promise<StampCategory[]> 
     .order('display_order');
 
   if (error) throw error;
-  return data || [];
+  // Deduplicate by label (mobile sync + web seed can create doubles)
+  const seen = new Set<string>();
+  return (data || []).filter(cat => {
+    if (seen.has(cat.label)) return false;
+    seen.add(cat.label);
+    return true;
+  });
 }
 
 export async function createCategory(userId: string, label: string, icon: string, color: string, displayOrder: number): Promise<StampCategory> {
@@ -279,7 +289,13 @@ export async function fetchBonuses(userId: string): Promise<Bonus[]> {
     .order('display_order');
 
   if (error) throw error;
-  return data || [];
+  // Deduplicate by label (mobile sync + web seed can create doubles)
+  const seen = new Set<string>();
+  return (data || []).filter(bonus => {
+    if (seen.has(bonus.label)) return false;
+    seen.add(bonus.label);
+    return true;
+  });
 }
 
 export async function createBonus(userId: string, label: string, displayOrder: number): Promise<Bonus> {
