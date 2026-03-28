@@ -7,7 +7,6 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Analytics } from './pages/Analytics';
 import { Classes } from './pages/Classes';
-import { Rooms } from './pages/Rooms';
 import { Sessions } from './pages/Sessions';
 import { SessionDetail } from './pages/SessionDetail';
 import { GroupSessions } from './pages/GroupSessions';
@@ -51,14 +50,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/rooms"
-          element={
-            <ProtectedRoute>
-              <Rooms />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/rooms" element={<Navigate to="/classes" replace />} />
         <Route
           path="/sessions"
           element={

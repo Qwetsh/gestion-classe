@@ -38,7 +38,7 @@ export function RoomSelector() {
           <div className="text-center py-12 text-[var(--color-text-tertiary)]">
             <div className="text-4xl mb-3">🏫</div>
             <p>Aucune salle trouvee</p>
-            <p className="text-sm mt-1">Configurez une salle depuis le menu Salles</p>
+            <p className="text-sm mt-1">Configurez une salle depuis la page Classes</p>
           </div>
         ) : (
           rooms.map((room) => (

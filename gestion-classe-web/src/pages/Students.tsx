@@ -13,6 +13,7 @@ interface Student {
   class_name: string;
   created_at: string;
   gender: 'M' | 'F';
+  student_code?: string;
 }
 
 interface Event {
@@ -293,6 +294,7 @@ export function Students() {
           class_id,
           created_at,
           gender,
+          student_code,
           classes (name)
         `)
         .eq('user_id', user.id)
@@ -472,6 +474,7 @@ export function Students() {
           class_name: (student.classes as any)?.name || 'Classe inconnue',
           created_at: student.created_at,
           gender: (student.gender as 'M' | 'F') || 'M',
+          student_code: (student as any).student_code || undefined,
         },
         participations,
         manualParticipations: manualParticipationsCount,
@@ -2107,6 +2110,11 @@ export function Students() {
                     </h3>
                     <p className="text-sm text-[var(--color-text-tertiary)]">
                       {selectedStudentForDetail.student.class_name}
+                      {selectedStudentForDetail.student.student_code && (
+                        <span className="ml-2 px-2 py-0.5 bg-[var(--color-surface-secondary)] rounded text-xs font-mono">
+                          {selectedStudentForDetail.student.student_code}
+                        </span>
+                      )}
                     </p>
                   </div>
                   {/* Gender toggle button */}

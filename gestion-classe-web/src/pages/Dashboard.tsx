@@ -405,7 +405,7 @@ export function Dashboard() {
             title="Configurer les salles"
             description="Plans de classe"
             icon="🏫"
-            link="/rooms"
+            link="/classes"
             color="var(--color-remarque)"
           />
         </div>
