@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { buildPhotoUrl } from '../lib/security';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { fetchStudentStampDetail, type StudentStampDetail } from '../lib/rewardsQueries';
 
 interface Student {
   id: string;
@@ -200,6 +201,10 @@ export function Students() {
   const [configMalusPenalty, setConfigMalusPenalty] = useState(false);
   const [configBaseGrade, setConfigBaseGrade] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Stamp detail in student modal
+  const [studentStampDetail, setStudentStampDetail] = useState<StudentStampDetail | null>(null);
+  const [stampDetailLoading, setStampDetailLoading] = useState(false);
 
   // Manual participation modal state
   const [showAddManualModal, setShowAddManualModal] = useState(false);
@@ -1097,6 +1102,14 @@ export function Students() {
     setShowStudentDetailModal(true);
     setGroupSessionGrades([]);
     setIsLoadingGroupGrades(true);
+    setStudentStampDetail(null);
+    setStampDetailLoading(true);
+
+    // Load stamp detail in parallel (fire and forget, update state when ready)
+    fetchStudentStampDetail(studentGrade.student.id)
+      .then(detail => setStudentStampDetail(detail))
+      .catch(() => {})
+      .finally(() => setStampDetailLoading(false));
 
     try {
       // Load detailed events with session info (on demand, not at initial load)
@@ -2516,6 +2529,80 @@ export function Students() {
                   </div>
                 </div>
               )}
+
+              {/* Stamp Card */}
+              <div>
+                <h4 className="font-medium text-[var(--color-text)] mb-3">Carte a tampons</h4>
+                {stampDetailLoading ? (
+                  <p className="text-sm text-[var(--color-text-tertiary)] py-2">Chargement...</p>
+                ) : !studentStampDetail ? (
+                  <p className="text-sm text-[var(--color-text-tertiary)] py-2">Pas de carte active</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[var(--color-text-secondary)]">
+                        Carte n°{studentStampDetail.card_number}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        studentStampDetail.stamp_count >= 10
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {studentStampDetail.stamp_count}/10
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${(studentStampDetail.stamp_count / 10) * 100}%`,
+                          background: studentStampDetail.stamp_count >= 10 ? '#22c55e' : 'var(--gradient-primary)',
+                        }}
+                      />
+                    </div>
+                    {/* Stamp grid */}
+                    <div className="grid grid-cols-5 gap-2">
+                      {Array.from({ length: 10 }, (_, i) => {
+                        const stamp = studentStampDetail.stamps.find(s => s.slot_number === i + 1);
+                        return (
+                          <div
+                            key={i}
+                            className={`aspect-square rounded-xl flex items-center justify-center ${
+                              stamp
+                                ? 'border-2'
+                                : 'border-2 border-dashed border-[var(--color-border)] bg-[var(--color-background)]'
+                            }`}
+                            style={stamp ? {
+                              borderColor: stamp.category_color + '60',
+                              backgroundColor: stamp.category_color + '15',
+                            } : undefined}
+                            title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
+                          >
+                            <span className="text-lg">{stamp ? stamp.category_icon : '🔒'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Completed cards */}
+                    {studentStampDetail.completed_cards.length > 0 && (
+                      <div className="space-y-1 pt-2 border-t border-[var(--color-border)]">
+                        <p className="text-xs text-[var(--color-text-secondary)]">
+                          {studentStampDetail.completed_cards.length} carte(s) terminée(s)
+                        </p>
+                        {studentStampDetail.completed_cards.map((c, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-[var(--color-background)]">
+                            <span className="text-[var(--color-text)]">Carte n°{c.card_number}</span>
+                            <span className="text-[var(--color-text-secondary)]">
+                              {c.bonus_label ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}` : 'Pas de bonus'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Recent Events */}
               <div>

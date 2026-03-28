@@ -16,9 +16,12 @@ import {
   awardStamp,
   markBonusUsed,
   initializeCardsForClass,
+  fetchStudentStampDetail,
+  removeStamp,
   type StampCategory,
   type Bonus,
   type StudentStampOverview,
+  type StudentStampDetail,
 } from '../lib/rewardsQueries';
 
 type Tab = 'overview' | 'categories' | 'bonuses';
@@ -44,6 +47,10 @@ export function Rewards() {
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
   const [showStampModal, setShowStampModal] = useState(false);
   const [stampTarget, setStampTarget] = useState<StudentStampOverview | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<StudentStampOverview | null>(null);
+  const [stampDetail, setStampDetail] = useState<StudentStampDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Form state
   const [catLabel, setCatLabel] = useState('');
@@ -250,6 +257,40 @@ export function Rewards() {
   };
 
   // ============================================
+  // Detail modal handlers
+  // ============================================
+
+  const openDetailModal = async (student: StudentStampOverview) => {
+    setDetailTarget(student);
+    setShowDetailModal(true);
+    setDetailLoading(true);
+    try {
+      const detail = await fetchStudentStampDetail(student.student_id);
+      setStampDetail(detail);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const doRemoveStamp = async (stampId: string) => {
+    if (!confirm('Retirer ce tampon ?')) return;
+    try {
+      await removeStamp(stampId);
+      // Refresh detail + overview
+      if (detailTarget) {
+        const detail = await fetchStudentStampDetail(detailTarget.student_id);
+        setStampDetail(detail);
+      }
+      await loadData();
+      showSuccess('Tampon retiré');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
+  // ============================================
   // Render
   // ============================================
 
@@ -399,6 +440,7 @@ export function Rewards() {
                       overview={filteredOverview}
                       onAwardStamp={openStampModal}
                       onMarkBonusUsed={doMarkBonusUsed}
+                      onStudentClick={openDetailModal}
                     />
                   )}
                   {activeTab === 'categories' && (
@@ -536,6 +578,130 @@ export function Rewards() {
           </div>
         </Modal>
       )}
+
+      {/* Student Stamp Detail Modal */}
+      {showDetailModal && detailTarget && (
+        <Modal title={`${detailTarget.pseudo} — Carte à tampons`} onClose={() => setShowDetailModal(false)}>
+          {detailLoading ? (
+            <div className="text-center py-8 text-[var(--color-text-secondary)]">Chargement...</div>
+          ) : !stampDetail ? (
+            <div className="text-center py-8 text-[var(--color-text-secondary)]">Pas de carte active</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Card header */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[var(--color-text)]">Carte n°{stampDetail.card_number}</span>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  stampDetail.stamp_count >= 10
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {stampDetail.stamp_count}/10
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${(stampDetail.stamp_count / 10) * 100}%`,
+                    background: stampDetail.stamp_count >= 10 ? '#22c55e' : 'var(--gradient-primary)',
+                  }}
+                />
+              </div>
+
+              {/* Stamp grid 2x5 */}
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: 10 }, (_, i) => {
+                  const stamp = stampDetail.stamps.find(s => s.slot_number === i + 1);
+                  return (
+                    <div
+                      key={i}
+                      className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all ${
+                        stamp
+                          ? 'border-2 cursor-pointer hover:scale-105 group'
+                          : 'border-2 border-dashed border-[var(--color-border)] bg-[var(--color-background)]'
+                      }`}
+                      style={stamp ? {
+                        borderColor: stamp.category_color + '60',
+                        backgroundColor: stamp.category_color + '15',
+                      } : undefined}
+                      title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
+                    >
+                      <span className="text-xl">{stamp ? stamp.category_icon : '🔒'}</span>
+                      {stamp && (
+                        <button
+                          onClick={() => doRemoveStamp(stamp.id)}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          title="Retirer ce tampon"
+                        >
+                          x
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Stamp list (details) */}
+              {stampDetail.stamps.length > 0 && (
+                <div className="space-y-1 pt-2 border-t border-[var(--color-border)]">
+                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Détails</p>
+                  {stampDetail.stamps.map(s => (
+                    <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--color-background)] group/row">
+                      <span className="text-base">{s.category_icon}</span>
+                      <span className="text-xs text-[var(--color-text)] flex-1">{s.category_label}</span>
+                      <span className="text-xs text-[var(--color-text-secondary)]">
+                        {new Date(s.awarded_at).toLocaleDateString('fr-FR')}
+                      </span>
+                      <button
+                        onClick={() => doRemoveStamp(s.id)}
+                        className="text-xs px-1.5 py-0.5 rounded text-red-500 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Completed cards history */}
+              {stampDetail.completed_cards.length > 0 && (
+                <div className="pt-2 border-t border-[var(--color-border)]">
+                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Cartes terminées</p>
+                  <div className="space-y-1">
+                    {stampDetail.completed_cards.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-background)]">
+                        <span className="text-xs font-medium text-[var(--color-text)]">Carte n°{c.card_number}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)]">
+                          {c.bonus_label
+                            ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}`
+                            : 'Pas de bonus'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick action: award stamp */}
+              {stampDetail.stamp_count < 10 && (
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    openStampModal(detailTarget);
+                  }}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium text-white"
+                  style={{ background: 'var(--gradient-primary)' }}
+                >
+                  + Attribuer un tampon
+                </button>
+              )}
+            </div>
+          )}
+        </Modal>
+      )}
     </Layout>
   );
 }
@@ -545,11 +711,12 @@ export function Rewards() {
 // ============================================
 
 function OverviewTab({
-  overview, onAwardStamp, onMarkBonusUsed,
+  overview, onAwardStamp, onMarkBonusUsed, onStudentClick,
 }: {
   overview: StudentStampOverview[];
   onAwardStamp: (s: StudentStampOverview) => void;
   onMarkBonusUsed: (id: string) => void;
+  onStudentClick: (s: StudentStampOverview) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -575,7 +742,14 @@ function OverviewTab({
               <tbody>
                 {overview.map(s => (
                   <tr key={s.student_id} className="border-t border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] transition-colors">
-                    <td className="px-4 py-3 font-medium text-[var(--color-text)]">{s.pseudo}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => onStudentClick(s)}
+                        className="font-medium text-[var(--color-primary)] hover:underline"
+                      >
+                        {s.pseudo}
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-[var(--color-text-secondary)]">{s.class_name}</td>
                     <td className="px-4 py-3 text-[var(--color-text-secondary)]">n°{s.card_number}</td>
                     <td className="px-4 py-3">

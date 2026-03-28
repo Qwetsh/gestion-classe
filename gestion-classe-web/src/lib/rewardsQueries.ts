@@ -376,6 +376,91 @@ export async function markBonusUsed(selectionId: string): Promise<void> {
 }
 
 // ============================================
+// Student stamp detail (for modals)
+// ============================================
+
+export interface StampDetail {
+  id: string;
+  slot_number: number;
+  category_label: string;
+  category_icon: string;
+  category_color: string;
+  awarded_at: string;
+}
+
+export interface StudentStampDetail {
+  card_id: string;
+  card_number: number;
+  stamp_count: number;
+  stamps: StampDetail[];
+  completed_cards: {
+    card_number: number;
+    completed_at: string | null;
+    bonus_label: string | null;
+    bonus_used: boolean;
+  }[];
+}
+
+export async function fetchStudentStampDetail(studentId: string): Promise<StudentStampDetail | null> {
+  // Get active card
+  const { data: card } = await supabase
+    .from('stamp_cards')
+    .select('id, card_number')
+    .eq('student_id', studentId)
+    .eq('status', 'active')
+    .single();
+
+  if (!card) return null;
+
+  // Get stamps with category info
+  const { data: stamps } = await supabase
+    .from('stamps')
+    .select('id, slot_number, awarded_at, stamp_categories(label, icon, color)')
+    .eq('card_id', card.id)
+    .order('slot_number');
+
+  // Get completed cards with bonus info
+  const { data: completedCards } = await supabase
+    .from('stamp_cards')
+    .select('card_number, completed_at, bonus_selections(bonuses(label), used_at)')
+    .eq('student_id', studentId)
+    .eq('status', 'completed')
+    .order('card_number', { ascending: false });
+
+  const stampDetails: StampDetail[] = (stamps || []).map(s => ({
+    id: s.id,
+    slot_number: s.slot_number,
+    category_label: (s.stamp_categories as any)?.label || '?',
+    category_icon: (s.stamp_categories as any)?.icon || '⭐',
+    category_color: (s.stamp_categories as any)?.color || '#999',
+    awarded_at: s.awarded_at,
+  }));
+
+  const completed = (completedCards || []).map(c => {
+    const sel = Array.isArray(c.bonus_selections) ? c.bonus_selections[0] : c.bonus_selections;
+    return {
+      card_number: c.card_number,
+      completed_at: c.completed_at,
+      bonus_label: sel ? (sel.bonuses as any)?.label || null : null,
+      bonus_used: sel ? !!sel.used_at : false,
+    };
+  });
+
+  return {
+    card_id: card.id,
+    card_number: card.card_number,
+    stamp_count: stampDetails.length,
+    stamps: stampDetails,
+    completed_cards: completed,
+  };
+}
+
+export async function removeStamp(stampId: string): Promise<void> {
+  const { error } = await supabase.from('stamps').delete().eq('id', stampId);
+  if (error) throw error;
+}
+
+// ============================================
 // Classes list (for filters)
 // ============================================
 
