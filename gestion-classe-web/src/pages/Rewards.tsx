@@ -16,6 +16,7 @@ import {
   awardStamp,
   markBonusUsed,
   initializeCardsForClass,
+  resetAllStampCards,
   fetchStudentStampDetail,
   removeStamp,
   getCardTier,
@@ -257,6 +258,19 @@ export function Rewards() {
     }
   };
 
+  const doResetAll = async () => {
+    if (!user) return;
+    if (!confirm('Remettre TOUS les eleves a la carte n°1 ?\n\nCette action supprimera tous les tampons, cartes et bonus selectionnes. Irreversible.')) return;
+    if (!confirm('Vraiment tout reinitialiser ? Derniere chance.')) return;
+    try {
+      const count = await resetAllStampCards(user.id);
+      await loadData();
+      showSuccess(`Reset effectue (${count} carte(s) supprimee(s)). Tous les eleves sont a la carte n°1.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
   // ============================================
   // Detail modal handlers
   // ============================================
@@ -321,6 +335,12 @@ export function Rewards() {
             <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text)]">Récompenses</h1>
             <p className="text-xs md:text-sm text-[var(--color-text-secondary)]">Carte à tampons et bonus</p>
           </div>
+          <button
+            onClick={doResetAll}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-error)] border border-[var(--color-error)] hover:bg-red-50 transition-colors"
+          >
+            Reinitialiser toutes les cartes
+          </button>
         </div>
 
         {/* Messages */}
