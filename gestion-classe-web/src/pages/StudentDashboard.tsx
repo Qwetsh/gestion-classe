@@ -976,7 +976,9 @@ function StampCardView({
             display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px',
             padding: '0 16px 14px',
           }}>
-            {stampData.categories.map((cat, i) => (
+            {stampData.categories.filter((cat, i, arr) =>
+              arr.findIndex(c => c.label === cat.label) === i
+            ).map((cat, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '6px 10px', borderRadius: '8px', background: '#0f172a',

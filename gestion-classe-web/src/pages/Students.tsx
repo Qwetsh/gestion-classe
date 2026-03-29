@@ -6,6 +6,7 @@ import { buildPhotoUrl } from '../lib/security';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
+import QRCode from 'qrcode';
 
 interface Student {
   id: string;
@@ -215,6 +216,10 @@ export function Students() {
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [studentCodes, setStudentCodes] = useState<{ pseudo: string; code: string }[]>([]);
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
+
+  // QR code modal
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   // Group session grades
   const [groupSessionGrades, setGroupSessionGrades] = useState<GroupSessionGrade[]>([]);
@@ -1097,6 +1102,17 @@ export function Students() {
     navigator.clipboard.writeText(text);
   };
 
+  const openQrModal = async () => {
+    const url = `${window.location.origin}/gestion-classe/eleve`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, { width: 300, margin: 2, errorCorrectionLevel: 'M' });
+      setQrDataUrl(dataUrl);
+      setShowQrModal(true);
+    } catch (err) {
+      console.error('QR generation error:', err);
+    }
+  };
+
   const openStudentDetail = async (studentGrade: StudentGrade) => {
     setSelectedStudentForDetail(studentGrade);
     setShowStudentDetailModal(true);
@@ -1437,6 +1453,14 @@ export function Students() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={openQrModal}
+            disabled={!selectedClassId}
+            className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-base border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-background)] transition-colors whitespace-nowrap"
+            title="QR code acces eleves"
+          >
+            QR
+          </button>
           <button
             onClick={loadStudentCodes}
             disabled={isLoadingCodes || !selectedClassId}
@@ -2713,6 +2737,29 @@ export function Students() {
         </div>
       )}
       {/* Student Codes Modal */}
+      {showQrModal && qrDataUrl && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-sm flex flex-col items-center">
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">Acces eleve</h3>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-4 text-center">
+              Scannez ce QR code pour acceder a l'interface eleve
+            </p>
+            <div className="bg-white p-4 rounded-xl mb-4">
+              <img src={qrDataUrl} alt="QR Code" className="w-64 h-64" />
+            </div>
+            <code className="text-xs text-[var(--color-text-tertiary)] mb-4 bg-[var(--color-background)] px-2 py-1 rounded">
+              {window.location.origin}/gestion-classe/eleve
+            </code>
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)] text-sm"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
       {showCodesModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
