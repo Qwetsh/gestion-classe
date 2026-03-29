@@ -372,19 +372,22 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
     }
   }
 
-  // Get pending bonus selections
+  // Get ALL bonus selections (pending + used) for active cards
   const { data: selections, error: selectionsError } = await supabase
     .from('bonus_selections')
     .select('id, card_id, student_id, used_at, bonuses(label)')
-    .eq('user_id', userId)
-    .is('used_at', null);
+    .eq('user_id', userId);
 
   if (selectionsError) throw selectionsError;
 
-  const selectionMap = new Map<string, { id: string; label: string }>();
+  const selectionMap = new Map<string, { id: string; label: string; used: boolean }>();
   for (const sel of (selections || [])) {
     const bonusLabel = (sel.bonuses as any)?.label || 'Bonus inconnu';
-    selectionMap.set(sel.student_id, { id: sel.id, label: bonusLabel });
+    // Keep the most recent selection per student (pending takes priority over used)
+    const existing = selectionMap.get(sel.student_id);
+    if (!existing || (!sel.used_at && existing.used)) {
+      selectionMap.set(sel.student_id, { id: sel.id, label: bonusLabel, used: !!sel.used_at });
+    }
   }
 
   // Build overview
@@ -403,7 +406,7 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
       stamp_count: card ? (stampCounts.get(card.id) || 0) : 0,
       bonus_selection_id: selection?.id || null,
       bonus_label: selection?.label || null,
-      bonus_used: false,
+      bonus_used: selection?.used || false,
     };
   }).sort((a, b) => a.pseudo.localeCompare(b.pseudo));
 }
