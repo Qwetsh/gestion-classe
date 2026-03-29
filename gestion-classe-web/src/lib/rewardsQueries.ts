@@ -528,7 +528,7 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
   // Get completed cards with bonus info
   const { data: completedCards } = await supabase
     .from('stamp_cards')
-    .select('card_number, completed_at, bonus_selections(bonuses(label), used_at)')
+    .select('id, card_number, completed_at, bonus_selections(bonuses(label), used_at)')
     .eq('student_id', studentId)
     .eq('status', 'completed')
     .order('card_number', { ascending: false });
@@ -545,6 +545,7 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
   const completed = (completedCards || []).map(c => {
     const sel = Array.isArray(c.bonus_selections) ? c.bonus_selections[0] : c.bonus_selections;
     return {
+      id: c.id,
       card_number: c.card_number,
       completed_at: c.completed_at,
       bonus_label: sel ? (sel.bonuses as any)?.label || null : null,

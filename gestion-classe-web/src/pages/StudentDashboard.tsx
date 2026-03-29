@@ -79,6 +79,14 @@ export function StudentDashboard() {
   const [showBonusSelect, setShowBonusSelect] = useState(false);
   const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; color: string; date: string } | null>(null);
   const currentCodeRef = useRef('');
+  const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup celebration timer on unmount
+  useEffect(() => {
+    return () => {
+      if (celebrationTimerRef.current) clearTimeout(celebrationTimerRef.current);
+    };
+  }, []);
 
   const handleDigitChange = useCallback((index: number, value: string) => {
     if (value.length > 1) value = value.slice(-1);
@@ -215,7 +223,8 @@ export function StudentDashboard() {
       }
       setShowBonusSelect(false);
       setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 3000);
+      if (celebrationTimerRef.current) clearTimeout(celebrationTimerRef.current);
+      celebrationTimerRef.current = setTimeout(() => setShowCelebration(false), 3000);
       // Reload stamp data
       await loadStampData();
     } catch {
@@ -919,7 +928,7 @@ function StampCardView({
             {stampData.completed_cards.map(c => {
               const cTier = getCardTier(c.card_number);
               return (
-                <div key={c.id} style={{
+                <div key={c.id || `card-${c.card_number}`} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '8px 12px', borderRadius: '10px', background: '#0f172a',
                 }}>
