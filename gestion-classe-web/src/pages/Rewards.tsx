@@ -899,7 +899,7 @@ function CategoriesTab({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {categories.map(cat => (
           <div
             key={cat.id}
@@ -922,7 +922,7 @@ function CategoriesTab({
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 justify-end flex-wrap">
               <button onClick={() => onToggle(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
                 {cat.is_active ? 'Désactiver' : 'Activer'}
               </button>
@@ -966,17 +966,19 @@ function BonusesTab({
         {bonuses.map((bonus, i) => (
           <div
             key={bonus.id}
-            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+            className={`p-3 rounded-xl border transition-all ${
               bonus.is_active
                 ? 'border-[var(--color-border)] bg-[var(--color-surface)]'
                 : 'border-dashed border-[var(--color-border)] bg-[var(--color-surface-secondary)] opacity-60'
             }`}
           >
-            <span className="text-lg w-8 text-center">{i + 1}.</span>
-            <span className="text-2xl">🎁</span>
-            <span className="flex-1 text-sm font-medium text-[var(--color-text)]">{bonus.label}</span>
-            <span className="text-xs text-[var(--color-text-secondary)]">{bonus.is_active ? 'Actif' : 'Désactivé'}</span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-3">
+              <span className="text-lg w-8 text-center">{i + 1}.</span>
+              <span className="text-2xl">🎁</span>
+              <span className="flex-1 text-sm font-medium text-[var(--color-text)] truncate">{bonus.label}</span>
+              <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{bonus.is_active ? 'Actif' : 'Désactivé'}</span>
+            </div>
+            <div className="flex items-center gap-1 justify-end mt-2">
               <button onClick={() => onToggle(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
                 {bonus.is_active ? 'Désactiver' : 'Activer'}
               </button>
