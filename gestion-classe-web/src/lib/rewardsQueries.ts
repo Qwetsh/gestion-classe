@@ -363,6 +363,21 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
     }
   }
 
+  // Get stamp counts per card (needed for card priority logic below)
+  const stampCounts = new Map<string, number>();
+  if (allCardIds.length > 0) {
+    const { data: stamps, error: stampsError } = await supabase
+      .from('stamps')
+      .select('card_id')
+      .in('card_id', allCardIds);
+
+    if (stampsError) throw stampsError;
+
+    for (const stamp of (stamps || [])) {
+      stampCounts.set(stamp.card_id, (stampCounts.get(stamp.card_id) || 0) + 1);
+    }
+  }
+
   // Pick the best "current" card per student:
   // Priority: completed-without-bonus with 10 stamps (needs attention) > active > completed-without-bonus (< 10 stamps)
   const cardMap = new Map<string, { id: string; card_number: number; status: string }>();
@@ -388,23 +403,6 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
           cardMap.set(card.student_id, { id: card.id, card_number: card.card_number, status: card.status });
         }
       }
-    }
-  }
-
-  // Get stamp counts per card
-  const cardIds = (cards || []).map(c => c.id);
-  let stampCounts = new Map<string, number>();
-
-  if (cardIds.length > 0) {
-    const { data: stamps, error: stampsError } = await supabase
-      .from('stamps')
-      .select('card_id')
-      .in('card_id', cardIds);
-
-    if (stampsError) throw stampsError;
-
-    for (const stamp of (stamps || [])) {
-      stampCounts.set(stamp.card_id, (stampCounts.get(stamp.card_id) || 0) + 1);
     }
   }
 
