@@ -648,6 +648,21 @@ export async function fetchClasses(userId: string): Promise<{ id: string; name: 
 // Init: create cards for all students
 // ============================================
 
+export async function resetStudentStampCards(userId: string, studentId: string): Promise<void> {
+  // Delete in dependency order: bonus_selections → stamps → stamp_cards
+  await supabase.from('bonus_selections').delete().eq('student_id', studentId).eq('user_id', userId);
+  await supabase.from('stamps').delete().eq('student_id', studentId).eq('user_id', userId);
+  await supabase.from('stamp_cards').delete().eq('student_id', studentId).eq('user_id', userId);
+
+  // Recreate card n°1
+  await supabase.from('stamp_cards').insert({
+    student_id: studentId,
+    user_id: userId,
+    card_number: 1,
+    status: 'active',
+  });
+}
+
 export async function resetAllStampCards(userId: string): Promise<number> {
   // Delete in dependency order: bonus_selections → stamps → stamp_cards
   await supabase.from('bonus_selections').delete().eq('user_id', userId);

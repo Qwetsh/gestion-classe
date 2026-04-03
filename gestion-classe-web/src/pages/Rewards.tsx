@@ -17,6 +17,7 @@ import {
   markBonusUsed,
   initializeCardsForClass,
   resetAllStampCards,
+  resetStudentStampCards,
   fetchStudentStampDetail,
   removeStamp,
   getCardTier,
@@ -259,6 +260,18 @@ export function Rewards() {
     }
   };
 
+  const doResetStudent = async (student: StudentStampOverview) => {
+    if (!user) return;
+    if (!confirm(`Réinitialiser ${student.pseudo} ?\n\nTous ses tampons, cartes et bonus seront supprimés. Il repartira à la carte n°1.`)) return;
+    try {
+      await resetStudentStampCards(user.id, student.student_id);
+      await loadData();
+      showSuccess(`${student.pseudo} réinitialisé — carte n°1`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
   const doResetAll = async () => {
     if (!user) return;
     if (!confirm('Remettre TOUS les eleves a la carte n°1 ?\n\nCette action supprimera tous les tampons, cartes et bonus selectionnes. Irreversible.')) return;
@@ -454,6 +467,7 @@ export function Rewards() {
                   onAwardStamp={openStampModal}
                   onMarkBonusUsed={doMarkBonusUsed}
                   onStudentClick={openDetailModal}
+                  onResetStudent={doResetStudent}
                 />
               )}
             </div>
@@ -779,12 +793,13 @@ export function Rewards() {
 // ============================================
 
 function OverviewTab({
-  overview, onAwardStamp, onMarkBonusUsed, onStudentClick,
+  overview, onAwardStamp, onMarkBonusUsed, onStudentClick, onResetStudent,
 }: {
   overview: StudentStampOverview[];
   onAwardStamp: (s: StudentStampOverview) => void;
   onMarkBonusUsed: (id: string) => void;
   onStudentClick: (s: StudentStampOverview) => void;
+  onResetStudent: (s: StudentStampOverview) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -868,6 +883,13 @@ function OverviewTab({
                             Valider bonus
                           </button>
                         )}
+                        <button
+                          onClick={() => onResetStudent(s)}
+                          className="px-2 py-1.5 rounded-lg text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-error)] hover:bg-red-50 transition-colors"
+                          title={`Réinitialiser ${s.pseudo}`}
+                        >
+                          ↺
+                        </button>
                       </div>
                     </td>
                   </tr>
