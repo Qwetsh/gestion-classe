@@ -78,6 +78,8 @@ interface ClassOralStats {
   count: number;
 }
 
+const PAGE_SIZE = 1000;
+
 const COLORS = {
   participation: '#22c55e',
   bavardage: '#ef4444',
@@ -142,49 +144,61 @@ export function Analytics() {
         dateFilter = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
       }
 
-      let query = supabase
-        .from('events')
-        .select(`
-          id,
-          type,
-          timestamp,
-          session_id,
-          student_id,
-          sessions!inner (
-            class_id,
-            user_id,
-            classes (name)
-          )
-        `)
-        .eq('sessions.user_id', user!.id)
-        .in('sessions.class_id', selectedClasses);
+      // Paginate to bypass Supabase's default 1000-row limit
+      const allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (dateFilter) {
-        query = query.gte('timestamp', dateFilter);
+      while (hasMore) {
+        let query = supabase
+          .from('events')
+          .select(`
+            id,
+            type,
+            timestamp,
+            session_id,
+            student_id,
+            sessions!inner (
+              class_id,
+              user_id,
+              classes (name)
+            )
+          `)
+          .eq('sessions.user_id', user!.id)
+          .in('sessions.class_id', selectedClasses);
+
+        if (dateFilter) {
+          query = query.gte('timestamp', dateFilter);
+        }
+
+        const { data, error } = await query
+          .order('timestamp', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+          console.error('Error loading events:', error);
+          setIsLoading(false);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          allData.push(...data);
+        }
+
+        hasMore = data !== null && data.length === PAGE_SIZE;
+        from += PAGE_SIZE;
       }
 
-      const { data, error } = await query
-        .order('timestamp', { ascending: true })
-        .limit(10000);
-
-      if (error) {
-        console.error('Error loading events:', error);
-        setIsLoading(false);
-        return;
-      }
-
-      if (data) {
-        const mapped = data.map((e: any) => ({
-          id: e.id,
-          type: e.type,
-          timestamp: e.timestamp,
-          session_id: e.session_id,
-          student_id: e.student_id,
-          class_id: e.sessions.class_id,
-          class_name: e.sessions.classes?.name || 'Inconnu',
-        }));
-        setEvents(mapped);
-      }
+      const mapped = allData.map((e: any) => ({
+        id: e.id,
+        type: e.type,
+        timestamp: e.timestamp,
+        session_id: e.session_id,
+        student_id: e.student_id,
+        class_id: e.sessions.class_id,
+        class_name: e.sessions.classes?.name || 'Inconnu',
+      }));
+      setEvents(mapped);
 
       setIsLoading(false);
     }
