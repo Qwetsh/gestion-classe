@@ -163,7 +163,9 @@ export function Analytics() {
         query = query.gte('timestamp', dateFilter);
       }
 
-      const { data, error } = await query.order('timestamp', { ascending: true });
+      const { data, error } = await query
+        .order('timestamp', { ascending: true })
+        .limit(10000);
 
       if (error) {
         console.error('Error loading events:', error);
