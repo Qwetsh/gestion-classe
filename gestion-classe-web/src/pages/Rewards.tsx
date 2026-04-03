@@ -838,8 +838,12 @@ function OverviewTab({
                     </td>
                     <td className="px-4 py-3">
                       {s.bonus_label ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-medium">
-                          🎁 {s.bonus_label}
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+                          s.bonus_used
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          🎁 {s.bonus_label} {s.bonus_used ? '✓' : '⏳'}
                         </span>
                       ) : s.stamp_count === 10 ? (
                         <span className="text-xs text-amber-600 font-medium">En attente de choix</span>
@@ -856,7 +860,7 @@ function OverviewTab({
                             + Tampon
                           </button>
                         )}
-                        {s.bonus_selection_id && (
+                        {s.bonus_selection_id && !s.bonus_used && (
                           <button
                             onClick={() => onMarkBonusUsed(s.bonus_selection_id!)}
                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 transition-colors"

@@ -341,18 +341,54 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
 
   const studentIds = students.map(s => s.id);
 
-  // Get active cards for these students
+  // Get active cards for these students (also include completed-without-bonus as fallback)
   const { data: cards, error: cardsError } = await supabase
     .from('stamp_cards')
-    .select('id, student_id, card_number')
+    .select('id, student_id, card_number, status')
     .in('student_id', studentIds)
-    .eq('status', 'active');
+    .in('status', ['active', 'completed']);
 
   if (cardsError) throw cardsError;
 
-  const cardMap = new Map<string, { id: string; card_number: number }>();
+  // Get bonus selections to know which completed cards already have a bonus
+  const allCardIds = (cards || []).map(c => c.id);
+  const cardsWithBonus = new Set<string>();
+  if (allCardIds.length > 0) {
+    const { data: bonusSels } = await supabase
+      .from('bonus_selections')
+      .select('card_id')
+      .in('card_id', allCardIds);
+    for (const bs of (bonusSels || [])) {
+      cardsWithBonus.add(bs.card_id);
+    }
+  }
+
+  // Pick the best "current" card per student:
+  // Priority: completed-without-bonus with 10 stamps (needs attention) > active > completed-without-bonus (< 10 stamps)
+  const cardMap = new Map<string, { id: string; card_number: number; status: string }>();
   for (const card of (cards || [])) {
-    cardMap.set(card.student_id, { id: card.id, card_number: card.card_number });
+    if (card.status === 'completed' && cardsWithBonus.has(card.id)) continue; // skip fully completed
+    const existing = cardMap.get(card.student_id);
+    if (!existing) {
+      cardMap.set(card.student_id, { id: card.id, card_number: card.card_number, status: card.status });
+    } else {
+      // Prefer completed-without-bonus that has 10 stamps (needs bonus selection)
+      const existingStamps = stampCounts.get(existing.id) || 0;
+      const newStamps = stampCounts.get(card.id) || 0;
+      const existingNeedsBonus = existing.status !== 'active' && existingStamps >= 10;
+      const newNeedsBonus = card.status !== 'active' && newStamps >= 10;
+
+      if (newNeedsBonus && !existingNeedsBonus) {
+        cardMap.set(card.student_id, { id: card.id, card_number: card.card_number, status: card.status });
+      } else if (!newNeedsBonus && !existingNeedsBonus) {
+        // Both normal: prefer active, then higher card_number
+        if (card.status === 'active' && existing.status !== 'active') {
+          cardMap.set(card.student_id, { id: card.id, card_number: card.card_number, status: card.status });
+        } else if (card.card_number > existing.card_number) {
+          cardMap.set(card.student_id, { id: card.id, card_number: card.card_number, status: card.status });
+        }
+      }
+    }
   }
 
   // Get stamp counts per card
@@ -372,21 +408,21 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
     }
   }
 
-  // Get ALL bonus selections (pending + used) for active cards
-  const { data: selections, error: selectionsError } = await supabase
-    .from('bonus_selections')
-    .select('id, card_id, student_id, used_at, bonuses(label)')
-    .eq('user_id', userId);
+  // Get bonus selections keyed by card_id (scoped to current card, not student)
+  const currentCardIds = Array.from(cardMap.values()).map(c => c.id);
+  const selectionByCard = new Map<string, { id: string; label: string; used: boolean }>();
 
-  if (selectionsError) throw selectionsError;
+  if (currentCardIds.length > 0) {
+    const { data: selections, error: selectionsError } = await supabase
+      .from('bonus_selections')
+      .select('id, card_id, used_at, bonuses(label)')
+      .in('card_id', currentCardIds);
 
-  const selectionMap = new Map<string, { id: string; label: string; used: boolean }>();
-  for (const sel of (selections || [])) {
-    const bonusLabel = (sel.bonuses as any)?.label || 'Bonus inconnu';
-    // Keep the most recent selection per student (pending takes priority over used)
-    const existing = selectionMap.get(sel.student_id);
-    if (!existing || (!sel.used_at && existing.used)) {
-      selectionMap.set(sel.student_id, { id: sel.id, label: bonusLabel, used: !!sel.used_at });
+    if (selectionsError) throw selectionsError;
+
+    for (const sel of (selections || [])) {
+      const bonusLabel = (sel.bonuses as any)?.label || 'Bonus inconnu';
+      selectionByCard.set(sel.card_id, { id: sel.id, label: bonusLabel, used: !!sel.used_at });
     }
   }
 
@@ -394,7 +430,7 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
   return students.map(s => {
     const card = cardMap.get(s.id);
     const className = (s.classes as any)?.name || '';
-    const selection = selectionMap.get(s.id);
+    const selection = card ? selectionByCard.get(card.id) : undefined;
 
     return {
       student_id: s.id,
@@ -511,13 +547,34 @@ export interface StudentStampDetail {
 }
 
 export async function fetchStudentStampDetail(studentId: string): Promise<StudentStampDetail | null> {
-  // Get active card
-  const { data: card } = await supabase
+  // Get active card (or completed-without-bonus as fallback)
+  let { data: card } = await supabase
     .from('stamp_cards')
     .select('id, card_number')
     .eq('student_id', studentId)
     .eq('status', 'active')
     .single();
+
+  if (!card) {
+    // Fallback: find a completed card that has no bonus selection yet
+    const { data: completedNoBonusCards } = await supabase
+      .from('stamp_cards')
+      .select('id, card_number')
+      .eq('student_id', studentId)
+      .eq('status', 'completed')
+      .order('card_number', { ascending: false });
+
+    if (completedNoBonusCards && completedNoBonusCards.length > 0) {
+      // Check which ones have bonus selections
+      const ids = completedNoBonusCards.map(c => c.id);
+      const { data: bonusSels } = await supabase
+        .from('bonus_selections')
+        .select('card_id')
+        .in('card_id', ids);
+      const withBonus = new Set((bonusSels || []).map(bs => bs.card_id));
+      card = completedNoBonusCards.find(c => !withBonus.has(c.id)) || null;
+    }
+  }
 
   if (!card) return null;
 
@@ -545,16 +602,19 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
     awarded_at: s.awarded_at,
   }));
 
-  const completed = (completedCards || []).map(c => {
-    const sel = Array.isArray(c.bonus_selections) ? c.bonus_selections[0] : c.bonus_selections;
-    return {
-      id: c.id,
-      card_number: c.card_number,
-      completed_at: c.completed_at,
-      bonus_label: sel ? (sel.bonuses as any)?.label || null : null,
-      bonus_used: sel ? !!sel.used_at : false,
-    };
-  });
+  const completed = (completedCards || [])
+    .filter(c => c.id !== card.id) // exclude the card we're showing as "active"
+    .map(c => {
+      const sel = Array.isArray(c.bonus_selections) ? c.bonus_selections[0] : c.bonus_selections;
+      return {
+        id: c.id,
+        card_number: c.card_number,
+        completed_at: c.completed_at,
+        bonus_label: sel ? (sel.bonuses as any)?.label || null : null,
+        bonus_used: sel ? !!sel.used_at : false,
+      };
+    })
+    .filter(c => c.bonus_label !== null); // only show cards that have a bonus in history
 
   return {
     card_id: card.id,
