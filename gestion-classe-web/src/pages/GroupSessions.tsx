@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { getClassGradient, getClassInitials } from '../lib/constants';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -48,6 +49,7 @@ interface ClassFilter {
 
 export function GroupSessions() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const [sessions, setSessions] = useState<GroupSession[]>([]);
   const [classes, setClasses] = useState<ClassFilter[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -290,7 +292,7 @@ export function GroupSessions() {
       setEditGrades({});
     } catch (err) {
       console.error('Error saving grades:', err);
-      alert('Erreur lors de la sauvegarde des notes.');
+      toast('Erreur lors de la sauvegarde des notes.');
     } finally {
       setIsSavingGrades(false);
     }
@@ -325,7 +327,7 @@ export function GroupSessions() {
       handleCloseDetail();
     } catch (err) {
       console.error('Error deleting session:', err);
-      alert('Erreur lors de la suppression');
+      toast('Erreur lors de la suppression');
     } finally {
       setIsDeleting(false);
     }

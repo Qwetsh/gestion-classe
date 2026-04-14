@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
 
@@ -56,6 +57,7 @@ interface TableStat {
 
 export function DevPanel() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const [tab, setTab] = useState<Tab>('feedbacks');
 
   if (user?.email !== DEV_EMAIL) {
@@ -148,12 +150,12 @@ function FeedbacksTab() {
       .select('id, archived');
     if (error) {
       console.error('Error archiving feedback:', error);
-      alert('Erreur: colonne "archived" manquante ou probleme de migration.');
+      toast('Erreur: colonne "archived" manquante ou probleme de migration.');
       setArchivingId(null);
       return;
     }
     if (!data || data.length === 0) {
-      alert('Erreur: mise a jour refusee. Verifiez la policy RLS UPDATE sur la table feedbacks.');
+      toast('Erreur: mise a jour refusee. Verifiez la policy RLS UPDATE sur la table feedbacks.');
       setArchivingId(null);
       return;
     }
@@ -671,7 +673,7 @@ function AnnouncementsTab() {
     });
     if (error) {
       console.error('Error creating announcement:', error);
-      alert('Erreur lors de la creation');
+      toast('Erreur lors de la creation');
     } else {
       setNewMessage('');
       loadAnnouncements();

@@ -11,13 +11,16 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const primaryNavItems = [
   { path: '/', label: 'Accueil', icon: '📊' },
-  { path: '/analytics', label: 'Analyses', icon: '📈' },
   { path: '/classes', label: 'Classes', icon: '📚' },
   { path: '/students', label: 'Suivi élèves', icon: '👥' },
-  { path: '/rewards', label: 'Récompenses', icon: '⭐' },
   { path: '/sessions', label: 'Séances', icon: '📅' },
+  { path: '/analytics', label: 'Analyses', icon: '📈' },
+];
+
+const secondaryNavItems = [
+  { path: '/rewards', label: 'Récompenses', icon: '⭐' },
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
   { path: '/tools', label: 'Outils', icon: '🧰' },
@@ -27,15 +30,26 @@ export function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const isDev = user?.email === DEV_EMAIL;
-  const allNavItems = isDev ? [...navItems, { path: '/dev', label: 'Dev', icon: '🛠️' }] : navItems;
+  const allSecondaryItems = isDev
+    ? [...secondaryNavItems, { path: '/dev', label: 'Dev', icon: '🛠️' }]
+    : secondaryNavItems;
+  // For mobile: all items flat
+  const allNavItems = [...primaryNavItems, ...allSecondaryItems];
+  // Is a secondary item currently active?
+  const isSecondaryActive = allSecondaryItems.some(item => location.pathname === item.path);
 
-  // Fermer le menu si on clique ailleurs
+  // Fermer les menus si on clique ailleurs
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -64,7 +78,7 @@ export function Layout({ children }: LayoutProps) {
 
               {/* Navigation */}
               <nav className="hidden md:flex items-center gap-1 h-full">
-                {allNavItems.map((item) => {
+                {primaryNavItems.map((item) => {
                   const isActive = location.pathname === item.path;
                   return (
                     <Link
@@ -81,6 +95,46 @@ export function Layout({ children }: LayoutProps) {
                     </Link>
                   );
                 })}
+
+                {/* Menu "Plus" pour les items secondaires */}
+                <div className="relative h-full" ref={moreMenuRef}>
+                  <button
+                    onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                    className={`px-3 h-full flex items-center gap-1.5 text-sm font-medium transition-all duration-200 border-b-2 ${
+                      isSecondaryActive
+                        ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
+                        : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
+                    }`}
+                  >
+                    <span>+</span>
+                    Plus
+                  </button>
+                  {isMoreMenuOpen && (
+                    <div
+                      className="absolute top-full left-0 mt-1 w-52 bg-[var(--color-surface)] border border-[var(--color-border)] py-1"
+                      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)' }}
+                    >
+                      {allSecondaryItems.map((item) => {
+                        const isActive = location.pathname === item.path;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => setIsMoreMenuOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                              isActive
+                                ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]'
+                            }`}
+                          >
+                            <span>{item.icon}</span>
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </nav>
             </div>
 

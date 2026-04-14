@@ -7,6 +7,7 @@ import { RoomModal } from '../components/RoomModal';
 import type { Room } from '../components/RoomModal';
 import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
 import * as XLSX from 'xlsx';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 interface Class {
   id: string;
@@ -50,6 +51,7 @@ type DragItem = { studentId: string; fromCell?: { row: number; col: number } };
 
 export function Classes() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const isMobile = useIsMobile();
   const [classes, setClasses] = useState<Class[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -449,7 +451,7 @@ export function Classes() {
       setHasChanges(false);
     } catch (error) {
       console.error('Error saving plan:', error);
-      alert('Erreur lors de la sauvegarde du plan de classe.');
+      toast('Erreur lors de la sauvegarde du plan de classe.');
     } finally {
       setIsSaving(false);
     }
@@ -598,7 +600,7 @@ export function Classes() {
       loadClasses();
     } catch (error) {
       console.error('Error deleting:', error);
-      alert('Erreur lors de la suppression. Veuillez reessayer.');
+      toast('Erreur lors de la suppression. Veuillez reessayer.');
     } finally {
       setIsSubmitting(false);
     }
@@ -627,7 +629,7 @@ export function Classes() {
       await loadRooms();
     } catch (error) {
       console.error('Error deleting room:', error);
-      alert('Erreur lors de la suppression de la salle.');
+      toast('Erreur lors de la suppression de la salle.');
     } finally {
       setIsSubmitting(false);
     }

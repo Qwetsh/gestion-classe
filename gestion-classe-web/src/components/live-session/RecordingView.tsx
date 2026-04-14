@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
+import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { SessionTimer } from './SessionTimer';
 import { StudentCell } from './StudentCell';
 import { WebRadialMenu } from './WebRadialMenu';
@@ -27,6 +28,7 @@ export function RecordingView() {
     minimize, updateNotes, markReturn, addOralEvaluation, resetOralEvaluations,
     getAbsentStudentIds, getStudentWithSortie,
   } = useLiveSession();
+  const { confirm: showConfirm } = useUIFeedback();
 
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
   const [remarqueTarget, setRemarqueTarget] = useState<{ studentId: string; pseudo: string } | null>(null);
@@ -156,16 +158,14 @@ export function RecordingView() {
     setOralGrade(null);
   }, [oralStudent, oralGrade, addOralEvaluation]);
 
-  const handleOralButton = useCallback(() => {
+  const handleOralButton = useCallback(async () => {
     if (unevaluatedStudents.length === 0) {
-      // All evaluated — propose reset
-      if (confirm('Tous les eleves ont ete evalues.\n\nReinitialiser les evaluations ?')) {
-        resetOralEvaluations();
-      }
+      const ok = await showConfirm({ title: 'Reinitialiser', message: 'Tous les eleves ont ete evalues.\n\nReinitialiser les evaluations ?', confirmLabel: 'Reinitialiser', variant: 'warning' });
+      if (ok) resetOralEvaluations();
       return;
     }
     setShowOralPicker(true);
-  }, [unevaluatedStudents, resetOralEvaluations]);
+  }, [unevaluatedStudents, resetOralEvaluations, showConfirm]);
 
   // Delete events
   const studentsWithEventsList = useMemo(() => {
@@ -190,12 +190,10 @@ export function RecordingView() {
     setShowDeleteEvents(true);
   }, []);
 
-  const handleDeleteEvent = useCallback((eventId: string) => {
-    if (confirm('Supprimer cet evenement ?')) {
-      deleteEventById(eventId);
-      // If last event for this student, close modal
-    }
-  }, [deleteEventById]);
+  const handleDeleteEvent = useCallback(async (eventId: string) => {
+    const ok = await showConfirm({ title: 'Supprimer', message: 'Supprimer cet evenement ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    if (ok) deleteEventById(eventId);
+  }, [deleteEventById, showConfirm]);
 
   const handleEndSession = useCallback(() => {
     setShowEndConfirm(true);

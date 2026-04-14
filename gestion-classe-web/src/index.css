@@ -138,6 +138,12 @@ textarea:focus-visible {
   background-color: var(--color-text-tertiary);
 }
 
+/* Toast slide-in animation */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 /* PWA standalone mode: hide browser UI artifacts */
 @media (display-mode: standalone) {
   body {

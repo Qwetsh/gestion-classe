@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 import { sanitizePhotoPath } from '../lib/security';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 interface Session {
   id: string;
@@ -69,6 +70,7 @@ export function SessionDetail() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const { toast, confirm: showConfirm } = useUIFeedback();
 
   // Topic editing states
   const [isEditingTopic, setIsEditingTopic] = useState(false);
@@ -151,7 +153,7 @@ export function SessionDetail() {
 
       if (error) {
         console.error('Error saving topic:', error);
-        alert('Erreur lors de la sauvegarde du theme');
+        toast('Erreur lors de la sauvegarde du theme');
         return;
       }
 
@@ -199,7 +201,7 @@ export function SessionDetail() {
 
       if (error) {
         console.error('Error adding event:', error);
-        alert('Erreur lors de l\'ajout');
+        toast('Erreur lors de l\'ajout');
         return;
       }
 
@@ -221,7 +223,8 @@ export function SessionDetail() {
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer cet evenement ?')) {
+    const confirmed = await showConfirm({ title: 'Supprimer l\'evenement', message: 'Voulez-vous vraiment supprimer cet evenement ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!confirmed) {
       return;
     }
 
@@ -234,7 +237,7 @@ export function SessionDetail() {
 
       if (error) {
         console.error('Error deleting event:', error);
-        alert('Erreur lors de la suppression');
+        toast('Erreur lors de la suppression');
         return;
       }
 

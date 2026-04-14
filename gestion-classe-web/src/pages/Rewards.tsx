@@ -26,11 +26,13 @@ import {
   type StudentStampOverview,
   type StudentStampDetail,
 } from '../lib/rewardsQueries';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 type ConfigTab = 'categories' | 'bonuses';
 
 export function Rewards() {
   const { user } = useAuth();
+  const { toast, confirm: showConfirm } = useUIFeedback();
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configTab, setConfigTab] = useState<ConfigTab>('categories');
   const [isLoading, setIsLoading] = useState(true);
@@ -150,7 +152,8 @@ export function Rewards() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!confirm('Supprimer cette catégorie ?')) return;
+    const ok = await showConfirm({ title: 'Supprimer la categorie', message: 'Supprimer cette categorie ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!ok) return;
     try {
       await deleteCategoryApi(id);
       await loadData();
@@ -204,7 +207,8 @@ export function Rewards() {
   };
 
   const deleteBonusFn = async (id: string) => {
-    if (!confirm('Supprimer ce bonus ?')) return;
+    const ok = await showConfirm({ title: 'Supprimer le bonus', message: 'Supprimer ce bonus ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!ok) return;
     try {
       await deleteBonusApi(id);
       await loadData();
@@ -262,7 +266,8 @@ export function Rewards() {
 
   const doResetStudent = async (student: StudentStampOverview) => {
     if (!user) return;
-    if (!confirm(`Réinitialiser ${student.pseudo} ?\n\nTous ses tampons, cartes et bonus seront supprimés. Il repartira à la carte n°1.`)) return;
+    const ok = await showConfirm({ title: 'Reinitialiser cet eleve', message: `Reinitialiser ${student.pseudo} ?\n\nTous ses tampons, cartes et bonus seront supprimes. Il repartira a la carte n°1.`, confirmLabel: 'Reinitialiser', variant: 'danger' });
+    if (!ok) return;
     try {
       await resetStudentStampCards(user.id, student.student_id);
       await loadData();
@@ -274,8 +279,10 @@ export function Rewards() {
 
   const doResetAll = async () => {
     if (!user) return;
-    if (!confirm('Remettre TOUS les eleves a la carte n°1 ?\n\nCette action supprimera tous les tampons, cartes et bonus selectionnes. Irreversible.')) return;
-    if (!confirm('Vraiment tout reinitialiser ? Derniere chance.')) return;
+    const ok = await showConfirm({ title: 'Tout reinitialiser', message: 'Remettre TOUS les eleves a la carte n°1 ?\n\nCette action supprimera tous les tampons, cartes et bonus selectionnes. Irreversible.', confirmLabel: 'Tout reinitialiser', variant: 'danger' });
+    if (!ok) return;
+    const ok2 = await showConfirm({ title: 'Derniere chance', message: 'Vraiment tout reinitialiser ?', confirmLabel: 'Confirmer', variant: 'danger' });
+    if (!ok2) return;
     try {
       const count = await resetAllStampCards(user.id);
       await loadData();
@@ -304,7 +311,8 @@ export function Rewards() {
   };
 
   const doRemoveStamp = async (stampId: string) => {
-    if (!confirm('Retirer ce tampon ?')) return;
+    const ok = await showConfirm({ title: 'Retirer le tampon', message: 'Retirer ce tampon ?', confirmLabel: 'Retirer', variant: 'warning' });
+    if (!ok) return;
     try {
       await removeStamp(stampId);
       // Refresh detail + overview

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getClassGradient, getClassInitials } from '../lib/constants';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 interface Session {
   id: string;
@@ -50,6 +51,7 @@ type ViewMode = 'list' | 'calendar';
 
 export function Sessions() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [classes, setClasses] = useState<ClassFilter[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -257,7 +259,7 @@ export function Sessions() {
 
       if (error) {
         console.error('Error saving topic:', error);
-        alert('Erreur lors de la sauvegarde du theme');
+        toast('Erreur lors de la sauvegarde du theme');
         return;
       }
 
@@ -355,7 +357,7 @@ export function Sessions() {
       loadSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
-      alert('Erreur lors de la suppression de la seance.');
+      toast('Erreur lors de la suppression de la seance.');
     } finally {
       setIsDeleting(false);
     }

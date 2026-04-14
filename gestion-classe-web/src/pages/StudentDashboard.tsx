@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { getCardTier } from '../lib/rewardsQueries';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 // ============================================
 // Stamp card types
@@ -66,6 +67,7 @@ interface DashboardData {
 }
 
 export function StudentDashboard() {
+  const { confirm: showConfirm } = useUIFeedback();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -876,10 +878,9 @@ function StampCardView({
             {stampData.available_bonuses.map(bonus => (
               <button
                 key={bonus.id}
-                onClick={() => {
-                  if (confirm(`Tu veux choisir : "${bonus.label}" ?`)) {
-                    onSelectBonus(bonus.id);
-                  }
+                onClick={async () => {
+                  const ok = await showConfirm({ title: 'Choisir ce bonus', message: `Tu veux choisir : "${bonus.label}" ?`, confirmLabel: 'Choisir', variant: 'warning' });
+                  if (ok) onSelectBonus(bonus.id);
                 }}
                 style={{
                   padding: '14px 16px', borderRadius: '12px',

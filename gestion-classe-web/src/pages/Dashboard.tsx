@@ -258,6 +258,7 @@ export function Dashboard() {
             icon="📚"
             bgColor="var(--color-primary-soft)"
             iconColor="var(--color-primary)"
+            link="/classes"
           />
           <StatCard
             label="Eleves"
@@ -265,6 +266,7 @@ export function Dashboard() {
             icon="👥"
             bgColor="var(--color-sortie-soft)"
             iconColor="var(--color-sortie)"
+            link="/students"
           />
           <StatCard
             label="Seances"
@@ -272,6 +274,7 @@ export function Dashboard() {
             icon="📅"
             bgColor="var(--color-remarque-soft)"
             iconColor="var(--color-remarque)"
+            link="/sessions"
           />
           <StatCard
             label="Evenements"
@@ -279,6 +282,7 @@ export function Dashboard() {
             icon="📝"
             bgColor="var(--color-absence-soft)"
             iconColor="var(--color-absence)"
+            link="/analytics"
           />
           <StatCard
             label="Implications"
@@ -287,6 +291,7 @@ export function Dashboard() {
             bgColor="var(--color-participation-soft)"
             iconColor="var(--color-participation)"
             isLarge
+            link="/analytics"
           />
           <StatCard
             label="Malus"
@@ -295,6 +300,7 @@ export function Dashboard() {
             bgColor="var(--color-bavardage-soft)"
             iconColor="var(--color-bavardage)"
             isLarge
+            link="/analytics"
           />
         </div>
 
@@ -331,6 +337,9 @@ export function Dashboard() {
               </div>
               <p className="text-[var(--color-text-tertiary)]">
                 Aucune seance synchronisee
+              </p>
+              <p className="text-sm text-[var(--color-text-tertiary)] mt-2">
+                Lancez une seance depuis l'app mobile pour la voir ici
               </p>
             </div>
           ) : (
@@ -421,6 +430,7 @@ function StatCard({
   bgColor,
   iconColor,
   isLarge = false,
+  link,
 }: {
   label: string;
   value: number;
@@ -428,12 +438,10 @@ function StatCard({
   bgColor: string;
   iconColor: string;
   isLarge?: boolean;
+  link?: string;
 }) {
-  return (
-    <div
-      className="bg-[var(--color-surface)] p-4 transition-transform hover:scale-[1.02]"
-      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
-    >
+  const content = (
+    <>
       <div
         className={`${isLarge ? 'w-12 h-12 text-xl' : 'w-10 h-10 text-lg'} flex items-center justify-center font-bold mb-3`}
         style={{
@@ -446,6 +454,27 @@ function StatCard({
       </div>
       <div className="text-2xl font-bold text-[var(--color-text)]">{value}</div>
       <div className="text-sm text-[var(--color-text-tertiary)]">{label}</div>
+    </>
+  );
+
+  if (link) {
+    return (
+      <Link
+        to={link}
+        className="bg-[var(--color-surface)] p-4 transition-transform hover:scale-[1.02] block"
+        style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className="bg-[var(--color-surface)] p-4 transition-transform hover:scale-[1.02]"
+      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+    >
+      {content}
     </div>
   );
 }

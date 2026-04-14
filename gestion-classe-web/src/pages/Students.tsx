@@ -7,6 +7,7 @@ import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepa
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import QRCode from 'qrcode';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 interface Student {
   id: string;
@@ -144,6 +145,7 @@ type SortOrder = 'asc' | 'desc';
 
 export function Students() {
   const { user } = useAuth();
+  const { toast, confirm: showConfirm } = useUIFeedback();
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
   const [classes, setClasses] = useState<ClassFilter[]>([]);
   const [classConfigs, setClassConfigs] = useState<Map<string, ClassConfig>>(new Map());
@@ -656,7 +658,7 @@ export function Students() {
       loadData();
     } catch (error) {
       console.error('Error saving config:', error);
-      alert('Erreur lors de la sauvegarde de la configuration.');
+      toast('Erreur lors de la sauvegarde de la configuration.');
     } finally {
       setIsSaving(false);
     }
@@ -776,7 +778,7 @@ export function Students() {
       loadData();
     } catch (error) {
       console.error('Error advancing trimester:', error);
-      alert('Erreur lors du passage au trimestre suivant.');
+      toast('Erreur lors du passage au trimestre suivant.');
     } finally {
       setIsSaving(false);
     }
@@ -1066,11 +1068,11 @@ export function Students() {
 
       setShowEndYearModal(false);
       setEndYearConfirmText('');
-      alert('Annee scolaire terminee avec succes ! Les donnees ont ete archivees.');
+      toast('Annee scolaire terminee avec succes ! Les donnees ont ete archivees.', 'success');
       loadData();
     } catch (error) {
       console.error('Error ending year:', error);
-      alert('Erreur lors de la cloture de l\'annee. Verifiez la console pour plus de details.');
+      toast('Erreur lors de la cloture de l\'annee. Verifiez la console pour plus de details.');
     } finally {
       setIsEndingYear(false);
     }
@@ -1253,14 +1255,20 @@ export function Students() {
       loadData();
     } catch (error) {
       console.error('Failed to add manual participation:', error);
-      alert('Erreur lors de l\'ajout de l\'implication manuelle.');
+      toast('Erreur lors de l\'ajout de l\'implication manuelle.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const deleteManualParticipation = async (mpId: string) => {
-    if (!confirm('Supprimer cette implication manuelle ?')) return;
+    const confirmed = await showConfirm({
+      title: 'Supprimer cette implication',
+      message: 'Supprimer cette implication manuelle ?',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase.from('manual_participations').delete().eq('id', mpId);
@@ -1269,7 +1277,7 @@ export function Students() {
       setShowStudentDetailModal(false);
     } catch (error) {
       console.error('Failed to delete manual participation:', error);
-      alert('Erreur lors de la suppression.');
+      toast('Erreur lors de la suppression.');
     }
   };
 
@@ -1300,7 +1308,7 @@ export function Students() {
       ));
     } catch (error) {
       console.error('Failed to update gender:', error);
-      alert('Erreur lors de la mise a jour.');
+      toast('Erreur lors de la mise a jour.');
     }
   };
 

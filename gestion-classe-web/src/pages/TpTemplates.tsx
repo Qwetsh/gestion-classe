@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 interface TpTemplate {
   id: string;
@@ -36,6 +37,7 @@ interface EditingCriteria {
 
 export function TpTemplates() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const [templates, setTemplates] = useState<TpTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,7 +185,7 @@ export function TpTemplates() {
     // Validate criteria
     const validCriteria = criteria.filter(c => c.label.trim());
     if (validCriteria.length === 0) {
-      alert('Ajoutez au moins un critere');
+      toast('Ajoutez au moins un critere', 'warning');
       return;
     }
 
@@ -249,7 +251,7 @@ export function TpTemplates() {
       loadTemplates();
     } catch (err) {
       console.error('Error saving template:', err);
-      alert('Erreur lors de la sauvegarde');
+      toast('Erreur lors de la sauvegarde');
     } finally {
       setIsSaving(false);
     }
@@ -305,7 +307,7 @@ export function TpTemplates() {
       setTemplateToDelete(null);
     } catch (err) {
       console.error('Error deleting template:', err);
-      alert('Erreur lors de la suppression');
+      toast('Erreur lors de la suppression');
     } finally {
       setIsDeleting(false);
     }
@@ -448,7 +450,7 @@ export function TpTemplates() {
                     <h3 className="font-bold text-white text-lg leading-tight flex-1 mr-2 drop-shadow-sm">
                       {template.name}
                     </h3>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleOpenEdit(template)}
                         className="p-1.5 bg-white/20 hover:bg-white/40 transition-colors backdrop-blur-sm"

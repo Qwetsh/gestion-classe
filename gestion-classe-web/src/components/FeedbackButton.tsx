@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 
 type FeedbackType = 'bug' | 'suggestion' | 'autre';
 
 export function FeedbackButton() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const [showModal, setShowModal] = useState(false);
   const [type, setType] = useState<FeedbackType>('suggestion');
   const [message, setMessage] = useState('');
@@ -32,7 +34,7 @@ export function FeedbackButton() {
       }, 1500);
     } catch (err) {
       console.error('Error sending feedback:', err);
-      alert('Erreur lors de l\'envoi du feedback');
+      toast('Erreur lors de l\'envoi du feedback');
     } finally {
       setIsSending(false);
     }

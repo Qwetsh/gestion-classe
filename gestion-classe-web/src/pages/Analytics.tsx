@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { generateAnalysisReport, prepareReportData } from '../lib/generateReport';
 import {
   LineChart,
@@ -91,6 +92,7 @@ const COLORS = {
 
 export function Analytics() {
   const { user } = useAuth();
+  const { toast } = useUIFeedback();
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
@@ -467,7 +469,7 @@ export function Analytics() {
       generateAnalysisReport(reportData);
     } catch (err) {
       console.error('Error generating report:', err);
-      alert('Erreur lors de la generation du rapport');
+      toast('Erreur lors de la generation du rapport');
     } finally {
       setIsGeneratingReport(false);
     }
