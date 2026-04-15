@@ -248,11 +248,34 @@ export function Classes() {
 
       const trimesterStartDate = boundaryData?.started_at || new Date(0).toISOString();
 
-      const { data: eventsData } = await supabase
-        .from('events')
-        .select('student_id, type')
-        .in('student_id', studentIds)
-        .gte('timestamp', trimesterStartDate);
+      // Paginate events query to bypass Supabase's 1000-row default limit
+      const EVENTS_PAGE_SIZE = 1000;
+      const allEventsData: any[] = [];
+      let eventsFrom = 0;
+      let hasMoreEvents = true;
+
+      while (hasMoreEvents) {
+        const { data, error: eventsError } = await supabase
+          .from('events')
+          .select('student_id, type')
+          .in('student_id', studentIds)
+          .gte('timestamp', trimesterStartDate)
+          .range(eventsFrom, eventsFrom + EVENTS_PAGE_SIZE - 1);
+
+        if (eventsError) {
+          console.error('Error loading events:', eventsError);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allEventsData.push(...data);
+        }
+
+        hasMoreEvents = data !== null && data.length === EVENTS_PAGE_SIZE;
+        eventsFrom += EVENTS_PAGE_SIZE;
+      }
+
+      const eventsData = allEventsData;
 
       const { data: manualData } = await supabase
         .from('manual_participations')

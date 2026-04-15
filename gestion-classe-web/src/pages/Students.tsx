@@ -360,18 +360,41 @@ export function Students() {
     // Phase 3: Load student-related data in parallel
     const studentIds = studentsData.map(s => s.id);
 
-    const [
-      { data: eventsData },
-      { data: manualParticipationsData },
-      { data: archivedGradesData },
-      { data: oralEvaluationsData },
-    ] = await Promise.all([
-      supabase
+    // Paginate events query to bypass Supabase's 1000-row default limit
+    const EVENTS_PAGE_SIZE = 1000;
+    const allEventsData: any[] = [];
+    let eventsFrom = 0;
+    let hasMoreEvents = true;
+
+    while (hasMoreEvents) {
+      const { data, error: eventsError } = await supabase
         .from('events')
         .select('id, student_id, session_id, type, subtype, note, timestamp')
         .in('student_id', studentIds)
         .gte('timestamp', trimesterStartDate)
-        .order('timestamp', { ascending: false }),
+        .order('timestamp', { ascending: false })
+        .range(eventsFrom, eventsFrom + EVENTS_PAGE_SIZE - 1);
+
+      if (eventsError) {
+        console.error('Error loading events:', eventsError);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allEventsData.push(...data);
+      }
+
+      hasMoreEvents = data !== null && data.length === EVENTS_PAGE_SIZE;
+      eventsFrom += EVENTS_PAGE_SIZE;
+    }
+
+    const eventsData = allEventsData;
+
+    const [
+      { data: manualParticipationsData },
+      { data: archivedGradesData },
+      { data: oralEvaluationsData },
+    ] = await Promise.all([
       supabase
         .from('manual_participations')
         .select('*')
