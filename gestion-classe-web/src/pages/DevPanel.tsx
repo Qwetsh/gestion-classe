@@ -57,7 +57,6 @@ interface TableStat {
 
 export function DevPanel() {
   const { user } = useAuth();
-  const { toast } = useUIFeedback();
   const [tab, setTab] = useState<Tab>('feedbacks');
 
   if (user?.email !== DEV_EMAIL) {
@@ -124,6 +123,7 @@ export function DevPanel() {
 // Feedbacks Tab
 // ============================================
 function FeedbacksTab() {
+  const { toast } = useUIFeedback();
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'bug' | 'suggestion' | 'autre'>('all');
@@ -644,6 +644,7 @@ function ErrorsTab() {
 // Announcements Tab
 // ============================================
 function AnnouncementsTab() {
+  const { toast } = useUIFeedback();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');

@@ -32,7 +32,7 @@ type ConfigTab = 'categories' | 'bonuses';
 
 export function Rewards() {
   const { user } = useAuth();
-  const { toast, confirm: showConfirm } = useUIFeedback();
+  const { confirm: showConfirm } = useUIFeedback();
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configTab, setConfigTab] = useState<ConfigTab>('categories');
   const [isLoading, setIsLoading] = useState(true);

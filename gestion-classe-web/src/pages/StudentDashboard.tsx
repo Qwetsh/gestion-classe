@@ -67,7 +67,6 @@ interface DashboardData {
 }
 
 export function StudentDashboard() {
-  const { confirm: showConfirm } = useUIFeedback();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -679,6 +678,8 @@ function StampCardView({
   selectedStampDetail: { label: string; icon: string; color: string; date: string } | null;
   setSelectedStampDetail: (v: { label: string; icon: string; color: string; date: string } | null) => void;
 }) {
+  const { confirm: showConfirm } = useUIFeedback();
+
   if (stampLoading) {
     return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>Chargement...</div>;
   }
