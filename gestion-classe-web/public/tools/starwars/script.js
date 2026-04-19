@@ -9,6 +9,8 @@ function createStarfield(container) {
   container.appendChild(canvas);
   const ctx = canvas.getContext('2d');
 
+  // Générer les étoiles sur une zone plus haute (2x la hauteur)
+  // pour avoir du contenu quand on pan vers le bas
   const fieldHeight = canvas.height * 3;
 
   const layers = [
@@ -39,6 +41,7 @@ function createStarfield(container) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Accélération progressive du pan
     if (starfieldPanning && panSpeed < maxPanSpeed) {
       panSpeed += 0.02;
     }
@@ -48,8 +51,11 @@ function createStarfield(container) {
     }
 
     stars.forEach(s => {
+      // Position Y avec parallaxe (les grosses étoiles bougent plus vite)
       let drawY = s.y - offsetY * s.speed;
+      // Wrap-around pour que les étoiles réapparaissent en haut
       drawY = ((drawY % fieldHeight) + fieldHeight) % fieldHeight;
+      // Ne dessiner que si visible
       if (drawY >= 0 && drawY <= canvas.height) {
         ctx.globalAlpha = s.opacity;
         ctx.fillStyle = '#fff';
@@ -77,108 +83,6 @@ function createStarfield(container) {
     starfieldAnimId = null;
     starfieldPanning = false;
   };
-}
-
-// ===== RECORDING (Tab Capture) =====
-let mediaRecorder = null;
-let recordedChunks = [];
-let isRecording = false;
-
-async function toggleRecording() {
-  if (isRecording) {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
-}
-
-async function startRecording() {
-  try {
-    // Capture current tab with audio
-    const displayStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { displaySurface: 'browser' },
-      audio: true,
-      preferCurrentTab: true,
-    });
-
-    // Also capture the <audio> element
-    const audioEl = document.getElementById('audio');
-    let combinedStream = displayStream;
-
-    if (audioEl && audioEl.captureStream) {
-      const audioStream = audioEl.captureStream();
-      const audioTracks = audioStream.getAudioTracks();
-      if (audioTracks.length > 0 && displayStream.getAudioTracks().length === 0) {
-        audioTracks.forEach(t => displayStream.addTrack(t));
-      }
-      combinedStream = displayStream;
-    }
-
-    recordedChunks = [];
-    mediaRecorder = new MediaRecorder(combinedStream, {
-      mimeType: 'video/webm;codecs=vp9,opus',
-      videoBitsPerSecond: 5000000,
-    });
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) recordedChunks.push(e.data);
-    };
-
-    mediaRecorder.onstop = () => {
-      // Stop all tracks
-      combinedStream.getTracks().forEach(t => t.stop());
-
-      if (recordedChunks.length > 0) {
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'star-wars-intro.webm';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      }
-      recordedChunks = [];
-      updateRecordBtn(false);
-    };
-
-    // If user stops sharing, handle it
-    combinedStream.getVideoTracks()[0].onended = () => {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-      isRecording = false;
-      updateRecordBtn(false);
-    };
-
-    mediaRecorder.start(1000);
-    isRecording = true;
-    updateRecordBtn(true);
-
-  } catch (err) {
-    console.warn('Recording failed:', err);
-    // User cancelled or browser doesn't support it
-    isRecording = false;
-    updateRecordBtn(false);
-  }
-}
-
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-  }
-  isRecording = false;
-}
-
-function updateRecordBtn(recording) {
-  const btn = document.getElementById('recordBtn');
-  if (!btn) return;
-  if (recording) {
-    btn.textContent = '⏹ Arrêter et télécharger';
-    btn.classList.add('recording');
-  } else {
-    btn.textContent = '⏺ Enregistrer la vidéo';
-    btn.classList.remove('recording');
-  }
 }
 
 // ===== INTRO LOGIC =====
@@ -233,10 +137,11 @@ function startIntro() {
   }
 
   // Set crawl animation dynamically
-  const crawlDelay = 16;
+  const crawlDelay = 16; // seconds after start
   crawlContent.style.animation = 'none';
-  crawlContent.offsetHeight;
+  crawlContent.offsetHeight; // force reflow
 
+  // Inject dynamic keyframes
   const styleId = 'dynamic-crawl-style';
   let existingStyle = document.getElementById(styleId);
   if (existingStyle) existingStyle.remove();
@@ -258,9 +163,9 @@ function startIntro() {
   crawlContainer.style.visibility = 'hidden';
   setTimeout(() => {
     crawlContainer.style.visibility = 'visible';
-  }, 15000);
+  }, 15000); // Show after 15s (logo finishes at ~16s)
 
-  // Reset animations
+  // Reset animations on intro-text and logo
   resetAnimation('intro-text');
   resetAnimation('logo-container');
 
@@ -284,10 +189,11 @@ function startIntro() {
   } else if (musicUrl) {
     audioElement.src = musicUrl;
   }
+  // Calage musique/logo — l'accord doit tomber pile avec le logo à 7s
   playAudioDelayed(audioElement, 5000);
 
-  // Pan stars near end
-  const panStartTime = (crawlDelay + duration - 14) * 1000;
+  // Pan des étoiles vers la fin — commence quand le crawl touche à sa fin
+  const panStartTime = (crawlDelay + duration - 14) * 1000; // 14s avant la fin du crawl
   setTimeout(() => {
     starfieldPanning = true;
   }, panStartTime);
@@ -295,33 +201,33 @@ function startIntro() {
 
 function playAudioDelayed(audio, delayMs) {
   setTimeout(() => {
-    audio.play().catch(() => {});
+    audio.play().catch(() => {
+      // Autoplay blocked — ignore silently
+    });
   }, delayMs);
 }
 
 function resetAnimation(elementId) {
   const el = document.getElementById(elementId);
   el.style.animation = 'none';
-  el.offsetHeight;
+  el.offsetHeight; // force reflow
   el.style.animation = '';
 }
 
 function stopIntro() {
+  // Stop audio
   if (audioElement) {
     audioElement.pause();
     audioElement.currentTime = 0;
   }
 
+  // Cleanup starfield
   if (cleanupStarfield) {
     cleanupStarfield();
     cleanupStarfield = null;
   }
 
-  // Stop recording if active
-  if (isRecording) {
-    stopRecording();
-  }
-
+  // Hide animation, show editor
   document.getElementById('animation').classList.add('hidden');
   document.getElementById('editor').classList.remove('hidden');
 }
