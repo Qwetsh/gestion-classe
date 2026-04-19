@@ -17,6 +17,7 @@ import { ToolGrid, ToolView } from './pages/Toolbox';
 import { Students } from './pages/Students';
 import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
+import { Pronote } from './pages/Pronote';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
 import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
@@ -123,6 +124,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ToolView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pronote"
+          element={
+            <ProtectedRoute>
+              <Pronote />
             </ProtectedRoute>
           }
         />

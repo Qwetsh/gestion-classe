@@ -42,6 +42,14 @@ export const tools: Tool[] = [
     component: lazy(() => import('./IframeGenerator')),
     tags: ['lien', 'intégration', 'embed'],
   },
+  {
+    id: 'youtube',
+    name: 'YouTube → MP3 / MP4',
+    description: 'Convertir une vidéo YouTube en fichier audio MP3 ou vidéo MP4',
+    icon: '🎬',
+    component: lazy(() => import('./YouTubeConverter')),
+    tags: ['youtube', 'mp3', 'mp4', 'audio', 'vidéo', 'musique', 'convertir'],
+  },
 ];
 
 export function getToolById(id: string): Tool | undefined {

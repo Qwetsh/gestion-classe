@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.94.1",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
+    "pawnote": "^1.6.2",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

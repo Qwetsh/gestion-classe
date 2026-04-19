@@ -24,6 +24,7 @@ const secondaryNavItems = [
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
   { path: '/tools', label: 'Outils', icon: '🧰' },
+  { path: '/pronote', label: 'Pronote', icon: '🔗' },
 ];
 
 export function Layout({ children }: LayoutProps) {
