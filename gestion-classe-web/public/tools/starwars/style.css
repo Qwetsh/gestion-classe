@@ -1,0 +1,277 @@
+/* ===== RESET & BASE ===== */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0a0a0a;
+  color: #ccc;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.hidden { display: none !important; }
+
+/* ===== EDITOR ===== */
+#editor {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+}
+
+.editor-title {
+  font-size: 2.2rem;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.editor-title .yellow {
+  color: #FFE81F;
+  font-family: 'Star Jedi', sans-serif;
+  font-size: 1.3em;
+}
+
+.editor-subtitle {
+  text-align: center;
+  color: #888;
+  margin-bottom: 30px;
+  font-size: 0.95rem;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #FFE81F;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #FFE81F;
+}
+
+.form-group input[type="file"] {
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+.form-row .form-group { flex: 1; }
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-transform: none;
+  font-size: 0.95rem;
+}
+
+.btn-play {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  background: #FFE81F;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: background 0.2s;
+}
+.btn-play:hover { background: #ffe97a; }
+
+/* ===== ANIMATION SCREEN ===== */
+#animation {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+  z-index: 100;
+}
+
+/* ----- Stars ----- */
+#starfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ----- Intro blue text ----- */
+#intro-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  color: rgb(75, 213, 238);
+  font-family: 'Franklin Gothic Book', 'News Gothic MT', 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
+  font-size: clamp(1.4rem, 4vw, 2.8rem);
+  font-weight: 400;
+  text-align: center;
+  white-space: pre-line;
+  opacity: 0;
+  animation: introFade 6s ease-out forwards;
+}
+
+@keyframes introFade {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ----- Logo ----- */
+#logo-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(2.75);
+  z-index: 3;
+  width: min(80vw, 700px);
+  opacity: 0;
+  animation: logoZoom 9s ease-out forwards;
+  animation-delay: 7s;
+}
+
+#logo-container img {
+  width: 100%;
+  height: auto;
+}
+
+.sw-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.85;
+}
+
+.sw-logo-line {
+  font-family: 'Star Jedi Hollow', 'Star Jedi', sans-serif;
+  color: #FFE81F;
+  font-size: clamp(4rem, 15vw, 10rem);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  -webkit-text-stroke: 2px #FFE81F;
+}
+
+@keyframes logoZoom {
+  0%   { transform: translate(-50%, -50%) scale(2.75); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.01); opacity: 0; }
+}
+
+/* ----- Crawl ----- */
+#crawl-container {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  margin-left: -9em;
+  width: 18em;
+  height: 50em;
+  font-size: 350%;
+  font-weight: bold;
+  text-align: justify;
+  overflow: hidden;
+  z-index: 4;
+  transform-origin: 50% 100%;
+  transform: perspective(300px) rotateX(25deg);
+}
+
+/* Fade mask at top */
+#crawl-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 60%;
+  background: linear-gradient(to bottom, rgba(0,0,0,1) 0%, transparent 100%);
+  z-index: 5;
+  pointer-events: none;
+}
+
+#crawl-content {
+  position: absolute;
+  top: 100%;
+  font-family: 'Franklin Gothic Medium', 'News Gothic MT', 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
+  color: #FFE81F;
+  line-height: 1.55;
+  letter-spacing: 3px;
+  /* animation set via JS */
+}
+
+#crawl-content.centered { text-align: center; }
+
+.crawl-episode {
+  text-align: center;
+  font-size: 0.6em;
+  margin-bottom: 0.2em;
+  letter-spacing: 6px;
+  font-weight: normal;
+}
+
+.crawl-title {
+  text-align: center;
+  font-size: 1.1em;
+  margin-bottom: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  line-height: 1.2;
+}
+
+#crawl-body p {
+  margin-bottom: 1.2em;
+}
+
+/* ----- Stop button ----- */
+.btn-stop {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 999;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+}
+.btn-stop:hover { background: rgba(255,255,255,0.25); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .form-row { flex-direction: column; gap: 0; }
+  #editor { padding: 20px; }
+}

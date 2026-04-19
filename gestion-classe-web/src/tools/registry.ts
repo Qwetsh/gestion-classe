@@ -50,6 +50,14 @@ export const tools: Tool[] = [
     component: lazy(() => import('./YouTubeConverter')),
     tags: ['youtube', 'mp3', 'mp4', 'audio', 'vidéo', 'musique', 'convertir'],
   },
+  {
+    id: 'starwars',
+    name: 'Star Wars Intro',
+    description: 'Créer une intro Star Wars personnalisée avec texte défilant',
+    icon: '⭐',
+    component: lazy(() => import('./StarWarsIntro')),
+    tags: ['star wars', 'intro', 'animation', 'vidéo', 'fun', 'présentation'],
+  },
 ];
 
 export function getToolById(id: string): Tool | undefined {

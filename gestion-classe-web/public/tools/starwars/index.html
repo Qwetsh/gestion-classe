@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Star Wars Intro Creator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/star-jedi">
+</head>
+<body>
+
+  <!-- ========== EDITOR ========== -->
+  <div id="editor">
+    <h1 class="editor-title">
+      <span class="yellow">Star Wars</span> Intro Creator
+    </h1>
+    <p class="editor-subtitle">Remplis les champs et clique sur Play pour voir ton intro personnalisée.</p>
+
+    <div class="form-group">
+      <label for="introText">Texte d'intro (bleu)</label>
+      <input type="text" id="introText" value="A long time ago in a galaxy far, far away....">
+    </div>
+
+    <div class="form-group">
+      <label for="logoUrl">URL du logo (SVG ou PNG)</label>
+      <input type="text" id="logoUrl" placeholder="Laisse vide pour le logo par défaut">
+    </div>
+
+    <div class="form-group">
+      <label for="episode">Épisode</label>
+      <input type="text" id="episode" value="Episode IV" placeholder="Episode IV">
+    </div>
+
+    <div class="form-group">
+      <label for="title">Titre</label>
+      <input type="text" id="title" value="A NEW HOPE" placeholder="A NEW HOPE">
+    </div>
+
+    <div class="form-group">
+      <label for="crawlText">Texte du crawl</label>
+      <textarea id="crawlText" rows="10">It is a period of civil war. Rebel spaceships, striking from a hidden base, have won their first victory against the evil Galactic Empire.
+
+During the battle, Rebel spies managed to steal secret plans to the Empire's ultimate weapon, the DEATH STAR, an armored space station with enough power to destroy an entire planet.
+
+Pursued by the Empire's sinister agents, Princess Leia races home aboard her starship, custodian of the stolen plans that can save her people and restore freedom to the galaxy....</textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="crawlDuration">Durée du crawl (s)</label>
+        <input type="number" id="crawlDuration" value="80" min="20" max="300">
+      </div>
+      <div class="form-group">
+        <label for="musicUrl">URL musique (MP3, optionnel)</label>
+        <input type="text" id="musicUrl" placeholder="https://...mp3">
+      </div>
+      <div class="form-group">
+        <label for="musicFile">Ou fichier local</label>
+        <input type="file" id="musicFile" accept="audio/*">
+      </div>
+    </div>
+
+    <div class="form-group checkbox-group">
+      <label><input type="checkbox" id="centerText"> Centrer le texte du crawl</label>
+    </div>
+
+    <button id="playBtn" class="btn-play" onclick="startIntro()">▶ Play</button>
+  </div>
+
+  <!-- ========== ANIMATION ========== -->
+  <div id="animation" class="hidden">
+    <div id="starfield"></div>
+
+    <section id="intro-text"></section>
+
+    <div id="logo-container">
+      <div id="default-logo" class="sw-logo">
+        <span class="sw-logo-line">star</span>
+        <span class="sw-logo-line">wars</span>
+      </div>
+      <img id="custom-logo" src="" alt="Logo" class="hidden">
+    </div>
+
+    <div id="crawl-container">
+      <div id="crawl-content">
+        <p id="crawl-episode" class="crawl-episode"></p>
+        <h2 id="crawl-title" class="crawl-title"></h2>
+        <div id="crawl-body"></div>
+      </div>
+    </div>
+
+    <button id="stopBtn" class="btn-stop" onclick="stopIntro()">✕ Quitter</button>
+    <audio id="audio" preload="auto" src="Star Wars Intro HD 1080p.mp3"></audio>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
