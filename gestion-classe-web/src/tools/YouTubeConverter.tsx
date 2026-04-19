@@ -4,23 +4,9 @@ type Format = 'mp3' | 'mp4';
 type Quality = '320' | '256' | '128' | '64';
 type VideoQuality = '1080' | '720' | '480' | '360';
 
-const STORAGE_KEY = 'yt-converter-instance';
+const COBALT_API = 'https://cobalt-classit.fly.dev/';
 
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
-
-// Known public cobalt instances (updated from instances.cobalt.best)
-const KNOWN_INSTANCES = [
-  { url: 'downloadapi.stuff.solutions', label: 'stuff.solutions (sans auth)' },
-  { url: 'cobalt-api.meowing.de', label: 'meowing.de' },
-  { url: 'cobalt-backend.canine.tools', label: 'canine.tools' },
-  { url: 'capi.3kh0.net', label: '3kh0.net' },
-];
-
-function normalizeApiUrl(url: string): string {
-  let u = url.trim().replace(/\/+$/, '');
-  if (!/^https?:\/\//.test(u)) u = 'https://' + u;
-  return u + '/';
-}
 
 export default function YouTubeConverter() {
   const [url, setUrl] = useState('');
@@ -31,28 +17,11 @@ export default function YouTubeConverter() {
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [filename, setFilename] = useState('');
-  const [selectedInstance, setSelectedInstance] = useState(() =>
-    localStorage.getItem(STORAGE_KEY) || KNOWN_INSTANCES[0].url
-  );
-  const [customInstance, setCustomInstance] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
 
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
-  function getApiUrl(): string {
-    if (customInstance.trim()) return normalizeApiUrl(customInstance);
-    return normalizeApiUrl(selectedInstance);
-  }
-
   async function handleConvert() {
     if (!isValidUrl) return;
-
-    const apiUrl = getApiUrl();
-    if (!apiUrl) {
-      setError('Aucune instance configurée. Ouvrez les paramètres pour en sélectionner une.');
-      setShowSettings(true);
-      return;
-    }
 
     setLoading(true);
     setError('');
@@ -72,10 +41,7 @@ export default function YouTubeConverter() {
         body.videoQuality = videoQuality;
       }
 
-      const proxyUrl = import.meta.env.DEV
-        ? `/api/cobalt-proxy?instance=${encodeURIComponent(apiUrl)}`
-        : `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cobalt-proxy?instance=${encodeURIComponent(apiUrl)}`;
-      const res = await fetch(proxyUrl, {
+      const res = await fetch(COBALT_API, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -104,7 +70,7 @@ export default function YouTubeConverter() {
         setError('Réponse inattendue du serveur.');
       }
     } catch {
-      setError('Impossible de contacter le service de conversion. Essayez une autre instance dans les paramètres.');
+      setError('Impossible de contacter le service de conversion.');
     } finally {
       setLoading(false);
     }
@@ -254,64 +220,6 @@ export default function YouTubeConverter() {
 
         {error && (
           <p className="text-sm text-[var(--color-error)] text-center max-w-md">{error}</p>
-        )}
-      </div>
-
-      {/* Settings toggle */}
-      <div>
-        <button
-          onClick={() => setShowSettings(s => !s)}
-          className="text-xs font-medium text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
-        >
-          {showSettings ? '▾' : '▸'} Paramètres d'instance
-        </button>
-
-        {showSettings && (
-          <div className="mt-3 p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] space-y-3">
-            <p className="text-xs text-[var(--color-text-tertiary)]">
-              Sélectionnez une instance publique cobalt ou entrez une URL personnalisée.
-            </p>
-
-            {/* Instance list */}
-            <div className="flex flex-wrap gap-2">
-              {KNOWN_INSTANCES.map(inst => (
-                <button
-                  key={inst.url}
-                  onClick={() => {
-                    setSelectedInstance(inst.url);
-                    setCustomInstance('');
-                    localStorage.setItem(STORAGE_KEY, inst.url);
-                    reset();
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    selectedInstance === inst.url && !customInstance.trim()
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
-                  }`}
-                >
-                  {inst.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom instance */}
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">
-                Instance personnalisée (prioritaire)
-              </label>
-              <input
-                type="text"
-                value={customInstance}
-                onChange={(e) => setCustomInstance(e.target.value)}
-                placeholder="https://mon-cobalt.example.com"
-                className="w-full px-3 py-2 rounded-lg text-sm border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-              />
-            </div>
-
-            <p className="text-xs text-[var(--color-text-tertiary)]">
-              Instance active : <strong>{getApiUrl() || 'aucune'}</strong>
-            </p>
-          </div>
         )}
       </div>
 
