@@ -1,7 +1,7 @@
 import type { Fetcher } from '@literate.ink/utilities';
 
 // In dev, use the Vite middleware proxy. In production, use Supabase Edge Function.
-const SUPABASE_URL = 'https://mvbogzsyyfkdaepbzuqe.supabase.co';
+const SUPABASE_URL = 'https://djodkjysovalpufgevrr.supabase.co';
 
 function getProxyUrl(targetUrl: string): string {
   if (import.meta.env.DEV) {
