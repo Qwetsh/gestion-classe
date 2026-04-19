@@ -14,6 +14,12 @@ const RAPIDAPI_HOST_MP3 = 'youtube-mp36.p.rapidapi.com';
 const RAPIDAPI_HOST_MP4 = 'youtube-mp4-downloader.p.rapidapi.com';
 const RAPIDAPI_USER_MD5 = 'd7126324c7b7c35bcb8455c4b84bb832';
 
+// Users allowed to use MP4 (limited resource)
+const MP4_ALLOWED_EMAILS = [
+  'tomicharles@gmail.com',
+  'auralimar.marchand57@gmail.com',
+];
+
 function extractVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
@@ -95,10 +101,16 @@ export default function YouTubeConverter() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [monthlyCount, setMonthlyCount] = useState(0);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     getMonthlyCount().then(setMonthlyCount);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email ?? null);
+    });
   }, []);
+
+  const mp4Allowed = userEmail ? MP4_ALLOWED_EMAILS.includes(userEmail) : false;
 
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
@@ -242,18 +254,26 @@ export default function YouTubeConverter() {
             🎵 MP3 (Audio)
           </button>
           <button
-            onClick={() => { setFormat('mp4'); reset(); }}
+            onClick={() => { if (mp4Allowed) { setFormat('mp4'); reset(); } }}
+            disabled={!mp4Allowed}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               format === 'mp4'
                 ? 'text-white shadow-sm'
-                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
+                : !mp4Allowed
+                  ? 'text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] opacity-50 cursor-not-allowed'
+                  : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
             }`}
             style={format === 'mp4' ? { background: 'var(--gradient-primary)' } : undefined}
           >
             🎬 MP4 (Vidéo)
           </button>
         </div>
-        {format === 'mp4' && (
+        {!mp4Allowed && (
+          <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
+            MP4 : accès restreint. Contactez l'administrateur pour l'activer.
+          </p>
+        )}
+        {format === 'mp4' && mp4Allowed && (
           <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
             MP4 : limité à {MP4_MONTHLY_LIMIT}/mois
           </p>
