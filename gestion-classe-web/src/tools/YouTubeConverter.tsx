@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 type Format = 'mp3' | 'mp4';
 type Quality = '320' | '256' | '128' | '64';
@@ -7,26 +8,42 @@ type VideoQuality = '1080' | '720' | '480' | '360';
 const COBALT_API = 'https://cobalt-classit.fly.dev/';
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
 
-const MONTHLY_LIMIT = 50;
-const RATE_KEY = 'yt-converter-usage';
+const MONTHLY_LIMIT = 200;
+const NOTIFY_THRESHOLD = 100;
+const NTFY_TOPIC = 'classit-yt-downloads';
 
-function getMonthlyUsage(): { month: string; count: number } {
+async function getMonthlyCount(): Promise<number> {
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${now.getMonth()}`;
-  try {
-    const raw = localStorage.getItem(RATE_KEY);
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (data.month === currentMonth) return data;
-    }
-  } catch { /* ignore */ }
-  return { month: currentMonth, count: 0 };
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const { count } = await supabase
+    .from('yt_download_log')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', startOfMonth);
+  return count ?? 0;
 }
 
-function incrementUsage() {
-  const usage = getMonthlyUsage();
-  usage.count++;
-  localStorage.setItem(RATE_KEY, JSON.stringify(usage));
+async function logDownload() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('yt_download_log').insert({ user_id: user.id });
+}
+
+async function notifyIfThreshold(count: number) {
+  if (count === NOTIFY_THRESHOLD) {
+    try {
+      await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: NTFY_TOPIC,
+          title: "Class'it - Alerte téléchargements YouTube",
+          message: `${count} téléchargements ce mois-ci (limite : ${MONTHLY_LIMIT}). Surveillez l'usage sur fly.io.`,
+          priority: 4,
+          tags: ['warning'],
+        }),
+      });
+    } catch { /* notification best-effort */ }
+  }
 }
 
 export default function YouTubeConverter() {
@@ -38,10 +55,13 @@ export default function YouTubeConverter() {
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [filename, setFilename] = useState('');
+  const [monthlyCount, setMonthlyCount] = useState(0);
 
-  const usage = getMonthlyUsage();
-  const remaining = MONTHLY_LIMIT - usage.count;
+  useEffect(() => {
+    getMonthlyCount().then(setMonthlyCount);
+  }, []);
 
+  const remaining = MONTHLY_LIMIT - monthlyCount;
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
   async function handleConvert() {
@@ -82,13 +102,19 @@ export default function YouTubeConverter() {
       const data = await res.json();
 
       if (data.status === 'tunnel' || data.status === 'redirect') {
-        incrementUsage();
+        await logDownload();
+        const newCount = monthlyCount + 1;
+        setMonthlyCount(newCount);
+        await notifyIfThreshold(newCount);
         setDownloadUrl(data.url);
         setFilename(data.filename || `youtube-${format === 'mp3' ? 'audio' : 'video'}.${format}`);
       } else if (data.status === 'picker') {
         const pick = data.picker?.[0];
         if (pick?.url) {
-          incrementUsage();
+          await logDownload();
+          const newCount = monthlyCount + 1;
+          setMonthlyCount(newCount);
+          await notifyIfThreshold(newCount);
           setDownloadUrl(pick.url);
           setFilename(`youtube-${format === 'mp3' ? 'audio' : 'video'}.${format}`);
         } else {
@@ -216,7 +242,7 @@ export default function YouTubeConverter() {
         {!downloadUrl ? (
           <button
             onClick={handleConvert}
-            disabled={!isValidUrl || loading}
+            disabled={!isValidUrl || loading || remaining <= 0}
             className="px-8 py-3 rounded-xl text-white font-medium text-base transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
             style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}
           >
@@ -261,9 +287,9 @@ export default function YouTubeConverter() {
           Fonctionne avec les liens YouTube classiques et les Shorts.
           Aucune donnée n'est stockée.
         </p>
-        <p className={`text-xs font-medium ${remaining <= 5 ? 'text-[var(--color-error)]' : 'text-[var(--color-text-tertiary)]'}`}>
+        <p className={`text-xs font-medium ${remaining <= 10 ? 'text-[var(--color-error)]' : 'text-[var(--color-text-tertiary)]'}`}>
           {remaining > 0
-            ? `${remaining} conversion${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''} ce mois-ci`
+            ? `${monthlyCount}/${MONTHLY_LIMIT} conversions ce mois-ci`
             : 'Limite mensuelle atteinte'}
         </p>
       </div>
