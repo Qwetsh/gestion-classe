@@ -5,8 +5,29 @@ type Quality = '320' | '256' | '128' | '64';
 type VideoQuality = '1080' | '720' | '480' | '360';
 
 const COBALT_API = 'https://cobalt-classit.fly.dev/';
-
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
+
+const MONTHLY_LIMIT = 50;
+const RATE_KEY = 'yt-converter-usage';
+
+function getMonthlyUsage(): { month: string; count: number } {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${now.getMonth()}`;
+  try {
+    const raw = localStorage.getItem(RATE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.month === currentMonth) return data;
+    }
+  } catch { /* ignore */ }
+  return { month: currentMonth, count: 0 };
+}
+
+function incrementUsage() {
+  const usage = getMonthlyUsage();
+  usage.count++;
+  localStorage.setItem(RATE_KEY, JSON.stringify(usage));
+}
 
 export default function YouTubeConverter() {
   const [url, setUrl] = useState('');
@@ -18,10 +39,18 @@ export default function YouTubeConverter() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [filename, setFilename] = useState('');
 
+  const usage = getMonthlyUsage();
+  const remaining = MONTHLY_LIMIT - usage.count;
+
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
   async function handleConvert() {
     if (!isValidUrl) return;
+
+    if (remaining <= 0) {
+      setError(`Limite mensuelle atteinte (${MONTHLY_LIMIT} conversions/mois). Réessayez le mois prochain.`);
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -53,11 +82,13 @@ export default function YouTubeConverter() {
       const data = await res.json();
 
       if (data.status === 'tunnel' || data.status === 'redirect') {
+        incrementUsage();
         setDownloadUrl(data.url);
         setFilename(data.filename || `youtube-${format === 'mp3' ? 'audio' : 'video'}.${format}`);
       } else if (data.status === 'picker') {
         const pick = data.picker?.[0];
         if (pick?.url) {
+          incrementUsage();
           setDownloadUrl(pick.url);
           setFilename(`youtube-${format === 'mp3' ? 'audio' : 'video'}.${format}`);
         } else {
@@ -223,12 +254,17 @@ export default function YouTubeConverter() {
         )}
       </div>
 
-      {/* Info */}
-      <div className="mt-4 p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)]">
+      {/* Info + usage */}
+      <div className="mt-4 p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] space-y-2">
         <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
           Utilise le service open-source <strong>cobalt.tools</strong> pour la conversion.
           Fonctionne avec les liens YouTube classiques et les Shorts.
           Aucune donnée n'est stockée.
+        </p>
+        <p className={`text-xs font-medium ${remaining <= 5 ? 'text-[var(--color-error)]' : 'text-[var(--color-text-tertiary)]'}`}>
+          {remaining > 0
+            ? `${remaining} conversion${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''} ce mois-ci`
+            : 'Limite mensuelle atteinte'}
         </p>
       </div>
     </div>
