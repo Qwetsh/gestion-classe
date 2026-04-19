@@ -9,48 +9,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     {
-      name: 'cobalt-proxy',
-      configureServer(server) {
-        server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-          if (!req.url?.startsWith('/api/cobalt-proxy')) return next()
-
-          const url = new URL(req.url, 'http://localhost')
-          const target = url.searchParams.get('instance')
-          if (!target) {
-            res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ error: 'Missing instance parameter' }))
-            return
-          }
-
-          try {
-            let body = ''
-            for await (const chunk of req) body += chunk
-
-            const apiUrl = target.endsWith('/') ? target : target + '/'
-            const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body,
-            })
-
-            const data = await response.text()
-            res.writeHead(response.status, {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            })
-            res.end(data)
-          } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Proxy error'
-            res.writeHead(502, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ status: 'error', error: { code: message } }))
-          }
-        })
-      },
-    },
-    {
       name: 'pronote-proxy',
       configureServer(server) {
         server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {

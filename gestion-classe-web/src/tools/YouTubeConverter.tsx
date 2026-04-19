@@ -1,16 +1,27 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-type Format = 'mp3' | 'mp4';
-type Quality = '320' | '256' | '128' | '64';
-type VideoQuality = '1080' | '720' | '480' | '360';
-
-const COBALT_API = 'https://cobalt-classit.fly.dev/';
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
-
 const MONTHLY_LIMIT = 200;
 const NOTIFY_THRESHOLD = 100;
 const NTFY_TOPIC = 'classit-yt-downloads';
+
+const RAPIDAPI_KEY = '1fb03c8ff1msh06089b15f0946bdp18c0d0jsn018a1f508aa7';
+const RAPIDAPI_HOST = 'youtube-mp36.p.rapidapi.com';
+const RAPIDAPI_USER_MD5 = 'd7126324c7b7c35bcb8455c4b84bb832';
+
+function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
+    /(?:youtu\.be\/)([^?\s]+)/,
+    /(?:youtube\.com\/shorts\/)([^?\s]+)/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
 
 async function getMonthlyCount(): Promise<number> {
   const now = new Date();
@@ -37,7 +48,7 @@ async function notifyIfThreshold(count: number) {
         body: JSON.stringify({
           topic: NTFY_TOPIC,
           title: "Class'it - Alerte téléchargements YouTube",
-          message: `${count} téléchargements ce mois-ci (limite : ${MONTHLY_LIMIT}). Surveillez l'usage sur fly.io.`,
+          message: `${count} téléchargements ce mois-ci (limite : ${MONTHLY_LIMIT}). Surveillez l'usage.`,
           priority: 4,
           tags: ['warning'],
         }),
@@ -46,15 +57,25 @@ async function notifyIfThreshold(count: number) {
   }
 }
 
+async function fetchMp3(videoId: string): Promise<{ status: string; link?: string; title?: string; msg?: string }> {
+  const res = await fetch(
+    `https://${RAPIDAPI_HOST}/dl?id=${encodeURIComponent(videoId)}`,
+    {
+      headers: {
+        'x-rapidapi-host': RAPIDAPI_HOST,
+        'x-rapidapi-key': RAPIDAPI_KEY,
+      },
+    }
+  );
+  return res.json();
+}
+
 export default function YouTubeConverter() {
   const [url, setUrl] = useState('');
-  const [format, setFormat] = useState<Format>('mp3');
-  const [audioQuality, setAudioQuality] = useState<Quality>('128');
-  const [videoQuality, setVideoQuality] = useState<VideoQuality>('720');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [filename, setFilename] = useState('');
+  const [title, setTitle] = useState('');
   const [monthlyCount, setMonthlyCount] = useState(0);
 
   useEffect(() => {
@@ -72,59 +93,38 @@ export default function YouTubeConverter() {
       return;
     }
 
+    const videoId = extractVideoId(url.trim());
+    if (!videoId) {
+      setError('Impossible d\'extraire l\'ID de la vidéo.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setDownloadUrl(null);
 
     try {
-      const body: Record<string, string> = {
-        url: url.trim(),
-      };
+      let data = await fetchMp3(videoId);
 
-      if (format === 'mp3') {
-        body.downloadMode = 'audio';
-        body.audioFormat = 'mp3';
-        body.audioBitrate = audioQuality;
-      } else {
-        body.downloadMode = 'auto';
-        body.videoQuality = videoQuality;
+      // Handle "processing" status with retry
+      if (data.status === 'processing') {
+        await new Promise(r => setTimeout(r, 1500));
+        data = await fetchMp3(videoId);
+      }
+      if (data.status === 'processing') {
+        await new Promise(r => setTimeout(r, 2000));
+        data = await fetchMp3(videoId);
       }
 
-      const res = await fetch(COBALT_API, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (data.status === 'tunnel' || data.status === 'redirect') {
+      if (data.status === 'ok' && data.link) {
         await logDownload();
         const newCount = monthlyCount + 1;
         setMonthlyCount(newCount);
         await notifyIfThreshold(newCount);
-        setDownloadUrl(data.url);
-        setFilename(data.filename || `youtube-${format === 'mp3' ? 'audio' : 'video'}.${format}`);
-      } else if (data.status === 'picker') {
-        const pick = data.picker?.[0];
-        if (pick?.url) {
-          await logDownload();
-          const newCount = monthlyCount + 1;
-          setMonthlyCount(newCount);
-          await notifyIfThreshold(newCount);
-          setDownloadUrl(pick.url);
-          setFilename(`youtube-${format === 'mp3' ? 'audio' : 'video'}.${format}`);
-        } else {
-          setError('Aucun résultat trouvé pour cette vidéo.');
-        }
-      } else if (data.status === 'error') {
-        const msg = data.error?.code || 'Erreur inconnue';
-        setError(`Erreur : ${msg}`);
+        setDownloadUrl(data.link);
+        setTitle(data.title || 'audio');
       } else {
-        setError('Réponse inattendue du serveur.');
+        setError(data.msg || 'Erreur lors de la conversion. Réessayez.');
       }
     } catch {
       setError('Impossible de contacter le service de conversion.');
@@ -133,14 +133,27 @@ export default function YouTubeConverter() {
     }
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!downloadUrl) return;
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = filename;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    a.click();
+    try {
+      setLoading(true);
+      const res = await fetch(downloadUrl, {
+        headers: { 'x-run': RAPIDAPI_USER_MD5 },
+      });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${title}.mp3`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: open with header via redirect
+      window.open(downloadUrl, '_blank');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function reset() {
@@ -168,73 +181,10 @@ export default function YouTubeConverter() {
         )}
       </div>
 
-      {/* Format selection */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Format</label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setFormat('mp3'); reset(); }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              format === 'mp3'
-                ? 'text-white shadow-sm'
-                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
-            }`}
-            style={format === 'mp3' ? { background: 'var(--gradient-primary)' } : undefined}
-          >
-            🎵 MP3 (Audio)
-          </button>
-          <button
-            onClick={() => { setFormat('mp4'); reset(); }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              format === 'mp4'
-                ? 'text-white shadow-sm'
-                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
-            }`}
-            style={format === 'mp4' ? { background: 'var(--gradient-primary)' } : undefined}
-          >
-            🎬 MP4 (Vidéo)
-          </button>
-        </div>
-      </div>
-
-      {/* Quality selection */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">
-          Qualité {format === 'mp3' ? 'audio' : 'vidéo'}
-        </label>
-        {format === 'mp3' ? (
-          <div className="flex flex-wrap gap-2">
-            {([['320', '320 kbps (Haute)'], ['256', '256 kbps'], ['128', '128 kbps (Standard)'], ['64', '64 kbps (Légère)']] as const).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => { setAudioQuality(val); reset(); }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  audioQuality === val
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {([['1080', '1080p (Full HD)'], ['720', '720p (HD)'], ['480', '480p'], ['360', '360p (Légère)']] as const).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => { setVideoQuality(val); reset(); }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  videoQuality === val
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Info format */}
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)]">
+        <span className="text-lg">🎵</span>
+        <span className="text-sm font-medium text-[var(--color-text-secondary)]">Format : MP3 128kbps</span>
       </div>
 
       {/* Convert button */}
@@ -255,7 +205,7 @@ export default function YouTubeConverter() {
                 Conversion en cours…
               </span>
             ) : (
-              `Convertir en ${format.toUpperCase()}`
+              'Convertir en MP3'
             )}
           </button>
         ) : (
@@ -269,9 +219,9 @@ export default function YouTubeConverter() {
               className="px-8 py-3 rounded-xl text-white font-medium text-base transition-all hover:scale-105"
               style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}
             >
-              Télécharger {format.toUpperCase()}
+              Télécharger MP3
             </button>
-            <p className="text-xs text-[var(--color-text-tertiary)]">{filename}</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] text-center max-w-sm truncate">{title}.mp3</p>
           </div>
         )}
 
@@ -283,9 +233,8 @@ export default function YouTubeConverter() {
       {/* Info + usage */}
       <div className="mt-4 p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] space-y-2">
         <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
-          Utilise le service open-source <strong>cobalt.tools</strong> pour la conversion.
-          Fonctionne avec les liens YouTube classiques et les Shorts.
-          Aucune donnée n'est stockée.
+          Convertit les vidéos YouTube en MP3 (128 kbps).
+          Fonctionne avec les liens classiques et les Shorts.
         </p>
         <p className={`text-xs font-medium ${remaining <= 10 ? 'text-[var(--color-error)]' : 'text-[var(--color-text-tertiary)]'}`}>
           {remaining > 0
