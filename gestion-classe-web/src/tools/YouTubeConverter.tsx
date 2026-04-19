@@ -255,7 +255,7 @@ export default function YouTubeConverter() {
         </div>
         {format === 'mp4' && (
           <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
-            MP4 : max 50 Mo, limité à {MP4_MONTHLY_LIMIT}/mois
+            MP4 : limité à {MP4_MONTHLY_LIMIT}/mois
           </p>
         )}
       </div>
@@ -306,7 +306,7 @@ export default function YouTubeConverter() {
       {/* Info + usage */}
       <div className="mt-4 p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] space-y-2">
         <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
-          Convertit les vidéos YouTube en MP3 (128 kbps) ou MP4 (max 50 Mo).
+          Convertit les vidéos YouTube en MP3 (128 kbps) ou MP4.
           Fonctionne avec les liens classiques et les Shorts.
         </p>
         <p className="text-xs text-[var(--color-text-tertiary)]">
