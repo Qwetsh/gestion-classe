@@ -16,7 +16,15 @@ export const tools: Tool[] = [
     description: 'Générer un QR code à partir d\'un lien',
     icon: '📱',
     component: lazy(() => import('./QrCodeGenerator')),
-    tags: ['lien', 'partage', 'qr'],
+    tags: ['lien', 'partage', 'qr', 'générer'],
+  },
+  {
+    id: 'qrreader',
+    name: 'Lecteur QR Code',
+    description: 'Scanner un QR code avec la caméra ou une image',
+    icon: '📷',
+    component: lazy(() => import('./QrCodeReader')),
+    tags: ['qr', 'scanner', 'lire', 'caméra', 'image'],
   },
   {
     id: 'crossword',
