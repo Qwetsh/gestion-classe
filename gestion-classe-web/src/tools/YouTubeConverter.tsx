@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 type Format = 'mp3' | 'mp4';
 
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
-const MONTHLY_LIMIT = 200;
+const MP3_MONTHLY_LIMIT = 500;
 const MP4_MONTHLY_LIMIT = 10;
 const NOTIFY_THRESHOLD = 100;
 const NTFY_TOPIC = 'classit-yt-downloads';
@@ -52,7 +52,7 @@ async function notifyIfThreshold(count: number) {
         body: JSON.stringify({
           topic: NTFY_TOPIC,
           title: "Class'it - Alerte téléchargements YouTube",
-          message: `${count} téléchargements ce mois-ci (limite : ${MONTHLY_LIMIT}). Surveillez l'usage.`,
+          message: `${count} téléchargements ce mois-ci. Surveillez l'usage.`,
           priority: 4,
           tags: ['warning'],
         }),
@@ -100,14 +100,15 @@ export default function YouTubeConverter() {
     getMonthlyCount().then(setMonthlyCount);
   }, []);
 
-  const remaining = MONTHLY_LIMIT - monthlyCount;
+  const currentLimit = format === 'mp4' ? MP4_MONTHLY_LIMIT : MP3_MONTHLY_LIMIT;
+  const remaining = currentLimit - monthlyCount;
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
   async function handleConvert() {
     if (!isValidUrl) return;
 
     if (remaining <= 0) {
-      setError(`Limite mensuelle atteinte (${MONTHLY_LIMIT} conversions/mois). Réessayez le mois prochain.`);
+      setError(`Limite mensuelle atteinte (${currentLimit} ${format.toUpperCase()}/mois). Réessayez le mois prochain.`);
       return;
     }
 
@@ -312,8 +313,8 @@ export default function YouTubeConverter() {
         </p>
         <p className={`text-xs font-medium ${remaining <= 10 ? 'text-[var(--color-error)]' : 'text-[var(--color-text-tertiary)]'}`}>
           {remaining > 0
-            ? `${monthlyCount}/${MONTHLY_LIMIT} conversions ce mois-ci`
-            : 'Limite mensuelle atteinte'}
+            ? `${monthlyCount}/${currentLimit} conversions ${format.toUpperCase()} ce mois-ci`
+            : `Limite ${format.toUpperCase()} mensuelle atteinte`}
         </p>
       </div>
     </div>
