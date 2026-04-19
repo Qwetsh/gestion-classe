@@ -132,10 +132,15 @@ export function Pronote() {
   }, []);
 
   // Auth state
+  const [loginMode, setLoginMode] = useState<'qr' | 'credentials'>('qr');
   const [pronoteUrl, setPronoteUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+
+  // QR Code state
+  const [qrData, setQrData] = useState('');
+  const [qrPin, setQrPin] = useState('');
 
   // Session state
   const [session, setSession] = useState<SessionHandle | null>(null);
@@ -150,7 +155,64 @@ export function Pronote() {
   // Extracted classes
   const [detectedClasses, setDetectedClasses] = useState<string[]>([]);
 
-  // ---- Auth ----
+  // ---- Auth via QR Code ----
+
+  const handleConnectQr = useCallback(async () => {
+    if (!qrData || !qrPin) {
+      toast('Remplissez les donnees QR et le code PIN', 'warning');
+      return;
+    }
+
+    if (qrPin.length !== 4 || !/^\d{4}$/.test(qrPin)) {
+      toast('Le code PIN doit etre 4 chiffres', 'warning');
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      const pw = await loadPawnote();
+      const sess = pw.createSessionHandle(pronoteFetcher);
+
+      // Parse QR data (JSON object from Pronote QR code)
+      let qrParsed: { url: string; jeton: string; login: string };
+      try {
+        qrParsed = JSON.parse(qrData.trim());
+      } catch {
+        toast('Donnees QR invalides. Copiez le contenu JSON du QR code.');
+        setIsConnecting(false);
+        return;
+      }
+
+      await pw.loginQrCode(sess, {
+        deviceUUID: 'gestion-classe-web-' + Date.now(),
+        pin: qrPin,
+        qr: qrParsed,
+      });
+
+      setSession(sess);
+      setUserName(sess.user?.resources?.[0]?.name || sess.userResource?.name || 'Enseignant');
+      setEstablishmentName(sess.userResource?.establishmentName || '');
+
+      toast('Connecte a Pronote !', 'success');
+
+      // Auto-load current week
+      await loadTimetable(sess, getMonday(new Date()));
+    } catch (err: unknown) {
+      console.error('Pronote QR login error:', err);
+      const msg = err instanceof Error ? err.message : 'Erreur de connexion';
+      if (msg.includes('credentials') || msg.includes('Credentials') || msg.includes('challenge')) {
+        toast('Code PIN incorrect ou QR code expire');
+      } else if (msg.includes('fetch') || msg.includes('network') || msg.includes('Failed')) {
+        toast('Impossible de joindre le serveur Pronote.');
+      } else {
+        toast(`Erreur : ${msg}`);
+      }
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [qrData, qrPin, toast]);
+
+  // ---- Auth via credentials (direct, sans ENT) ----
 
   const handleConnect = useCallback(async () => {
     if (!pronoteUrl || !username || !password) {
@@ -301,76 +363,178 @@ export function Pronote() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  URL Pronote de votre etablissement
-                </label>
-                <input
-                  type="url"
-                  value={pronoteUrl}
-                  onChange={e => setPronoteUrl(e.target.value)}
-                  placeholder="https://0123456A.index-education.net/pronote/"
-                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
-                />
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
-                  L'URL que vous utilisez pour acceder a Pronote sur navigateur
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  Identifiant
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="votre.identifiant"
-                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  Mot de passe
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
-                  onKeyDown={e => e.key === 'Enter' && handleConnect()}
-                />
-              </div>
-
+            {/* Mode tabs */}
+            <div className="flex gap-1 p-1 mb-5 bg-[var(--color-surface-secondary)]" style={{ borderRadius: 'var(--radius-lg)' }}>
               <button
-                onClick={handleConnect}
-                disabled={isConnecting || !pronoteUrl || !username || !password}
-                className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                onClick={() => setLoginMode('qr')}
+                className={`flex-1 py-2 px-3 text-sm font-medium transition-all ${
+                  loginMode === 'qr'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm'
+                    : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+                }`}
+                style={{ borderRadius: 'var(--radius-md)' }}
               >
-                {isConnecting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Connexion...
-                  </span>
-                ) : (
-                  'Se connecter'
-                )}
+                QR Code (ENT/MBN)
               </button>
-
-              <div
-                className="p-3 text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+              <button
+                onClick={() => setLoginMode('credentials')}
+                className={`flex-1 py-2 px-3 text-sm font-medium transition-all ${
+                  loginMode === 'credentials'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm'
+                    : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+                }`}
+                style={{ borderRadius: 'var(--radius-md)' }}
               >
-                Vos identifiants ne sont pas stockes. La connexion est temporaire et directe avec votre serveur Pronote.
-              </div>
+                Identifiants directs
+              </button>
             </div>
+
+            {loginMode === 'qr' ? (
+              <div className="space-y-4">
+                <div
+                  className="p-3 text-sm text-[var(--color-primary)] bg-[var(--color-primary-soft)]"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  <strong>Comment faire :</strong>
+                  <ol className="mt-2 ml-4 list-decimal space-y-1 text-[var(--color-text-secondary)]">
+                    <li>Ouvrez l'app <strong>Pronote</strong> sur votre telephone</li>
+                    <li>Allez dans les parametres (roue dentee)</li>
+                    <li>Appuyez sur <strong>"Generer un QR code"</strong></li>
+                    <li>Choisissez un code PIN a 4 chiffres</li>
+                    <li>Scannez le QR code avec une app de scan, copiez le contenu JSON ici</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                    Contenu du QR code (JSON)
+                  </label>
+                  <textarea
+                    value={qrData}
+                    onChange={e => setQrData(e.target.value)}
+                    placeholder='{"url":"https://0572582x.index-education.net/pronote","jeton":"...","login":"..."}'
+                    rows={3}
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] font-mono text-xs"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                    Code PIN (4 chiffres)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={qrPin}
+                    onChange={e => setQrPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="1234"
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-center text-2xl tracking-[0.5em] font-mono"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    onKeyDown={e => e.key === 'Enter' && handleConnectQr()}
+                  />
+                </div>
+
+                <button
+                  onClick={handleConnectQr}
+                  disabled={isConnecting || !qrData || qrPin.length !== 4}
+                  className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
+                  style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                >
+                  {isConnecting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Connexion...
+                    </span>
+                  ) : (
+                    'Se connecter via QR Code'
+                  )}
+                </button>
+
+                <div
+                  className="p-3 text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  Compatible ENT (MonBureauNumerique, etc.). Vos donnees ne sont pas stockees.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div
+                  className="p-3 text-xs text-[var(--color-warning)] bg-[var(--color-warning-soft)]"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  Ce mode ne fonctionne que si votre etablissement autorise la connexion directe (sans ENT). Si vous passez par un ENT (MBN, etc.), utilisez le mode QR Code.
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                    URL Pronote de votre etablissement
+                  </label>
+                  <input
+                    type="url"
+                    value={pronoteUrl}
+                    onChange={e => setPronoteUrl(e.target.value)}
+                    placeholder="https://0123456A.index-education.net/pronote/"
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                    Identifiant
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder="votre.identifiant"
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                    Mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    onKeyDown={e => e.key === 'Enter' && handleConnect()}
+                  />
+                </div>
+
+                <button
+                  onClick={handleConnect}
+                  disabled={isConnecting || !pronoteUrl || !username || !password}
+                  className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
+                  style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                >
+                  {isConnecting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Connexion...
+                    </span>
+                  ) : (
+                    'Se connecter'
+                  )}
+                </button>
+
+                <div
+                  className="p-3 text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"
+                  style={{ borderRadius: 'var(--radius-lg)' }}
+                >
+                  Vos identifiants ne sont pas stockes. La connexion est temporaire et directe avec votre serveur Pronote.
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
 
