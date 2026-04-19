@@ -1,12 +1,22 @@
 import type { Fetcher } from '@literate.ink/utilities';
 
+// In dev, use the Vite middleware proxy. In production, use Supabase Edge Function.
+const SUPABASE_URL = 'https://mvbogzsyyfkdaepbzuqe.supabase.co';
+
+function getProxyUrl(targetUrl: string): string {
+  if (import.meta.env.DEV) {
+    return `/api/pronote-proxy?url=${encodeURIComponent(targetUrl)}`;
+  }
+  return `${SUPABASE_URL}/functions/v1/pronote-proxy?url=${encodeURIComponent(targetUrl)}`;
+}
+
 /**
- * Custom fetcher for Pawnote that routes requests through our Vite proxy
+ * Custom fetcher for Pawnote that routes requests through a proxy
  * to avoid CORS issues when calling Pronote servers from the browser.
  */
 export const pronoteFetcher: Fetcher = async (req) => {
   const targetUrl = req.url.toString();
-  const proxyUrl = `/api/pronote-proxy?url=${encodeURIComponent(targetUrl)}`;
+  const proxyUrl = getProxyUrl(targetUrl);
 
   const headers: Record<string, string> = {};
   if (req.headers) {
