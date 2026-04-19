@@ -100,15 +100,13 @@ export default function YouTubeConverter() {
     getMonthlyCount().then(setMonthlyCount);
   }, []);
 
-  const currentLimit = format === 'mp4' ? MP4_MONTHLY_LIMIT : MP3_MONTHLY_LIMIT;
-  const remaining = currentLimit - monthlyCount;
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
   async function handleConvert() {
     if (!isValidUrl) return;
 
-    if (remaining <= 0) {
-      setError(`Limite mensuelle atteinte (${currentLimit} ${format.toUpperCase()}/mois). Réessayez le mois prochain.`);
+    if (monthlyCount >= MP3_MONTHLY_LIMIT) {
+      setError(`Limite mensuelle atteinte. Réessayez le mois prochain.`);
       return;
     }
 
@@ -267,7 +265,7 @@ export default function YouTubeConverter() {
         {!downloadUrl ? (
           <button
             onClick={handleConvert}
-            disabled={!isValidUrl || loading || remaining <= 0}
+            disabled={!isValidUrl || loading || monthlyCount >= MP3_MONTHLY_LIMIT}
             className="px-8 py-3 rounded-xl text-white font-medium text-base transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
             style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}
           >
@@ -311,10 +309,8 @@ export default function YouTubeConverter() {
           Convertit les vidéos YouTube en MP3 (128 kbps) ou MP4 (max 50 Mo).
           Fonctionne avec les liens classiques et les Shorts.
         </p>
-        <p className={`text-xs font-medium ${remaining <= 10 ? 'text-[var(--color-error)]' : 'text-[var(--color-text-tertiary)]'}`}>
-          {remaining > 0
-            ? `${monthlyCount}/${currentLimit} conversions ${format.toUpperCase()} ce mois-ci`
-            : `Limite ${format.toUpperCase()} mensuelle atteinte`}
+        <p className="text-xs text-[var(--color-text-tertiary)]">
+          Limites : {MP3_MONTHLY_LIMIT} MP3/mois • {MP4_MONTHLY_LIMIT} MP4/mois
         </p>
       </div>
     </div>
