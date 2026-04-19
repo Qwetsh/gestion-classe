@@ -270,6 +270,34 @@ body {
 }
 .btn-stop:hover { background: rgba(255,255,255,0.25); }
 
+/* ----- Record button ----- */
+.btn-record {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 999;
+  background: rgba(255,50,50,0.15);
+  border: 1px solid rgba(255,50,50,0.4);
+  color: #ff6b6b;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s;
+}
+.btn-record:hover { background: rgba(255,50,50,0.3); }
+.btn-record.recording {
+  background: rgba(255,50,50,0.4);
+  border-color: #ff4444;
+  color: #fff;
+  animation: pulse-record 1.5s infinite;
+}
+@keyframes pulse-record {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   .form-row { flex-direction: column; gap: 0; }
