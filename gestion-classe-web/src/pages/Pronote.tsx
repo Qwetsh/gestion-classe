@@ -1,8 +1,57 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { pronoteFetcher } from '../lib/pronoteFetcher';
-import type { SessionHandle, TimetableClassLesson, Timetable } from 'pawnote';
+import type { SessionHandle, TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
+
+// ============================================
+// Persistent session storage
+// ============================================
+
+const STORAGE_KEY = 'pronote_session';
+
+interface StoredSession {
+  token: string;
+  username: string;
+  url: string;
+  kind: number;
+  deviceUUID: string;
+}
+
+function getDeviceUUID(): string {
+  const key = 'pronote_device_uuid';
+  let uuid = localStorage.getItem(key);
+  if (!uuid) {
+    uuid = 'gestion-classe-web-' + crypto.randomUUID();
+    localStorage.setItem(key, uuid);
+  }
+  return uuid;
+}
+
+function saveSession(info: RefreshInformation, deviceUUID: string) {
+  const data: StoredSession = {
+    token: info.token,
+    username: info.username,
+    url: info.url,
+    kind: info.kind,
+    deviceUUID,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function loadStoredSession(): StoredSession | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredSession() {
+  localStorage.removeItem(STORAGE_KEY);
+}
 
 // Lazy-load pawnote to catch import errors
 let pawnote: typeof import('pawnote') | null = null;
@@ -122,6 +171,8 @@ export function Pronote() {
   const [moduleReady, setModuleReady] = useState(false);
   const [moduleError, setModuleError] = useState<string | null>(null);
 
+  const autoLoginAttempted = useRef(false);
+
   useEffect(() => {
     loadPawnote()
       .then(() => setModuleReady(true))
@@ -155,6 +206,57 @@ export function Pronote() {
   // Extracted classes
   const [detectedClasses, setDetectedClasses] = useState<string[]>([]);
 
+  // ---- Helper: finalize session after login ----
+
+  const finalizeSession = useCallback(async (sess: SessionHandle, refreshInfo?: RefreshInformation) => {
+    setSession(sess);
+    setUserName(sess.user?.resources?.[0]?.name || sess.userResource?.name || 'Enseignant');
+    setEstablishmentName(sess.userResource?.establishmentName || '');
+
+    // Save token for auto-reconnect
+    if (refreshInfo) {
+      saveSession(refreshInfo, getDeviceUUID());
+    }
+
+    // Auto-load current week
+    await loadTimetable(sess, getMonday(new Date()));
+  }, []);
+
+  // ---- Auto-reconnect from stored token ----
+
+  useEffect(() => {
+    if (!moduleReady || autoLoginAttempted.current || session) return;
+    autoLoginAttempted.current = true;
+
+    const stored = loadStoredSession();
+    if (!stored) return;
+
+    setIsConnecting(true);
+    (async () => {
+      try {
+        const pw = await loadPawnote();
+        const sess = pw.createSessionHandle(pronoteFetcher);
+
+        const refreshInfo = await pw.loginToken(sess, {
+          url: stored.url,
+          kind: stored.kind as typeof pw.AccountKind[keyof typeof pw.AccountKind],
+          username: stored.username,
+          token: stored.token,
+          deviceUUID: stored.deviceUUID,
+        });
+
+        await finalizeSession(sess, refreshInfo);
+        toast('Reconnexion automatique reussie', 'success');
+      } catch (err: unknown) {
+        console.error('Auto-reconnect failed:', err);
+        clearStoredSession();
+        // Silent fail — user will see the login form
+      } finally {
+        setIsConnecting(false);
+      }
+    })();
+  }, [moduleReady, session, finalizeSession, toast]);
+
   // ---- Auth via QR Code ----
 
   const handleConnectQr = useCallback(async () => {
@@ -172,6 +274,7 @@ export function Pronote() {
     try {
       const pw = await loadPawnote();
       const sess = pw.createSessionHandle(pronoteFetcher);
+      const deviceUUID = getDeviceUUID();
 
       // Parse QR data (JSON object from Pronote QR code)
       let qrParsed: { url: string; jeton: string; login: string };
@@ -183,20 +286,14 @@ export function Pronote() {
         return;
       }
 
-      await pw.loginQrCode(sess, {
-        deviceUUID: 'gestion-classe-web-' + Date.now(),
+      const refreshInfo = await pw.loginQrCode(sess, {
+        deviceUUID,
         pin: qrPin,
         qr: qrParsed,
       });
 
-      setSession(sess);
-      setUserName(sess.user?.resources?.[0]?.name || sess.userResource?.name || 'Enseignant');
-      setEstablishmentName(sess.userResource?.establishmentName || '');
-
+      await finalizeSession(sess, refreshInfo);
       toast('Connecte a Pronote !', 'success');
-
-      // Auto-load current week
-      await loadTimetable(sess, getMonday(new Date()));
     } catch (err: unknown) {
       console.error('Pronote QR login error:', err);
       const msg = err instanceof Error ? err.message : 'Erreur de connexion';
@@ -210,7 +307,7 @@ export function Pronote() {
     } finally {
       setIsConnecting(false);
     }
-  }, [qrData, qrPin, toast]);
+  }, [qrData, qrPin, toast, finalizeSession]);
 
   // ---- Auth via credentials (direct, sans ENT) ----
 
@@ -224,23 +321,18 @@ export function Pronote() {
     try {
       const pw = await loadPawnote();
       const sess = pw.createSessionHandle(pronoteFetcher);
+      const deviceUUID = getDeviceUUID();
 
-      await pw.loginCredentials(sess, {
+      const refreshInfo = await pw.loginCredentials(sess, {
         url: pronoteUrl.trim(),
         kind: pw.AccountKind.TEACHER,
         username: username.trim(),
         password,
-        deviceUUID: 'gestion-classe-web-' + Date.now(),
+        deviceUUID,
       });
 
-      setSession(sess);
-      setUserName(sess.user?.resources?.[0]?.name || sess.userResource?.name || 'Enseignant');
-      setEstablishmentName(sess.userResource?.establishmentName || '');
-
+      await finalizeSession(sess, refreshInfo);
       toast('Connecte a Pronote !', 'success');
-
-      // Auto-load current week
-      await loadTimetable(sess, getMonday(new Date()));
     } catch (err: unknown) {
       console.error('Pronote login error:', err);
       const msg = err instanceof Error ? err.message : 'Erreur de connexion';
@@ -254,7 +346,7 @@ export function Pronote() {
     } finally {
       setIsConnecting(false);
     }
-  }, [pronoteUrl, username, password, toast]);
+  }, [pronoteUrl, username, password, toast, finalizeSession]);
 
   // ---- Timetable ----
 
@@ -564,6 +656,7 @@ export function Pronote() {
                   setLessons([]);
                   setDetectedClasses([]);
                   setPassword('');
+                  clearStoredSession();
                 }}
                 className="px-4 py-2 text-sm font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors"
                 style={{ borderRadius: 'var(--radius-lg)' }}
