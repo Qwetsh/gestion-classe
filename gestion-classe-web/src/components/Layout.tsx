@@ -57,28 +57,22 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<{id: string; message: string; type: string; created_at: string}[]>([]);
   const [feedbacks, setFeedbacks] = useState<{id: string; user_email: string; type: string; message: string; created_at: string}[]>([]);
   const [lastRead, setLastRead] = useState<string>(() => localStorage.getItem('gc_notifications_last_read') || '');
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const isDev = user?.email === DEV_EMAIL;
   const allSecondaryItems = isDev
     ? [...secondaryNavItems, { path: '/dev', label: 'Dev', icon: '🛠️' }]
     : secondaryNavItems;
   const allNavItems = [...primaryNavItems, ...allSecondaryItems];
-  const isSecondaryActive = allSecondaryItems.some(item => location.pathname === item.path);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
-      }
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
-        setIsMoreMenuOpen(false);
       }
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setIsNotifOpen(false);
@@ -177,8 +171,9 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
             padding: 4,
             borderRadius: 10,
           }}>
-            {primaryNavItems.map((item) => {
+            {allNavItems.map((item) => {
               const isActive = location.pathname === item.path;
+              const isPrimary = primaryNavItems.some(p => p.path === item.path);
               return (
                 <Link
                   key={item.path}
@@ -186,10 +181,10 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    padding: '7px 12px',
+                    gap: 5,
+                    padding: '7px 10px',
                     borderRadius: 7,
-                    fontSize: 13,
+                    fontSize: 12.5,
                     color: fullBleed
                       ? (isActive ? 'oklch(0.90 0.06 60)' : 'oklch(0.60 0.03 60)')
                       : (isActive ? 'var(--text)' : 'var(--text-muted)'),
@@ -198,89 +193,14 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
                     boxShadow: isActive ? (fullBleed ? 'none' : 'var(--shadow-1)') : 'none',
                     textDecoration: 'none',
                     transition: 'all 0.12s ease',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <NavIcon name={item.icon} size={15} />
+                  {isPrimary ? <NavIcon name={item.icon} size={14} /> : <span style={{ fontSize: 13 }}>{item.icon}</span>}
                   <span>{item.label}</span>
                 </Link>
               );
             })}
-
-            {/* "Plus" dropdown */}
-            <div style={{ position: 'relative' }} ref={moreMenuRef}>
-              <button
-                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '7px 12px',
-                  borderRadius: 7,
-                  fontSize: 13,
-                  color: fullBleed
-                    ? (isSecondaryActive ? 'oklch(0.90 0.06 60)' : 'oklch(0.50 0.03 60)')
-                    : (isSecondaryActive ? 'var(--text)' : 'var(--text-dim)'),
-                  fontWeight: 500,
-                  background: isSecondaryActive ? (fullBleed ? 'oklch(0.20 0.03 50 / 0.8)' : 'var(--surface)') : 'transparent',
-                  boxShadow: isSecondaryActive ? (fullBleed ? 'none' : 'var(--shadow-1)') : 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <NavIcon name="plus" size={15} />
-                <span>Plus</span>
-              </button>
-              {isMoreMenuOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 6px)',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  minWidth: 200,
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 10,
-                  padding: 4,
-                  boxShadow: 'var(--shadow-2)',
-                  zIndex: 60,
-                }}>
-                  {allSecondaryItems.map((item) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setIsMoreMenuOpen(false)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 9,
-                          padding: '7px 10px',
-                          borderRadius: 7,
-                          fontSize: 12.5,
-                          textAlign: 'left' as const,
-                          color: isActive ? 'var(--indigo)' : 'var(--text)',
-                          background: isActive ? 'var(--indigo-soft)' : 'transparent',
-                          textDecoration: 'none',
-                          whiteSpace: 'nowrap' as const,
-                          transition: 'background 0.1s',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent';
-                        }}
-                      >
-                        <span>{item.icon}</span>
-                        <span style={{ fontWeight: 500 }}>{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </nav>
 
           {/* Right icons */}
