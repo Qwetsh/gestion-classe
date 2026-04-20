@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -7,7 +7,7 @@ import { ClassChip } from '../components/design-system';
 import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
 import { GroupSessionLauncher } from '../components/live-session/GroupSessionLauncher';
 import { pronoteFetcher } from '../lib/pronoteFetcher';
-import type { SessionHandle, TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
+import type { TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
 
 // ---- Shared helpers ----
 
@@ -167,12 +167,9 @@ export function Dashboard() {
   const [weekSessionsCount, setWeekSessionsCount] = useState<number>(0);
   const [weekSessionsDone, setWeekSessionsDone] = useState<number>(0);
   const [weekSessionsUpcoming, setWeekSessionsUpcoming] = useState<number>(0);
-  const [weekSessionsCanceled, setWeekSessionsCanceled] = useState<number>(0);
-
   // Pronote state
   const [pronoteConnected, setPronoteConnected] = useState(false);
   const [pronoteLessons, setPronoteLessons] = useState<PronoteLesson[]>([]);
-  const [pronoteLoading, setPronoteLoading] = useState(false);
   const pronoteAttempted = useRef(false);
 
   const classNames = classes.map(c => c.name);
@@ -186,7 +183,6 @@ export function Dashboard() {
     const stored = loadStoredPronoteSession();
     if (!stored) return;
 
-    setPronoteLoading(true);
     (async () => {
       try {
         const pw = await import('pawnote');
@@ -215,8 +211,6 @@ export function Dashboard() {
       } catch (err) {
         console.error('Dashboard Pronote auto-reconnect failed:', err);
         // Silent fail — Pronote sections just won't show
-      } finally {
-        setPronoteLoading(false);
       }
     })();
   }, []);

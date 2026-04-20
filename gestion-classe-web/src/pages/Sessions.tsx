@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
-import { EVENT_CONFIG, getClassGradient, getClassInitials } from '../lib/constants';
+import { EVENT_CONFIG } from '../lib/constants';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Icon } from '../components/design-system';
 

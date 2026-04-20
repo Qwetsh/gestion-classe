@@ -8,7 +8,7 @@ import type { Room } from '../components/RoomModal';
 import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
 import * as XLSX from 'xlsx';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
-import { ClassChip, Sparkline, TrendBadge, Icon } from '../components/design-system';
+import { ClassChip, Icon } from '../components/design-system';
 
 interface Class {
   id: string;
@@ -99,7 +99,7 @@ export function Classes() {
 
   // Student grades for visual display
   const [studentGrades, setStudentGrades] = useState<Map<string, StudentGradeData>>(new Map());
-  const [showGrades, setShowGrades] = useState(true);
+  const [showGrades] = useState(true);
 
   // Modal states
   const [showClassModal, setShowClassModal] = useState(false);
@@ -426,14 +426,6 @@ export function Classes() {
 
   const isCellDisabled = (row: number, col: number): boolean => {
     return selectedRoom?.disabled_cells?.includes(`${row},${col}`) || false;
-  };
-
-  // Grade color helpers
-  const getGradeColor = (grade: number): { bg: string; border: string; avatar: string; text: string } => {
-    if (grade >= 16) return { bg: 'from-green-50 to-green-100', border: 'border-green-400', avatar: 'from-green-500 to-green-600', text: 'text-green-700' };
-    if (grade >= 12) return { bg: 'from-blue-50 to-blue-100', border: 'border-blue-400', avatar: 'from-blue-500 to-blue-600', text: 'text-blue-700' };
-    if (grade >= 8) return { bg: 'from-orange-50 to-orange-100', border: 'border-orange-400', avatar: 'from-orange-500 to-orange-600', text: 'text-orange-700' };
-    return { bg: 'from-red-50 to-red-100', border: 'border-red-400', avatar: 'from-red-500 to-red-600', text: 'text-red-700' };
   };
 
   const getStudentGradeData = (studentId: string): StudentGradeData | undefined => {
