@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { calculateHousePoints, type HousePoints, type HouseId, HOUSES } from '../../lib/academyQueries';
+import { calculateHousePoints, type HousePoints, type HouseId } from '../../lib/academyQueries';
 import { Starfield, Ornament, GoldParticles, RollingNumber } from './Atmosphere';
 import { HouseCrest } from './HouseCrest';
-import { HOUSE_DATA, type HouseData } from './houses';
+import { HOUSE_DATA } from './houses';
 import './tokens.css';
 
 interface MyHouseProps {

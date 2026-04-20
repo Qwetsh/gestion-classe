@@ -229,9 +229,6 @@ export interface HousePoints {
 }
 
 export async function calculateHousePoints(classId: string): Promise<HousePoints[]> {
-  // Get assignments
-  const assignments = await fetchAssignments(classId);
-
   // Get all group sessions for this class
   const { data: groupSessions } = await supabase
     .from('group_sessions')

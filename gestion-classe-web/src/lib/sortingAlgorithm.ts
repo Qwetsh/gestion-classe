@@ -175,10 +175,6 @@ export function runSortingAlgorithm(
     }
   }
 
-  // Students without test
-  const assignedIds = new Set([...assignments.map(a => a.student_id), ...overrideIds]);
-  // We don't know all student IDs here, caller handles unassigned
-
   return {
     assignments,
     unassigned: [],

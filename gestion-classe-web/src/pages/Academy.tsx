@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout';
 import {
   fetchAllAcademyConfigs, fetchAssignments, fetchBonuses, fetchTestResponses,
   calculateHousePoints, saveBonus, revealBonuses, saveAssignment, saveCoefficient,
-  type HouseId, type AcademyAssignment, type AcademyHouseBonus, type HousePoints, HOUSES,
+  type HouseId, type AcademyAssignment, type AcademyHouseBonus, type HousePoints,
 } from '../lib/academyQueries';
 import { calculateStudentScores, runSortingAlgorithm, saveSortingResults, type StudentScores, type SortingResult } from '../lib/sortingAlgorithm';
 import { supabase } from '../lib/supabase';
@@ -36,7 +36,7 @@ export function Academy() {
 
   // Sorting
   const [sortingResult, setSortingResult] = useState<SortingResult | null>(null);
-  const [sortingScores, setSortingScores] = useState<StudentScores[]>([]);
+  const [, setSortingScores] = useState<StudentScores[]>([]);
 
   // Coefficients
   const [groupSessions, setGroupSessions] = useState<{ id: string; created_at: string; status: string; coeff: number }[]>([]);
@@ -240,7 +240,7 @@ export function Academy() {
             {/* Podium */}
             <div style={{ marginTop: 48 }}>
               <SectionHeading title="Classement" sub="Podium des Maisons" />
-              <Podium leaderboard={leaderboard} revealing={revealing} />
+              <Podium leaderboard={leaderboard} />
             </div>
 
             {/* Award Zone */}
@@ -637,7 +637,7 @@ function HousePanel({ house, points, hiddenBonus, rank, revealing, studentCount,
   );
 }
 
-function Podium({ leaderboard, revealing }: { leaderboard: HousePoints[]; revealing: boolean }) {
+function Podium({ leaderboard }: { leaderboard: HousePoints[] }) {
   const maxPts = leaderboard[0]?.total_points || 1;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16, alignItems: 'flex-end', marginTop: 24, padding: '0 12px' }}>
