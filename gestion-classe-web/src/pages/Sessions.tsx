@@ -99,15 +99,9 @@ export function Sessions() {
   // Classroom modal state
   const [classroomData, setClassroomData] = useState<ClassroomData | null>(null);
   const [isLoadingClassroom, setIsLoadingClassroom] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-
   // Error state
   const [error, setError] = useState<string | null>(null);
 
-  // Topic editing states
-  const [isEditingTopic, setIsEditingTopic] = useState(false);
-  const [editedTopic, setEditedTopic] = useState('');
-  const [isSavingTopic, setIsSavingTopic] = useState(false);
 
   // Add event states
   const [showAddEvent, setShowAddEvent] = useState(false);
@@ -265,9 +259,6 @@ export function Sessions() {
     setShowSessionModal(false);
     setSelectedSession(null);
     setClassroomData(null);
-    setSelectedStudentId(null);
-    setIsEditingTopic(false);
-    setEditedTopic('');
     setShowAddEvent(false);
     setAddEventStudent('');
     setAddEventType('');
@@ -309,100 +300,11 @@ export function Sessions() {
     }
   };
 
-  const handleStartEditTopic = () => {
-    setEditedTopic(selectedSession?.topic || '');
-    setIsEditingTopic(true);
-  };
-
-  const handleCancelEditTopic = () => {
-    setIsEditingTopic(false);
-    setEditedTopic('');
-  };
-
-  const handleSaveTopic = async () => {
-    if (!selectedSession) return;
-
-    setIsSavingTopic(true);
-    try {
-      const { error } = await supabase
-        .from('sessions')
-        .update({ topic: editedTopic.trim() || null })
-        .eq('id', selectedSession.id);
-
-      if (error) {
-        console.error('Error saving topic:', error);
-        toast('Erreur lors de la sauvegarde du theme');
-        return;
-      }
-
-      // Update local state
-      const updatedSession = { ...selectedSession, topic: editedTopic.trim() || null };
-      setSelectedSession(updatedSession);
-      setSessions(sessions.map(s => s.id === selectedSession.id ? updatedSession : s));
-      setIsEditingTopic(false);
-    } finally {
-      setIsSavingTopic(false);
-    }
-  };
-
-  // Computed: events grouped by student
-  const eventsByStudent = useMemo(() => {
-    if (!classroomData) return new Map<string, SessionEvent[]>();
-    const map = new Map<string, SessionEvent[]>();
-    classroomData.events.forEach((event) => {
-      const existing = map.get(event.student_id) || [];
-      existing.push(event);
-      map.set(event.student_id, existing);
-    });
-    return map;
-  }, [classroomData]);
-
-  // Computed: absent student IDs (O(1) lookup)
-  const absentStudentIds = useMemo(() => {
-    if (!classroomData) return new Set<string>();
-    return new Set(
-      classroomData.events
-        .filter((e) => e.type === 'absence')
-        .map((e) => e.student_id)
-    );
-  }, [classroomData]);
-
   // Computed: student map for fast lookup
   const studentsMap = useMemo(() => {
     if (!classroomData) return new Map<string, { id: string; pseudo: string }>();
     return new Map(classroomData.students.map((s) => [s.id, s]));
   }, [classroomData]);
-
-  // Computed: students with events but not placed on the grid
-  const unplacedStudentsWithEvents = useMemo(() => {
-    if (!classroomData) return [];
-    const placedStudentIds = new Set(Object.values(classroomData.positions));
-    const studentIdsWithEvents = new Set(classroomData.events.map((e) => e.student_id));
-    return classroomData.students.filter(
-      (s) => studentIdsWithEvents.has(s.id) && !placedStudentIds.has(s.id)
-    );
-  }, [classroomData]);
-
-  const handleOpenDeleteModal = async (e: React.MouseEvent, session: Session) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDeleteTarget(session);
-    setLinkedGroupSession(null);
-
-    // Check if there's a linked group session
-    const { data: linked } = await supabase
-      .from('group_sessions')
-      .select('id, name')
-      .eq('linked_session_id', session.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (linked) {
-      setLinkedGroupSession(linked);
-    }
-
-    setShowDeleteModal(true);
-  };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
