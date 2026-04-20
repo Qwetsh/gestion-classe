@@ -223,9 +223,28 @@ export default function NewspaperGenerator() {
   const [isExporting, setIsExporting] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overflow, setOverflow] = useState(false);
+  const previewPaneRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
 
   // Load Google Fonts on mount
   useEffect(() => { loadGoogleFonts(); }, []);
+
+  // Auto-scale preview to fit available space
+  useEffect(() => {
+    const updateScale = () => {
+      if (!previewPaneRef.current) return;
+      const paneWidth = previewPaneRef.current.clientWidth - 32; // padding
+      const paneHeight = previewPaneRef.current.clientHeight - 32;
+      const pageWidth = config.pages === 2 ? 595 * 2 + 24 : 595; // 2 pages + gap
+      const pageHeight = 842;
+      const scaleX = paneWidth / pageWidth;
+      const scaleY = paneHeight / pageHeight;
+      setPreviewScale(Math.min(scaleX, scaleY, 1.3)); // cap at 1.3x
+    };
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [config.pages]);
 
   const PAGE_HEIGHT = 842;
 
@@ -769,7 +788,7 @@ export default function NewspaperGenerator() {
       </div>
 
       {/* Right: Preview */}
-      <div style={rootStyles.previewPane}>
+      <div ref={previewPaneRef} style={rootStyles.previewPane}>
         {overflow && (
           <div style={rootStyles.overflowWarning}>
             Le contenu dépasse le format A4. Le rendu exporté risque d'être coupé ou déformé. Réduisez le texte ou passez en 2 pages.
@@ -782,7 +801,11 @@ export default function NewspaperGenerator() {
           </div>
         )}
 
-        <div ref={previewRef} style={config.pages === 2 ? rootStyles.previewTwoPages : rootStyles.previewOnePage}>
+        <div ref={previewRef} style={{
+          ...(config.pages === 2 ? rootStyles.previewTwoPages : rootStyles.previewOnePage),
+          transform: `scale(${previewScale})`,
+          transformOrigin: 'top center',
+        }}>
           {renderPageContent(page1Rows, true, 1)}
           {config.pages === 2 && page2Rows.length > 0 &&
             renderPageContent(page2Rows, false, 2)
