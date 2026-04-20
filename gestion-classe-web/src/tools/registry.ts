@@ -66,6 +66,14 @@ export const tools: Tool[] = [
     component: lazy(() => import('./StarWarsIntro')),
     tags: ['star wars', 'intro', 'animation', 'vidéo', 'fun', 'présentation'],
   },
+  {
+    id: 'newspaper',
+    name: 'Générateur de Journal',
+    description: 'Créer une page de une de journal avec photos, articles et mise en page automatique',
+    icon: '📰',
+    component: lazy(() => import('./NewspaperGenerator')),
+    tags: ['journal', 'une', 'article', 'presse', 'photo', 'mise en page', 'pdf', 'projet'],
+  },
 ];
 
 export function getToolById(id: string): Tool | undefined {
