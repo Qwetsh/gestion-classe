@@ -1032,8 +1032,8 @@ function PronoteTab() {
       sessRef.current = sess;
       pwRef.current = pw;
 
-      // Extract periods
-      const userPeriods = sess.user?.resources?.[0]?.periods || sess.userResource?.periods || [];
+      // Extract periods (cast to any — pawnote types don't expose periods on teacher accounts)
+      const userPeriods = (sess.user as any)?.resources?.[0]?.periods || (sess.userResource as any)?.periods || (sess as any).periods || [];
       setPeriods(userPeriods);
 
       setConnected(true);
