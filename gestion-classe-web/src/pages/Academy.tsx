@@ -632,6 +632,9 @@ function HousePanel({ house, points, hiddenBonus, rank, revealing, studentCount,
             <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 13, color: 'oklch(0.42 0.08 30)', marginTop: 4 }}>+ ? · caché</div>
           )}
         </div>
+        <div style={{ marginTop: 'auto', paddingTop: 12, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.15em', color: 'var(--ink-line)', textTransform: 'uppercase', opacity: 0.7 }}>
+          Cliquer pour voir les élèves
+        </div>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
   const [housePoints, setHousePoints] = useState<HousePoints[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
+  const [housemates, setHousemates] = useState<string[]>([]);
 
   const myHouse = HOUSE_DATA[houseId];
 
@@ -22,6 +23,20 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
     const pts = await calculateHousePoints(classId);
     setHousePoints(pts);
   }, [classId]);
+
+  // Load housemates
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('academy_assignments')
+        .select('student_id, students!inner(pseudo)')
+        .eq('class_id', classId)
+        .eq('house', houseId);
+      if (data) {
+        setHousemates(data.map((d: any) => (d.students as any).pseudo));
+      }
+    })();
+  }, [classId, houseId]);
 
   // Initial load + reveal animation
   useEffect(() => {
@@ -194,12 +209,41 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
           </div>
         </div>
 
+        {/* Housemates */}
+        {housemates.length > 0 && (
+          <div style={{
+            marginTop: 24, width: '100%', maxWidth: 360,
+            opacity: revealed ? 1 : 0, transition: 'opacity 0.8s ease 2s',
+          }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.25em', color: 'var(--gold-deep)', textAlign: 'center', textTransform: 'uppercase', marginBottom: 10 }}>
+              Tes camarades de Maison ({housemates.length})
+            </div>
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center',
+              padding: '12px 14px', background: 'oklch(0 0 0 / 0.3)',
+              border: '1px solid oklch(0.35 0.04 60 / 0.4)',
+            }}>
+              {housemates.map(name => (
+                <div key={name} style={{
+                  padding: '5px 10px',
+                  background: 'oklch(0.15 0.03 50 / 0.8)',
+                  border: `1px solid ${myHouse.c1}`,
+                  fontFamily: 'var(--font-display)', fontStyle: 'italic',
+                  fontSize: 13, color: 'var(--parchment)',
+                }}>
+                  {name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Live indicator */}
         <div style={{
           marginTop: 18, display: 'flex', alignItems: 'center', gap: 6,
           fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.25em',
           color: 'var(--gold-deep)', textTransform: 'uppercase',
-          opacity: revealed ? 1 : 0, transition: 'opacity 0.8s ease 2s',
+          opacity: revealed ? 1 : 0, transition: 'opacity 0.8s ease 2.2s',
         }}>
           <div style={{
             width: 6, height: 6, borderRadius: '50%',
