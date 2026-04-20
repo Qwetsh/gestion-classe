@@ -18,6 +18,7 @@ import { Students } from './pages/Students';
 import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { Pronote } from './pages/Pronote';
+import { Academy } from './pages/Academy';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
 import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
@@ -92,6 +93,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Students />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/academy"
+          element={
+            <ProtectedRoute>
+              <Academy />
             </ProtectedRoute>
           }
         />

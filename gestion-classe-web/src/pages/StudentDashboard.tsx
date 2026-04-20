@@ -2,6 +2,9 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { getCardTier } from '../lib/rewardsQueries';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { AcademyQuiz } from '../components/academy/AcademyQuiz';
+import { MyHouse } from '../components/academy/MyHouse';
+import type { HouseId } from '../lib/academyQueries';
 
 // ============================================
 // Stamp card types
@@ -72,8 +75,9 @@ export function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [activeTab, setActiveTab] = useState<'grades' | 'stamps'>('grades');
+  const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy'>('grades');
   const [stampData, setStampData] = useState<StampData | null>(null);
+  const [academyData, setAcademyData] = useState<{ enabled: boolean; house: HouseId | null; test_completed: boolean; classId: string | null } | null>(null);
   const [stampLoading, setStampLoading] = useState(false);
   const [stampError, setStampError] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -158,6 +162,24 @@ export function StudentDashboard() {
         total_classes: result.total_classes || 0,
         my_class_avg: result.my_class_avg || 0,
       } as DashboardData);
+
+      // Load academy data
+      try {
+        const { data: academyResult } = await supabase
+          .rpc('get_student_academy', { p_code: fullCode });
+        if (academyResult && !academyResult.error) {
+          setAcademyData({
+            enabled: academyResult.enabled ?? false,
+            house: academyResult.house ?? null,
+            test_completed: academyResult.test_completed ?? false,
+            classId: academyResult.class_id ?? null,
+          });
+        } else {
+          setAcademyData(null);
+        }
+      } catch {
+        setAcademyData(null);
+      }
     } catch {
       setError('Erreur de connexion. Reessaye.');
     } finally {
@@ -236,6 +258,7 @@ export function StudentDashboard() {
   const handleLogout = () => {
     setData(null);
     setStampData(null);
+    setAcademyData(null);
     setCode(['', '', '', '', '', '']);
     setError(null);
     setActiveTab('grades');
@@ -442,9 +465,43 @@ export function StudentDashboard() {
           >
             ⭐ Tampons
           </button>
+          {academyData?.enabled && (
+            <button
+              onClick={() => setActiveTab('academy')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '10px',
+                border: 'none',
+                background: activeTab === 'academy' ? '#8B5CF6' : 'transparent',
+                color: activeTab === 'academy' ? '#ffffff' : 'var(--text-dim)',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              🏰 Maison
+            </button>
+          )}
         </div>
 
-        {activeTab === 'stamps' ? (
+        {activeTab === 'academy' && academyData?.enabled ? (
+          academyData.house && academyData.classId ? (
+            <div style={{ borderRadius: '16px', overflow: 'hidden', minHeight: 500 }}>
+              <MyHouse houseId={academyData.house} classId={academyData.classId} />
+            </div>
+          ) : (
+            <div style={{ borderRadius: '16px', overflow: 'hidden', minHeight: 500 }}>
+              <AcademyQuiz
+                studentCode={currentCodeRef.current}
+                onComplete={() => {
+                  setAcademyData(prev => prev ? { ...prev, test_completed: true } : prev);
+                }}
+              />
+            </div>
+          )
+        ) : activeTab === 'stamps' ? (
           <StampCardView
             stampData={stampData}
             stampLoading={stampLoading}

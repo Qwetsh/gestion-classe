@@ -9,6 +9,7 @@ import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
 import * as XLSX from 'xlsx';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Icon } from '../components/design-system';
+import { fetchAcademyConfig, toggleAcademyModule } from '../lib/academyQueries';
 
 interface Class {
   id: string;
@@ -120,6 +121,10 @@ export function Classes() {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Academy module
+  const [academyEnabled, setAcademyEnabled] = useState(false);
+  const [academyLoading, setAcademyLoading] = useState(false);
+
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,14 +200,37 @@ export function Classes() {
     }
   };
 
-  // Load students when class changes
+  // Load students and academy config when class changes
   useEffect(() => {
     if (selectedClass) {
       loadStudents(selectedClass.id);
+      loadAcademyConfig(selectedClass.id);
     } else {
       setStudents([]);
+      setAcademyEnabled(false);
     }
   }, [selectedClass]);
+
+  const loadAcademyConfig = async (classId: string) => {
+    const config = await fetchAcademyConfig(classId);
+    setAcademyEnabled(config?.enabled ?? false);
+  };
+
+  const handleToggleAcademy = async () => {
+    if (!selectedClass || !user) return;
+    setAcademyLoading(true);
+    try {
+      const newValue = !academyEnabled;
+      await toggleAcademyModule(selectedClass.id, user.id, newValue);
+      setAcademyEnabled(newValue);
+      toast(newValue ? 'Académie des Quatre Lumières activée' : 'Module Académie désactivé', 'success');
+    } catch (err) {
+      console.error('Error toggling academy:', err);
+      toast('Erreur lors de la mise à jour', 'error');
+    } finally {
+      setAcademyLoading(false);
+    }
+  };
 
   // Auto-select first room when rooms load or class changes
   useEffect(() => {
@@ -1182,6 +1210,40 @@ export function Classes() {
 
             {/* Footer actions */}
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Academy toggle */}
+              <label
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '6px 8px', borderRadius: 8,
+                  background: academyEnabled ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+                  cursor: academyLoading ? 'wait' : 'pointer',
+                  transition: 'background 0.2s',
+                  fontSize: 12, color: 'var(--text)',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>🏰</span>
+                  <span style={{ fontWeight: 500 }}>Académie</span>
+                </span>
+                <div
+                  onClick={handleToggleAcademy}
+                  style={{
+                    width: 34, height: 18, borderRadius: 9,
+                    background: academyEnabled ? 'var(--indigo)' : 'var(--border)',
+                    position: 'relative', cursor: academyLoading ? 'wait' : 'pointer',
+                    transition: 'background 0.2s', flexShrink: 0,
+                    opacity: academyLoading ? 0.5 : 1,
+                  }}
+                >
+                  <div style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: '#fff', position: 'absolute', top: 2,
+                    left: academyEnabled ? 18 : 2,
+                    transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  }} />
+                </div>
+              </label>
+
               <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx,.xls,.csv" className="hidden" />
               <button onClick={() => fileInputRef.current?.click()} className="btn btn--ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
                 Import CSV / Excel

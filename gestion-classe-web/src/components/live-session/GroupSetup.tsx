@@ -4,9 +4,11 @@ import { useGroupSession } from '../../contexts/GroupSessionContext';
 export function GroupSetup() {
   const {
     selectedClass, students, templates, sessionName, tempCriteria, tempGroups,
+    academyMode, academyCoefficient,
     loading, error,
     setSessionName, applyTemplate, addCriteria, removeCriteria,
     addGroup, removeGroup, toggleMember, randomizeGroups,
+    setAcademyCoefficient,
     startGrading, goBack, cancelFlow,
   } = useGroupSession();
 
@@ -133,12 +135,33 @@ export function GroupSetup() {
           </div>
         </div>
 
+        {/* Academy coefficient */}
+        {academyMode && (
+          <div>
+            <label className="text-sm font-semibold text-[var(--text)] block mb-1">
+              Coefficient Académie
+            </label>
+            <div className="flex items-center gap-3 p-3 bg-[var(--surface-3)]" style={{ borderRadius: 'var(--radius)' }}>
+              <span className="text-xs text-[var(--text-dim)]">🏰 Les groupes Maisons seront créés automatiquement</span>
+              <span className="text-xs text-[var(--text-muted)] ml-auto">×</span>
+              <input
+                type="number" min="0" max="5" step="0.5"
+                value={academyCoefficient}
+                onChange={e => setAcademyCoefficient(parseFloat(e.target.value) || 1)}
+                className="w-16 p-1.5 text-center border border-[var(--border)] bg-[var(--surface)] text-sm font-bold text-[var(--text)]"
+                style={{ borderRadius: 'var(--radius-md)' }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Groups */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-semibold text-[var(--text)]">
-              Groupes ({tempGroups.length})
+              {academyMode ? 'Maisons' : 'Groupes'} ({tempGroups.length})
             </label>
+            {!academyMode && (
             <div className="flex gap-2">
               <button
                 onClick={() => setShowRandom(true)}
@@ -155,6 +178,7 @@ export function GroupSetup() {
                 + Groupe
               </button>
             </div>
+            )}
           </div>
 
           {/* Random modal */}
@@ -203,6 +227,7 @@ export function GroupSetup() {
                   <span className="text-xs font-semibold text-[var(--indigo)]">
                     {tempGroups.find(g => g.id === activeGroupId)?.name}
                   </span>
+                  {!academyMode && (
                   <button
                     onClick={() => { removeGroup(activeGroupId); setActiveGroupId(null); }}
                     className="text-xs text-[var(--neg)]"
@@ -210,6 +235,7 @@ export function GroupSetup() {
                   >
                     Supprimer
                   </button>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {tempGroups.find(g => g.id === activeGroupId)?.memberIds.map(sid => {

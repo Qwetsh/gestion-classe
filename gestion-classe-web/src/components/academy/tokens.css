@@ -1,0 +1,145 @@
+/* === L'Académie des Quatre Lumières — Design tokens === */
+
+.academy-root {
+  /* Ink & parchment */
+  --ink-void: #0a0908;
+  --ink-deep: #120f0c;
+  --ink-warm: #1a1410;
+  --ink-panel: #1e1712;
+  --ink-panel-2: #251c15;
+  --ink-line: #3a2e22;
+  --ink-line-soft: #2a2018;
+
+  --parchment: oklch(0.88 0.03 85);
+  --parchment-aged: oklch(0.82 0.04 80);
+  --parchment-dark: oklch(0.68 0.05 70);
+  --parchment-shadow: oklch(0.45 0.04 65);
+
+  /* Gold & metal */
+  --gold: oklch(0.78 0.12 85);
+  --gold-bright: oklch(0.86 0.14 88);
+  --gold-deep: oklch(0.62 0.11 78);
+  --gold-shadow: oklch(0.45 0.08 72);
+  --gold-rune: oklch(0.72 0.10 82);
+  --silver: oklch(0.80 0.01 240);
+
+  /* House colors */
+  --flamme-1: oklch(0.58 0.18 28);
+  --flamme-2: oklch(0.72 0.14 55);
+  --flamme-ink: oklch(0.38 0.14 25);
+
+  --onde-1: oklch(0.38 0.10 165);
+  --onde-2: oklch(0.82 0.02 160);
+  --onde-ink: oklch(0.28 0.08 168);
+
+  --souffle-1: oklch(0.40 0.10 245);
+  --souffle-2: oklch(0.68 0.10 55);
+  --souffle-ink: oklch(0.28 0.08 250);
+
+  --glebe-1: oklch(0.72 0.14 85);
+  --glebe-2: oklch(0.25 0.02 85);
+  --glebe-ink: oklch(0.45 0.12 80);
+
+  /* Typography */
+  --font-display: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-body: 'IM Fell English', 'Cormorant Garamond', Georgia, serif;
+  --font-mono: 'IM Fell English SC', 'IM Fell English', Georgia, serif;
+}
+
+/* Parchment texture */
+.academy-root .parchment-bg {
+  background-color: var(--parchment);
+  background-image:
+    radial-gradient(ellipse at 20% 30%, oklch(0.70 0.06 60 / 0.25) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 70%, oklch(0.55 0.08 55 / 0.30) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, oklch(0.92 0.02 85 / 0.4) 0%, transparent 60%);
+  background-blend-mode: multiply, multiply, normal;
+}
+
+.academy-root .parchment-edges {
+  position: relative;
+  box-shadow:
+    inset 0 0 40px oklch(0.45 0.08 55 / 0.35),
+    inset 0 0 120px oklch(0.35 0.06 50 / 0.20);
+}
+
+.academy-root .parchment-edges::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at top left, oklch(0.25 0.05 40 / 0.5) 0%, transparent 15%),
+    radial-gradient(ellipse at top right, oklch(0.25 0.05 40 / 0.45) 0%, transparent 12%),
+    radial-gradient(ellipse at bottom left, oklch(0.30 0.06 45 / 0.40) 0%, transparent 18%),
+    radial-gradient(ellipse at bottom right, oklch(0.28 0.05 42 / 0.45) 0%, transparent 14%);
+}
+
+.academy-root .gold-foil {
+  background: linear-gradient(135deg, var(--gold-shadow) 0%, var(--gold) 30%, var(--gold-bright) 50%, var(--gold) 70%, var(--gold-shadow) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 4px oklch(0.80 0.12 85 / 0.3));
+}
+
+.academy-root .gold-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--gold-deep) 20%, var(--gold) 50%, var(--gold-deep) 80%, transparent 100%);
+}
+
+/* Animations */
+@keyframes academy-flicker {
+  0%, 100% { opacity: 0.85; transform: scaleY(1) scaleX(1); }
+  20% { opacity: 1; transform: scaleY(1.08) scaleX(0.96); }
+  40% { opacity: 0.90; transform: scaleY(0.95) scaleX(1.04); }
+  60% { opacity: 1; transform: scaleY(1.05) scaleX(0.98); }
+  80% { opacity: 0.88; transform: scaleY(1.02) scaleX(1.02); }
+}
+
+@keyframes academy-drift {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-4px) translateX(2px); }
+}
+
+@keyframes academy-twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes academy-scroll-unfurl {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 2000px; opacity: 1; }
+}
+
+@keyframes academy-fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes academy-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes academy-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes academy-particle-burst {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+
+/* Wax seal */
+.academy-root .wax-seal {
+  background: radial-gradient(circle at 30% 30%,
+    oklch(0.58 0.16 28) 0%,
+    oklch(0.42 0.14 25) 55%,
+    oklch(0.28 0.10 22) 100%);
+  box-shadow:
+    inset 2px 2px 8px oklch(0.90 0.10 35 / 0.25),
+    inset -2px -2px 8px oklch(0.15 0.06 20 / 0.7),
+    0 2px 6px oklch(0.10 0.04 20 / 0.6);
+}

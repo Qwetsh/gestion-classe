@@ -25,6 +25,7 @@ const primaryNavItems = [
 const secondaryNavItems = [
   { path: '/rewards', label: 'Récompenses', icon: '⭐' },
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
+  { path: '/academy', label: 'Académie', icon: '🏰' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
   { path: '/tools', label: 'Outils', icon: '🧰' },
   { path: '/pronote', label: 'Pronote', icon: '🔗' },

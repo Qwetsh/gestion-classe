@@ -11,6 +11,8 @@ import {
   type TpTemplate,
   type GroupSessionData,
 } from '../lib/groupSessionQueries';
+import { fetchAcademyConfig, fetchAssignments, saveCoefficient } from '../lib/academyQueries';
+import { HOUSE_LIST } from '../components/academy/houses';
 
 export type GroupSessionStep = 'idle' | 'select-class' | 'setup' | 'grading' | 'summary';
 
@@ -34,6 +36,9 @@ interface GroupSessionState {
   sessionName: string;
   tempCriteria: TempCriteria[];
   tempGroups: TempGroup[];
+  // Academy
+  academyMode: boolean;
+  academyCoefficient: number;
   // Active grading
   sessionId: string | null;
   sessionData: GroupSessionData | null;
@@ -59,6 +64,7 @@ interface GroupSessionActions {
   applyMalus: (groupId: string) => void;
   resetMalus: (groupId: string) => void;
   finishSession: () => void;
+  setAcademyCoefficient: (coeff: number) => void;
   cancelFlow: () => void;
   goBack: () => void;
 }
@@ -74,6 +80,8 @@ const initialState: GroupSessionState = {
   sessionName: '',
   tempCriteria: [],
   tempGroups: [],
+  academyMode: false,
+  academyCoefficient: 1.0,
   sessionId: null,
   sessionData: null,
   activeGroupIndex: 0,
@@ -100,14 +108,33 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
 
   const selectClass = useCallback(async (cls: ClassInfo) => {
     if (!user) return;
-    setState(s => ({ ...s, selectedClass: cls, step: 'setup', loading: true, error: null }));
+    setState(s => ({ ...s, selectedClass: cls, step: 'setup', loading: true, error: null, academyMode: false, academyCoefficient: 1.0 }));
     try {
-      const [students, templates] = await Promise.all([
+      const [students, templates, academyConfig] = await Promise.all([
         fetchStudentsForClass(cls.id),
         fetchTpTemplates(user.id),
+        fetchAcademyConfig(cls.id),
       ]);
       groupCounter = 0;
-      setState(s => ({ ...s, students, templates, loading: false }));
+
+      // If academy module is active, auto-create 4 house groups
+      if (academyConfig?.enabled) {
+        const assignments = await fetchAssignments(cls.id);
+        const assignmentMap = new Map(assignments.map(a => [a.student_id, a.house]));
+
+        const autoGroups: TempGroup[] = HOUSE_LIST.map(h => {
+          groupCounter++;
+          return {
+            id: `temp-${groupCounter}`,
+            name: h.name,
+            memberIds: students.filter(s => assignmentMap.get(s.id) === h.id).map(s => s.id),
+          };
+        });
+
+        setState(s => ({ ...s, students, templates, tempGroups: autoGroups, academyMode: true, loading: false }));
+      } else {
+        setState(s => ({ ...s, students, templates, loading: false }));
+      }
     } catch {
       setState(s => ({ ...s, error: 'Erreur de chargement', loading: false }));
     }
@@ -178,6 +205,10 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setAcademyCoefficient = useCallback((coeff: number) => {
+    setState(s => ({ ...s, academyCoefficient: coeff }));
+  }, []);
+
   const startGrading = useCallback(async () => {
     if (!user || !state.selectedClass) return;
     setState(s => ({ ...s, loading: true, error: null }));
@@ -189,12 +220,18 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         state.tempCriteria,
         state.tempGroups,
       );
+
+      // Save academy coefficient if in academy mode
+      if (state.academyMode) {
+        await saveCoefficient(sessionId, state.academyCoefficient);
+      }
+
       const sessionData = await loadGroupSession(sessionId);
       setState(s => ({ ...s, sessionId, sessionData, step: 'grading', activeGroupIndex: 0, loading: false }));
     } catch (e) {
       setState(s => ({ ...s, error: 'Erreur de creation', loading: false }));
     }
-  }, [user, state.selectedClass, state.sessionName, state.tempCriteria, state.tempGroups]);
+  }, [user, state.selectedClass, state.sessionName, state.tempCriteria, state.tempGroups, state.academyMode, state.academyCoefficient]);
 
   const setActiveGroup = useCallback((index: number) => {
     setState(s => ({ ...s, activeGroupIndex: index }));
@@ -289,6 +326,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         applyMalus: applyMalusAction,
         resetMalus: resetMalusAction,
         finishSession,
+        setAcademyCoefficient,
         cancelFlow,
         goBack,
       }}
