@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 
 // ─── Google Fonts loader ────────────────────────────────────
 
-const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Roboto+Slab:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap';
+const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Roboto+Slab:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap';
 
 let fontsLoaded = false;
 function loadGoogleFonts() {
@@ -63,7 +63,7 @@ const STYLE_PRESETS: Record<NewspaperStyle, {
   lemonde: {
     label: 'Le Monde',
     fonts: {
-      title: '"Libre Baskerville", Georgia, serif',        // Didone transitionnelle — fidèle au Monde
+      title: '"Playfair Display", Georgia, serif',         // Didone italique haut contraste — fidèle au logo Le Monde
       body: '"Libre Baskerville", Georgia, serif',
       accent: '"Inter", "Arial Narrow", Arial, sans-serif',
     },
@@ -74,9 +74,9 @@ const STYLE_PRESETS: Record<NewspaperStyle, {
   figaro: {
     label: 'Le Figaro',
     fonts: {
-      title: '"Playfair Display", Georgia, serif',         // Didone élégante — fidèle au Figaro
+      title: '"Cormorant Garamond", Georgia, serif',       // Old-style élégante — fidèle au Figaro
       body: '"Libre Baskerville", Georgia, serif',
-      accent: '"Playfair Display", Georgia, serif',
+      accent: '"Cormorant Garamond", Georgia, serif',
     },
     colors: { bg: '#FDF8F0', text: '#222', accent: '#8B1A1A', rule: '#8B1A1A', headerBg: '#1B2A4A', headerText: '#F5E6C8' },
     uppercase: false,
