@@ -175,6 +175,30 @@ function computeLayout(blocks: Block[], totalCols: number): LayoutItem[][] {
     rows.push(currentRow);
   }
 
+  // Post-process: fill unused columns in each row
+  for (const row of rows) {
+    const usedInRow = row.reduce((sum, item) => sum + item.span, 0);
+    const remaining = totalCols - usedInRow;
+    if (remaining > 0 && row.length > 0) {
+      // Give extra columns to text blocks first, then distribute evenly
+      const textItems = row.filter(item => item.block.type === 'text');
+      const targets = textItems.length > 0 ? textItems : row;
+      let toDistribute = remaining;
+      for (const item of targets) {
+        if (toDistribute <= 0) break;
+        const give = Math.ceil(toDistribute / targets.length);
+        item.span += give;
+        toDistribute -= give;
+      }
+      // Recalculate col positions
+      let col = 0;
+      for (const item of row) {
+        item.col = col;
+        col += item.span;
+      }
+    }
+  }
+
   return rows;
 }
 
