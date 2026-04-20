@@ -226,6 +226,11 @@ export function Dashboard() {
     .filter(l => !l.canceled && l.startDate > now)
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0] || null;
 
+  // Today's lessons
+  const todayLessons = pronoteLessons
+    .filter(l => isSameDay(l.startDate, now))
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+
   // Tomorrow's lessons
   const tomorrowLessons = pronoteLessons
     .filter(l => !l.canceled && isSameDay(l.startDate, tomorrow))
@@ -233,6 +238,21 @@ export function Dashboard() {
 
   // Count tomorrow's unique rooms
   const tomorrowRooms = new Set(tomorrowLessons.flatMap(l => l.classrooms));
+
+  // Week days for timetable (Mon-Fri)
+  const weekDays: { date: Date; label: string; lessons: PronoteLesson[] }[] = [];
+  const monday = getMonday(now);
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + i);
+    weekDays.push({
+      date: d,
+      label: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }),
+      lessons: pronoteLessons
+        .filter(l => isSameDay(l.startDate, d))
+        .sort((a, b) => a.startDate.getTime() - b.startDate.getTime()),
+    });
+  }
 
   // ---- Load Supabase data ----
 
@@ -628,6 +648,90 @@ export function Dashboard() {
                         )}
                       </div>
                       <span style={{ color: 'var(--text-dim)', fontSize: 14, flexShrink: 0 }}>›</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Emploi du temps - Aujourd'hui */}
+            {pronoteConnected && todayLessons.length > 0 && (
+              <div className="dash__card">
+                <div className="dash__card-head">
+                  <div>
+                    <h2 className="dash__card-title">Emploi du temps</h2>
+                    <p className="dash__card-sub">Aujourd'hui · {todayLessons.length} cours</p>
+                  </div>
+                </div>
+                <div className="dash__timetable">
+                  {todayLessons.map((lesson) => {
+                    const color = getClassColor(lesson.groupNames[0] || '', classNames);
+                    const isPast = lesson.endDate < now;
+                    const isCurrent = lesson.startDate <= now && lesson.endDate > now;
+                    return (
+                      <div
+                        key={lesson.id}
+                        className={`dash__tt-row ${isCurrent ? 'dash__tt-row--current' : ''} ${isPast ? 'dash__tt-row--past' : ''} ${lesson.canceled ? 'dash__tt-row--canceled' : ''}`}
+                      >
+                        <div className="dash__tt-time">
+                          <span className="dash__tt-start">{formatTime(lesson.startDate)}</span>
+                          <span className="dash__tt-end">{formatTime(lesson.endDate)}</span>
+                        </div>
+                        <div className="dash__tt-bar" style={{ background: lesson.canceled ? 'var(--text-dim)' : color }} />
+                        <div className="dash__tt-content">
+                          <div className="dash__tt-subject">
+                            {lesson.canceled && <span className="dash__tt-canceled-badge">Annulé</span>}
+                            {lesson.groupNames[0] || lesson.subject || 'Cours'}
+                          </div>
+                          {lesson.subject && lesson.groupNames[0] && (
+                            <div className="dash__tt-detail">{lesson.subject}</div>
+                          )}
+                          {lesson.classrooms.length > 0 && (
+                            <div className="dash__tt-room">Salle {lesson.classrooms[0]}</div>
+                          )}
+                        </div>
+                        {isCurrent && (
+                          <div className="dash__tt-live">EN COURS</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Emploi du temps - Semaine */}
+            {pronoteConnected && pronoteLessons.length > 0 && todayLessons.length === 0 && (
+              <div className="dash__card">
+                <div className="dash__card-head">
+                  <div>
+                    <h2 className="dash__card-title">Emploi du temps</h2>
+                    <p className="dash__card-sub">Semaine du {monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</p>
+                  </div>
+                </div>
+                <div className="dash__week-tt">
+                  {weekDays.map((day) => (
+                    <div key={day.label} className={`dash__week-day ${isSameDay(day.date, now) ? 'dash__week-day--today' : ''}`}>
+                      <div className="dash__week-day-label">{day.label}</div>
+                      <div className="dash__week-day-lessons">
+                        {day.lessons.length === 0 ? (
+                          <div className="dash__week-empty">—</div>
+                        ) : (
+                          day.lessons.map((lesson) => {
+                            const color = getClassColor(lesson.groupNames[0] || '', classNames);
+                            return (
+                              <div
+                                key={lesson.id}
+                                className={`dash__week-lesson ${lesson.canceled ? 'dash__week-lesson--canceled' : ''}`}
+                                style={{ borderLeftColor: color }}
+                              >
+                                <span className="dash__week-lesson-time">{formatTime(lesson.startDate)}</span>
+                                <span className="dash__week-lesson-name">{lesson.groupNames[0] || lesson.subject || 'Cours'}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -1082,6 +1082,76 @@ textarea:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Timetable - Today */
+.dash__timetable { padding: 4px 0; }
+.dash__tt-row {
+  display: flex; align-items: stretch; gap: 12px;
+  padding: 10px 22px; position: relative;
+  transition: background 0.1s;
+}
+.dash__tt-row:hover { background: var(--surface-2); }
+.dash__tt-row--past { opacity: 0.5; }
+.dash__tt-row--canceled .dash__tt-subject { text-decoration: line-through; color: var(--text-muted); }
+.dash__tt-row--current { background: var(--indigo-soft); }
+.dash__tt-time {
+  display: flex; flex-direction: column; align-items: flex-end;
+  width: 48px; flex-shrink: 0; gap: 2px;
+}
+.dash__tt-start { font-family: var(--font-display); font-size: 14px; font-weight: 500; }
+.dash__tt-end { font-size: 11px; color: var(--text-dim); }
+.dash__tt-bar {
+  width: 3px; border-radius: 2px; flex-shrink: 0;
+  min-height: 36px; align-self: stretch;
+}
+.dash__tt-content { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.dash__tt-subject { font-weight: 600; font-size: 13.5px; }
+.dash__tt-detail { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash__tt-room { font-size: 11px; color: var(--text-dim); }
+.dash__tt-canceled-badge {
+  display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  background: var(--neg); color: white; padding: 1px 6px; border-radius: 3px;
+  margin-right: 6px; text-decoration: none; letter-spacing: 0.02em;
+}
+.dash__tt-live {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  color: var(--indigo); letter-spacing: 0.05em;
+  align-self: center; flex-shrink: 0;
+  background: var(--indigo-soft); padding: 3px 8px; border-radius: 4px;
+}
+
+/* Timetable - Week overview */
+.dash__week-tt {
+  display: flex; flex-direction: column; gap: 0;
+  padding: 0;
+}
+.dash__week-day {
+  display: flex; gap: 12px; padding: 10px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.dash__week-day:last-child { border-bottom: none; }
+.dash__week-day--today { background: var(--indigo-soft); }
+.dash__week-day-label {
+  width: 56px; flex-shrink: 0;
+  font-size: 12px; font-weight: 600; text-transform: capitalize;
+  color: var(--text-muted); padding-top: 3px;
+}
+.dash__week-day--today .dash__week-day-label { color: var(--indigo); }
+.dash__week-day-lessons {
+  flex: 1; display: flex; flex-direction: column; gap: 4px;
+}
+.dash__week-empty { font-size: 12px; color: var(--text-dim); padding: 2px 0; }
+.dash__week-lesson {
+  display: flex; align-items: center; gap: 8px;
+  border-left: 3px solid var(--indigo); padding-left: 8px;
+  font-size: 12px;
+}
+.dash__week-lesson--canceled { opacity: 0.5; text-decoration: line-through; }
+.dash__week-lesson-time {
+  font-family: var(--font-display); font-size: 12px; font-weight: 500;
+  color: var(--text-muted); width: 40px; flex-shrink: 0;
+}
+.dash__week-lesson-name { font-weight: 500; color: var(--text); }
+
 /* ---- Dashboard responsive ---- */
 @media (max-width: 900px) {
   .dash__hero-row { grid-template-columns: 1fr; }
