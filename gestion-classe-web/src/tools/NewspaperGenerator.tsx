@@ -151,7 +151,8 @@ function computeLayout(blocks: Block[], totalCols: number): LayoutItem[][] {
     }
 
     if (block.type === 'image') {
-      span = Math.min(2, totalCols);
+      // Contain images take 1 col (they're smaller), cover images take 2
+      span = (block as ImageBlock).fit === 'contain' ? 1 : Math.min(2, totalCols);
     }
 
     if (usedCols + span > totalCols) {
@@ -671,6 +672,7 @@ export default function NewspaperGenerator() {
             gridTemplateColumns: `repeat(${totalCols}, 1fr)`,
             gap: '0 16px',
             marginBottom: 12,
+            alignItems: 'start',
           }}>
             {row.map(item => {
               if (item.block.type === 'text') {
