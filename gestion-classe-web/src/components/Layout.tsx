@@ -12,6 +12,8 @@ interface LayoutProps {
   children: ReactNode;
   /** Set true for pages that handle their own max-width (e.g. Classes with sidebar) */
   fluid?: boolean;
+  /** Set true for full-bleed pages with no max-width and no padding (e.g. Academy) */
+  fullBleed?: boolean;
 }
 
 const primaryNavItems = [
@@ -51,7 +53,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
   }
 }
 
-export function Layout({ children, fluid }: LayoutProps) {
+export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -496,9 +498,9 @@ export function Layout({ children, fluid }: LayoutProps) {
 
       {/* Main content */}
       <main style={{
-        maxWidth: fluid ? 1600 : 1400,
+        maxWidth: fullBleed ? 'none' : fluid ? 1600 : 1400,
         margin: '0 auto',
-        padding: 28,
+        padding: fullBleed ? 0 : 28,
       }}>
         {children}
       </main>

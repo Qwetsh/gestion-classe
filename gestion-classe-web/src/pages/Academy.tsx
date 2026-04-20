@@ -167,7 +167,7 @@ export function Academy() {
   }
 
   return (
-    <Layout fluid>
+    <Layout fullBleed>
       <div className="academy-root" style={{
         minHeight: 'calc(100vh - 56px)', position: 'relative',
         background: 'var(--ink-void)', color: 'var(--parchment)',
