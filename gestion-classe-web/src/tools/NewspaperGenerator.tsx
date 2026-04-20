@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type CSSProperties } from 'react';
+import { useState, useRef, useCallback, useEffect, type CSSProperties } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -166,6 +166,29 @@ export default function NewspaperGenerator() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [overflow, setOverflow] = useState(false);
+
+  const PAGE_HEIGHT = 842;
+
+  // Check if content overflows A4 page
+  useEffect(() => {
+    const check = () => {
+      if (!previewRef.current) return;
+      const pages = previewRef.current.children;
+      if (pages.length === 0) return;
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        if (page.scrollHeight > PAGE_HEIGHT + 10) {
+          setOverflow(true);
+          return;
+        }
+      }
+      setOverflow(false);
+    };
+    // Small delay to let DOM render
+    const t = setTimeout(check, 100);
+    return () => clearTimeout(t);
+  }, [config]);
 
   const preset = STYLE_PRESETS[config.style];
 
@@ -645,6 +668,11 @@ export default function NewspaperGenerator() {
 
       {/* Right: Preview */}
       <div style={rootStyles.previewPane}>
+        {overflow && (
+          <div style={rootStyles.overflowWarning}>
+            Le contenu dépasse le format A4. Le rendu exporté risque d'être coupé ou déformé. Réduisez le texte ou passez en 2 pages.
+          </div>
+        )}
         <div style={rootStyles.previewScroll}>
           <div ref={previewRef} style={{ display: 'inline-block' }}>
             {renderPageContent(page1Rows, true, 1)}
@@ -671,14 +699,20 @@ const rootStyles: Record<string, CSSProperties> = {
     overflowY: 'auto', padding: '0 4px 20px 0',
   },
   previewPane: {
-    flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
     backgroundColor: '#E5E7EB', borderRadius: 8,
-    overflow: 'auto', padding: 24,
+    overflow: 'auto', padding: 24, position: 'relative',
   },
   previewScroll: {
     display: 'inline-block',
     boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
     transformOrigin: 'top center',
+  },
+  overflowWarning: {
+    position: 'absolute' as const, top: 12, left: '50%', transform: 'translateX(-50%)',
+    zIndex: 10, backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #F59E0B',
+    borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600,
+    maxWidth: 420, textAlign: 'center' as const, boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   },
 };
 
