@@ -79,7 +79,7 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
       <div style={{ position: 'relative', zIndex: 2, padding: '40px 20px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Header */}
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.3em', color: 'var(--gold-deep)', textTransform: 'uppercase', textAlign: 'center' }}>
-          Le Diadème a parlé
+          Le Choixpeau a parlé
         </div>
         <Ornament variant="diamond" color="var(--gold-shadow)" width={160} />
 

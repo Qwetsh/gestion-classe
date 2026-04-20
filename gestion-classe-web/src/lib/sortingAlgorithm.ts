@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { HOUSES, type HouseId, fetchAssignments, saveAssignment } from './academyQueries';
 
 // ============================================================
-// Algorithme de répartition — Le Diadème des Affinités
+// Algorithme de répartition — Le Choixpeau Magique
 // 4 étapes : A (scores) → B (prioritaire) → C (compromis) → D (départage)
 // ============================================================
 

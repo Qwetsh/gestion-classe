@@ -127,14 +127,15 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh', background: fullBleed ? 'transparent' : 'var(--bg)' }}>
       {/* ---- Top nav ---- */}
       <header style={{
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
+        background: fullBleed ? 'oklch(0.08 0.01 50 / 0.85)' : 'var(--surface)',
+        borderBottom: fullBleed ? '1px solid oklch(0.35 0.04 60 / 0.3)' : '1px solid var(--border)',
         position: 'sticky',
         top: 0,
         zIndex: 50,
+        ...(fullBleed ? { backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' } : {}),
       }}>
         <div style={{
           maxWidth: 1400,
@@ -158,10 +159,10 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
               <text x="16" y="21" textAnchor="middle" fontFamily="var(--font-display)" fontSize="13" fontWeight="700" fill="#fff">GC</text>
             </svg>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, letterSpacing: '-0.01em', color: fullBleed ? 'oklch(0.85 0.04 60)' : 'var(--text)' }}>
                 Gestion Classe
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 11, color: fullBleed ? 'oklch(0.55 0.03 60)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                 T3 · 2025–2026
               </span>
             </div>
@@ -172,7 +173,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
             alignItems: 'center',
             gap: 2,
             justifySelf: 'center',
-            background: 'var(--surface-3)',
+            background: fullBleed ? 'oklch(0.15 0.02 50 / 0.6)' : 'var(--surface-3)',
             padding: 4,
             borderRadius: 10,
           }}>
@@ -189,10 +190,12 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
                     padding: '7px 12px',
                     borderRadius: 7,
                     fontSize: 13,
-                    color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                    color: fullBleed
+                      ? (isActive ? 'oklch(0.90 0.06 60)' : 'oklch(0.60 0.03 60)')
+                      : (isActive ? 'var(--text)' : 'var(--text-muted)'),
                     fontWeight: 500,
-                    background: isActive ? 'var(--surface)' : 'transparent',
-                    boxShadow: isActive ? 'var(--shadow-1)' : 'none',
+                    background: isActive ? (fullBleed ? 'oklch(0.20 0.03 50 / 0.8)' : 'var(--surface)') : 'transparent',
+                    boxShadow: isActive ? (fullBleed ? 'none' : 'var(--shadow-1)') : 'none',
                     textDecoration: 'none',
                     transition: 'all 0.12s ease',
                   }}
@@ -214,10 +217,12 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
                   padding: '7px 12px',
                   borderRadius: 7,
                   fontSize: 13,
-                  color: isSecondaryActive ? 'var(--text)' : 'var(--text-dim)',
+                  color: fullBleed
+                    ? (isSecondaryActive ? 'oklch(0.90 0.06 60)' : 'oklch(0.50 0.03 60)')
+                    : (isSecondaryActive ? 'var(--text)' : 'var(--text-dim)'),
                   fontWeight: 500,
-                  background: isSecondaryActive ? 'var(--surface)' : 'transparent',
-                  boxShadow: isSecondaryActive ? 'var(--shadow-1)' : 'none',
+                  background: isSecondaryActive ? (fullBleed ? 'oklch(0.20 0.03 50 / 0.8)' : 'var(--surface)') : 'transparent',
+                  boxShadow: isSecondaryActive ? (fullBleed ? 'none' : 'var(--shadow-1)') : 'none',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.12s ease',

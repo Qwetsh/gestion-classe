@@ -153,7 +153,7 @@ function IntroScreen({ onBegin, totalQuestions }: { onBegin: () => void; totalQu
         }} />
 
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.3em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>
-          Le Diadème des Affinités
+          Le Choixpeau Magique
         </div>
 
         <h1 style={{
@@ -170,7 +170,7 @@ function IntroScreen({ onBegin, totalQuestions }: { onBegin: () => void; totalQu
           fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 15,
           lineHeight: 1.5, marginTop: 10, color: 'var(--ink-warm)',
         }}>
-          Ce soir, le <em>Diadème</em> se posera sur ta pensée. Quatre voix
+          Ce soir, le <em>Choixpeau</em> se posera sur ta tête. Quatre voix
           s'élèveront ensuite — une seule reconnaîtra la tienne.
         </p>
         <p style={{
@@ -192,7 +192,7 @@ function IntroScreen({ onBegin, totalQuestions }: { onBegin: () => void; totalQu
           fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 18,
           cursor: 'pointer', letterSpacing: '0.04em', borderRadius: 1, width: '100%',
         }}>
-          Que le Diadème parle
+          Que le Choixpeau parle
         </button>
       </div>
 
@@ -390,7 +390,7 @@ function RankingScreen({ ranking, setRanking, onSubmit, onBack, total }: {
         textAlign: 'center', marginTop: 8, color: 'var(--parchment-dark)', lineHeight: 1.5,
       }}>
         De la plus désirée (en haut) à la moins désirée.
-        Le Diadème en tiendra compte — sans pour autant s'y plier.
+        Le Choixpeau en tiendra compte — sans pour autant s'y plier.
       </p>
 
       <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -434,7 +434,7 @@ function RankingScreen({ ranking, setRanking, onSubmit, onBack, total }: {
         fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 20,
         cursor: 'pointer',
       }}>
-        Remettre mon cœur au Diadème
+        Remettre mon cœur au Choixpeau
       </button>
     </div>
   );
@@ -486,7 +486,7 @@ function SubmittingScreen() {
         margin: '24px 0 8px', color: 'var(--parchment)',
         textShadow: '0 0 20px oklch(0 0 0 / 0.6)',
       }}>
-        Le Diadème réfléchit…
+        Le Choixpeau réfléchit…
       </h2>
       <p style={{
         fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 15,
@@ -531,7 +531,7 @@ function WaitingScreen({ error }: { error: string | null }) {
         fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 15,
         color: 'var(--parchment-dark)', maxWidth: 300, lineHeight: 1.55,
       }}>
-        Tes réponses sont parvenues au Diadème.<br />
+        Tes réponses sont parvenues au Choixpeau.<br />
         Ta Maison te sera révélée lors de la prochaine cérémonie,
         par la voix de ta professeur·e.
       </p>

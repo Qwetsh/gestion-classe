@@ -520,7 +520,7 @@ export function Academy() {
         )}
 
         {modal?.type === 'sorting' && sortingResult && (
-          <ModalShell title="Résultat de la répartition" subtitle="Le Diadème a parlé" onClose={() => setModal(null)} width={800}>
+          <ModalShell title="Résultat de la répartition" subtitle="Le Choixpeau a parlé" onClose={() => setModal(null)} width={800}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {HOUSE_LIST.map(h => {
                 const count = sortingResult.assignments.filter(a => a.house === h.id).length + sortingResult.overrides.filter(o => o.house === h.id).length;
@@ -750,7 +750,7 @@ function RawResponsesModal({ students, classId, onClose }: { students: { id: str
   const selected = responses.find(r => r.student.id === selectedId);
 
   return (
-    <ModalShell title="Réponses brutes au Diadème" subtitle="Archives" onClose={onClose} width={820}>
+    <ModalShell title="Réponses brutes au Choixpeau" subtitle="Archives" onClose={onClose} width={820}>
       <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 24 }}>
         <div style={{ maxHeight: 450, overflow: 'auto', borderRight: '1px solid oklch(0.60 0.05 70 / 0.4)', paddingRight: 12 }}>
           {responses.map(r => (

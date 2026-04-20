@@ -333,7 +333,7 @@ export function StudentDashboard() {
                   borderRadius: '12px',
                   border: `2px solid ${digit ? 'var(--indigo)' : 'var(--border)'}`,
                   background: 'var(--bg)',
-                  color: 'var(--bg)',
+                  color: 'var(--text)',
                   outline: 'none',
                   transition: 'border-color 0.2s',
                 }}

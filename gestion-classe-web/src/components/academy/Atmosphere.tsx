@@ -37,13 +37,13 @@ function Candle({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   return (
     <div style={{ position: 'relative', width: s.w, height: s.h + s.fh }}>
       <div style={{
-        position: 'absolute', left: '50%', bottom: s.h - 4, transform: 'translateX(-50%)',
+        position: 'absolute', left: '45%', bottom: s.h - 4, transform: 'translateX(-50%)',
         width: s.fw * 3, height: s.fh * 2,
         background: 'radial-gradient(ellipse, oklch(0.85 0.15 80 / 0.5) 0%, transparent 65%)',
         pointerEvents: 'none',
       }} />
       <div style={{
-        position: 'absolute', left: '50%', bottom: s.h - 2, transform: 'translateX(-50%)',
+        position: 'absolute', left: '45%', bottom: s.h - 2, transform: 'translateX(-50%)',
         width: s.fw, height: s.fh,
         background: 'radial-gradient(ellipse at 50% 80%, oklch(0.92 0.16 85) 0%, oklch(0.80 0.18 60) 45%, oklch(0.55 0.20 35) 85%, transparent 100%)',
         borderRadius: '50% 50% 40% 40% / 70% 70% 30% 30%',
