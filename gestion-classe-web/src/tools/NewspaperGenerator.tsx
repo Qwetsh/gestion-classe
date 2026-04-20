@@ -584,6 +584,7 @@ export default function NewspaperGenerator() {
       boxSizing: 'border-box',
       position: 'relative',
       overflow: 'hidden',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
       pageBreakAfter: config.pages === 2 && pageNum === 1 ? 'always' : undefined,
     };
 
@@ -781,15 +782,11 @@ export default function NewspaperGenerator() {
           </div>
         )}
 
-        <div style={rootStyles.previewScroll}>
-          <div ref={previewRef} style={{ display: 'inline-block' }}>
-            {renderPageContent(page1Rows, true, 1)}
-            {config.pages === 2 && page2Rows.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                {renderPageContent(page2Rows, false, 2)}
-              </div>
-            )}
-          </div>
+        <div ref={previewRef} style={config.pages === 2 ? rootStyles.previewTwoPages : rootStyles.previewOnePage}>
+          {renderPageContent(page1Rows, true, 1)}
+          {config.pages === 2 && page2Rows.length > 0 &&
+            renderPageContent(page2Rows, false, 2)
+          }
         </div>
       </div>
     </div>
@@ -809,12 +806,14 @@ const rootStyles: Record<string, CSSProperties> = {
   previewPane: {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
     backgroundColor: '#E5E7EB', borderRadius: 8,
-    overflow: 'auto', padding: 24, position: 'relative',
+    overflow: 'auto', padding: 16, position: 'relative',
   },
-  previewScroll: {
-    display: 'inline-block',
+  previewOnePage: {
     boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-    transformOrigin: 'top center',
+  },
+  previewTwoPages: {
+    display: 'flex', gap: 24, flexWrap: 'wrap' as const,
+    justifyContent: 'center',
   },
   overflowWarning: {
     position: 'absolute' as const, top: 12, left: '50%', transform: 'translateX(-50%)',
