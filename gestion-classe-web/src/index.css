@@ -1152,6 +1152,24 @@ textarea:focus-visible {
 }
 .dash__week-lesson-name { font-weight: 500; color: var(--text); }
 
+/* Timetable nav buttons */
+.dash__tt-nav {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: 16px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.dash__tt-nav:hover { background: var(--surface-2); border-color: var(--indigo); color: var(--indigo); }
+.dash__tt-nav:disabled { opacity: 0.4; cursor: not-allowed; }
+.dash__tt-nav--today {
+  width: auto; padding: 0 10px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--indigo);
+  border-color: var(--indigo); background: var(--indigo-soft);
+}
+.dash__tt-nav--today:hover { background: var(--indigo); color: white; }
+
 /* ---- Dashboard responsive ---- */
 @media (max-width: 900px) {
   .dash__hero-row { grid-template-columns: 1fr; }

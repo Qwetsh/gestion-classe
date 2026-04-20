@@ -170,7 +170,12 @@ export function Dashboard() {
   // Pronote state
   const [pronoteConnected, setPronoteConnected] = useState(false);
   const [pronoteLessons, setPronoteLessons] = useState<PronoteLesson[]>([]);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [ttLoading, setTtLoading] = useState(false);
   const pronoteAttempted = useRef(false);
+  const pronoteSessionRef = useRef<any>(null);
+  const pawnoteRef = useRef<any>(null);
+  const pronoteFirstDay = useRef<Date | null>(null);
 
   const classNames = classes.map(c => c.name);
 
@@ -196,10 +201,13 @@ export function Dashboard() {
         });
 
         savePronoteSession(refreshInfo, stored.deviceUUID);
+        pronoteSessionRef.current = sess;
+        pawnoteRef.current = pw;
 
         // Load current week timetable
         const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
         if (startDay) {
+          pronoteFirstDay.current = new Date(startDay);
           const weekStart = getMonday(new Date());
           const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
           const timetable = await pw.timetableFromWeek(sess, weekNum);
@@ -215,6 +223,29 @@ export function Dashboard() {
     })();
   }, []);
 
+  // ---- Load specific week ----
+
+  const loadWeek = async (offset: number) => {
+    const pw = pawnoteRef.current;
+    const sess = pronoteSessionRef.current;
+    const firstDay = pronoteFirstDay.current;
+    if (!pw || !sess || !firstDay) return;
+
+    setTtLoading(true);
+    try {
+      const targetMonday = getMonday(new Date());
+      targetMonday.setDate(targetMonday.getDate() + offset * 7);
+      const weekNum = pw.translateToWeekNumber(targetMonday, firstDay);
+      const timetable = await pw.timetableFromWeek(sess, weekNum);
+      setPronoteLessons(parseLessons(timetable));
+      setWeekOffset(offset);
+    } catch (err) {
+      console.error('Failed to load week:', err);
+    } finally {
+      setTtLoading(false);
+    }
+  };
+
   // ---- Compute Pronote-derived data ----
 
   const now = new Date();
@@ -226,10 +257,17 @@ export function Dashboard() {
     .filter(l => !l.canceled && l.startDate > now)
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0] || null;
 
-  // Today's lessons
-  const todayLessons = pronoteLessons
-    .filter(l => isSameDay(l.startDate, now))
-    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  // Viewed week's monday
+  const viewedMonday = getMonday(now);
+  viewedMonday.setDate(viewedMonday.getDate() + weekOffset * 7);
+  const isCurrentWeek = weekOffset === 0;
+
+  // Today's lessons (only relevant for current week)
+  const todayLessons = isCurrentWeek
+    ? pronoteLessons
+        .filter(l => isSameDay(l.startDate, now))
+        .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+    : [];
 
   // Tomorrow's lessons
   const tomorrowLessons = pronoteLessons
@@ -241,9 +279,8 @@ export function Dashboard() {
 
   // Week days for timetable (Mon-Fri)
   const weekDays: { date: Date; label: string; lessons: PronoteLesson[] }[] = [];
-  const monday = getMonday(now);
   for (let i = 0; i < 5; i++) {
-    const d = new Date(monday);
+    const d = new Date(viewedMonday);
     d.setDate(d.getDate() + i);
     weekDays.push({
       date: d,
@@ -662,17 +699,47 @@ export function Dashboard() {
                   <p className="dash__card-sub">
                     {!pronoteConnected
                       ? 'Pronote non connecté'
-                      : todayLessons.length > 0
+                      : isCurrentWeek && todayLessons.length > 0
                         ? `Aujourd'hui · ${todayLessons.length} cours`
-                        : `Semaine du ${getMonday(now).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}
+                        : `Semaine du ${viewedMonday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}
                   </p>
                 </div>
                 {pronoteConnected && (
-                  <Link to="/pronote" className="dash__card-link">Pronote →</Link>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      className="dash__tt-nav"
+                      onClick={() => loadWeek(weekOffset - 1)}
+                      disabled={ttLoading}
+                      title="Semaine précédente"
+                    >
+                      ‹
+                    </button>
+                    {!isCurrentWeek && (
+                      <button
+                        className="dash__tt-nav dash__tt-nav--today"
+                        onClick={() => loadWeek(0)}
+                        disabled={ttLoading}
+                      >
+                        Auj.
+                      </button>
+                    )}
+                    <button
+                      className="dash__tt-nav"
+                      onClick={() => loadWeek(weekOffset + 1)}
+                      disabled={ttLoading}
+                      title="Semaine suivante"
+                    >
+                      ›
+                    </button>
+                  </div>
                 )}
               </div>
 
-              {!pronoteConnected ? (
+              {ttLoading ? (
+                <div style={{ padding: '40px 22px', textAlign: 'center' }}>
+                  <div style={{ width: 24, height: 24, border: '3px solid var(--indigo)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+                </div>
+              ) : !pronoteConnected ? (
                 <div style={{ padding: '32px 22px', textAlign: 'center' }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
                   <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>
