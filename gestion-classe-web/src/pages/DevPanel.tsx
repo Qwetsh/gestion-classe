@@ -836,6 +836,8 @@ function PronoteTab() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Map<string, { data: any; loading: boolean; error: string | null; timestamp: Date | null }>>(new Map());
   const [expandedResult, setExpandedResult] = useState<string | null>(null);
+  const [sessionDump, setSessionDump] = useState<string | null>(null);
+  const [showSessionDump, setShowSessionDump] = useState(false);
   const sessRef = useRef<any>(null);
   const pwRef = useRef<any>(null);
 
@@ -882,7 +884,7 @@ function PronoteTab() {
       description: 'Vue d\'ensemble des notes + moyennes',
       run: async (pw, sess) => {
         const p = periods[selectedPeriod];
-        if (!p) throw new Error('Aucune période disponible');
+        if (!p) throw new Error(`Aucune période disponible (${periods.length} trouvées). Voir "Infos session" pour debug.`);
         return await pw.gradesOverview(sess, p);
       },
     },
@@ -891,7 +893,7 @@ function PronoteTab() {
       description: 'Bulletin détaillé avec matières et graphique',
       run: async (pw, sess) => {
         const p = periods[selectedPeriod];
-        if (!p) throw new Error('Aucune période disponible');
+        if (!p) throw new Error(`Aucune période disponible (${periods.length} trouvées). Voir "Infos session" pour debug.`);
         return await pw.gradebook(sess, p);
       },
     },
@@ -900,7 +902,7 @@ function PronoteTab() {
       description: 'Évaluations par compétences',
       run: async (pw, sess) => {
         const p = periods[selectedPeriod];
-        if (!p) throw new Error('Aucune période disponible');
+        if (!p) throw new Error(`Aucune période disponible (${periods.length} trouvées). Voir "Infos session" pour debug.`);
         return await pw.evaluations(sess, p);
       },
     },
@@ -932,7 +934,7 @@ function PronoteTab() {
       description: 'Absences, retards, observations, punitions',
       run: async (pw, sess) => {
         const p = periods[selectedPeriod];
-        if (!p) throw new Error('Aucune période disponible');
+        if (!p) throw new Error(`Aucune période disponible (${periods.length} trouvées). Voir "Infos session" pour debug.`);
         return await pw.notebook(sess, p);
       },
     },
@@ -1032,9 +1034,47 @@ function PronoteTab() {
       sessRef.current = sess;
       pwRef.current = pw;
 
-      // Extract periods (cast to any — pawnote types don't expose periods on teacher accounts)
-      const userPeriods = (sess.user as any)?.resources?.[0]?.periods || (sess.userResource as any)?.periods || (sess as any).periods || [];
-      setPeriods(userPeriods);
+      // Deep-search for periods in the session object
+      const s = sess as any;
+      let foundPeriods: any[] = [];
+
+      // Try all known paths
+      const paths = [
+        s.user?.resources?.[0]?.periods,
+        s.userResource?.periods,
+        s.periods,
+        s.user?.periods,
+        s.information?.periods,
+        s.instance?.periods,
+      ];
+      for (const p of paths) {
+        if (Array.isArray(p) && p.length > 0) { foundPeriods = p; break; }
+      }
+
+      // If still empty, walk the object to find any array named "periods"
+      if (foundPeriods.length === 0) {
+        const searchPeriods = (obj: any, depth = 0): any[] | null => {
+          if (depth > 4 || !obj || typeof obj !== 'object') return null;
+          if (Array.isArray(obj)) return null;
+          for (const key of Object.keys(obj)) {
+            if (key === 'periods' && Array.isArray(obj[key]) && obj[key].length > 0) return obj[key];
+            const found = searchPeriods(obj[key], depth + 1);
+            if (found) return found;
+          }
+          return null;
+        };
+        foundPeriods = searchPeriods(s) || [];
+      }
+
+      setPeriods(foundPeriods);
+      setSessionDump(JSON.stringify({
+        keys: Object.keys(s),
+        user_keys: s.user ? Object.keys(s.user) : null,
+        userResource_keys: s.userResource ? Object.keys(s.userResource) : null,
+        instance_keys: s.instance ? Object.keys(s.instance) : null,
+        periodsFound: foundPeriods.length,
+        periodsPreview: foundPeriods.slice(0, 3).map((p: any) => ({ name: p.name, id: p.id, kind: p.kind })),
+      }, null, 2));
 
       setConnected(true);
     } catch (err: any) {
@@ -1069,9 +1109,15 @@ function PronoteTab() {
       });
       setExpandedResult(ep.id);
     } catch (err: any) {
+      const errorDetail = [
+        err.message || 'Erreur inconnue',
+        err.code ? `Code: ${err.code}` : '',
+        err.name && err.name !== 'Error' ? `Type: ${err.name}` : '',
+        err.stack ? `\n--- Stack ---\n${err.stack}` : '',
+      ].filter(Boolean).join('\n');
       setResults(prev => {
         const next = new Map(prev);
-        next.set(ep.id, { data: null, loading: false, error: err.message || 'Erreur', timestamp: new Date() });
+        next.set(ep.id, { data: null, loading: false, error: errorDetail, timestamp: new Date() });
         return next;
       });
       setExpandedResult(ep.id);
@@ -1125,7 +1171,7 @@ function PronoteTab() {
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-500" />
             <span className="text-sm font-medium text-[var(--text)]">Pronote connecté</span>
-            {periods.length > 0 && (
+            {periods.length > 0 ? (
               <select
                 value={selectedPeriod}
                 onChange={e => setSelectedPeriod(Number(e.target.value))}
@@ -1136,16 +1182,46 @@ function PronoteTab() {
                   <option key={i} value={i}>{p.name || `Période ${i + 1}`}</option>
                 ))}
               </select>
+            ) : (
+              <span className="px-2 py-0.5 text-xs font-semibold text-[var(--warn)]" style={{ background: 'color-mix(in srgb, var(--warn) 10%, transparent)', borderRadius: 'var(--radius-md)' }}>
+                0 périodes trouvées
+              </span>
             )}
           </div>
-          <button
-            onClick={runAll}
-            className="px-4 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
-          >
-            Tout tester
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSessionDump(!showSessionDump)}
+              className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors"
+              style={{ borderRadius: 'var(--radius-md)' }}
+            >
+              {showSessionDump ? 'Masquer session' : 'Debug session'}
+            </button>
+            <button
+              onClick={runAll}
+              className="px-4 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
+            >
+              Tout tester
+            </button>
+          </div>
         </div>
+        {showSessionDump && sessionDump && (
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">Structure de la session Pronote</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(sessionDump)}
+                className="px-2 py-0.5 text-xs font-medium border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors"
+                style={{ borderRadius: 'var(--radius-md)' }}
+              >
+                Copier
+              </button>
+            </div>
+            <pre className="text-xs font-mono text-[var(--text)] whitespace-pre-wrap p-3 bg-[var(--surface-3)] overflow-auto max-h-64" style={{ borderRadius: 'var(--radius-md)' }}>
+              {sessionDump}
+            </pre>
+          </div>
+        )}
       </Card>
 
       {/* Endpoints by category */}
