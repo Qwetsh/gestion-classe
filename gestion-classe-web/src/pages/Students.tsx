@@ -8,7 +8,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import QRCode from 'qrcode';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
-import { ClassChip, Sparkline, TrendBadge, AvgRing, Token, Distribution, Indic, QuickMenu, Icon } from '../components/design-system';
+import { ClassChip, Sparkline, TrendBadge, AvgRing, Token, Distribution, Indic, Icon } from '../components/design-system';
 
 interface Student {
   id: string;
@@ -229,7 +229,6 @@ export function Students() {
   const [isLoadingGroupGrades, setIsLoadingGroupGrades] = useState(false);
 
   // Sidebar collapsed state for mobile
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Layout and filter state
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
@@ -1389,13 +1388,6 @@ export function Students() {
     if (grade >= 12) return 'bg-blue-100';
     if (grade >= 8) return 'bg-orange-100';
     return 'bg-red-100';
-  };
-
-  const getGradeBorderColor = (grade: number) => {
-    if (grade >= 16) return 'border-green-300';
-    if (grade >= 12) return 'border-blue-300';
-    if (grade >= 8) return 'border-orange-300';
-    return 'border-red-300';
   };
 
   const getEventTypeLabel = (type: string, subtype: string | null) => {

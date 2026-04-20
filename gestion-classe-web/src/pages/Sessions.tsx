@@ -528,7 +528,6 @@ export function Sessions() {
                 const groups: { date: string; sessions: Session[] }[] = [];
                 sessions.forEach(s => {
                   const d = new Date(s.started_at);
-                  const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
                   const dateKey = d.toDateString();
                   const last = groups[groups.length - 1];
                   if (last && last.date === dateKey) {
