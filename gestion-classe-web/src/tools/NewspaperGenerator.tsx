@@ -552,25 +552,17 @@ export default function NewspaperGenerator() {
     }
 
     const container = page1ContentRef.current;
-    const children = container.children;
-    const FOOTER_RESERVE = 30;
+    const FOOTER_RESERVE = 40;
     const maxHeight = PAGE_HEIGHT - FOOTER_RESERVE;
     let newSplit = layoutRows.length;
 
-    // Measure cumulative height of children (header + content rows)
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i] as HTMLElement;
-      const bottom = child.offsetTop + child.offsetHeight;
+    // Only measure content rows (elements with data-row-idx), skip header/footer
+    const rowElements = container.querySelectorAll('[data-row-idx]');
+    for (let i = 0; i < rowElements.length; i++) {
+      const el = rowElements[i] as HTMLElement;
+      const bottom = el.offsetTop + el.offsetHeight;
       if (bottom > maxHeight) {
-        // This child overflows — find which content row it corresponds to
-        // First child with data-row-idx that overflows
-        const rowIdx = child.getAttribute('data-row-idx');
-        if (rowIdx !== null) {
-          newSplit = parseInt(rowIdx);
-        } else {
-          // It's a header element, everything goes to page 2
-          newSplit = 0;
-        }
+        newSplit = parseInt(el.getAttribute('data-row-idx')!);
         break;
       }
     }
