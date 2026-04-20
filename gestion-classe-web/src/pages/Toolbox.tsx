@@ -87,7 +87,7 @@ function ToolView() {
         </div>
 
         {/* Tool content */}
-        <div className={tool.id === 'newspaper' ? '' : 'max-w-2xl'}>
+        <div className={needsWideLayout ? '' : 'max-w-2xl'}>
           <Suspense
             fallback={
               <div className="flex justify-center py-16">
