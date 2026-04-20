@@ -34,6 +34,7 @@ interface ImageBlock {
   src: string;
   caption: string;
   wide?: boolean; // span full width
+  fit?: 'cover' | 'contain'; // cover = crop, contain = show all
 }
 
 type Block = TextBlock | ImageBlock;
@@ -465,14 +466,24 @@ export default function NewspaperGenerator() {
                   value={(block as ImageBlock).caption}
                   onChange={e => updateBlock(block.id, { caption: e.target.value })}
                 />
-                <label style={editorStyles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={(block as ImageBlock).wide || false}
-                    onChange={e => updateBlock(block.id, { wide: e.target.checked })}
-                  />
-                  Pleine largeur
-                </label>
+                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                  <label style={editorStyles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={(block as ImageBlock).wide || false}
+                      onChange={e => updateBlock(block.id, { wide: e.target.checked })}
+                    />
+                    Pleine largeur
+                  </label>
+                  <label style={editorStyles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={(block as ImageBlock).fit === 'contain'}
+                      onChange={e => updateBlock(block.id, { fit: e.target.checked ? 'contain' : 'cover' })}
+                    />
+                    Ajuster (sans crop)
+                  </label>
+                </div>
               </>
             )}
           </div>
@@ -697,8 +708,11 @@ export default function NewspaperGenerator() {
                     paddingLeft: item.col > 0 ? 14 : 0,
                   }}>
                     <img src={ib.src} alt={ib.caption} style={{
-                      width: '100%', height: 'auto', display: 'block',
-                      objectFit: 'cover', maxHeight: ib.wide ? 280 : 200,
+                      width: '100%', display: 'block',
+                      objectFit: ib.fit || 'cover',
+                      ...(ib.fit === 'contain'
+                        ? { height: 'auto', maxHeight: ib.wide ? 320 : 240, backgroundColor: preset.colors.bg }
+                        : { height: ib.wide ? 280 : 200 }),
                     }} />
                     {ib.caption && (
                       <div style={{
