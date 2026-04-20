@@ -382,38 +382,52 @@ export function StudentDashboard() {
   const isInTop10Class = data.class_rank <= 10;
   const isInTop10Overall = data.overall_rank <= 10;
 
+  const isAcademyTab = activeTab === 'academy' && academyData?.enabled;
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)',
-      padding: '16px',
+      background: isAcademyTab ? 'transparent' : 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)',
+      padding: isAcademyTab ? 0 : '16px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      position: 'relative',
     }}>
-      <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+      <div style={{ maxWidth: isAcademyTab ? 'none' : '480px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '20px',
-          padding: '0 4px',
+          marginBottom: isAcademyTab ? 0 : '20px',
+          padding: isAcademyTab ? '10px 16px' : '0 4px',
+          ...(isAcademyTab ? {
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+            background: 'oklch(0.08 0.01 50 / 0.7)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          } : {}),
         }}>
           <div>
-            <h1 style={{ color: 'var(--bg)', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
+            <h1 style={{
+              color: isAcademyTab ? 'oklch(0.85 0.04 60)' : 'var(--bg)',
+              fontFamily: 'var(--font-display)', fontWeight: 400,
+              fontSize: isAcademyTab ? 20 : 40, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0,
+            }}>
               {data.pseudo}
             </h1>
+            {!isAcademyTab && (
             <p style={{ color: 'var(--text-dim)', fontSize: '13px', margin: '2px 0 0 0' }}>
               {data.class_name} · Trimestre {data.trimester} · {data.school_year}
             </p>
+            )}
           </div>
           <button
             onClick={handleLogout}
             style={{
               padding: '8px 14px',
               borderRadius: '8px',
-              border: '1px solid var(--border)',
+              border: isAcademyTab ? '1px solid oklch(0.35 0.04 60 / 0.4)' : '1px solid var(--border)',
               background: 'transparent',
-              color: 'var(--text-dim)',
+              color: isAcademyTab ? 'oklch(0.60 0.03 60)' : 'var(--text-dim)',
               fontSize: '13px',
               cursor: 'pointer',
             }}
@@ -426,73 +440,52 @@ export function StudentDashboard() {
         <div style={{
           display: 'flex',
           gap: '4px',
-          marginBottom: '16px',
-          background: 'var(--bg)',
-          borderRadius: '12px',
-          padding: '4px',
+          marginBottom: isAcademyTab ? 0 : '16px',
+          ...(isAcademyTab ? {
+            position: 'absolute' as const, bottom: 0, left: 0, right: 0, zIndex: 10,
+            background: 'oklch(0.08 0.01 50 / 0.75)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            borderRadius: 0, padding: '6px 12px',
+            paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
+          } : { background: 'var(--bg)', borderRadius: '12px', padding: '4px' }),
         }}>
-          <button
-            onClick={() => setActiveTab('grades')}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '10px',
-              border: 'none',
-              background: activeTab === 'grades' ? 'var(--indigo)' : 'transparent',
-              color: activeTab === 'grades' ? '#ffffff' : 'var(--text-dim)',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            📊 Notes
-          </button>
-          <button
-            onClick={() => setActiveTab('stamps')}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '10px',
-              border: 'none',
-              background: activeTab === 'stamps' ? 'var(--warn)' : 'transparent',
-              color: activeTab === 'stamps' ? '#ffffff' : 'var(--text-dim)',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            ⭐ Tampons
-          </button>
-          {academyData?.enabled && (
+          {[
+            { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: 'var(--indigo)' },
+            { key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: 'var(--warn)' },
+            ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: '#8B5CF6' }] : []),
+          ].map(tab => (
             <button
-              onClick={() => setActiveTab('academy')}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               style={{
                 flex: 1,
-                padding: '10px',
+                padding: isAcademyTab ? '8px' : '10px',
                 borderRadius: '10px',
                 border: 'none',
-                background: activeTab === 'academy' ? '#8B5CF6' : 'transparent',
-                color: activeTab === 'academy' ? '#ffffff' : 'var(--text-dim)',
-                fontSize: '14px',
+                background: activeTab === tab.key
+                  ? (isAcademyTab ? 'oklch(0.25 0.03 50 / 0.9)' : tab.activeColor)
+                  : 'transparent',
+                color: activeTab === tab.key
+                  ? (isAcademyTab ? 'oklch(0.90 0.06 60)' : '#ffffff')
+                  : (isAcademyTab ? 'oklch(0.55 0.03 60)' : 'var(--text-dim)'),
+                fontSize: isAcademyTab ? '12px' : '14px',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
             >
-              🏰 Maison
+              {tab.icon} {tab.label}
             </button>
-          )}
+          ))}
         </div>
 
         {activeTab === 'academy' && academyData?.enabled ? (
           academyData.house && academyData.classId ? (
-            <div style={{ borderRadius: '16px', overflow: 'hidden', minHeight: 500 }}>
+            <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <MyHouse houseId={academyData.house} classId={academyData.classId} />
             </div>
           ) : (
-            <div style={{ borderRadius: '16px', overflow: 'hidden', minHeight: 500 }}>
+            <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <AcademyQuiz
                 studentCode={currentCodeRef.current}
                 onComplete={() => {
