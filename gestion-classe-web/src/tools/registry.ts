@@ -74,6 +74,14 @@ export const tools: Tool[] = [
     component: lazy(() => import('./NewspaperGenerator')),
     tags: ['journal', 'une', 'article', 'presse', 'photo', 'mise en page', 'pdf', 'projet'],
   },
+  {
+    id: 'timeline',
+    name: 'Frise Chronologique',
+    description: 'Créer une frise chronologique avec événements, images et export PNG/PDF',
+    icon: '📅',
+    component: lazy(() => import('./TimelineGenerator')),
+    tags: ['frise', 'chronologie', 'histoire', 'dates', 'événements', 'timeline', 'pdf'],
+  },
 ];
 
 export function getToolById(id: string): Tool | undefined {
