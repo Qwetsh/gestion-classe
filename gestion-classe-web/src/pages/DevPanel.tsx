@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { pronoteFetcher } from '../lib/pronoteFetcher';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
 
-type Tab = 'feedbacks' | 'users' | 'devices' | 'stats' | 'errors' | 'announcements';
+type Tab = 'feedbacks' | 'users' | 'devices' | 'stats' | 'errors' | 'announcements' | 'pronote';
 
 interface Feedback {
   id: string;
@@ -76,6 +77,7 @@ export function DevPanel() {
     { key: 'stats', label: 'Stats DB', icon: '📊' },
     { key: 'errors', label: 'Erreurs', icon: '🐛' },
     { key: 'announcements', label: 'Annonces', icon: '📢' },
+    { key: 'pronote', label: 'Pronote API', icon: '🔌' },
   ];
 
   return (
@@ -114,6 +116,7 @@ export function DevPanel() {
         {tab === 'stats' && <StatsTab />}
         {tab === 'errors' && <ErrorsTab />}
         {tab === 'announcements' && <AnnouncementsTab />}
+        {tab === 'pronote' && <PronoteTab />}
       </div>
     </Layout>
   );
@@ -783,6 +786,459 @@ function AnnouncementsTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================
+// Pronote API Explorer Tab
+// ============================================
+
+const PRONOTE_STORAGE_KEY = 'pronote_session';
+
+interface StoredPronoteSession {
+  token: string;
+  username: string;
+  url: string;
+  kind: number;
+  deviceUUID: string;
+}
+
+function loadStoredPronoteSession(): StoredPronoteSession | null {
+  try {
+    const raw = localStorage.getItem(PRONOTE_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+interface PronoteEndpoint {
+  id: string;
+  label: string;
+  icon: string;
+  category: string;
+  description: string;
+  run: (pw: any, sess: any) => Promise<any>;
+}
+
+function getMonday(d: Date): Date {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function PronoteTab() {
+  const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<Map<string, { data: any; loading: boolean; error: string | null; timestamp: Date | null }>>(new Map());
+  const [expandedResult, setExpandedResult] = useState<string | null>(null);
+  const sessRef = useRef<any>(null);
+  const pwRef = useRef<any>(null);
+
+  // Available periods (filled after connection)
+  const [periods, setPeriods] = useState<any[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(0);
+
+  const endpoints: PronoteEndpoint[] = [
+    // Emploi du temps
+    {
+      id: 'timetable_week', label: 'Emploi du temps (semaine)', icon: '📅', category: 'Emploi du temps',
+      description: 'EDT de la semaine en cours',
+      run: async (pw, sess) => {
+        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+        const weekStart = getMonday(new Date());
+        const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
+        return await pw.timetableFromWeek(sess, weekNum);
+      },
+    },
+    {
+      id: 'timetable_next', label: 'EDT semaine prochaine', icon: '📅', category: 'Emploi du temps',
+      description: 'EDT de la semaine prochaine',
+      run: async (pw, sess) => {
+        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+        const nextMonday = getMonday(new Date());
+        nextMonday.setDate(nextMonday.getDate() + 7);
+        const weekNum = pw.translateToWeekNumber(nextMonday, new Date(startDay));
+        return await pw.timetableFromWeek(sess, weekNum);
+      },
+    },
+    {
+      id: 'frequency', label: 'Fréquence semaine', icon: '🔄', category: 'Emploi du temps',
+      description: 'Semaine A/B et infos de fréquence',
+      run: async (pw, sess) => {
+        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+        const weekStart = getMonday(new Date());
+        const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
+        return await pw.frequency(sess, weekNum);
+      },
+    },
+    // Notes
+    {
+      id: 'grades_overview', label: 'Notes (overview)', icon: '📊', category: 'Notes',
+      description: 'Vue d\'ensemble des notes + moyennes',
+      run: async (pw, sess) => {
+        const p = periods[selectedPeriod];
+        if (!p) throw new Error('Aucune période disponible');
+        return await pw.gradesOverview(sess, p);
+      },
+    },
+    {
+      id: 'gradebook', label: 'Bulletin (gradebook)', icon: '📋', category: 'Notes',
+      description: 'Bulletin détaillé avec matières et graphique',
+      run: async (pw, sess) => {
+        const p = periods[selectedPeriod];
+        if (!p) throw new Error('Aucune période disponible');
+        return await pw.gradebook(sess, p);
+      },
+    },
+    {
+      id: 'evaluations', label: 'Évaluations', icon: '✅', category: 'Notes',
+      description: 'Évaluations par compétences',
+      run: async (pw, sess) => {
+        const p = periods[selectedPeriod];
+        if (!p) throw new Error('Aucune période disponible');
+        return await pw.evaluations(sess, p);
+      },
+    },
+    // Devoirs
+    {
+      id: 'assignments_week', label: 'Devoirs (semaine)', icon: '📝', category: 'Devoirs',
+      description: 'Devoirs de la semaine en cours',
+      run: async (pw, sess) => {
+        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+        const weekStart = getMonday(new Date());
+        const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
+        return await pw.assignmentsFromWeek(sess, weekNum);
+      },
+    },
+    {
+      id: 'assignments_next', label: 'Devoirs (sem. prochaine)', icon: '📝', category: 'Devoirs',
+      description: 'Devoirs de la semaine prochaine',
+      run: async (pw, sess) => {
+        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+        const nextMonday = getMonday(new Date());
+        nextMonday.setDate(nextMonday.getDate() + 7);
+        const weekNum = pw.translateToWeekNumber(nextMonday, new Date(startDay));
+        return await pw.assignmentsFromWeek(sess, weekNum);
+      },
+    },
+    // Vie scolaire
+    {
+      id: 'notebook', label: 'Cahier de textes / Vie scolaire', icon: '📓', category: 'Vie scolaire',
+      description: 'Absences, retards, observations, punitions',
+      run: async (pw, sess) => {
+        const p = periods[selectedPeriod];
+        if (!p) throw new Error('Aucune période disponible');
+        return await pw.notebook(sess, p);
+      },
+    },
+    // Messagerie
+    {
+      id: 'discussions', label: 'Messagerie', icon: '💬', category: 'Messagerie',
+      description: 'Liste de toutes les discussions',
+      run: async (pw, sess) => {
+        return await pw.discussions(sess);
+      },
+    },
+    // Actualités
+    {
+      id: 'news', label: 'Actualités', icon: '📰', category: 'Actualités',
+      description: 'Annonces, sondages, informations',
+      run: async (pw, sess) => {
+        return await pw.news(sess);
+      },
+    },
+    // Ressources
+    {
+      id: 'resources_week', label: 'Ressources (semaine)', icon: '📁', category: 'Ressources',
+      description: 'Ressources pédagogiques de la semaine',
+      run: async (pw, sess) => {
+        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+        const weekStart = getMonday(new Date());
+        const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
+        return await pw.resourcesFromWeek(sess, weekNum);
+      },
+    },
+    // Homepage
+    {
+      id: 'homepage', label: 'Page d\'accueil Pronote', icon: '🏠', category: 'Divers',
+      description: 'Données du dashboard Pronote',
+      run: async (pw, sess) => {
+        return await pw.homepage(sess);
+      },
+    },
+    // Compte
+    {
+      id: 'account', label: 'Compte utilisateur', icon: '👤', category: 'Divers',
+      description: 'Infos profil (adresse, email, INE...)',
+      run: async (pw, sess) => {
+        return await pw.account(sess);
+      },
+    },
+    // Menus
+    {
+      id: 'menus', label: 'Menus cantine', icon: '🍽️', category: 'Divers',
+      description: 'Menus de la semaine avec allergènes',
+      run: async (pw, sess) => {
+        return await pw.menus(sess);
+      },
+    },
+    // Session info brute
+    {
+      id: 'session_info', label: 'Infos session (brut)', icon: '🔧', category: 'Debug',
+      description: 'Données brutes de la session Pronote',
+      run: async (_pw, sess) => {
+        return {
+          user: sess.user,
+          userResource: sess.userResource,
+          instance: sess.instance,
+          isReady: sess.isReady,
+        };
+      },
+    },
+  ];
+
+  // Connect to Pronote
+  const handleConnect = async () => {
+    setConnecting(true);
+    setError(null);
+    try {
+      const stored = loadStoredPronoteSession();
+      if (!stored) throw new Error('Aucune session Pronote sauvegardée. Connectez-vous d\'abord via l\'onglet Pronote.');
+
+      const pw = await import('pawnote');
+      const sess = pw.createSessionHandle(pronoteFetcher);
+      const refreshInfo = await pw.loginToken(sess, {
+        url: stored.url,
+        kind: stored.kind as typeof pw.AccountKind[keyof typeof pw.AccountKind],
+        username: stored.username,
+        token: stored.token,
+        deviceUUID: stored.deviceUUID,
+      });
+
+      // Save refreshed token
+      localStorage.setItem(PRONOTE_STORAGE_KEY, JSON.stringify({
+        token: refreshInfo.token,
+        username: refreshInfo.username,
+        url: refreshInfo.url,
+        kind: refreshInfo.kind,
+        deviceUUID: stored.deviceUUID,
+      }));
+
+      sessRef.current = sess;
+      pwRef.current = pw;
+
+      // Extract periods
+      const userPeriods = sess.user?.resources?.[0]?.periods || sess.userResource?.periods || [];
+      setPeriods(userPeriods);
+
+      setConnected(true);
+    } catch (err: any) {
+      setError(err.message || 'Erreur de connexion');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  // Run an endpoint
+  const runEndpoint = async (ep: PronoteEndpoint) => {
+    if (!pwRef.current || !sessRef.current) return;
+
+    setResults(prev => {
+      const next = new Map(prev);
+      next.set(ep.id, { data: null, loading: true, error: null, timestamp: null });
+      return next;
+    });
+
+    try {
+      const data = await ep.run(pwRef.current, sessRef.current);
+      // Deep serialize (dates, etc.)
+      const serialized = JSON.parse(JSON.stringify(data, (_key, value) => {
+        if (value instanceof Date) return value.toISOString();
+        if (typeof value === 'bigint') return value.toString();
+        return value;
+      }));
+      setResults(prev => {
+        const next = new Map(prev);
+        next.set(ep.id, { data: serialized, loading: false, error: null, timestamp: new Date() });
+        return next;
+      });
+      setExpandedResult(ep.id);
+    } catch (err: any) {
+      setResults(prev => {
+        const next = new Map(prev);
+        next.set(ep.id, { data: null, loading: false, error: err.message || 'Erreur', timestamp: new Date() });
+        return next;
+      });
+      setExpandedResult(ep.id);
+    }
+  };
+
+  // Run all endpoints
+  const runAll = async () => {
+    for (const ep of endpoints) {
+      await runEndpoint(ep);
+    }
+  };
+
+  // Group endpoints by category
+  const categories = [...new Set(endpoints.map(e => e.category))];
+
+  if (!connected) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔌</div>
+            <h3 className="font-semibold text-[var(--text)] mb-2" style={{ fontSize: 16 }}>
+              Explorateur API Pronote
+            </h3>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Testez chaque endpoint Pronote et visualisez les données brutes JSON.
+            </p>
+            {error && (
+              <p className="text-sm text-[var(--neg)] mb-4">{error}</p>
+            )}
+            <button
+              onClick={handleConnect}
+              disabled={connecting}
+              className="px-6 py-2.5 text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+            >
+              {connecting ? 'Connexion...' : 'Se connecter à Pronote'}
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Status bar */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-green-500" />
+            <span className="text-sm font-medium text-[var(--text)]">Pronote connecté</span>
+            {periods.length > 0 && (
+              <select
+                value={selectedPeriod}
+                onChange={e => setSelectedPeriod(Number(e.target.value))}
+                className="px-2 py-1 text-xs bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)]"
+                style={{ borderRadius: 'var(--radius-md)' }}
+              >
+                {periods.map((p: any, i: number) => (
+                  <option key={i} value={i}>{p.name || `Période ${i + 1}`}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <button
+            onClick={runAll}
+            className="px-4 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
+          >
+            Tout tester
+          </button>
+        </div>
+      </Card>
+
+      {/* Endpoints by category */}
+      {categories.map(cat => (
+        <div key={cat}>
+          <h3 className="text-sm font-semibold text-[var(--text-muted)] mb-2 uppercase tracking-wider">{cat}</h3>
+          <div className="space-y-2">
+            {endpoints.filter(e => e.category === cat).map(ep => {
+              const result = results.get(ep.id);
+              const isExpanded = expandedResult === ep.id;
+              const hasData = result && !result.loading && (result.data || result.error);
+              const dataSize = result?.data ? JSON.stringify(result.data).length : 0;
+
+              return (
+                <Card key={ep.id}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span style={{ fontSize: 18 }}>{ep.icon}</span>
+                      <div>
+                        <div className="text-sm font-medium text-[var(--text)]">{ep.label}</div>
+                        <div className="text-xs text-[var(--text-dim)]">{ep.description}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {result?.loading && (
+                        <div className="w-4 h-4 border-2 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+                      )}
+                      {result?.error && (
+                        <span className="px-2 py-0.5 text-xs font-semibold text-[var(--neg)] bg-[var(--neg-soft)]" style={{ borderRadius: 'var(--radius-md)' }}>
+                          Erreur
+                        </span>
+                      )}
+                      {result?.data && !result.loading && (
+                        <span className="px-2 py-0.5 text-xs font-semibold text-[var(--pos)]" style={{ background: 'color-mix(in srgb, var(--pos) 10%, transparent)', borderRadius: 'var(--radius-md)' }}>
+                          OK · {dataSize > 1024 ? `${(dataSize / 1024).toFixed(1)}KB` : `${dataSize}B`}
+                        </span>
+                      )}
+                      {hasData && (
+                        <button
+                          onClick={() => setExpandedResult(isExpanded ? null : ep.id)}
+                          className="px-2 py-1 text-xs font-medium border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors"
+                          style={{ borderRadius: 'var(--radius-md)' }}
+                        >
+                          {isExpanded ? 'Réduire' : 'Voir'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => runEndpoint(ep)}
+                        disabled={result?.loading}
+                        className="px-3 py-1 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                        style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
+                      >
+                        {result?.data ? 'Relancer' : 'Tester'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Result panel */}
+                  {isExpanded && hasData && (
+                    <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                      {result.error ? (
+                        <pre className="text-xs font-mono text-[var(--neg)] whitespace-pre-wrap p-3 bg-[var(--surface-3)] overflow-auto max-h-96" style={{ borderRadius: 'var(--radius-md)' }}>
+                          {result.error}
+                        </pre>
+                      ) : (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs text-[var(--text-dim)]">
+                              {result.timestamp?.toLocaleTimeString('fr-FR')}
+                            </span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(JSON.stringify(result.data, null, 2));
+                              }}
+                              className="px-2 py-0.5 text-xs font-medium border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors"
+                              style={{ borderRadius: 'var(--radius-md)' }}
+                            >
+                              Copier JSON
+                            </button>
+                          </div>
+                          <pre className="text-xs font-mono text-[var(--text)] whitespace-pre-wrap p-3 bg-[var(--surface-3)] overflow-auto max-h-96" style={{ borderRadius: 'var(--radius-md)' }}>
+                            {JSON.stringify(result.data, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
