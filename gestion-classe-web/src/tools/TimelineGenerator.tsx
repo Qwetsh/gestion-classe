@@ -498,8 +498,7 @@ export default function TimelineGenerator() {
             backgroundColor: preset.axisBg, borderRadius: 2,
           }} />
 
-          {sortedEvents.map((evt, idx) => {
-            const isLeft = idx % 2 === 0;
+          {sortedEvents.map((evt) => {
             return (
               <div key={evt.id} style={{
                 position: 'relative',
