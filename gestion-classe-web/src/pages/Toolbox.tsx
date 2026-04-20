@@ -60,7 +60,7 @@ function ToolView() {
 
   const Component = tool.component;
 
-  const needsWideLayout = tool.id === 'newspaper';
+  const needsWideLayout = tool.id === 'newspaper' || tool.id === 'starwars';
 
   return (
     <Layout fluid={needsWideLayout}>
