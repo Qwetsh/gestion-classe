@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, type CSSProperties } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, type CSSProperties } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -540,51 +540,48 @@ export default function NewspaperGenerator() {
   const totalCols = 3;
   const layoutRows = computeLayout(config.blocks, totalCols);
 
-  // Split rows between pages based on estimated height, not count
-  const HEADER_HEIGHT_EST = 180; // header + title + author + rules
-  const FOOTER_HEIGHT_EST = 30;
-  const PAGE_CONTENT_HEIGHT = PAGE_HEIGHT - FOOTER_HEIGHT_EST;
+  // DOM-based page split: measure actual rendered heights
+  const page1ContentRef = useRef<HTMLDivElement>(null);
+  const [splitIndex, setSplitIndex] = useState(layoutRows.length);
 
-  function estimateRowHeight(row: LayoutItem[]): number {
-    let maxH = 0;
-    for (const item of row) {
-      if (item.block.type === 'image') {
-        const ib = item.block as ImageBlock;
-        maxH = Math.max(maxH, (ib.wide ? 280 : 200) + 20); // image + caption + margin
-      } else {
-        const tb = item.block as TextBlock;
-        const charCount = tb.content.length;
-        const colWidth = (595 - 56 - (item.span - 1) * 16) / totalCols * item.span;
-        const charsPerLine = Math.floor(colWidth / 5.5); // ~5.5px per char at 10px font
-        const lines = Math.ceil(charCount / Math.max(charsPerLine, 1));
-        const textH = lines * 15.5 + (tb.subtitle ? 22 : 0) + 12; // lineHeight + subtitle + margin
-        maxH = Math.max(maxH, textH);
-      }
+  // Measure after render and calculate split point
+  useLayoutEffect(() => {
+    if (config.pages !== 2 || !page1ContentRef.current) {
+      setSplitIndex(layoutRows.length);
+      return;
     }
-    return maxH;
-  }
 
-  let page1Rows: LayoutItem[][] = layoutRows;
-  let page2Rows: LayoutItem[][] = [];
+    const container = page1ContentRef.current;
+    const children = container.children;
+    const FOOTER_RESERVE = 30;
+    const maxHeight = PAGE_HEIGHT - FOOTER_RESERVE;
+    let newSplit = layoutRows.length;
 
-  if (config.pages === 2) {
-    let usedHeight = HEADER_HEIGHT_EST;
-    let splitIdx = layoutRows.length; // default: everything on page 1
-
-    for (let i = 0; i < layoutRows.length; i++) {
-      const rowH = estimateRowHeight(layoutRows[i]);
-      if (usedHeight + rowH > PAGE_CONTENT_HEIGHT) {
-        splitIdx = i;
+    // Measure cumulative height of children (header + content rows)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i] as HTMLElement;
+      const bottom = child.offsetTop + child.offsetHeight;
+      if (bottom > maxHeight) {
+        // This child overflows — find which content row it corresponds to
+        // First child with data-row-idx that overflows
+        const rowIdx = child.getAttribute('data-row-idx');
+        if (rowIdx !== null) {
+          newSplit = parseInt(rowIdx);
+        } else {
+          // It's a header element, everything goes to page 2
+          newSplit = 0;
+        }
         break;
       }
-      usedHeight += rowH;
     }
 
-    page1Rows = layoutRows.slice(0, splitIdx);
-    page2Rows = layoutRows.slice(splitIdx);
-  }
+    setSplitIndex(newSplit);
+  }, [config, layoutRows.length]);
 
-  const renderPageContent = (rows: LayoutItem[][], showHeader: boolean, pageNum: number) => {
+  const page1Rows = config.pages === 2 ? layoutRows.slice(0, splitIndex) : layoutRows;
+  const page2Rows = config.pages === 2 ? layoutRows.slice(splitIndex) : [];
+
+  const renderPageContent = (rows: LayoutItem[][], showHeader: boolean, pageNum: number, contentRef?: React.RefObject<HTMLDivElement | null>) => {
     const pageStyle: CSSProperties = {
       width: 595,
       minHeight: 842,
@@ -599,7 +596,7 @@ export default function NewspaperGenerator() {
     };
 
     return (
-      <div style={pageStyle}>
+      <div style={pageStyle} ref={contentRef}>
         {/* Header */}
         {showHeader && (
           <>
@@ -691,7 +688,7 @@ export default function NewspaperGenerator() {
 
         {/* Content grid */}
         {rows.map((row, rowIdx) => (
-          <div key={rowIdx} style={{
+          <div key={rowIdx} data-row-idx={rowIdx} style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${totalCols}, 1fr)`,
             gap: '0 16px',
@@ -785,10 +782,17 @@ export default function NewspaperGenerator() {
             Le contenu dépasse le format A4. Le rendu exporté risque d'être coupé ou déformé. Réduisez le texte ou passez en 2 pages.
           </div>
         )}
+        {/* Hidden measurement render: all rows on page 1 to measure actual heights */}
+        {config.pages === 2 && (
+          <div style={{ position: 'absolute', left: -9999, top: 0, visibility: 'hidden', pointerEvents: 'none' }}>
+            {renderPageContent(layoutRows, true, 1, page1ContentRef)}
+          </div>
+        )}
+
         <div style={rootStyles.previewScroll}>
           <div ref={previewRef} style={{ display: 'inline-block' }}>
             {renderPageContent(page1Rows, true, 1)}
-            {config.pages === 2 && (
+            {config.pages === 2 && page2Rows.length > 0 && (
               <div style={{ marginTop: 24 }}>
                 {renderPageContent(page2Rows, false, 2)}
               </div>
