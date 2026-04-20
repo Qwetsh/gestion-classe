@@ -1096,10 +1096,17 @@ function PronoteTab() {
 
     try {
       const data = await ep.run(pwRef.current, sessRef.current);
-      // Deep serialize (dates, etc.)
-      const serialized = JSON.parse(JSON.stringify(data, (_key, value) => {
+      // Deep serialize with circular reference handling
+      const seen = new WeakSet();
+      const serialized = JSON.parse(JSON.stringify(data, (key, value) => {
         if (value instanceof Date) return value.toISOString();
         if (typeof value === 'bigint') return value.toString();
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) return '[Circular]';
+          seen.add(value);
+          // Skip internal cache/session objects
+          if (key === 'cache' || key === '_session' || key === 'handle') return '[Internal]';
+        }
         return value;
       }));
       setResults(prev => {
