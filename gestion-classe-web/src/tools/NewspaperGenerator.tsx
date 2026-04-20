@@ -2,6 +2,20 @@ import { useState, useRef, useCallback, useEffect, type CSSProperties } from 're
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
+// ─── Google Fonts loader ────────────────────────────────────
+
+const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Roboto+Slab:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap';
+
+let fontsLoaded = false;
+function loadGoogleFonts() {
+  if (fontsLoaded) return;
+  fontsLoaded = true;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = GOOGLE_FONTS_URL;
+  document.head.appendChild(link);
+}
+
 // ─── Types ──────────────────────────────────────────────────
 
 type NewspaperStyle = 'lemonde' | 'figaro' | 'moderne' | 'scientifique';
@@ -47,28 +61,44 @@ const STYLE_PRESETS: Record<NewspaperStyle, {
 }> = {
   lemonde: {
     label: 'Le Monde',
-    fonts: { title: 'Georgia, "Times New Roman", serif', body: 'Georgia, serif', accent: '"Arial Narrow", Arial, sans-serif' },
+    fonts: {
+      title: '"Libre Baskerville", Georgia, serif',        // Didone transitionnelle — fidèle au Monde
+      body: '"Libre Baskerville", Georgia, serif',
+      accent: '"Inter", "Arial Narrow", Arial, sans-serif',
+    },
     colors: { bg: '#FEFCF6', text: '#1a1a1a', accent: '#1a1a1a', rule: '#1a1a1a', headerBg: '#FEFCF6', headerText: '#1a1a1a' },
     uppercase: false,
     serifTitle: true,
   },
   figaro: {
     label: 'Le Figaro',
-    fonts: { title: '"Playfair Display", Georgia, serif', body: 'Georgia, serif', accent: 'Georgia, serif' },
+    fonts: {
+      title: '"Playfair Display", Georgia, serif',         // Didone élégante — fidèle au Figaro
+      body: '"Libre Baskerville", Georgia, serif',
+      accent: '"Playfair Display", Georgia, serif',
+    },
     colors: { bg: '#FDF8F0', text: '#222', accent: '#8B1A1A', rule: '#8B1A1A', headerBg: '#1B2A4A', headerText: '#F5E6C8' },
     uppercase: false,
     serifTitle: true,
   },
   moderne: {
     label: 'Moderne',
-    fonts: { title: '"Helvetica Neue", Helvetica, Arial, sans-serif', body: '"Helvetica Neue", Arial, sans-serif', accent: '"Helvetica Neue", Arial, sans-serif' },
+    fonts: {
+      title: '"Bebas Neue", "Impact", sans-serif',         // Style Wired / GQ — titres impact
+      body: '"Inter", "Helvetica Neue", Arial, sans-serif',
+      accent: '"Inter", "Helvetica Neue", Arial, sans-serif',
+    },
     colors: { bg: '#FFFFFF', text: '#111', accent: '#E63946', rule: '#E63946', headerBg: '#111', headerText: '#FFF' },
     uppercase: true,
     serifTitle: false,
   },
   scientifique: {
     label: 'Scientifique',
-    fonts: { title: '"Merriweather", Georgia, serif', body: '"Source Sans Pro", "Segoe UI", sans-serif', accent: '"Source Sans Pro", sans-serif' },
+    fonts: {
+      title: '"Roboto Slab", "Rockwell", serif',           // Style Nature / Science
+      body: '"Roboto", "Segoe UI", sans-serif',
+      accent: '"Roboto", "Segoe UI", sans-serif',
+    },
     colors: { bg: '#F8FBFF', text: '#1a2a3a', accent: '#0066CC', rule: '#0066CC', headerBg: '#0066CC', headerText: '#FFF' },
     uppercase: false,
     serifTitle: true,
@@ -167,6 +197,9 @@ export default function NewspaperGenerator() {
   const [isExporting, setIsExporting] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overflow, setOverflow] = useState(false);
+
+  // Load Google Fonts on mount
+  useEffect(() => { loadGoogleFonts(); }, []);
 
   const PAGE_HEIGHT = 842;
 
