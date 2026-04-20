@@ -504,10 +504,49 @@ export default function NewspaperGenerator() {
   const totalCols = 3;
   const layoutRows = computeLayout(config.blocks, totalCols);
 
-  // Split rows between pages
-  const midpoint = config.pages === 2 ? Math.ceil(layoutRows.length / 2) : layoutRows.length;
-  const page1Rows = layoutRows.slice(0, midpoint);
-  const page2Rows = config.pages === 2 ? layoutRows.slice(midpoint) : [];
+  // Split rows between pages based on estimated height, not count
+  const HEADER_HEIGHT_EST = 180; // header + title + author + rules
+  const FOOTER_HEIGHT_EST = 30;
+  const PAGE_CONTENT_HEIGHT = PAGE_HEIGHT - FOOTER_HEIGHT_EST;
+
+  function estimateRowHeight(row: LayoutItem[]): number {
+    let maxH = 0;
+    for (const item of row) {
+      if (item.block.type === 'image') {
+        const ib = item.block as ImageBlock;
+        maxH = Math.max(maxH, (ib.wide ? 280 : 200) + 20); // image + caption + margin
+      } else {
+        const tb = item.block as TextBlock;
+        const charCount = tb.content.length;
+        const colWidth = (595 - 56 - (item.span - 1) * 16) / totalCols * item.span;
+        const charsPerLine = Math.floor(colWidth / 5.5); // ~5.5px per char at 10px font
+        const lines = Math.ceil(charCount / Math.max(charsPerLine, 1));
+        const textH = lines * 15.5 + (tb.subtitle ? 22 : 0) + 12; // lineHeight + subtitle + margin
+        maxH = Math.max(maxH, textH);
+      }
+    }
+    return maxH;
+  }
+
+  let page1Rows: LayoutItem[][] = layoutRows;
+  let page2Rows: LayoutItem[][] = [];
+
+  if (config.pages === 2) {
+    let usedHeight = HEADER_HEIGHT_EST;
+    let splitIdx = layoutRows.length; // default: everything on page 1
+
+    for (let i = 0; i < layoutRows.length; i++) {
+      const rowH = estimateRowHeight(layoutRows[i]);
+      if (usedHeight + rowH > PAGE_CONTENT_HEIGHT) {
+        splitIdx = i;
+        break;
+      }
+      usedHeight += rowH;
+    }
+
+    page1Rows = layoutRows.slice(0, splitIdx);
+    page2Rows = layoutRows.slice(splitIdx);
+  }
 
   const renderPageContent = (rows: LayoutItem[][], showHeader: boolean, pageNum: number) => {
     const pageStyle: CSSProperties = {
