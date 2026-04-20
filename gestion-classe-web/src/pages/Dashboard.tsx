@@ -654,15 +654,44 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* Emploi du temps - Aujourd'hui */}
-            {pronoteConnected && todayLessons.length > 0 && (
-              <div className="dash__card">
-                <div className="dash__card-head">
-                  <div>
-                    <h2 className="dash__card-title">Emploi du temps</h2>
-                    <p className="dash__card-sub">Aujourd'hui · {todayLessons.length} cours</p>
-                  </div>
+            {/* Emploi du temps */}
+            <div className="dash__card">
+              <div className="dash__card-head">
+                <div>
+                  <h2 className="dash__card-title">Emploi du temps</h2>
+                  <p className="dash__card-sub">
+                    {!pronoteConnected
+                      ? 'Pronote non connecté'
+                      : todayLessons.length > 0
+                        ? `Aujourd'hui · ${todayLessons.length} cours`
+                        : `Semaine du ${getMonday(now).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}
+                  </p>
                 </div>
+                {pronoteConnected && (
+                  <Link to="/pronote" className="dash__card-link">Pronote →</Link>
+                )}
+              </div>
+
+              {!pronoteConnected ? (
+                <div style={{ padding: '32px 22px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>
+                    Connectez-vous à Pronote pour afficher votre emploi du temps ici.
+                  </p>
+                  <Link
+                    to="/pronote"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: 'linear-gradient(135deg, var(--indigo), var(--indigo-hover))',
+                      color: 'white', padding: '8px 20px', borderRadius: 'var(--radius-sm)',
+                      fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                  >
+                    Se connecter à Pronote
+                  </Link>
+                </div>
+              ) : todayLessons.length > 0 ? (
                 <div className="dash__timetable">
                   {todayLessons.map((lesson) => {
                     const color = getClassColor(lesson.groupNames[0] || '', classNames);
@@ -697,18 +726,7 @@ export function Dashboard() {
                     );
                   })}
                 </div>
-              </div>
-            )}
-
-            {/* Emploi du temps - Semaine */}
-            {pronoteConnected && pronoteLessons.length > 0 && todayLessons.length === 0 && (
-              <div className="dash__card">
-                <div className="dash__card-head">
-                  <div>
-                    <h2 className="dash__card-title">Emploi du temps</h2>
-                    <p className="dash__card-sub">Semaine du {monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</p>
-                  </div>
-                </div>
+              ) : pronoteLessons.length > 0 ? (
                 <div className="dash__week-tt">
                   {weekDays.map((day) => (
                     <div key={day.label} className={`dash__week-day ${isSameDay(day.date, now) ? 'dash__week-day--today' : ''}`}>
@@ -735,8 +753,12 @@ export function Dashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div style={{ padding: '32px 22px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                  Aucun cours cette semaine
+                </div>
+              )}
+            </div>
 
             {/* Séances récentes */}
             <div className="dash__card">
