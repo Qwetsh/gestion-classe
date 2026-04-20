@@ -1,72 +1,147 @@
 import type { HouseData } from './houses';
 
+// Gryffondor — Lion rampant (dressé sur pattes arrières)
 function SalamandreGlyph({ color = 'var(--gold-bright)' }: { color?: string }) {
   return (
     <g>
-      <path d="M0 -60 Q-8 -44 -4 -32 Q-12 -40 -14 -28 Q-20 -38 -18 -22 Q-26 -28 -22 -14 L22 -14 Q26 -28 18 -22 Q20 -38 14 -28 Q12 -40 4 -32 Q8 -44 0 -60 Z" fill={color} opacity="0.85" />
-      <path d="M-28 -6 Q-34 4 -26 12 Q-10 18 -4 6 Q2 -6 14 0 Q26 8 28 18 Q30 30 18 34 Q6 36 -2 30 Q-14 24 -22 30 Q-32 36 -34 26 Q-36 14 -28 -6 Z" fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
-      <circle cx="-18" cy="8" r="1.8" fill={color} />
-      <circle cx="-6" cy="18" r="1.8" fill={color} />
-      <circle cx="10" cy="22" r="1.8" fill={color} />
-      <circle cx="22" cy="26" r="1.8" fill={color} />
-      <circle cx="-26" cy="2" r="1.4" fill="var(--ink-void)" />
-      <path d="M28 30 Q38 36 40 46" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      {/* Crinière */}
+      <path d="M-8 -58 Q-18 -52 -20 -42 Q-24 -48 -22 -38 Q-28 -42 -26 -34 Q-30 -36 -28 -28 Q-24 -22 -16 -20 Q-8 -18 -2 -22 Q4 -26 6 -34 Q10 -42 8 -50 Q4 -56 -2 -58 Z" fill={color} opacity="0.7" />
+      {/* Tête */}
+      <path d="M-14 -38 Q-18 -32 -16 -26 Q-14 -20 -8 -18 Q-2 -16 4 -18 Q8 -20 8 -26 Q8 -32 4 -36 Q0 -40 -6 -40 Q-12 -40 -14 -38 Z" fill={color} />
+      {/* Oreilles */}
+      <path d="M-10 -42 L-14 -50 L-6 -44 Z" fill={color} />
+      <path d="M2 -40 L6 -48 L8 -38 Z" fill={color} />
+      {/* Oeil */}
+      <circle cx="-4" cy="-30" r="1.5" fill="var(--ink-void)" />
+      {/* Museau */}
+      <path d="M-8 -22 Q-4 -18 0 -20" fill="none" stroke={color} strokeWidth="1.2" />
+      {/* Corps dressé */}
+      <path d="M-6 -16 Q-10 -6 -12 6 Q-14 16 -10 26 Q-6 34 0 38" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      <path d="M4 -16 Q8 -4 10 8 Q12 18 8 28 Q4 34 0 38" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      {/* Ventre */}
+      <path d="M-10 0 Q-4 6 8 2" fill={color} opacity="0.4" />
+      {/* Patte avant gauche levée (griffes) */}
+      <path d="M-12 -4 Q-20 -8 -28 -14 Q-32 -16 -34 -12 L-30 -10 L-34 -8 L-30 -6 L-34 -4 L-28 -4 Q-22 -2 -14 0" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Patte avant droite levée */}
+      <path d="M10 0 Q18 -6 24 -10 Q28 -14 30 -10 L26 -8 L30 -6 L26 -4 L30 -2 L24 0 Q18 2 12 4" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Pattes arrière */}
+      <path d="M-6 34 Q-10 40 -14 46 Q-16 50 -12 50 L-6 46" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M4 34 Q8 40 12 46 Q14 50 10 50 L6 46" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      {/* Queue */}
+      <path d="M0 38 Q6 44 12 42 Q20 38 24 44 Q28 50 22 52 Q16 50 18 46" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      {/* Touffe queue */}
+      <path d="M18 46 Q14 50 18 54 Q22 56 24 52" fill={color} opacity="0.7" />
     </g>
   );
 }
 
+// Serpentard — Serpent en S
 function VouivreGlyph({ color = 'var(--gold-bright)' }: { color?: string }) {
   return (
     <g>
-      <path d="M-22 -58 Q-15 -48 -8 -58 Q0 -48 8 -58 Q15 -48 22 -58 L22 -46 L-22 -46 Z" fill={color} opacity="0.75" />
-      <path d="M0 -40 Q-22 -32 -22 -16 Q-22 0 -4 4 Q10 6 14 -4 Q16 -14 6 -16 Q-2 -14 -2 -6 Q0 2 10 4 Q24 6 28 -4 Q32 -20 22 -30 Q14 -36 4 -34" fill="none" stroke={color} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M-20 8 Q-30 20 -20 32 Q-4 40 14 34 Q28 28 26 14" fill="none" stroke={color} strokeWidth="2.3" strokeLinecap="round" />
-      <path d="M0 -44 L-6 -36 L6 -36 Z" fill={color} />
-      <circle cx="-2" cy="-40" r="0.9" fill="var(--ink-void)" />
-      <path d="M0 -36 L-3 -30 M0 -36 L3 -30" stroke={color} strokeWidth="1" fill="none" />
-      <circle cx="-30" cy="20" r="2" fill={color} opacity="0.7" />
-      <circle cx="32" cy="22" r="2" fill={color} opacity="0.7" />
+      {/* Corps principal en S sinueux */}
+      <path d="M0 -56 Q-4 -50 -2 -44 Q2 -38 8 -34 Q18 -26 20 -16 Q22 -6 14 2 Q6 10 -4 12 Q-16 14 -22 22 Q-28 30 -24 40 Q-20 48 -10 50 Q0 52 10 48 Q18 42 20 34" fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Tête triangulaire */}
+      <path d="M-4 -56 Q0 -64 4 -56 Q8 -52 6 -48 Q4 -44 0 -44 Q-4 -44 -6 -48 Q-8 -52 -4 -56 Z" fill={color} />
+      {/* Yeux */}
+      <circle cx="-2" cy="-52" r="1.2" fill="var(--ink-void)" />
+      <circle cx="3" cy="-52" r="1.2" fill="var(--ink-void)" />
+      {/* Langue fourchue */}
+      <path d="M0 -64 L-3 -70 M0 -64 L3 -70" stroke={color} strokeWidth="1" strokeLinecap="round" />
+      {/* Écailles décoratives */}
+      <path d="M12 -22 Q16 -20 14 -16" fill="none" stroke={color} strokeWidth="0.8" opacity="0.6" />
+      <path d="M-14 18 Q-18 20 -16 24" fill="none" stroke={color} strokeWidth="0.8" opacity="0.6" />
+      <path d="M-22 32 Q-26 34 -24 38" fill="none" stroke={color} strokeWidth="0.8" opacity="0.6" />
+      {/* Ventre (lignes) */}
+      <path d="M4 -36 L6 -34" stroke={color} strokeWidth="0.7" opacity="0.5" />
+      <path d="M16 -20 L18 -18" stroke={color} strokeWidth="0.7" opacity="0.5" />
+      <path d="M8 4 L10 6" stroke={color} strokeWidth="0.7" opacity="0.5" />
+      <path d="M-16 20 L-14 22" stroke={color} strokeWidth="0.7" opacity="0.5" />
+      <path d="M-18 36 L-16 38" stroke={color} strokeWidth="0.7" opacity="0.5" />
+      {/* Queue effilée */}
+      <path d="M20 34 Q24 28 26 22 Q28 16 26 14" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M26 14 Q24 12 26 10 Q28 8 30 10" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
     </g>
   );
 }
 
+// Serdaigle — Aigle aux ailes déployées
 function ZephyrGlyph({ color = 'var(--gold-bright)' }: { color?: string }) {
   return (
     <g>
-      <path d="M0 -20 Q-40 -30 -54 -8 Q-48 -16 -38 -14 Q-44 -6 -36 0 Q-30 -6 -22 -4 Q-28 4 -18 8 Q-10 0 -4 0 L0 -2 Z" fill={color} opacity="0.9" />
-      <path d="M0 -20 Q40 -30 54 -8 Q48 -16 38 -14 Q44 -6 36 0 Q30 -6 22 -4 Q28 4 18 8 Q10 0 4 0 L0 -2 Z" fill={color} opacity="0.9" />
-      <path d="M-12 -12 Q-22 -12 -32 -8" stroke={color} strokeWidth="0.7" fill="none" opacity="0.5" />
-      <path d="M12 -12 Q22 -12 32 -8" stroke={color} strokeWidth="0.7" fill="none" opacity="0.5" />
-      <ellipse cx="0" cy="6" rx="6" ry="14" fill={color} />
-      <path d="M0 -8 Q-4 -14 0 -20 Q4 -14 0 -8" fill={color} />
-      <path d="M0 -20 L-2 -24 L2 -24 Z" fill={color} />
-      <circle cx="0" cy="-16" r="1" fill="var(--ink-void)" />
-      <path d="M-6 18 L0 34 L6 18 Z" fill={color} />
-      <path d="M-34 30 Q-24 24 -14 30 Q-4 36 6 30" fill="none" stroke={color} strokeWidth="1.2" opacity="0.7" />
-      <path d="M6 40 Q16 34 26 40" fill="none" stroke={color} strokeWidth="1" opacity="0.6" />
+      {/* Aile gauche */}
+      <path d="M-6 -10 Q-16 -18 -28 -26 Q-36 -30 -44 -28 Q-50 -26 -52 -20 Q-54 -14 -48 -10 Q-42 -6 -34 -8 Q-28 -10 -22 -6 Q-16 -2 -10 -4 Z" fill={color} opacity="0.85" />
+      {/* Plumes aile gauche */}
+      <path d="M-28 -26 Q-34 -22 -38 -16" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      <path d="M-36 -28 Q-42 -22 -46 -16" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      <path d="M-44 -26 Q-48 -20 -50 -14" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      {/* Aile droite */}
+      <path d="M6 -10 Q16 -18 28 -26 Q36 -30 44 -28 Q50 -26 52 -20 Q54 -14 48 -10 Q42 -6 34 -8 Q28 -10 22 -6 Q16 -2 10 -4 Z" fill={color} opacity="0.85" />
+      {/* Plumes aile droite */}
+      <path d="M28 -26 Q34 -22 38 -16" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      <path d="M36 -28 Q42 -22 46 -16" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      <path d="M44 -26 Q48 -20 50 -14" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      {/* Corps */}
+      <ellipse cx="0" cy="8" rx="8" ry="18" fill={color} opacity="0.8" />
+      {/* Tête */}
+      <circle cx="0" cy="-18" r="9" fill={color} />
+      {/* Yeux */}
+      <circle cx="-3" cy="-20" r="1.8" fill="var(--ink-void)" />
+      <circle cx="3" cy="-20" r="1.8" fill="var(--ink-void)" />
+      {/* Reflets yeux */}
+      <circle cx="-2.5" cy="-20.5" r="0.6" fill={color} />
+      <circle cx="3.5" cy="-20.5" r="0.6" fill={color} />
+      {/* Bec crochu */}
+      <path d="M-2 -14 L0 -10 L2 -14 Q1 -12 0 -8 Q-1 -12 -2 -14 Z" fill={color} />
+      <path d="M0 -8 L0 -6" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      {/* Sourcils (expression fière) */}
+      <path d="M-6 -24 Q-3 -25 -1 -23" fill="none" stroke="var(--ink-void)" strokeWidth="0.8" />
+      <path d="M6 -24 Q3 -25 1 -23" fill="none" stroke="var(--ink-void)" strokeWidth="0.8" />
+      {/* Queue */}
+      <path d="M-4 26 L-8 40 M0 26 L0 42 M4 26 L8 40" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      {/* Serres */}
+      <path d="M-6 24 Q-10 30 -12 34 L-14 32 L-12 36 L-10 34" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 24 Q10 30 12 34 L14 32 L12 36 L10 34" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
     </g>
   );
 }
 
+// Poufsouffle — Blaireau
 function TaissonGlyph({ color = 'var(--gold-bright)' }: { color?: string }) {
   return (
     <g>
-      <path d="M-26 -52 L-14 -38 L-4 -50 L6 -38 L18 -52 L26 -40 L-30 -40 Z" fill={color} opacity="0.75" />
-      <ellipse cx="0" cy="6" rx="28" ry="18" fill="none" stroke={color} strokeWidth="2.3" />
-      <path d="M-6 -28 L-6 -8 M6 -28 L6 -8" stroke={color} strokeWidth="1.8" />
-      <ellipse cx="0" cy="-18" rx="12" ry="10" fill="none" stroke={color} strokeWidth="2.3" />
-      <path d="M-4 -10 L0 -6 L4 -10 Z" fill={color} />
-      <circle cx="-4" cy="-20" r="1.5" fill={color} />
-      <circle cx="4" cy="-20" r="1.5" fill={color} />
-      <path d="M-10 -26 L-8 -30 L-6 -26 Z" fill={color} />
-      <path d="M6 -26 L8 -30 L10 -26 Z" fill={color} />
-      <g stroke={color} strokeWidth="1" fill="none">
-        <path d="M-36 10 L-40 30" />
-        <path d="M-36 14 L-42 18 M-36 18 L-42 22 M-36 22 L-42 26" />
-        <path d="M36 10 L40 30" />
-        <path d="M36 14 L42 18 M36 18 L42 22 M36 22 L42 26" />
-      </g>
-      <path d="M-30 26 L30 26" stroke={color} strokeWidth="1.2" opacity="0.6" />
+      {/* Corps trapu */}
+      <ellipse cx="0" cy="10" rx="30" ry="20" fill={color} opacity="0.7" />
+      {/* Tête */}
+      <ellipse cx="0" cy="-20" rx="16" ry="14" fill={color} />
+      {/* Bandes caractéristiques du blaireau (face) */}
+      <path d="M-8 -30 Q-8 -20 -8 -10" fill="none" stroke="var(--ink-void)" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M8 -30 Q8 -20 8 -10" fill="none" stroke="var(--ink-void)" strokeWidth="3.5" strokeLinecap="round" />
+      {/* Bande blanche centrale */}
+      <path d="M0 -34 Q0 -24 0 -12" fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" />
+      {/* Oreilles */}
+      <ellipse cx="-12" cy="-32" rx="4" ry="5" fill={color} />
+      <ellipse cx="12" cy="-32" rx="4" ry="5" fill={color} />
+      {/* Yeux */}
+      <circle cx="-5" cy="-22" r="2" fill="var(--ink-void)" />
+      <circle cx="5" cy="-22" r="2" fill="var(--ink-void)" />
+      {/* Reflets */}
+      <circle cx="-4.5" cy="-22.5" r="0.7" fill={color} />
+      <circle cx="5.5" cy="-22.5" r="0.7" fill={color} />
+      {/* Museau/nez */}
+      <ellipse cx="0" cy="-14" rx="4" ry="3" fill={color} opacity="0.9" />
+      <ellipse cx="0" cy="-13" rx="2.5" ry="1.8" fill="var(--ink-void)" opacity="0.8" />
+      {/* Pattes avant */}
+      <path d="M-18 24 Q-20 32 -22 38 Q-24 42 -20 42 Q-16 42 -16 38 Q-16 34 -14 30" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      <path d="M18 24 Q20 32 22 38 Q24 42 20 42 Q16 42 16 38 Q16 34 14 30" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      {/* Griffes */}
+      <path d="M-22 42 L-24 46 M-20 42 L-20 46 M-18 42 L-16 46" stroke={color} strokeWidth="1" strokeLinecap="round" />
+      <path d="M22 42 L24 46 M20 42 L20 46 M18 42 L16 46" stroke={color} strokeWidth="1" strokeLinecap="round" />
+      {/* Pattes arrière (juste visibles) */}
+      <path d="M-24 18 Q-30 22 -32 28" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M24 18 Q30 22 32 28" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      {/* Queue courte */}
+      <path d="M0 30 Q4 36 2 40 Q-2 42 -4 38" fill={color} opacity="0.6" />
     </g>
   );
 }
@@ -109,7 +184,7 @@ export function HouseCrest({ house, size = 140, ornate = true, glow = false }: {
         )}
         <path d="M40 40 L160 40 L160 140 Q160 200 100 230 Q40 200 40 140 Z" fill={`url(#${gradId})`} stroke="var(--gold)" strokeWidth="2.5" />
         <path d="M48 48 L152 48 L152 138 Q152 194 100 220 Q48 194 48 138 Z" fill="none" stroke="var(--gold-deep)" strokeWidth="0.7" opacity="0.7" />
-        <g transform="translate(100, 130)">
+        <g transform="translate(100, 135)">
           <Glyph color="var(--gold-bright)" />
         </g>
         <path d="M40 40 L160 40 L160 60 L40 60 Z" fill={house.c2} opacity="0.22" />
