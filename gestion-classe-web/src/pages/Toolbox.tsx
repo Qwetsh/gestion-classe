@@ -60,8 +60,10 @@ function ToolView() {
 
   const Component = tool.component;
 
+  const needsWideLayout = tool.id === 'newspaper';
+
   return (
-    <Layout>
+    <Layout fluid={needsWideLayout}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -85,7 +87,7 @@ function ToolView() {
         </div>
 
         {/* Tool content */}
-        <div className="max-w-2xl">
+        <div className={tool.id === 'newspaper' ? '' : 'max-w-2xl'}>
           <Suspense
             fallback={
               <div className="flex justify-center py-16">

@@ -659,13 +659,14 @@ const rootStyles: Record<string, CSSProperties> = {
     overflowY: 'auto', padding: '0 4px 20px 0',
   },
   previewPane: {
-    flex: 1, display: 'flex', justifyContent: 'center',
+    flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
     backgroundColor: '#E5E7EB', borderRadius: 8,
     overflow: 'auto', padding: 24,
   },
   previewScroll: {
     display: 'inline-block',
     boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+    transformOrigin: 'top center',
   },
 };
 
