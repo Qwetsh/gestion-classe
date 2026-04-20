@@ -11,6 +11,7 @@ interface TextBlock {
   id: string;
   content: string;
   subtitle?: string;
+  wide?: boolean;
 }
 
 interface ImageBlock {
@@ -104,8 +105,11 @@ function computeLayout(blocks: Block[], totalCols: number): LayoutItem[][] {
   for (const block of blocks) {
     let span = 1;
 
-    if (block.type === 'image' && (block as ImageBlock).wide) {
-      // Wide image: full width, own row
+    const isWide = (block.type === 'image' && (block as ImageBlock).wide) ||
+                   (block.type === 'text' && (block as TextBlock).wide);
+
+    if (isWide) {
+      // Wide block: full width, own row
       if (currentRow.length > 0) {
         rows.push(currentRow);
         currentRow = [];
@@ -385,6 +389,14 @@ export default function NewspaperGenerator() {
                   onChange={e => updateBlock(block.id, { content: e.target.value })}
                   rows={3}
                 />
+                <label style={editorStyles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={(block as TextBlock).wide || false}
+                    onChange={e => updateBlock(block.id, { wide: e.target.checked })}
+                  />
+                  Pleine largeur
+                </label>
               </>
             ) : (
               <>
