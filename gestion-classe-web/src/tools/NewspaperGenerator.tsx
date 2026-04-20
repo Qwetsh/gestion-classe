@@ -621,10 +621,10 @@ export default function NewspaperGenerator() {
             <div style={{
               textAlign: 'center', padding: '12px 0 4px',
               fontFamily: preset.fonts.title,
-              fontSize: preset.serifTitle ? 38 : 32,
-              fontWeight: preset.serifTitle ? 400 : 800,
+              fontSize: config.style === 'moderne' ? 42 : 44,
+              fontWeight: config.style === 'lemonde' ? 700 : (preset.serifTitle ? 500 : 800),
               fontStyle: preset.serifTitle ? 'italic' : 'normal',
-              letterSpacing: preset.uppercase ? '0.08em' : '0.01em',
+              letterSpacing: preset.uppercase ? '0.08em' : (config.style === 'lemonde' ? '0.02em' : '0.01em'),
               textTransform: preset.uppercase ? 'uppercase' : 'none',
               color: preset.colors.accent,
               lineHeight: 1.1,
