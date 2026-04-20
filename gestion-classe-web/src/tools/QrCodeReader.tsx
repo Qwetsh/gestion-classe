@@ -129,12 +129,12 @@ export default function QrCodeReader() {
         <div className="flex flex-col gap-3">
           <button
             onClick={startCamera}
-            className="w-full py-3 rounded-xl bg-[var(--color-primary)] text-white font-medium hover:opacity-90 transition-opacity"
+            className="w-full py-3 rounded-xl bg-[var(--indigo)] text-white font-medium hover:opacity-90 transition-opacity"
           >
             Scanner avec la camera
           </button>
 
-          <label className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium text-center cursor-pointer hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors">
+          <label className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-[var(--text-muted)] font-medium text-center cursor-pointer hover:border-[var(--indigo)] hover:text-[var(--indigo)] transition-colors">
             Ou importer une image
             <input
               type="file"
@@ -148,7 +148,7 @@ export default function QrCodeReader() {
 
       {/* Error */}
       {error && (
-        <div className="p-3 rounded-xl bg-[var(--color-error-soft)] text-[var(--color-error)] text-sm">
+        <div className="p-3 rounded-xl bg-[var(--neg-soft)] text-[var(--neg)] text-sm">
           {error}
         </div>
       )}
@@ -156,22 +156,22 @@ export default function QrCodeReader() {
       {/* Result */}
       {result && (
         <div className="space-y-3">
-          <div className="p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)]">
-            <p className="text-xs font-medium text-[var(--color-text-tertiary)] mb-2 uppercase tracking-wide">Resultat</p>
-            <p className="text-[var(--color-text)] break-all font-mono text-sm whitespace-pre-wrap">
+          <div className="p-4 rounded-xl bg-[var(--surface-3)] border border-[var(--border)]">
+            <p className="text-xs font-medium text-[var(--text-dim)] mb-2 uppercase tracking-wide">Resultat</p>
+            <p className="text-[var(--text)] break-all font-mono text-sm whitespace-pre-wrap">
               {result}
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={copyToClipboard}
-              className="flex-1 py-2.5 rounded-xl bg-[var(--color-primary)] text-white font-medium hover:opacity-90 transition-opacity text-sm"
+              className="flex-1 py-2.5 rounded-xl bg-[var(--indigo)] text-white font-medium hover:opacity-90 transition-opacity text-sm"
             >
               Copier
             </button>
             <button
               onClick={() => { setResult(null); startCamera(); }}
-              className="flex-1 py-2.5 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-sm"
+              className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[var(--text-muted)] font-medium hover:bg-[var(--surface-2)] transition-colors text-sm"
             >
               Scanner un autre
             </button>

@@ -82,8 +82,8 @@ export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, on
           : isOut
             ? 'var(--color-sortie-soft)'
             : hasEvents
-              ? 'var(--color-surface)'
-              : 'var(--color-surface-secondary)',
+              ? 'var(--surface)'
+              : 'var(--surface-3)',
         borderRadius: 'var(--radius-md)',
         boxShadow: hasEvents ? 'var(--shadow-xs)' : undefined,
         border: isOut ? '2px solid var(--color-sortie)' : 'none',
@@ -95,9 +95,9 @@ export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, on
       {/* Pseudo */}
       <span
         className={`text-[11px] font-semibold leading-tight ${
-          isAbsent ? 'line-through text-[var(--color-text-tertiary)]' :
+          isAbsent ? 'line-through text-[var(--text-dim)]' :
           isOut ? 'text-[var(--color-sortie)]' :
-          'text-[var(--color-text)]'
+          'text-[var(--text)]'
         }`}
       >
         {truncate(pseudo, 7)}

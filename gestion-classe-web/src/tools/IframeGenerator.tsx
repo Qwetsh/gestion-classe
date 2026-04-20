@@ -43,7 +43,7 @@ export default function IframeGenerator() {
     <div className="space-y-6">
       {/* URL */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
           Lien à intégrer
         </label>
         <input
@@ -51,7 +51,7 @@ export default function IframeGenerator() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://exemple.com"
-          className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+          className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-lg focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
           autoFocus
         />
       </div>
@@ -60,7 +60,7 @@ export default function IframeGenerator() {
       <div className="flex flex-wrap gap-4 items-end">
         {/* Ratio */}
         <div>
-          <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Ratio</label>
+          <label className="block text-xs font-medium text-[var(--text-dim)] mb-1">Ratio</label>
           <div className="flex gap-1">
             {RATIOS.map((r, i) => (
               <button
@@ -69,7 +69,7 @@ export default function IframeGenerator() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   ratioIdx === i
                     ? 'text-white'
-                    : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] hover:bg-[var(--color-border)]'
+                    : 'text-[var(--text-muted)] bg-[var(--surface-3)] hover:bg-[var(--border)]'
                 }`}
                 style={ratioIdx === i ? { background: 'var(--gradient-primary)' } : undefined}
               >
@@ -82,7 +82,7 @@ export default function IframeGenerator() {
         {/* Height (only for "Plein") */}
         {ratio.w === 0 && (
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">
+            <label className="block text-xs font-medium text-[var(--text-dim)] mb-1">
               Hauteur (px)
             </label>
             <input
@@ -92,13 +92,13 @@ export default function IframeGenerator() {
               min={100}
               max={2000}
               step={50}
-              className="w-24 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)]"
+              className="w-24 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text)]"
             />
           </div>
         )}
 
         {/* Toggles */}
-        <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
           <input
             type="checkbox"
             checked={borderless}
@@ -107,7 +107,7 @@ export default function IframeGenerator() {
           />
           Sans bordure
         </label>
-        <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
           <input
             type="checkbox"
             checked={allowFullscreen}
@@ -122,15 +122,15 @@ export default function IframeGenerator() {
       {iframeCode && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium text-[var(--color-text-tertiary)]">Code HTML</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">Code HTML</label>
             <button
               onClick={copy}
-              className="px-3 py-1 rounded-lg text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary)] hover:text-white transition-all"
+              className="px-3 py-1 rounded-lg text-xs font-medium text-[var(--indigo)] bg-[var(--indigo-soft)] hover:bg-[var(--indigo)] hover:text-white transition-all"
             >
               {copied ? 'Copié !' : 'Copier'}
             </button>
           </div>
-          <pre className="p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-sm text-[var(--color-text)] overflow-x-auto whitespace-pre-wrap break-all select-all">
+          <pre className="p-4 rounded-xl bg-[var(--surface-3)] border border-[var(--border)] text-sm text-[var(--text)] overflow-x-auto whitespace-pre-wrap break-all select-all">
             {iframeCode}
           </pre>
         </div>
@@ -139,9 +139,9 @@ export default function IframeGenerator() {
       {/* Live preview */}
       {previewUrl && (
         <div>
-          <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Aperçu</label>
+          <label className="block text-xs font-medium text-[var(--text-dim)] mb-2">Aperçu</label>
           <div
-            className="rounded-2xl overflow-hidden border border-[var(--color-border)]"
+            className="rounded-2xl overflow-hidden border border-[var(--border)]"
             style={{ boxShadow: 'var(--shadow-md)' }}
           >
             <iframe

@@ -426,8 +426,8 @@ export function SessionDetail() {
       <Layout>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[var(--color-text-secondary)]">Chargement...</span>
+            <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-[var(--text-muted)]">Chargement...</span>
           </div>
         </div>
       </Layout>
@@ -439,18 +439,18 @@ export function SessionDetail() {
       <Layout>
         <div className="text-center py-12">
           <div
-            className="w-20 h-20 mx-auto mb-4 bg-[var(--color-surface-secondary)] flex items-center justify-center"
+            className="w-20 h-20 mx-auto mb-4 bg-[var(--surface-3)] flex items-center justify-center"
             style={{ borderRadius: 'var(--radius-full)' }}
           >
             <span className="text-4xl">🔍</span>
           </div>
-          <h2 className="text-lg font-medium text-[var(--color-text)]">
+          <h2 className="text-lg font-medium text-[var(--text)]">
             Seance non trouvee
           </h2>
           <Link
             to="/sessions"
-            className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-[var(--indigo)] hover:bg-[var(--indigo-soft)] transition-colors"
+            style={{ borderRadius: 'var(--radius)' }}
           >
             ← Retour aux seances
           </Link>
@@ -464,35 +464,35 @@ export function SessionDetail() {
       <div className="space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
-          <Link to="/sessions" className="text-[var(--color-primary)] hover:underline">
+          <Link to="/sessions" className="text-[var(--indigo)] hover:underline">
             Seances
           </Link>
-          <span className="text-[var(--color-text-tertiary)]">/</span>
-          <span className="text-[var(--color-text-secondary)]">{session.class_name}</span>
+          <span className="text-[var(--text-dim)]">/</span>
+          <span className="text-[var(--text-muted)]">{session.class_name}</span>
         </div>
 
         {/* Session info */}
         <div
-          className="bg-[var(--color-surface)] p-6"
-          style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+          className="bg-[var(--surface)] p-6"
+          style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
         >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex items-start gap-4">
               <div
                 className="w-14 h-14 flex items-center justify-center text-white font-bold text-xl"
-                style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-xl)' }}
+                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
               >
                 {session.class_name.substring(0, 2).toUpperCase()}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[var(--color-text)]">
+                <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>
                   {session.class_name}
                 </h1>
-                <p className="text-[var(--color-text-secondary)] mt-1 flex items-center gap-2">
+                <p className="mt-1 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                   <span>🏫</span>
                   {session.room_name}
                 </p>
-                <p className="text-[var(--color-text-tertiary)] mt-2 text-sm">
+                <p className="text-[var(--text-dim)] mt-2 text-sm">
                   {formatDate(session.started_at)} de {formatTime(session.started_at)}
                   {session.ended_at && ` a ${formatTime(session.ended_at)}`}
                   {' · '}
@@ -502,13 +502,13 @@ export function SessionDetail() {
             </div>
 
             {/* Topic section */}
-            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+            <div className="mt-4 pt-4 border-t border-[var(--border)]">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-[var(--color-text-secondary)]">📝 Theme de la seance</span>
+                <span className="text-sm font-medium text-[var(--text-muted)]">📝 Theme de la seance</span>
                 {!isEditingTopic && (
                   <button
                     onClick={handleStartEditTopic}
-                    className="text-xs text-[var(--color-primary)] hover:underline"
+                    className="text-xs text-[var(--indigo)] hover:underline"
                   >
                     {session.topic ? 'Modifier' : 'Ajouter'}
                   </button>
@@ -520,21 +520,21 @@ export function SessionDetail() {
                     value={editedTopic}
                     onChange={(e) => setEditedTopic(e.target.value)}
                     placeholder="Ex: Chapitre 3 - Les fonctions lineaires..."
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-primary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] placeholder:text-[var(--text-dim)] resize-none focus:outline-none focus:border-[var(--indigo)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                     rows={2}
                     maxLength={200}
                     autoFocus
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-[var(--color-text-tertiary)]">
+                    <span className="text-xs text-[var(--text-dim)]">
                       {editedTopic.length}/200
                     </span>
                     <div className="flex gap-2">
                       <button
                         onClick={handleCancelEditTopic}
-                        className="px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                        style={{ borderRadius: 'var(--radius-lg)' }}
+                        className="px-3 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--surface-2)] transition-colors"
+                        style={{ borderRadius: 'var(--radius)' }}
                         disabled={isSavingTopic}
                       >
                         Annuler
@@ -542,7 +542,7 @@ export function SessionDetail() {
                       <button
                         onClick={handleSaveTopic}
                         className="px-3 py-1.5 text-sm text-white hover:opacity-90 transition-colors disabled:opacity-50"
-                        style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                        style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
                         disabled={isSavingTopic}
                       >
                         {isSavingTopic ? 'Sauvegarde...' : 'Enregistrer'}
@@ -552,13 +552,13 @@ export function SessionDetail() {
                 </div>
               ) : session.topic ? (
                 <p
-                  className="text-[var(--color-text)] p-3 bg-[var(--color-surface-secondary)] italic"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="text-[var(--text)] p-3 bg-[var(--surface-3)] italic"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   {session.topic}
                 </p>
               ) : (
-                <p className="text-[var(--color-text-tertiary)] text-sm italic">
+                <p className="text-[var(--text-dim)] text-sm italic">
                   Aucun theme defini
                 </p>
               )}
@@ -566,13 +566,13 @@ export function SessionDetail() {
 
             {/* Notes section (read-only, written from mobile) */}
             {session.notes && (
-              <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <div className="mt-4 pt-4 border-t border-[var(--border)]">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium text-[var(--color-text-secondary)]">📋 Notes de seance</span>
+                  <span className="text-sm font-medium text-[var(--text-muted)]">📋 Notes de seance</span>
                 </div>
                 <p
-                  className="text-[var(--color-text)] p-3 bg-[var(--color-surface-secondary)] whitespace-pre-wrap"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="text-[var(--text)] p-3 bg-[var(--surface-3)] whitespace-pre-wrap"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   {session.notes}
                 </p>
@@ -581,10 +581,10 @@ export function SessionDetail() {
 
             {!session.ended_at && (
               <span
-                className="px-4 py-2 bg-[var(--color-success-soft)] text-[var(--color-success)] text-sm font-semibold self-start flex items-center gap-2"
+                className="px-4 py-2 bg-[var(--pos-soft)] text-[var(--pos)] text-sm font-semibold self-start flex items-center gap-2"
                 style={{ borderRadius: 'var(--radius-full)' }}
               >
-                <span className="w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[var(--pos)] animate-pulse" />
                 En cours
               </span>
             )}
@@ -596,24 +596,24 @@ export function SessionDetail() {
           {Object.entries(EVENT_CONFIG).map(([type, config]) => (
             <div
               key={type}
-              className="bg-[var(--color-surface)] p-4 flex items-center gap-4 transition-transform hover:scale-[1.02]"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              className="bg-[var(--surface)] p-4 flex items-center gap-4 transition-transform hover:scale-[1.02]"
+              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
             >
               <div
                 className="w-12 h-12 flex items-center justify-center text-lg font-bold"
                 style={{
                   background: config.softColor,
                   color: config.color,
-                  borderRadius: 'var(--radius-lg)'
+                  borderRadius: 'var(--radius)'
                 }}
               >
                 {config.icon}
               </div>
               <div>
-                <div className="text-2xl font-bold text-[var(--color-text)]">
+                <div className="text-2xl font-bold text-[var(--text)]">
                   {totals[type] || 0}
                 </div>
-                <div className="text-xs text-[var(--color-text-tertiary)]">
+                <div className="text-xs text-[var(--text-dim)]">
                   {config.label}
                 </div>
               </div>
@@ -628,9 +628,9 @@ export function SessionDetail() {
               onClick={openAddEventModal}
               className="flex items-center gap-2 px-5 py-2.5 text-white font-medium transition-all duration-200 hover:opacity-90 hover:translate-y-[-1px] active:translate-y-0"
               style={{
-                background: 'var(--gradient-primary)',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: 'var(--shadow-glow)',
+                background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                borderRadius: 'var(--radius)',
+                boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
               }}
             >
               <span className="text-lg">+</span>
@@ -642,17 +642,17 @@ export function SessionDetail() {
         {/* Groups section */}
         {groups.length > 0 && (
           <div
-            className="bg-[var(--color-surface)] overflow-hidden"
-            style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+            className="bg-[var(--surface)] overflow-hidden"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
           >
-            <div className="p-5 border-b border-[var(--color-border)] flex items-center gap-3">
+            <div className="p-5 border-b border-[var(--border)] flex items-center gap-3">
               <div
                 className="w-10 h-10 flex items-center justify-center text-xl"
-                style={{ background: 'var(--color-primary-soft)', borderRadius: 'var(--radius-lg)' }}
+                style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius)' }}
               >
                 👥
               </div>
-              <h2 className="font-semibold text-[var(--color-text)]">
+              <h2 className="font-semibold text-[var(--text)]">
                 Groupes ({groups.length})
               </h2>
             </div>
@@ -666,8 +666,8 @@ export function SessionDetail() {
                 return (
                   <div
                     key={group.id}
-                    className="border border-[var(--color-border)] overflow-hidden"
-                    style={{ borderRadius: 'var(--radius-xl)' }}
+                    className="border border-[var(--border)] overflow-hidden"
+                    style={{ borderRadius: 'var(--radius)' }}
                   >
                     {/* Group header */}
                     <div
@@ -676,32 +676,32 @@ export function SessionDetail() {
                     >
                       <div
                         className="w-8 h-8 flex items-center justify-center text-white font-bold text-sm"
-                        style={{ backgroundColor: groupColor, borderRadius: 'var(--radius-lg)' }}
+                        style={{ backgroundColor: groupColor, borderRadius: 'var(--radius)' }}
                       >
                         {group.group_number}
                       </div>
-                      <span className="font-medium text-[var(--color-text)]">
+                      <span className="font-medium text-[var(--text)]">
                         Groupe {group.group_number}
                       </span>
-                      <span className="text-sm text-[var(--color-text-tertiary)] ml-auto">
+                      <span className="text-sm text-[var(--text-dim)] ml-auto">
                         {group.members.length} eleve{group.members.length > 1 ? 's' : ''}
                       </span>
                     </div>
 
                     {/* Members */}
-                    <div className="px-4 py-3 border-b border-[var(--color-border)]">
+                    <div className="px-4 py-3 border-b border-[var(--border)]">
                       <div className="flex flex-wrap gap-2">
                         {group.members.map((member) => (
                           <span
                             key={member.id}
-                            className="px-2 py-1 text-sm bg-[var(--color-surface-secondary)] text-[var(--color-text)]"
+                            className="px-2 py-1 text-sm bg-[var(--surface-3)] text-[var(--text)]"
                             style={{ borderRadius: 'var(--radius-md)' }}
                           >
                             {member.student_pseudo}
                           </span>
                         ))}
                         {group.members.length === 0 && (
-                          <span className="text-sm text-[var(--color-text-tertiary)] italic">
+                          <span className="text-sm text-[var(--text-dim)] italic">
                             Aucun membre
                           </span>
                         )}
@@ -726,15 +726,15 @@ export function SessionDetail() {
                           >
                             N
                           </span>
-                          <span className="font-medium text-[var(--color-text)]">
+                          <span className="font-medium text-[var(--text)]">
                             {event.grade_value}/{event.grade_max}
                           </span>
                           {event.note && (
-                            <span className="text-[var(--color-text-tertiary)] truncate">
+                            <span className="text-[var(--text-dim)] truncate">
                               - {event.note}
                             </span>
                           )}
-                          <span className="text-[var(--color-text-tertiary)] ml-auto text-xs">
+                          <span className="text-[var(--text-dim)] ml-auto text-xs">
                             {formatTime(event.timestamp)}
                           </span>
                         </div>
@@ -746,7 +746,7 @@ export function SessionDetail() {
                         return (
                           <div
                             key={event.id}
-                            className={`flex items-center gap-2 text-sm ${isClickable ? 'cursor-pointer hover:bg-[var(--color-surface-hover)] -mx-2 px-2 py-1 transition-colors' : ''}`}
+                            className={`flex items-center gap-2 text-sm ${isClickable ? 'cursor-pointer hover:bg-[var(--surface-2)] -mx-2 px-2 py-1 transition-colors' : ''}`}
                             style={isClickable ? { borderRadius: 'var(--radius-md)' } : undefined}
                             onClick={() => isClickable && handleGroupEventClick(event, group.group_number)}
                           >
@@ -760,7 +760,7 @@ export function SessionDetail() {
                             >
                               !
                             </span>
-                            <span className="text-[var(--color-text)] truncate flex-1">
+                            <span className="text-[var(--text)] truncate flex-1">
                               {event.note || 'Remarque'}
                             </span>
                             {event.photo_path && (
@@ -768,7 +768,7 @@ export function SessionDetail() {
                                 📷
                               </span>
                             )}
-                            <span className="text-[var(--color-text-tertiary)] text-xs">
+                            <span className="text-[var(--text-dim)] text-xs">
                               {formatTime(event.timestamp)}
                             </span>
                           </div>
@@ -777,7 +777,7 @@ export function SessionDetail() {
 
                       {/* No events */}
                       {group.events.length === 0 && (
-                        <p className="text-sm text-[var(--color-text-tertiary)] italic">
+                        <p className="text-sm text-[var(--text-dim)] italic">
                           Aucun evenement
                         </p>
                       )}
@@ -791,17 +791,17 @@ export function SessionDetail() {
 
         {/* Events list */}
         <div
-          className="bg-[var(--color-surface)] overflow-hidden"
-          style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+          className="bg-[var(--surface)] overflow-hidden"
+          style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
         >
-          <div className="p-5 border-b border-[var(--color-border)] flex items-center gap-3">
+          <div className="p-5 border-b border-[var(--border)] flex items-center gap-3">
             <div
               className="w-10 h-10 flex items-center justify-center"
-              style={{ background: 'var(--color-remarque-soft)', borderRadius: 'var(--radius-lg)' }}
+              style={{ background: 'var(--color-remarque-soft)', borderRadius: 'var(--radius)' }}
             >
               <span className="text-xl">📋</span>
             </div>
-            <h2 className="font-semibold text-[var(--color-text)]">
+            <h2 className="font-semibold text-[var(--text)]">
               Evenements ({events.length})
             </h2>
           </div>
@@ -809,22 +809,22 @@ export function SessionDetail() {
           {events.length === 0 ? (
             <div className="p-8 text-center">
               <div
-                className="w-16 h-16 mx-auto mb-4 bg-[var(--color-surface-secondary)] flex items-center justify-center"
+                className="w-16 h-16 mx-auto mb-4 bg-[var(--surface-3)] flex items-center justify-center"
                 style={{ borderRadius: 'var(--radius-full)' }}
               >
                 <span className="text-3xl">📝</span>
               </div>
-              <p className="text-[var(--color-text-tertiary)]">
+              <p className="text-[var(--text-dim)]">
                 Aucun evenement enregistre
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-[var(--color-border)]">
+            <div className="divide-y divide-[var(--border)]">
               {events.map((event) => {
                 const config = EVENT_CONFIG[event.type] || {
                   label: event.type,
-                  color: 'var(--color-text-tertiary)',
-                  softColor: 'var(--color-surface-secondary)',
+                  color: 'var(--text-dim)',
+                  softColor: 'var(--surface-3)',
                   icon: '?',
                 };
 
@@ -833,7 +833,7 @@ export function SessionDetail() {
                 return (
                   <div
                     key={event.id}
-                    className={`p-4 flex items-center gap-4 ${isClickable ? 'cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors' : ''}`}
+                    className={`p-4 flex items-center gap-4 ${isClickable ? 'cursor-pointer hover:bg-[var(--surface-2)] transition-colors' : ''}`}
                     onClick={() => isClickable && handleEventClick(event)}
                   >
                     <div
@@ -841,14 +841,14 @@ export function SessionDetail() {
                       style={{
                         background: config.softColor,
                         color: config.color,
-                        borderRadius: 'var(--radius-lg)'
+                        borderRadius: 'var(--radius)'
                       }}
                     >
                       {config.icon}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-[var(--color-text)]">
+                        <span className="font-medium text-[var(--text)]">
                           {event.student_pseudo}
                         </span>
                         <span
@@ -869,16 +869,16 @@ export function SessionDetail() {
                         )}
                       </div>
                       {event.note && (
-                        <p className="text-sm text-[var(--color-text-tertiary)] italic mt-1 truncate">
+                        <p className="text-sm text-[var(--text-dim)] italic mt-1 truncate">
                           "{event.note}"
                         </p>
                       )}
                     </div>
-                    <span className="text-sm text-[var(--color-text-tertiary)] shrink-0">
+                    <span className="text-sm text-[var(--text-dim)] shrink-0">
                       {formatTime(event.timestamp)}
                     </span>
                     {isClickable && (
-                      <span className="text-[var(--color-text-tertiary)]">›</span>
+                      <span className="text-[var(--text-dim)]">›</span>
                     )}
                     <button
                       onClick={(e) => {
@@ -886,8 +886,8 @@ export function SessionDetail() {
                         handleDeleteEvent(event.id);
                       }}
                       disabled={deletingEventId === event.id}
-                      className="ml-2 p-2 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors shrink-0 disabled:opacity-50"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      className="ml-2 p-2 text-[var(--text-dim)] hover:text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-colors shrink-0 disabled:opacity-50"
+                      style={{ borderRadius: 'var(--radius)' }}
                       title="Supprimer"
                     >
                       {deletingEventId === event.id ? '...' : '🗑️'}
@@ -907,32 +907,32 @@ export function SessionDetail() {
           onClick={closeModal}
         >
           <div
-            className="bg-[var(--color-surface)] max-w-lg w-full max-h-[90vh] overflow-hidden"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            className="bg-[var(--surface)] max-w-lg w-full max-h-[90vh] overflow-hidden"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 flex items-center justify-center"
-                  style={{ background: 'var(--color-remarque-soft)', borderRadius: 'var(--radius-lg)' }}
+                  style={{ background: 'var(--color-remarque-soft)', borderRadius: 'var(--radius)' }}
                 >
                   <span className="text-xl" style={{ color: 'var(--color-remarque)' }}>!</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[var(--color-text)]">
+                  <h3 className="font-semibold text-[var(--text)]">
                     {selectedEvent.student_pseudo}
                   </h3>
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                  <p className="text-sm text-[var(--text-dim)]">
                     Remarque · {formatTime(selectedEvent.timestamp)}
                   </p>
                 </div>
               </div>
               <button
                 onClick={closeModal}
-                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 ✕
               </button>
@@ -943,12 +943,12 @@ export function SessionDetail() {
               {/* Note */}
               {selectedEvent.note && (
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <p className="text-sm font-medium text-[var(--text-muted)] mb-2">
                     Note
                   </p>
                   <p
-                    className="text-[var(--color-text)] whitespace-pre-wrap p-4 bg-[var(--color-surface-secondary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="text-[var(--text)] whitespace-pre-wrap p-4 bg-[var(--surface-3)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                   >
                     {selectedEvent.note}
                   </p>
@@ -958,29 +958,29 @@ export function SessionDetail() {
               {/* Photo */}
               {selectedEvent.photo_path && (
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <p className="text-sm font-medium text-[var(--text-muted)] mb-2">
                     Photo
                   </p>
                   {isLoadingPhoto ? (
                     <div
-                      className="flex items-center justify-center h-48 bg-[var(--color-surface-secondary)]"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      className="flex items-center justify-center h-48 bg-[var(--surface-3)]"
+                      style={{ borderRadius: 'var(--radius)' }}
                     >
-                      <span className="text-[var(--color-text-tertiary)]">Chargement...</span>
+                      <span className="text-[var(--text-dim)]">Chargement...</span>
                     </div>
                   ) : photoUrl ? (
                     <img
                       src={photoUrl}
                       alt="Photo de la remarque"
                       className="w-full object-contain max-h-96"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      style={{ borderRadius: 'var(--radius)' }}
                     />
                   ) : (
                     <div
-                      className="flex items-center justify-center h-48 bg-[var(--color-surface-secondary)]"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      className="flex items-center justify-center h-48 bg-[var(--surface-3)]"
+                      style={{ borderRadius: 'var(--radius)' }}
                     >
-                      <span className="text-[var(--color-text-tertiary)]">Photo non disponible</span>
+                      <span className="text-[var(--text-dim)]">Photo non disponible</span>
                     </div>
                   )}
                 </div>
@@ -988,7 +988,7 @@ export function SessionDetail() {
 
               {/* No content fallback */}
               {!selectedEvent.note && !selectedEvent.photo_path && (
-                <p className="text-[var(--color-text-tertiary)] text-center py-4">
+                <p className="text-[var(--text-dim)] text-center py-4">
                   Aucun contenu
                 </p>
               )}
@@ -1004,35 +1004,35 @@ export function SessionDetail() {
           onClick={closeModal}
         >
           <div
-            className="bg-[var(--color-surface)] max-w-lg w-full max-h-[90vh] overflow-hidden"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            className="bg-[var(--surface)] max-w-lg w-full max-h-[90vh] overflow-hidden"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 flex items-center justify-center text-white font-bold"
                   style={{
                     backgroundColor: getGroupColor(selectedGroupEvent.groupNumber),
-                    borderRadius: 'var(--radius-lg)'
+                    borderRadius: 'var(--radius)'
                   }}
                 >
                   {selectedGroupEvent.groupNumber}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[var(--color-text)]">
+                  <h3 className="font-semibold text-[var(--text)]">
                     Groupe {selectedGroupEvent.groupNumber}
                   </h3>
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                  <p className="text-sm text-[var(--text-dim)]">
                     Remarque · {formatTime(selectedGroupEvent.event.timestamp)}
                   </p>
                 </div>
               </div>
               <button
                 onClick={closeModal}
-                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 ✕
               </button>
@@ -1043,12 +1043,12 @@ export function SessionDetail() {
               {/* Note */}
               {selectedGroupEvent.event.note && (
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <p className="text-sm font-medium text-[var(--text-muted)] mb-2">
                     Note
                   </p>
                   <p
-                    className="text-[var(--color-text)] whitespace-pre-wrap p-4 bg-[var(--color-surface-secondary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="text-[var(--text)] whitespace-pre-wrap p-4 bg-[var(--surface-3)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                   >
                     {selectedGroupEvent.event.note}
                   </p>
@@ -1058,29 +1058,29 @@ export function SessionDetail() {
               {/* Photo */}
               {selectedGroupEvent.event.photo_path && (
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <p className="text-sm font-medium text-[var(--text-muted)] mb-2">
                     Photo
                   </p>
                   {isLoadingPhoto ? (
                     <div
-                      className="flex items-center justify-center h-48 bg-[var(--color-surface-secondary)]"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      className="flex items-center justify-center h-48 bg-[var(--surface-3)]"
+                      style={{ borderRadius: 'var(--radius)' }}
                     >
-                      <span className="text-[var(--color-text-tertiary)]">Chargement...</span>
+                      <span className="text-[var(--text-dim)]">Chargement...</span>
                     </div>
                   ) : photoUrl ? (
                     <img
                       src={photoUrl}
                       alt="Photo de la remarque"
                       className="w-full object-contain max-h-96"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      style={{ borderRadius: 'var(--radius)' }}
                     />
                   ) : (
                     <div
-                      className="flex items-center justify-center h-48 bg-[var(--color-surface-secondary)]"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      className="flex items-center justify-center h-48 bg-[var(--surface-3)]"
+                      style={{ borderRadius: 'var(--radius)' }}
                     >
-                      <span className="text-[var(--color-text-tertiary)]">Photo non disponible</span>
+                      <span className="text-[var(--text-dim)]">Photo non disponible</span>
                     </div>
                   )}
                 </div>
@@ -1088,7 +1088,7 @@ export function SessionDetail() {
 
               {/* No content fallback */}
               {!selectedGroupEvent.event.note && !selectedGroupEvent.event.photo_path && (
-                <p className="text-[var(--color-text-tertiary)] text-center py-4">
+                <p className="text-[var(--text-dim)] text-center py-4">
                   Aucun contenu
                 </p>
               )}
@@ -1104,19 +1104,19 @@ export function SessionDetail() {
           onClick={() => setShowAddEvent(false)}
         >
           <div
-            className="bg-[var(--color-surface)] max-w-md w-full max-h-[90vh] overflow-hidden"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            className="bg-[var(--surface)] max-w-md w-full max-h-[90vh] overflow-hidden"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
-              <h3 className="font-semibold text-[var(--color-text)]">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+              <h3 className="font-semibold text-[var(--text)]">
                 Ajouter un evenement
               </h3>
               <button
                 onClick={() => setShowAddEvent(false)}
-                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="w-10 h-10 flex items-center justify-center hover:bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 ✕
               </button>
@@ -1126,14 +1126,14 @@ export function SessionDetail() {
             <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-160px)]">
               {/* Student select */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
                   Eleve
                 </label>
                 <select
                   value={addEventStudent}
                   onChange={(e) => setAddEventStudent(e.target.value)}
-                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] text-[var(--color-text)] border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="w-full px-4 py-3 bg-[var(--surface-3)] text-[var(--text)] border border-[var(--border)] focus:outline-none focus:border-[var(--indigo)]"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   <option value="">Selectionner un eleve...</option>
                   {students.map((s) => (
@@ -1144,7 +1144,7 @@ export function SessionDetail() {
 
               {/* Event type */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
                   Type
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1155,10 +1155,10 @@ export function SessionDetail() {
                       onClick={() => { setAddEventType(type); setAddEventSubtype(''); }}
                       className={`flex items-center gap-3 p-3 border-2 transition-all ${
                         addEventType === type
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-                          : 'border-[var(--color-border)] hover:border-[var(--color-text-tertiary)]'
+                          ? 'border-[var(--indigo)] bg-[var(--indigo-soft)]'
+                          : 'border-[var(--border)] hover:border-[var(--text-dim)]'
                       }`}
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      style={{ borderRadius: 'var(--radius)' }}
                     >
                       <div
                         className="w-8 h-8 flex items-center justify-center text-sm font-bold shrink-0"
@@ -1170,7 +1170,7 @@ export function SessionDetail() {
                       >
                         {config.icon}
                       </div>
-                      <span className="text-sm font-medium text-[var(--color-text)]">
+                      <span className="text-sm font-medium text-[var(--text)]">
                         {config.label}
                       </span>
                     </button>
@@ -1181,7 +1181,7 @@ export function SessionDetail() {
               {/* Sortie subtype */}
               {addEventType === 'sortie' && (
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
                     Type de sortie
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -1192,10 +1192,10 @@ export function SessionDetail() {
                         onClick={() => setAddEventSubtype(sub)}
                         className={`px-3 py-1.5 text-sm capitalize border-2 transition-all ${
                           addEventSubtype === sub
-                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
-                            : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-tertiary)]'
+                            ? 'border-[var(--indigo)] bg-[var(--indigo-soft)] text-[var(--indigo)]'
+                            : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-dim)]'
                         }`}
-                        style={{ borderRadius: 'var(--radius-lg)' }}
+                        style={{ borderRadius: 'var(--radius)' }}
                       >
                         {sub}
                       </button>
@@ -1207,15 +1207,15 @@ export function SessionDetail() {
               {/* Note (for remarque type) */}
               {addEventType === 'remarque' && (
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
                     Note (optionnel)
                   </label>
                   <textarea
                     value={addEventNote}
                     onChange={(e) => setAddEventNote(e.target.value)}
                     placeholder="Ajouter une remarque..."
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-primary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] placeholder:text-[var(--text-dim)] resize-none focus:outline-none focus:border-[var(--indigo)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                     rows={3}
                     maxLength={500}
                   />
@@ -1224,11 +1224,11 @@ export function SessionDetail() {
             </div>
 
             {/* Footer */}
-            <div className="p-5 border-t border-[var(--color-border)] flex justify-end gap-3">
+            <div className="p-5 border-t border-[var(--border)] flex justify-end gap-3">
               <button
                 onClick={() => setShowAddEvent(false)}
-                className="px-4 py-2.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="px-4 py-2.5 text-sm text-[var(--text-muted)] hover:bg-[var(--surface-2)] transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 Annuler
               </button>
@@ -1237,8 +1237,8 @@ export function SessionDetail() {
                 disabled={isAddingEvent || !addEventStudent || !addEventType || (addEventType === 'sortie' && !addEventSubtype)}
                 className="px-5 py-2.5 text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:opacity-90"
                 style={{
-                  background: 'var(--gradient-primary)',
-                  borderRadius: 'var(--radius-lg)',
+                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  borderRadius: 'var(--radius)',
                 }}
               >
                 {isAddingEvent ? 'Ajout...' : 'Ajouter'}

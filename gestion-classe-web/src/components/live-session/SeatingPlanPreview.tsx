@@ -30,10 +30,10 @@ export function SeatingPlanPreview() {
       <div className="flex-1 overflow-auto p-4">
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="w-8 h-8 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : error ? (
-          <div className="p-3 bg-[var(--color-error-soft)] text-[var(--color-error)] rounded-xl text-sm">
+          <div className="p-3 bg-[var(--neg-soft)] text-[var(--neg)] rounded-xl text-sm">
             {error}
           </div>
         ) : (
@@ -54,7 +54,7 @@ export function SeatingPlanPreview() {
                 const student = studentId ? studentMap.get(studentId) : null;
 
                 if (isDisabled) {
-                  return <div key={key} className="h-12 rounded-lg bg-[var(--color-border-light)]" />;
+                  return <div key={key} className="h-12 rounded-lg bg-[var(--surface-3)]" />;
                 }
 
                 return (
@@ -62,8 +62,8 @@ export function SeatingPlanPreview() {
                     key={key}
                     className={`h-12 rounded-lg flex items-center justify-center text-xs font-medium px-1 text-center ${
                       student
-                        ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
-                        : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)]'
+                        ? 'bg-[var(--indigo-soft)] text-[var(--indigo)]'
+                        : 'bg-[var(--surface-3)] text-[var(--text-dim)]'
                     }`}
                     style={{ boxShadow: student ? 'var(--shadow-xs)' : undefined }}
                   >
@@ -76,15 +76,15 @@ export function SeatingPlanPreview() {
             {/* Teacher desk indicator */}
             <div className="mt-4 text-center">
               <div
-                className="inline-block px-6 py-2 bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)] text-sm font-medium"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="inline-block px-6 py-2 bg-[var(--surface-3)] text-[var(--text-dim)] text-sm font-medium"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 Bureau enseignant
               </div>
             </div>
 
             {/* Student count info */}
-            <div className="mt-3 text-center text-sm text-[var(--color-text-tertiary)]">
+            <div className="mt-3 text-center text-sm text-[var(--text-dim)]">
               {students.length} eleves — {Object.keys(positions).length} places attribuees
             </div>
           </>
@@ -99,8 +99,8 @@ export function SeatingPlanPreview() {
           className="w-full py-4 text-white font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50"
           style={{
             background: 'var(--gradient-success)',
-            borderRadius: 'var(--radius-xl)',
-            boxShadow: 'var(--shadow-glow)',
+            borderRadius: 'var(--radius)',
+            boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
             border: 'none',
           }}
         >

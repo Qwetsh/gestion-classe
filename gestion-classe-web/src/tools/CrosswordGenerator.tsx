@@ -343,18 +343,18 @@ function CrosswordResult({
     <div className="space-y-5">
       {/* Action bar */}
       <div
-        className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)]"
+        className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]"
         style={{ boxShadow: 'var(--shadow-xs)' }}
       >
-        <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-          <span className="font-semibold text-[var(--color-text)]">{result.placed.length}</span> mots placés
-          <span className="mx-1 text-[var(--color-border)]">|</span>
-          <span className="font-semibold text-[var(--color-text)]">{result.rows}&times;{result.cols}</span> grille
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <span className="font-semibold text-[var(--text)]">{result.placed.length}</span> mots placés
+          <span className="mx-1 text-[var(--border)]">|</span>
+          <span className="font-semibold text-[var(--text)]">{result.rows}&times;{result.cols}</span> grille
         </div>
         <div className="flex gap-2">
           <button
             onClick={onRegenerate}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)] transition-all active:scale-95"
+            className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] hover:bg-[var(--border)] transition-all active:scale-95"
           >
             Regénérer
           </button>
@@ -379,7 +379,7 @@ function CrosswordResult({
       <div>
         {/* Grid card */}
         <div
-          className="rounded-2xl p-6 bg-[var(--color-surface)] border border-[var(--color-border)] inline-block"
+          className="rounded-2xl p-6 bg-[var(--surface)] border border-[var(--border)] inline-block"
           style={{ boxShadow: 'var(--shadow-sm)' }}
         >
           <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
@@ -429,40 +429,40 @@ function CrosswordResult({
         <div className="clues-wrap mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
           {/* Horizontal */}
           <div
-            className="clues-col rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+            className="clues-col rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
             style={{ boxShadow: 'var(--shadow-xs)' }}
           >
-            <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-3 pb-2 border-b-2 border-[var(--color-primary)]">
-              <span style={{ color: 'var(--color-primary)' }}>&#8594;</span>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text)] mb-3 pb-2 border-b-2 border-[var(--indigo)]">
+              <span style={{ color: 'var(--indigo)' }}>&#8594;</span>
               Horizontalement
-              <span className="ml-auto text-xs font-normal text-[var(--color-text-tertiary)]">{horizontal.length} mots</span>
+              <span className="ml-auto text-xs font-normal text-[var(--text-dim)]">{horizontal.length} mots</span>
             </h3>
             <ol className="space-y-2">
               {horizontal.map((p) => (
-                <li key={p.number} className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-                  <strong className="text-[var(--color-primary)] mr-1">{p.number}.</strong>
+                <li key={p.number} className="text-sm text-[var(--text-muted)] leading-relaxed">
+                  <strong className="text-[var(--indigo)] mr-1">{p.number}.</strong>
                   {p.clue || '—'}
-                  <span className="letters ml-1 text-xs text-[var(--color-text-tertiary)]">({p.word.length} lettres)</span>
+                  <span className="letters ml-1 text-xs text-[var(--text-dim)]">({p.word.length} lettres)</span>
                 </li>
               ))}
             </ol>
           </div>
           {/* Vertical */}
           <div
-            className="clues-col rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+            className="clues-col rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
             style={{ boxShadow: 'var(--shadow-xs)' }}
           >
-            <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-3 pb-2 border-b-2 border-[var(--color-primary)]">
-              <span style={{ color: 'var(--color-primary)' }}>&#8595;</span>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text)] mb-3 pb-2 border-b-2 border-[var(--indigo)]">
+              <span style={{ color: 'var(--indigo)' }}>&#8595;</span>
               Verticalement
-              <span className="ml-auto text-xs font-normal text-[var(--color-text-tertiary)]">{vertical.length} mots</span>
+              <span className="ml-auto text-xs font-normal text-[var(--text-dim)]">{vertical.length} mots</span>
             </h3>
             <ol className="space-y-2">
               {vertical.map((p) => (
-                <li key={p.number} className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-                  <strong className="text-[var(--color-primary)] mr-1">{p.number}.</strong>
+                <li key={p.number} className="text-sm text-[var(--text-muted)] leading-relaxed">
+                  <strong className="text-[var(--indigo)] mr-1">{p.number}.</strong>
                   {p.clue || '—'}
-                  <span className="letters ml-1 text-xs text-[var(--color-text-tertiary)]">({p.word.length} lettres)</span>
+                  <span className="letters ml-1 text-xs text-[var(--text-dim)]">({p.word.length} lettres)</span>
                 </li>
               ))}
             </ol>
@@ -663,10 +663,10 @@ export default function CrosswordGenerator() {
     <div className="space-y-6 max-w-4xl">
       {/* Mode selector */}
       <div
-        className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+        className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
         style={{ boxShadow: 'var(--shadow-xs)' }}
       >
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Source des mots</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">Source des mots</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {([
             { key: 'libre' as const, icon: '✍️', label: 'Saisie libre', desc: 'Vos propres mots et définitions' },
@@ -677,15 +677,15 @@ export default function CrosswordGenerator() {
               onClick={() => switchMode(opt.key)}
               className={`flex-1 p-4 rounded-xl text-left transition-all border-2 ${
                 mode === opt.key
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-surface-secondary)] hover:border-[var(--color-text-tertiary)]'
+                  ? 'border-[var(--indigo)] bg-[var(--indigo-soft)]'
+                  : 'border-[var(--border)] bg-[var(--surface-3)] hover:border-[var(--text-dim)]'
               }`}
             >
               <div className="text-xl mb-1">{opt.icon}</div>
-              <div className={`text-sm font-semibold ${mode === opt.key ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}`}>
+              <div className={`text-sm font-semibold ${mode === opt.key ? 'text-[var(--indigo)]' : 'text-[var(--text)]'}`}>
                 {opt.label}
               </div>
-              <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{opt.desc}</div>
+              <div className="text-xs text-[var(--text-dim)] mt-0.5">{opt.desc}</div>
             </button>
           ))}
         </div>
@@ -694,13 +694,13 @@ export default function CrosswordGenerator() {
       {/* Libre mode */}
       {mode === 'libre' && (
         <div
-          className="rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden"
+          className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] overflow-hidden"
           style={{ boxShadow: 'var(--shadow-xs)' }}
         >
           {/* Header with toggle + import */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[var(--surface-3)]">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)]">
                 Mots et définitions
               </h2>
               {wordList.length > 0 && (
@@ -713,12 +713,12 @@ export default function CrosswordGenerator() {
               {/* Toggle form/text */}
               <button
                 onClick={() => libreView === 'form' ? syncListToText() : syncTextToList()}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--indigo)] hover:bg-[var(--indigo-soft)] transition-all"
               >
                 {libreView === 'form' ? 'Mode texte' : 'Mode formulaire'}
               </button>
               {/* Import Excel */}
-              <label className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all cursor-pointer">
+              <label className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--indigo)] hover:bg-[var(--indigo-soft)] transition-all cursor-pointer">
                 Importer Excel
                 <input
                   type="file"
@@ -745,7 +745,7 @@ export default function CrosswordGenerator() {
                     onChange={(e) => setNewWord(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWord(); } }}
                     placeholder="Mot"
-                    className="w-40 px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text)] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
+                    className="w-40 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent transition-all"
                     autoFocus
                   />
                   <input
@@ -754,7 +754,7 @@ export default function CrosswordGenerator() {
                     onChange={(e) => setNewClue(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWord(); } }}
                     placeholder="Définition (optionnelle)"
-                    className="flex-1 px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent transition-all"
                   />
                   <button
                     onClick={addWord}
@@ -768,7 +768,7 @@ export default function CrosswordGenerator() {
 
                 {/* Word list */}
                 {wordList.length === 0 ? (
-                  <div className="text-center py-8 text-[var(--color-text-tertiary)]">
+                  <div className="text-center py-8 text-[var(--text-dim)]">
                     <div className="text-3xl mb-2">&#9998;</div>
                     <p className="text-sm">Ajoutez des mots pour commencer</p>
                     <p className="text-xs mt-1">ou importez un fichier Excel</p>
@@ -778,18 +778,18 @@ export default function CrosswordGenerator() {
                     {wordList.map((entry, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] group hover:border-[var(--color-primary)] transition-all"
+                        className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[var(--surface-3)] border border-[var(--border)] group hover:border-[var(--indigo)] transition-all"
                       >
-                        <span className="text-xs font-bold text-[var(--color-text-tertiary)] w-5 text-center shrink-0">
+                        <span className="text-xs font-bold text-[var(--text-dim)] w-5 text-center shrink-0">
                           {idx + 1}
                         </span>
-                        <span className="text-sm font-bold text-[var(--color-text)] uppercase min-w-[80px]">
+                        <span className="text-sm font-bold text-[var(--text)] uppercase min-w-[80px]">
                           {entry.word}
                         </span>
                         {entry.clue && (
                           <>
-                            <span className="text-[var(--color-border)]">&mdash;</span>
-                            <span className="text-sm text-[var(--color-text-secondary)] flex-1 truncate">
+                            <span className="text-[var(--border)]">&mdash;</span>
+                            <span className="text-sm text-[var(--text-muted)] flex-1 truncate">
                               {entry.clue}
                             </span>
                           </>
@@ -797,7 +797,7 @@ export default function CrosswordGenerator() {
                         {!entry.clue && <span className="flex-1" />}
                         <button
                           onClick={() => removeWord(idx)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-all opacity-0 group-hover:opacity-100 shrink-0"
                         >
                           &times;
                         </button>
@@ -808,10 +808,10 @@ export default function CrosswordGenerator() {
 
                 {/* Clear all */}
                 {wordList.length > 0 && (
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--border)]">
                     <button
                       onClick={() => setWordList([])}
-                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors"
+                      className="text-xs text-[var(--text-dim)] hover:text-[var(--neg)] transition-colors"
                     >
                       Tout effacer
                     </button>
@@ -833,11 +833,11 @@ export default function CrosswordGenerator() {
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder={"CHAT : Animal domestique qui miaule\nCHIEN : Meilleur ami de l'homme\nOISEAU : Il a des plumes"}
                   rows={10}
-                  className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent transition-all"
                   autoFocus
                 />
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-2">
-                  Un mot par ligne &middot; Format : <code className="px-1.5 py-0.5 rounded bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">MOT : définition</code>
+                <p className="text-xs text-[var(--text-dim)] mt-2">
+                  Un mot par ligne &middot; Format : <code className="px-1.5 py-0.5 rounded bg-[var(--surface-3)] text-[var(--text-muted)]">MOT : définition</code>
                 </p>
                 <div className="flex justify-end mt-3">
                   <button
@@ -860,13 +860,13 @@ export default function CrosswordGenerator() {
         <>
           {/* Themes */}
           <div
-            className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+            className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
             style={{ boxShadow: 'var(--shadow-xs)' }}
           >
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">
               Thèmes
               {selectedThemes.size > 0 && (
-                <span className="ml-2 text-[var(--color-primary)]">({selectedThemes.size} sélectionné{selectedThemes.size > 1 ? 's' : ''})</span>
+                <span className="ml-2 text-[var(--indigo)]">({selectedThemes.size} sélectionné{selectedThemes.size > 1 ? 's' : ''})</span>
               )}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -880,7 +880,7 @@ export default function CrosswordGenerator() {
                     className={`flex flex-col items-center justify-center text-center p-3 rounded-xl transition-all active:scale-95 min-h-[72px] ${
                       active
                         ? 'text-white border-2 border-transparent'
-                        : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border-2 border-[var(--color-border)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+                        : 'text-[var(--text-muted)] bg-[var(--surface-3)] border-2 border-[var(--border)] hover:border-[var(--indigo)] hover:text-[var(--indigo)]'
                     }`}
                     style={active ? { background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-xs)' } : undefined}
                   >
@@ -891,7 +891,7 @@ export default function CrosswordGenerator() {
               })}
             </div>
             {selectedThemes.size === 0 && (
-              <p className="text-xs text-[var(--color-text-tertiary)] mt-3 flex items-center gap-1">
+              <p className="text-xs text-[var(--text-dim)] mt-3 flex items-center gap-1">
                 <span>Aucune sélection = tous les thèmes</span>
                 <span className="font-semibold">({vocabSource.vocabulary.length} mots)</span>
               </p>
@@ -901,22 +901,22 @@ export default function CrosswordGenerator() {
           {/* Language option: hide verb forms */}
           {(mode === 'anglais' || mode === 'allemand') && (
             <div
-              className="rounded-2xl p-4 bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between"
+              className="rounded-2xl p-4 bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between"
               style={{ boxShadow: 'var(--shadow-xs)' }}
             >
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">Options</h2>
-                <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)]">Options</h2>
+                <p className="text-sm text-[var(--text-muted)] mt-1">
                   Masquer les formes verbales dans les définitions
                 </p>
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+                <p className="text-xs text-[var(--text-dim)] mt-0.5">
                   N'affiche que la traduction française (ex : « Être » au lieu de « Être ({mode === 'allemand' ? 'war — gewesen' : 'was/were — been'}) »)
                 </p>
               </div>
               <button
                 onClick={() => setHideEnglishForms(!hideEnglishForms)}
                 className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ml-4 ${
-                  hideEnglishForms ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'
+                  hideEnglishForms ? 'bg-[var(--indigo)]' : 'bg-[var(--border)]'
                 }`}
               >
                 <span
@@ -929,11 +929,11 @@ export default function CrosswordGenerator() {
 
           {/* Word count + generate */}
           <div
-            className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-wrap items-end gap-6"
+            className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)] flex flex-wrap items-end gap-6"
             style={{ boxShadow: 'var(--shadow-xs)' }}
           >
             <div className="flex-1 min-w-[200px]">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Nombre de mots</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">Nombre de mots</h2>
               <div className="flex items-center gap-4">
                 <input
                   type="range"
@@ -941,7 +941,7 @@ export default function CrosswordGenerator() {
                   max={Math.min(30, availableCount)}
                   value={Math.min(wordCount, availableCount)}
                   onChange={(e) => setWordCount(Number(e.target.value))}
-                  className="flex-1 accent-[var(--color-primary)]"
+                  className="flex-1 accent-[var(--indigo)]"
                 />
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white"
@@ -950,7 +950,7 @@ export default function CrosswordGenerator() {
                   {Math.min(wordCount, availableCount)}
                 </div>
               </div>
-              <p className="text-xs text-[var(--color-text-tertiary)] mt-2">
+              <p className="text-xs text-[var(--text-dim)] mt-2">
                 {availableCount} mots disponibles dans {selectedThemes.size || vocabSource.themes.length} thème{(selectedThemes.size || vocabSource.themes.length) > 1 ? 's' : ''}
               </p>
             </div>
@@ -972,10 +972,10 @@ export default function CrosswordGenerator() {
         >
           <span className="text-lg">&#9888;</span>
           <div>
-            <p className="text-sm font-medium text-[var(--color-text)]">
+            <p className="text-sm font-medium text-[var(--text)]">
               {skipped.length} mot{skipped.length > 1 ? 's' : ''} non placé{skipped.length > 1 ? 's' : ''}
             </p>
-            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Pas d'intersection trouvée : {skipped.join(', ')}
             </p>
           </div>
@@ -991,15 +991,15 @@ export default function CrosswordGenerator() {
           onRegenerate={generate}
           extra={
             vocabSource && usedTerms.length > 0 ? (
-              <details className="mt-2 rounded-2xl border border-[var(--color-border)] overflow-hidden">
-                <summary className="px-5 py-3 text-sm font-medium text-[var(--color-text-secondary)] cursor-pointer hover:bg-[var(--color-surface-secondary)] transition-colors bg-[var(--color-surface)]">
+              <details className="mt-2 rounded-2xl border border-[var(--border)] overflow-hidden">
+                <summary className="px-5 py-3 text-sm font-medium text-[var(--text-muted)] cursor-pointer hover:bg-[var(--surface-3)] transition-colors bg-[var(--surface)]">
                   Voir les {usedTerms.length} mots sélectionnés
                 </summary>
-                <div className="p-5 bg-[var(--color-surface)] grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-[var(--color-border)]">
+                <div className="p-5 bg-[var(--surface)] grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-[var(--border)]">
                   {usedTerms.map((t) => (
-                    <div key={t.word} className="text-xs text-[var(--color-text-secondary)] py-1">
-                      <span className="font-semibold text-[var(--color-text)]">{t.word}</span>
-                      <span className="mx-1.5 text-[var(--color-border)]">&mdash;</span>
+                    <div key={t.word} className="text-xs text-[var(--text-muted)] py-1">
+                      <span className="font-semibold text-[var(--text)]">{t.word}</span>
+                      <span className="mx-1.5 text-[var(--border)]">&mdash;</span>
                       {t.definition}
                     </div>
                   ))}

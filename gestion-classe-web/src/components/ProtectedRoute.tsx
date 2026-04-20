@@ -11,25 +11,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
         <div className="text-center">
           <div className="text-4xl mb-4">📚</div>
-          <p className="text-[var(--color-text-secondary)]">Chargement...</p>
+          <p className="text-[var(--text-muted)]">Chargement...</p>
         </div>
       </div>
     );
   }
 
   // Check both user existence AND valid session
-  // This prevents stale user objects from granting access when session has expired
   if (!user || !session) {
     return <Navigate to="/login" replace />;
   }
 
-  // Additional check: verify session hasn't expired
-  // Supabase tokens have an expires_at field
+  // Verify session hasn't expired
   if (session.expires_at) {
-    const expiresAt = new Date(session.expires_at * 1000); // expires_at is in seconds
+    const expiresAt = new Date(session.expires_at * 1000);
     if (expiresAt <= new Date()) {
       console.warn('[ProtectedRoute] Session expired, redirecting to login');
       return <Navigate to="/login" replace />;

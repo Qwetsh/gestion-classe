@@ -20,10 +20,10 @@ const TOAST_ICONS: Record<ToastType, string> = {
 };
 
 const TOAST_COLORS: Record<ToastType, { bg: string; text: string; border: string }> = {
-  success: { bg: 'var(--color-success-soft)', text: 'var(--color-success)', border: 'var(--color-success)' },
-  error: { bg: 'var(--color-error-soft)', text: 'var(--color-error)', border: 'var(--color-error)' },
-  warning: { bg: 'rgba(255,152,0,0.12)', text: 'var(--color-warning)', border: 'var(--color-warning)' },
-  info: { bg: 'var(--color-primary-soft)', text: 'var(--color-primary)', border: 'var(--color-primary)' },
+  success: { bg: 'var(--pos-soft)', text: 'var(--pos)', border: 'var(--pos)' },
+  error: { bg: 'var(--neg-soft)', text: 'var(--neg)', border: 'var(--neg)' },
+  warning: { bg: 'rgba(255,152,0,0.12)', text: 'var(--warn)', border: 'var(--warn)' },
+  info: { bg: 'var(--indigo-soft)', text: 'var(--indigo)', border: 'var(--indigo)' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -108,8 +108,8 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
                 style={{
                   background: colors.bg,
                   borderLeftColor: colors.border,
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: 'var(--shadow-md)',
+                  borderRadius: 'var(--radius)',
+                  boxShadow: 'var(--shadow-2)',
                   backdropFilter: 'blur(8px)',
                 }}
                 role="alert"
@@ -147,8 +147,8 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
           aria-modal="true"
         >
           <div
-            className="bg-[var(--color-surface)] w-full max-w-md overflow-hidden"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            className="bg-[var(--surface)] w-full max-w-md overflow-hidden"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 text-center">
@@ -157,7 +157,7 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
                 style={{
                   background: confirmState.variant === 'warning'
                     ? 'rgba(255,152,0,0.12)'
-                    : 'var(--color-error-soft)',
+                    : 'var(--neg-soft)',
                   borderRadius: 'var(--radius-full)',
                 }}
               >
@@ -165,16 +165,16 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
                   {confirmState.variant === 'warning' ? '\u26A0\uFE0F' : '\uD83D\uDDD1\uFE0F'}
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+              <h3 className="text-lg font-semibold text-[var(--text)]">
                 {confirmState.title}
               </h3>
-              <p className="text-[var(--color-text-secondary)] mt-2 text-sm whitespace-pre-line">
+              <p className="text-[var(--text-muted)] mt-2 text-sm whitespace-pre-line">
                 {confirmState.message}
               </p>
               {confirmState.details && (
                 <p
-                  className="text-xs text-[var(--color-text-tertiary)] mt-3 p-3 bg-[var(--color-surface-secondary)] text-left"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="text-xs text-[var(--text-dim)] mt-3 p-3 bg-[var(--surface-3)] text-left"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   {confirmState.details}
                 </p>
@@ -184,8 +184,8 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
             <div className="px-6 pb-6 flex gap-3">
               <button
                 onClick={() => handleConfirmResult(false)}
-                className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="flex-1 px-4 py-2.5 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors font-medium"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 {confirmState.cancelLabel || 'Annuler'}
               </button>
@@ -196,7 +196,7 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
                   background: confirmState.variant === 'warning'
                     ? 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
                     : 'var(--gradient-error)',
-                  borderRadius: 'var(--radius-lg)',
+                  borderRadius: 'var(--radius)',
                 }}
                 autoFocus
               >

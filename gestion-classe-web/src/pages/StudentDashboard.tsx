@@ -244,10 +244,10 @@ export function StudentDashboard() {
   };
 
   const gradeColor = (grade: number) => {
-    if (grade >= 16) return '#22c55e';
-    if (grade >= 12) return '#3b82f6';
-    if (grade >= 8) return '#f59e0b';
-    return '#ef4444';
+    if (grade >= 16) return 'var(--pos)';
+    if (grade >= 12) return 'var(--indigo)';
+    if (grade >= 8) return 'var(--warn)';
+    return 'var(--neg)';
   };
 
   const gradePercent = (grade: number) => Math.min(100, (grade / 20) * 100);
@@ -257,7 +257,7 @@ export function StudentDashboard() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -266,20 +266,20 @@ export function StudentDashboard() {
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}>
         <div style={{
-          background: '#1e293b',
+          background: 'var(--surface)',
           borderRadius: '20px',
           padding: '40px 32px',
           maxWidth: '400px',
           width: '100%',
           boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-          border: '1px solid #334155',
+          border: '1px solid var(--border)',
         }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
-            <h1 style={{ color: '#f1f5f9', fontSize: '24px', fontWeight: 700, margin: 0 }}>
+            <h1 style={{ color: 'var(--bg)', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
               Mon espace
             </h1>
-            <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '8px' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '8px' }}>
               Entre ton code personnel pour voir tes resultats
             </p>
           </div>
@@ -308,21 +308,21 @@ export function StudentDashboard() {
                   fontSize: '24px',
                   fontWeight: 700,
                   borderRadius: '12px',
-                  border: `2px solid ${digit ? '#3b82f6' : '#334155'}`,
-                  background: '#0f172a',
-                  color: '#f1f5f9',
+                  border: `2px solid ${digit ? 'var(--indigo)' : 'var(--border)'}`,
+                  background: 'var(--bg)',
+                  color: 'var(--bg)',
                   outline: 'none',
                   transition: 'border-color 0.2s',
                 }}
-                onFocus={e => { e.target.style.borderColor = '#3b82f6'; }}
-                onBlur={e => { if (!digit) e.target.style.borderColor = '#334155'; }}
+                onFocus={e => { e.target.style.borderColor = 'var(--indigo)'; }}
+                onBlur={e => { if (!digit) e.target.style.borderColor = 'var(--border)'; }}
               />
             ))}
           </div>
 
           {error && (
             <p style={{
-              color: '#f87171',
+              color: 'var(--neg)',
               textAlign: 'center',
               fontSize: '14px',
               marginBottom: '16px',
@@ -339,8 +339,8 @@ export function StudentDashboard() {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              background: code.join('').length === 6 ? '#3b82f6' : '#334155',
-              color: '#fff',
+              background: code.join('').length === 6 ? 'var(--indigo)' : 'var(--border)',
+              color: '#ffffff',
               fontSize: '16px',
               fontWeight: 600,
               cursor: code.join('').length === 6 ? 'pointer' : 'default',
@@ -362,7 +362,7 @@ export function StudentDashboard() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+      background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)',
       padding: '16px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
@@ -376,10 +376,10 @@ export function StudentDashboard() {
           padding: '0 4px',
         }}>
           <div>
-            <h1 style={{ color: '#f1f5f9', fontSize: '20px', fontWeight: 700, margin: 0 }}>
+            <h1 style={{ color: 'var(--bg)', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
               {data.pseudo}
             </h1>
-            <p style={{ color: '#94a3b8', fontSize: '13px', margin: '2px 0 0 0' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '13px', margin: '2px 0 0 0' }}>
               {data.class_name} · Trimestre {data.trimester} · {data.school_year}
             </p>
           </div>
@@ -388,9 +388,9 @@ export function StudentDashboard() {
             style={{
               padding: '8px 14px',
               borderRadius: '8px',
-              border: '1px solid #334155',
+              border: '1px solid var(--border)',
               background: 'transparent',
-              color: '#94a3b8',
+              color: 'var(--text-dim)',
               fontSize: '13px',
               cursor: 'pointer',
             }}
@@ -404,7 +404,7 @@ export function StudentDashboard() {
           display: 'flex',
           gap: '4px',
           marginBottom: '16px',
-          background: '#0f172a',
+          background: 'var(--bg)',
           borderRadius: '12px',
           padding: '4px',
         }}>
@@ -415,8 +415,8 @@ export function StudentDashboard() {
               padding: '10px',
               borderRadius: '10px',
               border: 'none',
-              background: activeTab === 'grades' ? '#3b82f6' : 'transparent',
-              color: activeTab === 'grades' ? '#fff' : '#94a3b8',
+              background: activeTab === 'grades' ? 'var(--indigo)' : 'transparent',
+              color: activeTab === 'grades' ? '#ffffff' : 'var(--text-dim)',
               fontSize: '14px',
               fontWeight: 600,
               cursor: 'pointer',
@@ -432,8 +432,8 @@ export function StudentDashboard() {
               padding: '10px',
               borderRadius: '10px',
               border: 'none',
-              background: activeTab === 'stamps' ? '#f59e0b' : 'transparent',
-              color: activeTab === 'stamps' ? '#fff' : '#94a3b8',
+              background: activeTab === 'stamps' ? 'var(--warn)' : 'transparent',
+              color: activeTab === 'stamps' ? '#ffffff' : 'var(--text-dim)',
               fontSize: '14px',
               fontWeight: 600,
               cursor: 'pointer',
@@ -460,14 +460,14 @@ export function StudentDashboard() {
         <>
         {/* Grade Card */}
         <div style={{
-          background: '#1e293b',
+          background: 'var(--surface)',
           borderRadius: '16px',
           padding: '24px',
           marginBottom: '12px',
-          border: '1px solid #334155',
+          border: '1px solid var(--border)',
           textAlign: 'center',
         }}>
-          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '8px' }}>Ma note actuelle</p>
+          <p style={{ color: 'var(--text-dim)', fontSize: '13px', marginBottom: '8px' }}>Ma note actuelle</p>
           <div style={{
             fontSize: '56px',
             fontWeight: 800,
@@ -475,13 +475,13 @@ export function StudentDashboard() {
             lineHeight: 1,
           }}>
             {data.grade.toFixed(1)}
-            <span style={{ fontSize: '24px', color: '#64748b' }}>/20</span>
+            <span style={{ fontSize: '24px', color: 'var(--text-muted)' }}>/20</span>
           </div>
           {/* Grade bar */}
           <div style={{
             marginTop: '16px',
             height: '8px',
-            background: '#0f172a',
+            background: 'var(--bg)',
             borderRadius: '4px',
             overflow: 'hidden',
           }}>
@@ -493,7 +493,7 @@ export function StudentDashboard() {
               transition: 'width 0.8s ease',
             }} />
           </div>
-          <p style={{ color: '#64748b', fontSize: '12px', marginTop: '8px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '8px' }}>
             Objectif : {data.target} implications
           </p>
         </div>
@@ -505,9 +505,9 @@ export function StudentDashboard() {
           gap: '8px',
           marginBottom: '12px',
         }}>
-          <StatCard label="Implications" value={data.participations} color="#22c55e" />
-          <StatCard label="Malus" value={data.malus} color="#f59e0b" />
-          <StatCard label="Absences" value={data.absences} color="#ef4444" />
+          <StatCard label="Implications" value={data.participations} color="var(--pos)" />
+          <StatCard label="Malus" value={data.malus} color="var(--warn)" />
+          <StatCard label="Absences" value={data.absences} color="var(--neg)" />
         </div>
 
         {/* Rankings */}
@@ -519,12 +519,12 @@ export function StudentDashboard() {
         }}>
           {/* Class Ranking */}
           <div style={{
-            background: '#1e293b',
+            background: 'var(--surface)',
             borderRadius: '16px',
             padding: '16px',
-            border: '1px solid #334155',
+            border: '1px solid var(--border)',
           }}>
-            <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
               Classement classe
             </p>
             <RankingDisplay
@@ -538,12 +538,12 @@ export function StudentDashboard() {
 
           {/* Overall Ranking */}
           <div style={{
-            background: '#1e293b',
+            background: 'var(--surface)',
             borderRadius: '16px',
             padding: '16px',
-            border: '1px solid #334155',
+            border: '1px solid var(--border)',
           }}>
-            <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
               Classement general
             </p>
             <RankingDisplay
@@ -559,13 +559,13 @@ export function StudentDashboard() {
         {/* Class vs Classes Ranking */}
         {data.all_classes_ranking.length > 1 && (
           <div style={{
-            background: '#1e293b',
+            background: 'var(--surface)',
             borderRadius: '16px',
             padding: '16px',
             marginBottom: '12px',
-            border: '1px solid #334155',
+            border: '1px solid var(--border)',
           }}>
-            <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
               Classement des classes
             </p>
             {/* Position de ma classe */}
@@ -573,14 +573,14 @@ export function StudentDashboard() {
               textAlign: 'center',
               marginBottom: '12px',
               padding: '8px',
-              background: '#0f172a',
+              background: 'var(--bg)',
               borderRadius: '8px',
             }}>
               <span style={{ fontSize: '24px', fontWeight: 700, color: '#a78bfa' }}>
                 {data.my_class_rank_among_classes}<sup style={{ fontSize: '12px' }}>e</sup>
               </span>
-              <span style={{ color: '#64748b', fontSize: '13px' }}> / {data.total_classes} classes</span>
-              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}> / {data.total_classes} classes</span>
+              <div style={{ color: 'var(--text-dim)', fontSize: '11px', marginTop: '4px' }}>
                 Moyenne {data.class_name} : <span style={{ color: '#a78bfa', fontWeight: 600 }}>{data.my_class_avg.toFixed(1)}</span>
               </div>
             </div>
@@ -608,17 +608,17 @@ export function StudentDashboard() {
                     }}
                   >
                     <span style={{
-                      color: isMyClass ? '#c4b5fd' : '#94a3b8',
+                      color: isMyClass ? '#c4b5fd' : 'var(--text-dim)',
                       fontWeight: isMyClass ? 700 : 400,
                     }}>
                       {medalEmoji(entry.rank)} {entry.class_name}
                     </span>
                     <span style={{
-                      color: isMyClass ? '#c4b5fd' : '#cbd5e1',
+                      color: isMyClass ? '#c4b5fd' : 'var(--text)',
                       fontWeight: isMyClass ? 700 : 400,
                     }}>
                       {entry.avg_grade.toFixed(1)}
-                      <span style={{ color: '#64748b', fontSize: '10px', marginLeft: '4px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '10px', marginLeft: '4px' }}>
                         ({entry.student_count} el.)
                       </span>
                     </span>
@@ -635,7 +635,7 @@ export function StudentDashboard() {
         {/* Footer */}
         <p style={{
           textAlign: 'center',
-          color: '#475569',
+          color: 'var(--text-muted)',
           fontSize: '11px',
           marginTop: '16px',
         }}>
@@ -649,14 +649,14 @@ export function StudentDashboard() {
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div style={{
-      background: '#1e293b',
+      background: 'var(--surface)',
       borderRadius: '12px',
       padding: '14px 10px',
       textAlign: 'center',
-      border: '1px solid #334155',
+      border: '1px solid var(--border)',
     }}>
       <div style={{ fontSize: '28px', fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{label}</div>
+      <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>{label}</div>
     </div>
   );
 }
@@ -681,15 +681,15 @@ function StampCardView({
   const { confirm: showConfirm } = useUIFeedback();
 
   if (stampLoading) {
-    return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>Chargement...</div>;
+    return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '40px 0' }}>Chargement...</div>;
   }
 
   if (stampError) {
-    return <div style={{ textAlign: 'center', color: '#f87171', padding: '40px 0' }}>{stampError}</div>;
+    return <div style={{ textAlign: 'center', color: 'var(--neg)', padding: '40px 0' }}>{stampError}</div>;
   }
 
   if (!stampData) {
-    return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>Aucune donnee</div>;
+    return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '40px 0' }}>Aucune donnee</div>;
   }
 
   const card = stampData.active_card;
@@ -722,12 +722,12 @@ function StampCardView({
           <div style={{ textAlign: 'center', animation: 'pulse 1.5s ease infinite' }}>
             <div style={{ fontSize: '80px', animation: 'bounce 0.6s ease infinite' }}>🎉</div>
             <p style={{
-              color: '#fbbf24', fontSize: '24px', fontWeight: 700, marginTop: '16px',
+              color: 'var(--warn)', fontSize: '24px', fontWeight: 700, marginTop: '16px',
               textShadow: '0 0 20px rgba(251,191,36,0.5)',
             }}>
               Bravo ! Bonus enregistre !
             </p>
-            <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '8px' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '8px' }}>
               Ton enseignant le prendra en compte.
             </p>
           </div>
@@ -745,12 +745,12 @@ function StampCardView({
           }}
         >
           <div style={{
-            background: '#1e293b', borderRadius: '16px', padding: '24px',
-            border: '1px solid #334155', textAlign: 'center', maxWidth: '280px',
+            background: 'var(--surface)', borderRadius: '16px', padding: '24px',
+            border: '1px solid var(--border)', textAlign: 'center', maxWidth: '280px',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>{selectedStampDetail.icon}</div>
-            <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
-            <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px' }}>
+            <p style={{ color: 'var(--bg)', fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginTop: '8px' }}>
               {new Date(selectedStampDetail.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
             <div style={{ width: '20px', height: '4px', borderRadius: '2px', background: selectedStampDetail.color, margin: '12px auto 0' }} />
@@ -773,7 +773,7 @@ function StampCardView({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '24px' }}>{tier.emoji}</span>
             <div>
-              <p style={{ color: '#fff', fontSize: '16px', fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+              <p style={{ color: '#ffffff', fontSize: '16px', fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
                 Carte n°{card?.card_number || 1}
               </p>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}>{tier.name}</p>
@@ -781,7 +781,7 @@ function StampCardView({
           </div>
           <span style={{
             padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
-            background: 'rgba(255,255,255,0.2)', color: '#fff',
+            background: 'rgba(255,255,255,0.2)', color: '#ffffff',
             backdropFilter: 'blur(4px)',
           }}>
             {stampCount}/10
@@ -850,8 +850,8 @@ function StampCardView({
             style={{
               position: 'relative', width: '100%', marginTop: '20px', padding: '14px',
               borderRadius: '12px', border: 'none',
-              background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-              color: '#1e293b', fontSize: '15px', fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--warn), var(--warn))',
+              color: 'var(--surface)', fontSize: '15px', fontWeight: 700,
               cursor: 'pointer', transition: 'transform 0.2s',
               animation: 'pulse 2s ease infinite',
             }}
@@ -866,13 +866,13 @@ function StampCardView({
       {/* Bonus selection */}
       {showBonusSelect && (
         <div style={{
-          background: '#1e293b', borderRadius: '20px', padding: '20px',
-          marginBottom: '12px', border: '1px solid #f59e0b40',
+          background: 'var(--surface)', borderRadius: '20px', padding: '20px',
+          marginBottom: '12px', border: '1px solid color-mix(in srgb, var(--warn) 25%, transparent)',
         }}>
-          <p style={{ color: '#fbbf24', fontSize: '16px', fontWeight: 700, marginBottom: '4px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--warn)', fontSize: '16px', fontWeight: 700, marginBottom: '4px', textAlign: 'center' }}>
             🎁 Choisis ton bonus !
           </p>
-          <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '16px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '16px', textAlign: 'center' }}>
             Tu as rempli ta carte, bravo ! Choisis ta recompense :
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -885,18 +885,18 @@ function StampCardView({
                 }}
                 style={{
                   padding: '14px 16px', borderRadius: '12px',
-                  border: '1px solid #334155', background: '#0f172a',
-                  color: '#f1f5f9', fontSize: '14px', fontWeight: 500,
+                  border: '1px solid var(--border)', background: 'var(--bg)',
+                  color: 'var(--bg)', fontSize: '14px', fontWeight: 500,
                   cursor: 'pointer', textAlign: 'left',
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = '#fbbf24';
-                  e.currentTarget.style.background = '#1e293b';
+                  e.currentTarget.style.borderColor = 'var(--warn)';
+                  e.currentTarget.style.background = 'var(--surface)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = '#334155';
-                  e.currentTarget.style.background = '#0f172a';
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.background = 'var(--bg)';
                 }}
               >
                 🎁 {bonus.label}
@@ -907,8 +907,8 @@ function StampCardView({
             onClick={() => setShowBonusSelect(false)}
             style={{
               width: '100%', marginTop: '12px', padding: '10px',
-              borderRadius: '10px', border: '1px solid #334155',
-              background: 'transparent', color: '#94a3b8', fontSize: '13px',
+              borderRadius: '10px', border: '1px solid var(--border)',
+              background: 'transparent', color: 'var(--text-dim)', fontSize: '13px',
               cursor: 'pointer',
             }}
           >
@@ -920,10 +920,10 @@ function StampCardView({
       {/* Completed cards history */}
       {stampData.completed_cards.length > 0 && (
         <div style={{
-          background: '#1e293b', borderRadius: '16px', padding: '16px',
-          marginBottom: '12px', border: '1px solid #334155',
+          background: 'var(--surface)', borderRadius: '16px', padding: '16px',
+          marginBottom: '12px', border: '1px solid var(--border)',
         }}>
-          <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
+          <p style={{ color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
             Historique des cartes
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -932,18 +932,18 @@ function StampCardView({
               return (
                 <div key={c.id || `card-${c.card_number}`} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 12px', borderRadius: '10px', background: '#0f172a',
+                  padding: '8px 12px', borderRadius: '10px', background: 'var(--bg)',
                 }}>
                   <div>
                     <span style={{ fontSize: '14px', marginRight: '6px' }}>{cTier.emoji}</span>
-                    <span style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600 }}>
+                    <span style={{ color: 'var(--bg)', fontSize: '13px', fontWeight: 600 }}>
                       Carte n°{c.card_number}
                     </span>
-                    <span style={{ color: '#64748b', fontSize: '11px', marginLeft: '6px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }}>
                       {cTier.name}
                     </span>
                     {c.completed_at && (
-                      <span style={{ color: '#475569', fontSize: '10px', marginLeft: '8px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '10px', marginLeft: '8px' }}>
                         {new Date(c.completed_at).toLocaleDateString('fr-FR')}
                       </span>
                     )}
@@ -952,12 +952,12 @@ function StampCardView({
                     {c.bonus_label ? (
                       <span style={{
                         fontSize: '11px', fontWeight: 500,
-                        color: c.bonus_used ? '#22c55e' : '#fbbf24',
+                        color: c.bonus_used ? 'var(--pos)' : 'var(--warn)',
                       }}>
                         🎁 {c.bonus_label} {c.bonus_used ? '✓' : '⏳'}
                       </span>
                     ) : (
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>Pas de bonus</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pas de bonus</span>
                     )}
                   </div>
                 </div>
@@ -970,13 +970,13 @@ function StampCardView({
       {/* How to earn stamps (accordion) */}
       {stampData.categories.length > 0 && (
         <details style={{
-          background: '#1e293b', borderRadius: '16px',
-          marginBottom: '12px', border: '1px solid #334155',
+          background: 'var(--surface)', borderRadius: '16px',
+          marginBottom: '12px', border: '1px solid var(--border)',
           overflow: 'hidden',
         }}>
           <summary style={{
             padding: '14px 16px',
-            color: '#94a3b8', fontSize: '13px', fontWeight: 600,
+            color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             listStyle: 'none', userSelect: 'none',
           }}>
@@ -992,10 +992,10 @@ function StampCardView({
             ).map((cat, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '6px 10px', borderRadius: '8px', background: '#0f172a',
+                padding: '6px 10px', borderRadius: '8px', background: 'var(--bg)',
               }}>
                 <span style={{ fontSize: '16px' }}>{cat.icon}</span>
-                <span style={{ color: '#cbd5e1', fontSize: '11px' }}>{cat.label}</span>
+                <span style={{ color: 'var(--text)', fontSize: '11px' }}>{cat.label}</span>
               </div>
             ))}
           </div>
@@ -1062,13 +1062,13 @@ function RankingDisplay({
         textAlign: 'center',
         marginBottom: '12px',
         padding: '8px',
-        background: '#0f172a',
+        background: 'var(--bg)',
         borderRadius: '8px',
       }}>
-        <span style={{ fontSize: '24px', fontWeight: 700, color: isInTop10 ? '#22c55e' : '#3b82f6' }}>
+        <span style={{ fontSize: '24px', fontWeight: 700, color: isInTop10 ? 'var(--pos)' : 'var(--indigo)' }}>
           {rank}<sup style={{ fontSize: '12px' }}>e</sup>
         </span>
-        <span style={{ color: '#64748b', fontSize: '13px' }}> / {total}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}> / {total}</span>
       </div>
 
       {/* Top 10 list */}
@@ -1088,11 +1088,11 @@ function RankingDisplay({
                 fontSize: '12px',
               }}
             >
-              <span style={{ color: isMe ? '#60a5fa' : '#94a3b8', fontWeight: isMe ? 700 : 400 }}>
+              <span style={{ color: isMe ? 'var(--indigo)' : 'var(--text-dim)', fontWeight: isMe ? 700 : 400 }}>
                 {medalEmoji(entry.rank)}
               </span>
               <span style={{
-                color: isMe ? '#60a5fa' : '#cbd5e1',
+                color: isMe ? 'var(--indigo)' : 'var(--text)',
                 fontWeight: isMe ? 700 : 400,
               }}>
                 {entry.grade.toFixed(1)}
@@ -1105,7 +1105,7 @@ function RankingDisplay({
           <>
             <div style={{
               textAlign: 'center',
-              color: '#475569',
+              color: 'var(--text-muted)',
               fontSize: '11px',
               padding: '2px 0',
             }}>
@@ -1119,10 +1119,10 @@ function RankingDisplay({
               background: '#1e3a5f',
               fontSize: '12px',
             }}>
-              <span style={{ color: '#60a5fa', fontWeight: 700 }}>
+              <span style={{ color: 'var(--indigo)', fontWeight: 700 }}>
                 {rank}.
               </span>
-              <span style={{ color: '#60a5fa', fontWeight: 700 }}>
+              <span style={{ color: 'var(--indigo)', fontWeight: 700 }}>
                 Toi · {studentGrade.toFixed(1)}
               </span>
             </div>

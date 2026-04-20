@@ -4,19 +4,22 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { FeedbackButton } from './FeedbackButton';
 import { AnnouncementBanner } from './AnnouncementBanner';
+import { supabase } from '../lib/supabase';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
 
 interface LayoutProps {
   children: ReactNode;
+  /** Set true for pages that handle their own max-width (e.g. Classes with sidebar) */
+  fluid?: boolean;
 }
 
 const primaryNavItems = [
-  { path: '/', label: 'Accueil', icon: '📊' },
-  { path: '/classes', label: 'Classes', icon: '📚' },
-  { path: '/students', label: 'Suivi élèves', icon: '👥' },
-  { path: '/sessions', label: 'Séances', icon: '📅' },
-  { path: '/analytics', label: 'Analyses', icon: '📈' },
+  { path: '/', label: 'Accueil', icon: 'home' },
+  { path: '/classes', label: 'Classes', icon: 'classes' },
+  { path: '/students', label: 'Suivi élèves', icon: 'students' },
+  { path: '/sessions', label: 'Séances', icon: 'sessions' },
+  { path: '/analytics', label: 'Analyses', icon: 'analytics' },
 ];
 
 const secondaryNavItems = [
@@ -27,23 +30,45 @@ const secondaryNavItems = [
   { path: '/pronote', label: 'Pronote', icon: '🔗' },
 ];
 
-export function Layout({ children }: LayoutProps) {
+/* ---- SVG icon component (from design handoff) ---- */
+function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
+  const common = {
+    width: size, height: size, viewBox: '0 0 24 24',
+    fill: 'none', stroke: 'currentColor', strokeWidth: 1.6,
+    strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
+  };
+  switch (name) {
+    case 'home': return <svg {...common}><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>;
+    case 'classes': return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>;
+    case 'students': return <svg {...common}><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M15 15c3-.5 6 1.5 7 5"/></svg>;
+    case 'sessions': return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>;
+    case 'analytics': return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>;
+    case 'bell': return <svg {...common}><path d="M6 8a6 6 0 0112 0v5l2 3H4l2-3V8z"/><path d="M10 20a2 2 0 004 0"/></svg>;
+    case 'settings': return <svg {...common}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>;
+    case 'plus': return <svg {...common}><path d="M12 5v14M5 12h14"/></svg>;
+    default: return null;
+  }
+}
+
+export function Layout({ children, fluid }: LayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState<{id: string; message: string; type: string; created_at: string}[]>([]);
+  const [feedbacks, setFeedbacks] = useState<{id: string; user_email: string; type: string; message: string; created_at: string}[]>([]);
+  const [lastRead, setLastRead] = useState<string>(() => localStorage.getItem('gc_notifications_last_read') || '');
   const userMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const isDev = user?.email === DEV_EMAIL;
   const allSecondaryItems = isDev
     ? [...secondaryNavItems, { path: '/dev', label: 'Dev', icon: '🛠️' }]
     : secondaryNavItems;
-  // For mobile: all items flat
   const allNavItems = [...primaryNavItems, ...allSecondaryItems];
-  // Is a secondary item currently active?
   const isSecondaryActive = allSecondaryItems.some(item => location.pathname === item.path);
 
-  // Fermer les menus si on clique ailleurs
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -52,122 +77,379 @@ export function Layout({ children }: LayoutProps) {
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
         setIsMoreMenuOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch notifications data
+  useEffect(() => {
+    if (!user) return;
+
+    supabase
+      .from('announcements')
+      .select('id, message, type, created_at')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (data) setAnnouncements(data); });
+
+    if (user.email === DEV_EMAIL) {
+      supabase
+        .from('feedbacks')
+        .select('id, user_email, type, message, created_at')
+        .eq('archived', false)
+        .order('created_at', { ascending: false })
+        .limit(20)
+        .then(({ data }) => { if (data) setFeedbacks(data); });
+    }
+  }, [user]);
+
+  const allNotifs = [
+    ...announcements.map(a => ({ id: a.id, created_at: a.created_at, kind: 'announcement' as const })),
+    ...(isDev ? feedbacks.map(f => ({ id: f.id, created_at: f.created_at, kind: 'feedback' as const })) : []),
+  ];
+  const unreadCount = lastRead ? allNotifs.filter(n => n.created_at > lastRead).length : allNotifs.length;
+
+  const handleOpenNotif = () => {
+    setIsNotifOpen(!isNotifOpen);
+    if (!isNotifOpen) {
+      const now = new Date().toISOString();
+      setLastRead(now);
+      localStorage.setItem('gc_notifications_last_read', now);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[var(--color-background)]">
-      {/* Header */}
-      <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-10" style={{ boxShadow: 'var(--shadow-sm)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8">
-              {/* Logo with gradient */}
-              <Link to="/" className="flex items-center gap-3 group">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg transition-transform group-hover:scale-105"
-                  style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-glow)' }}
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      {/* ---- Top nav ---- */}
+      <header style={{
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
+        <div style={{
+          maxWidth: 1400,
+          margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto',
+          alignItems: 'center',
+          gap: 24,
+          padding: '10px 28px',
+        }}>
+          {/* Brand */}
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <svg width="32" height="32" viewBox="0 0 32 32">
+              <defs>
+                <linearGradient id="gc-grad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#6366F1" />
+                  <stop offset="1" stopColor="#8B5CF6" />
+                </linearGradient>
+              </defs>
+              <circle cx="16" cy="16" r="15" fill="url(#gc-grad)" />
+              <text x="16" y="21" textAnchor="middle" fontFamily="var(--font-display)" fontSize="13" fontWeight="700" fill="#fff">GC</text>
+            </svg>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+                Gestion Classe
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                T3 · 2025–2026
+              </span>
+            </div>
+          </Link>
+
+          {/* Center nav (pill-style) */}
+          <nav className="hidden md:flex" style={{
+            alignItems: 'center',
+            gap: 2,
+            justifySelf: 'center',
+            background: 'var(--surface-3)',
+            padding: 4,
+            borderRadius: 10,
+          }}>
+            {primaryNavItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '7px 12px',
+                    borderRadius: 7,
+                    fontSize: 13,
+                    color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                    fontWeight: 500,
+                    background: isActive ? 'var(--surface)' : 'transparent',
+                    boxShadow: isActive ? 'var(--shadow-1)' : 'none',
+                    textDecoration: 'none',
+                    transition: 'all 0.12s ease',
+                  }}
                 >
-                  GC
+                  <NavIcon name={item.icon} size={15} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+
+            {/* "Plus" dropdown */}
+            <div style={{ position: 'relative' }} ref={moreMenuRef}>
+              <button
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 12px',
+                  borderRadius: 7,
+                  fontSize: 13,
+                  color: isSecondaryActive ? 'var(--text)' : 'var(--text-dim)',
+                  fontWeight: 500,
+                  background: isSecondaryActive ? 'var(--surface)' : 'transparent',
+                  boxShadow: isSecondaryActive ? 'var(--shadow-1)' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <NavIcon name="plus" size={15} />
+                <span>Plus</span>
+              </button>
+              {isMoreMenuOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  minWidth: 200,
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: 4,
+                  boxShadow: 'var(--shadow-2)',
+                  zIndex: 60,
+                }}>
+                  {allSecondaryItems.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setIsMoreMenuOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 9,
+                          padding: '7px 10px',
+                          borderRadius: 7,
+                          fontSize: 12.5,
+                          textAlign: 'left' as const,
+                          color: isActive ? 'var(--indigo)' : 'var(--text)',
+                          background: isActive ? 'var(--indigo-soft)' : 'transparent',
+                          textDecoration: 'none',
+                          whiteSpace: 'nowrap' as const,
+                          transition: 'background 0.1s',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                        }}
+                      >
+                        <span>{item.icon}</span>
+                        <span style={{ fontWeight: 500 }}>{item.label}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] bg-clip-text text-transparent hidden sm:block">
-                  Gestion Classe
-                </span>
-              </Link>
+              )}
+            </div>
+          </nav>
 
-              {/* Navigation */}
-              <nav className="hidden md:flex items-center gap-1 h-full">
-                {primaryNavItems.map((item) => {
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`px-3 h-full flex items-center gap-1.5 text-sm font-medium transition-all duration-200 border-b-2 ${
-                        isActive
-                          ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
-                          : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
-                      }`}
-                    >
-                      <span>{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  );
-                })}
+          {/* Right icons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative' }} ref={notifRef}>
+              <button
+                onClick={handleOpenNotif}
+                style={{
+                  width: 32, height: 32, display: 'grid', placeItems: 'center',
+                  borderRadius: 8, color: 'var(--text-muted)', border: 'none', background: 'none',
+                  cursor: 'pointer', position: 'relative',
+                }}
+                title="Notifications"
+              >
+                <NavIcon name="bell" size={16} />
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 2,
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: 'var(--neg)', color: '#fff',
+                    fontSize: 10, fontWeight: 700,
+                    display: 'grid', placeItems: 'center',
+                    lineHeight: 1,
+                  }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {isNotifOpen && (
+                <div style={{
+                  position: 'absolute', right: 0, marginTop: 8,
+                  width: 360, maxHeight: 480, overflowY: 'auto',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)', borderRadius: 12,
+                  padding: 0, boxShadow: 'var(--shadow-2)', zIndex: 60,
+                }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{unreadCount} nouvelle{unreadCount > 1 ? 's' : ''}</span>
+                    )}
+                  </div>
 
-                {/* Menu "Plus" pour les items secondaires */}
-                <div className="relative h-full" ref={moreMenuRef}>
-                  <button
-                    onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                    className={`px-3 h-full flex items-center gap-1.5 text-sm font-medium transition-all duration-200 border-b-2 ${
-                      isSecondaryActive
-                        ? 'text-[var(--color-primary)] border-[var(--color-primary)]'
-                        : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
-                    }`}
-                  >
-                    <span>+</span>
-                    Plus
-                  </button>
-                  {isMoreMenuOpen && (
-                    <div
-                      className="absolute top-full left-0 mt-1 w-52 bg-[var(--color-surface)] border border-[var(--color-border)] py-1"
-                      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)' }}
-                    >
-                      {allSecondaryItems.map((item) => {
-                        const isActive = location.pathname === item.path;
-                        return (
-                          <Link
-                            key={item.path}
-                            to={item.path}
-                            onClick={() => setIsMoreMenuOpen(false)}
-                            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                              isActive
-                                ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]'
-                            }`}
-                          >
-                            <span>{item.icon}</span>
-                            {item.label}
-                          </Link>
-                        );
-                      })}
+                  {announcements.length === 0 && feedbacks.length === 0 ? (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                      Aucune notification
+                    </div>
+                  ) : (
+                    <div>
+                      {/* Announcements section */}
+                      {announcements.length > 0 && (
+                        <>
+                          <div style={{ padding: '8px 16px', fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+                            Annonces
+                          </div>
+                          {announcements.map(a => {
+                            const isNew = !lastRead || a.created_at > lastRead;
+                            return (
+                              <div
+                                key={a.id}
+                                style={{
+                                  padding: '10px 16px',
+                                  borderBottom: '1px solid var(--border)',
+                                  background: isNew ? 'var(--indigo-soft)' : 'transparent',
+                                  transition: 'background 0.15s',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                  <span style={{ fontSize: 14, marginTop: 1 }}>
+                                    {a.type === 'info' ? '\u2139\uFE0F' : a.type === 'warning' ? '\u26A0\uFE0F' : '\u2705'}
+                                  </span>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4 }}>{a.message}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                                      {new Date(a.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                  </div>
+                                  {isNew && (
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--indigo)', flexShrink: 0, marginTop: 5 }} />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+
+                      {/* Feedbacks section - dev only */}
+                      {isDev && feedbacks.length > 0 && (
+                        <>
+                          <div style={{ padding: '8px 16px', fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', borderTop: announcements.length > 0 ? '2px solid var(--border)' : 'none' }}>
+                            Retours utilisateurs
+                          </div>
+                          {feedbacks.map(f => {
+                            const isNew = !lastRead || f.created_at > lastRead;
+                            const typeIcon = f.type === 'bug' ? '\uD83D\uDC1B' : f.type === 'suggestion' ? '\uD83D\uDCA1' : '\uD83D\uDCAC';
+                            return (
+                              <div
+                                key={f.id}
+                                style={{
+                                  padding: '10px 16px',
+                                  borderBottom: '1px solid var(--border)',
+                                  background: isNew ? 'var(--indigo-soft)' : 'transparent',
+                                  transition: 'background 0.15s',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                  <span style={{ fontSize: 14, marginTop: 1 }}>{typeIcon}</span>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{f.user_email}</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as any}>{f.message}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                                      {new Date(f.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                  </div>
+                                  {isNew && (
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--indigo)', flexShrink: 0, marginTop: 5 }} />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-              </nav>
+              )}
             </div>
+            <button
+              style={{
+                width: 32, height: 32, display: 'grid', placeItems: 'center',
+                borderRadius: 8, color: 'var(--text-muted)', border: 'none', background: 'none',
+                cursor: 'pointer',
+              }}
+              title="Réglages"
+            >
+              <NavIcon name="settings" size={16} />
+            </button>
 
-            {/* User menu */}
-            <div className="relative" ref={userMenuRef}>
+            {/* User avatar */}
+            <div style={{ position: 'relative' }} ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
-                style={{ background: 'var(--gradient-primary)' }}
+                style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  color: '#fff', display: 'grid', placeItems: 'center',
+                  fontWeight: 600, fontSize: 13, border: 'none', cursor: 'pointer',
+                }}
               >
                 {user?.email?.charAt(0).toUpperCase()}
               </button>
-
-              {/* Dropdown menu */}
               {isUserMenuOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-64 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] py-2"
-                  style={{ boxShadow: 'var(--shadow-lg)' }}
-                >
-                  <div className="px-4 py-3 border-b border-[var(--color-border)]">
-                    <p className="text-sm font-medium text-[var(--color-text)]">Connecté en tant que</p>
-                    <p className="text-sm text-[var(--color-text-secondary)] truncate">{user?.email}</p>
+                <div style={{
+                  position: 'absolute', right: 0, marginTop: 8,
+                  width: 260, background: 'var(--surface)',
+                  border: '1px solid var(--border)', borderRadius: 12,
+                  padding: 4, boxShadow: 'var(--shadow-2)', zIndex: 60,
+                }}>
+                  <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Connecté en tant que</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
                   </div>
                   <button
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      signOut();
+                    onClick={() => { setIsUserMenuOpen(false); signOut(); }}
+                    style={{
+                      width: '100%', padding: '8px 14px', textAlign: 'left',
+                      fontSize: 12.5, fontWeight: 500, color: 'var(--neg)',
+                      background: 'none', border: 'none', borderRadius: 7,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                      transition: 'background 0.1s',
                     }}
-                    className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors flex items-center gap-2"
+                    onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--neg-soft)'}
+                    onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'none'}
                   >
-                    <span>🚪</span>
-                    Déconnexion
+                    🚪 Déconnexion
                   </button>
                 </div>
               )}
@@ -175,25 +457,33 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        {/* Mobile nav */}
-        <nav className="md:hidden border-t border-[var(--color-border)] px-4 py-2 flex gap-2 overflow-x-auto bg-[var(--color-surface-secondary)]">
+        {/* Mobile nav — hidden on md+ where the pill nav is visible */}
+        <nav className="mobile-nav" style={{
+          borderTop: '1px solid var(--border)',
+          padding: '8px 12px',
+          gap: 4,
+          overflowX: 'auto',
+          background: 'var(--surface)',
+        }}>
           {allNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                  isActive
-                    ? 'text-white'
-                    : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)]'
-                }`}
-                style={isActive ? {
-                  background: 'var(--gradient-primary)',
-                  boxShadow: 'var(--shadow-xs)'
-                } : undefined}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 7,
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  textDecoration: 'none',
+                  color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                  background: isActive ? 'var(--surface-3)' : 'transparent',
+                  boxShadow: isActive ? 'var(--shadow-1)' : 'none',
+                  transition: 'all 0.12s',
+                }}
               >
-                <span>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -204,7 +494,11 @@ export function Layout({ children }: LayoutProps) {
       <AnnouncementBanner />
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main style={{
+        maxWidth: fluid ? 1600 : 1400,
+        margin: '0 auto',
+        padding: 28,
+      }}>
         {children}
       </main>
 

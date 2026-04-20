@@ -137,14 +137,14 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+      <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
           {editingRoom ? 'Modifier la salle' : 'Nouvelle salle'}
         </h3>
 
         <div className="space-y-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1">
+            <label className="block text-sm font-medium text-[var(--text)] mb-1">
               Nom de la salle
             </label>
             <input
@@ -152,47 +152,47 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               placeholder="Ex: Salle 204"
-              className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+              className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
               autoFocus
             />
           </div>
 
           <div className="flex gap-6">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">Rangees</label>
+              <label className="block text-sm font-medium text-[var(--text)] mb-2">Rangees</label>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleRowsChange(-1)}
                   disabled={roomRows <= 1}
-                  className="w-10 h-10 flex items-center justify-center bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-primary)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--color-background)] disabled:hover:text-[var(--color-text)] transition-colors"
+                  className="w-10 h-10 flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--indigo)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--bg)] disabled:hover:text-[var(--text)] transition-colors"
                 >-</button>
-                <span className="w-8 text-center font-semibold text-[var(--color-text)]">{roomRows}</span>
+                <span className="w-8 text-center font-semibold text-[var(--text)]">{roomRows}</span>
                 <button
                   onClick={() => handleRowsChange(1)}
                   disabled={roomRows >= 10}
-                  className="w-10 h-10 flex items-center justify-center bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-primary)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--color-background)] disabled:hover:text-[var(--color-text)] transition-colors"
+                  className="w-10 h-10 flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--indigo)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--bg)] disabled:hover:text-[var(--text)] transition-colors"
                 >+</button>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">Colonnes</label>
+              <label className="block text-sm font-medium text-[var(--text)] mb-2">Colonnes</label>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleColumnsChange(-1)}
                   disabled={roomColumns <= 1}
-                  className="w-10 h-10 flex items-center justify-center bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-primary)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--color-background)] disabled:hover:text-[var(--color-text)] transition-colors"
+                  className="w-10 h-10 flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--indigo)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--bg)] disabled:hover:text-[var(--text)] transition-colors"
                 >-</button>
-                <span className="w-8 text-center font-semibold text-[var(--color-text)]">{roomColumns}</span>
+                <span className="w-8 text-center font-semibold text-[var(--text)]">{roomColumns}</span>
                 <button
                   onClick={() => handleColumnsChange(1)}
                   disabled={roomColumns >= 12}
-                  className="w-10 h-10 flex items-center justify-center bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-primary)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--color-background)] disabled:hover:text-[var(--color-text)] transition-colors"
+                  className="w-10 h-10 flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--indigo)] hover:text-white disabled:opacity-50 disabled:hover:bg-[var(--bg)] disabled:hover:text-[var(--text)] transition-colors"
                 >+</button>
               </div>
             </div>
           </div>
 
-          <p className="text-sm text-[var(--color-text-tertiary)]">
+          <p className="text-sm text-[var(--text-dim)]">
             Cliquez sur une cellule pour creer une allee (espace vide)
           </p>
 
@@ -228,11 +228,11 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
             </div>
 
             <div className="flex sm:flex-col gap-4 sm:w-32">
-              <div className="text-sm text-[var(--color-text)]">
+              <div className="text-sm text-[var(--text)]">
                 <p className="font-medium mb-2">Legende</p>
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900/50 border border-blue-300 dark:border-blue-600 rounded" />
-                  <span className="text-[var(--color-text-tertiary)]">Place</span>
+                  <span className="text-[var(--text-dim)]">Place</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div
@@ -241,17 +241,17 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
                       backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)'
                     }}
                   />
-                  <span className="text-[var(--color-text-tertiary)]">Allee</span>
+                  <span className="text-[var(--text-dim)]">Allee</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-[var(--color-background)] rounded-lg flex-1 sm:flex-none">
-                <div className="text-2xl font-bold text-[var(--color-primary)]">{activePlaces}</div>
-                <div className="text-xs text-[var(--color-text-tertiary)]">
+              <div className="p-3 bg-[var(--bg)] rounded-lg flex-1 sm:flex-none">
+                <div className="text-2xl font-bold text-[var(--indigo)]">{activePlaces}</div>
+                <div className="text-xs text-[var(--text-dim)]">
                   place{activePlaces > 1 ? 's' : ''} disponible{activePlaces > 1 ? 's' : ''}
                 </div>
                 {disabledCells.size > 0 && (
-                  <div className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                  <div className="text-xs text-[var(--text-dim)] mt-1">
                     ({disabledCells.size} allee{disabledCells.size > 1 ? 's' : ''})
                   </div>
                 )}
@@ -265,14 +265,14 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
         <div className="flex gap-3 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+            className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
             disabled={isSubmitting}
           >
             Annuler
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+            className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'En cours...' : editingRoom ? 'Modifier' : 'Creer'}

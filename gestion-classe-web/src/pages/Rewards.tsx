@@ -348,13 +348,13 @@ export function Rewards() {
         {/* Header */}
         <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
           <div>
-            <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text)]">Récompenses</h1>
-            <p className="text-xs md:text-sm text-[var(--color-text-secondary)]">Carte à tampons et bonus</p>
+            <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Récompenses</h1>
+            <p className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Carte à tampons et bonus</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowConfigModal(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors flex items-center gap-1.5"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -364,7 +364,7 @@ export function Rewards() {
             </button>
             <button
               onClick={doResetAll}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-error)] border border-[var(--color-error)] hover:bg-red-50 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--neg)] border border-[var(--neg)] hover:bg-red-50 transition-colors"
             >
               <span className="hidden md:inline">Reinitialiser les cartes</span>
               <span className="md:hidden">Reset</span>
@@ -374,7 +374,7 @@ export function Rewards() {
 
         {/* Messages */}
         {error && (
-          <div className="p-3 rounded-xl bg-[var(--color-error-soft)] text-[var(--color-error)] text-sm mb-2">
+          <div className="p-3 rounded-xl bg-[var(--neg-soft)] text-[var(--neg)] text-sm mb-2">
             {error}
             <button onClick={() => setError(null)} className="ml-2 font-bold">x</button>
           </div>
@@ -386,15 +386,15 @@ export function Rewards() {
         {/* Main content area - Two column layout */}
         <div className="flex flex-1 gap-4 min-h-0">
           {/* SIDEBAR: Classes list (left) */}
-          <div className={`w-12 flex-shrink-0 bg-[var(--color-surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200 ${sidebarCollapsed ? 'md:w-12' : 'md:w-56'}`}>
+          <div className={`w-12 flex-shrink-0 bg-[var(--surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200 ${sidebarCollapsed ? 'md:w-12' : 'md:w-56'}`}>
             {/* Sidebar header */}
-            <div className="p-1 md:p-2 border-b border-[var(--color-border)] flex items-center justify-between">
-              <span className={`text-xs font-semibold text-[var(--color-text-secondary)] hidden ${sidebarCollapsed ? '' : 'md:block'}`}>
+            <div className="p-1 md:p-2 border-b border-[var(--border)] flex items-center justify-between">
+              <span className={`text-xs font-semibold text-[var(--text-muted)] hidden ${sidebarCollapsed ? '' : 'md:block'}`}>
                 Classes
               </span>
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="hidden md:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-[var(--color-background)] text-[var(--color-text-secondary)] text-xs"
+                className="hidden md:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-[var(--bg)] text-[var(--text-muted)] text-xs"
                 title={sidebarCollapsed ? 'Déplier' : 'Replier'}
               >
                 {sidebarCollapsed ? '»' : '«'}
@@ -407,8 +407,8 @@ export function Rewards() {
                 onClick={() => setClassFilter('')}
                 className={`w-full rounded-lg transition-colors ${
                   !classFilter
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'hover:bg-[var(--color-background)] text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--indigo)] text-white'
+                    : 'hover:bg-[var(--bg)] text-[var(--text-muted)]'
                 }`}
               >
                 {/* Mobile / collapsed */}
@@ -418,7 +418,7 @@ export function Rewards() {
                 {/* Desktop expanded */}
                 <div className={`hidden ${sidebarCollapsed ? '' : 'md:flex'} items-center gap-2 px-3 py-2`}>
                   <span className="text-sm font-medium truncate">Toutes</span>
-                  <span className={`ml-auto text-xs ${!classFilter ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>
+                  <span className={`ml-auto text-xs ${!classFilter ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                     {overview.length}
                   </span>
                 </div>
@@ -430,8 +430,8 @@ export function Rewards() {
                   onClick={() => setClassFilter(cls.id)}
                   className={`w-full rounded-lg transition-colors ${
                     classFilter === cls.id
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'hover:bg-[var(--color-background)] text-[var(--color-text)]'
+                      ? 'bg-[var(--indigo)] text-white'
+                      : 'hover:bg-[var(--bg)] text-[var(--text)]'
                   }`}
                 >
                   {/* Mobile / collapsed: abbreviation */}
@@ -441,7 +441,7 @@ export function Rewards() {
                   {/* Desktop expanded */}
                   <div className={`hidden ${sidebarCollapsed ? '' : 'md:flex'} items-center gap-2 px-3 py-2`}>
                     <span className="text-sm font-medium truncate">{cls.name}</span>
-                    <span className={`ml-auto text-xs ${classFilter === cls.id ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>
+                    <span className={`ml-auto text-xs ${classFilter === cls.id ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                       {cls.studentCount}
                     </span>
                   </div>
@@ -451,14 +451,14 @@ export function Rewards() {
           </div>
 
           {/* MAIN CONTENT (right) */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface)] rounded-xl overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 bg-[var(--surface)] rounded-xl overflow-hidden">
             {/* Header bar */}
-            <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 md:px-4 py-2">
-              <span className="text-sm font-medium text-[var(--color-text)]">Vue d'ensemble</span>
+            <div className="flex items-center gap-2 border-b border-[var(--border)] px-2 md:px-4 py-2">
+              <span className="text-sm font-medium text-[var(--text)]">Vue d'ensemble</span>
               {classFilter && (
                 <button
                   onClick={doInitCards}
-                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)] hover:bg-blue-50 transition-colors"
+                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--indigo)] border border-[var(--indigo)] hover:bg-blue-50 transition-colors"
                 >
                   Initialiser les cartes
                 </button>
@@ -468,7 +468,7 @@ export function Rewards() {
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-2 md:p-4">
               {isLoading ? (
-                <div className="text-center py-12 text-[var(--color-text-secondary)]">Chargement...</div>
+                <div className="text-center py-12 text-[var(--text-muted)]">Chargement...</div>
               ) : (
                 <OverviewTab
                   overview={filteredOverview}
@@ -488,51 +488,51 @@ export function Rewards() {
         <Modal title={editingCategory ? 'Modifier catégorie' : 'Nouvelle catégorie'} onClose={() => setShowCategoryModal(false)}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Label</label>
+              <label className="block text-sm font-medium text-[var(--text)] mb-1">Label</label>
               <input
                 type="text"
                 value={catLabel}
                 onChange={e => setCatLabel(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
                 placeholder="Ex: Participation remarquable"
               />
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Icône (emoji)</label>
+                <label className="block text-sm font-medium text-[var(--text)] mb-1">Icône (emoji)</label>
                 <input
                   type="text"
                   value={catIcon}
                   onChange={e => setCatIcon(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-center text-2xl"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-center text-2xl"
                   placeholder="⭐"
                   maxLength={4}
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Couleur</label>
+                <label className="block text-sm font-medium text-[var(--text)] mb-1">Couleur</label>
                 <input
                   type="color"
                   value={catColor}
                   onChange={e => setCatColor(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-[var(--color-border)] cursor-pointer"
+                  className="w-full h-10 rounded-xl border border-[var(--border)] cursor-pointer"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface-secondary)]">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--surface-3)]">
               <span className="text-2xl">{catIcon || '?'}</span>
               <span className="text-sm font-medium" style={{ color: catColor }}>{catLabel || 'Aperçu'}</span>
               <div className="w-4 h-4 rounded-full ml-auto" style={{ backgroundColor: catColor }} />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowCategoryModal(false)} className="px-4 py-2 text-sm rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]">
+              <button onClick={() => setShowCategoryModal(false)} className="px-4 py-2 text-sm rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-3)]">
                 Annuler
               </button>
               <button
                 onClick={saveCategory}
                 disabled={isSaving || !catLabel.trim() || !catIcon.trim()}
                 className="px-4 py-2 text-sm rounded-xl text-white font-medium disabled:opacity-50"
-                style={{ background: 'var(--gradient-primary)' }}
+                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
               >
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
@@ -546,24 +546,24 @@ export function Rewards() {
         <Modal title={editingBonus ? 'Modifier bonus' : 'Nouveau bonus'} onClose={() => setShowBonusModal(false)}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Label</label>
+              <label className="block text-sm font-medium text-[var(--text)] mb-1">Label</label>
               <input
                 type="text"
                 value={bonusLabel}
                 onChange={e => setBonusLabel(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
                 placeholder="Ex: +1 pt sur la note de son choix"
               />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowBonusModal(false)} className="px-4 py-2 text-sm rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]">
+              <button onClick={() => setShowBonusModal(false)} className="px-4 py-2 text-sm rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-3)]">
                 Annuler
               </button>
               <button
                 onClick={saveBonus}
                 disabled={isSaving || !bonusLabel.trim()}
                 className="px-4 py-2 text-sm rounded-xl text-white font-medium disabled:opacity-50"
-                style={{ background: 'var(--gradient-primary)' }}
+                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
               >
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
@@ -575,7 +575,7 @@ export function Rewards() {
       {/* Stamp Attribution Modal */}
       {showStampModal && stampTarget && (
         <Modal title={`Attribuer un tampon — ${stampTarget.pseudo}`} onClose={() => setShowStampModal(false)}>
-          <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+          <p className="text-sm text-[var(--text-muted)] mb-4">
             Carte n°{stampTarget.card_number} — {stampTarget.stamp_count}/10
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto">
@@ -583,10 +583,10 @@ export function Rewards() {
               <button
                 key={cat.id}
                 onClick={() => doAwardStamp(cat.id)}
-                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-secondary)] transition-all text-left"
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--indigo)] hover:bg-[var(--surface-3)] transition-all text-left"
               >
                 <span className="text-2xl">{cat.icon}</span>
-                <span className="text-sm font-medium text-[var(--color-text)]">{cat.label}</span>
+                <span className="text-sm font-medium text-[var(--text)]">{cat.label}</span>
                 <div className="w-3 h-3 rounded-full ml-auto flex-shrink-0" style={{ backgroundColor: cat.color }} />
               </button>
             ))}
@@ -599,13 +599,13 @@ export function Rewards() {
         <Modal title="Configuration — Catégories & Bonus" onClose={() => setShowConfigModal(false)}>
           <div className="space-y-4">
             {/* Config tabs */}
-            <div className="flex gap-1 bg-[var(--color-background)] rounded-xl p-1">
+            <div className="flex gap-1 bg-[var(--bg)] rounded-xl p-1">
               <button
                 onClick={() => setConfigTab('categories')}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   configTab === 'categories'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-sm'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                    ? 'bg-[var(--surface)] text-[var(--indigo)] shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 ⭐ Catégories
@@ -614,8 +614,8 @@ export function Rewards() {
                 onClick={() => setConfigTab('bonuses')}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   configTab === 'bonuses'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-sm'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                    ? 'bg-[var(--surface)] text-[var(--indigo)] shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 🎁 Bonus
@@ -650,9 +650,9 @@ export function Rewards() {
       {showDetailModal && detailTarget && (
         <Modal title={`${detailTarget.pseudo} — Carte à tampons`} onClose={() => setShowDetailModal(false)}>
           {detailLoading ? (
-            <div className="text-center py-8 text-[var(--color-text-secondary)]">Chargement...</div>
+            <div className="text-center py-8 text-[var(--text-muted)]">Chargement...</div>
           ) : !stampDetail ? (
-            <div className="text-center py-8 text-[var(--color-text-secondary)]">Pas de carte active</div>
+            <div className="text-center py-8 text-[var(--text-muted)]">Pas de carte active</div>
           ) : (() => {
             const tier = getCardTier(stampDetail.card_number);
             const isComplete = stampDetail.stamp_count >= 10;
@@ -731,12 +731,12 @@ export function Rewards() {
               {/* Stamp list (details) */}
               {stampDetail.stamps.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Détails des tampons</p>
+                  <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Détails des tampons</p>
                   {stampDetail.stamps.map(s => (
-                    <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--color-background)] group/row">
+                    <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--bg)] group/row">
                       <span className="text-base">{s.category_icon}</span>
-                      <span className="text-xs text-[var(--color-text)] flex-1">{s.category_label}</span>
-                      <span className="text-xs text-[var(--color-text-secondary)]">
+                      <span className="text-xs text-[var(--text)] flex-1">{s.category_label}</span>
+                      <span className="text-xs text-[var(--text-muted)]">
                         {new Date(s.awarded_at).toLocaleDateString('fr-FR')}
                       </span>
                       <button
@@ -752,17 +752,17 @@ export function Rewards() {
 
               {/* Completed cards history */}
               {stampDetail.completed_cards.length > 0 && (
-                <div className="pt-2 border-t border-[var(--color-border)]">
-                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Cartes terminées</p>
+                <div className="pt-2 border-t border-[var(--border)]">
+                  <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Cartes terminées</p>
                   <div className="space-y-1">
                     {stampDetail.completed_cards.map((c, i) => {
                       const cTier = getCardTier(c.card_number);
                       return (
-                        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-background)]">
-                          <span className="text-xs font-medium text-[var(--color-text)]">
-                            {cTier.emoji} Carte n°{c.card_number} <span className="text-[var(--color-text-secondary)]">({cTier.name})</span>
+                        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg)]">
+                          <span className="text-xs font-medium text-[var(--text)]">
+                            {cTier.emoji} Carte n°{c.card_number} <span className="text-[var(--text-muted)]">({cTier.name})</span>
                           </span>
-                          <span className="text-xs text-[var(--color-text-secondary)]">
+                          <span className="text-xs text-[var(--text-muted)]">
                             {c.bonus_label
                               ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}`
                               : 'Pas de bonus'}
@@ -782,7 +782,7 @@ export function Rewards() {
                     openStampModal(detailTarget);
                   }}
                   className="w-full py-2.5 rounded-xl text-sm font-medium text-white"
-                  style={{ background: 'var(--gradient-primary)' }}
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
                 >
                   + Attribuer un tampon
                 </button>
@@ -812,51 +812,51 @@ function OverviewTab({
   return (
     <div className="space-y-4">
       {overview.length === 0 ? (
-        <div className="text-center py-12 text-[var(--color-text-secondary)]">
+        <div className="text-center py-12 text-[var(--text-muted)]">
           <p className="text-4xl mb-2">⭐</p>
           <p>Sélectionnez une classe et initialisez les cartes pour commencer</p>
         </div>
       ) : (
-        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] overflow-hidden" style={{ boxShadow: 'var(--shadow-1)' }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[var(--color-surface-secondary)]">
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)]">Élève</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)]">Classe</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)]">Carte</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)]">Progression</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)]">Bonus</th>
-                  <th className="text-right px-4 py-3 font-medium text-[var(--color-text-secondary)]">Actions</th>
+                <tr className="bg-[var(--surface-3)]">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Élève</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Classe</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Carte</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Progression</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Bonus</th>
+                  <th className="text-right px-4 py-3 font-medium text-[var(--text-muted)]">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {overview.map(s => (
-                  <tr key={s.student_id} className="border-t border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] transition-colors">
+                  <tr key={s.student_id} className="border-t border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors">
                     <td className="px-4 py-3">
                       <button
                         onClick={() => onStudentClick(s)}
-                        className="font-medium text-[var(--color-primary)] hover:underline"
+                        className="font-medium text-[var(--indigo)] hover:underline"
                       >
                         {s.pseudo}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{s.class_name}</td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                    <td className="px-4 py-3 text-[var(--text-muted)]">{s.class_name}</td>
+                    <td className="px-4 py-3 text-[var(--text-muted)]">
                       {getCardTier(s.card_number).emoji} n°{s.card_number}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden max-w-[120px]">
+                        <div className="flex-1 h-2 bg-[var(--surface-3)] rounded-full overflow-hidden max-w-[120px]">
                           <div
                             className="h-full rounded-full transition-all"
                             style={{
                               width: `${(s.stamp_count / 10) * 100}%`,
-                              background: s.stamp_count === 10 ? '#22c55e' : 'var(--gradient-primary)',
+                              background: s.stamp_count === 10 ? '#22c55e' : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
                             }}
                           />
                         </div>
-                        <span className="text-xs font-medium text-[var(--color-text-secondary)]">{s.stamp_count}/10</span>
+                        <span className="text-xs font-medium text-[var(--text-muted)]">{s.stamp_count}/10</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -878,7 +878,7 @@ function OverviewTab({
                           <button
                             onClick={() => onAwardStamp(s)}
                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
-                            style={{ background: 'var(--gradient-primary)' }}
+                            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
                           >
                             + Tampon
                           </button>
@@ -893,7 +893,7 @@ function OverviewTab({
                         )}
                         <button
                           onClick={() => onResetStudent(s)}
-                          className="px-2 py-1.5 rounded-lg text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-error)] hover:bg-red-50 transition-colors"
+                          className="px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--neg)] hover:bg-red-50 transition-colors"
                           title={`Réinitialiser ${s.pseudo}`}
                         >
                           ↺
@@ -923,11 +923,11 @@ function CategoriesTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--color-text-secondary)]">{categories.length} catégorie(s)</p>
+        <p className="text-sm text-[var(--text-muted)]">{categories.length} catégorie(s)</p>
         <button
           onClick={onAdd}
           className="px-4 py-2 rounded-xl text-sm font-medium text-white"
-          style={{ background: 'var(--gradient-primary)' }}
+          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
         >
           + Ajouter
         </button>
@@ -939,8 +939,8 @@ function CategoriesTab({
             key={cat.id}
             className={`p-4 rounded-xl border transition-all ${
               cat.is_active
-                ? 'border-[var(--color-border)] bg-[var(--color-surface)]'
-                : 'border-dashed border-[var(--color-border)] bg-[var(--color-surface-secondary)] opacity-60'
+                ? 'border-[var(--border)] bg-[var(--surface)]'
+                : 'border-dashed border-[var(--border)] bg-[var(--surface-3)] opacity-60'
             }`}
             style={{ boxShadow: cat.is_active ? 'var(--shadow-xs)' : undefined }}
           >
@@ -949,21 +949,21 @@ function CategoriesTab({
                 {cat.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--color-text)] truncate">{cat.label}</p>
+                <p className="text-sm font-medium text-[var(--text)] truncate">{cat.label}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                  <span className="text-xs text-[var(--color-text-secondary)]">{cat.is_active ? 'Active' : 'Désactivée'}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{cat.is_active ? 'Active' : 'Désactivée'}</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2 justify-end flex-wrap">
-              <button onClick={() => onToggle(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
+              <button onClick={() => onToggle(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
                 {cat.is_active ? 'Désactiver' : 'Activer'}
               </button>
-              <button onClick={() => onEdit(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-surface-secondary)] text-[var(--color-primary)]">
+              <button onClick={() => onEdit(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--indigo)]">
                 Modifier
               </button>
-              <button onClick={() => onDelete(cat.id)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-error-soft)] text-[var(--color-error)]">
+              <button onClick={() => onDelete(cat.id)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--neg-soft)] text-[var(--neg)]">
                 Supprimer
               </button>
             </div>
@@ -986,11 +986,11 @@ function BonusesTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--color-text-secondary)]">{bonuses.length} bonus</p>
+        <p className="text-sm text-[var(--text-muted)]">{bonuses.length} bonus</p>
         <button
           onClick={onAdd}
           className="px-4 py-2 rounded-xl text-sm font-medium text-white"
-          style={{ background: 'var(--gradient-primary)' }}
+          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
         >
           + Ajouter
         </button>
@@ -1002,24 +1002,24 @@ function BonusesTab({
             key={bonus.id}
             className={`p-3 rounded-xl border transition-all ${
               bonus.is_active
-                ? 'border-[var(--color-border)] bg-[var(--color-surface)]'
-                : 'border-dashed border-[var(--color-border)] bg-[var(--color-surface-secondary)] opacity-60'
+                ? 'border-[var(--border)] bg-[var(--surface)]'
+                : 'border-dashed border-[var(--border)] bg-[var(--surface-3)] opacity-60'
             }`}
           >
             <div className="flex items-center gap-3">
               <span className="text-lg w-8 text-center">{i + 1}.</span>
               <span className="text-2xl">🎁</span>
-              <span className="flex-1 text-sm font-medium text-[var(--color-text)] truncate">{bonus.label}</span>
-              <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{bonus.is_active ? 'Actif' : 'Désactivé'}</span>
+              <span className="flex-1 text-sm font-medium text-[var(--text)] truncate">{bonus.label}</span>
+              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">{bonus.is_active ? 'Actif' : 'Désactivé'}</span>
             </div>
             <div className="flex items-center gap-1 justify-end mt-2">
-              <button onClick={() => onToggle(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
+              <button onClick={() => onToggle(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
                 {bonus.is_active ? 'Désactiver' : 'Activer'}
               </button>
-              <button onClick={() => onEdit(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-surface-secondary)] text-[var(--color-primary)]">
+              <button onClick={() => onEdit(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--indigo)]">
                 Modifier
               </button>
-              <button onClick={() => onDelete(bonus.id)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--color-error-soft)] text-[var(--color-error)]">
+              <button onClick={() => onDelete(bonus.id)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--neg-soft)] text-[var(--neg)]">
                 Supprimer
               </button>
             </div>
@@ -1039,13 +1039,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative bg-[var(--color-surface)] rounded-2xl p-6 w-full max-w-lg"
-        style={{ boxShadow: 'var(--shadow-lg)' }}
+        className="relative bg-[var(--surface)] rounded-2xl p-6 w-full max-w-lg"
+        style={{ boxShadow: 'var(--shadow-2)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[var(--color-text)]">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
+          <h3 className="text-lg font-bold text-[var(--text)]">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
             x
           </button>
         </div>

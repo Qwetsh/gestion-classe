@@ -481,20 +481,20 @@ export function GroupSessions() {
       case 'completed':
         return {
           label: 'Terminee',
-          bg: 'var(--color-success-soft)',
-          color: 'var(--color-success)',
+          bg: 'var(--pos-soft)',
+          color: 'var(--pos)',
         };
       case 'active':
         return {
           label: 'En cours',
-          bg: 'var(--color-warning-soft)',
-          color: 'var(--color-warning)',
+          bg: 'var(--warn-soft)',
+          color: 'var(--warn)',
         };
       default:
         return {
           label: 'Brouillon',
-          bg: 'var(--color-surface-secondary)',
-          color: 'var(--color-text-tertiary)',
+          bg: 'var(--surface-3)',
+          color: 'var(--text-dim)',
         };
     }
   };
@@ -515,8 +515,8 @@ export function GroupSessions() {
       <Layout>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[var(--color-text-secondary)]">Chargement...</span>
+            <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-[var(--text-muted)]">Chargement...</span>
           </div>
         </div>
       </Layout>
@@ -528,18 +528,19 @@ export function GroupSessions() {
       {/* Error banner */}
       {error && (
         <div
-          className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 mb-4 flex items-center justify-between"
-          style={{ borderRadius: 'var(--radius-lg)' }}
+          className="bg-[var(--neg-soft)] text-[var(--neg)] p-4 mb-4 flex items-center justify-between"
+          style={{ borderRadius: 'var(--radius)' }}
         >
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-[var(--color-error)] hover:opacity-70">x</button>
+          <button onClick={() => setError(null)} className="text-[var(--neg)] hover:opacity-70">x</button>
         </div>
       )}
 
       <div className="flex gap-6" style={{ minHeight: 'calc(100vh - 220px)' }}>
         {/* LEFT SIDEBAR - Class list */}
         <aside className="w-64 shrink-0 flex flex-col">
-          <h1 className="text-xl font-bold text-[var(--color-text)] mb-4">Groupes</h1>
+          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Groupes</h1>
+          <p className="text-[var(--text-muted)] mt-1 mb-4 text-sm">{sessions.length} seance{sessions.length > 1 ? 's' : ''}</p>
 
           <div className="flex-1 overflow-y-auto space-y-1">
             {/* "All" option */}
@@ -547,8 +548,8 @@ export function GroupSessions() {
               onClick={() => setSelectedClassId(null)}
               className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
                 selectedClassId === null
-                  ? 'bg-[var(--color-primary)] text-white shadow-md'
-                  : 'hover:bg-[var(--color-surface)] text-[var(--color-text)]'
+                  ? 'bg-[var(--indigo)] text-white shadow-md'
+                  : 'hover:bg-[var(--surface)] text-[var(--text)]'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -556,7 +557,7 @@ export function GroupSessions() {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   selectedClassId === null
                     ? 'bg-white/20 text-white'
-                    : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)]'
+                    : 'bg-[var(--surface-3)] text-[var(--text-dim)]'
                 }`}>
                   {sessions.length}
                 </span>
@@ -573,7 +574,7 @@ export function GroupSessions() {
                   className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
                     isActive
                       ? 'text-white shadow-md'
-                      : 'hover:bg-[var(--color-surface)] text-[var(--color-text)]'
+                      : 'hover:bg-[var(--surface)] text-[var(--text)]'
                   }`}
                   style={isActive ? { background: getClassGradient(cls.name) } : undefined}
                 >
@@ -582,7 +583,7 @@ export function GroupSessions() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       isActive
                         ? 'bg-white/20 text-white'
-                        : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)]'
+                        : 'bg-[var(--surface-3)] text-[var(--text-dim)]'
                     }`}>
                       {count}
                     </span>
@@ -599,8 +600,8 @@ export function GroupSessions() {
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="text-4xl mb-4">👥</div>
-                <h2 className="text-lg font-medium text-[var(--color-text)]">Aucune seance de groupe</h2>
-                <p className="text-[var(--color-text-tertiary)] mt-2">
+                <h2 className="text-lg font-medium text-[var(--text)]">Aucune seance de groupe</h2>
+                <p className="text-[var(--text-dim)] mt-2">
                   {selectedClassId
                     ? 'Aucune seance pour cette classe'
                     : 'Creez une seance de groupe depuis l\'application mobile'}
@@ -616,7 +617,7 @@ export function GroupSessions() {
                   <button
                     key={session.id}
                     onClick={() => handleOpenDetail(session)}
-                    className="w-full text-left p-4 bg-[var(--color-surface)] hover:shadow-lg transition-all rounded-xl border border-[var(--color-border)] hover:border-[var(--color-primary)]/30"
+                    className="w-full text-left p-4 bg-[var(--surface)] hover:shadow-lg transition-all rounded-xl border border-[var(--border)] hover:border-[var(--indigo)]/30"
                   >
                     <div className="flex items-center gap-4">
                       <div
@@ -627,7 +628,7 @@ export function GroupSessions() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[var(--color-text)] truncate">{session.name}</span>
+                          <span className="font-semibold text-[var(--text)] truncate">{session.name}</span>
                           <span
                             className="inline-flex px-2 py-0.5 text-xs font-medium shrink-0"
                             style={{ background: statusBadge.bg, color: statusBadge.color, borderRadius: 'var(--radius-full)' }}
@@ -635,14 +636,14 @@ export function GroupSessions() {
                             {statusBadge.label}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-[var(--color-text-tertiary)]">
+                        <div className="flex items-center gap-3 mt-1 text-sm text-[var(--text-dim)]">
                           <span>{session.class_name}</span>
                           <span>{formatDate(session.created_at)}</span>
                           <span>{session.groups_count} groupe{session.groups_count > 1 ? 's' : ''}</span>
                           <span>{session.total_points} pts</span>
                         </div>
                       </div>
-                      <svg className="w-5 h-5 text-[var(--color-text-tertiary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-[var(--text-dim)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
@@ -658,25 +659,25 @@ export function GroupSessions() {
       {showDeleteConfirm && sessionDetail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div
-            className="bg-[var(--color-surface)] w-full max-w-md p-6"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            className="bg-[var(--surface)] w-full max-w-md p-6"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
           >
             <div className="text-center mb-6">
               <div
-                className="w-16 h-16 mx-auto mb-4 bg-[var(--color-error-soft)] flex items-center justify-center"
+                className="w-16 h-16 mx-auto mb-4 bg-[var(--neg-soft)] flex items-center justify-center"
                 style={{ borderRadius: 'var(--radius-full)' }}
               >
                 <span className="text-3xl">🗑️</span>
               </div>
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+              <h3 className="text-lg font-semibold text-[var(--text)]">
                 Supprimer cette seance ?
               </h3>
-              <p className="text-[var(--color-text-secondary)] mt-2">
+              <p className="text-[var(--text-muted)] mt-2">
                 La seance <strong>{sessionDetail.session.name}</strong> et toutes ses donnees
                 (groupes, notes, criteres) seront definitivement supprimees.
               </p>
               {sessionDetail.session.linked_session_id && (
-                <p className="text-sm text-[var(--color-error)] mt-3 p-3 bg-[var(--color-error-soft)] font-medium text-left" style={{ borderRadius: 'var(--radius-lg)' }}>
+                <p className="text-sm text-[var(--neg)] mt-3 p-3 bg-[var(--neg-soft)] font-medium text-left" style={{ borderRadius: 'var(--radius)' }}>
                   La seance classique liee et tous ses evenements (participations, bavardages, etc.) seront egalement supprimes.
                 </p>
               )}
@@ -686,16 +687,16 @@ export function GroupSessions() {
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium disabled:opacity-50"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="flex-1 px-4 py-2.5 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors font-medium disabled:opacity-50"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 Annuler
               </button>
               <button
                 onClick={handleDeleteSession}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 bg-[var(--color-error)] text-white hover:opacity-90 transition-colors font-medium disabled:opacity-50"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="flex-1 px-4 py-2.5 bg-[var(--neg)] text-white hover:opacity-90 transition-colors font-medium disabled:opacity-50"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 {isDeleting ? 'Suppression...' : 'Supprimer'}
               </button>
@@ -711,15 +712,15 @@ export function GroupSessions() {
           onClick={handleCloseDetail}
         >
           <div
-            className="bg-[var(--color-surface)] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+            className="bg-[var(--surface)] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {isLoadingDetail || !sessionDetail ? (
               <div className="flex justify-center items-center h-64">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                  <span className="text-[var(--color-text-secondary)]">Chargement...</span>
+                  <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[var(--text-muted)]">Chargement...</span>
                 </div>
               </div>
             ) : (
@@ -733,7 +734,7 @@ export function GroupSessions() {
                     <div className="flex items-center gap-3">
                       <div
                         className="w-12 h-12 bg-white/20 flex items-center justify-center font-bold text-lg"
-                        style={{ borderRadius: 'var(--radius-lg)' }}
+                        style={{ borderRadius: 'var(--radius)' }}
                       >
                         {getClassInitials(sessionDetail.session.class_name)}
                       </div>
@@ -747,7 +748,7 @@ export function GroupSessions() {
                     <button
                       onClick={handleCloseDetail}
                       className="w-10 h-10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
+                      style={{ borderRadius: 'var(--radius)' }}
                     >
                       x
                     </button>
@@ -755,22 +756,22 @@ export function GroupSessions() {
                 </div>
 
                 {/* Criteria summary - Accordion on mobile, always visible on desktop */}
-                <div className="px-6 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]/50">
+                <div className="px-6 py-3 border-b border-[var(--border)] bg-[var(--surface-3)]/50">
                   {/* Mobile: clickable header */}
                   <button
                     onClick={() => setCriteriaExpanded(!criteriaExpanded)}
                     className="md:hidden w-full flex items-center justify-between text-left"
                   >
-                    <h4 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    <h4 className="text-sm font-medium text-[var(--text-muted)]">
                       Criteres ({sessionDetail.criteria.length}) - {sessionDetail.criteria.reduce((sum, c) => sum + c.max_points, 0)} pts
                     </h4>
-                    <span className={`text-[var(--color-text-tertiary)] transition-transform ${criteriaExpanded ? 'rotate-180' : ''}`}>
+                    <span className={`text-[var(--text-dim)] transition-transform ${criteriaExpanded ? 'rotate-180' : ''}`}>
                       ▼
                     </span>
                   </button>
 
                   {/* Desktop: always visible header */}
-                  <h4 className="hidden md:block text-sm font-medium text-[var(--color-text-secondary)] mb-3">
+                  <h4 className="hidden md:block text-sm font-medium text-[var(--text-muted)] mb-3">
                     Criteres de notation ({sessionDetail.criteria.length})
                   </h4>
 
@@ -780,14 +781,14 @@ export function GroupSessions() {
                       {sessionDetail.criteria.map(c => (
                         <span
                           key={c.id}
-                          className="px-3 py-1.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)]"
-                          style={{ borderRadius: 'var(--radius-lg)' }}
+                          className="px-3 py-1.5 text-sm bg-[var(--surface)] border border-[var(--border)]"
+                          style={{ borderRadius: 'var(--radius)' }}
                         >
-                          {c.label} <span className="text-[var(--color-text-tertiary)]">({c.max_points} pts)</span>
+                          {c.label} <span className="text-[var(--text-dim)]">({c.max_points} pts)</span>
                         </span>
                       ))}
                     </div>
-                    <div className="mt-2 text-sm text-[var(--color-text-tertiary)]">
+                    <div className="mt-2 text-sm text-[var(--text-dim)]">
                       Total: {sessionDetail.criteria.reduce((sum, c) => sum + c.max_points, 0)} points
                     </div>
                   </div>
@@ -795,12 +796,12 @@ export function GroupSessions() {
 
                 {/* Groups */}
                 <div className="flex-1 overflow-y-auto p-6">
-                  <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">
+                  <h4 className="text-sm font-medium text-[var(--text-muted)] mb-4">
                     Resultats par groupe
                   </h4>
 
                   {sessionDetail.groups.length === 0 ? (
-                    <div className="text-center py-8 text-[var(--color-text-tertiary)]">
+                    <div className="text-center py-8 text-[var(--text-dim)]">
                       Aucun groupe dans cette seance
                     </div>
                   ) : (
@@ -813,16 +814,16 @@ export function GroupSessions() {
                         return (
                           <div
                             key={group.id}
-                            className={`p-4 border ${isFirst ? 'border-[var(--color-success)]' : 'border-[var(--color-border)]'}`}
-                            style={{ borderRadius: 'var(--radius-xl)' }}
+                            className={`p-4 border ${isFirst ? 'border-[var(--pos)]' : 'border-[var(--border)]'}`}
+                            style={{ borderRadius: 'var(--radius)' }}
                           >
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">
                                 {isFirst && (
                                   <span className="text-xl">🥇</span>
                                 )}
-                                <span className="font-semibold text-[var(--color-text)]">{group.name}</span>
-                                <span className="text-sm text-[var(--color-text-tertiary)]">
+                                <span className="font-semibold text-[var(--text)]">{group.name}</span>
+                                <span className="text-sm text-[var(--text-dim)]">
                                   ({group.members.length} eleve{group.members.length > 1 ? 's' : ''})
                                 </span>
                               </div>
@@ -830,7 +831,7 @@ export function GroupSessions() {
                                 {editingGroupId !== group.id && (
                                   <button
                                     onClick={() => handleStartEditGroup(group)}
-                                    className="p-1.5 text-[var(--color-text-tertiary)] hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-surface-secondary)] transition-colors"
+                                    className="p-1.5 text-[var(--text-dim)] hover:text-[var(--indigo)] rounded-lg hover:bg-[var(--surface-3)] transition-colors"
                                     title="Modifier les notes"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -839,24 +840,24 @@ export function GroupSessions() {
                                   </button>
                                 )}
                                 <div className="text-right">
-                                  <div className="text-xl font-bold text-[var(--color-text)]">
-                                    {group.total_score.toFixed(1)} <span className="text-sm font-normal text-[var(--color-text-tertiary)]">/ {maxPoints}</span>
+                                  <div className="text-xl font-bold text-[var(--text)]">
+                                    {group.total_score.toFixed(1)} <span className="text-sm font-normal text-[var(--text-dim)]">/ {maxPoints}</span>
                                   </div>
-                                  <div className="text-sm text-[var(--color-text-secondary)]">{percentage}%</div>
+                                  <div className="text-sm text-[var(--text-muted)]">{percentage}%</div>
                                 </div>
                               </div>
                             </div>
 
                             {/* Progress bar */}
                             <div
-                              className="h-2 bg-[var(--color-surface-secondary)] mb-3"
+                              className="h-2 bg-[var(--surface-3)] mb-3"
                               style={{ borderRadius: 'var(--radius-full)' }}
                             >
                               <div
                                 className="h-full transition-all"
                                 style={{
                                   width: `${Math.min(100, Math.max(0, percentage))}%`,
-                                  background: percentage >= 70 ? 'var(--color-success)' : percentage >= 50 ? 'var(--color-warning)' : 'var(--color-error)',
+                                  background: percentage >= 70 ? 'var(--pos)' : percentage >= 50 ? 'var(--warn)' : 'var(--neg)',
                                   borderRadius: 'var(--radius-full)',
                                 }}
                               />
@@ -867,7 +868,7 @@ export function GroupSessions() {
                               {group.members.map(m => (
                                 <span
                                   key={m.id}
-                                  className="px-2 py-1 text-xs bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                                  className="px-2 py-1 text-xs bg-[var(--surface-3)] text-[var(--text-muted)]"
                                   style={{ borderRadius: 'var(--radius-md)' }}
                                 >
                                   {m.pseudo}
@@ -877,19 +878,19 @@ export function GroupSessions() {
 
                             {/* Malus indicator */}
                             {group.conduct_malus > 0 && (
-                              <div className="mt-2 text-xs text-[var(--color-error)]">
+                              <div className="mt-2 text-xs text-[var(--neg)]">
                                 Malus conduite: -{group.conduct_malus} pt{group.conduct_malus > 1 ? 's' : ''}
                               </div>
                             )}
 
                             {/* Criteria grades */}
-                            <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+                            <div className="mt-3 pt-3 border-t border-[var(--border)]">
                               {editingGroupId === group.id ? (
                                 <>
                                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {sessionDetail.criteria.map(c => (
                                       <div key={c.id} className="flex items-center gap-2">
-                                        <label className="text-sm text-[var(--color-text-tertiary)] flex-1 min-w-0 truncate">{c.label}</label>
+                                        <label className="text-sm text-[var(--text-dim)] flex-1 min-w-0 truncate">{c.label}</label>
                                         <div className="flex items-center gap-1">
                                           <input
                                             type="number"
@@ -901,9 +902,9 @@ export function GroupSessions() {
                                               ...prev,
                                               [c.id]: Math.min(c.max_points, Math.max(0, parseFloat(e.target.value) || 0)),
                                             }))}
-                                            className="w-16 px-2 py-1 text-sm text-center border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                                            className="w-16 px-2 py-1 text-sm text-center border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
                                           />
-                                          <span className="text-xs text-[var(--color-text-tertiary)]">/{c.max_points}</span>
+                                          <span className="text-xs text-[var(--text-dim)]">/{c.max_points}</span>
                                         </div>
                                       </div>
                                     ))}
@@ -911,7 +912,7 @@ export function GroupSessions() {
                                   <div className="flex gap-2 mt-3 justify-end">
                                     <button
                                       onClick={handleCancelEdit}
-                                      className="px-3 py-1.5 text-sm border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                                      className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
                                       disabled={isSavingGrades}
                                     >
                                       Annuler
@@ -919,7 +920,7 @@ export function GroupSessions() {
                                     <button
                                       onClick={() => handleSaveGrades(group.id)}
                                       disabled={isSavingGrades}
-                                      className="px-3 py-1.5 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                                      className="px-3 py-1.5 text-sm bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                                     >
                                       {isSavingGrades ? 'Sauvegarde...' : 'Sauvegarder'}
                                     </button>
@@ -932,8 +933,8 @@ export function GroupSessions() {
                                     const points = grade?.points_awarded ?? 0;
                                     return (
                                       <div key={c.id} className="text-sm">
-                                        <span className="text-[var(--color-text-tertiary)]">{c.label}:</span>{' '}
-                                        <span className="font-medium text-[var(--color-text)]">{points}/{c.max_points}</span>
+                                        <span className="text-[var(--text-dim)]">{c.label}:</span>{' '}
+                                        <span className="font-medium text-[var(--text)]">{points}/{c.max_points}</span>
                                       </div>
                                     );
                                   })}
@@ -948,25 +949,25 @@ export function GroupSessions() {
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-[var(--color-border)] shrink-0 flex gap-3">
+                <div className="p-4 border-t border-[var(--border)] shrink-0 flex gap-3">
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="px-4 py-2.5 bg-[var(--color-error-soft)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white transition-colors font-medium"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="px-4 py-2.5 bg-[var(--neg-soft)] text-[var(--neg)] hover:bg-[var(--neg)] hover:text-white transition-colors font-medium"
+                    style={{ borderRadius: 'var(--radius)' }}
                   >
                     Supprimer
                   </button>
                   <button
                     onClick={handleExportPDF}
                     className="px-4 py-2.5 bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-colors font-medium flex items-center gap-2"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    style={{ borderRadius: 'var(--radius)' }}
                   >
                     <span>📄</span> Exporter PDF
                   </button>
                   <button
                     onClick={handleCloseDetail}
-                    className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="flex-1 px-4 py-2.5 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors font-medium"
+                    style={{ borderRadius: 'var(--radius)' }}
                   >
                     Fermer
                   </button>

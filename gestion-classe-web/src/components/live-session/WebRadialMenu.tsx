@@ -113,11 +113,11 @@ export function WebRadialMenu({ studentPseudo, position, onSelect, onRemarque, o
       {/* Back button for submenu */}
       {showSubMenu && (
         <button
-          className="absolute w-10 h-10 rounded-full bg-white text-[var(--color-text)] font-bold text-lg flex items-center justify-center"
+          className="absolute w-10 h-10 rounded-full bg-white text-[var(--text)] font-bold text-lg flex items-center justify-center"
           style={{
             left: cx - 20,
             top: cy - 20,
-            boxShadow: 'var(--shadow-md)',
+            boxShadow: 'var(--shadow-2)',
             opacity: visible ? 1 : 0,
             transition: 'opacity 150ms, transform 150ms',
             transform: visible ? 'scale(1)' : 'scale(0)',
@@ -148,7 +148,7 @@ export function WebRadialMenu({ studentPseudo, position, onSelect, onRemarque, o
               width: itemSize,
               height: itemSize,
               background: color,
-              boxShadow: 'var(--shadow-md)',
+              boxShadow: 'var(--shadow-2)',
               fontSize: showSubMenu ? '11px' : '18px',
               opacity: visible ? 1 : 0,
               transform: visible ? 'scale(1)' : 'scale(0)',

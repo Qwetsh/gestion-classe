@@ -14,8 +14,8 @@ export function GroupSessionLauncher() {
       className="w-full p-4 text-left flex items-center gap-4 group active:scale-[0.98] transition-all"
       style={{
         background: 'var(--gradient-success)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--shadow-sm)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-1)',
         border: 'none',
       }}
     >

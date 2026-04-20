@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import QRCode from 'qrcode';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { ClassChip, Sparkline, TrendBadge, AvgRing, Token, Distribution, Indic, QuickMenu, Icon } from '../components/design-system';
 
 interface Student {
   id: string;
@@ -140,7 +141,7 @@ interface ClassStats {
   totalAbsences: number;
 }
 
-type SortField = 'pseudo' | 'grade' | 'participations' | 'bonus';
+type SortField = 'pseudo' | 'grade' | 'participations' | 'bonus' | 'abs';
 type SortOrder = 'asc' | 'desc';
 
 export function Students() {
@@ -229,6 +230,10 @@ export function Students() {
 
   // Sidebar collapsed state for mobile
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Layout and filter state
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const [filter, setFilter] = useState<'all' | 'attention' | 'top'>('all');
 
   function getCurrentSchoolYear(): string {
     const now = new Date();
@@ -544,6 +549,11 @@ export function Students() {
     loadData();
   }, [loadData]);
 
+  // Class colors for visual identification
+  const CLASS_COLORS: Record<string, string> = {};
+  const COLOR_PALETTE = ['#6366F1', '#3B82F6', '#059669', '#D97706', '#DC2626', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6B7280', '#EF4444', '#10B981', '#F59E0B'];
+  classes.forEach((cls, i) => { CLASS_COLORS[cls.id] = COLOR_PALETTE[i % COLOR_PALETTE.length]; });
+
   // Calculate stats for each class
   const classStats = useMemo((): ClassStats[] => {
     return classes.map(cls => {
@@ -566,10 +576,19 @@ export function Students() {
     });
   }, [classes, studentGrades]);
 
+  const filterCounts = useMemo(() => {
+    const classStudents = studentGrades.filter(s => !selectedClassId || s.student.class_id === selectedClassId);
+    return {
+      all: classStudents.length,
+      attention: classStudents.filter(s => s.grade < 8).length,
+      top: classStudents.filter(s => s.grade >= 12).length,
+    };
+  }, [studentGrades, selectedClassId]);
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedClassId, debouncedSearchQuery, sortField, sortOrder]);
+  }, [selectedClassId, debouncedSearchQuery, sortField, sortOrder, filter]);
 
   // Filter and sort students for selected class
   const filteredAndSortedGrades = useMemo(() => {
@@ -585,6 +604,9 @@ export function Students() {
         s.student.pseudo.toLowerCase().includes(query)
       );
     }
+
+    if (filter === 'attention') filtered = filtered.filter(s => s.grade < 8);
+    if (filter === 'top') filtered = filtered.filter(s => s.grade >= 12);
 
     const sorted = [...filtered].sort((a, b) => {
       let comparison = 0;
@@ -613,13 +635,16 @@ export function Students() {
         case 'bonus':
           comparison = a.bonus - b.bonus;
           break;
+        case 'abs':
+          comparison = a.absences - b.absences;
+          break;
       }
 
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
     return sorted;
-  }, [studentGrades, selectedClassId, debouncedSearchQuery, sortField, sortOrder]);
+  }, [studentGrades, selectedClassId, debouncedSearchQuery, sortField, sortOrder, filter]);
 
   // Paginated students to limit DOM size
   const paginatedGrades = useMemo(() => {
@@ -1405,6 +1430,42 @@ export function Students() {
     return colors[type] || 'bg-gray-100 text-gray-700';
   };
 
+  // Compute sparkline history (last 10 sessions) for a student
+  const getSparklineHistory = (events: Event[]): (number | null)[] => {
+    const sessions: Map<string, { date: string; score: number }> = new Map();
+    events.forEach(event => {
+      const sid = event.session_id;
+      if (!sessions.has(sid)) {
+        sessions.set(sid, { date: event.session_date || event.timestamp, score: 0 });
+      }
+      const s = sessions.get(sid)!;
+      if (event.type === 'participation') s.score += 1;
+      if (event.type === 'bavardage') s.score -= 1;
+    });
+    const sorted = Array.from(sessions.values())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-10);
+    // Pad to 10 entries
+    const history: (number | null)[] = new Array(10).fill(null);
+    sorted.forEach((s, i) => {
+      const idx = 10 - sorted.length + i;
+      history[idx] = Math.max(-2, Math.min(2, s.score));
+    });
+    return history;
+  };
+
+  // Compute delta (trend) for sparkline
+  const getSparklineDelta = (history: (number | null)[]): number => {
+    const vals = history.filter(v => v !== null) as number[];
+    if (vals.length < 2) return 0;
+    const mid = Math.floor(vals.length / 2);
+    const first = vals.slice(0, mid);
+    const last = vals.slice(mid);
+    const avgFirst = first.reduce((a, b) => a + b, 0) / first.length;
+    const avgLast = last.reduce((a, b) => a + b, 0) / last.length;
+    return avgLast - avgFirst;
+  };
+
   // Calculate session-by-session evolution data for chart
   const getSessionEvolution = (events: Event[]): SessionEvolutionData[] => {
     const sessions: Map<string, { date: string; participation: number; malus: number }> = new Map();
@@ -1447,7 +1508,7 @@ export function Students() {
     return (
       <Layout>
         <div className="flex justify-center items-center h-64">
-          <div className="text-[var(--color-text-secondary)]">Chargement...</div>
+          <div className="text-[var(--text-muted)]">Chargement...</div>
         </div>
       </Layout>
     );
@@ -1455,436 +1516,260 @@ export function Students() {
 
   return (
     <Layout>
-      {/* Error banner */}
       {error && (
-        <div
-          className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 mb-4 flex items-center justify-between"
-          style={{ borderRadius: 'var(--radius-lg)' }}
-        >
+        <div style={{ background: 'var(--neg-soft)', color: 'var(--neg)', padding: 16, marginBottom: 16, borderRadius: 'var(--radius)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="text-[var(--color-error)] hover:opacity-70"
-          >
-            ✕
-          </button>
+          <button onClick={() => setError(null)} style={{ color: 'var(--neg)' }}>&#10005;</button>
         </div>
       )}
 
-      <div className="flex flex-col h-[calc(100vh-120px)]">
-        {/* Header - compact on mobile */}
-        <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
-          <div className="min-w-0">
-            <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text)] truncate">
-              <span className="md:hidden">Notes</span>
-              <span className="hidden md:inline">Notes d'implication</span>
-            </h1>
-            <p className="text-xs md:text-base text-[var(--color-text-secondary)]">
-              T{trimesterSettings.current_trimester} - {trimesterSettings.school_year}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={openQrModal}
-            disabled={!selectedClassId}
-            className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-base border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-background)] transition-colors whitespace-nowrap"
-            title="QR code acces eleves"
-          >
-            QR
-          </button>
-          <button
-            onClick={loadStudentCodes}
-            disabled={isLoadingCodes || !selectedClassId}
-            className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-base border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-background)] transition-colors whitespace-nowrap"
-            title="Codes d'acces eleves"
-          >
-            <span className="md:hidden">Codes</span>
-            <span className="hidden md:inline">Codes eleves</span>
-          </button>
-          <button
-            onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}
-            className={`px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-base text-white rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-              trimesterSettings.current_trimester === 3
-                ? 'bg-orange-500 hover:bg-orange-600'
-                : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90'
-            }`}
-          >
-            {trimesterSettings.current_trimester === 3 ? (
-              <>
-                <span className="md:hidden">Finir annee</span>
-                <span className="hidden md:inline">Finir l'annee scolaire</span>
-              </>
-            ) : (
-              <>
-                <span className="md:hidden">Trimestre →</span>
-                <span className="hidden md:inline">Passer au trimestre suivant</span>
-              </>
-            )}
-          </button>
-          </div>
-        </div>
-
-        {/* Main content - Two columns */}
-        <div className="flex flex-1 gap-4 min-h-0">
-          {/* Sidebar - Classes (always collapsed on mobile, respects state on desktop) */}
-          <div className={`w-12 flex-shrink-0 bg-[var(--color-surface)] rounded-xl overflow-hidden flex flex-col transition-all duration-200 ${sidebarCollapsed ? 'md:w-12' : 'md:w-64'}`}>
-            {/* Sidebar header */}
-            <div className="p-2 md:p-3 border-b border-[var(--color-border)] flex items-center justify-between">
-              {!sidebarCollapsed && (
-                <h2 className="hidden md:block font-semibold text-[var(--color-text)]">Classes</h2>
-              )}
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="hidden md:block p-1 hover:bg-[var(--color-background)] rounded text-[var(--color-text-secondary)]"
-                title={sidebarCollapsed ? 'Agrandir' : 'Reduire'}
-              >
-                {sidebarCollapsed ? '»' : '«'}
-              </button>
+      <main className="page--tracking">
+        {/* Header */}
+        <header className="track-header">
+          <div>
+            <div className="track-header__eyebrow">
+              <span>Accueil</span>
+              <Icon name="chevron-right" size={12} />
+              <span>Suivi élèves</span>
+              <Icon name="chevron-right" size={12} />
+              <span className="is-current">Notes d'implication</span>
             </div>
+            <h1>Notes d'implication</h1>
+            <div className="track-header__sub">
+              T{trimesterSettings.current_trimester} · {trimesterSettings.school_year} · <b>Note de base {classConfigs.get(selectedClassId || '')?.base_grade ?? 10}/20</b>
+            </div>
+          </div>
+          <div className="track-header__actions">
+            <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
+              <Icon name="qr" size={14} /> QR
+            </button>
+            <button className="btn btn--ghost" onClick={loadStudentCodes} disabled={isLoadingCodes || !selectedClassId}>
+              Codes élèves
+            </button>
+            <button className="btn btn--accent" onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}>
+              {trimesterSettings.current_trimester === 3 ? "Finir l'année scolaire" : 'Passer au trimestre suivant'}
+            </button>
+          </div>
+        </header>
 
-            {/* Classes list */}
-            <div className="flex-1 overflow-y-auto p-1 md:p-2 space-y-1">
-              {classStats.map((cls) => (
-                <button
-                  key={cls.id}
-                  onClick={() => setSelectedClassId(cls.id)}
-                  className={`w-full text-left rounded-lg transition-colors ${
-                    selectedClassId === cls.id
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'hover:bg-[var(--color-background)] text-[var(--color-text)]'
-                  } p-2 ${sidebarCollapsed ? 'md:p-2' : 'md:p-3'}`}
-                >
-                  {/* Mobile: always show compact */}
-                  <div className="md:hidden text-center font-medium text-xs" title={cls.name}>
-                    {cls.name.substring(0, 2)}
+        <div className="track-body">
+          {/* Sidebar: classes */}
+          <aside className="classes-pane">
+            <div className="classes-pane__head">
+              <span>Classes</span>
+              <span style={{ background: 'var(--surface-3)', color: 'var(--text)', padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>{classes.length}</span>
+            </div>
+            <div className="classes-pane__list">
+              {classStats.map(cls => (
+                <button key={cls.id}
+                  className={`class-row ${cls.id === selectedClassId ? 'is-active' : ''}`}
+                  onClick={() => setSelectedClassId(cls.id)}>
+                  <ClassChip label={cls.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3)} color={CLASS_COLORS[cls.id] || '#6366F1'} size={26} muted={cls.id !== selectedClassId} />
+                  <div className="class-row__main" style={{ minWidth: 0 }}>
+                    <div className="class-row__name">{cls.name}</div>
+                    <div className="class-row__meta">
+                      <span>{cls.studentCount} élèves</span>
+                      <span style={{ color: 'var(--text-dim)' }}>·</span>
+                      <span>Moy. <b>{cls.averageGrade.toFixed(1)}</b></span>
+                    </div>
                   </div>
-                  {/* Desktop: respect collapsed state */}
-                  <div className="hidden md:block">
-                    {sidebarCollapsed ? (
-                      <div className="text-center font-medium text-sm" title={cls.name}>
-                        {cls.name.substring(0, 2)}
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium truncate">{cls.name}</span>
-                          <span className={`text-xs ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-tertiary)]'}`}>
-                            {cls.studentCount}
-                          </span>
-                        </div>
-                        <div className={`text-sm mt-1 ${selectedClassId === cls.id ? 'text-white/80' : 'text-[var(--color-text-secondary)]'}`}>
-                          Moy: {cls.averageGrade.toFixed(1)}/20
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <AvgRing value={cls.averageGrade} color={CLASS_COLORS[cls.id] || '#6366F1'} />
                 </button>
               ))}
+            </div>
+            <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)' }}>
+              {studentGrades.length} élèves au total · {classes.length} classes
+            </div>
+          </aside>
 
-              {classes.length === 0 && !sidebarCollapsed && (
-                <div className="hidden md:block text-center py-8 text-[var(--color-text-tertiary)] text-sm">
-                  Aucune classe
+          {/* Main: class detail */}
+          {selectedClassId && selectedClassStats ? (
+            <section className="class-detail">
+              {/* Class header */}
+              <div className="class-detail__head">
+                <div className="class-detail__title">
+                  <ClassChip label={selectedClassStats.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3)} color={CLASS_COLORS[selectedClassId] || '#6366F1'} size={44} />
+                  <div>
+                    <h2>{selectedClassStats.name}</h2>
+                    <div className="class-detail__meta">
+                      <span>{selectedClassStats.studentCount} élèves</span>
+                      <span>·</span>
+                      <span>{filteredAndSortedGrades.length > 0 ? `${filteredAndSortedGrades.length} affichés` : '0 séances'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="class-detail__score" onClick={() => openConfigModal(selectedClassId)} style={{ cursor: 'pointer' }} title="Configurer">
+                  <div className="class-detail__score-label">Moyenne de classe</div>
+                  <div className="class-detail__score-val" style={{ color: CLASS_COLORS[selectedClassId] || '#6366F1' }}>
+                    {selectedClassStats.averageGrade.toFixed(1)}<span>/20</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Toolbar */}
+              <div className="toolbar">
+                <div className="search">
+                  <Icon name="search" size={14} />
+                  <input placeholder="Rechercher un élève…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  {searchQuery && <button onClick={() => setSearchQuery('')} className="search__clear"><Icon name="x" size={12} /></button>}
+                </div>
+                <div className="chips">
+                  <button className={`chip ${filter === 'all' ? 'is-on' : ''}`} onClick={() => setFilter('all')}>Tous <span className="chip__count">{filterCounts.all}</span></button>
+                  <button className={`chip chip--warn ${filter === 'attention' ? 'is-on' : ''}`} onClick={() => setFilter('attention')}>À suivre <span className="chip__count">{filterCounts.attention}</span></button>
+                  <button className={`chip chip--good ${filter === 'top' ? 'is-on' : ''}`} onClick={() => setFilter('top')}>En tête <span className="chip__count">{filterCounts.top}</span></button>
+                </div>
+                <div className="toolbar__spacer" />
+                <div className="segbtn">
+                  <button className={`segbtn__b ${sortField === 'pseudo' ? 'is-on' : ''}`} onClick={() => handleSort('pseudo')}>A‑Z</button>
+                  <button className={`segbtn__b ${sortField === 'grade' ? 'is-on' : ''}`} onClick={() => handleSort('grade')}>Note</button>
+                  <button className={`segbtn__b ${sortField === 'participations' ? 'is-on' : ''}`} onClick={() => handleSort('participations')}>Tendance</button>
+                  <button className={`segbtn__b ${sortField === 'abs' ? 'is-on' : ''}`} onClick={() => handleSort('abs')}>Absences</button>
+                </div>
+                <div className="segbtn">
+                  <button className={`segbtn__b ${layout === 'grid' ? 'is-on' : ''}`} onClick={() => setLayout('grid')}><Icon name="grid" size={14} /></button>
+                  <button className={`segbtn__b ${layout === 'list' ? 'is-on' : ''}`} onClick={() => setLayout('list')}><Icon name="list" size={14} /></button>
+                </div>
+              </div>
+
+              {/* Class strip: distribution + indicators */}
+              <div className="class-strip">
+                <Distribution grades={filteredAndSortedGrades.map(s => s.grade)} color={CLASS_COLORS[selectedClassId] || '#6366F1'} />
+                <div className="class-strip__indicators">
+                  <Indic label="Oral fait" value={`${filteredAndSortedGrades.filter(s => s.oralEvaluation).length}/${filteredAndSortedGrades.length}`} hint="ce trimestre" />
+                  <Indic label="Participation" value={filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)} hint="événements cumulés" />
+                  <Indic label="Absences" value={filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)} tone="warn" hint={`dont ${filteredAndSortedGrades.reduce((sum, s) => sum + s.malus, 0)} malus`} />
+                  <Indic label="Bonus" value={filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(0)} hint="à redistribuer" />
+                </div>
+              </div>
+
+              {/* Student grid or list */}
+              {layout === 'grid' ? (
+                <div className="sgrid">
+                  {paginatedGrades.map(sg => {
+                    const mk = sg.grade;
+                    const tone = mk < 6 ? 'crit' : mk < 8 ? 'warn' : mk < 12 ? 'neutral' : 'good';
+                    const initials = sg.student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+                    const classColor = CLASS_COLORS[sg.student.class_id] || '#6366F1';
+                    const history = getSparklineHistory(sg.events);
+                    const delta = getSparklineDelta(history);
+                    const totalSessions = new Set(sg.events.map(e => e.session_id)).size;
+                    return (
+                      <div key={sg.student.id} className={`scard scard--${tone}`}>
+                        <div className="scard__head">
+                          <div className="scard__id">
+                            <div className="scard__avatar" style={{ background: classColor + '22', color: classColor }}>
+                              {initials}
+                            </div>
+                            <div>
+                              <div className="scard__name">{sg.student.pseudo}</div>
+                              <div className="scard__meta">{totalSessions}/25 sessions</div>
+                            </div>
+                          </div>
+                          <div className="scard__mark">
+                            <span>{sg.grade.toFixed(1)}</span>
+                            <small>/20</small>
+                          </div>
+                        </div>
+
+                        <div className="scard__trend">
+                          <Sparkline history={history} w={168} h={28} color="var(--text)" />
+                          <div className="scard__trend-meta">
+                            <span className="scard__trend-label">10 dernières séances</span>
+                            <TrendBadge delta={delta} />
+                          </div>
+                        </div>
+
+                        <div className="scard__breakdown">
+                          <Token kind="pos" value={sg.totalParticipations} label="+" />
+                          <Token kind="neg" value={sg.malus} label="−" />
+                          <Token kind="abs" value={sg.absences} label="abs" />
+                          <Token kind="oral" value={sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'} label="oral" />
+                        </div>
+
+                        <div className="scard__actions">
+                          <button className="scard__add" onClick={() => openStudentDetail(sg)}>
+                            <Icon name="plus" size={14} /> Ajouter un événement
+                          </button>
+                          <button className="scard__eye" onClick={() => openStudentDetail(sg)} title="Ouvrir la fiche"><Icon name="eye" size={14} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredAndSortedGrades.length === 0 && <div className="empty">Aucun élève avec ces filtres.</div>}
+                </div>
+              ) : (
+                <div className="slist">
+                  <div className="slist__head">
+                    <span>Élève</span>
+                    <span>Note</span>
+                    <span>Détails</span>
+                    <span>+</span>
+                    <span>−</span>
+                    <span>Abs</span>
+                    <span>Oral</span>
+                    <span></span>
+                  </div>
+                  {paginatedGrades.map(sg => {
+                    const initials = sg.student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+                    const classColor = CLASS_COLORS[sg.student.class_id] || '#6366F1';
+                    const history = getSparklineHistory(sg.events);
+                    const delta = getSparklineDelta(history);
+                    return (
+                      <div key={sg.student.id} className="srow" onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
+                        <div className="srow__id">
+                          <div className="srow__avatar" style={{ background: classColor + '22', color: classColor }}>{initials}</div>
+                          <div className="srow__name">{sg.student.pseudo}</div>
+                        </div>
+                        <div className="srow__mark" style={{ color: sg.grade < 8 ? 'var(--neg)' : sg.grade >= 12 ? 'var(--pos)' : 'var(--text)' }}>{sg.grade.toFixed(1)}</div>
+                        <div className="srow__spark" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Sparkline history={history} w={64} h={20} color={classColor} />
+                          <TrendBadge delta={delta} />
+                        </div>
+                        <div className="srow__n srow__n--pos">+{sg.totalParticipations}</div>
+                        <div className="srow__n srow__n--neg">{sg.malus > 0 ? `−${sg.malus}` : '0'}</div>
+                        <div className="srow__n">{sg.absences}</div>
+                        <div className="srow__n">{sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'}</div>
+                        <div className="srow__end">
+                          <button className="srow__add"><Icon name="eye" size={14} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-            </div>
 
-            {/* Sidebar footer - Stats (hidden on mobile) */}
-            {!sidebarCollapsed && (
-              <div className="hidden md:block p-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-tertiary)]">
-                <div>{studentGrades.length} eleves au total</div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 }}>
+                  <button className="btn btn--ghost" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Précédent</button>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Page {currentPage} / {totalPages}</span>
+                  <button className="btn btn--ghost" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Suivant</button>
+                </div>
+              )}
+            </section>
+          ) : (
+            <section className="class-detail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>📚</div>
+                <h3 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)' }}>Sélectionnez une classe</h3>
+                <p style={{ marginTop: 8 }}>Choisissez une classe dans la liste à gauche</p>
               </div>
-            )}
-          </div>
-
-          {/* Main content - Students */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface)] rounded-xl overflow-hidden">
-            {selectedClassId ? (
-              <>
-                {/* Class header - compact on mobile */}
-                <div className="p-2 md:p-4 border-b border-[var(--color-border)]">
-                  <div className="flex items-center justify-between mb-2 md:mb-3">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <h2 className="text-base md:text-xl font-semibold text-[var(--color-text)]">
-                        {selectedClassStats?.name}
-                      </h2>
-                      <button
-                        onClick={() => openConfigModal(selectedClassId)}
-                        className="p-1 md:p-1.5 hover:bg-[var(--color-background)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
-                        title="Configurer"
-                      >
-                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className={`text-lg md:text-2xl font-bold ${getGradeColor(selectedClassStats?.averageGrade || 0)}`}>
-                      {selectedClassStats?.averageGrade.toFixed(1)}/20
-                    </div>
-                  </div>
-
-                  {/* Search and sort - more compact on mobile */}
-                  <div className="flex gap-2 md:gap-3 items-center">
-                    <div className="relative flex-1 min-w-0">
-                      <input
-                        type="text"
-                        placeholder="Rechercher..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-8 md:pl-10 pr-2 md:pr-4 py-1.5 md:py-2 text-sm md:text-base border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-                      />
-                      <svg className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[var(--color-text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex gap-0.5 md:gap-1 shrink-0">
-                      {(['pseudo', 'grade', 'participations', 'bonus'] as SortField[]).map((field) => (
-                        <button
-                          key={field}
-                          onClick={() => handleSort(field)}
-                          className={`px-1.5 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${
-                            sortField === field
-                              ? 'bg-[var(--color-primary)] text-white'
-                              : 'bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
-                          }`}
-                        >
-                          <span className="md:hidden">
-                            {field === 'pseudo' ? 'N' : field === 'grade' ? '★' : field === 'participations' ? 'P' : 'B'}
-                          </span>
-                          <span className="hidden md:inline">
-                            {field === 'pseudo' ? 'Nom' : field === 'grade' ? 'Note' : field === 'participations' ? 'Part.' : 'Bonus'}
-                          </span>
-                          {sortField === field && (
-                            <span className="ml-0.5 md:ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Class config summary - hidden on mobile */}
-                  {classConfigs.get(selectedClassId) && (
-                    <div className="hidden md:block mt-3 text-sm text-[var(--color-text-tertiary)]">
-                      {classConfigs.get(selectedClassId)?.base_grade !== null ? (
-                        <>
-                          Note de base: {classConfigs.get(selectedClassId)?.base_grade}/20
-                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite malus active'}
-                        </>
-                      ) : (
-                        <>
-                          Objectif: {classConfigs.get(selectedClassId)?.target_participations} implications
-                          {classConfigs.get(selectedClassId)?.bavardage_penalty && ' · Penalite malus active'}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Students grid/list */}
-                <div className="flex-1 overflow-y-auto p-2 md:p-4">
-                  {filteredAndSortedGrades.length === 0 ? (
-                    <div className="text-center py-8 md:py-12">
-                      <div className="text-3xl md:text-4xl mb-3 md:mb-4">👥</div>
-                      <h3 className="text-base md:text-lg font-medium text-[var(--color-text)]">
-                        {searchQuery ? 'Aucun resultat' : 'Aucun eleve'}
-                      </h3>
-                      <p className="text-[var(--color-text-tertiary)] mt-1 md:mt-2 text-sm">
-                        {searchQuery ? 'Essayez une autre recherche' : 'Ajoutez des eleves dans la section Classes'}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                    {/* Mobile: compact list view */}
-                    <div className="md:hidden space-y-1">
-                      {paginatedGrades.map((sg) => (
-                        <button
-                          key={sg.student.id}
-                          onClick={() => openStudentDetail(sg)}
-                          className={`w-full flex items-center gap-2 p-2 rounded-lg border ${getGradeBorderColor(sg.grade)} ${getGradeBgColor(sg.grade)}/20 active:${getGradeBgColor(sg.grade)}/40 transition-all text-left`}
-                        >
-                          {/* Grade badge */}
-                          <div className={`w-10 h-10 shrink-0 rounded-lg ${getGradeBgColor(sg.grade)} flex items-center justify-center`}>
-                            <span className={`text-sm font-bold ${getGradeColor(sg.grade)}`}>
-                              {sg.grade.toFixed(1)}
-                            </span>
-                          </div>
-
-                          {/* Name + stats */}
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-[var(--color-text)] text-sm truncate">
-                              {sg.student.pseudo}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="text-green-600 font-medium">
-                                +{sg.malusPenalty ? sg.effectiveParticipations : sg.totalParticipations}
-                              </span>
-                              {sg.malus > 0 && (
-                                <span className="text-orange-600">-{sg.malus}</span>
-                              )}
-                              {sg.absences > 0 && (
-                                <span className="text-red-600">{sg.absences}abs</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Bonus if any */}
-                          {sg.bonus > 0 && (
-                            <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium shrink-0">
-                              +{sg.bonus.toFixed(0)}
-                            </span>
-                          )}
-
-                          {/* Arrow */}
-                          <svg className="w-4 h-4 text-[var(--color-text-tertiary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Desktop: card grid view */}
-                    <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {paginatedGrades.map((sg) => (
-                        <button
-                          key={sg.student.id}
-                          onClick={() => openStudentDetail(sg)}
-                          className={`p-4 rounded-xl border-2 ${getGradeBorderColor(sg.grade)} ${getGradeBgColor(sg.grade)}/30 hover:${getGradeBgColor(sg.grade)}/50 transition-all text-left group`}
-                        >
-                          {/* Grade circle */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className={`w-12 h-12 rounded-full ${getGradeBgColor(sg.grade)} flex flex-col items-center justify-center`}>
-                              <span className={`text-lg font-bold ${getGradeColor(sg.grade)}`}>
-                                {sg.grade.toFixed(1)}
-                              </span>
-                            </div>
-                            {sg.bonus > 0 && (
-                              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
-                                +{sg.bonus.toFixed(1)}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Student name */}
-                          <div className="font-medium text-[var(--color-text)] truncate mb-2">
-                            {sg.student.pseudo}
-                          </div>
-
-                          {/* Stats row */}
-                          <div className="flex items-center gap-3 text-sm">
-                            <span className="text-green-600 font-medium">
-                              {sg.malusPenalty ? sg.effectiveParticipations : sg.totalParticipations}/{Math.round(sg.adjustedTarget)}
-                            </span>
-                            {sg.malusPenalty && sg.malus > 0 && (
-                              <span className="text-orange-600">-{sg.malus}</span>
-                            )}
-                            {sg.absences > 0 && (
-                              <span className="text-red-600">{sg.absences} abs</span>
-                            )}
-                            {sg.oralEvaluation && (
-                              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                                Oral: {sg.oralEvaluation.grade}/5
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Hover indicator */}
-                          <div className="mt-2 text-xs text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity">
-                            Cliquer pour details
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Pagination controls */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-center gap-2 mt-4">
-                        <button
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                          className="px-3 py-1 rounded border border-[var(--color-border)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-surface-hover)]"
-                        >
-                          Precedent
-                        </button>
-                        <span className="text-sm text-[var(--color-text-secondary)]">
-                          Page {currentPage} / {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                          className="px-3 py-1 rounded border border-[var(--color-border)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-surface-hover)]"
-                        >
-                          Suivant
-                        </button>
-                      </div>
-                    )}
-                    </>
-                  )}
-                </div>
-
-                {/* Footer stats - compact on mobile */}
-                {filteredAndSortedGrades.length > 0 && (
-                  <div className="p-1.5 md:p-4 border-t border-[var(--color-border)] bg-[var(--color-background)]">
-                    {/* Mobile: inline compact */}
-                    <div className="md:hidden flex items-center justify-center gap-3 text-xs">
-                      <span className="text-[var(--color-primary)] font-medium">{filteredAndSortedGrades.length} el.</span>
-                      <span className="text-green-600 font-medium">+{filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)}</span>
-                      <span className="text-red-600 font-medium">{filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)} abs</span>
-                      <span className="text-yellow-600 font-medium">+{filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(0)} bonus</span>
-                    </div>
-                    {/* Desktop: full display */}
-                    <div className="hidden md:flex flex-wrap gap-6 justify-center text-sm">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-[var(--color-primary)]">
-                          {filteredAndSortedGrades.length}
-                        </div>
-                        <div className="text-[var(--color-text-tertiary)]">eleves</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">
-                          {filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)}
-                        </div>
-                        <div className="text-[var(--color-text-tertiary)]">implications</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-red-600">
-                          {filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)}
-                        </div>
-                        <div className="text-[var(--color-text-tertiary)]">absences</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-yellow-600">
-                          {filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(1)}
-                        </div>
-                        <div className="text-[var(--color-text-tertiary)]">bonus total</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-[var(--color-text-tertiary)]">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">📚</div>
-                  <h3 className="text-xl font-medium text-[var(--color-text)]">Selectionnez une classe</h3>
-                  <p className="mt-2">Choisissez une classe dans la liste a gauche</p>
-                </div>
-              </div>
-            )}
-          </div>
+            </section>
+          )}
         </div>
-      </div>
+      </main>
 
       {/* Config Modal */}
       {showConfigModal && configClassId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Configuration - {classes.find(c => c.id === configClassId)?.name}
             </h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                   Implications pour avoir 20/20
                 </label>
                 <input
@@ -1893,12 +1778,12 @@ export function Students() {
                   max="100"
                   value={configTarget}
                   onChange={(e) => setConfigTarget(parseInt(e.target.value) || 15)}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                  className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                   Nombre de seances prevues par trimestre
                 </label>
                 <input
@@ -1907,19 +1792,19 @@ export function Students() {
                   max="200"
                   value={configSessions}
                   onChange={(e) => setConfigSessions(parseInt(e.target.value) || 60)}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                  className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
                 />
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                <p className="text-xs text-[var(--text-dim)] mt-1">
                   Reduction par absence: {(configTarget / configSessions).toFixed(2)} implication
                 </p>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-[var(--color-background)] rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text)]">
+                  <label className="block text-sm font-medium text-[var(--text)]">
                     Penalite malus
                   </label>
-                  <p className="text-xs text-[var(--color-text-tertiary)]">
+                  <p className="text-xs text-[var(--text-dim)]">
                     1 malus = -1 implication
                   </p>
                 </div>
@@ -1927,7 +1812,7 @@ export function Students() {
                   type="button"
                   onClick={() => setConfigMalusPenalty(!configMalusPenalty)}
                   className={`relative w-12 h-6 rounded-full transition-colors ${
-                    configMalusPenalty ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
+                    configMalusPenalty ? 'bg-[var(--indigo)]' : 'bg-gray-300'
                   }`}
                 >
                   <span
@@ -1975,7 +1860,7 @@ export function Students() {
                       step="0.5"
                       value={configBaseGrade}
                       onChange={(e) => setConfigBaseGrade(parseFloat(e.target.value) || 10)}
-                      className="w-full px-3 py-2 border border-indigo-300 rounded-lg bg-white text-[var(--color-text)] text-sm"
+                      className="w-full px-3 py-2 border border-indigo-300 rounded-lg bg-white text-[var(--text)] text-sm"
                     />
                     <p className="text-xs text-indigo-600 mt-2">
                       Note = {configBaseGrade} + participations {configMalusPenalty ? '- malus' : ''}
@@ -1988,14 +1873,14 @@ export function Students() {
             <div className="flex gap-3 justify-end mt-6">
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
               >
                 Annuler
               </button>
               <button
                 onClick={saveClassConfig}
                 disabled={isSaving}
-                className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:bg-[var(--indigo)]/90 disabled:opacity-50"
               >
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
@@ -2007,8 +1892,8 @@ export function Students() {
       {/* Next Trimester Modal */}
       {showNextTrimesterModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Passer au trimestre suivant
             </h3>
 
@@ -2019,20 +1904,20 @@ export function Students() {
               </p>
             </div>
 
-            <p className="text-[var(--color-text-secondary)] mb-4">
+            <p className="text-[var(--text-muted)] mb-4">
               Trimestre actuel: <strong>{trimesterSettings.current_trimester}</strong> ({trimesterSettings.school_year})
               <br />
               Prochain trimestre: <strong>
                 {trimesterSettings.current_trimester === 3 ? '1' : trimesterSettings.current_trimester + 1}
               </strong>
               {trimesterSettings.current_trimester === 3 && (
-                <span className="text-[var(--color-text-tertiary)]">
+                <span className="text-[var(--text-dim)]">
                   {' '}(nouvelle annee scolaire)
                 </span>
               )}
             </p>
 
-            <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
+            <p className="text-sm text-[var(--text-dim)] mb-4">
               {studentGrades.length} eleve{studentGrades.length > 1 ? 's' : ''} seront archives.
             </p>
 
@@ -2043,7 +1928,7 @@ export function Students() {
                   type="checkbox"
                   checked={generateReportOnTrimesterEnd}
                   onChange={(e) => setGenerateReportOnTrimesterEnd(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-[var(--color-primary)] rounded"
+                  className="mt-1 w-4 h-4 text-[var(--indigo)] rounded"
                 />
                 <div>
                   <span className="text-sm font-medium text-blue-900">
@@ -2059,14 +1944,14 @@ export function Students() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowNextTrimesterModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
               >
                 Annuler
               </button>
               <button
                 onClick={handleNextTrimester}
                 disabled={isSaving || isGeneratingReport}
-                className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:bg-[var(--indigo)]/90 disabled:opacity-50"
               >
                 {isGeneratingReport ? 'Generation du rapport...' : isSaving ? 'Archivage...' : 'Confirmer'}
               </button>
@@ -2078,8 +1963,8 @@ export function Students() {
       {/* End Year Modal */}
       {showEndYearModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Finir l'annee scolaire
             </h3>
 
@@ -2099,10 +1984,10 @@ export function Students() {
               </ul>
             </div>
 
-            <p className="text-[var(--color-text-secondary)] mb-4">
+            <p className="text-[var(--text-muted)] mb-4">
               Annee actuelle : <strong>{trimesterSettings.school_year}</strong>
               <br />
-              <span className="text-sm text-[var(--color-text-tertiary)]">
+              <span className="text-sm text-[var(--text-dim)]">
                 {studentGrades.length} eleve{studentGrades.length > 1 ? 's' : ''} -
                 {' '}{studentGrades.filter(sg => sg.student.class_name.toLowerCase().includes('3e') || sg.student.class_name.toLowerCase().includes('3è')).length} eleve(s) de 3eme seront supprimes
               </span>
@@ -2115,7 +2000,7 @@ export function Students() {
                   type="checkbox"
                   checked={generateReportOnTrimesterEnd}
                   onChange={(e) => setGenerateReportOnTrimesterEnd(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-[var(--color-primary)] rounded"
+                  className="mt-1 w-4 h-4 text-[var(--indigo)] rounded"
                 />
                 <div>
                   <span className="text-sm font-medium text-blue-900">
@@ -2130,7 +2015,7 @@ export function Students() {
 
             {/* Confirmation input */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+              <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
                 Pour confirmer, tapez <strong className="text-red-600">VACANCES</strong> :
               </label>
               <input
@@ -2138,7 +2023,7 @@ export function Students() {
                 value={endYearConfirmText}
                 onChange={(e) => setEndYearConfirmText(e.target.value.toUpperCase())}
                 placeholder="VACANCES"
-                className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] focus:outline-none focus:border-red-500"
+                className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:border-red-500"
               />
             </div>
 
@@ -2148,7 +2033,7 @@ export function Students() {
                   setShowEndYearModal(false);
                   setEndYearConfirmText('');
                 }}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
               >
                 Annuler
               </button>
@@ -2167,19 +2052,19 @@ export function Students() {
       {/* Student Detail Modal */}
       {showStudentDetailModal && selectedStudentForDetail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-[var(--surface)] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-[var(--color-border)]">
+            <div className="p-6 border-b border-[var(--border)]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div>
-                    <h3 className="text-xl font-semibold text-[var(--color-text)]">
+                    <h3 className="text-xl font-semibold text-[var(--text)]">
                       {selectedStudentForDetail.student.pseudo}
                     </h3>
-                    <p className="text-sm text-[var(--color-text-tertiary)]">
+                    <p className="text-sm text-[var(--text-dim)]">
                       {selectedStudentForDetail.student.class_name}
                       {selectedStudentForDetail.student.student_code && (
-                        <span className="ml-2 px-2 py-0.5 bg-[var(--color-surface-secondary)] rounded text-xs font-mono">
+                        <span className="ml-2 px-2 py-0.5 bg-[var(--surface-3)] rounded text-xs font-mono">
                           {selectedStudentForDetail.student.student_code}
                         </span>
                       )}
@@ -2188,7 +2073,7 @@ export function Students() {
                   {/* Gender toggle button */}
                   <button
                     onClick={toggleGender}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]"
                     title="Cliquer pour changer"
                   >
                     {selectedStudentForDetail.student.gender === 'F' ? '♀ Fille' : '♂ Garcon'}
@@ -2196,7 +2081,7 @@ export function Students() {
                 </div>
                 <button
                   onClick={() => setShowStudentDetailModal(false)}
-                  className="p-2 hover:bg-[var(--color-background)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
+                  className="p-2 hover:bg-[var(--bg)] rounded-lg text-[var(--text-dim)] hover:text-[var(--text)]"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2211,10 +2096,10 @@ export function Students() {
               <div className={`${getGradeBgColor(selectedStudentForDetail.grade)} rounded-xl p-6`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-[var(--color-text-secondary)]">
+                    <p className="text-sm text-[var(--text-muted)]">
                       Trimestre {trimesterSettings.current_trimester}
                     </p>
-                    <p className={`text-4xl font-bold ${getGradeColor(selectedStudentForDetail.grade)}`}>
+                    <p className={`text-4xl font-bold ${getGradeColor(selectedStudentForDetail.grade)}`} style={{ fontFamily: 'var(--font-display)' }}>
                       {selectedStudentForDetail.grade.toFixed(2)}/20
                     </p>
                     {selectedStudentForDetail.bonus > 0 && (
@@ -2226,15 +2111,15 @@ export function Students() {
                   <div className="text-right space-y-1">
                     <p className="text-sm">
                       <span className="text-green-600 font-semibold">{selectedStudentForDetail.totalParticipations}</span>
-                      <span className="text-[var(--color-text-tertiary)]"> implications totales</span>
+                      <span className="text-[var(--text-dim)]"> implications totales</span>
                     </p>
-                    <p className="text-xs text-[var(--color-text-tertiary)]">
+                    <p className="text-xs text-[var(--text-dim)]">
                       ({selectedStudentForDetail.participations} seance + {selectedStudentForDetail.manualParticipations} manuelles)
                     </p>
                     {selectedStudentForDetail.malus > 0 && (
                       <p className="text-sm">
                         <span className="text-orange-600 font-semibold">{selectedStudentForDetail.malus}</span>
-                        <span className="text-[var(--color-text-tertiary)]"> malus</span>
+                        <span className="text-[var(--text-dim)]"> malus</span>
                         {selectedStudentForDetail.malusPenalty && (
                           <span className="text-orange-600"> (-{selectedStudentForDetail.malus})</span>
                         )}
@@ -2242,10 +2127,10 @@ export function Students() {
                     )}
                     <p className="text-sm">
                       <span className="text-red-600 font-semibold">{selectedStudentForDetail.absences}</span>
-                      <span className="text-[var(--color-text-tertiary)]"> absences</span>
+                      <span className="text-[var(--text-dim)]"> absences</span>
                     </p>
                     {selectedStudentForDetail.baseGrade === null && (
-                      <p className="text-sm text-[var(--color-text-tertiary)]">
+                      <p className="text-sm text-[var(--text-dim)]">
                         Objectif ajuste: {selectedStudentForDetail.adjustedTarget.toFixed(1)}
                       </p>
                     )}
@@ -2256,10 +2141,10 @@ export function Students() {
                 <div className="mt-4 pt-4 border-t border-black/10 text-sm">
                   {selectedStudentForDetail.baseGrade !== null ? (
                     <>
-                      <p className="text-[var(--color-text-secondary)]">
+                      <p className="text-[var(--text-muted)]">
                         <strong>Mode note de base:</strong> {selectedStudentForDetail.baseGrade}/20
                       </p>
-                      <p className="text-[var(--color-text-secondary)]">
+                      <p className="text-[var(--text-muted)]">
                         Note = {selectedStudentForDetail.baseGrade} + {selectedStudentForDetail.totalParticipations} part.
                         {selectedStudentForDetail.malusPenalty && selectedStudentForDetail.malus > 0 && (
                           <> - {selectedStudentForDetail.malus} malus</>
@@ -2271,18 +2156,18 @@ export function Students() {
                     </>
                   ) : (
                     <>
-                      <p className="text-[var(--color-text-secondary)]">
+                      <p className="text-[var(--text-muted)]">
                         <strong>Calcul:</strong> Objectif de base = {selectedStudentForDetail.targetParticipations}
                         {selectedStudentForDetail.absences > 0 && (
                           <> - ({selectedStudentForDetail.absences} abs × {(selectedStudentForDetail.targetParticipations / selectedStudentForDetail.totalSessionsExpected).toFixed(2)}) = {selectedStudentForDetail.adjustedTarget.toFixed(1)}</>
                         )}
                       </p>
                       {selectedStudentForDetail.malusPenalty && selectedStudentForDetail.malus > 0 && (
-                        <p className="text-[var(--color-text-secondary)]">
+                        <p className="text-[var(--text-muted)]">
                           Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.malus} malus = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
                         </p>
                       )}
-                      <p className="text-[var(--color-text-secondary)]">
+                      <p className="text-[var(--text-muted)]">
                         Note = ({selectedStudentForDetail.effectiveParticipations} / {selectedStudentForDetail.adjustedTarget.toFixed(1)}) × 20 = {((selectedStudentForDetail.effectiveParticipations / selectedStudentForDetail.adjustedTarget) * 20).toFixed(2)}
                         {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
                         {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
@@ -2319,22 +2204,22 @@ export function Students() {
                     {selectedStudentForDetail.participations - selectedStudentForDetail.malus >= 0 ? '+' : ''}
                     {selectedStudentForDetail.participations - selectedStudentForDetail.malus}
                   </div>
-                  <div className="text-xs text-[var(--color-text-secondary)]">Score global</div>
+                  <div className="text-xs text-[var(--text-muted)]">Score global</div>
                 </div>
               </div>
 
               {/* Session Evolution Chart */}
               {selectedStudentForDetail.events.length > 0 && (
-                <div className="bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)]">
-                  <h4 className="font-medium text-[var(--color-text)] mb-4 flex items-center gap-2">
+                <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border)]">
+                  <h4 className="font-medium text-[var(--text)] mb-4 flex items-center gap-2">
                     <span>📈</span> Evolution par seance
                   </h4>
                   <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={getSessionEvolution(selectedStudentForDetail.events)}>
                       <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 11, fill: 'var(--color-text-tertiary)' }}
-                        axisLine={{ stroke: 'var(--color-border)' }}
+                        tick={{ fontSize: 11, fill: 'var(--text-dim)' }}
+                        axisLine={{ stroke: 'var(--border)' }}
                         tickLine={false}
                         interval={0}
                         angle={-45}
@@ -2342,15 +2227,15 @@ export function Students() {
                         height={50}
                       />
                       <YAxis
-                        tick={{ fontSize: 12, fill: 'var(--color-text-tertiary)' }}
+                        tick={{ fontSize: 12, fill: 'var(--text-dim)' }}
                         axisLine={false}
                         tickLine={false}
                         allowDecimals={false}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--color-surface)',
-                          border: '1px solid var(--color-border)',
+                          backgroundColor: 'var(--surface)',
+                          border: '1px solid var(--border)',
                           borderRadius: '8px',
                           fontSize: '12px',
                         }}
@@ -2431,8 +2316,8 @@ export function Students() {
                         <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
                           <div className="flex items-center justify-between mb-1">
                             <div>
-                              <span className="font-medium text-[var(--color-text)]">{grade.session_name}</span>
-                              <span className="text-xs text-[var(--color-text-tertiary)] ml-2">
+                              <span className="font-medium text-[var(--text)]">{grade.session_name}</span>
+                              <span className="text-xs text-[var(--text-dim)] ml-2">
                                 ({grade.group_name})
                               </span>
                             </div>
@@ -2440,7 +2325,7 @@ export function Students() {
                               <span className={`font-bold ${percentage >= 70 ? 'text-green-600' : percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
                                 {grade.score.toFixed(1)}/{grade.max_points}
                               </span>
-                              <span className="text-xs text-[var(--color-text-tertiary)] ml-1">
+                              <span className="text-xs text-[var(--text-dim)] ml-1">
                                 ({percentage}%)
                               </span>
                             </div>
@@ -2454,7 +2339,7 @@ export function Students() {
                               }}
                             />
                           </div>
-                          <div className="flex items-center justify-between mt-1 text-xs text-[var(--color-text-tertiary)]">
+                          <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)]">
                             <span>{grade.class_name}</span>
                             <span>{formatDate(grade.created_at)}</span>
                           </div>
@@ -2481,7 +2366,7 @@ export function Students() {
                             {formatDate(remark.timestamp)}
                           </div>
                           {remark.note && (
-                            <p className="text-sm text-[var(--color-text)]">{remark.note}</p>
+                            <p className="text-sm text-[var(--text)]">{remark.note}</p>
                           )}
                           {remark.photo_path && buildPhotoUrl(remark.photo_path, import.meta.env.VITE_SUPABASE_URL) && (
                             <div className="mt-2">
@@ -2505,33 +2390,33 @@ export function Students() {
               {/* Manual Implications Section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-[var(--color-text)]">
+                  <h4 className="font-medium text-[var(--text)]">
                     Implications manuelles ({selectedStudentForDetail.manualParticipations})
                   </h4>
                   <button
                     onClick={openAddManualModal}
-                    className="px-3 py-1.5 bg-[var(--color-primary)] text-white rounded-lg text-sm hover:bg-[var(--color-primary)]/90"
+                    className="px-3 py-1.5 bg-[var(--indigo)] text-white rounded-lg text-sm hover:bg-[var(--indigo)]/90"
                   >
                     + Ajouter
                   </button>
                 </div>
                 {selectedStudentForDetail.manualParticipationsList.length === 0 ? (
-                  <p className="text-[var(--color-text-tertiary)] text-sm text-center py-3 bg-[var(--color-background)] rounded-lg">
+                  <p className="text-[var(--text-dim)] text-sm text-center py-3 bg-[var(--bg)] rounded-lg">
                     Aucune implication manuelle ce trimestre
                   </p>
                 ) : (
                   <div className="space-y-2">
                     {selectedStudentForDetail.manualParticipationsList.map((mp) => (
-                      <div key={mp.id} className="flex items-center justify-between bg-[var(--color-background)] rounded-lg p-3">
+                      <div key={mp.id} className="flex items-center justify-between bg-[var(--bg)] rounded-lg p-3">
                         <div className="flex items-center gap-3">
                           <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">
                             +{mp.count}
                           </span>
                           <div>
-                            <span className="text-sm text-[var(--color-text)]">
+                            <span className="text-sm text-[var(--text)]">
                               {mp.reason || 'Implication manuelle'}
                             </span>
-                            <span className="text-xs text-[var(--color-text-tertiary)] block">
+                            <span className="text-xs text-[var(--text-dim)] block">
                               {formatDate(mp.created_at)}
                             </span>
                           </div>
@@ -2554,23 +2439,23 @@ export function Students() {
               {/* Archived Grades */}
               {selectedStudentForDetail.archivedGrades.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-[var(--color-text)] mb-3">Historique des notes</h4>
+                  <h4 className="font-medium text-[var(--text)] mb-3">Historique des notes</h4>
                   <div className="space-y-2">
                     {selectedStudentForDetail.archivedGrades.map((ag, idx) => (
-                      <div key={idx} className="bg-[var(--color-background)] rounded-lg p-3 flex items-center justify-between">
+                      <div key={idx} className="bg-[var(--bg)] rounded-lg p-3 flex items-center justify-between">
                         <div>
-                          <span className="font-medium text-[var(--color-text)]">
+                          <span className="font-medium text-[var(--text)]">
                             Trimestre {ag.trimester}
                           </span>
-                          <span className="text-[var(--color-text-tertiary)] ml-2">
+                          <span className="text-[var(--text-dim)] ml-2">
                             ({ag.school_year})
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm text-[var(--color-text-secondary)]">
+                          <span className="text-sm text-[var(--text-muted)]">
                             {ag.participations} part. / {ag.absences} abs.
                           </span>
-                          <span className={`font-bold ${getGradeColor(ag.grade)}`}>
+                          <span className={`font-bold ${getGradeColor(ag.grade)}`} style={{ fontFamily: 'var(--font-display)' }}>
                             {ag.grade.toFixed(1)}/20
                           </span>
                           {ag.bonus > 0 && (
@@ -2587,11 +2472,11 @@ export function Students() {
 
               {/* Stamp Card */}
               <div>
-                <h4 className="font-medium text-[var(--color-text)] mb-3">Carte a tampons</h4>
+                <h4 className="font-medium text-[var(--text)] mb-3">Carte a tampons</h4>
                 {stampDetailLoading ? (
-                  <p className="text-sm text-[var(--color-text-tertiary)] py-2">Chargement...</p>
+                  <p className="text-sm text-[var(--text-dim)] py-2">Chargement...</p>
                 ) : !studentStampDetail ? (
-                  <p className="text-sm text-[var(--color-text-tertiary)] py-2">Pas de carte active</p>
+                  <p className="text-sm text-[var(--text-dim)] py-2">Pas de carte active</p>
                 ) : (() => {
                   const tier = getCardTier(studentStampDetail.card_number);
                   const isComplete = studentStampDetail.stamp_count >= 10;
@@ -2653,15 +2538,15 @@ export function Students() {
                     {/* Completed cards */}
                     {studentStampDetail.completed_cards.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-xs text-[var(--color-text-secondary)]">
+                        <p className="text-xs text-[var(--text-muted)]">
                           {studentStampDetail.completed_cards.length} carte(s) terminée(s)
                         </p>
                         {studentStampDetail.completed_cards.map((c, i) => {
                           const cTier = getCardTier(c.card_number);
                           return (
-                            <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-[var(--color-background)]">
-                              <span className="text-[var(--color-text)]">{cTier.emoji} Carte n°{c.card_number} ({cTier.name})</span>
-                              <span className="text-[var(--color-text-secondary)]">
+                            <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-[var(--bg)]">
+                              <span className="text-[var(--text)]">{cTier.emoji} Carte n°{c.card_number} ({cTier.name})</span>
+                              <span className="text-[var(--text-muted)]">
                                 {c.bonus_label ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}` : 'Pas de bonus'}
                               </span>
                             </div>
@@ -2676,25 +2561,25 @@ export function Students() {
 
               {/* Recent Events */}
               <div>
-                <h4 className="font-medium text-[var(--color-text)] mb-3">
+                <h4 className="font-medium text-[var(--text)] mb-3">
                   Evenements du trimestre ({selectedStudentForDetail.events.length})
                 </h4>
                 {selectedStudentForDetail.events.length === 0 ? (
-                  <p className="text-[var(--color-text-tertiary)] text-center py-4">
+                  <p className="text-[var(--text-dim)] text-center py-4">
                     Aucun evenement ce trimestre
                   </p>
                 ) : (
                   <div className="space-y-1 max-h-60 overflow-y-auto">
                     {selectedStudentForDetail.events.map((event) => (
-                      <div key={event.id} className="flex items-center gap-3 p-2 hover:bg-[var(--color-background)] rounded">
+                      <div key={event.id} className="flex items-center gap-3 p-2 hover:bg-[var(--bg)] rounded">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getEventTypeColor(event.type)}`}>
                           {getEventTypeLabel(event.type, event.subtype)}
                         </span>
-                        <span className="text-sm text-[var(--color-text-tertiary)] flex-1">
+                        <span className="text-sm text-[var(--text-dim)] flex-1">
                           {formatDateTime(event.timestamp)}
                         </span>
                         {event.note && (
-                          <span className="text-sm text-[var(--color-text-secondary)] italic truncate max-w-[200px]">
+                          <span className="text-sm text-[var(--text-muted)] italic truncate max-w-[200px]">
                             "{event.note}"
                           </span>
                         )}
@@ -2711,17 +2596,17 @@ export function Students() {
       {/* Add Manual Implication Modal */}
       {showAddManualModal && selectedStudentForDetail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Ajouter une implication manuelle
             </h3>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+            <p className="text-sm text-[var(--text-muted)] mb-4">
               Pour: <strong>{selectedStudentForDetail.student.pseudo}</strong>
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                   Nombre d'implications
                 </label>
                 <input
@@ -2730,12 +2615,12 @@ export function Students() {
                   max="20"
                   value={manualCount}
                   onChange={(e) => setManualCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                  className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                   Raison (optionnel)
                 </label>
                 <input
@@ -2744,7 +2629,7 @@ export function Students() {
                   value={manualReason}
                   onChange={(e) => setManualReason(e.target.value)}
                   maxLength={255}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                  className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
                 />
               </div>
             </div>
@@ -2752,14 +2637,14 @@ export function Students() {
             <div className="flex gap-3 justify-end mt-6">
               <button
                 onClick={() => setShowAddManualModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
               >
                 Annuler
               </button>
               <button
                 onClick={addManualParticipation}
                 disabled={isSaving}
-                className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:bg-[var(--indigo)]/90 disabled:opacity-50"
               >
                 {isSaving ? 'Ajout...' : 'Ajouter'}
               </button>
@@ -2770,20 +2655,20 @@ export function Students() {
       {/* Student Codes Modal */}
       {showQrModal && qrDataUrl && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-sm flex flex-col items-center">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">Acces eleve</h3>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4 text-center">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-sm flex flex-col items-center">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-2">Acces eleve</h3>
+            <p className="text-sm text-[var(--text-muted)] mb-4 text-center">
               Scannez ce QR code pour acceder a l'interface eleve
             </p>
             <div className="bg-white p-4 rounded-xl mb-4">
               <img src={qrDataUrl} alt="QR Code" className="w-64 h-64" />
             </div>
-            <code className="text-xs text-[var(--color-text-tertiary)] mb-4 bg-[var(--color-background)] px-2 py-1 rounded">
+            <code className="text-xs text-[var(--text-dim)] mb-4 bg-[var(--bg)] px-2 py-1 rounded">
               {window.location.origin}/gestion-classe/eleve
             </code>
             <button
               onClick={() => setShowQrModal(false)}
-              className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)] text-sm"
+              className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)] text-sm"
             >
               Fermer
             </button>
@@ -2793,42 +2678,42 @@ export function Students() {
 
       {showCodesModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+              <h3 className="text-lg font-semibold text-[var(--text)]">
                 Codes d'acces eleves
               </h3>
               <button
                 onClick={() => setShowCodesModal(false)}
-                className="p-1 hover:bg-[var(--color-background)] rounded text-[var(--color-text-secondary)]"
+                className="p-1 hover:bg-[var(--bg)] rounded text-[var(--text-muted)]"
               >
                 ✕
               </button>
             </div>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-2">
-              Lien : <code className="bg-[var(--color-background)] px-1 rounded text-xs">/gestion-classe/eleve</code>
+            <p className="text-sm text-[var(--text-muted)] mb-2">
+              Lien : <code className="bg-[var(--bg)] px-1 rounded text-xs">/gestion-classe/eleve</code>
             </p>
             <div className="flex-1 overflow-y-auto space-y-1 mb-4">
               {studentCodes.map((s, i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-[var(--color-background)]">
-                  <span className="text-sm text-[var(--color-text)]">{s.pseudo}</span>
-                  <code className="text-sm font-mono font-bold text-[var(--color-primary)] tracking-widest">{s.code}</code>
+                <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-[var(--bg)]">
+                  <span className="text-sm text-[var(--text)]">{s.pseudo}</span>
+                  <code className="text-sm font-mono font-bold text-[var(--indigo)] tracking-widest">{s.code}</code>
                 </div>
               ))}
               {studentCodes.length === 0 && (
-                <p className="text-center text-[var(--color-text-tertiary)] py-4">Aucun eleve</p>
+                <p className="text-center text-[var(--text-dim)] py-4">Aucun eleve</p>
               )}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={copyAllCodes}
-                className="flex-1 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 text-sm"
+                className="flex-1 px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:bg-[var(--indigo)]/90 text-sm"
               >
                 Copier tous les codes
               </button>
               <button
                 onClick={() => setShowCodesModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)] text-sm"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)] text-sm"
               >
                 Fermer
               </button>

@@ -16,7 +16,7 @@ export function LiveSessionOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[var(--color-background)] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col overflow-hidden"
       style={{ touchAction: step === 'recording' ? 'none' : 'auto' }}
     >
       {step === 'select-class' && <ClassSelector />}

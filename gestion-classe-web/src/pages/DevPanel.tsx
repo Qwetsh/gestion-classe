@@ -62,7 +62,7 @@ export function DevPanel() {
   if (user?.email !== DEV_EMAIL) {
     return (
       <Layout>
-        <div className="text-center py-20 text-[var(--color-text-secondary)]">
+        <div className="text-center py-20 text-[var(--text-muted)]">
           Acces non autorise.
         </div>
       </Layout>
@@ -82,8 +82,8 @@ export function DevPanel() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">Panel Dev</h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">Outils d'administration</p>
+          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Panel Dev</h1>
+          <p style={{ color: 'var(--text-muted)' }} className="mt-1">Outils d'administration</p>
         </div>
 
         {/* Tabs */}
@@ -95,11 +95,11 @@ export function DevPanel() {
               className={`px-4 py-2 text-sm font-medium transition-all ${
                 tab === t.key
                   ? 'text-white'
-                  : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                  : 'text-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--indigo)]'
               }`}
               style={{
-                borderRadius: 'var(--radius-lg)',
-                ...(tab === t.key ? { background: 'var(--gradient-primary)' } : {}),
+                borderRadius: 'var(--radius)',
+                ...(tab === t.key ? { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' } : {}),
               }}
             >
               {t.icon} {t.label}
@@ -175,9 +175,9 @@ function FeedbacksTab() {
   };
 
   const typeConfig = {
-    bug: { label: '🐛 Bug', color: 'var(--color-error)', bg: 'var(--color-error-soft)' },
-    suggestion: { label: '💡 Suggestion', color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' },
-    autre: { label: '💬 Autre', color: 'var(--color-text-secondary)', bg: 'var(--color-surface-secondary)' },
+    bug: { label: '🐛 Bug', color: 'var(--neg)', bg: 'var(--neg-soft)' },
+    suggestion: { label: '💡 Suggestion', color: 'var(--indigo)', bg: 'var(--indigo-soft)' },
+    autre: { label: '💬 Autre', color: 'var(--text-muted)', bg: 'var(--surface-3)' },
   };
 
   if (isLoading) return <Loader />;
@@ -193,8 +193,8 @@ function FeedbacksTab() {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-medium transition-all ${
                 filter === f
-                  ? 'text-white bg-[var(--color-primary)]'
-                  : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+                  ? 'text-white bg-[var(--indigo)]'
+                  : 'text-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border)]'
               }`}
               style={{ borderRadius: 'var(--radius-md)' }}
             >
@@ -206,8 +206,8 @@ function FeedbacksTab() {
           onClick={() => setShowArchived(!showArchived)}
           className={`px-3 py-1.5 text-xs font-medium transition-all ${
             showArchived
-              ? 'text-white bg-[var(--color-text-tertiary)]'
-              : 'text-[var(--color-text-tertiary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+              ? 'text-white bg-[var(--text-dim)]'
+              : 'text-[var(--text-dim)] bg-[var(--surface)] border border-[var(--border)]'
           }`}
           style={{ borderRadius: 'var(--radius-md)' }}
         >
@@ -231,14 +231,14 @@ function FeedbacksTab() {
                     >
                       {tc.label}
                     </span>
-                    <span className="text-sm text-[var(--color-text-secondary)]">{fb.user_email}</span>
+                    <span className="text-sm text-[var(--text-muted)]">{fb.user_email}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(fb.created_at)}</span>
+                    <span className="text-xs text-[var(--text-dim)]">{formatDate(fb.created_at)}</span>
                     <button
                       onClick={() => handleArchive(fb.id, !!fb.archived)}
                       disabled={archivingId === fb.id}
-                      className="px-2 py-1 text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+                      className="px-2 py-1 text-xs font-medium border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50"
                       style={{ borderRadius: 'var(--radius-md)' }}
                       title={fb.archived ? 'Desarchiver' : 'Archiver'}
                     >
@@ -246,7 +246,7 @@ function FeedbacksTab() {
                     </button>
                   </div>
                 </div>
-                <p className="text-[var(--color-text)] whitespace-pre-wrap">{fb.message}</p>
+                <p className="text-[var(--text)] whitespace-pre-wrap">{fb.message}</p>
               </Card>
             );
           })}
@@ -314,27 +314,27 @@ function UsersTab() {
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-[var(--color-text)]">{u.user_email}</span>
+                        <span className="font-medium text-[var(--text)]">{u.user_email}</span>
                         {device.icon && (
                           <span
                             className="px-2 py-0.5 text-xs font-medium"
-                            style={{ background: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-md)' }}
+                            style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-md)' }}
                             title={device.full}
                           >
                             {device.icon} {device.label}
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-[var(--color-text-tertiary)]">
+                      <div className="text-xs text-[var(--text-dim)]">
                         {u.login_count} connexion{u.login_count > 1 ? 's' : ''} · {sessions} seance{sessions > 1 ? 's' : ''}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-[var(--color-text-secondary)]">
+                    <div className="text-sm text-[var(--text-muted)]">
                       {days === 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : `Il y a ${days}j`}
                     </div>
-                    <div className="text-xs text-[var(--color-text-tertiary)]">{formatDate(u.last_seen_at)}</div>
+                    <div className="text-xs text-[var(--text-dim)]">{formatDate(u.last_seen_at)}</div>
                   </div>
                 </div>
               </Card>
@@ -418,8 +418,8 @@ function DevicesTab() {
             onClick={() => setPlatformFilter(f)}
             className={`px-3 py-1.5 text-xs font-medium transition-all ${
               platformFilter === f
-                ? 'text-white bg-[var(--color-primary)]'
-                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+                ? 'text-white bg-[var(--indigo)]'
+                : 'text-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border)]'
             }`}
             style={{ borderRadius: 'var(--radius-md)' }}
           >
@@ -433,7 +433,7 @@ function DevicesTab() {
         <EmptyState text="Aucune connexion enregistree." />
       ) : (
         <Card>
-          <h3 className="font-semibold text-[var(--color-text)] mb-4">Connexions par appareil</h3>
+          <h3 className="font-semibold text-[var(--text)] mb-4">Connexions par appareil</h3>
           <div className="space-y-3">
             {sortedDevices.map(([label, data]) => {
               const pct = maxCount > 0 ? (data.count / maxCount) * 100 : 0;
@@ -443,19 +443,19 @@ function DevicesTab() {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{data.icon}</span>
-                      <span className="text-sm font-medium text-[var(--color-text)]">{label}</span>
-                      <span className="text-xs text-[var(--color-text-tertiary)]">
+                      <span className="text-sm font-medium text-[var(--text)]">{label}</span>
+                      <span className="text-xs text-[var(--text-dim)]">
                         ({users} utilisateur{users > 1 ? 's' : ''})
                       </span>
                     </div>
-                    <span className="text-sm font-bold text-[var(--color-text)]">{data.count}</span>
+                    <span className="text-sm font-bold text-[var(--text)]">{data.count}</span>
                   </div>
-                  <div className="h-6 bg-[var(--color-surface-secondary)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
+                  <div className="h-6 bg-[var(--surface-3)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
                     <div
                       className="h-full transition-all flex items-center pl-2"
                       style={{
                         width: `${Math.max(pct, 3)}%`,
-                        background: 'var(--gradient-primary)',
+                        background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
                         borderRadius: 'var(--radius-md)',
                       }}
                     >
@@ -473,27 +473,27 @@ function DevicesTab() {
 
       {/* Recent connections */}
       <Card>
-        <h3 className="font-semibold text-[var(--color-text)] mb-3">Dernieres connexions</h3>
+        <h3 className="font-semibold text-[var(--text)] mb-3">Dernieres connexions</h3>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {filtered.slice(0, 20).map(c => {
             const device = parseDevice(c.device_info);
             return (
-              <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0">
+              <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
                 <div className="flex items-center gap-2">
                   <span
                     className="px-1.5 py-0.5 text-xs font-medium"
                     style={{
-                      background: c.platform === 'mobile' ? 'var(--color-primary-soft)' : 'var(--color-surface-secondary)',
-                      color: c.platform === 'mobile' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      background: c.platform === 'mobile' ? 'var(--indigo-soft)' : 'var(--surface-3)',
+                      color: c.platform === 'mobile' ? 'var(--indigo)' : 'var(--text-muted)',
                       borderRadius: 'var(--radius-md)',
                     }}
                   >
                     {c.platform === 'mobile' ? '📱' : '🌐'} {c.platform}
                   </span>
-                  <span className="text-sm text-[var(--color-text)]">{device.icon} {device.label}</span>
-                  <span className="text-xs text-[var(--color-text-tertiary)]">- {c.user_email}</span>
+                  <span className="text-sm text-[var(--text)]">{device.icon} {device.label}</span>
+                  <span className="text-xs text-[var(--text-dim)]">- {c.user_email}</span>
                 </div>
-                <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(c.created_at)}</span>
+                <span className="text-xs text-[var(--text-dim)]">{formatDate(c.created_at)}</span>
               </div>
             );
           })}
@@ -541,20 +541,20 @@ function StatsTab() {
       </div>
 
       <Card>
-        <h3 className="font-semibold text-[var(--color-text)] mb-3">Rows par table</h3>
+        <h3 className="font-semibold text-[var(--text)] mb-3">Rows par table</h3>
         <div className="space-y-2">
           {tableStats.sort((a, b) => b.row_count - a.row_count).map(t => {
             const pct = totalRows > 0 ? (t.row_count / totalRows) * 100 : 0;
             return (
               <div key={t.table_name} className="flex items-center gap-3">
-                <span className="text-sm font-mono text-[var(--color-text-secondary)] w-32">{t.table_name}</span>
-                <div className="flex-1 h-5 bg-[var(--color-surface-secondary)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
+                <span className="text-sm font-mono text-[var(--text-muted)] w-32">{t.table_name}</span>
+                <div className="flex-1 h-5 bg-[var(--surface-3)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
                   <div
                     className="h-full transition-all"
-                    style={{ width: `${Math.max(pct, 1)}%`, background: 'var(--gradient-primary)', borderRadius: 'var(--radius-md)' }}
+                    style={{ width: `${Math.max(pct, 1)}%`, background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
                   />
                 </div>
-                <span className="text-sm font-semibold text-[var(--color-text)] w-16 text-right">{t.row_count}</span>
+                <span className="text-sm font-semibold text-[var(--text)] w-16 text-right">{t.row_count}</span>
               </div>
             );
           })}
@@ -562,16 +562,16 @@ function StatsTab() {
       </Card>
 
       <Card>
-        <h3 className="font-semibold text-[var(--color-text)] mb-2">Estimation stockage</h3>
-        <p className="text-sm text-[var(--color-text-secondary)]">
+        <h3 className="font-semibold text-[var(--text)] mb-2">Estimation stockage</h3>
+        <p className="text-sm text-[var(--text-muted)]">
           ~{(totalRows * 0.5 / 1024).toFixed(1)} MB utilises (estimation) / 500 MB free plan
         </p>
-        <div className="mt-2 h-4 bg-[var(--color-surface-secondary)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
+        <div className="mt-2 h-4 bg-[var(--surface-3)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
           <div
             className="h-full"
             style={{
               width: `${Math.min((totalRows * 0.5 / 1024 / 500) * 100, 100)}%`,
-              background: (totalRows * 0.5 / 1024) > 400 ? 'var(--color-error)' : 'var(--gradient-primary)',
+              background: (totalRows * 0.5 / 1024) > 400 ? 'var(--neg)' : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
               borderRadius: 'var(--radius-md)',
             }}
           />
@@ -615,19 +615,19 @@ function ErrorsTab() {
           {errors.map(err => (
             <Card key={err.id}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-[var(--color-text-secondary)]">{err.user_email || 'Anonyme'}</span>
-                <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(err.created_at)}</span>
+                <span className="text-sm text-[var(--text-muted)]">{err.user_email || 'Anonyme'}</span>
+                <span className="text-xs text-[var(--text-dim)]">{formatDate(err.created_at)}</span>
               </div>
-              <p className="text-sm font-semibold text-[var(--color-error)] mb-1">{err.error_message}</p>
+              <p className="text-sm font-semibold text-[var(--neg)] mb-1">{err.error_message}</p>
               {err.page_url && (
-                <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Page: {err.page_url}</p>
+                <p className="text-xs text-[var(--text-dim)] mb-1">Page: {err.page_url}</p>
               )}
               {err.error_stack && (
                 <details className="mt-2">
-                  <summary className="text-xs text-[var(--color-text-tertiary)] cursor-pointer hover:text-[var(--color-text-secondary)]">
+                  <summary className="text-xs text-[var(--text-dim)] cursor-pointer hover:text-[var(--text-muted)]">
                     Voir la stack trace
                   </summary>
-                  <pre className="mt-1 text-xs font-mono text-[var(--color-text-tertiary)] whitespace-pre-wrap bg-[var(--color-surface-secondary)] p-2 overflow-auto max-h-32" style={{ borderRadius: 'var(--radius-md)' }}>
+                  <pre className="mt-1 text-xs font-mono text-[var(--text-dim)] whitespace-pre-wrap bg-[var(--surface-3)] p-2 overflow-auto max-h-32" style={{ borderRadius: 'var(--radius-md)' }}>
                     {err.error_stack}
                   </pre>
                 </details>
@@ -695,16 +695,16 @@ function AnnouncementsTab() {
   if (isLoading) return <Loader />;
 
   const typeOptions = [
-    { value: 'info' as const, label: 'ℹ️ Info', color: 'var(--color-primary)' },
+    { value: 'info' as const, label: 'ℹ️ Info', color: 'var(--indigo)' },
     { value: 'warning' as const, label: '⚠️ Alerte', color: '#d97706' },
-    { value: 'success' as const, label: '✅ Succes', color: 'var(--color-success)' },
+    { value: 'success' as const, label: '✅ Succes', color: 'var(--pos)' },
   ];
 
   return (
     <div className="space-y-4">
       {/* Create new */}
       <Card>
-        <h3 className="font-semibold text-[var(--color-text)] mb-3">Nouvelle annonce</h3>
+        <h3 className="font-semibold text-[var(--text)] mb-3">Nouvelle annonce</h3>
         <div className="space-y-3">
           <div className="flex gap-2">
             {typeOptions.map(opt => (
@@ -714,7 +714,7 @@ function AnnouncementsTab() {
                 className={`px-3 py-1.5 text-xs font-medium border-2 transition-all ${
                   newType === opt.value
                     ? 'text-white'
-                    : 'text-[var(--color-text-secondary)] border-[var(--color-border)]'
+                    : 'text-[var(--text-muted)] border-[var(--border)]'
                 }`}
                 style={{
                   borderRadius: 'var(--radius-md)',
@@ -731,15 +731,15 @@ function AnnouncementsTab() {
               value={newMessage}
               onChange={e => setNewMessage(e.target.value)}
               placeholder="Message de l'annonce..."
-              className="flex-1 px-3 py-2 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm"
-              style={{ borderRadius: 'var(--radius-lg)' }}
+              className="flex-1 px-3 py-2 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] text-sm"
+              style={{ borderRadius: 'var(--radius)' }}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
             />
             <button
               onClick={handleCreate}
               disabled={isSaving || !newMessage.trim()}
               className="px-4 py-2 text-white text-sm font-medium transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
             >
               Publier
             </button>
@@ -757,22 +757,22 @@ function AnnouncementsTab() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 flex-1">
                   <span className={`w-2.5 h-2.5 rounded-full ${a.active ? 'bg-green-500' : 'bg-gray-400'}`} />
-                  <span className={`text-sm ${a.active ? 'text-[var(--color-text)]' : 'text-[var(--color-text-tertiary)] line-through'}`}>
+                  <span className={`text-sm ${a.active ? 'text-[var(--text)]' : 'text-[var(--text-dim)] line-through'}`}>
                     {a.type === 'info' ? 'ℹ️' : a.type === 'warning' ? '⚠️' : '✅'} {a.message}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 ml-3">
-                  <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(a.created_at)}</span>
+                  <span className="text-xs text-[var(--text-dim)]">{formatDate(a.created_at)}</span>
                   <button
                     onClick={() => toggleActive(a.id, a.active)}
-                    className="px-2 py-1 text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                    className="px-2 py-1 text-xs font-medium border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors"
                     style={{ borderRadius: 'var(--radius-md)' }}
                   >
                     {a.active ? 'Desactiver' : 'Activer'}
                   </button>
                   <button
                     onClick={() => handleDelete(a.id)}
-                    className="px-2 py-1 text-xs font-medium text-[var(--color-error)] border border-[var(--color-error-soft)] hover:bg-[var(--color-error-soft)] transition-colors"
+                    className="px-2 py-1 text-xs font-medium text-[var(--neg)] border border-[var(--neg-soft)] hover:bg-[var(--neg-soft)] transition-colors"
                     style={{ borderRadius: 'var(--radius-md)' }}
                   >
                     Suppr
@@ -793,8 +793,8 @@ function AnnouncementsTab() {
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="bg-[var(--color-surface)] p-4"
-      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+      className="bg-[var(--surface)] p-4"
+      style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
     >
       {children}
     </div>
@@ -804,7 +804,7 @@ function Card({ children }: { children: React.ReactNode }) {
 function Loader() {
   return (
     <div className="flex justify-center items-center h-32">
-      <div className="w-8 h-8 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -812,7 +812,7 @@ function Loader() {
 function EmptyState({ text }: { text: string }) {
   return (
     <Card>
-      <p className="text-center text-[var(--color-text-tertiary)] py-4">{text}</p>
+      <p className="text-center text-[var(--text-dim)] py-4">{text}</p>
     </Card>
   );
 }
@@ -820,11 +820,11 @@ function EmptyState({ text }: { text: string }) {
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
     <div
-      className="bg-[var(--color-surface)] p-4 text-center"
-      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+      className="bg-[var(--surface)] p-4 text-center"
+      style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
     >
-      <div className="text-2xl font-bold text-[var(--color-text)]">{value}</div>
-      <div className="text-xs text-[var(--color-text-tertiary)]">{label}</div>
+      <div className="text-2xl font-bold text-[var(--text)]">{value}</div>
+      <div className="text-xs text-[var(--text-dim)]">{label}</div>
     </div>
   );
 }

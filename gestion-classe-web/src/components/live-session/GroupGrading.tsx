@@ -59,7 +59,7 @@ export function GroupGrading() {
       </div>
 
       {/* Group tabs */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-2 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0">
+      <div className="flex gap-2 overflow-x-auto px-4 py-2 bg-[var(--surface)] border-b border-[var(--border)] shrink-0">
         {groups.map((g, i) => {
           const gScore = criteria.reduce((s, c) => {
             const gr = g.grades.find(x => x.criteria_id === c.id);
@@ -71,10 +71,10 @@ export function GroupGrading() {
               onClick={() => setActiveGroup(i)}
               className={`shrink-0 px-3 py-2 text-xs font-semibold ${
                 i === activeGroupIndex
-                  ? 'bg-[var(--color-success)] text-white'
-                  : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]'
+                  ? 'bg-[var(--pos)] text-white'
+                  : 'bg-[var(--surface-3)] text-[var(--text-muted)]'
               }`}
-              style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+              style={{ borderRadius: 'var(--radius)', border: 'none' }}
             >
               <div>{g.name}</div>
               <div className="text-[10px] mt-0.5 opacity-80">{Math.max(0, gScore)}/{maxScore}</div>
@@ -85,17 +85,17 @@ export function GroupGrading() {
 
       {/* Score display */}
       <div className="text-center py-3 shrink-0">
-        <span className="text-3xl font-bold text-[var(--color-text)]">{totalScore}</span>
-        <span className="text-lg text-[var(--color-text-tertiary)]"> / {maxScore}</span>
+        <span className="text-3xl font-bold text-[var(--text)]">{totalScore}</span>
+        <span className="text-lg text-[var(--text-dim)]"> / {maxScore}</span>
         {group.conduct_malus > 0 && (
-          <div className="text-xs text-[var(--color-error)]">(dont {group.conduct_malus} malus)</div>
+          <div className="text-xs text-[var(--neg)]">(dont {group.conduct_malus} malus)</div>
         )}
       </div>
 
       {/* Members */}
       <div className="flex gap-1 px-4 pb-2 overflow-x-auto shrink-0">
         {group.members.map(m => (
-          <span key={m.student_id} className="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" style={{ borderRadius: 'var(--radius-full)' }}>
+          <span key={m.student_id} className="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-[var(--surface-3)] text-[var(--text-muted)]" style={{ borderRadius: 'var(--radius-full)' }}>
             {m.pseudo}
           </span>
         ))}
@@ -119,7 +119,7 @@ export function GroupGrading() {
       </div>
 
       {/* Malus button */}
-      <div className="flex items-center justify-center gap-4 py-3 px-4 border-t border-[var(--color-border)] shrink-0">
+      <div className="flex items-center justify-center gap-4 py-3 px-4 border-t border-[var(--border)] shrink-0">
         <button
           onClick={handleMalusTap}
           onTouchStart={handleMalusDown}
@@ -127,24 +127,24 @@ export function GroupGrading() {
           onMouseDown={handleMalusDown}
           onMouseUp={handleMalusUp}
           className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg active:scale-90 transition-transform"
-          style={{ background: 'var(--color-error)', border: 'none' }}
+          style={{ background: 'var(--neg)', border: 'none' }}
         >
           -1
         </button>
-        <span className="text-sm text-[var(--color-text-secondary)]">
-          Malus: <strong className="text-[var(--color-error)]">{group.conduct_malus}</strong>
-          {group.conduct_malus > 0 && <span className="text-xs text-[var(--color-text-tertiary)] ml-1">(maintenir pour reset)</span>}
+        <span className="text-sm text-[var(--text-muted)]">
+          Malus: <strong className="text-[var(--neg)]">{group.conduct_malus}</strong>
+          {group.conduct_malus > 0 && <span className="text-xs text-[var(--text-dim)] ml-1">(maintenir pour reset)</span>}
         </span>
       </div>
 
       {/* End confirm */}
       {showEndConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="bg-[var(--color-surface)] p-6 mx-6 space-y-4 max-w-sm w-full" style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)' }}>
-            <h3 className="font-bold text-lg text-[var(--color-text)] text-center">Terminer la notation ?</h3>
+          <div className="bg-[var(--surface)] p-6 mx-6 space-y-4 max-w-sm w-full" style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}>
+            <h3 className="font-bold text-lg text-[var(--text)] text-center">Terminer la notation ?</h3>
             <div className="flex gap-3">
-              <button onClick={() => setShowEndConfirm(false)} className="flex-1 py-3 font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]" style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}>Continuer</button>
-              <button onClick={() => { setShowEndConfirm(false); finishSession(); }} disabled={loading} className="flex-1 py-3 font-bold text-white" style={{ background: 'var(--gradient-success)', borderRadius: 'var(--radius-lg)', border: 'none' }}>Terminer</button>
+              <button onClick={() => setShowEndConfirm(false)} className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]" style={{ borderRadius: 'var(--radius)', border: 'none' }}>Continuer</button>
+              <button onClick={() => { setShowEndConfirm(false); finishSession(); }} disabled={loading} className="flex-1 py-3 font-bold text-white" style={{ background: 'var(--gradient-success)', borderRadius: 'var(--radius)', border: 'none' }}>Terminer</button>
             </div>
           </div>
         </div>
@@ -187,13 +187,13 @@ function CriteriaSlider({ label, maxPoints, value, onChange }: {
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <span className="text-sm font-medium text-[var(--color-text)]">{label}</span>
-        <span className="text-sm font-bold text-[var(--color-success)]">{value}/{maxPoints}</span>
+        <span className="text-sm font-medium text-[var(--text)]">{label}</span>
+        <span className="text-sm font-bold text-[var(--pos)]">{value}/{maxPoints}</span>
       </div>
       <div
         ref={trackRef}
-        className="relative h-10 bg-[var(--color-surface-secondary)] cursor-pointer"
-        style={{ borderRadius: 'var(--radius-lg)' }}
+        className="relative h-10 bg-[var(--surface-3)] cursor-pointer"
+        style={{ borderRadius: 'var(--radius)' }}
         onClick={(e) => handleInteraction(e.clientX)}
         onTouchMove={handleTouchMove}
         onTouchStart={(e) => handleInteraction(e.touches[0].clientX)}
@@ -204,7 +204,7 @@ function CriteriaSlider({ label, maxPoints, value, onChange }: {
           style={{
             width: `${pct}%`,
             background: 'var(--gradient-success)',
-            borderRadius: 'var(--radius-lg)',
+            borderRadius: 'var(--radius)',
             transition: 'width 50ms',
           }}
         />
@@ -213,7 +213,7 @@ function CriteriaSlider({ label, maxPoints, value, onChange }: {
           className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full"
           style={{
             left: `calc(${pct}% - 12px)`,
-            boxShadow: 'var(--shadow-md)',
+            boxShadow: 'var(--shadow-2)',
             transition: 'left 50ms',
           }}
         />

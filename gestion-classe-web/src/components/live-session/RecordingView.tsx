@@ -251,8 +251,8 @@ export function RecordingView() {
       </div>
 
       {/* Quick stats bar */}
-      <div className="flex items-center justify-center gap-3 py-1.5 px-4 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0">
-        <span className="text-xs text-[var(--color-text-tertiary)]">{totalEvents} evt</span>
+      <div className="flex items-center justify-center gap-3 py-1.5 px-4 bg-[var(--surface)] border-b border-[var(--border)] shrink-0">
+        <span className="text-xs text-[var(--text-dim)]">{totalEvents} evt</span>
         <span className="text-xs font-bold" style={{ color: 'var(--color-participation)' }}>+{participations}</span>
         <span className="text-xs font-bold" style={{ color: 'var(--color-bavardage)' }}>-{malus}</span>
         {absences > 0 && <span className="text-xs font-bold" style={{ color: 'var(--color-absence)' }}>A:{absences}</span>}
@@ -260,18 +260,18 @@ export function RecordingView() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-around py-2 px-2 bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)] shrink-0">
+      <div className="flex items-center justify-around py-2 px-2 bg-[var(--surface-3)] border-b border-[var(--border)] shrink-0">
         <ToolbarButton icon="🎲" label="Aleatoire" onClick={handleRandomStudent} />
-        <div className="w-px h-6 bg-[var(--color-border)]" />
+        <div className="w-px h-6 bg-[var(--border)]" />
         <ToolbarButton
           icon="🎤"
           label="Oral"
           badge={`${evaluatedStudentIds.size}/${students.filter(s => !absentIds.has(s.id)).length}`}
           onClick={handleOralButton}
         />
-        <div className="w-px h-6 bg-[var(--color-border)]" />
+        <div className="w-px h-6 bg-[var(--border)]" />
         <ToolbarButton icon="📝" label="Note" indicator={!!notes} onClick={handleOpenNotes} />
-        <div className="w-px h-6 bg-[var(--color-border)]" />
+        <div className="w-px h-6 bg-[var(--border)]" />
         <ToolbarButton
           icon="🗑"
           label="Supprimer"
@@ -285,14 +285,14 @@ export function RecordingView() {
 
       {/* Random student popup */}
       {randomStudent && (
-        <div className="mx-4 mt-2 p-3 bg-[var(--color-primary-soft)] text-[var(--color-primary)] rounded-xl text-center font-bold text-lg shrink-0 animate-bounce">
+        <div className="mx-4 mt-2 p-3 bg-[var(--indigo-soft)] text-[var(--indigo)] rounded-xl text-center font-bold text-lg shrink-0 animate-bounce">
           🎲 {randomStudent}
         </div>
       )}
 
       {/* Error toast */}
       {error && (
-        <div className="mx-4 mt-2 p-2 bg-[var(--color-error-soft)] text-[var(--color-error)] rounded-lg text-xs text-center shrink-0">
+        <div className="mx-4 mt-2 p-2 bg-[var(--neg-soft)] text-[var(--neg)] rounded-lg text-xs text-center shrink-0">
           {error}
         </div>
       )}
@@ -315,11 +315,11 @@ export function RecordingView() {
             const student = studentId ? studentMap.get(studentId) : null;
 
             if (isDisabled) {
-              return <div key={key} className="h-[52px] rounded-lg bg-[var(--color-border-light)]" />;
+              return <div key={key} className="h-[52px] rounded-lg bg-[var(--surface-3)]" />;
             }
 
             if (!student) {
-              return <div key={key} className="h-[52px] rounded-lg bg-[var(--color-surface-secondary)]" />;
+              return <div key={key} className="h-[52px] rounded-lg bg-[var(--surface-3)]" />;
             }
 
             return (
@@ -339,7 +339,7 @@ export function RecordingView() {
 
         {/* Teacher desk */}
         <div className="mt-3 text-center">
-          <div className="inline-block px-4 py-1.5 bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)] text-xs font-medium rounded-lg">
+          <div className="inline-block px-4 py-1.5 bg-[var(--surface-3)] text-[var(--text-dim)] text-xs font-medium rounded-lg">
             Bureau
           </div>
         </div>
@@ -370,17 +370,17 @@ export function RecordingView() {
       {/* End session confirmation */}
       {showEndConfirm && (
         <ModalBackdrop onClose={() => setShowEndConfirm(false)}>
-          <h3 className="font-bold text-lg text-[var(--color-text)] text-center">
+          <h3 className="font-bold text-lg text-[var(--text)] text-center">
             Terminer la seance ?
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary)] text-center">
+          <p className="text-sm text-[var(--text-muted)] text-center">
             {totalEvents} evenement{totalEvents !== 1 ? 's' : ''} enregistre{totalEvents !== 1 ? 's' : ''}
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => setShowEndConfirm(false)}
-              className="flex-1 py-3 font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]"
-              style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
+              style={{ borderRadius: 'var(--radius)', border: 'none' }}
             >
               Continuer
             </button>
@@ -390,7 +390,7 @@ export function RecordingView() {
               className="flex-1 py-3 font-bold text-white"
               style={{
                 background: 'var(--gradient-error)',
-                borderRadius: 'var(--radius-lg)',
+                borderRadius: 'var(--radius)',
                 border: 'none',
               }}
             >
@@ -403,17 +403,17 @@ export function RecordingView() {
       {/* Cancel session confirmation */}
       {showCancelConfirm && (
         <ModalBackdrop onClose={() => setShowCancelConfirm(false)}>
-          <h3 className="font-bold text-lg text-[var(--color-text)] text-center">
+          <h3 className="font-bold text-lg text-[var(--text)] text-center">
             Annuler la seance ?
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary)] text-center">
+          <p className="text-sm text-[var(--text-muted)] text-center">
             La seance sera supprimee et aucun evenement ne sera conserve.
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => setShowCancelConfirm(false)}
-              className="flex-1 py-3 font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]"
-              style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
+              style={{ borderRadius: 'var(--radius)', border: 'none' }}
             >
               Non
             </button>
@@ -423,7 +423,7 @@ export function RecordingView() {
               className="flex-1 py-3 font-bold text-white"
               style={{
                 background: 'var(--gradient-error)',
-                borderRadius: 'var(--radius-lg)',
+                borderRadius: 'var(--radius)',
                 border: 'none',
               }}
             >
@@ -437,8 +437,8 @@ export function RecordingView() {
       {showNotesModal && (
         <ModalBackdrop onClose={() => setShowNotesModal(false)}>
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[var(--color-text)]">Note de seance</h3>
-            <button onClick={() => setShowNotesModal(false)} className="text-[var(--color-text-tertiary)] text-lg">✕</button>
+            <h3 className="font-bold text-[var(--text)]">Note de seance</h3>
+            <button onClick={() => setShowNotesModal(false)} className="text-[var(--text-dim)] text-lg">✕</button>
           </div>
           <textarea
             value={notesText}
@@ -446,21 +446,21 @@ export function RecordingView() {
             placeholder="Commentaire sur la seance..."
             rows={4}
             autoFocus
-            className="w-full p-3 border border-[var(--color-border)] text-[var(--color-text)] bg-[var(--color-surface-secondary)] resize-none"
-            style={{ borderRadius: 'var(--radius-lg)', fontSize: '16px' }}
+            className="w-full p-3 border border-[var(--border)] text-[var(--text)] bg-[var(--surface-3)] resize-none"
+            style={{ borderRadius: 'var(--radius)', fontSize: '16px' }}
           />
           <div className="flex gap-3">
             <button
               onClick={() => setShowNotesModal(false)}
-              className="flex-1 py-3 font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]"
-              style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
+              style={{ borderRadius: 'var(--radius)', border: 'none' }}
             >
               Annuler
             </button>
             <button
               onClick={handleSaveNotes}
               className="flex-1 py-3 font-bold text-white"
-              style={{ background: 'var(--color-primary)', borderRadius: 'var(--radius-lg)', border: 'none' }}
+              style={{ background: 'var(--indigo)', borderRadius: 'var(--radius)', border: 'none' }}
             >
               Enregistrer
             </button>
@@ -471,24 +471,24 @@ export function RecordingView() {
       {/* Oral: mode picker (random vs manual) */}
       {showOralPicker && (
         <ModalBackdrop onClose={() => setShowOralPicker(false)}>
-          <h3 className="font-bold text-lg text-[var(--color-text)] text-center">
+          <h3 className="font-bold text-lg text-[var(--text)] text-center">
             Evaluation orale
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary)] text-center">
+          <p className="text-sm text-[var(--text-muted)] text-center">
             {unevaluatedStudents.length} eleve{unevaluatedStudents.length > 1 ? 's' : ''} non evalue{unevaluatedStudents.length > 1 ? 's' : ''}
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => { setShowOralPicker(false); handleOralRandom(); }}
               className="flex-1 py-4 font-bold text-white text-center"
-              style={{ background: 'var(--color-primary)', borderRadius: 'var(--radius-lg)', border: 'none' }}
+              style={{ background: 'var(--indigo)', borderRadius: 'var(--radius)', border: 'none' }}
             >
               🎲 Hasard
             </button>
             <button
               onClick={() => setShowOralPicker(false)}
               className="flex-1 py-4 font-bold text-white text-center"
-              style={{ background: 'var(--color-remarque)', borderRadius: 'var(--radius-lg)', border: 'none' }}
+              style={{ background: 'var(--color-remarque)', borderRadius: 'var(--radius)', border: 'none' }}
               // This opens the student list instead
               onClickCapture={(e) => {
                 e.stopPropagation();
@@ -502,13 +502,13 @@ export function RecordingView() {
           </div>
           {/* Student list for manual selection */}
           <div className="max-h-60 overflow-auto space-y-1 mt-2">
-            <p className="text-xs text-[var(--color-text-tertiary)] font-medium px-1">Ou selectionnez un eleve :</p>
+            <p className="text-xs text-[var(--text-dim)] font-medium px-1">Ou selectionnez un eleve :</p>
             {unevaluatedStudents.map(s => (
               <button
                 key={s.id}
                 onClick={() => handleOralManual(s.id, s.pseudo)}
-                className="w-full text-left px-3 py-2.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-primary-soft)] transition-colors"
-                style={{ borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-surface-secondary)' }}
+                className="w-full text-left px-3 py-2.5 text-sm font-medium text-[var(--text)] hover:bg-[var(--indigo-soft)] transition-colors"
+                style={{ borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--surface-3)' }}
               >
                 {s.pseudo}
               </button>
@@ -520,10 +520,10 @@ export function RecordingView() {
       {/* Oral: grade modal */}
       {showOralModal && oralStudent && (
         <ModalBackdrop onClose={() => { setShowOralModal(false); setOralStudent(null); }}>
-          <h3 className="font-bold text-lg text-[var(--color-text)] text-center">
+          <h3 className="font-bold text-lg text-[var(--text)] text-center">
             {oralStudent.pseudo}
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary)] text-center">
+          <p className="text-sm text-[var(--text-muted)] text-center">
             Evaluation orale — selectionnez une note
           </p>
           <div className="grid grid-cols-5 gap-2">
@@ -532,12 +532,12 @@ export function RecordingView() {
                 key={grade}
                 onClick={() => setOralGrade(grade)}
                 className={`py-3 font-bold text-center transition-all ${
-                  oralGrade === grade ? 'text-white scale-105' : 'text-[var(--color-text)]'
+                  oralGrade === grade ? 'text-white scale-105' : 'text-[var(--text)]'
                 }`}
                 style={{
-                  background: oralGrade === grade ? 'var(--color-primary)' : 'var(--color-surface-secondary)',
-                  borderRadius: 'var(--radius-lg)',
-                  border: oralGrade === grade ? 'none' : '1px solid var(--color-border)',
+                  background: oralGrade === grade ? 'var(--indigo)' : 'var(--surface-3)',
+                  borderRadius: 'var(--radius)',
+                  border: oralGrade === grade ? 'none' : '1px solid var(--border)',
                 }}
               >
                 {grade}
@@ -545,15 +545,15 @@ export function RecordingView() {
             ))}
           </div>
           {oralGrade !== null && (
-            <p className="text-center text-sm font-medium text-[var(--color-primary)]">
+            <p className="text-center text-sm font-medium text-[var(--indigo)]">
               {ORAL_GRADE_LABELS[oralGrade]}
             </p>
           )}
           <div className="flex gap-3">
             <button
               onClick={() => { setShowOralModal(false); setOralStudent(null); }}
-              className="flex-1 py-3 font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]"
-              style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
+              style={{ borderRadius: 'var(--radius)', border: 'none' }}
             >
               Annuler
             </button>
@@ -561,7 +561,7 @@ export function RecordingView() {
               onClick={handleSaveOral}
               disabled={oralGrade === null}
               className="flex-1 py-3 font-bold text-white disabled:opacity-50"
-              style={{ background: 'var(--color-primary)', borderRadius: 'var(--radius-lg)', border: 'none' }}
+              style={{ background: 'var(--indigo)', borderRadius: 'var(--radius)', border: 'none' }}
             >
               Enregistrer
             </button>
@@ -572,18 +572,18 @@ export function RecordingView() {
       {/* Delete: student picker */}
       {showDeletePicker && (
         <ModalBackdrop onClose={() => setShowDeletePicker(false)}>
-          <h3 className="font-bold text-[var(--color-text)]">Supprimer un evenement</h3>
-          <p className="text-sm text-[var(--color-text-secondary)]">Selectionnez un eleve :</p>
+          <h3 className="font-bold text-[var(--text)]">Supprimer un evenement</h3>
+          <p className="text-sm text-[var(--text-muted)]">Selectionnez un eleve :</p>
           <div className="max-h-72 overflow-auto space-y-1">
             {studentsWithEventsList.map(s => (
               <button
                 key={s.id}
                 onClick={() => handleDeleteSelectStudent(s.id)}
-                className="w-full text-left px-3 py-2.5 flex items-center justify-between text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-error-soft)] transition-colors"
-                style={{ borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-surface-secondary)' }}
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between text-sm font-medium text-[var(--text)] hover:bg-[var(--neg-soft)] transition-colors"
+                style={{ borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--surface-3)' }}
               >
                 <span>{s.pseudo}</span>
-                <span className="text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">
+                <span className="text-xs text-[var(--text-dim)] bg-[var(--surface)] px-2 py-0.5 rounded-full">
                   {s.eventCount} evt
                 </span>
               </button>
@@ -595,37 +595,37 @@ export function RecordingView() {
       {/* Delete: events list for selected student */}
       {showDeleteEvents && deleteStudentId && (
         <ModalBackdrop onClose={() => { setShowDeleteEvents(false); setDeleteStudentId(null); }}>
-          <h3 className="font-bold text-[var(--color-text)]">
+          <h3 className="font-bold text-[var(--text)]">
             Evenements — {studentMap.get(deleteStudentId)?.pseudo}
           </h3>
           <div className="max-h-72 overflow-auto space-y-1">
             {studentEventsForDelete.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-tertiary)] text-center py-4">
+              <p className="text-sm text-[var(--text-dim)] text-center py-4">
                 Aucun evenement restant
               </p>
             ) : (
               studentEventsForDelete.map(evt => (
                 <div
                   key={evt.id}
-                  className="flex items-center justify-between px-3 py-2.5 bg-[var(--color-surface-secondary)]"
+                  className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-3)]"
                   style={{ borderRadius: 'var(--radius-md)' }}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{getEventEmoji(evt.type)}</span>
-                    <span className="text-sm font-medium text-[var(--color-text)]">
+                    <span className="text-sm font-medium text-[var(--text)]">
                       {getEventLabel(evt.type)}
                       {evt.subtype ? ` (${evt.subtype})` : ''}
                     </span>
                     {evt.note && (
-                      <span className="text-xs text-[var(--color-text-tertiary)] truncate max-w-[100px]">
+                      <span className="text-xs text-[var(--text-dim)] truncate max-w-[100px]">
                         {evt.note}
                       </span>
                     )}
                   </div>
                   <button
                     onClick={() => handleDeleteEvent(evt.id)}
-                    className="text-[var(--color-error)] text-xs font-bold px-2 py-1"
-                    style={{ border: '1px solid var(--color-error)', borderRadius: 'var(--radius-md)', background: 'transparent' }}
+                    className="text-[var(--neg)] text-xs font-bold px-2 py-1"
+                    style={{ border: '1px solid var(--neg)', borderRadius: 'var(--radius-md)', background: 'transparent' }}
                   >
                     ✕
                   </button>
@@ -635,8 +635,8 @@ export function RecordingView() {
           </div>
           <button
             onClick={() => { setShowDeleteEvents(false); setShowDeletePicker(true); setDeleteStudentId(null); }}
-            className="w-full py-2.5 text-sm font-medium text-[var(--color-primary)] bg-[var(--color-primary-soft)]"
-            style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+            className="w-full py-2.5 text-sm font-medium text-[var(--indigo)] bg-[var(--indigo-soft)]"
+            style={{ borderRadius: 'var(--radius)', border: 'none' }}
           >
             ← Autre eleve
           </button>
@@ -671,9 +671,9 @@ function ToolbarButton({
       style={{ border: 'none', background: 'transparent' }}
     >
       <span className="text-base">{icon}</span>
-      <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">{label}</span>
+      <span className="text-[10px] font-medium text-[var(--text-muted)]">{label}</span>
       {badge && (
-        <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-white bg-[var(--color-primary)] px-1 rounded-full min-w-[16px] text-center">
+        <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-white bg-[var(--indigo)] px-1 rounded-full min-w-[16px] text-center">
           {badge}
         </span>
       )}
@@ -692,8 +692,8 @@ function ModalBackdrop({ children, onClose }: { children: React.ReactNode; onClo
       onClick={onClose}
     >
       <div
-        className="bg-[var(--color-surface)] p-5 mx-4 space-y-4 max-w-sm w-full"
-        style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)' }}
+        className="bg-[var(--surface)] p-5 mx-4 space-y-4 max-w-sm w-full"
+        style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

@@ -130,7 +130,7 @@ export default function QrCodeGenerator() {
     <div className="space-y-6">
       {/* Input URL */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
           Lien ou texte
         </label>
         <input
@@ -138,7 +138,7 @@ export default function QrCodeGenerator() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://exemple.com"
-          className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+          className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-lg focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
           autoFocus
         />
       </div>
@@ -147,14 +147,14 @@ export default function QrCodeGenerator() {
       <div className="flex flex-wrap gap-4 items-end">
         {/* Color */}
         <div>
-          <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Couleur</label>
+          <label className="block text-xs font-medium text-[var(--text-dim)] mb-1">Couleur</label>
           <div className="flex gap-1">
             {COLORS.map((c, i) => (
               <button
                 key={c.label}
                 onClick={() => setColorIdx(i)}
                 className={`w-8 h-8 rounded-lg border-2 transition-all ${
-                  colorIdx === i ? 'border-[var(--color-primary)] scale-110' : 'border-[var(--color-border)]'
+                  colorIdx === i ? 'border-[var(--indigo)] scale-110' : 'border-[var(--border)]'
                 }`}
                 style={{ backgroundColor: c.dark }}
                 title={c.label}
@@ -165,21 +165,21 @@ export default function QrCodeGenerator() {
 
         {/* Logo */}
         <div>
-          <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Logo central</label>
+          <label className="block text-xs font-medium text-[var(--text-dim)] mb-1">Logo central</label>
           {logoSrc ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg border border-[var(--color-border)] overflow-hidden bg-white">
+              <div className="w-8 h-8 rounded-lg border border-[var(--border)] overflow-hidden bg-white">
                 <img src={logoSrc} alt="Logo" className="w-full h-full object-contain" />
               </div>
               <button
                 onClick={removeLogo}
-                className="px-2 py-1.5 rounded-lg text-xs font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-all"
+                className="px-2 py-1.5 rounded-lg text-xs font-medium text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-all"
               >
                 Retirer
               </button>
             </div>
           ) : (
-            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] hover:bg-[var(--color-border)] transition-all cursor-pointer">
+            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--text-muted)] bg-[var(--surface-3)] hover:bg-[var(--border)] transition-all cursor-pointer">
               Ajouter
               <input
                 type="file"
@@ -205,10 +205,10 @@ export default function QrCodeGenerator() {
           <canvas ref={canvasRef} style={{ width: 300, height: 300 }} />
         </div>
 
-        {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
+        {error && <p className="text-sm text-[var(--neg)]">{error}</p>}
 
         {logoSrc && dataUrl && (
-          <p className="text-xs text-[var(--color-text-tertiary)]">
+          <p className="text-xs text-[var(--text-dim)]">
             Correction d'erreur haute (H) activee pour compenser le logo
           </p>
         )}
@@ -225,7 +225,7 @@ export default function QrCodeGenerator() {
             </button>
             <button
               onClick={copyToClipboard}
-              className="px-5 py-2.5 rounded-xl font-medium text-sm text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] transition-all hover:bg-[var(--color-border)]"
+              className="px-5 py-2.5 rounded-xl font-medium text-sm text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] transition-all hover:bg-[var(--border)]"
             >
               Copier
             </button>

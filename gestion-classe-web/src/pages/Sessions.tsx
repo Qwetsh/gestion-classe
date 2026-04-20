@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getClassGradient, getClassInitials } from '../lib/constants';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { ClassChip, Icon } from '../components/design-system';
 
 interface Session {
   id: string;
@@ -45,7 +46,30 @@ interface ClassFilter {
   name: string;
 }
 
-type ViewMode = 'list' | 'calendar';
+type ViewMode = 'list' | 'week' | 'month';
+
+const COLOR_PALETTE = ['#6366F1','#EC4899','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EF4444','#14B8A6','#F97316','#06B6D4','#84CC16','#E879F9','#FB923C'];
+
+function getClassLabel(name: string): string {
+  return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
+}
+
+function getWeekDays(baseDate: Date): Date[] {
+  const d = new Date(baseDate);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  const monday = new Date(d.setDate(diff));
+  return Array.from({ length: 5 }, (_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return dd;
+  });
+}
+
+function formatWeekLabel(days: Date[]): string {
+  const fmt = (d: Date) => `${d.getDate()} ${d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}`;
+  return `${fmt(days[0])} – ${fmt(days[4])}`;
+}
 
 // CLASS_GRADIENTS imported from lib/constants
 
@@ -60,6 +84,7 @@ export function Sessions() {
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(new Date());
 
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -83,6 +108,14 @@ export function Sessions() {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [editedTopic, setEditedTopic] = useState('');
   const [isSavingTopic, setIsSavingTopic] = useState(false);
+
+  // Add event states
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [addEventStudent, setAddEventStudent] = useState('');
+  const [addEventType, setAddEventType] = useState('');
+  const [addEventSubtype, setAddEventSubtype] = useState('');
+  const [addEventNote, setAddEventNote] = useState('');
+  const [isAddingEvent, setIsAddingEvent] = useState(false);
 
   useEffect(() => {
     loadSessions();
@@ -235,6 +268,45 @@ export function Sessions() {
     setSelectedStudentId(null);
     setIsEditingTopic(false);
     setEditedTopic('');
+    setShowAddEvent(false);
+    setAddEventStudent('');
+    setAddEventType('');
+    setAddEventSubtype('');
+    setAddEventNote('');
+  };
+
+  const handleAddEvent = async () => {
+    if (!selectedSession || !addEventStudent || !addEventType) return;
+    setIsAddingEvent(true);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .insert({
+          session_id: selectedSession.id,
+          student_id: addEventStudent,
+          type: addEventType,
+          subtype: addEventSubtype || null,
+          note: addEventNote.trim() || null,
+          timestamp: new Date().toISOString(),
+        });
+      if (error) { toast('Erreur lors de l\'ajout'); return; }
+      // Refresh events in the sheet
+      await loadClassroomData(selectedSession);
+      // Update session counts
+      loadSessions();
+      // Reset form
+      setAddEventStudent('');
+      setAddEventType('');
+      setAddEventSubtype('');
+      setAddEventNote('');
+      setShowAddEvent(false);
+      toast('Événement ajouté');
+    } catch (err) {
+      console.error(err);
+      toast('Erreur lors de l\'ajout');
+    } finally {
+      setIsAddingEvent(false);
+    }
   };
 
   const handleStartEditTopic = () => {
@@ -423,6 +495,32 @@ export function Sessions() {
     return map;
   }, [sessions]);
 
+  const classCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    sessions.forEach(s => { map[s.class_id] = (map[s.class_id] || 0) + 1; });
+    return map;
+  }, [sessions]);
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeek(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + (direction === 'prev' ? -7 : 7));
+      return d;
+    });
+  };
+
+  const weekDays = useMemo(() => getWeekDays(currentWeek), [currentWeek]);
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const weekSessions = useMemo(() => {
+    const result: Record<string, Session[]> = {};
+    weekDays.forEach(d => {
+      const key = d.toISOString().split('T')[0];
+      result[key] = (sessionsByDate.get(key) || []);
+    });
+    return result;
+  }, [weekDays, sessionsByDate]);
+
   // getClassGradient and getClassInitials imported from lib/constants
 
   if (isLoading) {
@@ -430,8 +528,8 @@ export function Sessions() {
       <Layout>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[var(--color-text-secondary)]">Chargement...</span>
+            <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-[var(--text-muted)]">Chargement...</span>
           </div>
         </div>
       </Layout>
@@ -444,13 +542,13 @@ export function Sessions() {
         {/* Error banner */}
         {error && (
           <div
-            className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 flex items-center justify-between"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            className="bg-[var(--neg-soft)] text-[var(--neg)] p-4 flex items-center justify-between"
+            style={{ borderRadius: 'var(--radius)' }}
           >
             <span>{error}</span>
             <button
               onClick={() => setError(null)}
-              className="text-[var(--color-error)] hover:opacity-70"
+              className="text-[var(--neg)] hover:opacity-70"
             >
               ✕
             </button>
@@ -458,301 +556,285 @@ export function Sessions() {
         )}
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' as const }}>
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">Seances</h1>
-            <p className="text-[var(--color-text-secondary)] mt-1">
-              {sessions.length} seance{sessions.length > 1 ? 's' : ''} synchronisee{sessions.length > 1 ? 's' : ''}
+            <div className="breadcrumb" style={{ marginBottom: 6 }}>
+              <Link to="/" style={{ color: 'var(--text-muted)', fontSize: 13 }}>Accueil</Link>
+              <span style={{ margin: '0 6px', color: 'var(--text-dim)' }}>›</span>
+              <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 500 }}>Séances</span>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontStyle: 'italic', fontSize: 40, lineHeight: 1, letterSpacing: '-0.02em' }}>Séances</h1>
+            <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 13 }}>
+              {sessions.length} séance{sessions.length > 1 ? 's' : ''} cette année · {selectedClassId ? sessions.length : sessions.length} visibles
             </p>
           </div>
 
-          <div
-            className="flex items-center gap-1 bg-[var(--color-surface)] p-1"
-            style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
-          >
-            {(['list', 'calendar'] as ViewMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-4 py-2 text-sm font-medium transition-all ${
-                  viewMode === mode
-                    ? 'text-white'
-                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
-                }`}
-                style={viewMode === mode ? {
-                  background: 'var(--gradient-primary)',
-                  borderRadius: 'var(--radius-lg)'
-                } : { borderRadius: 'var(--radius-lg)' }}
-              >
-                {mode === 'list' ? '📋 Liste' : '📅 Calendrier'}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="segbtn">
+              {([['list', 'Liste', 'list'], ['week', 'Semaine', 'calendar-plus'], ['month', 'Mois', 'grid']] as [ViewMode, string, string][]).map(([mode, label, icon]) => (
+                <button key={mode} className={`segbtn__b ${viewMode === mode ? 'is-on' : ''}`} onClick={() => setViewMode(mode)}>
+                  <Icon name={icon as any} size={13} />
+                  <span style={{ marginLeft: 4 }}>{label}</span>
+                </button>
+              ))}
+            </div>
+            <Link to="/sessions" className="btn btn--accent" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+              <Icon name="plus" size={14} /> Nouvelle séance
+            </Link>
           </div>
         </div>
 
-        {/* Class filter */}
-        {classes.length > 0 && (
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-sm text-[var(--color-text-secondary)]">Filtrer:</span>
-            <button
-              onClick={() => setSelectedClassId(null)}
-              className={`px-3 py-1.5 text-sm font-medium transition-all ${
-                selectedClassId === null ? 'text-white' : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
-              }`}
-              style={{
-                borderRadius: 'var(--radius-full)',
-                ...(selectedClassId === null ? { background: 'var(--gradient-primary)' } : {})
-              }}
-            >
-              Toutes
-            </button>
-            {classes.map((cls) => (
+        {/* Class filter chips */}
+        <div className="ses-filters" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+          <button
+            onClick={() => setSelectedClassId(null)}
+            className={`ses-filter ${selectedClassId === null ? 'is-on' : ''}`}
+            style={selectedClassId === null ? { background: 'var(--text)', color: 'var(--surface)' } : undefined}
+          >
+            Toutes <span className="chip__count">{sessions.length}</span>
+          </button>
+          {classes.map((cls, i) => {
+            const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
+            const count = classCounts[cls.id] || 0;
+            if (count === 0) return null;
+            return (
               <button
                 key={cls.id}
-                onClick={() => setSelectedClassId(cls.id)}
-                className={`px-3 py-1.5 text-sm font-medium transition-all ${
-                  selectedClassId === cls.id ? 'text-white' : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
-                }`}
-                style={{
-                  borderRadius: 'var(--radius-full)',
-                  ...(selectedClassId === cls.id ? { background: getClassGradient(cls.name) } : {})
-                }}
+                onClick={() => setSelectedClassId(selectedClassId === cls.id ? null : cls.id)}
+                className={`ses-filter ${selectedClassId === cls.id ? 'is-on' : ''}`}
+                style={selectedClassId === cls.id ? { background: color, color: '#fff' } : undefined}
               >
-                {cls.name}
+                <span className="ses-filter__dot" style={{ background: color }} />
+                {cls.name} <span className="chip__count">{count}</span>
               </button>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
 
-        {/* List View */}
+        {/* ====== LIST VIEW ====== */}
         {viewMode === 'list' && (
           sessions.length === 0 ? (
-            <div
-              className="bg-[var(--color-surface)] p-12 text-center"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
-            >
-              <div
-                className="w-20 h-20 mx-auto mb-4 bg-[var(--color-primary-soft)] flex items-center justify-center"
-                style={{ borderRadius: 'var(--radius-full)' }}
-              >
-                <span className="text-4xl">📅</span>
-              </div>
-              <h2 className="text-lg font-medium text-[var(--color-text)]">Aucune seance</h2>
-              <p className="text-[var(--color-text-tertiary)] mt-2">
-                {selectedClassId ? 'Aucune seance pour cette classe' : 'Demarrez une seance depuis l\'application mobile'}
+            <div className="gc-card" style={{ textAlign: 'center', padding: 48 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>Aucune séance</h2>
+              <p style={{ color: 'var(--text-dim)', marginTop: 8 }}>
+                {selectedClassId ? 'Aucune séance pour cette classe' : 'Démarrez une séance depuis l\'application mobile'}
               </p>
             </div>
           ) : (
-            <div
-              className="bg-[var(--color-surface)]"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
-            >
-              {sessions.map((session, index) => {
-                const currentDate = new Date(session.started_at).toDateString();
-                const prevDate = index > 0 ? new Date(sessions[index - 1].started_at).toDateString() : null;
-                const isNewDay = index === 0 || currentDate !== prevDate;
-                const isFirstItem = index === 0;
-                const isLastItem = index === sessions.length - 1;
-
-                return (
-                  <div key={session.id}>
-                    {/* Day separator */}
-                    {isNewDay && !isFirstItem && (
-                      <div className="flex items-center gap-3 px-4 py-2 bg-[var(--color-surface-secondary)]/50">
-                        <div className="flex-1 h-px bg-[var(--color-border)]" />
-                        <span className="text-xs text-[var(--color-text-tertiary)] font-medium">
-                          {formatDate(session.started_at)}
-                        </span>
-                        <div className="flex-1 h-px bg-[var(--color-border)]" />
-                      </div>
-                    )}
-                    <Link
-                      to={`/sessions/${session.id}`}
-                      className={`block p-4 hover:bg-[var(--color-surface-hover)] transition-colors border-b border-[var(--color-border)] ${isFirstItem ? 'rounded-t-xl' : ''} ${isLastItem ? 'rounded-b-xl border-b-0' : ''}`}
-                    >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white font-bold text-sm shrink-0"
-                        style={{ background: getClassGradient(session.class_name), borderRadius: 'var(--radius-lg)' }}
-                      >
-                        {getClassInitials(session.class_name)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[var(--color-text)]">{session.class_name}</span>
-                          {!session.ended_at && (
-                            <span
-                              className="px-2 py-0.5 bg-[var(--color-success-soft)] text-[var(--color-success)] text-xs font-medium flex items-center gap-1"
-                              style={{ borderRadius: 'var(--radius-full)' }}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse" />
-                              En cours
-                            </span>
-                          )}
-                        </div>
-                        {session.topic && (
-                          <div className="text-sm text-[var(--color-text-secondary)] italic truncate max-w-md">
-                            {session.topic}
+            <div className="listview" style={{ marginTop: 14 }}>
+              {(() => {
+                const groups: { date: string; sessions: Session[] }[] = [];
+                sessions.forEach(s => {
+                  const d = new Date(s.started_at);
+                  const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                  const dateKey = d.toDateString();
+                  const last = groups[groups.length - 1];
+                  if (last && last.date === dateKey) {
+                    last.sessions.push(s);
+                  } else {
+                    groups.push({ date: dateKey, sessions: [s] });
+                  }
+                });
+                return groups.map((group) => (
+                  <div key={group.date} className="gc-card" style={{ marginBottom: 12 }}>
+                    <div style={{ padding: '10px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', fontStyle: 'italic', fontFamily: 'var(--font-display)', borderBottom: '1px solid var(--border)', textTransform: 'capitalize' }}>
+                      {new Date(group.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </div>
+                    {group.sessions.map((session) => {
+                      const classIdx = classes.findIndex(c => c.id === session.class_id);
+                      const color = COLOR_PALETTE[classIdx >= 0 ? classIdx % COLOR_PALETTE.length : 0];
+                      const total = session.participations + session.malus + session.absences;
+                      const durMin = session.ended_at ? Math.round((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) : 0;
+                      return (
+                        <div key={session.id} onClick={() => handleOpenSessionModal(session)} style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 16, borderBottom: '1px solid var(--border)', color: 'inherit', transition: 'background 0.12s', cursor: 'pointer' }} className="lsession">
+                          {/* Time */}
+                          <div style={{ width: 56, flexShrink: 0, textAlign: 'right' }}>
+                            <div style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(session.started_at)}</div>
+                            {durMin > 0 && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{durMin}'</div>}
                           </div>
-                        )}
-                        <div className="text-sm text-[var(--color-text-tertiary)]">
-                          {formatDate(session.started_at)} a {formatTime(session.started_at)}
-                          {session.ended_at && ` · ${getDuration(session.started_at, session.ended_at)}`}
+                          {/* Class chip */}
+                          <ClassChip label={getClassLabel(session.class_name)} color={color} size={28} />
+                          {/* Main */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{session.class_name}</div>
+                            {session.topic && <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.topic}</div>}
+                          </div>
+                          {/* Events count */}
+                          <div style={{ width: 80, textAlign: 'center', flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500 }}>{session.events_count}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>évts</span>
+                            {/* Event bar */}
+                            {total > 0 && (
+                              <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 4, background: 'var(--surface-3)' }}>
+                                <div style={{ width: `${(session.participations / total) * 100}%`, background: 'var(--pos)' }} />
+                                <div style={{ width: `${(session.malus / total) * 100}%`, background: 'var(--neg)' }} />
+                                <div style={{ width: `${(session.absences / total) * 100}%`, background: 'var(--text-dim)' }} />
+                              </div>
+                            )}
+                          </div>
+                          {/* Breakdown */}
+                          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                            <span className="break break--pos">+{session.participations}</span>
+                            <span className="break break--neg">−{session.malus}</span>
+                            <span className="break break--abs">{session.absences} abs</span>
+                          </div>
+                          {/* Chevron */}
+                          <Icon name="chevron-right" size={14} stroke={1.5} />
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="flex gap-3">
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span
-                            className="w-7 h-7 flex items-center justify-center text-xs font-bold"
-                            style={{ background: 'var(--color-participation-soft)', color: 'var(--color-participation)', borderRadius: 'var(--radius-md)' }}
-                          >+</span>
-                          <span className="text-[var(--color-text-secondary)] font-medium">{session.participations}</span>
-                        </span>
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span
-                            className="w-7 h-7 flex items-center justify-center text-xs font-bold"
-                            style={{ background: 'var(--color-bavardage-soft)', color: 'var(--color-bavardage)', borderRadius: 'var(--radius-md)' }}
-                          >-</span>
-                          <span className="text-[var(--color-text-secondary)] font-medium">{session.malus}</span>
-                        </span>
-                        <span
-                          className="px-2 py-1 text-xs font-medium text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"
-                          style={{ borderRadius: 'var(--radius-md)' }}
-                        >
-                          {session.events_count} evt
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleOpenDeleteModal(e, session)}
-                        className="p-2 text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors"
-                        style={{ borderRadius: 'var(--radius-lg)' }}
-                      >
-                        🗑️
-                      </button>
-                      <span className="text-[var(--color-text-tertiary)] text-xl">›</span>
-                    </div>
+                      );
+                    })}
                   </div>
-                </Link>
-                  </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           )
         )}
 
-        {/* Calendar View */}
-        {viewMode === 'calendar' && (
-          <div
-            className="bg-[var(--color-surface)] overflow-hidden"
-            style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
-              <button
-                onClick={() => navigateMonth('prev')}
-                className="p-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
-              >
-                ←
-              </button>
-              <div className="flex items-center gap-4">
-                <h2 className="text-lg font-semibold text-[var(--color-text)] capitalize">
-                  {getMonthName(currentMonth)}
-                </h2>
-                <button
-                  onClick={() => setCurrentMonth(new Date())}
-                  className="px-3 py-1.5 text-sm bg-[var(--color-surface-secondary)] hover:bg-[var(--color-border)] transition-colors text-[var(--color-text-secondary)] font-medium"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
-                >
-                  Aujourd'hui
-                </button>
+        {/* ====== WEEK VIEW ====== */}
+        {viewMode === 'week' && (
+          <div style={{ marginTop: 14 }}>
+            {/* Week navigation */}
+            <div className="ses-weekbar" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <button onClick={() => navigateWeek('prev')} className="iconbtn iconbtn--flip"><Icon name="chevron-right" size={16} stroke={2} /></button>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 500 }}>{formatWeekLabel(weekDays)}</span>
+              <button onClick={() => navigateWeek('next')} className="iconbtn"><Icon name="chevron-right" size={16} stroke={2} /></button>
+              <button onClick={() => setCurrentWeek(new Date())} className="btn btn--ghost" style={{ fontSize: 12, marginLeft: 8 }}>Cette semaine</button>
+              <div style={{ flex: 1 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-dim)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--pos)', display: 'inline-block' }} /> Séance riche ({'>'} 10 évts)</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--warn)', display: 'inline-block' }} /> À compléter</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--muted-2)', display: 'inline-block' }} /> Pas encore eue</span>
               </div>
-              <button
-                onClick={() => navigateMonth('next')}
-                className="p-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
-              >
-                →
-              </button>
             </div>
 
-            <div className="grid grid-cols-7 border-b border-[var(--color-border)]">
-              {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
-                <div key={day} className="py-3 text-center text-sm font-semibold text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]">
-                  {day}
+            <div className="gc-card" style={{ overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(5, 1fr)', minHeight: 560 }}>
+                {/* Hour rail */}
+                <div style={{ borderRight: '1px solid var(--border)' }}>
+                  <div style={{ height: 48, borderBottom: '1px solid var(--border)' }} />
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <div key={i} style={{ height: 56, padding: '4px 8px 0', fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }}>
+                      {String(8 + i).padStart(2, '0')}:00
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-7">
-              {(() => {
-                const { daysInMonth, startDayOfWeek, year, month } = getDaysInMonth(currentMonth);
-                const cells = [];
-                const today = new Date();
-                const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
-
-                for (let i = 0; i < startDayOfWeek; i++) {
-                  cells.push(<div key={`empty-${i}`} className="min-h-[100px] border-b border-r border-[var(--color-border)] bg-[var(--color-surface-secondary)]/30" />);
-                }
-
-                for (let day = 1; day <= daysInMonth; day++) {
-                  const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const daySessions = sessionsByDate.get(dateKey) || [];
-                  const isToday = isCurrentMonth && today.getDate() === day;
-                  const isWeekend = (startDayOfWeek + day - 1) % 7 >= 5;
-
-                  cells.push(
-                    <div
-                      key={day}
-                      className={`min-h-[100px] border-b border-r border-[var(--color-border)] p-1 ${isWeekend ? 'bg-[var(--color-surface-secondary)]/30' : ''}`}
-                    >
-                      <div className="text-right mb-1">
-                        <span
-                          className={`inline-flex items-center justify-center w-7 h-7 text-sm font-medium ${isToday ? 'text-white font-bold' : 'text-[var(--color-text-secondary)]'}`}
-                          style={isToday ? { background: 'var(--gradient-primary)', borderRadius: 'var(--radius-full)' } : undefined}
-                        >
-                          {day}
-                        </span>
+                {/* Day columns */}
+                {weekDays.map((day, dayIdx) => {
+                  const dateKey = day.toISOString().split('T')[0];
+                  const isToday = dateKey === todayStr;
+                  const daySessions = weekSessions[dateKey] || [];
+                  const dayNames = ['LUN', 'MAR', 'MER', 'JEU', 'VEN'];
+                  return (
+                    <div key={dayIdx} style={{ borderRight: dayIdx < 4 ? '1px solid var(--border)' : 'none', position: 'relative', background: isToday ? 'var(--accent-soft)' : undefined }}>
+                      {/* Day header */}
+                      <div style={{ height: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', gap: 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: isToday ? 'var(--accent)' : 'var(--text-dim)', letterSpacing: '0.04em' }}>{dayNames[dayIdx]}</span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500, color: isToday ? 'var(--accent)' : 'var(--text)' }}>{day.getDate()}</span>
+                        {isToday && <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aujourd'hui</span>}
                       </div>
-                      <div className="space-y-1 max-h-[80px] overflow-y-auto scrollbar-thin">
-                        {daySessions.map((session) => (
-                          <button
-                            key={session.id}
-                            onClick={() => handleOpenSessionModal(session)}
-                            className="w-full text-left px-1.5 py-0.5 text-xs text-white truncate hover:opacity-80 transition-opacity"
-                            style={{ background: getClassGradient(session.class_name), borderRadius: 'var(--radius-sm)' }}
-                            title={`${session.class_name} - ${formatTime(session.started_at)}${session.topic ? `\n${session.topic}` : ''}`}
-                          >
-                            <span className="font-medium">{getClassInitials(session.class_name)}</span>
-                            <span className="ml-1 opacity-80">{formatTime(session.started_at)}</span>
-                          </button>
+                      {/* Time grid background */}
+                      <div style={{ position: 'relative', height: 560 }}>
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <div key={i} style={{ height: 56, borderBottom: '1px solid var(--border)' }} />
                         ))}
+                        {/* Session blocks */}
+                        {daySessions.map((session) => {
+                          const startD = new Date(session.started_at);
+                          const endD = session.ended_at ? new Date(session.ended_at) : new Date(startD.getTime() + 3600000);
+                          const startMin = (startD.getHours() - 8) * 60 + startD.getMinutes();
+                          const durMin = Math.round((endD.getTime() - startD.getTime()) / 60000);
+                          const top = (startMin / 60) * 56;
+                          const height = Math.max(28, (durMin / 60) * 56);
+                          const classIdx = classes.findIndex(c => c.id === session.class_id);
+                          const color = COLOR_PALETTE[classIdx >= 0 ? classIdx % COLOR_PALETTE.length : 0];
+                          const isUpcoming = !session.ended_at && new Date(session.started_at) > new Date();
+                          return (
+                            <div key={session.id} onClick={() => handleOpenSessionModal(session)} style={{
+                              position: 'absolute', top, left: 3, right: 3, height, borderRadius: 6,
+                              borderLeft: `3px solid ${color}`,
+                              background: isUpcoming ? 'var(--surface-3)' : `${color}1A`,
+                              padding: '4px 6px', overflow: 'hidden', color: 'inherit', cursor: 'pointer',
+                              fontSize: 11, display: 'flex', flexDirection: 'column', gap: 1,
+                              opacity: isUpcoming ? 0.72 : 1,
+                              transition: 'opacity 0.12s',
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <ClassChip label={getClassLabel(session.class_name)} color={color} size={18} />
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(session.started_at)}</span>
+                              </div>
+                              {session.topic && <div style={{ fontWeight: 500, fontSize: 11, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.topic}</div>}
+                              {height > 45 && session.events_count > 0 && (
+                                <div style={{ display: 'flex', gap: 4, marginTop: 'auto', fontSize: 10 }}>
+                                  <span style={{ color: 'var(--pos)', fontWeight: 600 }}>+{session.participations}</span>
+                                  <span style={{ color: 'var(--neg)', fontWeight: 600 }}>−{session.malus}</span>
+                                  {session.absences > 0 && <span style={{ color: 'var(--text-dim)' }}>{session.absences} abs</span>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
-                }
-
-                const remainingCells = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
-                for (let i = 0; i < remainingCells; i++) {
-                  cells.push(<div key={`empty-end-${i}`} className="min-h-[100px] border-b border-r border-[var(--color-border)] bg-[var(--color-surface-secondary)]/30" />);
-                }
-
-                return cells;
-              })()}
+                })}
+              </div>
             </div>
+          </div>
+        )}
 
-            <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-surface-secondary)]">
-              <div className="flex flex-wrap gap-4 text-sm">
-                <span className="text-[var(--color-text-tertiary)]">Legende:</span>
-                {classes.map((cls) => (
-                  <div key={cls.id} className="flex items-center gap-2">
-                    <span className="w-4 h-4" style={{ background: getClassGradient(cls.name), borderRadius: 'var(--radius-sm)' }} />
-                    <span className="text-[var(--color-text-secondary)]">{cls.name}</span>
-                  </div>
+        {/* ====== MONTH VIEW ====== */}
+        {viewMode === 'month' && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button onClick={() => navigateMonth('prev')} className="iconbtn iconbtn--flip"><Icon name="chevron-right" size={16} stroke={2} /></button>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, textTransform: 'capitalize' }}>{getMonthName(currentMonth)}</h2>
+                <button onClick={() => navigateMonth('next')} className="iconbtn"><Icon name="chevron-right" size={16} stroke={2} /></button>
+                <button onClick={() => setCurrentMonth(new Date())} className="btn btn--ghost" style={{ fontSize: 12, marginLeft: 8 }}>Aujourd'hui</button>
+              </div>
+            </div>
+            <div className="gc-card" style={{ overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => (
+                  <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface-3)', borderBottom: '1px solid var(--border)' }}>{d}</div>
                 ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                {(() => {
+                  const { daysInMonth, startDayOfWeek, year, month } = getDaysInMonth(currentMonth);
+                  const cells = [];
+                  const today = new Date();
+                  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+                  for (let i = 0; i < startDayOfWeek; i++) {
+                    cells.push(<div key={`e-${i}`} style={{ minHeight: 90, borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', background: 'var(--surface-3)', opacity: 0.3 }} />);
+                  }
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const daySessions = sessionsByDate.get(dateKey) || [];
+                    const isToday = isCurrentMonth && today.getDate() === day;
+                    cells.push(
+                      <div key={day} style={{ minHeight: 90, borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', padding: 4 }}>
+                        <div style={{ textAlign: 'right', marginBottom: 4 }}>
+                          <span style={{ display: 'inline-flex', width: 24, height: 24, alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: isToday ? 700 : 400, fontFamily: 'var(--font-display)', borderRadius: '50%', background: isToday ? 'var(--indigo)' : 'transparent', color: isToday ? '#fff' : 'var(--text-muted)' }}>{day}</span>
+                        </div>
+                        {daySessions.length > 0 && (
+                          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                            {daySessions.map(s => {
+                              const ci = classes.findIndex(c => c.id === s.class_id);
+                              return <span key={s.id} style={{ width: 7, height: 7, borderRadius: '50%', background: COLOR_PALETTE[ci >= 0 ? ci % COLOR_PALETTE.length : 0] }} />;
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  const rem = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
+                  for (let i = 0; i < rem; i++) {
+                    cells.push(<div key={`ee-${i}`} style={{ minHeight: 90, borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', background: 'var(--surface-3)', opacity: 0.3 }} />);
+                  }
+                  return cells;
+                })()}
               </div>
             </div>
           </div>
@@ -762,21 +844,21 @@ export function Sessions() {
       {/* Delete Modal */}
       {showDeleteModal && deleteTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] p-6 w-full max-w-md" style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}>
+          <div className="bg-[var(--surface)] p-6 w-full max-w-md" style={{ borderRadius: 'var(--radius)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 flex items-center justify-center" style={{ background: 'var(--color-error-soft)', borderRadius: 'var(--radius-lg)' }}>
+              <div className="w-12 h-12 flex items-center justify-center" style={{ background: 'var(--neg-soft)', borderRadius: 'var(--radius)' }}>
                 <span className="text-2xl">🗑️</span>
               </div>
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">Supprimer la seance</h3>
+              <h3 className="text-lg font-semibold text-[var(--text)]">Supprimer la seance</h3>
             </div>
-            <p className="text-[var(--color-text-secondary)] mb-2">
+            <p className="text-[var(--text-muted)] mb-2">
               Voulez-vous vraiment supprimer cette seance du <strong>{formatDate(deleteTarget.started_at)}</strong> ?
             </p>
-            <p className="text-sm text-[var(--color-text-tertiary)] mb-2 p-3 bg-[var(--color-surface-secondary)]" style={{ borderRadius: 'var(--radius-lg)' }}>
+            <p className="text-sm text-[var(--text-dim)] mb-2 p-3 bg-[var(--surface-3)]" style={{ borderRadius: 'var(--radius)' }}>
               {deleteTarget.events_count} evenement{deleteTarget.events_count > 1 ? 's' : ''} seront supprimes.
             </p>
             {linkedGroupSession && (
-              <p className="text-sm text-[var(--color-error)] mb-4 p-3 bg-[var(--color-error-soft)] font-medium" style={{ borderRadius: 'var(--radius-lg)' }}>
+              <p className="text-sm text-[var(--neg)] mb-4 p-3 bg-[var(--neg-soft)] font-medium" style={{ borderRadius: 'var(--radius)' }}>
                 La seance de groupe &laquo;&nbsp;{linkedGroupSession.name}&nbsp;&raquo; liee a cette seance sera egalement supprimee (groupes, notes, criteres).
               </p>
             )}
@@ -784,8 +866,8 @@ export function Sessions() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="px-4 py-2.5 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors font-medium"
+                style={{ borderRadius: 'var(--radius)' }}
                 disabled={isDeleting}
               >
                 Annuler
@@ -793,7 +875,7 @@ export function Sessions() {
               <button
                 onClick={handleConfirmDelete}
                 className="px-4 py-2.5 text-white hover:opacity-90 disabled:opacity-50 transition-all font-medium"
-                style={{ background: 'var(--gradient-error)', borderRadius: 'var(--radius-lg)' }}
+                style={{ background: 'var(--gradient-error)', borderRadius: 'var(--radius)' }}
                 disabled={isDeleting}
               >
                 {isDeleting ? 'Suppression...' : 'Supprimer'}
@@ -803,415 +885,183 @@ export function Sessions() {
         </div>
       )}
 
-      {/* Session/Classroom Modal */}
+      {/* Session Sheet (slide-in panel) */}
       {showSessionModal && selectedSession && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface)] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}>
+        <>
+          <div className="sheet-backdrop" onClick={handleCloseSessionModal} />
+          <div className="sheet">
             {/* Header */}
-            <div className="p-5 text-white shrink-0" style={{ background: getClassGradient(selectedSession.class_name) }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/20 flex items-center justify-center font-bold text-lg" style={{ borderRadius: 'var(--radius-lg)' }}>
-                    {getClassInitials(selectedSession.class_name)}
-                  </div>
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <ClassChip label={getClassLabel(selectedSession.class_name)} color={COLOR_PALETTE[classes.findIndex(c => c.id === selectedSession.class_id) % COLOR_PALETTE.length]} size={36} />
                   <div>
-                    <h3 className="text-xl font-semibold">{selectedSession.class_name}</h3>
-                    <p className="text-white/80 text-sm mt-0.5">
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{selectedSession.class_name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                       {formatDate(selectedSession.started_at)} · {formatTime(selectedSession.started_at)}
-                      {selectedSession.ended_at && ` - ${formatTime(selectedSession.ended_at)}`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleCloseSessionModal}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Topic section */}
-            <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]/50">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-[var(--color-text-secondary)]">📝 Theme</span>
-                {!isEditingTopic && (
-                  <button
-                    onClick={handleStartEditTopic}
-                    className="text-xs text-[var(--color-primary)] hover:underline"
-                  >
-                    {selectedSession.topic ? 'Modifier' : 'Ajouter'}
-                  </button>
-                )}
-              </div>
-              {isEditingTopic ? (
-                <div className="space-y-2">
-                  <textarea
-                    value={editedTopic}
-                    onChange={(e) => setEditedTopic(e.target.value)}
-                    placeholder="Ex: Chapitre 3 - Les fonctions lineaires..."
-                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-primary)] text-sm"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
-                    rows={2}
-                    maxLength={200}
-                    autoFocus
-                  />
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-[var(--color-text-tertiary)]">
-                      {editedTopic.length}/200
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleCancelEditTopic}
-                        className="px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                        style={{ borderRadius: 'var(--radius-lg)' }}
-                        disabled={isSavingTopic}
-                      >
-                        Annuler
-                      </button>
-                      <button
-                        onClick={handleSaveTopic}
-                        className="px-3 py-1.5 text-xs text-white hover:opacity-90 transition-colors disabled:opacity-50"
-                        style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
-                        disabled={isSavingTopic}
-                      >
-                        {isSavingTopic ? '...' : 'Enregistrer'}
-                      </button>
+                      {selectedSession.ended_at && ` (${getDuration(selectedSession.started_at, selectedSession.ended_at)})`}
                     </div>
                   </div>
                 </div>
-              ) : selectedSession.topic ? (
-                <p className="text-sm text-[var(--color-text)] italic">
+                <button onClick={handleCloseSessionModal} style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', borderRadius: 6, border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>×</button>
+              </div>
+              {/* Topic */}
+              {selectedSession.topic && (
+                <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontStyle: 'italic', fontSize: 22, letterSpacing: '-0.01em', marginTop: 12 }}>
                   {selectedSession.topic}
-                </p>
-              ) : (
-                <p className="text-xs text-[var(--color-text-tertiary)] italic">
-                  Aucun theme defini
-                </p>
+                </h2>
               )}
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            {/* Stats row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--surface-3)' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>{selectedSession.events_count}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Événements</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--pos-soft)' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--pos)' }}>+{selectedSession.participations}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--pos)', marginTop: 2 }}>Positifs</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--neg-soft)' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--neg)' }}>−{selectedSession.malus}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--neg)', marginTop: 2 }}>Malus</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--surface-3)' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>{selectedSession.absences}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Absents</div>
+              </div>
+            </div>
+
+            {/* Event timeline (DÉROULÉ) */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 16 }}>Déroulé</div>
               {isLoadingClassroom ? (
-                <div className="flex justify-center items-center h-48">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[var(--color-text-secondary)]">Chargement du plan...</span>
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                  <div style={{ width: 28, height: 28, border: '3px solid var(--indigo)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
                 </div>
-              ) : classroomData?.room ? (
-                <div className="space-y-6">
-                  {/* Classroom Grid */}
-                  <div
-                    className="grid gap-2 justify-center"
-                    style={{
-                      gridTemplateColumns: `repeat(${classroomData.room.grid_cols}, minmax(70px, 90px))`,
-                    }}
-                  >
-                    {Array.from({ length: classroomData.room.grid_rows * classroomData.room.grid_cols }).map((_, i) => {
-                      const row = Math.floor(i / classroomData.room!.grid_cols);
-                      const col = i % classroomData.room!.grid_cols;
-                      const cellKey = `${row}-${col}`;
-                      const isDisabled = classroomData.room?.disabled_cells?.includes(`${row},${col}`);
-                      const studentId = classroomData.positions[cellKey];
-                      const student = studentId ? studentsMap.get(studentId) : undefined;
-                      const isAbsent = student && absentStudentIds.has(student.id);
-                      const studentEvents = student ? eventsByStudent.get(student.id) || [] : [];
-                      const eventCount = studentEvents.length;
-
-                      // Disabled cell (aisle)
-                      if (isDisabled) {
-                        return (
-                          <div
-                            key={cellKey}
-                            className="h-20 bg-[var(--color-surface-secondary)]/50"
-                            style={{ borderRadius: 'var(--radius-lg)' }}
-                          />
-                        );
-                      }
-
-                      // Empty cell
-                      if (!student) {
-                        return (
-                          <div
-                            key={cellKey}
-                            className="h-20 border-2 border-dashed border-[var(--color-border)]"
-                            style={{ borderRadius: 'var(--radius-lg)' }}
-                          />
-                        );
-                      }
-
-                      // Student cell
-                      return (
-                        <button
-                          key={cellKey}
-                          onClick={() => setSelectedStudentId(student.id)}
-                          className={`h-20 relative flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 ${
-                            isAbsent
-                              ? 'border-2 border-[#EF4444]'
-                              : 'border border-[var(--color-border)]'
-                          }`}
-                          style={{
-                            borderRadius: 'var(--radius-lg)',
-                            background: isAbsent ? '#FEE2E2' : 'var(--color-surface)',
-                          }}
-                        >
-                          {/* Absent badge */}
-                          {isAbsent && (
-                            <span
-                              className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[10px] font-bold text-white bg-[#EF4444]"
-                              style={{ borderRadius: 'var(--radius-sm)' }}
-                            >
-                              ABS
-                            </span>
-                          )}
-
-                          {/* Event count badge */}
-                          {eventCount > 0 && !isAbsent && (
-                            <span
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white"
-                              style={{
-                                borderRadius: 'var(--radius-full)',
-                                background: 'var(--gradient-primary)',
-                              }}
-                            >
-                              {eventCount}
-                            </span>
-                          )}
-
-                          {/* Student avatar */}
-                          <div
-                            className="w-8 h-8 flex items-center justify-center text-xs font-bold text-white"
-                            style={{
-                              borderRadius: 'var(--radius-full)',
-                              background: isAbsent ? '#DC2626' : 'var(--gradient-primary)',
-                            }}
-                          >
-                            {student.pseudo.substring(0, 2).toUpperCase()}
-                          </div>
-
-                          {/* Student name */}
-                          <span
-                            className="text-xs font-medium truncate max-w-full px-1"
-                            style={{ color: isAbsent ? '#DC2626' : 'var(--color-text)' }}
-                          >
-                            {student.pseudo}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Unplaced students with events */}
-                  {unplacedStudentsWithEvents.length > 0 && (
-                    <div className="pt-4 border-t border-[var(--color-border)]">
-                      <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">
-                        Eleves non places ({unplacedStudentsWithEvents.length})
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {unplacedStudentsWithEvents.map((student) => {
-                          const isAbsent = absentStudentIds.has(student.id);
-                          const studentEvents = eventsByStudent.get(student.id) || [];
-                          return (
-                            <button
-                              key={student.id}
-                              onClick={() => setSelectedStudentId(student.id)}
-                              className={`px-3 py-2 flex items-center gap-2 transition-all hover:scale-105 ${
-                                isAbsent
-                                  ? 'border-2 border-[#EF4444]'
-                                  : 'border border-[var(--color-border)]'
-                              }`}
-                              style={{
-                                borderRadius: 'var(--radius-lg)',
-                                background: isAbsent ? '#FEE2E2' : 'var(--color-surface)',
-                              }}
-                            >
-                              <span
-                                className="font-medium text-sm"
-                                style={{ color: isAbsent ? '#DC2626' : 'var(--color-text)' }}
-                              >
-                                {student.pseudo}
-                              </span>
-                              {isAbsent && (
-                                <span
-                                  className="px-1.5 py-0.5 text-[10px] font-bold text-white bg-[#EF4444]"
-                                  style={{ borderRadius: 'var(--radius-sm)' }}
-                                >
-                                  ABS
-                                </span>
-                              )}
-                              {studentEvents.length > 0 && !isAbsent && (
-                                <span
-                                  className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white"
-                                  style={{
-                                    borderRadius: 'var(--radius-full)',
-                                    background: 'var(--gradient-primary)',
-                                  }}
-                                >
-                                  {studentEvents.length}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+              ) : classroomData && classroomData.events.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {classroomData.events.map((event, idx) => {
+                    const student = studentsMap.get(event.student_id);
+                    const config = EVENT_CONFIG[event.type] || { label: event.type, color: 'var(--text-dim)', softColor: 'var(--surface-3)', icon: '?' };
+                    const dotColor = event.type === 'participation' ? 'var(--pos)' : event.type === 'bavardage' ? 'var(--neg)' : event.type === 'absence' ? 'var(--text-dim)' : 'var(--indigo)';
+                    const label = event.subtype ? `${config.label} (${event.subtype})` : config.label;
+                    const isLast = idx === classroomData.events.length - 1;
+                    return (
+                      <div key={event.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0' }}>
+                        <div style={{ width: 44, flexShrink: 0, textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', paddingTop: 2 }}>
+                          {formatTime(event.timestamp)}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 10 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                          {!isLast && <div style={{ width: 1.5, flex: 1, minHeight: 28, background: 'var(--border)' }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13.5 }}>{student?.pseudo || '?'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{label}</div>
+                          {event.note && <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', marginTop: 2 }}>« {event.note} »</div>}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               ) : (
-                /* No room/plan fallback */
-                <div className="text-center py-8">
-                  <div
-                    className="w-16 h-16 mx-auto mb-4 bg-[var(--color-surface-secondary)] flex items-center justify-center"
-                    style={{ borderRadius: 'var(--radius-full)' }}
-                  >
-                    <span className="text-3xl">🏫</span>
-                  </div>
-                  <p className="text-[var(--color-text-secondary)] mb-2">
-                    Aucun plan de classe disponible
-                  </p>
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
-                    Consultez les details pour voir les evenements de cette seance.
-                  </p>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)', fontSize: 13 }}>
+                  Aucun événement enregistré
                 </div>
               )}
             </div>
+
+            {/* Add event form */}
+            {showAddEvent && classroomData && (
+              <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 10 }}>Nouvel événement</div>
+                {/* Student select */}
+                <select
+                  value={addEventStudent}
+                  onChange={(e) => setAddEventStudent(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 13, marginBottom: 8, fontFamily: 'var(--font-sans)', color: 'var(--text)' }}
+                >
+                  <option value="">Sélectionner un élève...</option>
+                  {classroomData.students.map(s => (
+                    <option key={s.id} value={s.id}>{s.pseudo}</option>
+                  ))}
+                </select>
+                {/* Event type buttons */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                  {Object.entries(EVENT_CONFIG).map(([type, cfg]) => (
+                    <button
+                      key={type}
+                      onClick={() => { setAddEventType(type); setAddEventSubtype(''); }}
+                      style={{
+                        padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500, border: '1.5px solid',
+                        borderColor: addEventType === type ? cfg.color : 'var(--border)',
+                        background: addEventType === type ? cfg.softColor : 'var(--surface)',
+                        color: addEventType === type ? cfg.color : 'var(--text-muted)',
+                        cursor: 'pointer', transition: 'all 0.12s',
+                      }}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Sortie subtype */}
+                {addEventType === 'sortie' && (
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                    {['toilettes', 'infirmerie', 'bureau', 'autre'].map(sub => (
+                      <button
+                        key={sub}
+                        onClick={() => setAddEventSubtype(sub)}
+                        style={{
+                          padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500,
+                          border: `1.5px solid ${addEventSubtype === sub ? 'var(--indigo)' : 'var(--border)'}`,
+                          background: addEventSubtype === sub ? 'var(--indigo-soft)' : 'var(--surface)',
+                          color: addEventSubtype === sub ? 'var(--indigo)' : 'var(--text-muted)',
+                          cursor: 'pointer', textTransform: 'capitalize' as const,
+                        }}
+                      >
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Note for remarque */}
+                {addEventType === 'remarque' && (
+                  <textarea
+                    value={addEventNote}
+                    onChange={(e) => setAddEventNote(e.target.value)}
+                    placeholder="Remarque..."
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontFamily: 'var(--font-sans)', resize: 'none', marginBottom: 8 }}
+                    rows={2}
+                  />
+                )}
+                {/* Submit */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowAddEvent(false)} className="btn btn--ghost" style={{ fontSize: 12, padding: '6px 14px' }}>Annuler</button>
+                  <button
+                    onClick={handleAddEvent}
+                    disabled={isAddingEvent || !addEventStudent || !addEventType || (addEventType === 'sortie' && !addEventSubtype)}
+                    className="btn btn--accent"
+                    style={{ fontSize: 12, padding: '6px 14px', opacity: (isAddingEvent || !addEventStudent || !addEventType) ? 0.5 : 1 }}
+                  >
+                    {isAddingEvent ? '...' : 'Ajouter'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Footer */}
-            <div className="p-4 border-t border-[var(--color-border)] shrink-0 flex gap-3">
-              <Link
-                to={`/sessions/${selectedSession.id}`}
-                className="flex-1 px-4 py-2.5 text-white text-center hover:opacity-90 transition-all font-medium"
-                style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
-              >
-                Voir les details
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexShrink: 0 }}>
+              <Link to={`/sessions/${selectedSession.id}`} className="btn btn--ghost" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none' }}>
+                Exporter
               </Link>
-              <button
-                onClick={(e) => { handleCloseSessionModal(); handleOpenDeleteModal(e, selectedSession); }}
-                className="px-4 py-2.5 border border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors font-medium"
-                style={{ borderRadius: 'var(--radius-lg)' }}
-              >
-                Supprimer
+              <button onClick={() => setShowAddEvent(!showAddEvent)} className="btn btn--primary" style={{ flex: 1, justifyContent: 'center' }}>
+                <Icon name="plus" size={14} /> Ajouter un événement
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Student Events Sub-Modal */}
-      {selectedStudentId && classroomData && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
-          onClick={() => setSelectedStudentId(null)}
-        >
-          <div
-            className="bg-[var(--color-surface)] w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col"
-            style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            {(() => {
-              const student = studentsMap.get(selectedStudentId);
-              const isAbsent = absentStudentIds.has(selectedStudentId);
-              const studentEvents = eventsByStudent.get(selectedStudentId) || [];
-              if (!student) return null;
-
-              return (
-                <>
-                  <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center font-bold text-white"
-                        style={{
-                          borderRadius: 'var(--radius-lg)',
-                          background: isAbsent ? '#DC2626' : 'var(--gradient-primary)',
-                        }}
-                      >
-                        {student.pseudo.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3
-                          className="text-lg font-semibold"
-                          style={{ color: isAbsent ? '#DC2626' : 'var(--color-text)' }}
-                        >
-                          {student.pseudo}
-                        </h3>
-                        <p className="text-sm text-[var(--color-text-tertiary)]">
-                          {studentEvents.length} evenement{studentEvents.length > 1 ? 's' : ''} cette seance
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setSelectedStudentId(null)}
-                      className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
-                      style={{ borderRadius: 'var(--radius-lg)' }}
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto">
-                    {studentEvents.length === 0 ? (
-                      <div className="p-8 text-center text-[var(--color-text-tertiary)]">
-                        Aucun evenement enregistre
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-[var(--color-border)]">
-                        {studentEvents.map((event) => {
-                          const config = EVENT_CONFIG[event.type] || {
-                            label: event.type,
-                            color: 'var(--color-text-tertiary)',
-                            softColor: 'var(--color-surface-secondary)',
-                            icon: '?',
-                          };
-                          return (
-                            <div key={event.id} className="p-4 flex items-start gap-3">
-                              <div
-                                className="w-10 h-10 flex items-center justify-center text-sm font-bold shrink-0"
-                                style={{
-                                  background: config.softColor,
-                                  color: config.color,
-                                  borderRadius: 'var(--radius-lg)',
-                                }}
-                              >
-                                {config.icon}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="text-xs px-2 py-0.5 font-medium"
-                                    style={{
-                                      background: config.softColor,
-                                      color: config.color,
-                                      borderRadius: 'var(--radius-full)',
-                                    }}
-                                  >
-                                    {config.label}
-                                    {event.subtype && ` - ${event.subtype}`}
-                                  </span>
-                                  <span className="text-xs text-[var(--color-text-tertiary)]">
-                                    {formatTime(event.timestamp)}
-                                  </span>
-                                </div>
-                                {event.note && (
-                                  <p className="text-sm text-[var(--color-text-secondary)] mt-1 italic">
-                                    "{event.note}"
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
+        </>
       )}
     </Layout>
   );

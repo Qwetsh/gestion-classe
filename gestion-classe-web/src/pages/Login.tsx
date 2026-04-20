@@ -67,14 +67,14 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, var(--color-background) 0%, #E8F4FD 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-md">
         {/* Card */}
         <div
-          className="bg-[var(--color-surface)] p-8"
+          className="bg-[var(--surface)] p-8"
           style={{
-            borderRadius: 'var(--radius-2xl)',
-            boxShadow: 'var(--shadow-lg)'
+            borderRadius: 'var(--radius)',
+            boxShadow: 'var(--shadow-2)'
           }}
         >
           {/* Logo */}
@@ -82,17 +82,17 @@ export function Login() {
             <div
               className="w-20 h-20 mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold"
               style={{
-                background: 'var(--gradient-primary)',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-glow)'
+                background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                borderRadius: 'var(--radius)',
+                boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)'
               }}
             >
               GC
             </div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 28, letterSpacing: '-0.01em', color: 'var(--text)' }}>
               Gestion Classe
             </h1>
-            <p className="text-[var(--color-text-secondary)] mt-2">
+            <p className="text-[var(--text-muted)] mt-2">
               {titles[mode]}
             </p>
           </div>
@@ -103,7 +103,7 @@ export function Login() {
               <div
                 className="px-4 py-5 text-sm"
                 style={{
-                  borderRadius: 'var(--radius-lg)',
+                  borderRadius: 'var(--radius)',
                   background: '#E8F5E9',
                   color: '#2E7D32',
                 }}
@@ -123,7 +123,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="text-[var(--color-primary)] font-semibold hover:underline"
+                className="text-[var(--indigo)] font-semibold hover:underline"
               >
                 Retour à la connexion
               </button>
@@ -135,7 +135,7 @@ export function Login() {
               <div
                 className="px-4 py-5 text-sm"
                 style={{
-                  borderRadius: 'var(--radius-lg)',
+                  borderRadius: 'var(--radius)',
                   background: '#E3F2FD',
                   color: '#1565C0',
                 }}
@@ -152,7 +152,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="text-[var(--color-primary)] font-semibold hover:underline"
+                className="text-[var(--indigo)] font-semibold hover:underline"
               >
                 Retour à la connexion
               </button>
@@ -166,7 +166,7 @@ export function Login() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2"
+                  className="block text-sm font-medium text-[var(--text-muted)] mb-2"
                 >
                   Email
                 </label>
@@ -175,8 +175,8 @@ export function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] text-[var(--color-text)] border-0 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
-                  style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xs)' }}
+                  className="w-full px-4 py-3 bg-[var(--surface-3)] text-[var(--text)] border-0 focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] transition-all"
+                  style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-xs)' }}
                   placeholder="votre@email.com"
                   required
                   disabled={isSubmitting}
@@ -188,7 +188,7 @@ export function Login() {
                 <div>
                   <label
                     htmlFor="password"
-                    className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2"
+                    className="block text-sm font-medium text-[var(--text-muted)] mb-2"
                   >
                     Mot de passe
                   </label>
@@ -197,15 +197,15 @@ export function Login() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] text-[var(--color-text)] border-0 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
-                    style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xs)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] text-[var(--text)] border-0 focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] transition-all"
+                    style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-xs)' }}
                     placeholder="••••••••"
                     required
                     minLength={mode === 'signup' ? 6 : undefined}
                     disabled={isSubmitting}
                   />
                   {passwordTooShort && (
-                    <p className="text-xs text-[var(--color-error)] mt-1">
+                    <p className="text-xs text-[var(--neg)] mt-1">
                       6 caractères minimum
                     </p>
                   )}
@@ -215,7 +215,7 @@ export function Login() {
                       <button
                         type="button"
                         onClick={() => switchMode('reset')}
-                        className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-primary)] hover:underline"
+                        className="text-xs text-[var(--text-dim)] hover:text-[var(--indigo)] hover:underline"
                       >
                         Mot de passe oublié ?
                       </button>
@@ -229,7 +229,7 @@ export function Login() {
                 <div>
                   <label
                     htmlFor="confirmPassword"
-                    className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2"
+                    className="block text-sm font-medium text-[var(--text-muted)] mb-2"
                   >
                     Confirmer le mot de passe
                   </label>
@@ -238,18 +238,18 @@ export function Login() {
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full px-4 py-3 bg-[var(--color-surface-secondary)] text-[var(--color-text)] border-0 focus:outline-none focus:ring-2 transition-all ${
+                    className={`w-full px-4 py-3 bg-[var(--surface-3)] text-[var(--text)] border-0 focus:outline-none focus:ring-2 transition-all ${
                       passwordMismatch
-                        ? 'focus:ring-[var(--color-error)] ring-2 ring-[var(--color-error)]'
-                        : 'focus:ring-[var(--color-primary)]'
+                        ? 'focus:ring-[var(--neg)] ring-2 ring-[var(--neg)]'
+                        : 'focus:ring-[var(--indigo)]'
                     }`}
-                    style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xs)' }}
+                    style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-xs)' }}
                     placeholder="••••••••"
                     required
                     disabled={isSubmitting}
                   />
                   {passwordMismatch && (
-                    <p className="text-xs text-[var(--color-error)] mt-1">
+                    <p className="text-xs text-[var(--neg)] mt-1">
                       Les mots de passe ne correspondent pas
                     </p>
                   )}
@@ -259,8 +259,8 @@ export function Login() {
               {/* Error message */}
               {error && (
                 <div
-                  className="bg-[var(--color-error-soft)] text-[var(--color-error)] px-4 py-3 text-sm flex items-center gap-2"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="bg-[var(--neg-soft)] text-[var(--neg)] px-4 py-3 text-sm flex items-center gap-2"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   <span>⚠️</span>
                   {error}
@@ -278,9 +278,9 @@ export function Login() {
                 }
                 className="w-full text-white py-3.5 px-4 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:opacity-90 hover:translate-y-[-1px] active:translate-y-0"
                 style={{
-                  background: 'var(--gradient-primary)',
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: isSubmitting ? 'none' : 'var(--shadow-glow)'
+                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  borderRadius: 'var(--radius)',
+                  boxShadow: isSubmitting ? 'none' : '0 4px 20px rgba(99, 102, 241, 0.25)'
                 }}
               >
                 {isSubmitting ? (
@@ -302,38 +302,38 @@ export function Login() {
           {!successMessage && (
             <div
               className="mt-6 pt-6 text-center space-y-2"
-              style={{ borderTop: '1px solid var(--color-border)' }}
+              style={{ borderTop: '1px solid var(--border)' }}
             >
               {mode === 'login' && (
-                <p className="text-sm text-[var(--color-text-tertiary)]">
+                <p className="text-sm text-[var(--text-dim)]">
                   Pas encore de compte ?{' '}
                   <button
                     type="button"
                     onClick={() => switchMode('signup')}
-                    className="text-[var(--color-primary)] font-semibold hover:underline"
+                    className="text-[var(--indigo)] font-semibold hover:underline"
                   >
                     Créer un compte
                   </button>
                 </p>
               )}
               {mode === 'signup' && (
-                <p className="text-sm text-[var(--color-text-tertiary)]">
+                <p className="text-sm text-[var(--text-dim)]">
                   Déjà un compte ?{' '}
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-[var(--color-primary)] font-semibold hover:underline"
+                    className="text-[var(--indigo)] font-semibold hover:underline"
                   >
                     Se connecter
                   </button>
                 </p>
               )}
               {mode === 'reset' && (
-                <p className="text-sm text-[var(--color-text-tertiary)]">
+                <p className="text-sm text-[var(--text-dim)]">
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-[var(--color-primary)] font-semibold hover:underline"
+                    className="text-[var(--indigo)] font-semibold hover:underline"
                   >
                     Retour à la connexion
                   </button>
@@ -344,7 +344,7 @@ export function Login() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-8 text-center text-xs text-[var(--color-text-tertiary)]">
+        <div className="mt-8 text-center text-xs text-[var(--text-dim)]">
           Gestion Classe v1.0
         </div>
       </div>

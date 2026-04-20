@@ -7,21 +7,31 @@ function ToolGrid() {
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">Boîte à outils</h1>
+        <div>
+          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Boite a outils</h1>
+          <p className="text-[var(--text-muted)] mt-1">
+            {tools.length} outils disponibles
+          </p>
+        </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {tools.map((tool) => (
             <Link
               key={tool.id}
               to={`/tools/${tool.id}`}
-              className="group p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] transition-all hover:scale-[1.02] hover:border-[var(--color-primary)]"
-              style={{ boxShadow: 'var(--shadow-xs)' }}
+              className="group p-5 bg-[var(--surface)] border border-[var(--border)] transition-all hover:shadow-lg hover:-translate-y-1 hover:border-[var(--indigo)]/30"
+              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
             >
-              <div className="text-3xl mb-3">{tool.icon}</div>
-              <h3 className="font-semibold text-[var(--color-text)] group-hover:text-[var(--color-primary)] transition-colors">
+              <div
+                className="w-12 h-12 flex items-center justify-center text-2xl mb-3"
+                style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius-sm)' }}
+              >
+                {tool.icon}
+              </div>
+              <h3 className="font-semibold text-[var(--text)] group-hover:text-[var(--indigo)] transition-colors">
                 {tool.name}
               </h3>
-              <p className="text-sm text-[var(--color-text-tertiary)] mt-1">{tool.description}</p>
+              <p className="text-sm text-[var(--text-dim)] mt-1 line-clamp-2">{tool.description}</p>
             </Link>
           ))}
         </div>
@@ -39,8 +49,8 @@ function ToolView() {
     return (
       <Layout>
         <div className="text-center py-16">
-          <p className="text-lg text-[var(--color-text-secondary)]">Outil introuvable</p>
-          <Link to="/tools" className="text-[var(--color-primary)] mt-2 inline-block">
+          <p className="text-lg text-[var(--text-muted)]">Outil introuvable</p>
+          <Link to="/tools" className="text-[var(--indigo)] mt-2 inline-block">
             Retour aux outils
           </Link>
         </div>
@@ -57,12 +67,21 @@ function ToolView() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/tools')}
-            className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)] transition-colors"
+            className="w-9 h-9 flex items-center justify-center bg-[var(--surface)] border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] transition-colors"
+            style={{ borderRadius: 'var(--radius-sm)' }}
           >
             &larr;
           </button>
-          <span className="text-2xl">{tool.icon}</span>
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">{tool.name}</h1>
+          <div
+            className="w-10 h-10 flex items-center justify-center text-xl"
+            style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius-sm)' }}
+          >
+            {tool.icon}
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-[var(--text)]">{tool.name}</h1>
+            <p className="text-sm text-[var(--text-dim)]">{tool.description}</p>
+          </div>
         </div>
 
         {/* Tool content */}
@@ -70,7 +89,7 @@ function ToolView() {
           <Suspense
             fallback={
               <div className="flex justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
+                <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >

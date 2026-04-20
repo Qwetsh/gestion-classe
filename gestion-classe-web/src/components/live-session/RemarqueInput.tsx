@@ -53,20 +53,20 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-lg bg-[var(--color-surface)] p-5 space-y-3"
+        className="w-full max-w-lg bg-[var(--surface)] p-5 space-y-3"
         style={{
-          borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
-          boxShadow: 'var(--shadow-lg)',
+          borderRadius: 'var(--radius) var(--radius) 0 0',
+          boxShadow: 'var(--shadow-2)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-[var(--color-text)]">
+          <h3 className="font-bold text-[var(--text)]">
             Remarque — {studentPseudo}
           </h3>
           <button
             onClick={onCancel}
-            className="text-[var(--color-text-tertiary)] text-lg"
+            className="text-[var(--text-dim)] text-lg"
           >
             ✕
           </button>
@@ -78,8 +78,8 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
           onChange={(e) => setText(e.target.value)}
           placeholder="Saisir la remarque..."
           rows={3}
-          className="w-full p-3 border border-[var(--color-border)] text-[var(--color-text)] bg-[var(--color-surface-secondary)] resize-none"
-          style={{ borderRadius: 'var(--radius-lg)', fontSize: '16px' }}
+          className="w-full p-3 border border-[var(--border)] text-[var(--text)] bg-[var(--surface-3)] resize-none"
+          style={{ borderRadius: 'var(--radius)', fontSize: '16px' }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -95,12 +95,12 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
               src={preview}
               alt="Photo jointe"
               className="h-20 w-20 object-cover"
-              style={{ borderRadius: 'var(--radius-lg)' }}
+              style={{ borderRadius: 'var(--radius)' }}
             />
             <button
               onClick={removePhoto}
-              className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-error)] text-white rounded-full text-xs font-bold flex items-center justify-center"
-              style={{ border: '2px solid var(--color-surface)' }}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--neg)] text-white rounded-full text-xs font-bold flex items-center justify-center"
+              style={{ border: '2px solid var(--surface)' }}
             >
               ✕
             </button>
@@ -121,8 +121,8 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
           {/* Photo button */}
           <button
             onClick={() => fileRef.current?.click()}
-            className="py-3 px-4 font-medium text-[var(--color-primary)] bg-[var(--color-primary-soft)] flex items-center justify-center gap-1.5"
-            style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+            className="py-3 px-4 font-medium text-[var(--indigo)] bg-[var(--indigo-soft)] flex items-center justify-center gap-1.5"
+            style={{ borderRadius: 'var(--radius)', border: 'none' }}
             title="Prendre ou choisir une photo"
           >
             <span className="text-lg">📷</span>
@@ -130,8 +130,8 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
 
           <button
             onClick={onCancel}
-            className="flex-1 py-3 font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]"
-            style={{ borderRadius: 'var(--radius-lg)', border: 'none' }}
+            className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
+            style={{ borderRadius: 'var(--radius)', border: 'none' }}
           >
             Annuler
           </button>
@@ -141,7 +141,7 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
             className="flex-1 py-3 font-bold text-white disabled:opacity-50"
             style={{
               background: 'var(--color-remarque)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius)',
               border: 'none',
             }}
           >

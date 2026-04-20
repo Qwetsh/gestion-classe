@@ -222,7 +222,7 @@ export default function YouTubeConverter() {
     <div className="space-y-6">
       {/* URL Input */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
           Lien YouTube
         </label>
         <input
@@ -230,24 +230,24 @@ export default function YouTubeConverter() {
           value={url}
           onChange={(e) => { setUrl(e.target.value); reset(); }}
           placeholder="https://www.youtube.com/watch?v=..."
-          className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+          className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-lg focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
           autoFocus
         />
         {url.trim() && !isValidUrl && (
-          <p className="mt-1 text-xs text-[var(--color-error)]">Lien YouTube invalide</p>
+          <p className="mt-1 text-xs text-[var(--neg)]">Lien YouTube invalide</p>
         )}
       </div>
 
       {/* Format selection */}
       <div>
-        <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Format</label>
+        <label className="block text-xs font-medium text-[var(--text-dim)] mb-2">Format</label>
         <div className="flex gap-2">
           <button
             onClick={() => { setFormat('mp3'); reset(); }}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               format === 'mp3'
                 ? 'text-white shadow-sm'
-                : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
+                : 'text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] hover:bg-[var(--border)]'
             }`}
             style={format === 'mp3' ? { background: 'var(--gradient-primary)' } : undefined}
           >
@@ -260,8 +260,8 @@ export default function YouTubeConverter() {
               format === 'mp4'
                 ? 'text-white shadow-sm'
                 : !mp4Allowed
-                  ? 'text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] opacity-50 cursor-not-allowed'
-                  : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)]'
+                  ? 'text-[var(--text-dim)] bg-[var(--surface-3)] border border-[var(--border)] opacity-50 cursor-not-allowed'
+                  : 'text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] hover:bg-[var(--border)]'
             }`}
             style={format === 'mp4' ? { background: 'var(--gradient-primary)' } : undefined}
           >
@@ -269,12 +269,12 @@ export default function YouTubeConverter() {
           </button>
         </div>
         {!mp4Allowed && (
-          <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
+          <p className="mt-2 text-xs text-[var(--text-dim)]">
             MP4 : accès restreint. Contactez l'administrateur pour l'activer.
           </p>
         )}
         {format === 'mp4' && mp4Allowed && (
-          <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
+          <p className="mt-2 text-xs text-[var(--text-dim)]">
             MP4 : limité à {MP4_MONTHLY_LIMIT}/mois
           </p>
         )}
@@ -303,7 +303,7 @@ export default function YouTubeConverter() {
           </button>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-success-soft)] text-[var(--color-success)]">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--pos-soft)] text-[var(--pos)]">
               <span className="text-lg">✓</span>
               <span className="text-sm font-medium">Fichier prêt !</span>
             </div>
@@ -314,22 +314,22 @@ export default function YouTubeConverter() {
             >
               {loading ? 'Téléchargement…' : `Télécharger ${format.toUpperCase()}`}
             </button>
-            <p className="text-xs text-[var(--color-text-tertiary)] text-center max-w-sm truncate">{title}.{format}</p>
+            <p className="text-xs text-[var(--text-dim)] text-center max-w-sm truncate">{title}.{format}</p>
           </div>
         )}
 
         {error && (
-          <p className="text-sm text-[var(--color-error)] text-center max-w-md">{error}</p>
+          <p className="text-sm text-[var(--neg)] text-center max-w-md">{error}</p>
         )}
       </div>
 
       {/* Info + usage */}
-      <div className="mt-4 p-4 rounded-xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] space-y-2">
-        <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
+      <div className="mt-4 p-4 rounded-xl bg-[var(--surface-3)] border border-[var(--border)] space-y-2">
+        <p className="text-xs text-[var(--text-dim)] leading-relaxed">
           Convertit les vidéos YouTube en MP3 (128 kbps) ou MP4.
           Fonctionne avec les liens classiques et les Shorts.
         </p>
-        <p className="text-xs text-[var(--color-text-tertiary)]">
+        <p className="text-xs text-[var(--text-dim)]">
           Limites : {MP3_MONTHLY_LIMIT} MP3/mois • {MP4_MONTHLY_LIMIT} MP4/mois
         </p>
       </div>

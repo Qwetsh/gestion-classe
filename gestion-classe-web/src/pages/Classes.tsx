@@ -8,6 +8,7 @@ import type { Room } from '../components/RoomModal';
 import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
 import * as XLSX from 'xlsx';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { ClassChip, Sparkline, TrendBadge, Icon } from '../components/design-system';
 
 interface Class {
   id: string;
@@ -28,6 +29,9 @@ interface StudentGradeData {
   malus: number;
   absences: number;
   grade: number;
+  sparkHistory: (number | null)[];
+  trend: 'up' | 'down' | 'flat';
+  trendDelta: number;
 }
 
 interface ClassConfig {
@@ -48,6 +52,30 @@ interface ClassRoomPlan {
 }
 
 type DragItem = { studentId: string; fromCell?: { row: number; col: number } };
+
+const COLOR_PALETTE = ['#6366F1','#EC4899','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EF4444','#14B8A6','#F97316','#06B6D4','#84CC16','#E879F9','#FB923C'];
+
+function getClassLabel(name: string): string {
+  return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
+}
+
+function MiniSpark({ history }: { history: (number | null)[] }) {
+  const w = 38, h = 14;
+  const max = 2, min = -2;
+  const pts = history.map((v, i) => {
+    if (v === null) return null;
+    const x = (i / (history.length - 1)) * w;
+    const y = h / 2 - ((v - 0) / (max - min)) * h;
+    return { x, y };
+  }).filter(Boolean) as { x: number; y: number }[];
+  if (pts.length < 2) return null;
+  return (
+    <svg width={w} height={h} style={{ overflow: 'visible', display: 'block', opacity: 0.85 }}>
+      <line x1={0} y1={h/2} x2={w} y2={h/2} stroke="currentColor" opacity={0.25} strokeWidth={0.5} />
+      <polyline points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function Classes() {
   const { user } = useAuth();
@@ -257,7 +285,7 @@ export function Classes() {
       while (hasMoreEvents) {
         const { data, error: eventsError } = await supabase
           .from('events')
-          .select('student_id, type')
+          .select('student_id, type, session_id')
           .in('student_id', studentIds)
           .gte('timestamp', trimesterStartDate)
           .range(eventsFrom, eventsFrom + EVENTS_PAGE_SIZE - 1);
@@ -313,7 +341,34 @@ export function Classes() {
           grade = Math.min(20, Math.max(0, (effectiveParticipations / adjustedTarget) * 20));
         }
 
-        gradesMap.set(studentId, { studentId, participations: totalParticipations, malus, absences, grade });
+        // Compute sparkline history (last 10 sessions)
+        const sessionGroups: Record<string, { pos: number; neg: number }> = {};
+        studentEvents.forEach(e => {
+          const sid = e.session_id;
+          if (!sid) return;
+          if (!sessionGroups[sid]) sessionGroups[sid] = { pos: 0, neg: 0 };
+          if (e.type === 'participation') sessionGroups[sid].pos++;
+          else if (e.type === 'bavardage') sessionGroups[sid].neg++;
+        });
+        const sessionScores = Object.values(sessionGroups).map(g => Math.max(-2, Math.min(2, g.pos - g.neg)));
+        const sparkHistory: (number | null)[] = Array(10).fill(null);
+        const last10 = sessionScores.slice(-10);
+        last10.forEach((v, i) => { sparkHistory[10 - last10.length + i] = v; });
+
+        // Compute trend
+        const nonNull = sparkHistory.filter(v => v !== null) as number[];
+        let trendDelta = 0;
+        if (nonNull.length >= 2) {
+          const mid = Math.floor(nonNull.length / 2);
+          const first = nonNull.slice(0, mid);
+          const second = nonNull.slice(mid);
+          const avg1 = first.reduce((a, b) => a + b, 0) / first.length;
+          const avg2 = second.reduce((a, b) => a + b, 0) / second.length;
+          trendDelta = avg2 - avg1;
+        }
+        const trend: 'up' | 'down' | 'flat' = trendDelta > 0.15 ? 'up' : trendDelta < -0.15 ? 'down' : 'flat';
+
+        gradesMap.set(studentId, { studentId, participations: totalParticipations, malus, absences, grade, sparkHistory, trend, trendDelta });
       });
 
       setStudentGrades(gradesMap);
@@ -432,6 +487,14 @@ export function Classes() {
     setHasChanges(true);
     setDragItem(null);
     setDragOverCell(null);
+  };
+
+  const handleDropToPool = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragItem?.studentId) {
+      handleRemoveFromSeat(dragItem.studentId);
+    }
+    setDragItem(null);
   };
 
   const handleRemoveFromSeat = (studentId: string) => {
@@ -733,56 +796,69 @@ export function Classes() {
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="flex justify-center items-center h-64">
-          <div className="text-[var(--color-text-secondary)]">Chargement...</div>
+      <Layout fluid>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 256 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Chargement...</span>
         </div>
       </Layout>
     );
   }
 
   return (
-    <Layout>
+    <Layout fluid>
       {/* Error banner */}
       {loadError && (
-        <div
-          className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4 mb-4 flex items-center justify-between"
-          style={{ borderRadius: 'var(--radius-lg)' }}
-        >
+        <div style={{ background: 'var(--neg-soft)', color: 'var(--neg)', padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
           <span>{loadError}</span>
-          <button onClick={() => setLoadError(null)} className="text-[var(--color-error)] hover:opacity-70">
-            ✕
-          </button>
+          <button onClick={() => setLoadError(null)} style={{ color: 'var(--neg)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
         </div>
       )}
 
-      <div className="flex gap-6" style={{ minHeight: 'calc(100vh - 220px)' }}>
-        {/* LEFT SIDEBAR - Class list */}
+      {/* Page header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, marginBottom: 18, flexWrap: 'wrap' as const }}>
+        <div>
+          <div className="breadcrumb">
+            <a href="#">Accueil</a>
+            <span>›</span>
+            <span className="current">Plans de classe</span>
+          </div>
+          <h1 className="page-title">Plan de salle</h1>
+          <p className="page-subtitle">Glissez-déposez les élèves depuis le panneau latéral. Survolez un bureau pour voir la fiche.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={() => setShowStudentsPanel(!showStudentsPanel)} className="btn btn--ghost" style={{ fontSize: 13 }}>
+            <Icon name="grid" size={14} /> Vue tableau
+          </button>
+          <button className="btn btn--ghost" style={{ fontSize: 13 }} onClick={() => window.print()}>
+            Imprimer le plan
+          </button>
+          <button onClick={handleSavePlan} disabled={isSaving || !hasChanges} className="btn btn--accent" style={{ opacity: hasChanges ? 1 : 0.5 }}>
+            {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: !isMobile ? '230px 1fr 280px' : '1fr', gap: 16, alignItems: 'start', minHeight: 'calc(100vh - 220px)' }}>
+        {/* LEFT SIDEBAR - Classes pane */}
         {!isMobile ? (
-          <aside className="w-64 shrink-0 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold text-[var(--color-text)]">Classes</h1>
+          <div className="classes-pane">
+            <div className="classes-pane__head">
+              <span>CLASSES</span>
               <button
                 onClick={() => handleOpenClassModal()}
-                className="p-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
+                style={{ width: 24, height: 24, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
                 title="Nouvelle classe"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1">
+            <div className="classes-pane__list">
               {classes.length === 0 ? (
-                <div className="text-center py-8 text-[var(--color-text-tertiary)]">
-                  <div className="text-3xl mb-2">📚</div>
-                  <p className="text-sm">Aucune classe</p>
-                  <button
-                    onClick={() => handleOpenClassModal()}
-                    className="mt-3 px-4 py-2 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
-                  >
-                    Creer une classe
+                <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 13 }}>Aucune classe</p>
+                  <button onClick={() => handleOpenClassModal()} className="btn btn--primary" style={{ marginTop: 12, fontSize: 12 }}>
+                    Créer une classe
                   </button>
                 </div>
               ) : (
@@ -795,28 +871,22 @@ export function Classes() {
                         setSelectedClass(cls);
                         setSelectedRoom(null);
                       }}
-                      className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group ${
-                        isActive
-                          ? 'bg-[var(--color-primary)] text-white shadow-md'
-                          : 'hover:bg-[var(--color-surface)] text-[var(--color-text)]'
-                      }`}
+                      className={`class-row ${isActive ? 'is-active' : ''}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">{cls.name}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)]'
-                        }`}>
-                          {cls.students_count}
-                        </span>
+                      <ClassChip label={getClassLabel(cls.name)} color={COLOR_PALETTE[classes.indexOf(cls) % COLOR_PALETTE.length]} size={28} muted={!isActive} />
+                      <div>
+                        <div className="class-row__name">{cls.name}</div>
+                        <div className="class-row__meta">{cls.students_count} élèves</div>
                       </div>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                        {cls.students_count}
+                      </span>
                     </button>
                   );
                 })
               )}
             </div>
-          </aside>
+          </div>
         ) : (
           /* Mobile: class selector dropdown */
           <div className="w-full mb-4 flex gap-2 items-center" style={{ position: 'relative' }}>
@@ -827,7 +897,7 @@ export function Classes() {
                 setSelectedClass(cls || null);
                 setSelectedRoom(null);
               }}
-              className="flex-1 px-4 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text)]"
+              className="flex-1 px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--surface)] text-[var(--text)]"
             >
               <option value="">Classe...</option>
               {classes.map(cls => (
@@ -836,7 +906,7 @@ export function Classes() {
             </select>
             <button
               onClick={() => handleOpenClassModal()}
-              className="p-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
+              className="p-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90"
               title="Nouvelle classe"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -852,10 +922,10 @@ export function Classes() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-4xl mb-4">📚</div>
-                <h2 className="text-lg font-medium text-[var(--color-text)]">
+                <h2 className="text-lg font-medium text-[var(--text)]">
                   {classes.length === 0 ? 'Creez votre premiere classe' : 'Selectionnez une classe'}
                 </h2>
-                <p className="text-[var(--color-text-tertiary)] mt-2">
+                <p className="text-[var(--text-dim)] mt-2">
                   {classes.length === 0
                     ? 'Commencez par creer une classe dans le panneau de gauche'
                     : 'Choisissez une classe pour voir son plan de placement'}
@@ -864,115 +934,56 @@ export function Classes() {
             </div>
           ) : (
             <>
-              {/* Room tab bar + actions */}
-              <div className="flex items-center gap-2 mb-4 flex-wrap">
-                {/* Room tabs */}
-                <div className="flex items-center gap-1 overflow-x-auto flex-shrink-0">
-                  {rooms.map(room => (
+              {/* Room tabs + meta */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 14, display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: 10 }}>
+                  {/* Room tabs (pill style) */}
+                  <div style={{ display: 'flex', gap: 4, background: 'var(--surface-3)', padding: 3, borderRadius: 9 }}>
+                    {rooms.map(room => (
+                      <button
+                        key={room.id}
+                        onClick={() => setSelectedRoom(room)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500,
+                          color: selectedRoom?.id === room.id ? 'var(--text)' : 'var(--text-muted)',
+                          background: selectedRoom?.id === room.id ? 'var(--surface)' : 'transparent',
+                          boxShadow: selectedRoom?.id === room.id ? 'var(--shadow-1)' : 'none',
+                          border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                          transition: 'all 0.12s',
+                        }}
+                      >
+                        {room.name}
+                      </button>
+                    ))}
                     <button
-                      key={room.id}
-                      onClick={() => setSelectedRoom(room)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                        selectedRoom?.id === room.id
-                          ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                          : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]'
-                      }`}
+                      onClick={() => handleOpenRoomModal()}
+                      style={{ padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: 'var(--indigo)', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
-                      {room.name}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handleOpenRoomModal()}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors whitespace-nowrap"
-                  >
-                    + Salle
-                  </button>
-                </div>
-
-                {/* Edit/delete current room */}
-                {selectedRoom && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenRoomModal(selectedRoom)}
-                      className="p-1.5 text-[var(--color-text-tertiary)] hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-surface-secondary)] transition-colors"
-                      title="Modifier la salle"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setShowRoomDeleteModal(true)}
-                      className="p-1.5 text-[var(--color-text-tertiary)] hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                      title="Supprimer la salle"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      + Salle
                     </button>
                   </div>
-                )}
 
-                <div className="flex-1" />
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={() => setShowStudentsPanel(!showStudentsPanel)}
-                    className="px-3 py-1.5 border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] hover:bg-[var(--color-background)] flex items-center gap-1.5"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                    </svg>
-                    Eleves ({students.length})
-                  </button>
-
-                  {selectedRoom && (
-                    <button
-                      onClick={() => setShowGrades(!showGrades)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                        showGrades
-                          ? 'bg-[var(--color-primary)] text-white'
-                          : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]'
-                      }`}
-                      title={showGrades ? 'Masquer les notes' : 'Afficher les notes'}
-                    >
-                      Notes
-                    </button>
-                  )}
-
-                  {selectedRoom && hasChanges && (
-                    <button
-                      onClick={handleSavePlan}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-1.5 text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </button>
-                  )}
-
-                  {/* Edit class */}
-                  <button
-                    onClick={() => handleOpenClassModal(selectedClass)}
-                    className="p-1.5 text-[var(--color-text-tertiary)] hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-surface-secondary)] transition-colors"
-                    title="Modifier la classe"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleOpenDeleteModal('class', selectedClass)}
-                    className="p-1.5 text-[var(--color-text-tertiary)] hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                    title="Supprimer la classe"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  {/* Meta info + actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {selectedRoom && selectedClass && (
+                      <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                        <span style={{ marginRight: 6, verticalAlign: 'middle', display: 'inline-flex' }}>
+                          <ClassChip label={getClassLabel(selectedClass.name)} color={COLOR_PALETTE[classes.indexOf(selectedClass) % COLOR_PALETTE.length]} size={22} />
+                        </span>
+                        {selectedClass.name} · <b>{students.length - unplacedStudents.length}/{students.length}</b> placés · {selectedRoom.name}
+                      </span>
+                    )}
+                    {selectedRoom && (
+                      <>
+                        <button onClick={() => handleOpenRoomModal(selectedRoom)} style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }} title="Modifier la salle">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </button>
+                        <button onClick={() => setShowRoomDeleteModal(true)} style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }} title="Supprimer la salle">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -981,15 +992,15 @@ export function Classes() {
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-4xl mb-4">🏫</div>
-                    <h2 className="text-lg font-medium text-[var(--color-text)]">
+                    <h2 className="text-lg font-medium text-[var(--text)]">
                       Pas de salle disponible
                     </h2>
-                    <p className="text-[var(--color-text-tertiary)] mt-2 mb-4">
+                    <p className="text-[var(--text-dim)] mt-2 mb-4">
                       Creez une salle pour commencer a placer vos eleves
                     </p>
                     <button
                       onClick={() => handleOpenRoomModal()}
-                      className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
+                      className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90"
                     >
                       Creer une salle
                     </button>
@@ -999,232 +1010,209 @@ export function Classes() {
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-4xl mb-4">🏫</div>
-                    <h2 className="text-lg font-medium text-[var(--color-text)]">
+                    <h2 className="text-lg font-medium text-[var(--text)]">
                       Selectionnez une salle
                     </h2>
-                    <p className="text-[var(--color-text-tertiary)] mt-2">
+                    <p className="text-[var(--text-dim)] mt-2">
                       Choisissez une salle ci-dessus pour placer vos eleves
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="flex gap-4 flex-1 min-h-0">
-                  {/* Seating grid */}
-                  <div className="flex-1 backdrop-blur-xl bg-white/70 border border-white/20 rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="font-semibold text-[var(--color-text)]">
-                        {selectedClass.name} — {selectedRoom.name}
-                      </h2>
-                      <span className="text-sm text-[var(--color-text-tertiary)]">
-                        {students.length - unplacedStudents.length}/{students.length} places
-                      </span>
-                    </div>
+                <div className="room-canvas" style={{ flex: 1, minHeight: 0 }}>
+                  {/* Legend */}
+                  <div className="room-legend" style={{ marginBottom: 12 }}>
+                    <span className="leg"><i style={{ background: 'var(--pos)' }} /> 16-20</span>
+                    <span className="leg"><i style={{ background: 'var(--indigo)' }} /> 12-16</span>
+                    <span className="leg"><i style={{ background: 'var(--warn)' }} /> 8-12</span>
+                    <span className="leg"><i style={{ background: 'var(--neg)' }} /> &lt;8</span>
+                    <span className="leg" style={{ marginLeft: 12, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.04em', fontWeight: 600 }}>Tendance</span>
+                    <span className="leg"><span style={{ color: 'var(--pos)', fontWeight: 700, marginRight: 3 }}>↗</span> en hausse</span>
+                    <span className="leg"><span style={{ color: 'var(--neg)', fontWeight: 700, marginRight: 3 }}>↘</span> en baisse</span>
+                  </div>
 
-                    {/* Grade legend */}
-                    {showGrades && studentGrades.size > 0 && (
-                      <div className="mb-4 flex items-center gap-4 text-xs">
-                        <span className="text-[var(--color-text-tertiary)]">Legende:</span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-green-500 to-green-600" />
-                          <span className="text-green-700">16-20</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600" />
-                          <span className="text-blue-700">12-16</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-orange-500 to-orange-600" />
-                          <span className="text-orange-700">8-12</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-500 to-red-600" />
-                          <span className="text-red-700">&lt;8</span>
-                        </span>
-                      </div>
-                    )}
+                  {/* Seat grid */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: 'relative', zIndex: 1 }}>
+                    {Array.from({ length: selectedRoom.grid_rows }).map((_, rowIdx) => (
+                      <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: `repeat(${selectedRoom.grid_cols}, 1fr)`, gap: 8, alignItems: 'start' }}>
+                        {Array.from({ length: selectedRoom.grid_cols }).map((_, colIdx) => {
+                          const student = getStudentAtCell(rowIdx, colIdx);
+                          const isOver = dragOverCell?.row === rowIdx && dragOverCell?.col === colIdx;
+                          const isDisabled = isCellDisabled(rowIdx, colIdx);
 
-                    {/* Grid */}
-                    <div
-                      className="grid gap-2 justify-center w-full"
-                      style={{ gridTemplateColumns: `repeat(${selectedRoom.grid_cols}, 1fr)`, maxWidth: `${selectedRoom.grid_cols * 100}px` }}
-                    >
-                      {Array.from({ length: selectedRoom.grid_rows * selectedRoom.grid_cols }).map((_, i) => {
-                        const row = Math.floor(i / selectedRoom.grid_cols);
-                        const col = i % selectedRoom.grid_cols;
-                        const student = getStudentAtCell(row, col);
-                        const isOver = dragOverCell?.row === row && dragOverCell?.col === col;
-                        const isDisabled = isCellDisabled(row, col);
+                          if (isDisabled) {
+                            return <div key={`${rowIdx}-${colIdx}`} style={{ height: 112 }} />;
+                          }
 
-                        if (isDisabled) {
+                          const gradeData = student && showGrades ? getStudentGradeData(student.id) : undefined;
+                          const grade = gradeData?.grade ?? 10;
+                          const barColor = grade >= 16 ? 'var(--pos)' : grade >= 12 ? 'var(--indigo)' : grade >= 8 ? 'var(--warn)' : 'var(--neg)';
+
                           return (
                             <div
-                              key={`${row}-${col}`}
-                              className="aspect-square rounded-xl border border-slate-300 dark:border-slate-600 flex items-center justify-center bg-slate-200 dark:bg-slate-700"
-                              style={{
-                                backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.08) 4px, rgba(0,0,0,0.08) 8px)'
-                              }}
-                              title="Allee (non disponible)"
-                            />
-                          );
-                        }
+                              key={`${rowIdx}-${colIdx}`}
+                              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: student ? 'grab' : 'default' }}
+                              draggable={!!student}
+                              onDragStart={() => student && handleDragStart(student.id, { row: rowIdx, col: colIdx })}
+                              onDragOver={(e) => handleDragOver(e, rowIdx, colIdx)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={() => handleDrop(rowIdx, colIdx)}
+                            >
+                              {/* Chair */}
+                              <div className={student ? 'desk-3d__chair' : 'desk-3d--empty desk-3d__chair'} />
 
-                        const gradeData = student && showGrades ? getStudentGradeData(student.id) : undefined;
-                        const gradeColors = gradeData ? getGradeColor(gradeData.grade) : null;
-
-                        return (
-                          <div
-                            key={`${row}-${col}`}
-                            className={`
-                              aspect-square rounded-xl border-2 flex items-center justify-center
-                              transition-all duration-200
-                              ${student
-                                ? `bg-gradient-to-br ${gradeColors ? gradeColors.bg : 'from-blue-50 to-blue-100'} ${gradeColors ? gradeColors.border : 'border-blue-300'} cursor-grab border-solid`
-                                : 'bg-slate-50 border-slate-200 border-dashed hover:border-blue-300 hover:bg-blue-50'
-                              }
-                              ${isOver ? 'border-blue-500 bg-blue-100 scale-105' : ''}
-                            `}
-                            draggable={!!student}
-                            onDragStart={() => student && handleDragStart(student.id, { row, col })}
-                            onDragOver={(e) => handleDragOver(e, row, col)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={() => handleDrop(row, col)}
-                          >
-                            {student ? (
-                              <div className="text-center p-1 relative group w-full">
-                                <div className={`w-9 h-9 mx-auto rounded-full bg-gradient-to-br ${gradeColors ? gradeColors.avatar : 'from-blue-400 to-blue-600'} flex items-center justify-center text-white font-bold text-sm mb-0.5 relative`}>
-                                  {student.pseudo.charAt(0)}
-                                  {gradeData && showGrades && (
-                                    <span className={`absolute -bottom-1 -right-1 min-w-[20px] h-[16px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-white shadow-sm ${gradeColors?.text}`}>
-                                      {gradeData.grade.toFixed(0)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] font-medium text-[var(--color-text)] truncate max-w-[75px] mx-auto leading-tight">
-                                  {student.pseudo}
-                                </div>
-                                {gradeData && showGrades && (
-                                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                                    <div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                                      +{gradeData.participations} / -{gradeData.malus}
+                              {/* Desk with pill inside */}
+                              <div className={student ? 'desk-3d' : 'desk-3d desk-3d--empty'} style={{
+                                outline: isOver ? '2px dashed var(--accent)' : 'none',
+                                outlineOffset: isOver ? 2 : 0,
+                              }}>
+                                {!student && (
+                                  <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--text-dim)', fontSize: 11, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.06em', pointerEvents: 'none' }}>
+                                    {rowIdx + 1}-{colIdx + 1}
+                                  </div>
+                                )}
+                                {student && (
+                                  <div className="student-pill" style={{ position: 'absolute', top: 6, left: 5, right: 5, bottom: 4, zIndex: 2 }}>
+                                    <div className="student-pill__bar" style={{ background: barColor }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+                                          {student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase()}
+                                        </span>
+                                        {gradeData && (
+                                          <span style={{ fontSize: 10, fontWeight: 700, color: gradeData.trend === 'up' ? 'var(--pos)' : gradeData.trend === 'down' ? 'var(--neg)' : 'var(--text-dim)' }}>
+                                            {gradeData.trend === 'up' ? '↗' : gradeData.trend === 'down' ? '↘' : '→'}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ fontWeight: 600, fontSize: 11.5, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '1px 0' }}>
+                                        {student.pseudo}
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                        {gradeData && (
+                                          <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                                          </span>
+                                        )}
+                                        {gradeData && <MiniSpark history={gradeData.sparkHistory} />}
+                                      </div>
                                     </div>
                                   </div>
                                 )}
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleRemoveFromSeat(student.id); }}
-                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  ×
-                                </button>
                               </div>
-                            ) : (
-                              <span className="text-slate-300 text-xs">{row + 1},{col + 1}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Teacher desk indicator */}
-                    <div className="mt-6 flex justify-center">
-                      <div className="px-8 py-2 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg text-slate-600 text-sm font-medium">
-                        Tableau
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
+                    ))}
                   </div>
 
-                  {/* Unplaced students panel */}
-                  <div className="w-72 backdrop-blur-xl bg-white/70 border border-white/20 rounded-2xl p-4 shadow-lg max-h-[calc(100vh-200px)] flex flex-col shrink-0">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-[var(--color-text)]">
-                        Non places ({unplacedStudents.length})
-                      </h3>
-                    </div>
+                  {/* Teacher desk */}
+                  <div style={{ margin: '18px auto 0', width: 70, height: 24, borderRadius: 3, background: 'linear-gradient(180deg, #D4B089, #B68E67)', boxShadow: '0 2px 0 0 #8B6B51, 0 4px 8px rgba(0,0,0,0.12)', position: 'relative' }}>
+                    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>PROF</div>
+                  </div>
 
-                    <div className="flex-1 overflow-y-auto space-y-2">
-                      {unplacedStudents.map(student => {
-                        const gradeData = showGrades ? getStudentGradeData(student.id) : undefined;
-                        const gradeColors = gradeData ? getGradeColor(gradeData.grade) : null;
+                  {/* Chalkboard */}
+                  <div style={{ margin: '16px auto 0', width: '60%', maxWidth: 500, height: 32, borderRadius: 4, background: 'linear-gradient(180deg, #2D3748, #1A202C)', boxShadow: '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)', display: 'grid', placeItems: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.08em', fontStyle: 'italic', fontFamily: 'var(--font-display)' }}>Tableau</span>
+                  </div>
 
-                        return (
-                          <div
-                            key={student.id}
-                            draggable
-                            onDragStart={() => handleDragStart(student.id)}
-                            className={`flex items-center gap-3 p-3 rounded-xl cursor-grab hover:shadow-md transition-shadow border ${
-                              gradeColors
-                                ? `bg-gradient-to-br ${gradeColors.bg} ${gradeColors.border}`
-                                : 'bg-white/80 border-white/50'
-                            }`}
-                          >
-                            <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${gradeColors ? gradeColors.avatar : 'from-slate-400 to-slate-600'} flex items-center justify-center text-white font-bold text-sm relative`}>
-                              {student.pseudo.charAt(0)}
-                              {gradeData && showGrades && (
-                                <span className={`absolute -bottom-1 -right-1 min-w-[18px] h-[14px] px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center bg-white shadow-sm ${gradeColors?.text}`}>
-                                  {gradeData.grade.toFixed(0)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm font-medium text-[var(--color-text)] truncate block">
-                                {student.pseudo}
-                              </span>
-                              {gradeData && showGrades && (
-                                <span className="text-[10px] text-[var(--color-text-tertiary)]">
-                                  +{gradeData.participations} / -{gradeData.malus}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {unplacedStudents.length === 0 && (
-                        <div className="text-center text-[var(--color-text-tertiary)] py-8">
-                          Tous les eleves sont places
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Quick actions */}
-                    <div className="mt-4 pt-4 border-t border-white/30 space-y-2">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImportFile}
-                        accept=".xlsx,.xls,.csv"
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)] flex items-center justify-center gap-2"
-                      >
-                        Import CSV/Excel
-                      </button>
-                      <button
-                        onClick={() => handleOpenStudentModal()}
-                        className="w-full px-3 py-2 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
-                      >
-                        + Ajouter un eleve
-                      </button>
-                    </div>
+                  {/* Door indicator */}
+                  <div style={{ position: 'absolute', bottom: 8, right: 16, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-dim)', fontSize: 11 }}>
+                    <Icon name="door" size={14} />
+                    <span>Porte</span>
                   </div>
                 </div>
               )}
             </>
           )}
         </main>
+
+        {/* RIGHT SIDEBAR - Pool (unplaced students) */}
+        {selectedClass && selectedRoom && (
+          <div className="pool" onDragOver={(e) => e.preventDefault()} onDrop={handleDropToPool}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div className="pool__title">Non placés</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {unplacedStudents.length} sur {students.length}
+                </div>
+              </div>
+            </div>
+
+            {unplacedStudents.length === 0 ? (
+              <div className="pool__empty">
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--pos)', color: '#fff', margin: '0 auto 8px', display: 'grid', placeItems: 'center', fontSize: 16 }}>✓</div>
+                Tous les élèves sont placés.
+                <small style={{ display: 'block', color: 'var(--text-muted)', fontWeight: 400, marginTop: 4 }}>
+                  Glissez ici un élève d'un bureau pour le retirer.
+                </small>
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {unplacedStudents.map(student => {
+                  const gradeData = showGrades ? getStudentGradeData(student.id) : undefined;
+                  const grade = gradeData?.grade ?? 10;
+                  const barColor = grade >= 16 ? 'var(--pos)' : grade >= 12 ? 'var(--indigo)' : grade >= 8 ? 'var(--warn)' : 'var(--neg)';
+
+                  return (
+                    <div
+                      key={student.id}
+                      draggable
+                      onDragStart={() => handleDragStart(student.id)}
+                      style={{ padding: 4, borderRadius: 10, cursor: 'grab', transition: 'background 0.1s' }}
+                      onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'}
+                      onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                    >
+                      <div className="student-pill" style={{ width: '100%' }}>
+                        <div className="student-pill__bar" style={{ background: barColor }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+                              {student.pseudo.substring(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <div style={{ fontWeight: 600, fontSize: 11.5, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '1px 0' }}>
+                            {student.pseudo}
+                          </div>
+                          {gradeData && showGrades && (
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                              {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Footer actions */}
+            <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx,.xls,.csv" className="hidden" />
+              <button onClick={() => fileInputRef.current?.click()} className="btn btn--ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
+                Import CSV / Excel
+              </button>
+              <button onClick={() => handleOpenStudentModal()} className="btn btn--accent" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
+                + Ajouter un élève
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Students management panel (modal) */}
       {showStudentsPanel && selectedClass && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+          <div className="bg-[var(--surface)] rounded-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-[var(--text)]">
                 Eleves - {selectedClass.name}
               </h3>
               <button
                 onClick={() => setShowStudentsPanel(false)}
-                className="p-2 text-[var(--color-text-tertiary)] hover:bg-[var(--color-background)] rounded"
+                className="p-2 text-[var(--text-dim)] hover:bg-[var(--bg)] rounded"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1234,25 +1222,25 @@ export function Classes() {
 
             <div className="flex-1 overflow-y-auto p-4">
               {students.length === 0 ? (
-                <div className="text-center text-[var(--color-text-tertiary)] py-8">
+                <div className="text-center text-[var(--text-dim)] py-8">
                   Aucun eleve dans cette classe
                 </div>
               ) : (
                 <div className="space-y-2">
                   {students.map(student => (
-                    <div key={student.id} className="flex items-center gap-3 p-3 bg-[var(--color-background)] rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-semibold">
+                    <div key={student.id} className="flex items-center gap-3 p-3 bg-[var(--bg)] rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-[var(--indigo)] flex items-center justify-center text-white font-semibold">
                         {student.pseudo.charAt(0)}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium text-[var(--color-text)]">{student.pseudo}</div>
-                        <div className="text-xs text-[var(--color-text-tertiary)]">
+                        <div className="font-medium text-[var(--text)]">{student.pseudo}</div>
+                        <div className="text-xs text-[var(--text-dim)]">
                           {placedStudentIds.has(student.id) ? 'Place' : 'Non place'}
                         </div>
                       </div>
                       <button
                         onClick={() => handleOpenStudentModal(student)}
-                        className="p-2 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded"
+                        className="p-2 text-[var(--indigo)] hover:bg-[var(--indigo)]/10 rounded"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1272,7 +1260,7 @@ export function Classes() {
               )}
             </div>
 
-            <div className="p-4 border-t border-[var(--color-border)] flex gap-2">
+            <div className="p-4 border-t border-[var(--border)] flex gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -1282,13 +1270,13 @@ export function Classes() {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
               >
                 Import
               </button>
               <button
                 onClick={() => handleOpenStudentModal()}
-                className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
+                className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90"
               >
                 + Ajouter un eleve
               </button>
@@ -1309,17 +1297,17 @@ export function Classes() {
       {/* Room Delete Modal */}
       {showRoomDeleteModal && selectedRoom && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Confirmer la suppression
             </h3>
-            <p className="text-[var(--color-text-secondary)] mb-6">
+            <p className="text-[var(--text-muted)] mb-6">
               Supprimer la salle "{selectedRoom.name}" ? Les plans de classe associes seront aussi supprimes.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowRoomDeleteModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
                 disabled={isSubmitting}
               >
                 Annuler
@@ -1339,8 +1327,8 @@ export function Classes() {
       {/* Class Modal */}
       {showClassModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               {editingClass ? 'Modifier la classe' : 'Nouvelle classe'}
             </h3>
             <input
@@ -1348,21 +1336,21 @@ export function Classes() {
               value={className}
               onChange={(e) => setClassName(e.target.value)}
               placeholder="Nom de la classe (ex: 3eme B)"
-              className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)] mb-4"
+              className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)] mb-4"
               autoFocus
             />
             {formError && <p className="text-red-500 text-sm mb-4">{formError}</p>}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowClassModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
                 disabled={isSubmitting}
               >
                 Annuler
               </button>
               <button
                 onClick={handleSaveClass}
-                className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'En cours...' : editingClass ? 'Modifier' : 'Creer'}
@@ -1375,12 +1363,12 @@ export function Classes() {
       {/* Student Modal */}
       {showStudentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               {editingStudent ? 'Modifier l\'eleve' : 'Nouvel eleve'}
             </h3>
             {editingStudent && (
-              <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
+              <p className="text-sm text-[var(--text-dim)] mb-4">
                 Pseudo actuel: <strong>{editingStudent.pseudo}</strong>
               </p>
             )}
@@ -1390,7 +1378,7 @@ export function Classes() {
                 value={studentFirstName}
                 onChange={(e) => setStudentFirstName(e.target.value)}
                 placeholder="Prenom"
-                className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
                 autoFocus
               />
               <input
@@ -1398,10 +1386,10 @@ export function Classes() {
                 value={studentLastName}
                 onChange={(e) => setStudentLastName(e.target.value)}
                 placeholder="Nom"
-                className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-text)]"
+                className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
               />
               {studentFirstName && studentLastName && (
-                <p className="text-sm text-[var(--color-text-tertiary)]">
+                <p className="text-sm text-[var(--text-dim)]">
                   Pseudo: <strong>{generatePseudo(studentFirstName, studentLastName)}</strong>
                 </p>
               )}
@@ -1410,14 +1398,14 @@ export function Classes() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowStudentModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
                 disabled={isSubmitting}
               >
                 Annuler
               </button>
               <button
                 onClick={handleSaveStudent}
-                className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'En cours...' : editingStudent ? 'Modifier' : 'Ajouter'}
@@ -1430,11 +1418,11 @@ export function Classes() {
       {/* Delete Modal */}
       {showDeleteModal && deleteTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Confirmer la suppression
             </h3>
-            <p className="text-[var(--color-text-secondary)] mb-6">
+            <p className="text-[var(--text-muted)] mb-6">
               {deleteTarget.type === 'class'
                 ? `Supprimer la classe "${(deleteTarget.item as Class).name}" et tous ses eleves ?`
                 : `Supprimer l'eleve "${(deleteTarget.item as Student).pseudo}" ?`}
@@ -1442,7 +1430,7 @@ export function Classes() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-background)]"
+                className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
                 disabled={isSubmitting}
               >
                 Annuler

@@ -43,38 +43,38 @@ export function GroupSummary() {
         {results.map((g, i) => (
           <div
             key={g.id}
-            className="bg-[var(--color-surface)] p-4"
+            className="bg-[var(--surface)] p-4"
             style={{
-              borderRadius: 'var(--radius-xl)',
-              boxShadow: 'var(--shadow-sm)',
-              borderLeft: i === 0 ? '4px solid var(--color-success)' : undefined,
+              borderRadius: 'var(--radius)',
+              boxShadow: 'var(--shadow-1)',
+              borderLeft: i === 0 ? '4px solid var(--pos)' : undefined,
             }}
           >
             <div className="flex items-center gap-3 mb-2">
               <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                i === 0 ? 'bg-[var(--color-success)] text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]'
+                i === 0 ? 'bg-[var(--pos)] text-white' : 'bg-[var(--surface-3)] text-[var(--text-muted)]'
               }`}>
                 {i === 0 ? '🥇' : `#${i + 1}`}
               </span>
               <div className="flex-1">
-                <span className="font-semibold text-[var(--color-text)]">{g.name}</span>
-                <div className="text-[10px] text-[var(--color-text-tertiary)]">
+                <span className="font-semibold text-[var(--text)]">{g.name}</span>
+                <div className="text-[10px] text-[var(--text-dim)]">
                   {g.members.map(m => m.pseudo).join(', ')}
                 </div>
               </div>
               <div className="text-right">
-                <span className="font-bold text-lg text-[var(--color-text)]">{g.total}</span>
-                <span className="text-sm text-[var(--color-text-tertiary)]">/{g.maxScore}</span>
+                <span className="font-bold text-lg text-[var(--text)]">{g.total}</span>
+                <span className="text-sm text-[var(--text-dim)]">/{g.maxScore}</span>
               </div>
             </div>
 
             {/* Progress bar */}
-            <div className="h-2 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden">
+            <div className="h-2 bg-[var(--surface-3)] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${g.pct}%`,
-                  background: g.pct >= 70 ? 'var(--color-success)' : g.pct >= 50 ? 'var(--color-remarque)' : 'var(--color-error)',
+                  background: g.pct >= 70 ? 'var(--pos)' : g.pct >= 50 ? 'var(--color-remarque)' : 'var(--neg)',
                 }}
               />
             </div>
@@ -84,14 +84,14 @@ export function GroupSummary() {
               {sessionData.criteria.map(c => {
                 const grade = g.grades.find(gr => gr.criteria_id === c.id);
                 return (
-                  <div key={c.id} className="flex justify-between text-[10px] text-[var(--color-text-secondary)]">
+                  <div key={c.id} className="flex justify-between text-[10px] text-[var(--text-muted)]">
                     <span>{c.label}</span>
                     <span className="font-semibold">{grade?.points_awarded || 0}/{c.max_points}</span>
                   </div>
                 );
               })}
               {g.conduct_malus > 0 && (
-                <div className="flex justify-between text-[10px] text-[var(--color-error)]">
+                <div className="flex justify-between text-[10px] text-[var(--neg)]">
                   <span>Malus</span>
                   <span className="font-semibold">-{g.conduct_malus}</span>
                 </div>
@@ -113,7 +113,7 @@ export function GroupSummary() {
         <button
           onClick={cancelFlow}
           className="w-full py-4 text-white font-bold text-lg active:scale-[0.98] transition-transform"
-          style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-xl)', border: 'none' }}
+          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)', border: 'none' }}
         >
           Retour a l'accueil
         </button>
@@ -124,9 +124,9 @@ export function GroupSummary() {
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[var(--color-surface)] p-3 text-center" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xs)' }}>
-      <div className="font-bold text-lg text-[var(--color-text)]">{value}</div>
-      <div className="text-[10px] text-[var(--color-text-tertiary)]">{label}</div>
+    <div className="bg-[var(--surface)] p-3 text-center" style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-xs)' }}>
+      <div className="font-bold text-lg text-[var(--text)]">{value}</div>
+      <div className="text-[10px] text-[var(--text-dim)]">{label}</div>
     </div>
   );
 }

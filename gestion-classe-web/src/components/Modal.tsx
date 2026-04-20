@@ -60,29 +60,29 @@ export function Modal({
       aria-labelledby="modal-title"
     >
       <div
-        className={`bg-[var(--color-surface)] w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
-        style={{ borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-lg)' }}
+        className={`bg-[var(--surface)] w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+        style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between shrink-0">
+        <div className="p-5 border-b border-[var(--border)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             {icon && (
               <div
                 className="w-10 h-10 flex items-center justify-center"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 {icon}
               </div>
             )}
-            <h3 id="modal-title" className="text-lg font-semibold text-[var(--color-text)]">
+            <h3 id="modal-title" className="text-lg font-semibold text-[var(--text)]">
               {title}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] transition-colors"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            className="w-10 h-10 flex items-center justify-center hover:bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors"
+            style={{ borderRadius: 'var(--radius)' }}
             aria-label="Fermer"
           >
             ×
@@ -96,7 +96,7 @@ export function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="p-4 border-t border-[var(--color-border)] shrink-0">
+          <div className="p-4 border-t border-[var(--border)] shrink-0">
             {footer}
           </div>
         )}
@@ -133,7 +133,7 @@ export function ConfirmModal({
   isLoading = false,
   variant = 'danger',
 }: ConfirmModalProps) {
-  const iconBg = variant === 'danger' ? 'var(--color-error-soft)' : 'var(--color-warning-soft)';
+  const iconBg = variant === 'danger' ? 'var(--neg-soft)' : 'var(--warn-soft)';
   const buttonBg = variant === 'danger' ? 'var(--gradient-error)' : 'var(--gradient-warning)';
 
   return (
@@ -144,18 +144,18 @@ export function ConfirmModal({
       icon={
         <div
           className="w-12 h-12 flex items-center justify-center"
-          style={{ background: iconBg, borderRadius: 'var(--radius-lg)' }}
+          style={{ background: iconBg, borderRadius: 'var(--radius)' }}
         >
           <span className="text-2xl">{variant === 'danger' ? '🗑️' : '⚠️'}</span>
         </div>
       }
     >
       <div className="space-y-4">
-        <p className="text-[var(--color-text-secondary)]">{message}</p>
+        <p className="text-[var(--text-muted)]">{message}</p>
         {details && (
           <p
-            className="text-sm text-[var(--color-text-tertiary)] p-3 bg-[var(--color-surface-secondary)]"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            className="text-sm text-[var(--text-dim)] p-3 bg-[var(--surface-3)]"
+            style={{ borderRadius: 'var(--radius)' }}
           >
             {details}
           </p>
@@ -163,8 +163,8 @@ export function ConfirmModal({
         <div className="flex gap-3 justify-end pt-2">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors font-medium"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            className="px-4 py-2.5 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors font-medium"
+            style={{ borderRadius: 'var(--radius)' }}
             disabled={isLoading}
           >
             {cancelLabel}
@@ -172,7 +172,7 @@ export function ConfirmModal({
           <button
             onClick={onConfirm}
             className="px-4 py-2.5 text-white hover:opacity-90 disabled:opacity-50 transition-all font-medium"
-            style={{ background: buttonBg, borderRadius: 'var(--radius-lg)' }}
+            style={{ background: buttonBg, borderRadius: 'var(--radius)' }}
             disabled={isLoading}
           >
             {isLoading ? 'Chargement...' : confirmLabel}

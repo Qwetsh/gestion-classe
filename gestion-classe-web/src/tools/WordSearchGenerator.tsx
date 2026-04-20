@@ -223,18 +223,18 @@ function WordSearchResult({
     <div className="space-y-5">
       {/* Action bar */}
       <div
-        className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)]"
+        className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]"
         style={{ boxShadow: 'var(--shadow-xs)' }}
       >
-        <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-          <span className="font-semibold text-[var(--color-text)]">{result.placed.length}</span> mots placés
-          <span className="mx-1 text-[var(--color-border)]">|</span>
-          <span className="font-semibold text-[var(--color-text)]">{result.size}&times;{result.size}</span> grille
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <span className="font-semibold text-[var(--text)]">{result.placed.length}</span> mots placés
+          <span className="mx-1 text-[var(--border)]">|</span>
+          <span className="font-semibold text-[var(--text)]">{result.size}&times;{result.size}</span> grille
         </div>
         <div className="flex gap-2">
           <button
             onClick={onRegenerate}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)] transition-all active:scale-95"
+            className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] hover:bg-[var(--border)] transition-all active:scale-95"
           >
             Regénérer
           </button>
@@ -257,7 +257,7 @@ function WordSearchResult({
 
       {/* Grid */}
       <div
-        className="rounded-2xl p-6 bg-[var(--color-surface)] border border-[var(--color-border)] inline-block"
+        className="rounded-2xl p-6 bg-[var(--surface)] border border-[var(--border)] inline-block"
         style={{ boxShadow: 'var(--shadow-sm)' }}
       >
         <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
@@ -276,8 +276,8 @@ function WordSearchResult({
                         fontWeight: 700,
                         fontSize: 16,
                         fontFamily: "'Courier New', monospace",
-                        color: isHighlighted ? '#fff' : 'var(--color-text)',
-                        backgroundColor: isHighlighted ? 'var(--color-primary)' : 'transparent',
+                        color: isHighlighted ? '#fff' : 'var(--text)',
+                        backgroundColor: isHighlighted ? 'var(--indigo)' : 'transparent',
                         borderRadius: isHighlighted ? 4 : 0,
                         transition: 'all 0.2s',
                       }}
@@ -294,12 +294,12 @@ function WordSearchResult({
 
       {/* Word list */}
       <div
-        className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+        className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
         style={{ boxShadow: 'var(--shadow-xs)' }}
       >
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">
           Mots à trouver
-          <span className="ml-2 text-[var(--color-primary)]">({result.placed.length})</span>
+          <span className="ml-2 text-[var(--indigo)]">({result.placed.length})</span>
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {words
@@ -307,11 +307,11 @@ function WordSearchResult({
             .map((e) => (
               <div
                 key={e.word}
-                className="text-sm py-1.5 px-3 rounded-lg bg-[var(--color-surface-secondary)] border border-[var(--color-border)]"
+                className="text-sm py-1.5 px-3 rounded-lg bg-[var(--surface-3)] border border-[var(--border)]"
               >
-                <span className="font-bold text-[var(--color-text)]">{e.word}</span>
+                <span className="font-bold text-[var(--text)]">{e.word}</span>
                 {showDefinitions && e.definition && (
-                  <span className="block text-xs text-[var(--color-text-tertiary)] mt-0.5 truncate">
+                  <span className="block text-xs text-[var(--text-dim)] mt-0.5 truncate">
                     {e.definition}
                   </span>
                 )}
@@ -461,10 +461,10 @@ export default function WordSearchGenerator() {
     <div className="space-y-6 max-w-4xl">
       {/* Mode selector */}
       <div
-        className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+        className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
         style={{ boxShadow: 'var(--shadow-xs)' }}
       >
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Source des mots</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">Source des mots</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {([
             { key: 'libre' as const, icon: '✍️', label: 'Saisie libre', desc: 'Vos propres mots' },
@@ -475,15 +475,15 @@ export default function WordSearchGenerator() {
               onClick={() => switchMode(opt.key)}
               className={`flex-1 p-4 rounded-xl text-left transition-all border-2 ${
                 mode === opt.key
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-surface-secondary)] hover:border-[var(--color-text-tertiary)]'
+                  ? 'border-[var(--indigo)] bg-[var(--indigo-soft)]'
+                  : 'border-[var(--border)] bg-[var(--surface-3)] hover:border-[var(--text-dim)]'
               }`}
             >
               <div className="text-xl mb-1">{opt.icon}</div>
-              <div className={`text-sm font-semibold ${mode === opt.key ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}`}>
+              <div className={`text-sm font-semibold ${mode === opt.key ? 'text-[var(--indigo)]' : 'text-[var(--text)]'}`}>
                 {opt.label}
               </div>
-              <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{opt.desc}</div>
+              <div className="text-xs text-[var(--text-dim)] mt-0.5">{opt.desc}</div>
             </button>
           ))}
         </div>
@@ -492,13 +492,13 @@ export default function WordSearchGenerator() {
       {/* Libre mode */}
       {mode === 'libre' && (
         <div
-          className="rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden"
+          className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] overflow-hidden"
           style={{ boxShadow: 'var(--shadow-xs)' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[var(--surface-3)]">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)]">
                 Mots
               </h2>
               {wordList.length > 0 && (
@@ -510,11 +510,11 @@ export default function WordSearchGenerator() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => libreView === 'form' ? syncListToText() : syncTextToList()}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--indigo)] hover:bg-[var(--indigo-soft)] transition-all"
               >
                 {libreView === 'form' ? 'Mode texte' : 'Mode formulaire'}
               </button>
-              <label className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all cursor-pointer">
+              <label className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--indigo)] hover:bg-[var(--indigo-soft)] transition-all cursor-pointer">
                 Importer Excel
                 <input
                   type="file"
@@ -540,7 +540,7 @@ export default function WordSearchGenerator() {
                     onChange={(e) => setNewWord(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWord(); } }}
                     placeholder="Mot"
-                    className="flex-1 px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text)] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent transition-all"
                     autoFocus
                   />
                   <button
@@ -554,7 +554,7 @@ export default function WordSearchGenerator() {
                 </div>
 
                 {wordList.length === 0 ? (
-                  <div className="text-center py-8 text-[var(--color-text-tertiary)]">
+                  <div className="text-center py-8 text-[var(--text-dim)]">
                     <div className="text-3xl mb-2">&#128300;</div>
                     <p className="text-sm">Ajoutez des mots pour commencer</p>
                     <p className="text-xs mt-1">ou importez un fichier Excel</p>
@@ -564,12 +564,12 @@ export default function WordSearchGenerator() {
                     {wordList.map((word, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-surface-secondary)] border border-[var(--color-border)] group hover:border-[var(--color-primary)] transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--surface-3)] border border-[var(--border)] group hover:border-[var(--indigo)] transition-all"
                       >
-                        <span className="text-sm font-bold text-[var(--color-text)] uppercase">{word}</span>
+                        <span className="text-sm font-bold text-[var(--text)] uppercase">{word}</span>
                         <button
                           onClick={() => removeWord(idx)}
-                          className="w-5 h-5 rounded flex items-center justify-center text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-all opacity-0 group-hover:opacity-100 text-xs"
+                          className="w-5 h-5 rounded flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-all opacity-0 group-hover:opacity-100 text-xs"
                         >
                           &times;
                         </button>
@@ -579,10 +579,10 @@ export default function WordSearchGenerator() {
                 )}
 
                 {wordList.length > 0 && (
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--border)]">
                     <button
                       onClick={() => setWordList([])}
-                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors"
+                      className="text-xs text-[var(--text-dim)] hover:text-[var(--neg)] transition-colors"
                     >
                       Tout effacer
                     </button>
@@ -603,10 +603,10 @@ export default function WordSearchGenerator() {
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder={"CHAT\nCHIEN\nOISEAU\nPOISSON"}
                   rows={8}
-                  className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent transition-all"
                   autoFocus
                 />
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-2">Un mot par ligne</p>
+                <p className="text-xs text-[var(--text-dim)] mt-2">Un mot par ligne</p>
                 <div className="flex justify-end mt-3">
                   <button
                     onClick={syncTextToList}
@@ -628,13 +628,13 @@ export default function WordSearchGenerator() {
         <>
           {/* Themes */}
           <div
-            className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)]"
+            className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)]"
             style={{ boxShadow: 'var(--shadow-xs)' }}
           >
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">
               Thèmes
               {selectedThemes.size > 0 && (
-                <span className="ml-2 text-[var(--color-primary)]">({selectedThemes.size} sélectionné{selectedThemes.size > 1 ? 's' : ''})</span>
+                <span className="ml-2 text-[var(--indigo)]">({selectedThemes.size} sélectionné{selectedThemes.size > 1 ? 's' : ''})</span>
               )}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -648,7 +648,7 @@ export default function WordSearchGenerator() {
                     className={`flex flex-col items-center justify-center text-center p-3 rounded-xl transition-all active:scale-95 min-h-[72px] ${
                       active
                         ? 'text-white border-2 border-transparent'
-                        : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)] border-2 border-[var(--color-border)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+                        : 'text-[var(--text-muted)] bg-[var(--surface-3)] border-2 border-[var(--border)] hover:border-[var(--indigo)] hover:text-[var(--indigo)]'
                     }`}
                     style={active ? { background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-xs)' } : undefined}
                   >
@@ -659,7 +659,7 @@ export default function WordSearchGenerator() {
               })}
             </div>
             {selectedThemes.size === 0 && (
-              <p className="text-xs text-[var(--color-text-tertiary)] mt-3 flex items-center gap-1">
+              <p className="text-xs text-[var(--text-dim)] mt-3 flex items-center gap-1">
                 <span>Aucune sélection = tous les thèmes</span>
                 <span className="font-semibold">({vocabSource.vocabulary.length} mots)</span>
               </p>
@@ -668,11 +668,11 @@ export default function WordSearchGenerator() {
 
           {/* Options + Word count + generate */}
           <div
-            className="rounded-2xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-wrap items-end gap-6"
+            className="rounded-2xl p-5 bg-[var(--surface)] border border-[var(--border)] flex flex-wrap items-end gap-6"
             style={{ boxShadow: 'var(--shadow-xs)' }}
           >
             <div className="flex-1 min-w-[200px]">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Nombre de mots</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dim)] mb-3">Nombre de mots</h2>
               <div className="flex items-center gap-4">
                 <input
                   type="range"
@@ -680,7 +680,7 @@ export default function WordSearchGenerator() {
                   max={Math.min(30, availableCount)}
                   value={Math.min(wordCount, availableCount)}
                   onChange={(e) => setWordCount(Number(e.target.value))}
-                  className="flex-1 accent-[var(--color-primary)]"
+                  className="flex-1 accent-[var(--indigo)]"
                 />
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white"
@@ -689,18 +689,18 @@ export default function WordSearchGenerator() {
                   {Math.min(wordCount, availableCount)}
                 </div>
               </div>
-              <p className="text-xs text-[var(--color-text-tertiary)] mt-2">
+              <p className="text-xs text-[var(--text-dim)] mt-2">
                 {availableCount} mots disponibles dans {selectedThemes.size || vocabSource.themes.length} thème{(selectedThemes.size || vocabSource.themes.length) > 1 ? 's' : ''}
               </p>
             </div>
 
             {/* Show definitions toggle */}
             <div className="flex items-center gap-3">
-              <label className="text-xs text-[var(--color-text-secondary)] cursor-pointer select-none flex items-center gap-2">
+              <label className="text-xs text-[var(--text-muted)] cursor-pointer select-none flex items-center gap-2">
                 <button
                   onClick={() => setShowDefinitions(!showDefinitions)}
                   className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${
-                    showDefinitions ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'
+                    showDefinitions ? 'bg-[var(--indigo)]' : 'bg-[var(--border)]'
                   }`}
                 >
                   <span
@@ -728,10 +728,10 @@ export default function WordSearchGenerator() {
         <div className="flex items-start gap-3 p-4 rounded-2xl bg-[var(--color-remarque-soft)] border border-[var(--color-remarque)]">
           <span className="text-lg">&#9888;</span>
           <div>
-            <p className="text-sm font-medium text-[var(--color-text)]">
+            <p className="text-sm font-medium text-[var(--text)]">
               {result.notPlaced.length} mot{result.notPlaced.length > 1 ? 's' : ''} non placé{result.notPlaced.length > 1 ? 's' : ''}
             </p>
-            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               {result.notPlaced.join(', ')}
             </p>
           </div>

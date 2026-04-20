@@ -480,8 +480,8 @@ export function Analytics() {
       <Layout>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[var(--color-text-secondary)]">Chargement...</span>
+            <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-[var(--text-muted)]">Chargement...</span>
           </div>
         </div>
       </Layout>
@@ -492,10 +492,10 @@ export function Analytics() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">Analyses</h1>
-            <p className="text-[var(--color-text-secondary)] mt-1">
+            <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Analyses</h1>
+            <p className="text-[var(--text-muted)] mt-1">
               Statistiques detaillees de vos classes
             </p>
           </div>
@@ -503,7 +503,8 @@ export function Analytics() {
             <button
               onClick={handleGenerateReport}
               disabled={isGeneratingReport}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
             >
               <span>📄</span>
               {isGeneratingReport ? 'Generation...' : 'Generer rapport PDF'}
@@ -513,13 +514,13 @@ export function Analytics() {
 
         {/* Filters */}
         <div
-          className="bg-[var(--color-surface)] p-5"
-          style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+          className="bg-[var(--surface)] p-5"
+          style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
         >
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Date range */}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-[var(--color-text-secondary)]">Periode:</span>
+              <span className="text-sm font-medium text-[var(--text-muted)]">Periode:</span>
               <div className="flex gap-1">
                 {(['7d', '30d', '90d', 'all'] as const).map((range) => (
                   <button
@@ -528,11 +529,11 @@ export function Analytics() {
                     className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                       dateRange === range
                         ? 'text-white'
-                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
+                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)]'
                     }`}
                     style={
                       dateRange === range
-                        ? { background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }
+                        ? { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-lg)' }
                         : { borderRadius: 'var(--radius-lg)' }
                     }
                   >
@@ -545,17 +546,17 @@ export function Analytics() {
             {/* Class filter */}
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-[var(--color-text-secondary)]">Classes:</span>
+                <span className="text-sm font-medium text-[var(--text-muted)]">Classes:</span>
                 <button
                   onClick={selectAllClasses}
-                  className="text-xs text-[var(--color-primary)] hover:underline"
+                  className="text-xs text-[var(--indigo)] hover:underline"
                 >
                   Toutes
                 </button>
-                <span className="text-[var(--color-text-tertiary)]">|</span>
+                <span className="text-[var(--text-dim)]">|</span>
                 <button
                   onClick={deselectAllClasses}
-                  className="text-xs text-[var(--color-primary)] hover:underline"
+                  className="text-xs text-[var(--indigo)] hover:underline"
                 >
                   Aucune
                 </button>
@@ -567,11 +568,11 @@ export function Analytics() {
                       className={`px-3 py-1 text-sm font-medium transition-colors ${
                         selectedClasses.includes(cls.id)
                           ? 'text-white'
-                          : 'text-[var(--color-text-secondary)] bg-[var(--color-surface-secondary)]'
+                          : 'text-[var(--text-muted)] bg-[var(--surface-3)]'
                       }`}
                       style={
                         selectedClasses.includes(cls.id)
-                          ? { background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }
+                          ? { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-lg)' }
                           : { borderRadius: 'var(--radius-lg)' }
                       }
                     >
@@ -586,16 +587,16 @@ export function Analytics() {
 
         {selectedClasses.length === 0 ? (
           <div
-            className="bg-[var(--color-surface)] p-8 text-center"
-            style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+            className="bg-[var(--surface)] p-8 text-center"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
           >
             <div
-              className="w-16 h-16 mx-auto mb-4 bg-[var(--color-surface-secondary)] flex items-center justify-center"
+              className="w-16 h-16 mx-auto mb-4 bg-[var(--surface-3)] flex items-center justify-center"
               style={{ borderRadius: 'var(--radius-full)' }}
             >
               <span className="text-3xl">📊</span>
             </div>
-            <p className="text-[var(--color-text-tertiary)]">
+            <p className="text-[var(--text-dim)]">
               Selectionnez au moins une classe pour afficher les statistiques
             </p>
           </div>
@@ -630,7 +631,7 @@ export function Analytics() {
               <SummaryCard
                 label="Ratio +/-"
                 value={`${totals.participations + totals.malus > 0 ? Math.round((totals.participations / (totals.participations + totals.malus)) * 100) : 0}%`}
-                color="var(--color-primary)"
+                color="var(--indigo)"
                 icon="%"
               />
             </div>
@@ -638,15 +639,15 @@ export function Analytics() {
             {/* Oral grades section */}
             {oralStats.globalAverage !== null && (
               <div
-                className="bg-[var(--color-surface)] p-5"
-                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+                className="bg-[var(--surface)] p-5"
+                style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
               >
-                <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+                <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
                   Notes d'oral
                 </h3>
                 <div className="flex gap-4">
                   {/* Left: Global average */}
-                  <div className="flex items-center gap-3 p-3 bg-[var(--color-surface-secondary)] shrink-0" style={{ borderRadius: 'var(--radius-lg)' }}>
+                  <div className="flex items-center gap-3 p-3 bg-[var(--surface-3)] shrink-0" style={{ borderRadius: 'var(--radius-lg)' }}>
                     <div
                       className="w-14 h-14 flex items-center justify-center text-lg font-bold text-white"
                       style={{
@@ -657,8 +658,8 @@ export function Analytics() {
                       {oralStats.globalAverage.toFixed(1)}
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-[var(--color-text)]">Moyenne /5</div>
-                      <div className="text-xs text-[var(--color-text-tertiary)]">
+                      <div className="text-sm font-semibold text-[var(--text)]">Moyenne /5</div>
+                      <div className="text-xs text-[var(--text-dim)]">
                         {oralStats.byClass.reduce((sum, c) => sum + c.count, 0)} eleves
                       </div>
                     </div>
@@ -670,7 +671,7 @@ export function Analytics() {
                       {oralStats.byClass.map((cls, idx) => (
                         <div
                           key={cls.class_id}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-surface-secondary)]"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-[var(--surface-3)]"
                           style={{ borderRadius: 'var(--radius-md)' }}
                         >
                           <span
@@ -682,7 +683,7 @@ export function Analytics() {
                           >
                             {idx + 1}
                           </span>
-                          <span className="text-sm font-medium text-[var(--color-text)] flex-1">{cls.class_name}</span>
+                          <span className="text-sm font-medium text-[var(--text)] flex-1">{cls.class_name}</span>
                           <span
                             className="text-sm font-bold px-1.5 py-0.5"
                             style={{
@@ -704,11 +705,11 @@ export function Analytics() {
             {/* Gender comparison card */}
             {genderStats && (genderStats.garcons.count > 0 || genderStats.filles.count > 0) && (
               <div
-                className="bg-[var(--color-surface)] p-5"
-                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+                className="bg-[var(--surface)] p-5"
+                style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                  <h3 className="text-lg font-semibold text-[var(--text)]">
                     Comparaison Filles / Garcons
                   </h3>
                   <div className="flex gap-1">
@@ -718,8 +719,8 @@ export function Analytics() {
                         onClick={() => setGenderMetric(metric)}
                         className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
                           genderMetric === metric
-                            ? 'bg-[var(--color-primary)] text-white'
-                            : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+                            ? 'bg-[var(--indigo)] text-white'
+                            : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
                         }`}
                       >
                         {metric === 'participations' ? 'Implic.' : metric === 'malus' ? 'Malus' : 'Absences'}
@@ -740,17 +741,17 @@ export function Analytics() {
                       },
                     ]}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis
                       dataKey="name"
-                      stroke="var(--color-text-tertiary)"
+                      stroke="var(--text-dim)"
                       fontSize={12}
                     />
-                    <YAxis stroke="var(--color-text-tertiary)" fontSize={12} />
+                    <YAxis stroke="var(--text-dim)" fontSize={12} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
+                        backgroundColor: 'var(--surface)',
+                        border: '1px solid var(--border)',
                         borderRadius: '8px',
                       }}
                       formatter={(value) => [`${value} / élève`]}
@@ -769,31 +770,31 @@ export function Analytics() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Evolution chart */}
               <div
-                className="bg-[var(--color-surface)] p-5"
-                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+                className="bg-[var(--surface)] p-5"
+                style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
               >
-                <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+                <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
                   Evolution dans le temps
                 </h3>
                 {dailyData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-[var(--color-text-tertiary)]">
+                  <div className="h-64 flex items-center justify-center text-[var(--text-dim)]">
                     Aucune donnee pour cette periode
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={280}>
                     <LineChart data={dailyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis
                         dataKey="date"
                         tickFormatter={formatDate}
-                        stroke="var(--color-text-tertiary)"
+                        stroke="var(--text-dim)"
                         fontSize={12}
                       />
-                      <YAxis stroke="var(--color-text-tertiary)" fontSize={12} />
+                      <YAxis stroke="var(--text-dim)" fontSize={12} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--color-surface)',
-                          border: '1px solid var(--color-border)',
+                          backgroundColor: 'var(--surface)',
+                          border: '1px solid var(--border)',
                           borderRadius: '8px',
                         }}
                         labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR')}
@@ -830,14 +831,14 @@ export function Analytics() {
 
               {/* Distribution pie chart */}
               <div
-                className="bg-[var(--color-surface)] p-5"
-                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+                className="bg-[var(--surface)] p-5"
+                style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
               >
-                <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+                <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
                   Repartition des evenements
                 </h3>
                 {pieData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-[var(--color-text-tertiary)]">
+                  <div className="h-64 flex items-center justify-center text-[var(--text-dim)]">
                     Aucune donnee
                   </div>
                 ) : (
@@ -860,8 +861,8 @@ export function Analytics() {
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--color-surface)',
-                          border: '1px solid var(--color-border)',
+                          backgroundColor: 'var(--surface)',
+                          border: '1px solid var(--border)',
                           borderRadius: '8px',
                         }}
                       />
@@ -873,33 +874,33 @@ export function Analytics() {
 
             {/* Class comparison */}
             <div
-              className="bg-[var(--color-surface)] p-5"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              className="bg-[var(--surface)] p-5"
+              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
             >
-              <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+              <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
                 Comparaison par classe
               </h3>
               {classStats.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-[var(--color-text-tertiary)]">
+                <div className="h-64 flex items-center justify-center text-[var(--text-dim)]">
                   Aucune donnee
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={classStats}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis
                       dataKey="class_name"
-                      stroke="var(--color-text-tertiary)"
+                      stroke="var(--text-dim)"
                       fontSize={12}
                       angle={-45}
                       textAnchor="end"
                       height={60}
                     />
-                    <YAxis stroke="var(--color-text-tertiary)" fontSize={12} />
+                    <YAxis stroke="var(--text-dim)" fontSize={12} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
+                        backgroundColor: 'var(--surface)',
+                        border: '1px solid var(--border)',
                         borderRadius: '8px',
                       }}
                     />
@@ -914,31 +915,31 @@ export function Analytics() {
 
             {/* Class ranking table */}
             <div
-              className="bg-[var(--color-surface)] overflow-hidden"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              className="bg-[var(--surface)] overflow-hidden"
+              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
             >
-              <div className="p-5 border-b border-[var(--color-border)]">
-                <h3 className="text-lg font-semibold text-[var(--color-text)]">
+              <div className="p-5 border-b border-[var(--border)]">
+                <h3 className="text-lg font-semibold text-[var(--text)]">
                   Classement par ratio participation/malus
                 </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-secondary)]">
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-3)]">
+                      <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">
                         Classe
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--color-text-secondary)]">
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--text-muted)]">
                         Participations
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--color-text-secondary)]">
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--text-muted)]">
                         Malus
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--color-text-secondary)]">
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--text-muted)]">
                         Absences
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--color-text-secondary)]">
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[var(--text-muted)]">
                         Ratio
                       </th>
                     </tr>
@@ -947,20 +948,20 @@ export function Analytics() {
                     {classStats.map((cls, index) => (
                       <tr
                         key={cls.class_name}
-                        className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)]"
+                        className="border-b border-[var(--border)] hover:bg-[var(--surface-2)]"
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <span
                               className="w-6 h-6 flex items-center justify-center text-xs font-bold text-white"
                               style={{
-                                backgroundColor: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : index === 2 ? '#cd7f32' : 'var(--color-primary)',
+                                backgroundColor: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : index === 2 ? '#cd7f32' : 'var(--indigo)',
                                 borderRadius: 'var(--radius-md)',
                               }}
                             >
                               {index + 1}
                             </span>
-                            <span className="font-medium text-[var(--color-text)]">{cls.class_name}</span>
+                            <span className="font-medium text-[var(--text)]">{cls.class_name}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -1002,7 +1003,7 @@ export function Analytics() {
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <div
-                              className="w-16 h-2 bg-[var(--color-surface-secondary)] overflow-hidden"
+                              className="w-16 h-2 bg-[var(--surface-3)] overflow-hidden"
                               style={{ borderRadius: 'var(--radius-full)' }}
                             >
                               <div
@@ -1013,7 +1014,7 @@ export function Analytics() {
                                 }}
                               />
                             </div>
-                            <span className="text-sm font-medium text-[var(--color-text)]">
+                            <span className="text-sm font-medium text-[var(--text)]">
                               {cls.ratio}%
                             </span>
                           </div>
@@ -1044,8 +1045,8 @@ function SummaryCard({
 }) {
   return (
     <div
-      className="bg-[var(--color-surface)] p-4 transition-transform hover:scale-[1.02]"
-      style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+      className="bg-[var(--surface)] p-4 transition-transform hover:scale-[1.02]"
+      style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
     >
       <div
         className="w-10 h-10 flex items-center justify-center text-lg font-bold mb-3"
@@ -1057,8 +1058,8 @@ function SummaryCard({
       >
         {icon}
       </div>
-      <div className="text-2xl font-bold text-[var(--color-text)]">{value}</div>
-      <div className="text-sm text-[var(--color-text-tertiary)]">{label}</div>
+      <div className="text-2xl font-bold text-[var(--text)]">{value}</div>
+      <div className="text-sm text-[var(--text-dim)]">{label}</div>
     </div>
   );
 }

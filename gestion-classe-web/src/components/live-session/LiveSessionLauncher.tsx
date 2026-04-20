@@ -15,7 +15,7 @@ export function LiveSessionLauncher() {
         className="w-full p-5 text-left flex items-center gap-4 group active:scale-[0.98] transition-all animate-pulse"
         style={{
           background: 'linear-gradient(135deg, #E91E63 0%, #C62828 100%)',
-          borderRadius: 'var(--radius-xl)',
+          borderRadius: 'var(--radius)',
           boxShadow: '0 4px 20px rgba(233, 30, 99, 0.3)',
           border: 'none',
         }}
@@ -42,9 +42,9 @@ export function LiveSessionLauncher() {
       onClick={startFlow}
       className="w-full p-5 text-left flex items-center gap-4 group active:scale-[0.98] transition-all"
       style={{
-        background: 'var(--gradient-primary)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--shadow-glow)',
+        background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+        borderRadius: 'var(--radius)',
+        boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
         border: 'none',
       }}
     >

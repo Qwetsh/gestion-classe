@@ -8,7 +8,7 @@ interface Announcement {
 }
 
 const typeStyles = {
-  info: { bg: 'var(--color-primary)', icon: 'ℹ️' },
+  info: { bg: 'var(--indigo)', icon: 'ℹ️' },
   warning: { bg: '#d97706', icon: '⚠️' },
   success: { bg: 'var(--color-success,#2E7D32)', icon: '✅' },
 };
@@ -128,7 +128,7 @@ function AnnouncementToast({ announcement, onDismiss }: { announcement: Announce
         className="flex items-center gap-3 px-5 py-3.5 text-white text-sm font-medium shadow-lg"
         style={{
           background: style.bg,
-          borderRadius: 'var(--radius-xl)',
+          borderRadius: 'var(--radius)',
         }}
       >
         <span className="text-lg shrink-0">{style.icon}</span>

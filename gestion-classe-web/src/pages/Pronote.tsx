@@ -126,9 +126,9 @@ function parseLessons(timetable: Timetable): PronoteLesson[] {
 
 function LessonCard({ lesson }: { lesson: PronoteLesson }) {
   const bgColor = lesson.canceled
-    ? 'var(--color-absence-soft)'
-    : lesson.backgroundColor || 'var(--color-primary-soft)';
-  const borderColor = lesson.canceled ? 'var(--color-absence)' : lesson.backgroundColor || 'var(--color-primary)';
+    ? 'var(--neg-soft)'
+    : lesson.backgroundColor || 'var(--indigo-soft)';
+  const borderColor = lesson.canceled ? 'var(--neg)' : lesson.backgroundColor || 'var(--indigo)';
 
   return (
     <div
@@ -139,21 +139,21 @@ function LessonCard({ lesson }: { lesson: PronoteLesson }) {
         borderRadius: 'var(--radius-sm)',
       }}
     >
-      <div className="font-semibold text-[var(--color-text)] truncate">
+      <div className="font-semibold text-[var(--text)] truncate">
         {lesson.subject || 'Sans matiere'}
         {lesson.canceled && ' (Annule)'}
       </div>
       {lesson.groupNames.length > 0 && (
-        <div className="text-[var(--color-primary)] font-medium truncate">
+        <div className="text-[var(--indigo)] font-medium truncate">
           {lesson.groupNames.join(', ')}
         </div>
       )}
       {lesson.classrooms.length > 0 && (
-        <div className="text-[var(--color-text-tertiary)] truncate">
+        <div className="text-[var(--text-dim)] truncate">
           {lesson.classrooms.join(', ')}
         </div>
       )}
-      <div className="text-[var(--color-text-tertiary)]">
+      <div className="text-[var(--text-dim)]">
         {formatTime(lesson.startDate)} - {formatTime(lesson.endDate)}
       </div>
     </div>
@@ -412,16 +412,16 @@ export function Pronote() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">Pronote</h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">
+          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Pronote</h1>
+          <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
             Emploi du temps et import de classes
           </p>
         </div>
 
         {moduleError && (
           <div
-            className="bg-[var(--color-error-soft)] text-[var(--color-error)] p-4"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            className="bg-[var(--neg-soft)] text-[var(--neg)] p-4"
+            style={{ borderRadius: 'var(--radius)' }}
           >
             Erreur de chargement du module Pronote : {moduleError}
           </div>
@@ -430,8 +430,8 @@ export function Pronote() {
         {!moduleReady && !moduleError && (
           <div className="flex justify-center items-center h-64">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-              <span className="text-[var(--color-text-secondary)]">Chargement du module Pronote...</span>
+              <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+              <span className="text-[var(--text-muted)]">Chargement du module Pronote...</span>
             </div>
           </div>
         )}
@@ -439,30 +439,30 @@ export function Pronote() {
         {moduleReady && !session ? (
           /* ---- Login form ---- */
           <div
-            className="bg-[var(--color-surface)] p-6 max-w-lg mx-auto"
-            style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+            className="bg-[var(--surface)] p-6 max-w-lg mx-auto"
+            style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
           >
             <div className="flex items-center gap-3 mb-6">
               <div
                 className="w-12 h-12 flex items-center justify-center text-2xl"
-                style={{ background: 'var(--color-primary-soft)', borderRadius: 'var(--radius-lg)' }}
+                style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius)' }}
               >
                 🔗
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-[var(--color-text)]">Connexion Pronote</h2>
-                <p className="text-sm text-[var(--color-text-tertiary)]">Compte enseignant</p>
+                <h2 className="text-lg font-semibold text-[var(--text)]">Connexion Pronote</h2>
+                <p className="text-sm text-[var(--text-dim)]">Compte enseignant</p>
               </div>
             </div>
 
             {/* Mode tabs */}
-            <div className="flex gap-1 p-1 mb-5 bg-[var(--color-surface-secondary)]" style={{ borderRadius: 'var(--radius-lg)' }}>
+            <div className="flex gap-1 p-1 mb-5 bg-[var(--surface-3)]" style={{ borderRadius: 'var(--radius)' }}>
               <button
                 onClick={() => setLoginMode('qr')}
                 className={`flex-1 py-2 px-3 text-sm font-medium transition-all ${
                   loginMode === 'qr'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm'
-                    : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm'
+                    : 'text-[var(--text-dim)] hover:text-[var(--text-muted)]'
                 }`}
                 style={{ borderRadius: 'var(--radius-md)' }}
               >
@@ -472,8 +472,8 @@ export function Pronote() {
                 onClick={() => setLoginMode('credentials')}
                 className={`flex-1 py-2 px-3 text-sm font-medium transition-all ${
                   loginMode === 'credentials'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm'
-                    : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm'
+                    : 'text-[var(--text-dim)] hover:text-[var(--text-muted)]'
                 }`}
                 style={{ borderRadius: 'var(--radius-md)' }}
               >
@@ -484,11 +484,11 @@ export function Pronote() {
             {loginMode === 'qr' ? (
               <div className="space-y-4">
                 <div
-                  className="p-3 text-sm text-[var(--color-primary)] bg-[var(--color-primary-soft)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="p-3 text-sm text-[var(--indigo)] bg-[var(--indigo-soft)]"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   <strong>Comment faire :</strong>
-                  <ol className="mt-2 ml-4 list-decimal space-y-1 text-[var(--color-text-secondary)]">
+                  <ol className="mt-2 ml-4 list-decimal space-y-1 text-[var(--text-muted)]">
                     <li>Ouvrez l'app <strong>Pronote</strong> sur votre telephone</li>
                     <li>Allez dans les parametres (roue dentee)</li>
                     <li>Appuyez sur <strong>"Generer un QR code"</strong></li>
@@ -498,7 +498,7 @@ export function Pronote() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                     Contenu du QR code (JSON)
                   </label>
                   <textarea
@@ -506,13 +506,13 @@ export function Pronote() {
                     onChange={e => setQrData(e.target.value)}
                     placeholder='{"url":"https://0572582x.index-education.net/pronote","jeton":"...","login":"..."}'
                     rows={3}
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] font-mono text-xs"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] font-mono text-xs"
+                    style={{ borderRadius: 'var(--radius)' }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                     Code PIN (4 chiffres)
                   </label>
                   <input
@@ -522,8 +522,8 @@ export function Pronote() {
                     value={qrPin}
                     onChange={e => setQrPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                     placeholder="1234"
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-center text-2xl tracking-[0.5em] font-mono"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] text-center text-2xl tracking-[0.5em] font-mono"
+                    style={{ borderRadius: 'var(--radius)' }}
                     onKeyDown={e => e.key === 'Enter' && handleConnectQr()}
                   />
                 </div>
@@ -532,7 +532,7 @@ export function Pronote() {
                   onClick={handleConnectQr}
                   disabled={isConnecting || !qrData || qrPin.length !== 4}
                   className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                  style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
                 >
                   {isConnecting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -545,8 +545,8 @@ export function Pronote() {
                 </button>
 
                 <div
-                  className="p-3 text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="p-3 text-xs text-[var(--text-dim)] bg-[var(--surface-3)]"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   Compatible ENT (MonBureauNumerique, etc.). Vos donnees ne sont pas stockees.
                 </div>
@@ -554,14 +554,14 @@ export function Pronote() {
             ) : (
               <div className="space-y-4">
                 <div
-                  className="p-3 text-xs text-[var(--color-warning)] bg-[var(--color-warning-soft)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="p-3 text-xs text-[var(--warn)] bg-[var(--warn-soft)]"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   Ce mode ne fonctionne que si votre etablissement autorise la connexion directe (sans ENT). Si vous passez par un ENT (MBN, etc.), utilisez le mode QR Code.
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                     URL Pronote de votre etablissement
                   </label>
                   <input
@@ -569,13 +569,13 @@ export function Pronote() {
                     value={pronoteUrl}
                     onChange={e => setPronoteUrl(e.target.value)}
                     placeholder="https://0123456A.index-education.net/pronote/"
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                     Identifiant
                   </label>
                   <input
@@ -583,13 +583,13 @@ export function Pronote() {
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     placeholder="votre.identifiant"
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
                     Mot de passe
                   </label>
                   <input
@@ -597,8 +597,8 @@ export function Pronote() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                    style={{ borderRadius: 'var(--radius-lg)' }}
+                    className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)]"
+                    style={{ borderRadius: 'var(--radius)' }}
                     onKeyDown={e => e.key === 'Enter' && handleConnect()}
                   />
                 </div>
@@ -607,7 +607,7 @@ export function Pronote() {
                   onClick={handleConnect}
                   disabled={isConnecting || !pronoteUrl || !username || !password}
                   className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                  style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)' }}
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
                 >
                   {isConnecting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -620,8 +620,8 @@ export function Pronote() {
                 </button>
 
                 <div
-                  className="p-3 text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface-secondary)]"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="p-3 text-xs text-[var(--text-dim)] bg-[var(--surface-3)]"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   Vos identifiants ne sont pas stockes. La connexion est temporaire et directe avec votre serveur Pronote.
                 </div>
@@ -635,19 +635,19 @@ export function Pronote() {
           <>
             {/* User info bar */}
             <div
-              className="bg-[var(--color-surface)] p-4 flex items-center justify-between"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              className="bg-[var(--surface)] p-4 flex items-center justify-between"
+              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
             >
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 flex items-center justify-center text-white font-bold"
-                  style={{ background: 'var(--gradient-success)', borderRadius: 'var(--radius-lg)' }}
+                  style={{ background: 'var(--gradient-success)', borderRadius: 'var(--radius)' }}
                 >
                   {userName.charAt(0)}
                 </div>
                 <div>
-                  <div className="font-medium text-[var(--color-text)]">{userName}</div>
-                  <div className="text-sm text-[var(--color-text-tertiary)]">{establishmentName}</div>
+                  <div className="font-medium text-[var(--text)]">{userName}</div>
+                  <div className="text-sm text-[var(--text-dim)]">{establishmentName}</div>
                 </div>
               </div>
               <button
@@ -658,8 +658,8 @@ export function Pronote() {
                   setPassword('');
                   clearStoredSession();
                 }}
-                className="px-4 py-2 text-sm font-medium text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors"
-                style={{ borderRadius: 'var(--radius-lg)' }}
+                className="px-4 py-2 text-sm font-medium text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 Deconnecter
               </button>
@@ -668,17 +668,17 @@ export function Pronote() {
             {/* Detected classes */}
             {detectedClasses.length > 0 && (
               <div
-                className="bg-[var(--color-surface)] p-4"
-                style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+                className="bg-[var(--surface)] p-4"
+                style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
               >
-                <h3 className="text-sm font-semibold text-[var(--color-text-secondary)] mb-3">
+                <h3 className="text-sm font-semibold text-[var(--text-muted)] mb-3">
                   Classes detectees cette semaine
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {detectedClasses.map(cls => (
                     <span
                       key={cls}
-                      className="px-3 py-1.5 text-sm font-medium bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                      className="px-3 py-1.5 text-sm font-medium bg-[var(--indigo-soft)] text-[var(--indigo)]"
                       style={{ borderRadius: 'var(--radius-full)' }}
                     >
                       {cls}
@@ -690,25 +690,25 @@ export function Pronote() {
 
             {/* Timetable */}
             <div
-              className="bg-[var(--color-surface)] overflow-hidden"
-              style={{ borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)' }}
+              className="bg-[var(--surface)] overflow-hidden"
+              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
             >
               {/* Week navigation */}
-              <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
                 <button
                   onClick={() => goToWeek(-1)}
-                  className="p-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="p-2 hover:bg-[var(--surface-2)] transition-colors"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   ←
                 </button>
                 <div className="flex items-center gap-3">
-                  <h3 className="font-semibold text-[var(--color-text)]">
+                  <h3 className="font-semibold text-[var(--text)]">
                     Semaine du {formatDateShort(currentWeekStart)}
                   </h3>
                   <button
                     onClick={goToToday}
-                    className="px-3 py-1 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-soft)] hover:opacity-80 transition-opacity"
+                    className="px-3 py-1 text-xs font-medium text-[var(--indigo)] bg-[var(--indigo-soft)] hover:opacity-80 transition-opacity"
                     style={{ borderRadius: 'var(--radius-full)' }}
                   >
                     Aujourd'hui
@@ -716,8 +716,8 @@ export function Pronote() {
                 </div>
                 <button
                   onClick={() => goToWeek(1)}
-                  className="p-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-                  style={{ borderRadius: 'var(--radius-lg)' }}
+                  className="p-2 hover:bg-[var(--surface-2)] transition-colors"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   →
                 </button>
@@ -726,15 +726,15 @@ export function Pronote() {
               {isLoadingTimetable ? (
                 <div className="flex justify-center items-center h-64">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[var(--color-text-secondary)]">Chargement...</span>
+                    <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[var(--text-muted)]">Chargement...</span>
                   </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <div className="min-w-[700px]">
                     {/* Day headers */}
-                    <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-[var(--color-border)]">
+                    <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-[var(--border)]">
                       <div className="p-2" />
                       {DAYS.map((day, i) => {
                         const dayDate = new Date(currentWeekStart);
@@ -743,8 +743,8 @@ export function Pronote() {
                         return (
                           <div
                             key={day}
-                            className={`p-2 text-center text-sm font-medium border-l border-[var(--color-border)] ${
-                              isToday ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]' : 'text-[var(--color-text-secondary)]'
+                            className={`p-2 text-center text-sm font-medium border-l border-[var(--border)] ${
+                              isToday ? 'text-[var(--indigo)] bg-[var(--indigo-soft)]' : 'text-[var(--text-muted)]'
                             }`}
                           >
                             <div>{day}</div>
@@ -758,10 +758,10 @@ export function Pronote() {
                     {HOURS.map(hour => (
                       <div
                         key={hour}
-                        className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-[var(--color-border-light)]"
+                        className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-[var(--surface-3)]"
                         style={{ minHeight: '60px' }}
                       >
-                        <div className="p-1 text-xs text-[var(--color-text-tertiary)] text-right pr-2 pt-1">
+                        <div className="p-1 text-xs text-[var(--text-dim)] text-right pr-2 pt-1">
                           {hour}:00
                         </div>
                         {DAYS.map((_, dayIndex) => {
@@ -769,7 +769,7 @@ export function Pronote() {
                           return (
                             <div
                               key={dayIndex}
-                              className="border-l border-[var(--color-border-light)] p-0.5"
+                              className="border-l border-[var(--surface-3)] p-0.5"
                             >
                               {dayLessons.map(lesson => (
                                 <LessonCard key={lesson.id} lesson={lesson} />
@@ -786,10 +786,10 @@ export function Pronote() {
               {/* Empty state */}
               {!isLoadingTimetable && lessons.length === 0 && (
                 <div className="p-8 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-[var(--color-surface-secondary)] rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-[var(--surface-3)] rounded-full flex items-center justify-center">
                     <span className="text-3xl">📅</span>
                   </div>
-                  <p className="text-[var(--color-text-tertiary)]">
+                  <p className="text-[var(--text-dim)]">
                     Aucun cours cette semaine
                   </p>
                 </div>

@@ -12,7 +12,7 @@ export function GroupSessionOverlay() {
   if (!isMobile || step === 'idle') return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[var(--color-background)] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col overflow-hidden">
       {step === 'select-class' && <GroupClassSelector />}
       {step === 'setup' && <GroupSetup />}
       {step === 'grading' && <GroupGrading />}
