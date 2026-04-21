@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { getClassGradient, getClassInitials } from '../lib/constants';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { Icon } from '../components/design-system';
+import { fetchSessionPhotos, uploadSessionPhoto, deleteSessionPhoto, updatePhotoCaption, getPhotoUrl, type GroupSessionPhoto } from '../lib/groupSessionPhotos';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -74,6 +76,15 @@ export function GroupSessions() {
   const [criteriaExpanded, setCriteriaExpanded] = useState(false);
   // Per-group criteria expansion
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+
+  // Photos
+  const [photos, setPhotos] = useState<GroupSessionPhoto[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [viewingPhoto, setViewingPhoto] = useState<GroupSessionPhoto | null>(null);
+  const [editingCaption, setEditingCaption] = useState<string | null>(null);
+  const [captionText, setCaptionText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadSessions();
@@ -251,7 +262,10 @@ export function GroupSessions() {
     setShowDetailModal(true);
     setCriteriaExpanded(false);
     setExpandedGroupId(null);
+    setPhotos([]);
+    setPhotoUrls({});
     await loadSessionDetail(session);
+    loadPhotos(session.id);
   };
 
   const handleCloseDetail = () => {
@@ -259,6 +273,68 @@ export function GroupSessions() {
     setSessionDetail(null);
     setShowDeleteConfirm(false);
     setEditingGroupId(null);
+    setPhotos([]);
+    setPhotoUrls({});
+    setViewingPhoto(null);
+  };
+
+  const loadPhotos = async (sessionId: string) => {
+    try {
+      const data = await fetchSessionPhotos(sessionId);
+      setPhotos(data);
+      // Load signed URLs
+      const urls: Record<string, string> = {};
+      await Promise.all(data.map(async (p) => {
+        const url = await getPhotoUrl(p.file_path);
+        if (url) urls[p.id] = url;
+      }));
+      setPhotoUrls(urls);
+    } catch (err) {
+      console.error('Error loading photos:', err);
+    }
+  };
+
+  const handleUploadPhoto = async (files: FileList | null) => {
+    if (!files || !files.length || !user || !sessionDetail) return;
+    setIsUploadingPhoto(true);
+    try {
+      for (const file of Array.from(files)) {
+        const photo = await uploadSessionPhoto(user.id, sessionDetail.session.id, file);
+        const url = await getPhotoUrl(photo.file_path);
+        setPhotos(prev => [...prev, photo]);
+        if (url) setPhotoUrls(prev => ({ ...prev, [photo.id]: url }));
+      }
+      toast('Photo(s) ajoutée(s)');
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast('Erreur lors de l\'upload');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photo: GroupSessionPhoto) => {
+    try {
+      await deleteSessionPhoto(photo);
+      setPhotos(prev => prev.filter(p => p.id !== photo.id));
+      setPhotoUrls(prev => { const u = { ...prev }; delete u[photo.id]; return u; });
+      if (viewingPhoto?.id === photo.id) setViewingPhoto(null);
+      toast('Photo supprimée');
+    } catch (err) {
+      console.error('Delete photo error:', err);
+      toast('Erreur lors de la suppression');
+    }
+  };
+
+  const handleSaveCaption = async (photoId: string) => {
+    try {
+      await updatePhotoCaption(photoId, captionText);
+      setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, caption: captionText } : p));
+      setEditingCaption(null);
+    } catch (err) {
+      console.error('Caption error:', err);
+    }
   };
 
   const handleStartEditGroup = (group: SessionGroup) => {
@@ -797,6 +873,76 @@ export function GroupSessions() {
                   </div>
                 </div>
 
+                {/* Photos section */}
+                <div className="px-6 py-4 border-b border-[var(--border)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-[var(--text-muted)]">
+                      Photos de référence ({photos.length})
+                    </h4>
+                    <label
+                      className="px-3 py-1.5 text-sm font-medium bg-[var(--surface-3)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer flex items-center gap-2"
+                      style={{ borderRadius: 'var(--radius)' }}
+                    >
+                      <Icon name="plus" size={14} />
+                      {isUploadingPhoto ? 'Upload...' : 'Ajouter'}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleUploadPhoto(e.target.files)}
+                        style={{ display: 'none' }}
+                        disabled={isUploadingPhoto}
+                      />
+                    </label>
+                  </div>
+
+                  {photos.length === 0 ? (
+                    <div className="text-center py-6 text-[var(--text-dim)] text-sm">
+                      Aucune photo. Ajoutez des images de référence pour ce TP.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+                      {photos.map(photo => (
+                        <div
+                          key={photo.id}
+                          className="relative group cursor-pointer"
+                          style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '1', background: 'var(--surface-3)' }}
+                          onClick={() => setViewingPhoto(photo)}
+                        >
+                          {photoUrls[photo.id] ? (
+                            <img
+                              src={photoUrls[photo.id]}
+                              alt={photo.caption || 'Photo TP'}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-[var(--text-dim)]">...</div>
+                          )}
+                          {photo.caption && (
+                            <div style={{
+                              position: 'absolute', bottom: 0, left: 0, right: 0,
+                              background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                              padding: '16px 8px 6px', fontSize: 11, color: '#fff',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}>
+                              {photo.caption}
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo); }}
+                            className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            style={{ fontSize: 12, lineHeight: 1 }}
+                            title="Supprimer"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Groups */}
                 <div className="flex-1 overflow-y-auto p-6">
                   <h4 className="text-sm font-medium text-[var(--text-muted)] mb-4">
@@ -980,6 +1126,64 @@ export function GroupSessions() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {/* Photo lightbox */}
+      {viewingPhoto && photoUrls[viewingPhoto.id] && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4"
+          style={{ zIndex: 70 }}
+          onClick={() => { setViewingPhoto(null); setEditingCaption(null); }}
+        >
+          <div
+            className="relative max-w-3xl w-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={photoUrls[viewingPhoto.id]}
+              alt={viewingPhoto.caption || 'Photo TP'}
+              style={{ maxHeight: '75vh', maxWidth: '100%', objectFit: 'contain', borderRadius: 'var(--radius)' }}
+            />
+            {/* Caption */}
+            <div className="mt-3 w-full max-w-md text-center">
+              {editingCaption === viewingPhoto.id ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={captionText}
+                    onChange={(e) => setCaptionText(e.target.value)}
+                    placeholder="Légende..."
+                    className="flex-1 px-3 py-2 text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
+                    style={{ borderRadius: 'var(--radius)' }}
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveCaption(viewingPhoto.id); }}
+                  />
+                  <button
+                    onClick={() => handleSaveCaption(viewingPhoto.id)}
+                    className="px-3 py-2 text-sm bg-[var(--indigo)] text-white font-medium"
+                    style={{ borderRadius: 'var(--radius)' }}
+                  >
+                    OK
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setEditingCaption(viewingPhoto.id); setCaptionText(viewingPhoto.caption || ''); }}
+                  className="text-white/70 hover:text-white text-sm transition-colors"
+                >
+                  {viewingPhoto.caption || 'Ajouter une légende...'}
+                </button>
+              )}
+            </div>
+            {/* Close */}
+            <button
+              onClick={() => { setViewingPhoto(null); setEditingCaption(null); }}
+              className="absolute -top-2 -right-2 w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition-colors"
+              style={{ fontSize: 18 }}
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
