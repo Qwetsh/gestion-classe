@@ -25,6 +25,7 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
 
   // Animate the displayed fill smoothly
   const [displayFill, setDisplayFill] = useState(fill);
+  const [isAnimating, setIsAnimating] = useState(false);
   const prevFill = useRef(fill);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
     prevFill.current = to;
     if (from === to) return;
 
+    setIsAnimating(true);
     const duration = 2000;
     const start = performance.now();
     let raf: number;
@@ -42,7 +44,11 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
       const progress = Math.min(1, elapsed / duration);
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayFill(from + (to - from) * eased);
-      if (progress < 1) raf = requestAnimationFrame(animate);
+      if (progress < 1) {
+        raf = requestAnimationFrame(animate);
+      } else {
+        setIsAnimating(false);
+      }
     };
     raf = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(raf);
@@ -69,11 +75,15 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
   // Bottom bulb (taller)
   const bottomBulb = 'M22,352 Q22,358 26,358 L74,358 Q78,358 78,352 L78,155 Q78,138 50,128 Q22,138 22,155 Z';
 
+  // Particle speed: slow when idle, fast when filling
+  const particleDur = isAnimating ? 2.5 : 7;
+  const particleCount = isAnimating ? 14 : 6;
+
   // Sand particles
-  const particles = Array.from({ length: 14 }, (_, i) => ({
-    delay: (i / 14) * 2.5,
+  const particles = Array.from({ length: particleCount }, (_, i) => ({
+    delay: (i / particleCount) * particleDur,
     x: 50 + (Math.random() - 0.5) * 4,
-    size: 1 + Math.random() * 1.5,
+    size: isAnimating ? 1 + Math.random() * 1.5 : 0.8 + Math.random() * 0.8,
   }));
 
   return (
@@ -173,32 +183,34 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
       <>
         {/* Main stream */}
         <line x1="50" y1="115" x2="50" y2={Math.min(bottomSandY + 3, 340)}
-          stroke={color} strokeWidth="1.8" opacity="0.5">
-          <animate attributeName="opacity" values="0.35;0.6;0.35" dur="1.5s" repeatCount="indefinite" />
+          stroke={color} strokeWidth={isAnimating ? 1.8 : 1} opacity={isAnimating ? 0.5 : 0.25}>
+          <animate attributeName="opacity"
+            values={isAnimating ? '0.35;0.6;0.35' : '0.15;0.3;0.15'}
+            dur="1.5s" repeatCount="indefinite" />
         </line>
 
         {/* Particles */}
         {particles.map((p, i) => (
-          <circle key={i} cx={p.x} cy="115" r={p.size} fill={colorLight} opacity="0.7">
+          <circle key={`${i}-${isAnimating}`} cx={p.x} cy="115" r={p.size} fill={colorLight} opacity="0.7">
             <animate
               attributeName="cy"
               from="115"
               to={Math.min(bottomSandY + 5, 342).toString()}
-              dur="2.5s"
+              dur={`${particleDur}s`}
               begin={`${p.delay}s`}
               repeatCount="indefinite"
             />
             <animate
               attributeName="cx"
               values={`${p.x};${50 + (Math.random() - 0.5) * 12};${p.x}`}
-              dur="2.5s"
+              dur={`${particleDur}s`}
               begin={`${p.delay}s`}
               repeatCount="indefinite"
             />
             <animate
               attributeName="opacity"
-              values="0;0.7;0.5;0"
-              dur="2.5s"
+              values={isAnimating ? '0;0.7;0.5;0' : '0;0.4;0.3;0'}
+              dur={`${particleDur}s`}
               begin={`${p.delay}s`}
               repeatCount="indefinite"
             />
