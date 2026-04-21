@@ -34,8 +34,6 @@ export function Starfield({ density = 80 }: { density?: number }) {
 function Candle({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const sizes = { sm: { w: 10, h: 40, fw: 12, fh: 20 }, md: { w: 14, h: 60, fw: 16, fh: 28 }, lg: { w: 18, h: 80, fw: 22, fh: 36 } };
   const s = sizes[size];
-  // Center flame and glow on the candle stick center (s.w / 2)
-  const cx = s.w / 2;
   return (
     <div style={{ position: 'relative', width: s.fw * 3, height: s.h + s.fh }}>
       {/* Glow */}
