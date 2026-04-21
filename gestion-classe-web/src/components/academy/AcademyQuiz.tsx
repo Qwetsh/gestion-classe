@@ -129,7 +129,8 @@ function IntroScreen({ onBegin, totalQuestions }: { onBegin: () => void; totalQu
     <div style={{
       position: 'relative', zIndex: 2,
       padding: '28px 20px 30px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      minHeight: '100vh',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       textAlign: 'center',
       animation: 'academy-scroll-unfurl 1.4s cubic-bezier(0.22, 0.8, 0.25, 1)',
     }}>
@@ -228,7 +229,7 @@ function QuestionScreen({ question, index, total, selectedAnswer, onAnswer, onBa
   return (
     <div key={question.id} style={{
       position: 'relative', zIndex: 2,
-      minHeight: '100%', padding: '20px 22px 30px',
+      minHeight: '100vh', padding: '20px 22px 30px',
       display: 'flex', flexDirection: 'column',
       animation: 'academy-fadeIn 0.9s ease',
     }}>
@@ -349,7 +350,7 @@ function RankingScreen({ ranking, setRanking, onSubmit, onBack, total }: {
   return (
     <div style={{
       position: 'relative', zIndex: 2,
-      minHeight: '100%', padding: '20px 22px 30px',
+      minHeight: '100vh', padding: '20px 22px 30px',
       display: 'flex', flexDirection: 'column',
     }}>
       {/* Progress bar */}
@@ -445,7 +446,7 @@ function SubmittingScreen() {
   return (
     <div style={{
       position: 'relative', zIndex: 2,
-      minHeight: '100%', padding: 40,
+      minHeight: '100vh', padding: 40,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       textAlign: 'center',
       animation: 'academy-fadeIn 0.8s ease',
@@ -513,7 +514,7 @@ function WaitingScreen({ error }: { error: string | null }) {
   return (
     <div style={{
       position: 'relative', zIndex: 2,
-      minHeight: '100%', padding: 40,
+      minHeight: '100vh', padding: 40,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       textAlign: 'center',
       animation: 'academy-fadeIn 0.8s ease',

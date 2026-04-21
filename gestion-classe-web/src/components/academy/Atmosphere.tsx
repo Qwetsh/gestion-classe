@@ -34,28 +34,33 @@ export function Starfield({ density = 80 }: { density?: number }) {
 function Candle({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const sizes = { sm: { w: 10, h: 40, fw: 12, fh: 20 }, md: { w: 14, h: 60, fw: 16, fh: 28 }, lg: { w: 18, h: 80, fw: 22, fh: 36 } };
   const s = sizes[size];
+  // Center flame and glow on the candle stick center (s.w / 2)
+  const cx = s.w / 2;
   return (
-    <div style={{ position: 'relative', width: s.w, height: s.h + s.fh }}>
+    <div style={{ position: 'relative', width: s.fw * 3, height: s.h + s.fh }}>
+      {/* Glow */}
       <div style={{
-        position: 'absolute', left: '45%', bottom: s.h - 4, transform: 'translateX(-50%)',
+        position: 'absolute', left: 0, bottom: s.h - 4,
         width: s.fw * 3, height: s.fh * 2,
         background: 'radial-gradient(ellipse, oklch(0.85 0.15 80 / 0.5) 0%, transparent 65%)',
         pointerEvents: 'none',
       }} />
+      {/* Flame */}
       <div style={{
-        position: 'absolute', left: '45%', bottom: s.h - 2, transform: 'translateX(-50%)',
+        position: 'absolute', left: (s.fw * 3 - s.fw) / 2, bottom: s.h - 2,
         width: s.fw, height: s.fh,
         background: 'radial-gradient(ellipse at 50% 80%, oklch(0.92 0.16 85) 0%, oklch(0.80 0.18 60) 45%, oklch(0.55 0.20 35) 85%, transparent 100%)',
-        borderRadius: '50% 50% 40% 40% / 70% 70% 30% 30%',
+        borderRadius: '50% 50% 50% 50% / 70% 70% 30% 30%',
         transformOrigin: 'bottom center',
         animation: 'academy-flicker 2.5s ease-in-out infinite',
         filter: 'blur(0.5px)',
       }} />
+      {/* Candle stick */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, width: s.w, height: s.h,
+        position: 'absolute', bottom: 0, left: (s.fw * 3 - s.w) / 2, width: s.w, height: s.h,
         background: 'linear-gradient(180deg, oklch(0.75 0.04 80) 0%, oklch(0.55 0.05 70) 100%)',
         borderRadius: 2,
-        boxShadow: 'inset -2px 0 3px oklch(0.30 0.04 60 / 0.7), 0 0 8px oklch(0.85 0.15 75 / 0.3)',
+        boxShadow: '0 0 8px oklch(0.85 0.15 75 / 0.3)',
       }} />
     </div>
   );

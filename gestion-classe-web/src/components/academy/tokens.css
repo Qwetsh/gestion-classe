@@ -99,7 +99,9 @@
 
 @keyframes academy-drift {
   0%, 100% { transform: translateY(0) translateX(0); }
-  50% { transform: translateY(-4px) translateX(2px); }
+  25% { transform: translateY(-14px) translateX(4px); }
+  50% { transform: translateY(-20px) translateX(-3px); }
+  75% { transform: translateY(-10px) translateX(5px); }
 }
 
 @keyframes academy-twinkle {
