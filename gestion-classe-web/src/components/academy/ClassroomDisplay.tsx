@@ -207,11 +207,11 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
               onClick={() => setShowCeremony(true)}
               style={{
                 flex: 1, minWidth: 200, padding: '16px 24px',
-                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-                color: '#fff', fontWeight: 700, fontSize: 17,
+                background: '#1a1410',
+                color: '#d4a843', fontWeight: 700, fontSize: 17,
                 fontFamily: 'inherit',
-                border: 'none', borderRadius: 12, cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
+                border: '1px solid #d4a843', borderRadius: 12, cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(212,168,67,0.15)',
               }}
             >
               🎩 Cérémonie de la Répartition ({unassignedCount})
