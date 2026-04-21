@@ -293,7 +293,6 @@ export default function TimelineGenerator() {
       </div>
 
       <h3 style={editorS.section}>Événements ({config.events.length})</h3>
-      <button style={editorS.addBtn} onClick={addEvent}>+ Événement</button>
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
 
       <div style={editorS.eventList}>
@@ -339,6 +338,8 @@ export default function TimelineGenerator() {
           </div>
         ))}
       </div>
+
+      <button style={editorS.addBtn} onClick={addEvent}>+ Événement</button>
 
       <h3 style={editorS.section}>Exporter</h3>
       <div style={editorS.row}>
