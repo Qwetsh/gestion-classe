@@ -469,6 +469,47 @@ export function StudentDashboard() {
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <MyHouse houseId={academyData.house} classId={academyData.classId} />
             </div>
+          ) : academyData.test_completed ? (
+            <div className="academy-root" style={{
+              width: '100%', minHeight: '100vh',
+              background: 'radial-gradient(ellipse at 50% 0%, oklch(0.15 0.02 55) 0%, oklch(0.06 0.01 50) 80%)',
+              position: 'relative', overflow: 'hidden',
+              fontFamily: "var(--font-body, 'Cormorant Garamond', Georgia, serif)",
+              color: 'var(--parchment, #e8dcc8)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              textAlign: 'center', padding: 40,
+            }}>
+              <div style={{
+                width: 120, height: 120, borderRadius: '50%',
+                background: 'radial-gradient(circle, oklch(0.35 0.12 25) 0%, oklch(0.25 0.08 20) 70%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 30px oklch(0.35 0.12 25 / 0.4)',
+                fontSize: 48,
+              }}>Q</div>
+              <h2 style={{
+                fontFamily: "var(--font-display, 'Cormorant Garamond', Georgia, serif)",
+                fontSize: 28, fontStyle: 'italic', fontWeight: 500,
+                margin: '20px 0 8px',
+              }}>
+                Sceau apposé
+              </h2>
+              <p style={{
+                fontStyle: 'italic', fontSize: 15,
+                color: 'oklch(0.65 0.03 60)', maxWidth: 300, lineHeight: 1.55,
+              }}>
+                Tes réponses sont parvenues au Choixpeau.<br />
+                Ta Maison te sera révélée lors de la prochaine cérémonie,
+                par la voix de ta professeur·e.
+              </p>
+              <div style={{
+                marginTop: 18, padding: '8px 14px',
+                border: '1px solid oklch(0.30 0.05 60)',
+                fontFamily: 'monospace', fontSize: 10, letterSpacing: '0.25em',
+                color: 'oklch(0.50 0.06 60)', textTransform: 'uppercase',
+              }}>
+                En attente de la cérémonie
+              </div>
+            </div>
           ) : (
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <AcademyQuiz
