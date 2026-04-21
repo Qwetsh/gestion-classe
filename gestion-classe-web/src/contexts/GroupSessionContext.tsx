@@ -264,27 +264,24 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, activeGroupIndex: index }));
   }, []);
 
-  const setGrade = useCallback(async (groupId: string, criteriaId: string, points: number) => {
-    try {
-      await updateGrade(groupId, criteriaId, points);
-      setState(s => {
-        if (!s.sessionData) return s;
-        const groups = s.sessionData.groups.map(g => {
-          if (g.id !== groupId) return g;
-          const grades = g.grades.map(gr =>
-            gr.criteria_id === criteriaId ? { ...gr, points_awarded: points } : gr
-          );
-          // If grade doesn't exist yet, add it
-          if (!grades.find(gr => gr.criteria_id === criteriaId)) {
-            grades.push({ criteria_id: criteriaId, points_awarded: points });
-          }
-          return { ...g, grades };
-        });
-        return { ...s, sessionData: { ...s.sessionData, groups } };
+  const setGrade = useCallback((groupId: string, criteriaId: string, points: number) => {
+    // Optimistic update — instant UI feedback
+    setState(s => {
+      if (!s.sessionData) return s;
+      const groups = s.sessionData.groups.map(g => {
+        if (g.id !== groupId) return g;
+        const grades = g.grades.map(gr =>
+          gr.criteria_id === criteriaId ? { ...gr, points_awarded: points } : gr
+        );
+        if (!grades.find(gr => gr.criteria_id === criteriaId)) {
+          grades.push({ criteria_id: criteriaId, points_awarded: points });
+        }
+        return { ...g, grades };
       });
-    } catch {
-      // silent
-    }
+      return { ...s, sessionData: { ...s.sessionData, groups } };
+    });
+    // Persist in background — no await
+    updateGrade(groupId, criteriaId, points).catch(() => {});
   }, []);
 
   const applyMalusAction = useCallback(async (groupId: string) => {
