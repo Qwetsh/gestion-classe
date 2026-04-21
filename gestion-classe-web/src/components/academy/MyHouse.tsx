@@ -89,7 +89,7 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
       position: 'relative', overflow: 'hidden',
       fontFamily: 'var(--font-body)', color: 'var(--parchment)',
     }}>
-      <BokehField density={50} houseColor={myHouse.c1} houseColorLight={myHouse.cInkLight} />
+      <BokehField density={50} houseColor={myHouse.c1} />
 
       <div style={{ position: 'relative', zIndex: 2, padding: '40px 20px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Header */}

@@ -193,10 +193,9 @@ export function GoldParticles({ active, count = 60 }: { active: boolean; count?:
 }
 
 // --- BokehField ---
-export function BokehField({ density = 70, houseColor, houseColorLight }: {
+export function BokehField({ density = 70, houseColor }: {
   density?: number;
   houseColor?: string;
-  houseColorLight?: string;
 }) {
   const particles = useMemo(() =>
     Array.from({ length: density }, () => {
