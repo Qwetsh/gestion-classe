@@ -1686,11 +1686,10 @@ export function Students() {
                           <Token kind="oral" value={sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'} label="oral" />
                         </div>
 
-                        <div className="scard__actions">
-                          <button className="scard__add" onClick={(e) => { e.stopPropagation(); openStudentDetail(sg); }}>
-                            <Icon name="plus" size={14} /> Ajouter un événement
-                          </button>
-                          <button className="scard__eye" onClick={(e) => { e.stopPropagation(); openStudentDetail(sg); }} title="Ouvrir la fiche"><Icon name="eye" size={14} /></button>
+                        <div className="scard__footer">
+                          <span className="scard__footer-item">{totalSessions} séance{totalSessions > 1 ? 's' : ''}</span>
+                          <span className="scard__footer-sep">·</span>
+                          <span className="scard__footer-item">{sg.totalParticipations + sg.malus + sg.absences} évén.</span>
                         </div>
                       </div>
                     );
@@ -1707,7 +1706,6 @@ export function Students() {
                     <span>−</span>
                     <span>Abs</span>
                     <span>Oral</span>
-                    <span></span>
                   </div>
                   {paginatedGrades.map(sg => {
                     const initials = sg.student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
@@ -1729,9 +1727,6 @@ export function Students() {
                         <div className="srow__n srow__n--neg">{sg.malus > 0 ? `−${sg.malus}` : '0'}</div>
                         <div className="srow__n">{sg.absences}</div>
                         <div className="srow__n">{sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'}</div>
-                        <div className="srow__end">
-                          <button className="srow__add"><Icon name="eye" size={14} /></button>
-                        </div>
                       </div>
                     );
                   })}

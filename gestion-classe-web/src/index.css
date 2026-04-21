@@ -666,23 +666,12 @@ textarea:focus-visible {
 .tok--oral { background: var(--indigo-soft); color: var(--indigo); }
 .tok--oral .tok__l { color: var(--indigo); opacity: 0.8; }
 
-.scard__actions {
-  display: flex; gap: 6px; margin-top: auto;
+.scard__footer {
+  display: flex; align-items: center; gap: 4px; margin-top: auto;
+  font-size: 11px; color: var(--text-muted); padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
-.scard__add {
-  flex: 1; padding: 8px; border-radius: 8px;
-  background: var(--surface-3); color: var(--text);
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  font-size: 12px; font-weight: 500; border: 1px dashed var(--border-strong);
-  transition: all 0.12s; cursor: pointer;
-}
-.scard__add:hover { background: var(--text); color: var(--surface); border-color: var(--text); border-style: solid; }
-.scard__eye {
-  width: 32px; height: 32px; display: grid; place-items: center;
-  background: var(--surface-3); border-radius: 8px; color: var(--text-muted);
-  border: none; cursor: pointer;
-}
-.scard__eye:hover { background: var(--text); color: var(--surface); }
+.scard__footer-sep { opacity: 0.4; }
 
 /* ---- Student list (alt layout) ---- */
 .slist {
@@ -691,7 +680,7 @@ textarea:focus-visible {
 }
 .slist__head, .srow {
   display: grid;
-  grid-template-columns: minmax(180px, 1.5fr) 64px minmax(200px, 1.6fr) 52px 52px 52px 62px 44px;
+  grid-template-columns: minmax(180px, 1.5fr) 64px minmax(200px, 1.6fr) 52px 52px 52px 62px;
   align-items: center; gap: 12px;
   padding: 10px 16px;
 }
@@ -711,13 +700,6 @@ textarea:focus-visible {
 .srow__n { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; color: var(--text); text-align: right; }
 .srow__n--pos { color: var(--pos); }
 .srow__n--neg { color: var(--neg); }
-.srow__end { text-align: right; position: relative; }
-.srow__add {
-  width: 28px; height: 28px; border-radius: 7px;
-  display: grid; place-items: center; background: var(--surface-3); color: var(--text);
-  border: none; cursor: pointer;
-}
-.srow__add:hover { background: var(--text); color: var(--surface); }
 
 /* ---- Quick menu ---- */
 .qmenu {
@@ -888,17 +870,16 @@ textarea:focus-visible {
   .scard__mark small { font-size: 10px; }
   .scard__trend { display: none !important; }
   .scard__breakdown { display: none !important; }
-  .scard__actions { display: none !important; }
+  .scard__footer { display: none !important; }
 
   /* Student list: simplified */
   .slist__head, .srow {
     grid-template-columns: 1fr 50px 36px 36px 36px;
     gap: 4px; padding: 8px 10px;
   }
-  /* Hide Détails, Oral, Actions columns */
+  /* Hide Détails, Oral columns */
   .slist__head span:nth-child(3), .srow > *:nth-child(3) { display: none; }
   .slist__head span:nth-child(7), .srow > *:nth-child(7) { display: none; }
-  .slist__head span:nth-child(8), .srow > *:nth-child(8) { display: none; }
   .srow__name { font-size: 12px; }
   .srow__mark { font-size: 16px; }
   .srow__avatar { width: 24px; height: 24px; font-size: 9px; }
