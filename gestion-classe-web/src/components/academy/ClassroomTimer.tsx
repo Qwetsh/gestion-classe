@@ -7,7 +7,7 @@ export function ClassroomTimer() {
   const [remaining, setRemaining] = useState(0);
   const [running, setRunning] = useState(false);
   const [showPicker, setShowPicker] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     if (!running || remaining <= 0) {
