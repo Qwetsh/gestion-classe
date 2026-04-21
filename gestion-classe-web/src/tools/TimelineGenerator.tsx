@@ -436,14 +436,16 @@ export default function TimelineGenerator() {
             const isTop = side === 'top';
 
             // Card Y position: tiers stack outward from axis
-            const cardDistFromAxis = 20 + tier * TIER_H; // gap from axis + tier offset
+            const GAP_FROM_AXIS = 22; // space between axis and nearest card
             const cardTop = isTop
-              ? axisTop - cardDistFromAxis - TIER_H + 30 // card above axis
-              : axisTop + cardDistFromAxis + 10; // card below axis
+              ? axisTop - GAP_FROM_AXIS - (tier + 1) * TIER_H
+              : axisTop + GAP_FROM_AXIS + tier * TIER_H;
 
-            // Connector: from card edge to axis
-            const connectorTop = isTop ? cardTop + TIER_H - 30 : axisTop + 1;
-            const connectorH = isTop ? axisTop - (cardTop + TIER_H - 30) : cardTop - axisTop;
+            // Connector: always from axis to card edge
+            // For top cards: from bottom of card area to axis
+            // For bottom cards: from axis to top of card
+            const connectorTop = isTop ? cardTop : axisTop + 2;
+            const connectorH = isTop ? axisTop - cardTop : cardTop - axisTop;
 
             return (
               <div key={evt.id}>
@@ -458,7 +460,7 @@ export default function TimelineGenerator() {
                   zIndex: 3,
                 }} />
 
-                {/* Connector line */}
+                {/* Connector line — stretches from axis to card position */}
                 <div style={{
                   position: 'absolute',
                   left: leftPx - 1,
