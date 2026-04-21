@@ -356,110 +356,154 @@ export default function TimelineGenerator() {
 
   const renderHorizontal = () => {
     const CARD_W = 160;
-    const timelineW = Math.max(sortedEvents.length * (CARD_W + 40) + 120, 800);
+    const CARD_GAP = 12;
+    const TIER_H = 130; // height per tier (card ~100px + spacing)
+    const DOT_R = preset.dotSize / 2;
+    const AXIS_PAD = 60; // left/right padding for axis
+
+    // Compute pixel positions for all events
+    const eventsWithPos = sortedEvents.map((evt, idx) => {
+      const year = parseYear(evt.date);
+      const frac = Math.max(0.02, Math.min(0.98, (year - startY) / range));
+      return { evt, idx, frac, side: (idx % 2 === 0 ? 'top' : 'bottom') as 'top' | 'bottom', tier: 0 };
+    });
+
+    // We need a total width to compute px positions for overlap detection
+    const baseW = Math.max(sortedEvents.length * (CARD_W + 20) + 120, 800);
+    const axisW = baseW - AXIS_PAD * 2;
+
+    // Assign tiers: greedy — for each event on a given side, find the lowest tier without overlap
+    const placed: Array<{ px: number; side: string; tier: number }> = [];
+    for (const ep of eventsWithPos) {
+      const px = ep.frac * axisW;
+      const sameSide = placed.filter(p => p.side === ep.side);
+      let tier = 0;
+      while (true) {
+        const sameTier = sameSide.filter(p => p.tier === tier);
+        const overlaps = sameTier.some(p => Math.abs(p.px - px) < CARD_W + CARD_GAP);
+        if (!overlaps) break;
+        tier++;
+      }
+      ep.tier = tier;
+      placed.push({ px, side: ep.side, tier });
+    }
+
+    const maxTopTier = Math.max(0, ...eventsWithPos.filter(e => e.side === 'top').map(e => e.tier));
+    const maxBotTier = Math.max(0, ...eventsWithPos.filter(e => e.side === 'bottom').map(e => e.tier));
+
+    const AXIS_Y = 60 + (maxTopTier + 1) * TIER_H; // axis Y position
+    const totalH = AXIS_Y + 30 + (maxBotTier + 1) * TIER_H + 20;
+    const timelineW = baseW;
 
     return (
       <div style={{
-        width: timelineW, minHeight: 420, padding: '40px 60px 40px',
+        width: timelineW, height: totalH, padding: '20px 0',
         backgroundColor: preset.bg, fontFamily: preset.bodyFont, color: preset.textColor,
         position: 'relative',
       }}>
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+        <div style={{ textAlign: 'center', marginBottom: 16, padding: '0 20px' }}>
           <h1 style={{ fontFamily: preset.titleFont, fontSize: 28, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
             {config.title}
           </h1>
           {config.subtitle && (
             <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4, fontStyle: 'italic' }}>{config.subtitle}</div>
           )}
-          <div style={{ fontSize: 12, opacity: 0.4, marginTop: 4 }}>
-            {config.startYear} — {config.endYear}
-          </div>
         </div>
 
-        {/* Axis */}
-        <div style={{ position: 'relative', height: 280 }}>
+        {/* Axis area */}
+        <div style={{ position: 'relative', height: totalH - 80, marginTop: 10 }}>
           {/* Axis line */}
           <div style={{
-            position: 'absolute', top: 140, left: 0, right: 0, height: 3,
+            position: 'absolute', top: AXIS_Y - 20, left: AXIS_PAD - 10, right: AXIS_PAD - 10, height: 3,
             backgroundColor: preset.axisBg, borderRadius: 2,
           }} />
 
-          {/* Start/end markers */}
+          {/* Start/end year labels */}
           <div style={{
-            position: 'absolute', top: 130, left: 0,
+            position: 'absolute', top: AXIS_Y - 20 - 18, left: AXIS_PAD - 10,
             fontSize: 11, fontWeight: 700, color: preset.axisBg,
           }}>{config.startYear}</div>
           <div style={{
-            position: 'absolute', top: 130, right: 0,
-            fontSize: 11, fontWeight: 700, color: preset.axisBg,
+            position: 'absolute', top: AXIS_Y - 20 - 18, right: AXIS_PAD - 10,
+            fontSize: 11, fontWeight: 700, color: preset.axisBg, textAlign: 'right',
           }}>{config.endYear}</div>
 
           {/* Events */}
-          {sortedEvents.map((evt, idx) => {
-            const year = parseYear(evt.date);
-            const pos = ((year - startY) / range) * 100;
-            const isTop = idx % 2 === 0;
-            const clampedPos = Math.max(5, Math.min(95, pos));
+          {eventsWithPos.map(({ evt, side, tier, frac }) => {
+            const leftPx = AXIS_PAD + frac * axisW;
+            const axisTop = AXIS_Y - 20; // axis line Y in this container
+            const isTop = side === 'top';
+
+            // Card Y position: tiers stack outward from axis
+            const cardDistFromAxis = 20 + tier * TIER_H; // gap from axis + tier offset
+            const cardTop = isTop
+              ? axisTop - cardDistFromAxis - TIER_H + 30 // card above axis
+              : axisTop + cardDistFromAxis + 10; // card below axis
+
+            // Connector: from card edge to axis
+            const connectorTop = isTop ? cardTop + TIER_H - 30 : axisTop + 1;
+            const connectorH = isTop ? axisTop - (cardTop + TIER_H - 30) : cardTop - axisTop;
 
             return (
-              <div key={evt.id} style={{
-                position: 'absolute',
-                left: `${clampedPos}%`,
-                top: isTop ? 0 : 155,
-                transform: 'translateX(-50%)',
-                width: CARD_W,
-              }}>
-                {/* Connector line */}
-                <div style={{
-                  position: 'absolute',
-                  left: '50%',
-                  width: 2,
-                  backgroundColor: evt.color,
-                  ...(isTop
-                    ? { bottom: -15, height: 20 }
-                    : { top: -15, height: 20 }),
-                }} />
-
+              <div key={evt.id}>
                 {/* Dot on axis */}
                 <div style={{
                   position: 'absolute',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
+                  left: leftPx - DOT_R,
+                  top: axisTop - DOT_R + 1,
                   width: preset.dotSize, height: preset.dotSize, borderRadius: '50%',
                   backgroundColor: evt.color, border: `3px solid ${preset.bg}`,
                   boxShadow: `0 0 0 2px ${evt.color}`,
-                  ...(isTop
-                    ? { bottom: -(15 + preset.dotSize / 2 + 2) }
-                    : { top: -(15 + preset.dotSize / 2 + 2) }),
+                  zIndex: 3,
+                }} />
+
+                {/* Connector line */}
+                <div style={{
+                  position: 'absolute',
+                  left: leftPx - 1,
+                  top: connectorTop,
+                  width: 2,
+                  height: Math.max(0, connectorH),
+                  backgroundColor: evt.color,
+                  opacity: 0.5,
+                  zIndex: 1,
                 }} />
 
                 {/* Card */}
                 <div style={{
-                  backgroundColor: preset.cardBg,
-                  border: `1px solid ${preset.cardBorder}`,
-                  borderTop: `3px solid ${evt.color}`,
-                  borderRadius: 8,
-                  padding: 10,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  position: 'absolute',
+                  left: leftPx - CARD_W / 2,
+                  top: cardTop,
+                  width: CARD_W,
+                  zIndex: 2,
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: evt.color, marginBottom: 2 }}>
-                    {evt.date}
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2, marginBottom: 3 }}>
-                    {evt.label}
-                  </div>
-                  {evt.description && (
-                    <div style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.4 }}>
-                      {evt.description}
+                  <div style={{
+                    backgroundColor: preset.cardBg,
+                    border: `1px solid ${preset.cardBorder}`,
+                    borderTop: `3px solid ${evt.color}`,
+                    borderRadius: 8,
+                    padding: 10,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: evt.color, marginBottom: 2 }}>
+                      {evt.date}
                     </div>
-                  )}
-                  {evt.image && (
-                    <img src={evt.image} alt="" style={{
-                      width: '100%', height: 60, objectFit: 'cover',
-                      borderRadius: 4, marginTop: 6,
-                    }} />
-                  )}
+                    <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2, marginBottom: 3 }}>
+                      {evt.label}
+                    </div>
+                    {evt.description && (
+                      <div style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.4 }}>
+                        {evt.description}
+                      </div>
+                    )}
+                    {evt.image && (
+                      <img src={evt.image} alt="" style={{
+                        width: '100%', height: 60, objectFit: 'cover',
+                        borderRadius: 4, marginTop: 6,
+                      }} />
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -472,6 +516,10 @@ export default function TimelineGenerator() {
   // ─── Render: Vertical preview ──────────
 
   const renderVertical = () => {
+    const AXIS_X = 16; // center of the axis line
+    const CONNECTOR_LEN = 30; // horizontal connector from dot to card
+    const DOT_R = preset.dotSize / 2;
+
     return (
       <div style={{
         width: 600, minHeight: 400, padding: '40px 40px',
@@ -491,73 +539,85 @@ export default function TimelineGenerator() {
         </div>
 
         {/* Vertical timeline */}
-        <div style={{ position: 'relative', paddingLeft: 30 }}>
+        <div style={{ position: 'relative', paddingLeft: AXIS_X + CONNECTOR_LEN + 16 }}>
           {/* Axis line */}
           <div style={{
-            position: 'absolute', top: 0, bottom: 0, left: 14, width: 3,
+            position: 'absolute', top: 0, bottom: 0, left: AXIS_X - 1, width: 3,
             backgroundColor: preset.axisBg, borderRadius: 2,
           }} />
 
-          {sortedEvents.map((evt) => {
-            return (
-              <div key={evt.id} style={{
-                position: 'relative',
-                marginBottom: 24,
-                display: 'flex',
-                alignItems: 'flex-start',
-              }}>
-                {/* Dot */}
-                <div style={{
-                  position: 'absolute',
-                  left: -30 + 14 - preset.dotSize / 2 + 1.5,
-                  top: 12,
-                  width: preset.dotSize, height: preset.dotSize, borderRadius: '50%',
-                  backgroundColor: evt.color, border: `3px solid ${preset.bg}`,
-                  boxShadow: `0 0 0 2px ${evt.color}`,
-                  zIndex: 2,
-                }} />
+          {/* Start marker */}
+          <div style={{
+            position: 'absolute', top: -6, left: AXIS_X - 5, width: 13, height: 13,
+            borderRadius: '50%', backgroundColor: preset.axisBg, zIndex: 2,
+          }} />
 
-                {/* Card */}
-                <div style={{
-                  flex: 1,
-                  backgroundColor: preset.cardBg,
-                  border: `1px solid ${preset.cardBorder}`,
-                  borderLeft: `3px solid ${evt.color}`,
-                  borderRadius: 8,
-                  padding: 12,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  marginLeft: 20,
-                }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: evt.color, marginBottom: 2 }}>
-                        {evt.date}
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
-                        {evt.label}
-                      </div>
-                      {evt.description && (
-                        <div style={{ fontSize: 11, opacity: 0.7, lineHeight: 1.5 }}>
-                          {evt.description}
-                        </div>
-                      )}
+          {sortedEvents.map((evt) => (
+            <div key={evt.id} style={{
+              position: 'relative',
+              marginBottom: 24,
+            }}>
+              {/* Dot on axis */}
+              <div style={{
+                position: 'absolute',
+                left: -(CONNECTOR_LEN + 16) + AXIS_X - DOT_R + 1,
+                top: 14 - DOT_R,
+                width: preset.dotSize, height: preset.dotSize, borderRadius: '50%',
+                backgroundColor: evt.color, border: `3px solid ${preset.bg}`,
+                boxShadow: `0 0 0 2px ${evt.color}`,
+                zIndex: 3,
+              }} />
+
+              {/* Horizontal connector line from dot to card */}
+              <div style={{
+                position: 'absolute',
+                left: -(CONNECTOR_LEN + 16) + AXIS_X + DOT_R + 3,
+                top: 13,
+                width: CONNECTOR_LEN - DOT_R + 12,
+                height: 2,
+                backgroundColor: evt.color,
+                opacity: 0.5,
+                zIndex: 1,
+              }} />
+
+              {/* Card */}
+              <div style={{
+                backgroundColor: preset.cardBg,
+                border: `1px solid ${preset.cardBorder}`,
+                borderLeft: `3px solid ${evt.color}`,
+                borderRadius: 8,
+                padding: 12,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: evt.color, marginBottom: 2 }}>
+                      {evt.date}
                     </div>
-                    {evt.image && (
-                      <img src={evt.image} alt="" style={{
-                        width: 80, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0,
-                      }} />
+                    <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
+                      {evt.label}
+                    </div>
+                    {evt.description && (
+                      <div style={{ fontSize: 11, opacity: 0.7, lineHeight: 1.5 }}>
+                        {evt.description}
+                      </div>
                     )}
                   </div>
+                  {evt.image && (
+                    <img src={evt.image} alt="" style={{
+                      width: 80, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0,
+                    }} />
+                  )}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
 
           {/* End marker */}
           {sortedEvents.length > 0 && (
             <div style={{
-              position: 'absolute', bottom: -8, left: 14 - 4, width: 11, height: 11,
-              borderRadius: '50%', backgroundColor: preset.axisBg,
+              position: 'absolute', bottom: -8, left: AXIS_X - 5, width: 13, height: 13,
+              borderRadius: '50%', backgroundColor: preset.axisBg, zIndex: 2,
             }} />
           )}
         </div>
