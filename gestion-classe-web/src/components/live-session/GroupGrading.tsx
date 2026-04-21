@@ -63,11 +63,12 @@ export function GroupGrading() {
         </div>
       </div>
 
-      {/* ===== GROUP TABS — horizontal scroll ===== */}
+      {/* ===== GROUP TABS — grid ===== */}
       <div style={{
-        display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px',
+        display: 'grid',
+        gridTemplateColumns: `repeat(${groups.length}, 1fr)`,
+        gap: 6, padding: '8px 12px',
         borderBottom: '1px solid var(--border)', flexShrink: 0,
-        WebkitOverflowScrolling: 'touch',
       }}>
         {groups.map((g, i) => {
           const gScore = criteria.reduce((s, c) => {
@@ -80,15 +81,19 @@ export function GroupGrading() {
               key={g.id}
               onClick={() => setActiveGroup(i)}
               style={{
-                flexShrink: 0, padding: '6px 14px',
-                fontSize: 13, fontWeight: 700, lineHeight: 1.3,
+                padding: '10px 4px',
+                fontSize: 12, fontWeight: 700, lineHeight: 1.2,
                 background: isActive ? '#059669' : 'var(--surface-3)',
                 color: isActive ? '#fff' : 'var(--text-muted)',
-                borderRadius: 20, border: 'none', cursor: 'pointer',
+                borderRadius: 10, border: isActive ? '2px solid #059669' : '2px solid transparent',
+                cursor: 'pointer',
+                textAlign: 'center',
+                minHeight: 48,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              {g.name}
-              <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{Math.max(0, gScore)}</span>
+              <div>{g.name}</div>
+              <div style={{ fontSize: 10, marginTop: 2, opacity: 0.7 }}>{Math.max(0, gScore)} pts</div>
             </button>
           );
         })}
