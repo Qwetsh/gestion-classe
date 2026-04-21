@@ -63,6 +63,8 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
     }));
 
     try {
+      console.log('[AcademyQuiz] Submitting test', { studentCode, responses: responses.length, preferences: preferences.length });
+
       const { data: result, error: rpcError } = await supabase
         .rpc('submit_academy_test', {
           p_code: studentCode,
@@ -70,9 +72,11 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
           p_preferences: preferences,
         });
 
+      console.log('[AcademyQuiz] RPC result:', result, 'error:', rpcError);
+
       if (rpcError) throw rpcError;
       if (result?.error) {
-        setError(result.error === 'already_submitted' ? 'Tu as déjà passé le test.' : result.error);
+        setError(result.error === 'already_submitted' ? 'Tu as déjà passé le test.' : `Erreur: ${result.error}`);
         setPhase('waiting');
         return;
       }
@@ -81,8 +85,9 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
         setPhase('waiting');
         onComplete?.();
       }, 3500);
-    } catch {
-      setError('Erreur de connexion. Réessaye.');
+    } catch (err) {
+      console.error('[AcademyQuiz] Submit error:', err);
+      setError(`Erreur: ${err instanceof Error ? err.message : String(err)}`);
       setPhase('ranking');
     }
   }, [answers, ranking, studentCode, onComplete]);
