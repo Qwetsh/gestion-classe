@@ -744,7 +744,7 @@ export function Sessions() {
 
       {/* Delete Modal */}
       {showDeleteModal && deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 90 }}>
           <div className="bg-[var(--surface)] p-6 w-full max-w-md" style={{ borderRadius: 'var(--radius)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 flex items-center justify-center" style={{ background: 'var(--neg-soft)', borderRadius: 'var(--radius)' }}>
