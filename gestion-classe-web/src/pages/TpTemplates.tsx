@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import type { TpTemplatePhoto } from '../lib/tpTemplatePhotos';
 import {
-  TpTemplatePhoto,
   fetchTemplatePhotos,
   uploadTemplatePhoto,
   deleteTemplatePhoto,
