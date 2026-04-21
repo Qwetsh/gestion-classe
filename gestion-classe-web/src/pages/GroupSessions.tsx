@@ -912,125 +912,126 @@ export function GroupSessions() {
                   </div>
                 </div>
 
-                {/* Materials section */}
-                <div className="px-6 py-4 border-b border-[var(--border)]">
-                  <h4 className="text-sm font-medium text-[var(--text-muted)] mb-3">
-                    Matériel nécessaire
-                  </h4>
-                  {sessionDetail.session.materials.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {sessionDetail.session.materials.map((item, i) => (
-                        <span
-                          key={i}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--surface)] border border-[var(--border)] group"
-                          style={{ borderRadius: 'var(--radius)' }}
-                        >
-                          {item}
-                          <button
-                            onClick={() => handleRemoveMaterial(i)}
-                            className="w-4 h-4 flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--neg)] opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ fontSize: 14, lineHeight: 1 }}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newMaterial}
-                      onChange={(e) => setNewMaterial(e.target.value)}
-                      placeholder="Ex: microscope, lame, bleu de méthylène..."
-                      className="flex-1 px-3 py-2 text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
-                      style={{ borderRadius: 'var(--radius)' }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddMaterial(); }}
-                      disabled={isSavingMaterials}
-                    />
-                    <button
-                      onClick={handleAddMaterial}
-                      disabled={!newMaterial.trim() || isSavingMaterials}
-                      className="px-3 py-2 text-sm font-medium bg-[var(--surface-3)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-40"
-                      style={{ borderRadius: 'var(--radius)' }}
-                    >
-                      <Icon name="plus" size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Photos section */}
-                <div className="px-6 py-4 border-b border-[var(--border)]">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-[var(--text-muted)]">
-                      Photos de référence ({photos.length})
-                    </h4>
-                    <label
-                      className="px-3 py-1.5 text-sm font-medium bg-[var(--surface-3)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer flex items-center gap-2"
-                      style={{ borderRadius: 'var(--radius)' }}
-                    >
-                      <Icon name="plus" size={14} />
-                      {isUploadingPhoto ? 'Upload...' : 'Ajouter'}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => handleUploadPhoto(e.target.files)}
-                        style={{ display: 'none' }}
-                        disabled={isUploadingPhoto}
-                      />
-                    </label>
-                  </div>
-
-                  {photos.length === 0 ? (
-                    <div className="text-center py-6 text-[var(--text-dim)] text-sm">
-                      Aucune photo. Ajoutez des images de référence pour ce TP.
-                    </div>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
-                      {photos.map(photo => (
-                        <div
-                          key={photo.id}
-                          className="relative group cursor-pointer"
-                          style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '1', background: 'var(--surface-3)' }}
-                          onClick={() => setViewingPhoto(photo)}
-                        >
-                          {photoUrls[photo.id] ? (
-                            <img
-                              src={photoUrls[photo.id]}
-                              alt={photo.caption || 'Photo TP'}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-[var(--text-dim)]">...</div>
-                          )}
-                          {photo.caption && (
-                            <div style={{
-                              position: 'absolute', bottom: 0, left: 0, right: 0,
-                              background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                              padding: '16px 8px 6px', fontSize: 11, color: '#fff',
-                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                            }}>
-                              {photo.caption}
-                            </div>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo); }}
-                            className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                            style={{ fontSize: 12, lineHeight: 1 }}
-                            title="Supprimer"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Groups */}
+                {/* Groups + Materials + Photos — all scrollable */}
                 <div className="flex-1 overflow-y-auto p-6">
+                  {/* Materials section */}
+                  <div className="mb-6 pb-4 border-b border-[var(--border)]">
+                    <h4 className="text-sm font-medium text-[var(--text-muted)] mb-3">
+                      Matériel nécessaire
+                    </h4>
+                    {sessionDetail.session.materials.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {sessionDetail.session.materials.map((item, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--surface)] border border-[var(--border)] group"
+                            style={{ borderRadius: 'var(--radius)' }}
+                          >
+                            {item}
+                            <button
+                              onClick={() => handleRemoveMaterial(i)}
+                              className="w-4 h-4 flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--neg)] opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ fontSize: 14, lineHeight: 1 }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newMaterial}
+                        onChange={(e) => setNewMaterial(e.target.value)}
+                        placeholder="Ex: microscope, lame, bleu de méthylène..."
+                        className="flex-1 px-3 py-2 text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
+                        style={{ borderRadius: 'var(--radius)' }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddMaterial(); }}
+                        disabled={isSavingMaterials}
+                      />
+                      <button
+                        onClick={handleAddMaterial}
+                        disabled={!newMaterial.trim() || isSavingMaterials}
+                        className="px-3 py-2 text-sm font-medium bg-[var(--surface-3)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-40"
+                        style={{ borderRadius: 'var(--radius)' }}
+                      >
+                        <Icon name="plus" size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Photos section */}
+                  <div className="mb-6 pb-4 border-b border-[var(--border)]">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-[var(--text-muted)]">
+                        Photos de référence ({photos.length})
+                      </h4>
+                      <label
+                        className="px-3 py-1.5 text-sm font-medium bg-[var(--surface-3)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer flex items-center gap-2"
+                        style={{ borderRadius: 'var(--radius)' }}
+                      >
+                        <Icon name="plus" size={14} />
+                        {isUploadingPhoto ? 'Upload...' : 'Ajouter'}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleUploadPhoto(e.target.files)}
+                          style={{ display: 'none' }}
+                          disabled={isUploadingPhoto}
+                        />
+                      </label>
+                    </div>
+
+                    {photos.length === 0 ? (
+                      <div className="text-center py-4 text-[var(--text-dim)] text-sm">
+                        Aucune photo. Ajoutez des images de référence pour ce TP.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+                        {photos.map(photo => (
+                          <div
+                            key={photo.id}
+                            className="relative group cursor-pointer"
+                            style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '1', background: 'var(--surface-3)' }}
+                            onClick={() => setViewingPhoto(photo)}
+                          >
+                            {photoUrls[photo.id] ? (
+                              <img
+                                src={photoUrls[photo.id]}
+                                alt={photo.caption || 'Photo TP'}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-[var(--text-dim)]">...</div>
+                            )}
+                            {photo.caption && (
+                              <div style={{
+                                position: 'absolute', bottom: 0, left: 0, right: 0,
+                                background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                                padding: '16px 8px 6px', fontSize: 11, color: '#fff',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                              }}>
+                                {photo.caption}
+                              </div>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo); }}
+                              className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              style={{ fontSize: 12, lineHeight: 1 }}
+                              title="Supprimer"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Results */}
                   <h4 className="text-sm font-medium text-[var(--text-muted)] mb-4">
                     Resultats par groupe
                   </h4>
