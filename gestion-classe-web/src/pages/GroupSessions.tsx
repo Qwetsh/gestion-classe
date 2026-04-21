@@ -72,6 +72,8 @@ export function GroupSessions() {
 
   // Mobile accordion for criteria
   const [criteriaExpanded, setCriteriaExpanded] = useState(false);
+  // Per-group criteria expansion
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -248,6 +250,7 @@ export function GroupSessions() {
   const handleOpenDetail = async (session: GroupSession) => {
     setShowDetailModal(true);
     setCriteriaExpanded(false);
+    setExpandedGroupId(null);
     await loadSessionDetail(session);
   };
 
@@ -883,61 +886,72 @@ export function GroupSessions() {
                               </div>
                             )}
 
-                            {/* Criteria grades */}
+                            {/* Criteria grades — collapsible per group */}
                             <div className="mt-3 pt-3 border-t border-[var(--border)]">
-                              {editingGroupId === group.id ? (
-                                <>
-                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {sessionDetail.criteria.map(c => (
-                                      <div key={c.id} className="flex items-center gap-2">
-                                        <label className="text-sm text-[var(--text-dim)] flex-1 min-w-0 truncate">{c.label}</label>
-                                        <div className="flex items-center gap-1">
-                                          <input
-                                            type="number"
-                                            min={0}
-                                            max={c.max_points}
-                                            step={0.5}
-                                            value={editGrades[c.id] ?? 0}
-                                            onChange={(e) => setEditGrades(prev => ({
-                                              ...prev,
-                                              [c.id]: Math.min(c.max_points, Math.max(0, parseFloat(e.target.value) || 0)),
-                                            }))}
-                                            className="w-16 px-2 py-1 text-sm text-center border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
-                                          />
-                                          <span className="text-xs text-[var(--text-dim)]">/{c.max_points}</span>
-                                        </div>
+                              <button
+                                onClick={() => setExpandedGroupId(expandedGroupId === group.id ? null : group.id)}
+                                className="w-full flex items-center justify-between text-left text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+                              >
+                                <span>Détail des critères</span>
+                                <span style={{ transition: 'transform 0.2s', transform: expandedGroupId === group.id ? 'rotate(180deg)' : '' }}>▼</span>
+                              </button>
+                              {(expandedGroupId === group.id || editingGroupId === group.id) && (
+                                <div className="mt-3">
+                                  {editingGroupId === group.id ? (
+                                    <>
+                                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {sessionDetail.criteria.map(c => (
+                                          <div key={c.id} className="flex items-center gap-2">
+                                            <label className="text-sm text-[var(--text-dim)] flex-1 min-w-0 truncate">{c.label}</label>
+                                            <div className="flex items-center gap-1">
+                                              <input
+                                                type="number"
+                                                min={0}
+                                                max={c.max_points}
+                                                step={0.5}
+                                                value={editGrades[c.id] ?? 0}
+                                                onChange={(e) => setEditGrades(prev => ({
+                                                  ...prev,
+                                                  [c.id]: Math.min(c.max_points, Math.max(0, parseFloat(e.target.value) || 0)),
+                                                }))}
+                                                className="w-16 px-2 py-1 text-sm text-center border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
+                                              />
+                                              <span className="text-xs text-[var(--text-dim)]">/{c.max_points}</span>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>
-                                  <div className="flex gap-2 mt-3 justify-end">
-                                    <button
-                                      onClick={handleCancelEdit}
-                                      className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
-                                      disabled={isSavingGrades}
-                                    >
-                                      Annuler
-                                    </button>
-                                    <button
-                                      onClick={() => handleSaveGrades(group.id)}
-                                      disabled={isSavingGrades}
-                                      className="px-3 py-1.5 text-sm bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-                                    >
-                                      {isSavingGrades ? 'Sauvegarde...' : 'Sauvegarder'}
-                                    </button>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                  {sessionDetail.criteria.map(c => {
-                                    const grade = group.grades.find(g => g.criteria_id === c.id);
-                                    const points = grade?.points_awarded ?? 0;
-                                    return (
-                                      <div key={c.id} className="text-sm">
-                                        <span className="text-[var(--text-dim)]">{c.label}:</span>{' '}
-                                        <span className="font-medium text-[var(--text)]">{points}/{c.max_points}</span>
+                                      <div className="flex gap-2 mt-3 justify-end">
+                                        <button
+                                          onClick={handleCancelEdit}
+                                          className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
+                                          disabled={isSavingGrades}
+                                        >
+                                          Annuler
+                                        </button>
+                                        <button
+                                          onClick={() => handleSaveGrades(group.id)}
+                                          disabled={isSavingGrades}
+                                          className="px-3 py-1.5 text-sm bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                                        >
+                                          {isSavingGrades ? 'Sauvegarde...' : 'Sauvegarder'}
+                                        </button>
                                       </div>
-                                    );
-                                  })}
+                                    </>
+                                  ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                      {sessionDetail.criteria.map(c => {
+                                        const grade = group.grades.find(g => g.criteria_id === c.id);
+                                        const points = grade?.points_awarded ?? 0;
+                                        return (
+                                          <div key={c.id} className="text-sm">
+                                            <span className="text-[var(--text-dim)]">{c.label}:</span>{' '}
+                                            <span className="font-medium text-[var(--text)]">{points}/{c.max_points}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
