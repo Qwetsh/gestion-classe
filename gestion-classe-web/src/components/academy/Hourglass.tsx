@@ -79,12 +79,25 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
   const particleDur = isAnimating ? 2.5 : 7;
   const particleCount = isAnimating ? 14 : 6;
 
-  // Sand particles
-  const particles = Array.from({ length: particleCount }, (_, i) => ({
-    delay: (i / particleCount) * particleDur,
-    x: 50 + (Math.random() - 0.5) * 4,
-    size: isAnimating ? 1 + Math.random() * 1.5 : 0.8 + Math.random() * 0.8,
-  }));
+  // Sand particles — idle ones get a feather-like swaying path
+  const particles = Array.from({ length: particleCount }, (_, i) => {
+    const startX = 50 + (Math.random() - 0.5) * 4;
+    // Generate a sinuous cx path with 6 waypoints for idle mode
+    const sway = isAnimating
+      ? `${startX};${50 + (Math.random() - 0.5) * 12};${startX}`
+      : Array.from({ length: 7 }, (_, j) => {
+          if (j === 0 || j === 6) return startX;
+          // Gentle sway ±6px, alternating direction with randomness
+          const dir = j % 2 === 0 ? 1 : -1;
+          return 50 + dir * (2 + Math.random() * 4);
+        }).join(';');
+    return {
+      delay: (i / particleCount) * particleDur + Math.random() * 0.8,
+      x: startX,
+      size: isAnimating ? 1 + Math.random() * 1.5 : 0.8 + Math.random() * 0.8,
+      sway,
+    };
+  });
 
   return (
     <svg
@@ -190,32 +203,41 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
         </line>
 
         {/* Particles */}
-        {particles.map((p, i) => (
-          <circle key={`${i}-${isAnimating}`} cx={p.x} cy="115" r={p.size} fill={colorLight} opacity="0.7">
-            <animate
-              attributeName="cy"
-              from="115"
-              to={Math.min(bottomSandY + 5, 342).toString()}
-              dur={`${particleDur}s`}
-              begin={`${p.delay}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="cx"
-              values={`${p.x};${50 + (Math.random() - 0.5) * 12};${p.x}`}
-              dur={`${particleDur}s`}
-              begin={`${p.delay}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values={isAnimating ? '0;0.7;0.5;0' : '0;0.4;0.3;0'}
-              dur={`${particleDur}s`}
-              begin={`${p.delay}s`}
-              repeatCount="indefinite"
-            />
-          </circle>
-        ))}
+        {particles.map((p, i) => {
+          const endY = Math.min(bottomSandY + 5, 342);
+          return (
+            <circle key={`${i}-${isAnimating}`} cx={p.x} cy="115" r={p.size} fill={colorLight} opacity="0.7">
+              <animate
+                attributeName="cy"
+                values={isAnimating
+                  ? `115;${endY}`
+                  : `115;${140 + Math.random() * 10};${180 + Math.random() * 15};${230 + Math.random() * 15};${280 + Math.random() * 10};${320 + Math.random() * 10};${endY}`
+                }
+                dur={`${particleDur}s`}
+                begin={`${p.delay}s`}
+                repeatCount="indefinite"
+                calcMode={isAnimating ? 'linear' : 'spline'}
+                keySplines={isAnimating ? undefined : '0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1'}
+              />
+              <animate
+                attributeName="cx"
+                values={p.sway}
+                dur={`${particleDur}s`}
+                begin={`${p.delay}s`}
+                repeatCount="indefinite"
+                calcMode={isAnimating ? 'linear' : 'spline'}
+                keySplines={isAnimating ? undefined : '0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1'}
+              />
+              <animate
+                attributeName="opacity"
+                values={isAnimating ? '0;0.7;0.5;0' : '0;0.35;0.4;0.35;0.3;0.25;0'}
+                dur={`${particleDur}s`}
+                begin={`${p.delay}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          );
+        })}
 
         {/* Splash at impact */}
         {displayFill > 0 && displayFill < 95 && [0, 1, 2].map(i => (
