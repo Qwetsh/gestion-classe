@@ -115,6 +115,27 @@ export function StudentDashboard() {
   const currentCodeRef = useRef('');
   const [muted, setMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Academy music — play HP theme when Maison tab is active
+  const isAcademyActive = activeTab === 'academy' && !!academyData?.enabled;
+  useEffect(() => {
+    if (isAcademyActive && !muted) {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(hpMusicUrl);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.3;
+      }
+      audioRef.current.play().catch(() => {});
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [isAcademyActive, muted]);
+
   const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -329,29 +350,6 @@ export function StudentDashboard() {
       </div>
     );
   }
-
-  // ============================================
-  // ACADEMY MUSIC
-  // ============================================
-  const isAcademyActive = activeTab === 'academy' && academyData?.enabled;
-
-  useEffect(() => {
-    if (isAcademyActive && !muted) {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(hpMusicUrl);
-        audioRef.current.loop = true;
-        audioRef.current.volume = 0.3;
-      }
-      audioRef.current.play().catch(() => {});
-    } else if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, [isAcademyActive, muted]);
 
   // ============================================
   // DASHBOARD SCREEN
