@@ -175,15 +175,6 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               flex: 1, maxWidth: 200,
             }}>
-              {/* Rank crown */}
-              {i === 0 && (
-                <div style={{
-                  position: 'absolute', top: -32, left: '50%', transform: 'translateX(-50%)',
-                  fontSize: 28,
-                  filter: 'drop-shadow(0 0 6px rgba(212,168,67,0.6))',
-                }}>🏆</div>
-              )}
-
               {/* Crest */}
               <div style={{ marginBottom: 6 }}>
                 <HouseCrest house={h} size={56} glow={i === 0} />
