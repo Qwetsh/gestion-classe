@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import {
-  fetchAllAcademyConfigs, fetchAssignments, fetchBonuses, fetchTestResponses,
-  calculateHousePoints, saveBonus, revealBonuses, saveAssignment, saveCoefficient,
+  fetchAllAcademyConfigs, fetchAssignments, fetchBonuses, fetchTestResponses, fetchQuestions,
+  calculateHousePoints, saveBonus, revealBonuses, deleteBonus, saveAssignment, saveCoefficient,
+  saveQuestion, deleteQuestion, resetAcademyForClass, HOUSE_NAME_TO_ID, HOUSES,
   type HouseId, type AcademyAssignment, type AcademyHouseBonus, type HousePoints,
 } from '../lib/academyQueries';
 import { calculateStudentScores, runSortingAlgorithm, saveSortingResults, type StudentScores, type SortingResult } from '../lib/sortingAlgorithm';
@@ -28,7 +29,7 @@ export function Academy() {
 
   // Award zone state
   const [awardMode, setAwardMode] = useState<'house' | 'student'>('house');
-  const [awardHouse, setAwardHouse] = useState<HouseId>('salamandre');
+  const [awardHouse, setAwardHouse] = useState<HouseId>('gryffondor');
   const [awardStudentId, setAwardStudentId] = useState('');
   const [awardAmount, setAwardAmount] = useState(10);
   const [awardHidden, setAwardHidden] = useState(true);
@@ -38,8 +39,16 @@ export function Academy() {
   const [sortingResult, setSortingResult] = useState<SortingResult | null>(null);
   const [, setSortingScores] = useState<StudentScores[]>([]);
 
-  // Coefficients
-  const [groupSessions, setGroupSessions] = useState<{ id: string; created_at: string; status: string; coeff: number }[]>([]);
+  // Épreuves (group sessions enrichies)
+  interface EpreuveData {
+    id: string;
+    name: string;
+    created_at: string;
+    status: string;
+    coeff: number;
+    houseScores: Record<HouseId, number>;
+  }
+  const [groupSessions, setGroupSessions] = useState<EpreuveData[]>([]);
 
   // Load classes with academy enabled
   useEffect(() => {
@@ -60,7 +69,7 @@ export function Academy() {
       fetchAssignments(selectedClassId),
       fetchBonuses(selectedClassId),
       calculateHousePoints(selectedClassId),
-      supabase.from('group_sessions').select('id, created_at, status').eq('class_id', selectedClassId).order('created_at', { ascending: false }),
+      supabase.from('group_sessions').select('id, name, created_at, status').eq('class_id', selectedClassId).order('created_at', { ascending: false }),
     ]);
     setAssignments(a);
     setBonuses(b);
@@ -70,14 +79,42 @@ export function Academy() {
     const { data: studs } = await supabase.from('students').select('id, pseudo').eq('class_id', selectedClassId).order('pseudo');
     setStudents(studs || []);
 
-    // Load coefficients for group sessions
+    // Load coefficients + scores per house per session (épreuves)
     const sessionIds = (gs.data || []).map(s => s.id);
     let coeffMap: Record<string, number> = {};
+    const houseScoresMap: Record<string, Record<HouseId, number>> = {};
+
     if (sessionIds.length > 0) {
-      const { data: coeffs } = await supabase.from('academy_session_coefficients').select('*').in('group_session_id', sessionIds);
+      const [{ data: coeffs }, { data: sessionGroups }] = await Promise.all([
+        supabase.from('academy_session_coefficients').select('*').in('group_session_id', sessionIds),
+        supabase.from('session_groups').select('id, session_id, name, conduct_malus').in('session_id', sessionIds),
+      ]);
       coeffMap = Object.fromEntries((coeffs || []).map(c => [c.group_session_id, c.coefficient]));
+
+      // Load grades for all groups in one batch
+      const groupIds = (sessionGroups || []).map(sg => sg.id);
+      const { data: allGrades } = groupIds.length > 0
+        ? await supabase.from('group_grades').select('group_id, points_awarded').in('group_id', groupIds)
+        : { data: [] };
+
+      for (const sg of sessionGroups || []) {
+        const houseId = HOUSE_NAME_TO_ID[sg.name.toLowerCase()];
+        if (!houseId) continue;
+        if (!houseScoresMap[sg.session_id]) {
+          houseScoresMap[sg.session_id] = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
+        }
+        const groupGrades = (allGrades || []).filter(g => g.group_id === sg.id);
+        const total = groupGrades.reduce((sum, g) => sum + g.points_awarded, 0) - (sg.conduct_malus || 0);
+        houseScoresMap[sg.session_id][houseId] += total;
+      }
     }
-    setGroupSessions((gs.data || []).map(s => ({ ...s, coeff: coeffMap[s.id] ?? 1.0 })));
+
+    setGroupSessions((gs.data || []).map(s => ({
+      ...s,
+      name: s.name || '',
+      coeff: coeffMap[s.id] ?? 1.0,
+      houseScores: houseScoresMap[s.id] || { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 },
+    })));
   }, [selectedClassId]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -92,7 +129,7 @@ export function Academy() {
   }, [leaderboard]);
 
   const hiddenBonusByHouse = useMemo(() => {
-    const m: Record<HouseId, number> = { salamandre: 0, vouivre: 0, zephyr: 0, taisson: 0 };
+    const m: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
     bonuses.filter(b => !b.visible).forEach(b => { m[b.house] += b.points; });
     return m;
   }, [bonuses]);
@@ -117,7 +154,12 @@ export function Academy() {
       if (!a) return;
       targetHouse = a.house;
     }
-    await saveBonus(selectedClassId, user.id, targetHouse, awardAmount, awardLabel || 'Bonus', !awardHidden);
+    let finalLabel = awardLabel || 'Bonus';
+    if (awardMode === 'student') {
+      const stu = students.find(s => s.id === awardStudentId);
+      if (stu) finalLabel = `${stu.pseudo} — ${finalLabel}`;
+    }
+    await saveBonus(selectedClassId, user.id, targetHouse, awardAmount, finalLabel, !awardHidden);
     setAwardLabel('');
     setAwardAmount(10);
     await loadData();
@@ -150,6 +192,22 @@ export function Academy() {
   const handleSaveCoeff = async (sessionId: string, coeff: number) => {
     await saveCoefficient(sessionId, coeff);
     setGroupSessions(prev => prev.map(s => s.id === sessionId ? { ...s, coeff } : s));
+  };
+
+  const handleDeleteBonus = async (bonusId: string) => {
+    await deleteBonus(bonusId);
+    setBonuses(prev => prev.filter(b => b.id !== bonusId));
+    if (selectedClassId) {
+      const hp = await calculateHousePoints(selectedClassId);
+      setHousePoints(hp);
+    }
+  };
+
+  const handleResetAcademy = async () => {
+    if (!selectedClassId) return;
+    if (!window.confirm('Réinitialiser toutes les maisons ? Les élèves devront repasser le questionnaire.')) return;
+    await resetAcademyForClass(selectedClassId);
+    loadData();
   };
 
   const getPointsForHouse = (houseId: HouseId) => housePoints.find(h => h.house === houseId)?.total_points ?? 0;
@@ -377,38 +435,140 @@ export function Academy() {
               </div>
             </div>
 
-            {/* Coefficients */}
+            {/* Historique des bonus */}
+            {bonuses.length > 0 && (
+              <div style={{ marginTop: 48 }}>
+                <SectionHeading title="Registre des bonus" sub="Historique des points attribués manuellement" />
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {bonuses.map(b => {
+                    const hData = HOUSE_DATA[b.house];
+                    return (
+                      <div key={b.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '8px 14px', background: 'oklch(0.12 0.02 55 / 0.6)', border: '1px solid var(--ink-line)',
+                        borderRadius: 3, borderLeft: `3px solid ${hData?.c1 || 'var(--ink-line)'}`,
+                      }}>
+                        <div style={{ width: 22, height: 22, flexShrink: 0 }}>
+                          {hData && <HouseCrest house={hData} size={22} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontFamily: 'var(--font-body)', fontSize: 14, fontStyle: 'italic',
+                            color: 'var(--parchment)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>
+                            {b.label || 'Bonus'}
+                          </div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--parchment-dark)', marginTop: 1 }}>
+                            {new Date(b.created_at).toLocaleDateString('fr-FR')}
+                            {!b.visible && ' · caché'}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 20, fontWeight: 600,
+                          color: b.points > 0 ? 'var(--gold-bright)' : '#e55',
+                          minWidth: 50, textAlign: 'right',
+                        }}>
+                          {b.points > 0 ? `+${b.points}` : b.points}
+                        </div>
+                        <button
+                          onClick={() => handleDeleteBonus(b.id)}
+                          title="Supprimer ce bonus"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--parchment-dark)', fontSize: 16, padding: '4px 6px',
+                            opacity: 0.5, transition: 'opacity 0.2s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Épreuves */}
             {groupSessions.length > 0 && (
               <div style={{ marginTop: 48 }}>
-                <SectionHeading title="Coefficients" sub="Sessions de groupe — multiplicateur de points" />
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {groupSessions.map(gs => (
-                    <div key={gs.id} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 16px', background: 'oklch(0.12 0.02 55 / 0.6)', border: '1px solid var(--ink-line)',
-                    }}>
-                      <div>
-                        <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16 }}>
-                          Session du {new Date(gs.created_at).toLocaleDateString('fr-FR')}
+                <SectionHeading title="Épreuves" sub="Travaux de groupe — points gagnés par Maison" />
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {groupSessions.map(gs => {
+                    const maxScore = Math.max(...HOUSES.map(h => gs.houseScores[h]), 1);
+                    const totalSession = HOUSES.reduce((s, h) => s + gs.houseScores[h], 0);
+                    return (
+                      <div key={gs.id} style={{
+                        padding: '16px 20px', background: 'oklch(0.12 0.02 55 / 0.6)', border: '1px solid var(--ink-line)',
+                        borderRadius: 4,
+                      }}>
+                        {/* Header: nom + date + status */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                          <div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 18, color: 'var(--parchment)' }}>
+                              {gs.name || `Épreuve du ${new Date(gs.created_at).toLocaleDateString('fr-FR')}`}
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold-deep)', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 2 }}>
+                              {new Date(gs.created_at).toLocaleDateString('fr-FR')} · {gs.status === 'completed' ? 'terminée' : gs.status === 'active' ? 'en cours' : gs.status}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--parchment-dark)' }}>×</span>
+                            <input
+                              type="number" min="0" max="5" step="0.5" value={gs.coeff}
+                              onChange={e => handleSaveCoeff(gs.id, parseFloat(e.target.value) || 1)}
+                              style={{
+                                width: 52, padding: '4px 6px', textAlign: 'center',
+                                background: 'oklch(0.20 0.02 55)', border: '1px solid var(--gold-shadow)',
+                                color: 'var(--gold-bright)', fontFamily: 'var(--font-display)', fontSize: 18, fontStyle: 'italic',
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold-deep)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-                          {gs.status}
+
+                        {/* Barres par maison */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {HOUSE_LIST.map(h => {
+                            const score = gs.houseScores[h.id];
+                            const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
+                            const weighted = score * gs.coeff;
+                            return (
+                              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 28, height: 28, flexShrink: 0 }}>
+                                  <HouseCrest house={h} size={28} />
+                                </div>
+                                <div style={{ flex: 1, position: 'relative', height: 22, background: 'oklch(0.08 0.01 55 / 0.8)', borderRadius: 2, overflow: 'hidden' }}>
+                                  <div style={{
+                                    position: 'absolute', top: 0, left: 0, height: '100%',
+                                    width: `${pct}%`, minWidth: score > 0 ? 4 : 0,
+                                    background: `linear-gradient(90deg, ${h.c1}, ${h.c2})`,
+                                    opacity: 0.7, transition: 'width 0.6s ease',
+                                  }} />
+                                  <div style={{
+                                    position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', height: '100%',
+                                    padding: '0 8px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--parchment)',
+                                  }}>
+                                    {score} pts{gs.coeff !== 1 && <span style={{ color: 'var(--gold-deep)', marginLeft: 4 }}>({weighted})</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
+
+                        {/* Total session */}
+                        {totalSession > 0 && (
+                          <div style={{
+                            marginTop: 8, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11,
+                            color: 'var(--parchment-dark)', letterSpacing: '0.1em',
+                          }}>
+                            Total : {totalSession} pts{gs.coeff !== 1 && ` → ${Math.round(totalSession * gs.coeff)} pts pondérés`}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--parchment-dark)' }}>×</span>
-                        <input
-                          type="number" min="0" max="5" step="0.5" value={gs.coeff}
-                          onChange={e => handleSaveCoeff(gs.id, parseFloat(e.target.value) || 1)}
-                          style={{
-                            width: 60, padding: '6px 8px', textAlign: 'center',
-                            background: 'oklch(0.20 0.02 55)', border: '1px solid var(--gold-shadow)',
-                            color: 'var(--gold-bright)', fontFamily: 'var(--font-display)', fontSize: 20, fontStyle: 'italic',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -425,6 +585,10 @@ export function Academy() {
                 onClick={() => setModal({ type: 'reassign' })} />
               <QuickAction icon="responses" label="Réponses brutes du test" detail={`${assignments.length} réparti·es`}
                 onClick={() => setModal({ type: 'rawResponses' })} />
+              <QuickAction icon="questions" label="Paramétrer le questionnaire" detail="Modifier les questions du test"
+                onClick={() => setModal({ type: 'questions' })} />
+              <QuickAction icon="reset" label="Réinitialiser les maisons" detail="Supprime assignations + réponses"
+                onClick={handleResetAcademy} />
             </SidePanel>
 
             {/* Students without house */}
@@ -527,7 +691,7 @@ export function Academy() {
                 return (
                   <div key={h.id} style={{ textAlign: 'center', padding: 12, border: '1px solid var(--ink-line)' }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 18 }}>{h.name}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', color: 'var(--gold-bright)' }}>{count}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', color: 'var(--ink-deep)' }}>{count}</div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--parchment-dark)' }}>apprenti·es</div>
                   </div>
                 );
@@ -537,14 +701,18 @@ export function Academy() {
               {sortingResult.assignments.map(a => (
                 <div key={a.student_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid oklch(0.60 0.05 70 / 0.2)', fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 14 }}>
                   <span>{a.pseudo}</span>
-                  <span style={{ color: HOUSE_DATA[a.house].cInkLight }}>{HOUSE_DATA[a.house].name} ({a.method})</span>
+                  <span style={{ color: HOUSE_DATA[a.house].cInkLight }}>{HOUSE_DATA[a.house].name} — {
+                    a.method === 'priority' ? 'Choix du cœur' :
+                    a.method === 'compromise' ? 'Meilleur compromis' :
+                    'Dernière chance'
+                  }</span>
                 </div>
               ))}
             </div>
             <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
               <button onClick={() => setModal(null)} style={{
                 flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--ink-line)',
-                color: 'var(--parchment)', fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16, cursor: 'pointer',
+                color: 'var(--ink-warm)', fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16, cursor: 'pointer',
               }}>Annuler</button>
               <button onClick={handleConfirmSorting} style={{
                 flex: 1, padding: '12px', background: 'var(--parchment)', color: 'var(--ink-warm)',
@@ -556,6 +724,10 @@ export function Academy() {
 
         {modal?.type === 'rawResponses' && (
           <RawResponsesModal students={students} classId={selectedClassId} onClose={() => setModal(null)} />
+        )}
+
+        {modal?.type === 'questions' && (
+          <QuestionsEditorModal onClose={() => setModal(null)} />
         )}
 
         {/* Reveal overlay */}
@@ -705,6 +877,8 @@ function QuickAction({ icon, label, detail, onClick, disabled, highlight }: {
         {icon === 'sort' && '⚗'}
         {icon === 'reassign' && '⇄'}
         {icon === 'responses' && '📜'}
+        {icon === 'questions' && '✎'}
+        {icon === 'reset' && '↺'}
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 15 }}>{label}</div>
@@ -780,7 +954,7 @@ function RawResponsesModal({ students, classId, onClose }: { students: { id: str
                         → Réponse sélectionnée
                         {r.academy_answers && (
                           <span style={{ fontSize: 11, color: 'var(--ink-line)', marginLeft: 8 }}>
-                            (S:{r.academy_answers.salamandre_weight} V:{r.academy_answers.vouivre_weight} Z:{r.academy_answers.zephyr_weight} T:{r.academy_answers.taisson_weight})
+                            (Gry:{r.academy_answers.gryffondor_weight} Ser:{r.academy_answers.serpentard_weight} Serd:{r.academy_answers.serdaigle_weight} Pouf:{r.academy_answers.poufsouffle_weight})
                           </span>
                         )}
                       </div>
@@ -806,6 +980,208 @@ function RawResponsesModal({ students, classId, onClose }: { students: { id: str
           ) : (
             <div style={{ fontFamily: 'var(--font-body)', fontStyle: 'italic', color: 'var(--ink-line)' }}>Sélectionner un élève</div>
           )}
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+// ============================================================
+// Questions Editor Modal
+// ============================================================
+
+interface EditableAnswer {
+  answer_text: string;
+  display_order: number;
+  gryffondor_weight: number;
+  serpentard_weight: number;
+  serdaigle_weight: number;
+  poufsouffle_weight: number;
+}
+
+const EMPTY_ANSWERS: EditableAnswer[] = [
+  { answer_text: '', display_order: 1, gryffondor_weight: 0, serpentard_weight: 0, serdaigle_weight: 0, poufsouffle_weight: 0 },
+  { answer_text: '', display_order: 2, gryffondor_weight: 0, serpentard_weight: 0, serdaigle_weight: 0, poufsouffle_weight: 0 },
+  { answer_text: '', display_order: 3, gryffondor_weight: 0, serpentard_weight: 0, serdaigle_weight: 0, poufsouffle_weight: 0 },
+  { answer_text: '', display_order: 4, gryffondor_weight: 0, serpentard_weight: 0, serdaigle_weight: 0, poufsouffle_weight: 0 },
+];
+
+const HOUSE_LABELS: { key: keyof EditableAnswer; label: string; color: string }[] = [
+  { key: 'gryffondor_weight', label: 'Gry', color: 'var(--flamme-ink)' },
+  { key: 'serpentard_weight', label: 'Ser', color: 'var(--onde-ink)' },
+  { key: 'serdaigle_weight', label: 'Serd', color: 'var(--souffle-ink)' },
+  { key: 'poufsouffle_weight', label: 'Pouf', color: 'var(--glebe-ink)' },
+];
+
+function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
+  const [questions, setQuestions] = useState<{ id: string; question_order: number; question_text: string; answers: EditableAnswer[] }[]>([]);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editAnswers, setEditAnswers] = useState<EditableAnswer[]>(EMPTY_ANSWERS);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    const qs = await fetchQuestions();
+    setQuestions(qs.map(q => ({
+      id: q.id,
+      question_order: q.question_order,
+      question_text: q.question_text,
+      answers: q.answers.map(a => ({
+        answer_text: a.answer_text,
+        display_order: a.display_order,
+        gryffondor_weight: a.gryffondor_weight,
+        serpentard_weight: a.serpentard_weight,
+        serdaigle_weight: a.serdaigle_weight,
+        poufsouffle_weight: a.poufsouffle_weight,
+      })),
+    })));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const selectQuestion = (idx: number) => {
+    const q = questions[idx];
+    setSelectedIdx(idx);
+    setEditId(q.id);
+    setEditText(q.question_text);
+    setEditAnswers(q.answers.length === 4 ? [...q.answers] : [...EMPTY_ANSWERS]);
+  };
+
+  const startNew = () => {
+    setSelectedIdx(null);
+    setEditId(null);
+    setEditText('');
+    setEditAnswers(EMPTY_ANSWERS.map(a => ({ ...a })));
+  };
+
+  const handleSave = async () => {
+    if (!editText.trim()) return;
+    setSaving(true);
+    try {
+      const order = editId
+        ? questions.find(q => q.id === editId)?.question_order ?? questions.length + 1
+        : questions.length + 1;
+      await saveQuestion(editId, order, editText, editAnswers);
+      await load();
+      startNew();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Supprimer cette question ?')) return;
+    await deleteQuestion(id);
+    await load();
+    startNew();
+  };
+
+  const updateAnswer = (idx: number, field: string, value: string | number) => {
+    setEditAnswers(prev => prev.map((a, i) => i === idx ? { ...a, [field]: value } : a));
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 14,
+    border: '1px solid oklch(0.60 0.05 70 / 0.3)', background: 'oklch(0.95 0.02 80)',
+    color: 'var(--ink-warm)', borderRadius: 2,
+  };
+
+  const weightInputStyle: React.CSSProperties = {
+    width: 38, padding: '4px', textAlign: 'center', fontSize: 13, fontFamily: 'var(--font-mono)',
+    border: '1px solid oklch(0.60 0.05 70 / 0.3)', background: 'oklch(0.95 0.02 80)',
+    color: 'var(--ink-warm)', borderRadius: 2,
+  };
+
+  return (
+    <ModalShell title="Questionnaire du Choixpeau" subtitle="Paramétrage" onClose={onClose} width={920}>
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 24, minHeight: 400 }}>
+        {/* Left: question list */}
+        <div style={{ borderRight: '1px solid oklch(0.60 0.05 70 / 0.2)', paddingRight: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-line)', letterSpacing: '0.15em' }}>
+              {questions.length} QUESTIONS
+            </span>
+            <button onClick={startNew} style={{
+              background: 'none', border: '1px solid var(--ink-line)', color: 'var(--ink-warm)',
+              padding: '4px 10px', fontSize: 13, fontFamily: 'var(--font-display)', fontStyle: 'italic', cursor: 'pointer',
+            }}>+ Nouvelle</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 420, overflow: 'auto' }}>
+            {questions.map((q, i) => (
+              <button key={q.id} onClick={() => selectQuestion(i)} style={{
+                padding: '8px 10px', textAlign: 'left', cursor: 'pointer',
+                background: selectedIdx === i ? 'oklch(0.82 0.06 80 / 0.6)' : 'transparent',
+                border: selectedIdx === i ? '1px solid var(--gold-shadow)' : '1px solid transparent',
+                fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-warm)',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRadius: 2,
+              }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-line)', marginRight: 6 }}>Q{q.question_order}</span>
+                {q.question_text.slice(0, 50)}{q.question_text.length > 50 ? '…' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: editor */}
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>
+              {editId ? `Modifier Q${questions.find(q => q.id === editId)?.question_order}` : 'Nouvelle question'}
+            </label>
+            <textarea
+              value={editText} onChange={e => setEditText(e.target.value)}
+              placeholder="Texte de la question…"
+              rows={3}
+              style={{ ...inputStyle, marginTop: 6, resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase', marginBottom: 8 }}>
+            Réponses & poids par maison
+          </div>
+
+          {editAnswers.map((a, i) => (
+            <div key={i} style={{
+              display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8,
+              padding: '8px 10px', background: 'oklch(0.90 0.02 80 / 0.4)', borderRadius: 2,
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-line)', width: 16, flexShrink: 0 }}>
+                {String.fromCharCode(65 + i)}
+              </span>
+              <input
+                value={a.answer_text} onChange={e => updateAnswer(i, 'answer_text', e.target.value)}
+                placeholder={`Réponse ${String.fromCharCode(65 + i)}`}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              {HOUSE_LABELS.map(h => (
+                <div key={h.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: h.color, fontWeight: 600 }}>{h.label}</span>
+                  <input
+                    type="number" min="0" max="5" step="1"
+                    value={a[h.key] as number}
+                    onChange={e => updateAnswer(i, h.key, parseFloat(e.target.value) || 0)}
+                    style={weightInputStyle}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button onClick={handleSave} disabled={saving || !editText.trim()} style={{
+              padding: '10px 20px', background: 'var(--parchment)', color: 'var(--ink-warm)',
+              border: '2px solid var(--gold)', fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16,
+              cursor: !editText.trim() ? 'not-allowed' : 'pointer', opacity: !editText.trim() ? 0.4 : 1,
+            }}>{saving ? 'Enregistrement…' : editId ? 'Mettre à jour' : 'Ajouter la question'}</button>
+
+            {editId && (
+              <button onClick={() => handleDelete(editId)} style={{
+                padding: '10px 20px', background: 'transparent', color: '#c44',
+                border: '1px solid #c44', fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16, cursor: 'pointer',
+              }}>Supprimer</button>
+            )}
+          </div>
         </div>
       </div>
     </ModalShell>

@@ -2,10 +2,10 @@ import type { HouseData } from './houses';
 import type { HouseId } from '../../lib/academyQueries';
 
 const CREST_IMAGES: Record<HouseId, string> = {
-  salamandre: '/gestion-classe/academy/gryffondor.png',
-  vouivre: '/gestion-classe/academy/serpentard.png',
-  zephyr: '/gestion-classe/academy/serdaigle.png',
-  taisson: '/gestion-classe/academy/pouffesouffle.png',
+  gryffondor: '/gestion-classe/academy/gryffondor.png',
+  serpentard: '/gestion-classe/academy/serpentard.png',
+  serdaigle: '/gestion-classe/academy/serdaigle.png',
+  poufsouffle: '/gestion-classe/academy/pouffesouffle.png',
 };
 
 export function HouseCrest({ house, size = 140, glow = false }: {

@@ -3,7 +3,7 @@ import { HOUSES, type HouseId, fetchAssignments, saveAssignment } from './academ
 
 // ============================================================
 // Algorithme de répartition — Le Choixpeau Magique
-// 4 étapes : A (scores) → B (prioritaire) → C (compromis) → D (départage)
+// 4 étapes : A (scores) → B (prioritaire) → C (compromis) → D (dernière chance)
 // ============================================================
 
 export interface StudentScores {
@@ -26,7 +26,6 @@ export interface SortingResult {
 // --- Step A: Calculate raw scores ---
 
 export async function calculateStudentScores(classId: string): Promise<StudentScores[]> {
-  // Get students
   const { data: students } = await supabase
     .from('students')
     .select('id, pseudo')
@@ -36,13 +35,11 @@ export async function calculateStudentScores(classId: string): Promise<StudentSc
 
   const studentIds = students.map(s => s.id);
 
-  // Get responses with answer weights
   const { data: responses } = await supabase
     .from('academy_responses')
-    .select('student_id, answer_id, academy_answers(salamandre_weight, vouivre_weight, zephyr_weight, taisson_weight)')
+    .select('student_id, answer_id, academy_answers(gryffondor_weight, serpentard_weight, serdaigle_weight, poufsouffle_weight)')
     .in('student_id', studentIds);
 
-  // Get preferences
   const { data: preferences } = await supabase
     .from('academy_preferences')
     .select('student_id, house, rank')
@@ -52,26 +49,23 @@ export async function calculateStudentScores(classId: string): Promise<StudentSc
 
   for (const student of students) {
     const studentResponses = (responses || []).filter(r => r.student_id === student.id);
-    if (studentResponses.length === 0) continue; // Skip students without test
+    if (studentResponses.length === 0) continue;
 
-    // Sum weights
-    const scores: Record<HouseId, number> = { salamandre: 0, vouivre: 0, zephyr: 0, taisson: 0 };
+    const scores: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
     for (const r of studentResponses) {
       const w = r.academy_answers as any;
       if (!w) continue;
-      scores.salamandre += w.salamandre_weight || 0;
-      scores.vouivre += w.vouivre_weight || 0;
-      scores.zephyr += w.zephyr_weight || 0;
-      scores.taisson += w.taisson_weight || 0;
+      scores.gryffondor += w.gryffondor_weight || 0;
+      scores.serpentard += w.serpentard_weight || 0;
+      scores.serdaigle += w.serdaigle_weight || 0;
+      scores.poufsouffle += w.poufsouffle_weight || 0;
     }
 
-    // Preferences sorted by rank
     const studentPrefs = (preferences || [])
       .filter(p => p.student_id === student.id)
       .sort((a, b) => a.rank - b.rank)
       .map(p => p.house as HouseId);
 
-    // Dominant house = highest score
     const dominantHouse = HOUSES.reduce((best, h) =>
       scores[h] > scores[best] ? h : best, HOUSES[0]);
 
@@ -97,8 +91,7 @@ export function runSortingAlgorithm(
   const target = Math.ceil(totalStudents / 4);
   const max = Math.floor(target * 1.15);
 
-  // Track house counts (start with overrides)
-  const houseCounts: Record<HouseId, number> = { salamandre: 0, vouivre: 0, zephyr: 0, taisson: 0 };
+  const houseCounts: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
   const overrideIds = new Set(existingOverrides.map(o => o.student_id));
 
   for (const o of existingOverrides) {
@@ -123,16 +116,14 @@ export function runSortingAlgorithm(
   }
 
   // --- Step C: Compromise (score × preference rank weight) ---
-  // Sort by best compromise score descending for fairness
   const compromiseScore = (s: StudentScores, house: HouseId): number => {
     const prefRank = s.preferences.indexOf(house);
-    const rankWeight = prefRank >= 0 ? (4 - prefRank) : 0; // pref 1→4, pref 2→3, etc.
+    const rankWeight = prefRank >= 0 ? (4 - prefRank) : 0;
     return s.scores[house] * rankWeight;
   };
 
   const afterC: StudentScores[] = [];
 
-  // Sort students by their best possible compromise score (highest first = most decisive)
   const sortedForC = [...afterB].sort((a, b) => {
     const bestA = Math.max(...HOUSES.filter(h => canAssign(h)).map(h => compromiseScore(a, h)));
     const bestB = Math.max(...HOUSES.filter(h => canAssign(h)).map(h => compromiseScore(b, h)));
@@ -140,14 +131,12 @@ export function runSortingAlgorithm(
   });
 
   for (const s of sortedForC) {
-    // Find best house by compromise score, avoiding pref #4 if possible
     const available = HOUSES.filter(h => canAssign(h));
     if (available.length === 0) {
       afterC.push(s);
       continue;
     }
 
-    // Try without pref #4 first
     const withoutLast = available.filter(h => s.preferences.indexOf(h) !== 3);
     const candidates = withoutLast.length > 0 ? withoutLast : available;
 
@@ -162,7 +151,6 @@ export function runSortingAlgorithm(
   for (const s of afterC) {
     const available = HOUSES.filter(h => canAssign(h));
     if (available.length === 0) {
-      // Force into least-full house
       const leastFull = HOUSES.reduce((best, h) =>
         houseCounts[h] < houseCounts[best] ? h : best, HOUSES[0]);
       assignments.push({ student_id: s.student_id, pseudo: s.pseudo, house: leastFull, method: 'tiebreak' });
@@ -191,7 +179,6 @@ export async function saveSortingResults(
   classId: string,
   assignments: SortingResult['assignments'],
 ): Promise<void> {
-  // Get existing overrides to not overwrite them
   const existing = await fetchAssignments(classId);
   const overrideIds = new Set(existing.filter(a => a.override).map(a => a.student_id));
 

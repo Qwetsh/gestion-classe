@@ -15,8 +15,8 @@ export interface HouseData {
 }
 
 export const HOUSE_DATA: Record<HouseId, HouseData> = {
-  salamandre: {
-    id: 'salamandre',
+  gryffondor: {
+    id: 'gryffondor',
     name: 'Gryffondor',
     element: 'Feu',
     motto: 'Audentes fortuna iuvat',
@@ -28,8 +28,8 @@ export const HOUSE_DATA: Record<HouseId, HouseData> = {
     cInkLight: 'oklch(0.62 0.16 30)',
     description: 'Où règnent le courage et la bravoure. Cœur vaillant, parole franche, audace à l\'épreuve du feu.',
   },
-  vouivre: {
-    id: 'vouivre',
+  serpentard: {
+    id: 'serpentard',
     name: 'Serpentard',
     element: 'Eau',
     motto: 'Per ambages ad astra',
@@ -41,8 +41,8 @@ export const HOUSE_DATA: Record<HouseId, HouseData> = {
     cInkLight: 'oklch(0.48 0.12 168)',
     description: 'Où règnent la ruse et l\'ambition. Patience, stratégie, mémoire longue comme un fleuve.',
   },
-  zephyr: {
-    id: 'zephyr',
+  serdaigle: {
+    id: 'serdaigle',
     name: 'Serdaigle',
     element: 'Air',
     motto: 'Mens volans',
@@ -54,8 +54,8 @@ export const HOUSE_DATA: Record<HouseId, HouseData> = {
     cInkLight: 'oklch(0.52 0.12 248)',
     description: 'Où règnent la sagesse et l\'érudition. Intelligence aérienne, curiosité sans borne.',
   },
-  taisson: {
-    id: 'taisson',
+  poufsouffle: {
+    id: 'poufsouffle',
     name: 'Poufsouffle',
     element: 'Terre',
     motto: 'Fidelis terra',
@@ -70,8 +70,8 @@ export const HOUSE_DATA: Record<HouseId, HouseData> = {
 };
 
 export const HOUSE_LIST: HouseData[] = [
-  HOUSE_DATA.salamandre,
-  HOUSE_DATA.vouivre,
-  HOUSE_DATA.zephyr,
-  HOUSE_DATA.taisson,
+  HOUSE_DATA.gryffondor,
+  HOUSE_DATA.serpentard,
+  HOUSE_DATA.serdaigle,
+  HOUSE_DATA.poufsouffle,
 ];

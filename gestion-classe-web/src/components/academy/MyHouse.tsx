@@ -260,9 +260,9 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
 
 function getHue(houseId: HouseId): number {
   switch (houseId) {
-    case 'salamandre': return 28;
-    case 'vouivre': return 165;
-    case 'zephyr': return 245;
-    case 'taisson': return 85;
+    case 'gryffondor': return 28;
+    case 'serpentard': return 165;
+    case 'serdaigle': return 245;
+    case 'poufsouffle': return 85;
   }
 }

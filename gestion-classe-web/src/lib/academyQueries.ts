@@ -44,15 +44,24 @@ export interface AcademyAnswer {
   question_id: string;
   answer_text: string;
   display_order: number;
-  salamandre_weight: number;
-  vouivre_weight: number;
-  zephyr_weight: number;
-  taisson_weight: number;
+  gryffondor_weight: number;
+  serpentard_weight: number;
+  serdaigle_weight: number;
+  poufsouffle_weight: number;
 }
 
-export type HouseId = 'salamandre' | 'vouivre' | 'zephyr' | 'taisson';
+export type HouseId = 'gryffondor' | 'serpentard' | 'serdaigle' | 'poufsouffle';
 
-export const HOUSES: readonly HouseId[] = ['salamandre', 'vouivre', 'zephyr', 'taisson'] as const;
+export const HOUSES: readonly HouseId[] = ['gryffondor', 'serpentard', 'serdaigle', 'poufsouffle'] as const;
+
+// Lookup: nom de groupe (session_groups.name) → HouseId
+// Supporte le nom exact (insensible à la casse)
+export const HOUSE_NAME_TO_ID: Record<string, HouseId> = {
+  gryffondor: 'gryffondor',
+  serpentard: 'serpentard',
+  serdaigle: 'serdaigle',
+  poufsouffle: 'poufsouffle',
+};
 
 // --- Config ---
 
@@ -146,6 +155,29 @@ export async function saveBonus(
   if (error) throw error;
 }
 
+export async function deleteBonus(bonusId: string): Promise<void> {
+  const { error } = await supabase
+    .from('academy_house_bonuses')
+    .delete()
+    .eq('id', bonusId);
+  if (error) throw error;
+}
+
+export async function resetAcademyForClass(classId: string): Promise<void> {
+  const { data: students } = await supabase
+    .from('students')
+    .select('id')
+    .eq('class_id', classId);
+  const studentIds = (students || []).map(s => s.id);
+
+  if (studentIds.length > 0) {
+    await supabase.from('academy_responses').delete().in('student_id', studentIds);
+    await supabase.from('academy_preferences').delete().in('student_id', studentIds);
+  }
+
+  await supabase.from('academy_assignments').delete().eq('class_id', classId);
+}
+
 export async function revealBonuses(classId: string): Promise<void> {
   const { error } = await supabase
     .from('academy_house_bonuses')
@@ -188,8 +220,55 @@ export async function fetchQuestions(): Promise<(AcademyQuestion & { answers: Ac
   }));
 }
 
+export async function saveQuestion(
+  questionId: string | null,
+  questionOrder: number,
+  questionText: string,
+  answers: { id?: string; answer_text: string; display_order: number; gryffondor_weight: number; serpentard_weight: number; serdaigle_weight: number; poufsouffle_weight: number }[],
+): Promise<string> {
+  let qId = questionId;
+
+  if (qId) {
+    const { error } = await supabase
+      .from('academy_questions')
+      .update({ question_order: questionOrder, question_text: questionText })
+      .eq('id', qId);
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase
+      .from('academy_questions')
+      .insert({ question_order: questionOrder, question_text: questionText })
+      .select('id')
+      .single();
+    if (error) throw error;
+    qId = data.id;
+  }
+
+  await supabase.from('academy_answers').delete().eq('question_id', qId!);
+  const answerRows = answers.map(a => ({
+    question_id: qId!,
+    answer_text: a.answer_text,
+    display_order: a.display_order,
+    gryffondor_weight: a.gryffondor_weight,
+    serpentard_weight: a.serpentard_weight,
+    serdaigle_weight: a.serdaigle_weight,
+    poufsouffle_weight: a.poufsouffle_weight,
+  }));
+  const { error: aErr } = await supabase.from('academy_answers').insert(answerRows);
+  if (aErr) throw aErr;
+
+  return qId!;
+}
+
+export async function deleteQuestion(questionId: string): Promise<void> {
+  const { error } = await supabase
+    .from('academy_questions')
+    .delete()
+    .eq('id', questionId);
+  if (error) throw error;
+}
+
 export async function fetchTestResponses(classId: string) {
-  // Get all students in this class
   const { data: students } = await supabase
     .from('students')
     .select('id, pseudo')
@@ -199,13 +278,11 @@ export async function fetchTestResponses(classId: string) {
 
   const studentIds = students.map(s => s.id);
 
-  // Get responses
   const { data: responses } = await supabase
     .from('academy_responses')
     .select('*, academy_answers(*)')
     .in('student_id', studentIds);
 
-  // Get preferences
   const { data: preferences } = await supabase
     .from('academy_preferences')
     .select('*')
@@ -229,14 +306,12 @@ export interface HousePoints {
 }
 
 export async function calculateHousePoints(classId: string): Promise<HousePoints[]> {
-  // Get all group sessions for this class
   const { data: groupSessions } = await supabase
     .from('group_sessions')
     .select('id, status')
     .eq('class_id', classId)
     .eq('status', 'completed');
 
-  // Get coefficients
   const sessionIds = (groupSessions || []).map(gs => gs.id);
   const { data: coefficients } = sessionIds.length > 0
     ? await supabase
@@ -247,19 +322,17 @@ export async function calculateHousePoints(classId: string): Promise<HousePoints
 
   const coeffMap = new Map((coefficients || []).map(c => [c.group_session_id, c.coefficient]));
 
-  // Get group grades for sessions
-  let gradePointsByHouse: Record<HouseId, number> = { salamandre: 0, vouivre: 0, zephyr: 0, taisson: 0 };
+  let gradePointsByHouse: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
 
   if (sessionIds.length > 0) {
-    // Get session_groups with their names (house names)
     const { data: sessionGroups } = await supabase
       .from('session_groups')
       .select('id, session_id, name, conduct_malus')
       .in('session_id', sessionIds);
 
     for (const sg of sessionGroups || []) {
-      const houseName = sg.name.toLowerCase() as HouseId;
-      if (!HOUSES.includes(houseName)) continue;
+      const houseId = HOUSE_NAME_TO_ID[sg.name.toLowerCase()];
+      if (!houseId) continue;
 
       const { data: grades } = await supabase
         .from('group_grades')
@@ -268,13 +341,12 @@ export async function calculateHousePoints(classId: string): Promise<HousePoints
 
       const totalGrade = (grades || []).reduce((sum, g) => sum + g.points_awarded, 0) - (sg.conduct_malus || 0);
       const coeff = coeffMap.get(sg.session_id) || 1.0;
-      gradePointsByHouse[houseName] += totalGrade * coeff;
+      gradePointsByHouse[houseId] += totalGrade * coeff;
     }
   }
 
-  // Get visible bonuses
   const bonuses = await fetchBonuses(classId);
-  const bonusPointsByHouse: Record<HouseId, number> = { salamandre: 0, vouivre: 0, zephyr: 0, taisson: 0 };
+  const bonusPointsByHouse: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
   for (const b of bonuses) {
     if (b.visible && HOUSES.includes(b.house)) {
       bonusPointsByHouse[b.house] += b.points;
