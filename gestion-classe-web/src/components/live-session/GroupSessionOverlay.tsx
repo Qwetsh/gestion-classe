@@ -13,7 +13,7 @@ export function GroupSessionOverlay() {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
+      position: 'fixed', inset: 0, zIndex: 60,
       background: 'var(--bg)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
