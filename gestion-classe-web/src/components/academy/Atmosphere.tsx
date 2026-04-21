@@ -227,7 +227,11 @@ export function BokehField({ density = 70, houseColor }: {
   };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden>
+    <div style={{
+      position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+      maskImage: 'linear-gradient(to bottom, black 50%, transparent 75%)',
+      WebkitMaskImage: 'linear-gradient(to bottom, black 50%, transparent 75%)',
+    }} aria-hidden>
       {particles.map((p, i) => {
         const c = getColor(p.colorType);
         const glowSize = p.size * 3;
