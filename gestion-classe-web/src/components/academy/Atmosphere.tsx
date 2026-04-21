@@ -70,15 +70,17 @@ export function FloatingCandles({ count = 12 }: { count?: number }) {
     Array.from({ length: count }, (_, i) => {
       // Depth layer: 0 = far (blurry, small), 1 = mid, 2 = close (sharp, large)
       const depth = i % 3;
+      const drift = Math.floor(Math.random() * 4); // 0-3 animation variant
       return {
         x: (i / count) * 100 + (Math.random() - 0.5) * 10,
         y: Math.random() * 70 + 5,
-        delay: Math.random() * 3,
-        duration: 4 + Math.random() * 3,
-        size: (depth === 0 ? 'sm' : depth === 1 ? 'md' : 'md') as 'sm' | 'md',
+        delay: Math.random() * 5,
+        duration: 4 + Math.random() * 4,
+        size: (depth === 0 ? 'sm' : 'md') as 'sm' | 'md',
         blur: depth === 0 ? 2.5 : depth === 1 ? 0.8 : 0,
         scale: depth === 0 ? 0.7 : depth === 1 ? 1 : 1.15,
         opacity: depth === 0 ? 0.5 : depth === 1 ? 0.8 : 1,
+        drift,
       };
     }), [count]);
 
@@ -87,7 +89,7 @@ export function FloatingCandles({ count = 12 }: { count?: number }) {
       {candles.map((c, i) => (
         <div key={i} style={{
           position: 'absolute', left: `${c.x}%`, top: `${c.y}%`,
-          animation: `academy-drift ${c.duration}s ease-in-out ${c.delay}s infinite`,
+          animation: `academy-drift-${c.drift} ${c.duration}s ease-in-out ${c.delay}s infinite`,
           filter: c.blur > 0 ? `blur(${c.blur}px)` : undefined,
           transform: `scale(${c.scale})`,
           opacity: c.opacity,

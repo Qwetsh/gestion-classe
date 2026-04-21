@@ -202,10 +202,10 @@ function IntroScreen({ onBegin, totalQuestions }: { onBegin: () => void; totalQu
         display: 'flex', justifyContent: 'center', gap: 120,
         marginTop: 18,
       }}>
-        <div style={{ animation: 'academy-drift 5s ease-in-out 0.5s infinite' }}>
+        <div style={{ animation: 'academy-drift-1 5s ease-in-out 0.5s infinite' }}>
           <Candle size="lg" />
         </div>
-        <div style={{ animation: 'academy-drift 6s ease-in-out 1.2s infinite' }}>
+        <div style={{ animation: 'academy-drift-3 6.5s ease-in-out 1.2s infinite' }}>
           <Candle size="lg" />
         </div>
       </div>
