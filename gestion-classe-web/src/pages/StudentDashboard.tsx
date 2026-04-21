@@ -177,17 +177,15 @@ export function StudentDashboard() {
       setData(result);
 
       // Load stamp data
-      if (result.student_id) {
-        setStampLoading(true);
-        try {
-          const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_student_id: result.student_id });
-          if (!sErr && sData) setStampData(sData);
-          else setStampError('Impossible de charger les tampons');
-        } catch {
-          setStampError('Erreur de chargement des tampons');
-        }
-        setStampLoading(false);
+      setStampLoading(true);
+      try {
+        const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_code: fullCode });
+        if (!sErr && sData) setStampData(sData);
+        else setStampError('Impossible de charger les tampons');
+      } catch {
+        setStampError('Erreur de chargement des tampons');
       }
+      setStampLoading(false);
 
       // Load academy data
       try {
@@ -217,7 +215,7 @@ export function StudentDashboard() {
       setShowCelebration(true);
       celebrationTimerRef.current = setTimeout(() => setShowCelebration(false), 3500);
       // Reload stamp data
-      const { data: sData } = await supabase.rpc('get_student_stamps', { p_student_id: stampData.student_id });
+      const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
       if (sData) setStampData(sData);
     } catch {
       setError('Erreur lors de la selection du bonus');
