@@ -954,6 +954,14 @@ export function Sessions() {
 
             {/* Footer */}
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexShrink: 0 }}>
+              <button
+                onClick={() => { setDeleteTarget(selectedSession); setShowDeleteModal(true); }}
+                className="btn btn--ghost"
+                style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center', color: 'var(--neg)', flexShrink: 0 }}
+                title="Supprimer la séance"
+              >
+                <Icon name="trash" size={16} />
+              </button>
               <Link to={`/sessions/${selectedSession.id}`} className="btn btn--ghost" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none' }}>
                 Exporter
               </Link>
