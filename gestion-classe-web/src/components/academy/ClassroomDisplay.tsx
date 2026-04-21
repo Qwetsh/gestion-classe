@@ -153,7 +153,7 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
                     pct={pct}
                     color={hc.c1}
                     colorLight={hc.c1Light}
-                    size={80}
+                    size={140}
                   />
                 </div>
 
