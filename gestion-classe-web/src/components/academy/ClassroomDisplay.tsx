@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { HOUSE_DATA, HOUSE_LIST } from './houses';
+import { HOUSE_LIST } from './houses';
 import { HouseCrest } from './HouseCrest';
 import { ClassroomTimer } from './ClassroomTimer';
 import { SortingCeremony } from './SortingCeremony';
