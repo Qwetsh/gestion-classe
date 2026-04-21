@@ -5,28 +5,61 @@ export function GroupSessionLauncher() {
   const isMobile = useIsMobile();
   const { startFlow, step } = useGroupSession();
 
-  console.log('[GroupSessionLauncher] isMobile:', isMobile, 'step:', step);
   if (!isMobile || step !== 'idle') return null;
 
   return (
-    <button
-      onClick={startFlow}
-      className="w-full p-4 text-left flex items-center gap-4 group active:scale-[0.98] transition-all"
-      style={{
-        background: 'var(--gradient-success)',
-        borderRadius: 'var(--radius)',
-        boxShadow: 'var(--shadow-1)',
-        border: 'none',
-      }}
-    >
-      <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
-        👥
-      </div>
-      <div className="flex-1">
-        <h3 className="font-bold text-white text-base">Travail de groupe</h3>
-        <p className="text-white/70 text-xs mt-0.5">Noter un TP ou travail collaboratif</p>
-      </div>
-      <span className="text-white/50 text-2xl group-hover:text-white transition-colors">→</span>
-    </button>
+    <div style={{ display: 'flex', gap: 10 }}>
+      <button
+        onClick={startFlow}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: 14,
+          background: 'var(--gradient-success)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-1)',
+          border: 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{
+          width: 44, height: 44, background: 'rgba(255,255,255,0.2)',
+          borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+        }}>👥</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>Travail de groupe</div>
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>Noter un TP collaboratif</div>
+        </div>
+      </button>
+
+      <button
+        onClick={startFlow}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: 14,
+          background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-1)',
+          border: 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{
+          width: 44, height: 44, background: 'rgba(255,255,255,0.2)',
+          borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+        }}>🏰</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>Épreuve</div>
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>Points de maison</div>
+        </div>
+      </button>
+    </div>
   );
 }
