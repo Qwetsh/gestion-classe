@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { HOUSE_LIST } from './houses';
 import { HouseCrest } from './HouseCrest';
+import { Hourglass } from './Hourglass';
 import { ClassroomTimer } from './ClassroomTimer';
 import { SortingCeremony } from './SortingCeremony';
 import { RollingNumber } from './Atmosphere';
@@ -17,11 +18,18 @@ interface Props {
   onReload: () => void;
 }
 
+const HOUSE_INLINE: Record<HouseId, { c1: string; c1Light: string; c2: string; ink: string }> = {
+  gryffondor: { c1: '#9b2226', c1Light: '#ee9b00', c2: '#ee9b00', ink: '#6b1518' },
+  serpentard: { c1: '#2d6a4f', c1Light: '#52b788', c2: '#b7e4c7', ink: '#1b4332' },
+  serdaigle:  { c1: '#1d3557', c1Light: '#457b9d', c2: '#a8dadc', ink: '#14213d' },
+  poufsouffle:{ c1: '#e9c46a', c1Light: '#f4d88e', c2: '#264653', ink: '#9a6b13' },
+};
+
 export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, students, onClose, onReload }: Props) {
   const [showCeremony, setShowCeremony] = useState(false);
   const [revealing, setRevealing] = useState(false);
 
-  // Sort houses by points
+  // Sort houses by points (keep original order for display, sort for rank)
   const ranked = useMemo(() => {
     return HOUSE_LIST.map(h => {
       const hp = housePoints.find(p => p.house === h.id);
@@ -31,11 +39,9 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
 
   const maxPoints = Math.max(1, ...ranked.map(h => h.points));
 
-  // Check if there are pending students (completed quiz but no assignment)
   const assignedIds = new Set(assignments.map(a => a.student_id));
   const unassignedCount = students.filter(s => !assignedIds.has(s.id)).length;
 
-  // Hidden bonuses
   const hiddenBonuses = bonuses.filter(b => !b.visible);
   const hasHiddenBonuses = hiddenBonuses.length > 0;
 
@@ -59,14 +65,6 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
       />
     );
   }
-
-  // Colors for inline styles (no CSS vars since this overlays everything)
-  const HOUSE_INLINE: Record<HouseId, { c1: string; c2: string; ink: string }> = {
-    gryffondor: { c1: '#9b2226', c2: '#ee9b00', ink: '#6b1518' },
-    serpentard: { c1: '#2d6a4f', c2: '#b7e4c7', ink: '#1b4332' },
-    serdaigle: { c1: '#1d3557', c2: '#a8dadc', ink: '#14213d' },
-    poufsouffle: { c1: '#e9c46a', c2: '#264653', ink: '#9a6b13' },
-  };
 
   return (
     <div style={{
@@ -92,7 +90,7 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
 
       {/* Header */}
       <div style={{
-        padding: '16px 24px', display: 'flex', alignItems: 'center',
+        padding: '12px 24px', display: 'flex', alignItems: 'center',
         borderBottom: '1px solid #3a2e22', flexShrink: 0,
         position: 'relative', zIndex: 1,
       }}>
@@ -113,76 +111,75 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
 
       {/* Main content */}
       <div style={{
-        flex: 1, overflowY: 'auto', padding: '24px',
-        display: 'flex', flexDirection: 'column', gap: 24,
+        flex: 1, overflowY: 'auto', padding: '20px 24px',
+        display: 'flex', flexDirection: 'column', gap: 20,
         position: 'relative', zIndex: 1,
       }}>
-        {/* House score cards */}
+
+        {/* ===== HOURGLASSES ===== */}
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
+          display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+          gap: 32, padding: '8px 0',
         }}>
           {ranked.map((h, i) => {
             const hc = HOUSE_INLINE[h.id];
-            const barPct = maxPoints > 0 ? Math.round((h.points / maxPoints) * 100) : 0;
+            const pct = maxPoints > 0 ? Math.round((h.points / maxPoints) * 100) : 0;
             return (
-              <div key={h.id} style={{
-                background: '#1a1410',
-                border: `2px solid ${i === 0 ? '#d4a843' : '#3a2e22'}`,
-                borderRadius: 16, padding: 20,
-                textAlign: 'center',
-                boxShadow: i === 0 ? '0 0 20px rgba(212,168,67,0.2)' : 'none',
-              }}>
-                {/* Rank badge */}
-                <div style={{
-                  fontSize: 13, fontWeight: 700,
-                  color: i === 0 ? '#d4a843' : '#6a5c4e',
-                  marginBottom: 8,
-                }}>
-                  {i === 0 ? '🏆 1er' : `#${i + 1}`}
+              <div key={h.id} style={{ textAlign: 'center', position: 'relative' }}>
+                {/* Rank crown for first */}
+                {i === 0 && (
+                  <div style={{
+                    fontSize: 24, marginBottom: -4,
+                    filter: 'drop-shadow(0 0 6px rgba(212,168,67,0.6))',
+                  }}>🏆</div>
+                )}
+
+                {/* Crest above hourglass */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+                  <HouseCrest house={h} size={50} glow={i === 0} />
                 </div>
 
-                {/* Crest */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-                  <HouseCrest house={h} size={80} glow={i === 0} />
-                </div>
-
-                {/* Name */}
+                {/* House name */}
                 <div style={{
-                  fontSize: 20, fontWeight: 700,
-                  color: hc.c2,
+                  fontSize: 17, fontWeight: 700, color: hc.c2,
                   marginBottom: 4,
                 }}>
                   {h.name}
                 </div>
 
-                {/* Points */}
+                {/* Hourglass */}
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <Hourglass
+                    pct={pct}
+                    color={hc.c1}
+                    colorLight={hc.c1Light}
+                    size={80}
+                  />
+                </div>
+
+                {/* Points below */}
                 <div style={{
-                  fontSize: 36, fontWeight: 800,
-                  color: '#e8dcc8', lineHeight: 1,
+                  fontSize: 32, fontWeight: 800,
+                  color: '#e8dcc8', lineHeight: 1, marginTop: 6,
                 }}>
                   <RollingNumber value={h.points} duration={2000} />
                 </div>
-                <div style={{ fontSize: 13, color: '#6a5c4e', marginBottom: 12 }}>points</div>
+                <div style={{ fontSize: 12, color: '#6a5c4e' }}>points</div>
 
-                {/* Score bar */}
+                {/* Rank badge */}
                 <div style={{
-                  height: 8, background: '#251c15', borderRadius: 4, overflow: 'hidden',
+                  fontSize: 12, fontWeight: 700, marginTop: 4,
+                  color: i === 0 ? '#d4a843' : '#6a5c4e',
                 }}>
-                  <div style={{
-                    height: '100%', borderRadius: 4,
-                    width: `${barPct}%`,
-                    background: `linear-gradient(90deg, ${hc.ink}, ${hc.c1})`,
-                    transition: 'width 1s ease-out',
-                  }} />
+                  {i === 0 ? '1er' : `${i + 1}e`}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Action buttons row */}
+        {/* ===== ACTION BUTTONS ===== */}
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          {/* Reveal bonus */}
           {hasHiddenBonuses && (
             <button
               onClick={handleReveal}
@@ -205,7 +202,6 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
             </button>
           )}
 
-          {/* Sorting ceremony */}
           {unassignedCount > 0 && (
             <button
               onClick={() => setShowCeremony(true)}
@@ -223,10 +219,10 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
           )}
         </div>
 
-        {/* Timer */}
+        {/* ===== TIMER ===== */}
         <ClassroomTimer />
 
-        {/* Students per house */}
+        {/* ===== ROSTER PER HOUSE ===== */}
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12,
         }}>
