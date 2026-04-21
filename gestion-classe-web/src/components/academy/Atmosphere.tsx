@@ -193,76 +193,58 @@ export function GoldParticles({ active, count = 60 }: { active: boolean; count?:
 }
 
 // --- BokehField ---
-export function BokehField({ density = 45, houseColor, houseColorLight }: {
+export function BokehField({ density = 70, houseColor, houseColorLight }: {
   density?: number;
   houseColor?: string;
   houseColorLight?: string;
 }) {
   const particles = useMemo(() =>
     Array.from({ length: density }, () => {
-      const sizeClass = Math.random(); // 0-1, determines particle type
-      let size: number, blur: number, opacity: number;
-
-      if (sizeClass < 0.55) {
-        // Small dots
-        size = 0.6 + Math.random() * 1.6;
-        blur = 0;
-        opacity = 0.4 + Math.random() * 0.5;
-      } else if (sizeClass < 0.85) {
-        // Medium — slight glow
-        size = 2 + Math.random() * 2.5;
-        blur = 0.5 + Math.random() * 1;
-        opacity = 0.25 + Math.random() * 0.35;
-      } else {
-        // Larger bokeh — soft blur halo
-        size = 4 + Math.random() * 5;
-        blur = 2 + Math.random() * 3;
-        opacity = 0.12 + Math.random() * 0.15;
-      }
+      const r = Math.random();
+      // Size: mostly small with some medium and a few larger
+      const size = r < 0.6
+        ? 1 + Math.random() * 2        // small: 1-3px
+        : r < 0.88
+        ? 3 + Math.random() * 3        // medium: 3-6px
+        : 6 + Math.random() * 4;       // large: 6-10px
 
       return {
         x: Math.random() * 100,
         y: Math.random() * 100,
         size,
-        blur,
-        opacity,
-        drift: Math.floor(Math.random() * 6), // 0-5 animation variants
-        duration: 10 + Math.random() * 15, // 10-25s — slightly faster
+        drift: Math.floor(Math.random() * 6),
+        duration: 10 + Math.random() * 15,
         delay: Math.random() * 10,
-        twinkle: 4 + Math.random() * 6, // opacity pulse duration
+        twinkle: 4 + Math.random() * 6,
         twinkleDelay: Math.random() * 5,
-        // Color variation: mostly gold, some warm white
-        colorType: Math.random() < 0.7 ? 'gold' : Math.random() < 0.5 ? 'warm' : 'house',
+        colorType: Math.random() < 0.65 ? 'gold' : Math.random() < 0.5 ? 'warm' : 'house',
       };
     }), [density]);
 
   const getColor = (type: string) => {
     if (type === 'house' && houseColor) return houseColor;
-    if (type === 'warm') return 'oklch(0.90 0.04 80)';
-    return 'var(--gold-bright)';
-  };
-
-  const getGlowColor = (type: string) => {
-    if (type === 'house' && houseColorLight) return houseColorLight;
-    if (type === 'warm') return 'oklch(0.85 0.03 75)';
-    return 'var(--gold)';
+    if (type === 'warm') return '#fff5e0';
+    return '#f0d060';
   };
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden>
-      {particles.map((p, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          left: `${p.x}%`, top: `${p.y}%`,
-          width: p.size, height: p.size,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${getColor(p.colorType)} 0%, ${getColor(p.colorType)}88 40%, transparent 70%)`,
-          boxShadow: p.size > 1.5 ? `0 0 ${p.size * 2}px ${getGlowColor(p.colorType)}` : 'none',
-          filter: p.blur > 0 ? `blur(${p.blur}px)` : undefined,
-          opacity: p.opacity,
-          animation: `academy-bokeh-${p.drift} ${p.duration}s ease-in-out ${p.delay}s infinite, academy-twinkle ${p.twinkle}s ease-in-out ${p.twinkleDelay}s infinite`,
-        }} />
-      ))}
+      {particles.map((p, i) => {
+        const c = getColor(p.colorType);
+        const glowSize = p.size * 3;
+        return (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${p.x}%`, top: `${p.y}%`,
+            width: p.size, height: p.size,
+            borderRadius: '50%',
+            background: c,
+            boxShadow: `0 0 ${glowSize}px ${glowSize / 2}px ${c}`,
+            opacity: p.size < 3 ? 0.6 + Math.random() * 0.3 : p.size < 6 ? 0.4 + Math.random() * 0.3 : 0.25 + Math.random() * 0.2,
+            animation: `academy-bokeh-${p.drift} ${p.duration}s ease-in-out ${p.delay}s infinite, academy-twinkle ${p.twinkle}s ease-in-out ${p.twinkleDelay}s infinite`,
+          }} />
+        );
+      })}
     </div>
   );
 }
