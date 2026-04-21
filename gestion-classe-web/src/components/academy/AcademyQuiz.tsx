@@ -89,7 +89,7 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
 
   return (
     <div className="academy-root" style={{
-      width: '100%', minHeight: '100%',
+      width: '100%', minHeight: '100vh',
       background: 'radial-gradient(ellipse at 50% 0%, oklch(0.15 0.02 55) 0%, oklch(0.06 0.01 50) 80%)',
       position: 'relative', overflow: 'hidden',
       fontFamily: 'var(--font-body)', color: 'var(--parchment)',
