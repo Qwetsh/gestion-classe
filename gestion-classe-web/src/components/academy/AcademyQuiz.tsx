@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { fetchQuestions, type AcademyQuestion, type AcademyAnswer } from '../../lib/academyQueries';
 import { Starfield, FloatingCandles, Candle, Ornament, WaxSeal } from './Atmosphere';
 import { HouseCrest } from './HouseCrest';
 import { HOUSE_LIST, type HouseData } from './houses';
+import pageTurnUrl from '../../Musique/bruit de page qui tourne.mp3';
 import './tokens.css';
 
 type Phase = 'intro' | 'question' | 'ranking' | 'submitting' | 'waiting';
@@ -20,6 +21,16 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [ranking, setRanking] = useState<HouseData[]>([...HOUSE_LIST]);
   const [error, setError] = useState<string | null>(null);
+  const pageTurnAudio = useRef<HTMLAudioElement | null>(null);
+
+  const playPageTurn = useCallback(() => {
+    if (!pageTurnAudio.current) {
+      pageTurnAudio.current = new Audio(pageTurnUrl);
+      pageTurnAudio.current.volume = 0.5;
+    }
+    pageTurnAudio.current.currentTime = 0;
+    pageTurnAudio.current.play().catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchQuestions().then(setQuestions);
@@ -30,15 +41,17 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
   const selectAnswer = useCallback((questionId: string, answerId: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: answerId }));
     setTimeout(() => {
+      playPageTurn();
       if (qIndex < questions.length - 1) {
         setQIndex(i => i + 1);
       } else {
         setPhase('ranking');
       }
     }, 600);
-  }, [qIndex, questions.length]);
+  }, [qIndex, questions.length, playPageTurn]);
 
   const goBack = useCallback(() => {
+    playPageTurn();
     if (phase === 'ranking') {
       setPhase('question');
       return;
@@ -46,7 +59,7 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
     if (qIndex > 0) {
       setQIndex(i => i - 1);
     }
-  }, [phase, qIndex]);
+  }, [phase, qIndex, playPageTurn]);
 
   const submitTest = useCallback(async () => {
     setPhase('submitting');
