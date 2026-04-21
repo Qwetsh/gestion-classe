@@ -21,7 +21,7 @@ function getHouseStyle(name: string) {
 export function GroupGrading() {
   const {
     sessionData, activeGroupIndex, loading, academyMode,
-    setActiveGroup, setGrade, applyMalus, resetMalus, finishSession,
+    setActiveGroup, setGrade, applyMalus, resetMalus, finishSession, goBack,
   } = useGroupSession();
 
   const [showEndConfirm, setShowEndConfirm] = useState(false);
@@ -69,38 +69,34 @@ export function GroupGrading() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: bgMain }}>
 
-      {/* ===== HEADER ===== */}
+      {/* ===== MINIMAL HEADER — back button only ===== */}
       <div style={{
-        padding: '10px 12px',
-        background: hp
-          ? `linear-gradient(135deg, ${houseStyle!.ink}, ${houseStyle!.c1})`
-          : 'linear-gradient(135deg, #059669, #10b981)',
-        color: '#fff',
-        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 12px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0,
+        background: hp ? '#1e1712' : 'var(--surface)',
+        borderBottom: `1px solid ${hp ? '#3a2e22' : 'var(--border)'}`,
       }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontWeight: 700, fontSize: hp ? 17 : 15,
+        <button
+          onClick={goBack}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px',
+            fontSize: 14, fontWeight: 600,
+            color: hp ? goldAccent : '#059669',
+            background: 'none', border: 'none', cursor: 'pointer',
             fontFamily: fontDisplay,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {hp ? '⚔ ' : ''}{sessionData.name}
-          </div>
-          {hp && (
-            <div style={{ fontSize: 11, opacity: 0.7, fontFamily: fontDisplay, fontStyle: 'italic' }}>
-              Épreuve des Quatre Maisons
-            </div>
-          )}
-        </div>
+          }}
+        >
+          ← {hp ? 'Retour' : 'Retour'}
+        </button>
         {/* Score badge */}
         <div style={{
-          background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '4px 10px',
-          textAlign: 'center', flexShrink: 0,
-          border: hp ? '1px solid rgba(255,255,255,0.2)' : 'none',
+          display: 'flex', alignItems: 'baseline', gap: 4,
+          fontSize: 16, fontWeight: 800,
+          color: textMain, fontFamily: fontDisplay,
         }}>
-          <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1, fontFamily: fontDisplay }}>{totalScore}</div>
-          <div style={{ fontSize: 10, opacity: 0.7 }}>/ {maxScore}</div>
+          {hp ? '⚔ ' : ''}{totalScore}<span style={{ fontSize: 12, fontWeight: 500, color: textDim }}>/{maxScore}</span>
         </div>
       </div>
 

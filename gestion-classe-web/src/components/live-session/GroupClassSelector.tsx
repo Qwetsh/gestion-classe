@@ -9,34 +9,109 @@ const CLASS_COLORS = [
 ];
 
 export function GroupClassSelector() {
-  const { classes, loading, error, selectClass, cancelFlow } = useGroupSession();
+  const { classes, loading, error, selectClass, cancelFlow, epreuveIntent } = useGroupSession();
+
+  const hp = epreuveIntent;
+  const bgMain = hp ? '#1a1410' : 'var(--bg)';
+  const bgCard = hp ? '#251c15' : 'var(--surface)';
+  const bgCardBorder = hp ? '#3a2e22' : 'transparent';
+  const textMain = hp ? '#e8dcc8' : 'var(--text)';
+  const textDim = hp ? '#8a7a66' : 'var(--text-dim)';
+  const goldAccent = '#d4a843';
+  const fontDisplay = hp ? "'Cormorant Garamond', Georgia, serif" : 'inherit';
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 text-white" style={{ background: 'var(--gradient-success)' }}>
-        <button onClick={cancelFlow} className="text-white/80 text-sm font-medium">Annuler</button>
-        <h1 className="font-bold text-lg">Travail de groupe</h1>
-        <div className="w-16" />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: bgMain }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px',
+        color: '#fff',
+        background: hp
+          ? 'linear-gradient(135deg, #2a1f14, #1a1410)'
+          : 'var(--gradient-success)',
+        borderBottom: hp ? '1px solid #3a2e22' : 'none',
+      }}>
+        <button
+          onClick={cancelFlow}
+          style={{
+            color: hp ? goldAccent : 'rgba(255,255,255,0.8)',
+            fontSize: 14, fontWeight: 500,
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: fontDisplay,
+          }}
+        >Annuler</button>
+        <h1 style={{
+          fontWeight: 700, fontSize: 18, margin: 0,
+          fontFamily: fontDisplay,
+          color: hp ? '#e8dcc8' : '#fff',
+        }}>
+          {hp ? '🏰 Choisir une classe' : 'Travail de groupe'}
+        </h1>
+        <div style={{ width: 64 }} />
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {error && <div className="p-3 bg-[var(--neg-soft)] text-[var(--neg)] rounded-xl text-sm">{error}</div>}
+
+      {/* Subtitle for HP */}
+      {hp && (
+        <div style={{
+          textAlign: 'center', padding: '12px 16px 0',
+          fontSize: 13, color: '#8a7a66',
+          fontFamily: fontDisplay, fontStyle: 'italic',
+        }}>
+          Sélectionnez la classe pour l'épreuve des Quatre Maisons
+        </div>
+      )}
+
+      {/* Class list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {error && (
+          <div style={{
+            padding: 12, borderRadius: 12, fontSize: 13,
+            background: hp ? '#3a1515' : 'var(--neg-soft)',
+            color: hp ? '#f87171' : 'var(--neg)',
+          }}>{error}</div>
+        )}
         {loading ? (
-          <div className="flex justify-center items-center h-40">
-            <div className="w-8 h-8 border-3 border-[var(--pos)] border-t-transparent rounded-full animate-spin" />
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 160 }}>
+            <div style={{
+              width: 32, height: 32,
+              border: `3px solid ${hp ? goldAccent : 'var(--pos)'}`,
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+            }} />
           </div>
         ) : (
           classes.map((cls, i) => (
             <button
               key={cls.id}
               onClick={() => selectClass(cls)}
-              className="w-full p-4 bg-[var(--surface)] flex items-center gap-4 active:scale-[0.98] transition-transform"
-              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
+              style={{
+                width: '100%', padding: 16,
+                display: 'flex', alignItems: 'center', gap: 14,
+                background: bgCard,
+                borderRadius: 12,
+                boxShadow: hp ? 'none' : 'var(--shadow-1)',
+                border: `1px solid ${bgCardBorder}`,
+                cursor: 'pointer',
+                transition: 'transform 100ms',
+              }}
             >
-              <div className="w-12 h-12 flex items-center justify-center text-white font-bold rounded-xl" style={{ background: CLASS_COLORS[i % CLASS_COLORS.length] }}>
+              <div style={{
+                width: 48, height: 48,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 700, borderRadius: 12,
+                background: hp
+                  ? `linear-gradient(135deg, ${goldAccent}, #b8860b)`
+                  : CLASS_COLORS[i % CLASS_COLORS.length],
+              }}>
                 {cls.name.substring(0, 2).toUpperCase()}
               </div>
-              <span className="font-semibold text-[var(--text)] text-lg">{cls.name}</span>
-              <span className="ml-auto text-[var(--text-dim)] text-xl">›</span>
+              <span style={{
+                fontWeight: 600, fontSize: 17, color: textMain,
+                fontFamily: fontDisplay,
+              }}>{cls.name}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 20, color: textDim }}>›</span>
             </button>
           ))
         )}

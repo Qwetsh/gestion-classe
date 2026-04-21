@@ -39,6 +39,7 @@ interface GroupSessionState {
   // Academy
   academyMode: boolean;
   academyCoefficient: number;
+  epreuveIntent: boolean;
   // Active grading
   sessionId: string | null;
   sessionData: GroupSessionData | null;
@@ -49,6 +50,9 @@ interface GroupSessionState {
 
 interface GroupSessionActions {
   startFlow: () => void;
+  startEpreuveFlow: () => void;
+  suspendFlow: () => void;
+  resumeFlow: () => void;
   selectClass: (cls: ClassInfo) => void;
   setSessionName: (name: string) => void;
   applyTemplate: (template: TpTemplate) => void;
@@ -82,6 +86,7 @@ const initialState: GroupSessionState = {
   tempGroups: [],
   academyMode: false,
   academyCoefficient: 1.0,
+  epreuveIntent: false,
   sessionId: null,
   sessionData: null,
   activeGroupIndex: 0,
@@ -97,7 +102,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
 
   const startFlow = useCallback(async () => {
     if (!user) return;
-    setState(s => ({ ...s, step: 'select-class', loading: true, error: null }));
+    setState(s => ({ ...s, step: 'select-class', loading: true, error: null, epreuveIntent: false }));
     try {
       const classes = await fetchClassesForUser(user.id);
       setState(s => ({ ...s, classes, loading: false }));
@@ -105,6 +110,28 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       setState(s => ({ ...s, error: 'Erreur de chargement', loading: false }));
     }
   }, [user]);
+
+  const startEpreuveFlow = useCallback(async () => {
+    if (!user) return;
+    setState(s => ({ ...s, step: 'select-class', loading: true, error: null, epreuveIntent: true }));
+    try {
+      const classes = await fetchClassesForUser(user.id);
+      setState(s => ({ ...s, classes, loading: false }));
+    } catch {
+      setState(s => ({ ...s, error: 'Erreur de chargement', loading: false }));
+    }
+  }, [user]);
+
+  const suspendFlow = useCallback(() => {
+    setState(s => ({ ...s, step: 'idle' }));
+  }, []);
+
+  const resumeFlow = useCallback(() => {
+    setState(s => {
+      if (s.sessionId && s.sessionData) return { ...s, step: 'grading' };
+      return s;
+    });
+  }, []);
 
   const selectClass = useCallback(async (cls: ClassInfo) => {
     if (!user) return;
@@ -302,6 +329,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const goBack = useCallback(() => {
     setState(s => {
       if (s.step === 'setup') return { ...s, step: 'select-class', selectedClass: null };
+      if (s.step === 'grading') return { ...s, step: 'idle' }; // suspend — keeps session data
       return s;
     });
   }, []);
@@ -311,6 +339,9 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         startFlow,
+        startEpreuveFlow,
+        suspendFlow,
+        resumeFlow,
         selectClass,
         setSessionName,
         applyTemplate,
