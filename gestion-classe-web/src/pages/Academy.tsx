@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 import { Starfield, Ornament, WaxSeal, GoldParticles, RollingNumber } from '../components/academy/Atmosphere';
 import { HouseCrest } from '../components/academy/HouseCrest';
 import { HOUSE_DATA, HOUSE_LIST, type HouseData } from '../components/academy/houses';
+import { ClassroomDisplay } from '../components/academy/ClassroomDisplay';
 import '../components/academy/tokens.css';
 
 interface ClassOption { id: string; name: string; }
@@ -25,6 +26,7 @@ export function Academy() {
   const [housePoints, setHousePoints] = useState<HousePoints[]>([]);
   const [students, setStudents] = useState<{ id: string; pseudo: string }[]>([]);
   const [revealing, setRevealing] = useState(false);
+  const [classroomMode, setClassroomMode] = useState(false);
   const [modal, setModal] = useState<{ type: string; houseId?: HouseId } | null>(null);
 
   // Award zone state
@@ -226,6 +228,17 @@ export function Academy() {
 
   return (
     <Layout fullBleed>
+      {classroomMode && selectedClassId && (
+        <ClassroomDisplay
+          classId={selectedClassId}
+          housePoints={housePoints}
+          bonuses={bonuses}
+          assignments={assignments}
+          students={students}
+          onClose={() => setClassroomMode(false)}
+          onReload={loadData}
+        />
+      )}
       <div className="academy-root" style={{
         minHeight: 'calc(100vh - 56px)', position: 'relative',
         background: 'var(--ink-void)', color: 'var(--parchment)',
@@ -270,6 +283,19 @@ export function Academy() {
               >
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              <button
+                onClick={() => setClassroomMode(true)}
+                style={{
+                  padding: '8px 16px',
+                  background: 'linear-gradient(135deg, var(--gold), var(--gold-deep))',
+                  color: 'var(--ink-void)',
+                  fontFamily: 'var(--font-body)',
+                  fontWeight: 700, fontSize: 13,
+                  border: 'none', borderRadius: 8, cursor: 'pointer',
+                }}
+              >
+                📺 Mode Classe
+              </button>
               <WaxSeal letter={user?.email?.[0]?.toUpperCase() || 'P'} size={48} />
             </div>
           </div>
