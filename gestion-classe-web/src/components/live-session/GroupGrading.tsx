@@ -40,111 +40,180 @@ export function GroupGrading() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Header */}
-      <div className="px-4 py-3 text-white shrink-0 flex items-center justify-between" style={{ background: 'var(--gradient-success)' }}>
+      <div style={{
+        padding: '12px 16px',
+        background: 'var(--gradient-success)',
+        color: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexShrink: 0,
+      }}>
         <div>
-          <h1 className="font-bold text-base">{sessionData.name}</h1>
-          <span className="text-white/70 text-xs flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-300 animate-pulse" /> EN COURS
+          <h1 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{sessionData.name}</h1>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#86efac', display: 'inline-block' }} /> EN COURS
           </span>
         </div>
         <button
           onClick={() => setShowEndConfirm(true)}
-          className="px-4 py-1.5 bg-white/20 text-white font-semibold text-sm rounded-full"
-          style={{ border: 'none' }}
+          style={{
+            padding: '10px 20px',
+            background: '#fff',
+            color: 'var(--pos)',
+            fontWeight: 700,
+            fontSize: 15,
+            borderRadius: 'var(--radius)',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
         >
-          Terminer
+          ✓ Terminer
         </button>
       </div>
 
       {/* Group tabs */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-2 bg-[var(--surface)] border-b border-[var(--border)] shrink-0">
+      <div style={{
+        display: 'flex', gap: 8, overflowX: 'auto', padding: '8px 16px',
+        background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0,
+      }}>
         {groups.map((g, i) => {
           const gScore = criteria.reduce((s, c) => {
             const gr = g.grades.find(x => x.criteria_id === c.id);
             return s + (gr?.points_awarded || 0);
           }, 0) - g.conduct_malus;
+          const isActive = i === activeGroupIndex;
           return (
             <button
               key={g.id}
               onClick={() => setActiveGroup(i)}
-              className={`shrink-0 px-3 py-2 text-xs font-semibold ${
-                i === activeGroupIndex
-                  ? 'bg-[var(--pos)] text-white'
-                  : 'bg-[var(--surface-3)] text-[var(--text-muted)]'
-              }`}
-              style={{ borderRadius: 'var(--radius)', border: 'none' }}
+              style={{
+                flexShrink: 0,
+                padding: '8px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                background: isActive ? 'var(--pos)' : 'var(--surface-3)',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                borderRadius: 'var(--radius)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
             >
               <div>{g.name}</div>
-              <div className="text-[10px] mt-0.5 opacity-80">{Math.max(0, gScore)}/{maxScore}</div>
+              <div style={{ fontSize: 10, marginTop: 2, opacity: 0.8 }}>{Math.max(0, gScore)}/{maxScore}</div>
             </button>
           );
         })}
       </div>
 
       {/* Score display */}
-      <div className="text-center py-3 shrink-0">
-        <span className="text-3xl font-bold text-[var(--text)]">{totalScore}</span>
-        <span className="text-lg text-[var(--text-dim)]"> / {maxScore}</span>
+      <div style={{ textAlign: 'center', padding: '12px 0', flexShrink: 0 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)' }}>{totalScore}</span>
+        <span style={{ fontSize: 18, color: 'var(--text-dim)' }}> / {maxScore}</span>
         {group.conduct_malus > 0 && (
-          <div className="text-xs text-[var(--neg)]">(dont {group.conduct_malus} malus)</div>
+          <div style={{ fontSize: 12, color: 'var(--neg)' }}>(dont {group.conduct_malus} malus)</div>
         )}
       </div>
 
       {/* Members */}
-      <div className="flex gap-1 px-4 pb-2 overflow-x-auto shrink-0">
+      <div style={{ display: 'flex', gap: 4, padding: '0 16px 8px', overflowX: 'auto', flexShrink: 0 }}>
         {group.members.map(m => (
-          <span key={m.student_id} className="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-[var(--surface-3)] text-[var(--text-muted)]" style={{ borderRadius: 'var(--radius-full)' }}>
+          <span key={m.student_id} style={{
+            flexShrink: 0, padding: '2px 8px', fontSize: 10, fontWeight: 500,
+            background: 'var(--surface-3)', color: 'var(--text-muted)', borderRadius: 'var(--radius-full)',
+          }}>
             {m.pseudo}
           </span>
         ))}
       </div>
 
       {/* Criteria sliders */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
-        {criteria.map(c => {
-          const grade = group.grades.find(g => g.criteria_id === c.id);
-          const value = grade?.points_awarded || 0;
-          return (
-            <CriteriaSlider
-              key={c.id}
-              label={c.label}
-              maxPoints={c.max_points}
-              value={value}
-              onChange={(pts) => setGrade(group.id, c.id, pts)}
-            />
-          );
-        })}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {criteria.map(c => {
+            const grade = group.grades.find(g => g.criteria_id === c.id);
+            const value = grade?.points_awarded || 0;
+            return (
+              <CriteriaSlider
+                key={c.id}
+                label={c.label}
+                maxPoints={c.max_points}
+                value={value}
+                onChange={(pts) => setGrade(group.id, c.id, pts)}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Malus button */}
-      <div className="flex items-center justify-center gap-4 py-3 px-4 border-t border-[var(--border)] shrink-0">
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
+        padding: '12px 16px', borderTop: '1px solid var(--border)', flexShrink: 0,
+      }}>
         <button
           onClick={handleMalusTap}
           onTouchStart={handleMalusDown}
           onTouchEnd={handleMalusUp}
           onMouseDown={handleMalusDown}
           onMouseUp={handleMalusUp}
-          className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg active:scale-90 transition-transform"
-          style={{ background: 'var(--neg)', border: 'none' }}
+          style={{
+            width: 56, height: 56, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontWeight: 700, fontSize: 18,
+            background: 'var(--neg)', border: 'none', cursor: 'pointer',
+          }}
         >
           -1
         </button>
-        <span className="text-sm text-[var(--text-muted)]">
-          Malus: <strong className="text-[var(--neg)]">{group.conduct_malus}</strong>
-          {group.conduct_malus > 0 && <span className="text-xs text-[var(--text-dim)] ml-1">(maintenir pour reset)</span>}
+        <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+          Malus : <strong style={{ color: 'var(--neg)' }}>{group.conduct_malus}</strong>
+          {group.conduct_malus > 0 && <span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 4 }}>(maintenir pour reset)</span>}
         </span>
       </div>
 
       {/* End confirm */}
       {showEndConfirm && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="bg-[var(--surface)] p-6 mx-6 space-y-4 max-w-sm w-full" style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}>
-            <h3 className="font-bold text-lg text-[var(--text)] text-center">Terminer la notation ?</h3>
-            <div className="flex gap-3">
-              <button onClick={() => setShowEndConfirm(false)} className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]" style={{ borderRadius: 'var(--radius)', border: 'none' }}>Continuer</button>
-              <button onClick={() => { setShowEndConfirm(false); finishSession(); }} disabled={loading} className="flex-1 py-3 font-bold text-white" style={{ background: 'var(--gradient-success)', borderRadius: 'var(--radius)', border: 'none' }}>Terminer</button>
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 70,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.4)',
+        }}>
+          <div style={{
+            background: 'var(--surface)', padding: 24, margin: '0 24px',
+            maxWidth: 360, width: '100%',
+            borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)',
+          }}>
+            <h3 style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', textAlign: 'center', margin: '0 0 16px' }}>
+              Terminer la notation ?
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', margin: '0 0 20px' }}>
+              Les notes seront enregistrées et les points attribués aux maisons.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setShowEndConfirm(false)}
+                style={{
+                  flex: 1, padding: '14px 0', fontWeight: 500,
+                  color: 'var(--text-muted)', background: 'var(--surface-3)',
+                  borderRadius: 'var(--radius)', border: 'none', cursor: 'pointer', fontSize: 15,
+                }}
+              >
+                Continuer
+              </button>
+              <button
+                onClick={() => { setShowEndConfirm(false); finishSession(); }}
+                disabled={loading}
+                style={{
+                  flex: 1, padding: '14px 0', fontWeight: 700,
+                  color: '#fff', background: 'var(--gradient-success)',
+                  borderRadius: 'var(--radius)', border: 'none', cursor: 'pointer', fontSize: 15,
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                {loading ? 'En cours...' : '✓ Valider'}
+              </button>
             </div>
           </div>
         </div>
@@ -165,7 +234,6 @@ function CriteriaSlider({ label, maxPoints, value, onChange }: {
     if (!trackRef.current) return value;
     const rect = trackRef.current.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    // Snap to 0.5
     return Math.round(ratio * maxPoints * 2) / 2;
   }, [maxPoints, value]);
 
@@ -186,37 +254,35 @@ function CriteriaSlider({ label, maxPoints, value, onChange }: {
 
   return (
     <div>
-      <div className="flex justify-between mb-1">
-        <span className="text-sm font-medium text-[var(--text)]">{label}</span>
-        <span className="text-sm font-bold text-[var(--pos)]">{value}/{maxPoints}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--pos)' }}>{value}/{maxPoints}</span>
       </div>
       <div
         ref={trackRef}
-        className="relative h-10 bg-[var(--surface-3)] cursor-pointer"
-        style={{ borderRadius: 'var(--radius)' }}
+        style={{
+          position: 'relative', height: 40,
+          background: 'var(--surface-3)', borderRadius: 'var(--radius)',
+          cursor: 'pointer', touchAction: 'none',
+        }}
         onClick={(e) => handleInteraction(e.clientX)}
         onTouchMove={handleTouchMove}
         onTouchStart={(e) => handleInteraction(e.touches[0].clientX)}
       >
-        {/* Fill */}
-        <div
-          className="absolute inset-y-0 left-0"
-          style={{
-            width: `${pct}%`,
-            background: 'var(--gradient-success)',
-            borderRadius: 'var(--radius)',
-            transition: 'width 50ms',
-          }}
-        />
-        {/* Thumb */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full"
-          style={{
-            left: `calc(${pct}% - 12px)`,
-            boxShadow: 'var(--shadow-2)',
-            transition: 'left 50ms',
-          }}
-        />
+        <div style={{
+          position: 'absolute', inset: '0 auto 0 0',
+          width: `${pct}%`,
+          background: 'var(--gradient-success)',
+          borderRadius: 'var(--radius)',
+          transition: 'width 50ms',
+        }} />
+        <div style={{
+          position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+          width: 24, height: 24, background: '#fff', borderRadius: '50%',
+          left: `calc(${pct}% - 12px)`,
+          boxShadow: 'var(--shadow-2)',
+          transition: 'left 50ms',
+        }} />
       </div>
     </div>
   );
