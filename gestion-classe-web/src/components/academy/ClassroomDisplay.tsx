@@ -178,7 +178,8 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
               {/* Rank crown */}
               {i === 0 && (
                 <div style={{
-                  fontSize: 28, marginBottom: -4,
+                  position: 'absolute', top: -32, left: '50%', transform: 'translateX(-50%)',
+                  fontSize: 28,
                   filter: 'drop-shadow(0 0 6px rgba(212,168,67,0.6))',
                 }}>🏆</div>
               )}
