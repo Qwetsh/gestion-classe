@@ -55,7 +55,6 @@ export function GroupGrading() {
   const hp = academyMode;
   const houseStyle = hp ? getHouseStyle(group.name) : null;
   const accentColor = hp ? houseStyle!.c1 : '#059669';
-  const accentLight = hp ? houseStyle!.c2 : '#ecfdf5';
 
   const bgMain = hp ? '#1a1410' : 'var(--bg)';
   const bgCard = hp ? '#251c15' : 'var(--surface)';
@@ -191,7 +190,8 @@ export function GroupGrading() {
                 value={value}
                 onChange={(pts) => setGrade(group.id, c.id, pts)}
                 accent={accentColor}
-                accentLight={accentLight}
+
+
                 bgCard={bgCard}
                 bgCardBorder={bgCardBorder}
                 bgMuted={bgMuted}
@@ -365,7 +365,7 @@ export function GroupGrading() {
 function CriteriaStepper({ label, maxPoints, value, onChange, accent, accentLight, bgCard, bgCardBorder, bgMuted, textMain, textDim, textMuted, fontDisplay, hp }: {
   label: string; maxPoints: number; value: number;
   onChange: (v: number) => void;
-  accent: string; accentLight: string;
+  accent: string;
   bgCard: string; bgCardBorder: string; bgMuted: string;
   textMain: string; textDim: string; textMuted: string;
   fontDisplay: string; hp: boolean;
