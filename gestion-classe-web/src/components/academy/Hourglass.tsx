@@ -194,30 +194,24 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
 
       {/* === Falling sand stream === */}
       <>
-        {/* Main stream */}
-        <line x1="50" y1="115" x2="50" y2={Math.min(bottomSandY + 3, 340)}
-          stroke={color} strokeWidth={isAnimating ? 1.8 : 1} opacity={isAnimating ? 0.5 : 0.25}>
-          <animate attributeName="opacity"
-            values={isAnimating ? '0.35;0.6;0.35' : '0.15;0.3;0.15'}
-            dur="1.5s" repeatCount="indefinite" />
-        </line>
-
         {/* Particles */}
         {particles.map((p, i) => {
           const endY = Math.min(bottomSandY + 5, 342);
+          // Smooth spline: one per segment (n values = n-1 splines)
+          const smoothSpline = '0.25 0.1 0.25 1';
           return (
-            <circle key={`${i}-${isAnimating}`} cx={p.x} cy="115" r={p.size} fill={colorLight} opacity="0.7">
+            <circle key={`${i}-${isAnimating}`} cx={p.x} cy="115" r={p.size} fill={colorLight} opacity="0">
               <animate
                 attributeName="cy"
                 values={isAnimating
                   ? `115;${endY}`
-                  : `115;${140 + Math.random() * 10};${180 + Math.random() * 15};${230 + Math.random() * 15};${280 + Math.random() * 10};${320 + Math.random() * 10};${endY}`
+                  : `115;${endY}`
                 }
                 dur={`${particleDur}s`}
                 begin={`${p.delay}s`}
                 repeatCount="indefinite"
-                calcMode={isAnimating ? 'linear' : 'spline'}
-                keySplines={isAnimating ? undefined : '0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1'}
+                calcMode="spline"
+                keySplines={smoothSpline}
               />
               <animate
                 attributeName="cx"
@@ -225,8 +219,11 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
                 dur={`${particleDur}s`}
                 begin={`${p.delay}s`}
                 repeatCount="indefinite"
-                calcMode={isAnimating ? 'linear' : 'spline'}
-                keySplines={isAnimating ? undefined : '0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1;0.4 0 0.6 1;0.3 0 0.7 1'}
+                calcMode="spline"
+                keySplines={isAnimating
+                  ? `${smoothSpline};${smoothSpline}`
+                  : Array(6).fill(smoothSpline).join(';')
+                }
               />
               <animate
                 attributeName="opacity"
@@ -234,6 +231,11 @@ export function Hourglass({ pct, color, colorLight, size = 200 }: Props) {
                 dur={`${particleDur}s`}
                 begin={`${p.delay}s`}
                 repeatCount="indefinite"
+                calcMode="spline"
+                keySplines={isAnimating
+                  ? '0.25 0.1 0.25 1;0.25 0.1 0.25 1;0.25 0.1 0.25 1'
+                  : Array(6).fill(smoothSpline).join(';')
+                }
               />
             </circle>
           );
