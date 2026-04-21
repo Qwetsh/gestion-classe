@@ -203,21 +203,21 @@ export function BokehField({ density = 45, houseColor, houseColorLight }: {
       const sizeClass = Math.random(); // 0-1, determines particle type
       let size: number, blur: number, opacity: number;
 
-      if (sizeClass < 0.5) {
-        // Tiny dots — sharp, subtle
-        size = 1.5 + Math.random() * 2.5;
+      if (sizeClass < 0.55) {
+        // Small dots — like original starfield
+        size = 0.4 + Math.random() * 1.4;
         blur = 0;
-        opacity = 0.15 + Math.random() * 0.25;
-      } else if (sizeClass < 0.82) {
-        // Medium orbs — soft glow
-        size = 5 + Math.random() * 8;
-        blur = 2 + Math.random() * 3;
-        opacity = 0.08 + Math.random() * 0.15;
+        opacity = 0.2 + Math.random() * 0.4;
+      } else if (sizeClass < 0.85) {
+        // Medium — slight glow
+        size = 1.8 + Math.random() * 2.2;
+        blur = 0.5 + Math.random() * 1;
+        opacity = 0.12 + Math.random() * 0.2;
       } else {
-        // Large bokeh — very blurry, faint
-        size = 14 + Math.random() * 22;
-        blur = 6 + Math.random() * 8;
-        opacity = 0.04 + Math.random() * 0.08;
+        // Larger bokeh — soft blur halo
+        size = 4 + Math.random() * 5;
+        blur = 2 + Math.random() * 3;
+        opacity = 0.05 + Math.random() * 0.1;
       }
 
       return {
@@ -227,7 +227,7 @@ export function BokehField({ density = 45, houseColor, houseColorLight }: {
         blur,
         opacity,
         drift: Math.floor(Math.random() * 6), // 0-5 animation variants
-        duration: 15 + Math.random() * 20, // 15-35s — very slow
+        duration: 10 + Math.random() * 15, // 10-25s — slightly faster
         delay: Math.random() * 10,
         twinkle: 4 + Math.random() * 6, // opacity pulse duration
         twinkleDelay: Math.random() * 5,
@@ -257,7 +257,7 @@ export function BokehField({ density = 45, houseColor, houseColorLight }: {
           width: p.size, height: p.size,
           borderRadius: '50%',
           background: `radial-gradient(circle, ${getColor(p.colorType)} 0%, ${getColor(p.colorType)}88 40%, transparent 70%)`,
-          boxShadow: p.size > 4 ? `0 0 ${p.size * 1.5}px ${getGlowColor(p.colorType)}` : 'none',
+          boxShadow: p.size > 1.5 ? `0 0 ${p.size * 2}px ${getGlowColor(p.colorType)}` : 'none',
           filter: p.blur > 0 ? `blur(${p.blur}px)` : undefined,
           opacity: p.opacity,
           animation: `academy-bokeh-${p.drift} ${p.duration}s ease-in-out ${p.delay}s infinite, academy-twinkle ${p.twinkle}s ease-in-out ${p.twinkleDelay}s infinite`,
