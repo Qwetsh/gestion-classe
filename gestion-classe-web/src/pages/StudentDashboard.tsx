@@ -5,6 +5,7 @@ import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
 import type { HouseId } from '../lib/academyQueries';
+import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
 
 // ============================================
 // Student theme — warm dark palette
@@ -112,6 +113,8 @@ export function StudentDashboard() {
   const [showBonusSelect, setShowBonusSelect] = useState(false);
   const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; color: string; date: string } | null>(null);
   const currentCodeRef = useRef('');
+  const [muted, setMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -328,11 +331,34 @@ export function StudentDashboard() {
   }
 
   // ============================================
+  // ACADEMY MUSIC
+  // ============================================
+  const isAcademyActive = activeTab === 'academy' && academyData?.enabled;
+
+  useEffect(() => {
+    if (isAcademyActive && !muted) {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(hpMusicUrl);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.3;
+      }
+      audioRef.current.play().catch(() => {});
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [isAcademyActive, muted]);
+
+  // ============================================
   // DASHBOARD SCREEN
   // ============================================
   const isInTop10Class = data.class_rank <= 10;
   const isInTop10Overall = data.overall_rank <= 10;
-  const isAcademyTab = activeTab === 'academy' && academyData?.enabled;
+  const isAcademyTab = isAcademyActive;
 
   return (
     <div style={{
@@ -368,6 +394,22 @@ export function StudentDashboard() {
               </p>
             )}
           </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {isAcademyTab && (
+              <button
+                onClick={() => setMuted(m => !m)}
+                style={{
+                  padding: '8px 12px', borderRadius: '8px',
+                  border: '1px solid oklch(0.35 0.04 60 / 0.4)',
+                  background: 'transparent',
+                  color: 'oklch(0.60 0.03 60)',
+                  fontSize: '16px', cursor: 'pointer',
+                }}
+                title={muted ? 'Activer la musique' : 'Couper la musique'}
+              >
+                {muted ? '🔇' : '🔊'}
+              </button>
+            )}
           <button
             onClick={handleLogout}
             style={{
@@ -380,6 +422,7 @@ export function StudentDashboard() {
           >
             Quitter
           </button>
+          </div>
         </div>
 
         {/* Tabs */}
