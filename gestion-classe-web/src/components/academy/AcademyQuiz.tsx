@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { fetchQuestions, type AcademyQuestion, type AcademyAnswer } from '../../lib/academyQueries';
-import { Starfield, FloatingCandles, Ornament, WaxSeal } from './Atmosphere';
+import { Starfield, FloatingCandles, Candle, Ornament, WaxSeal } from './Atmosphere';
 import { HouseCrest } from './HouseCrest';
 import { HOUSE_LIST, type HouseData } from './houses';
 import './tokens.css';
@@ -195,6 +195,19 @@ function IntroScreen({ onBegin, totalQuestions }: { onBegin: () => void; totalQu
         }}>
           Que le Choixpeau parle
         </button>
+      </div>
+
+      {/* Two candles flanking below parchment */}
+      <div style={{
+        display: 'flex', justifyContent: 'center', gap: 120,
+        marginTop: 18,
+      }}>
+        <div style={{ animation: 'academy-drift 5s ease-in-out 0.5s infinite' }}>
+          <Candle size="lg" />
+        </div>
+        <div style={{ animation: 'academy-drift 6s ease-in-out 1.2s infinite' }}>
+          <Candle size="lg" />
+        </div>
       </div>
 
       <div style={{ marginTop: 14, fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.25em', color: 'var(--gold-deep)', textTransform: 'uppercase' }}>

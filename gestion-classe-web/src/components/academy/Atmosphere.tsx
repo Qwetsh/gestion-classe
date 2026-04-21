@@ -31,7 +31,7 @@ export function Starfield({ density = 80 }: { density?: number }) {
 }
 
 // --- Candle ---
-function Candle({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+export function Candle({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const sizes = { sm: { w: 10, h: 40, fw: 12, fh: 20 }, md: { w: 14, h: 60, fw: 16, fh: 28 }, lg: { w: 18, h: 80, fw: 22, fh: 36 } };
   const s = sizes[size];
   return (
@@ -67,13 +67,20 @@ function Candle({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 // --- FloatingCandles ---
 export function FloatingCandles({ count = 12 }: { count?: number }) {
   const candles = useMemo(() =>
-    Array.from({ length: count }, (_, i) => ({
-      x: (i / count) * 100 + (Math.random() - 0.5) * 10,
-      y: Math.random() * 70 + 5,
-      delay: Math.random() * 3,
-      duration: 4 + Math.random() * 3,
-      size: (Math.random() > 0.5 ? 'md' : 'sm') as 'md' | 'sm',
-    })), [count]);
+    Array.from({ length: count }, (_, i) => {
+      // Depth layer: 0 = far (blurry, small), 1 = mid, 2 = close (sharp, large)
+      const depth = i % 3;
+      return {
+        x: (i / count) * 100 + (Math.random() - 0.5) * 10,
+        y: Math.random() * 70 + 5,
+        delay: Math.random() * 3,
+        duration: 4 + Math.random() * 3,
+        size: (depth === 0 ? 'sm' : depth === 1 ? 'md' : 'md') as 'sm' | 'md',
+        blur: depth === 0 ? 2.5 : depth === 1 ? 0.8 : 0,
+        scale: depth === 0 ? 0.7 : depth === 1 ? 1 : 1.15,
+        opacity: depth === 0 ? 0.5 : depth === 1 ? 0.8 : 1,
+      };
+    }), [count]);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }} aria-hidden>
@@ -81,6 +88,9 @@ export function FloatingCandles({ count = 12 }: { count?: number }) {
         <div key={i} style={{
           position: 'absolute', left: `${c.x}%`, top: `${c.y}%`,
           animation: `academy-drift ${c.duration}s ease-in-out ${c.delay}s infinite`,
+          filter: c.blur > 0 ? `blur(${c.blur}px)` : undefined,
+          transform: `scale(${c.scale})`,
+          opacity: c.opacity,
         }}>
           <Candle size={c.size} />
         </div>

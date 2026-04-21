@@ -125,13 +125,16 @@ export function StudentDashboard() {
         audioRef.current.loop = true;
         audioRef.current.volume = 0.3;
       }
+      audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     } else if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.currentTime = 0;
       }
     };
   }, [isAcademyActive, muted]);
