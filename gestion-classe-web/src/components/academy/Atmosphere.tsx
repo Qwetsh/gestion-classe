@@ -204,20 +204,20 @@ export function BokehField({ density = 45, houseColor, houseColorLight }: {
       let size: number, blur: number, opacity: number;
 
       if (sizeClass < 0.55) {
-        // Small dots — like original starfield
-        size = 0.4 + Math.random() * 1.4;
+        // Small dots
+        size = 0.6 + Math.random() * 1.6;
         blur = 0;
-        opacity = 0.2 + Math.random() * 0.4;
+        opacity = 0.4 + Math.random() * 0.5;
       } else if (sizeClass < 0.85) {
         // Medium — slight glow
-        size = 1.8 + Math.random() * 2.2;
+        size = 2 + Math.random() * 2.5;
         blur = 0.5 + Math.random() * 1;
-        opacity = 0.12 + Math.random() * 0.2;
+        opacity = 0.25 + Math.random() * 0.35;
       } else {
         // Larger bokeh — soft blur halo
         size = 4 + Math.random() * 5;
         blur = 2 + Math.random() * 3;
-        opacity = 0.05 + Math.random() * 0.1;
+        opacity = 0.12 + Math.random() * 0.15;
       }
 
       return {
