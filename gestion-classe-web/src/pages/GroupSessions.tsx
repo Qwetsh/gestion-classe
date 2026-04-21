@@ -20,6 +20,7 @@ interface GroupSession {
   groups_count: number;
   total_points: number;
   linked_session_id: string | null;
+  materials: string[];
 }
 
 interface SessionGroup {
@@ -86,6 +87,10 @@ export function GroupSessions() {
   const [captionText, setCaptionText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Materials
+  const [newMaterial, setNewMaterial] = useState('');
+  const [isSavingMaterials, setIsSavingMaterials] = useState(false);
+
   useEffect(() => {
     loadSessions();
   }, [user]);
@@ -110,7 +115,7 @@ export function GroupSessions() {
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('group_sessions')
         .select(`
-          id, name, class_id, status, created_at, completed_at, linked_session_id,
+          id, name, class_id, status, created_at, completed_at, linked_session_id, materials,
           classes (name)
         `)
         .eq('user_id', user.id)
@@ -158,6 +163,7 @@ export function GroupSessions() {
           groups_count: groupsCountMap.get(session.id) || 0,
           total_points: pointsMap.get(session.id) || 0,
           linked_session_id: (session as any).linked_session_id || null,
+          materials: (session as any).materials || [],
         }));
 
         setSessions(sessionsWithDetails);
@@ -335,6 +341,39 @@ export function GroupSessions() {
     } catch (err) {
       console.error('Caption error:', err);
     }
+  };
+
+  const saveMaterials = async (materials: string[]) => {
+    if (!sessionDetail) return;
+    setIsSavingMaterials(true);
+    try {
+      const { error } = await supabase
+        .from('group_sessions')
+        .update({ materials })
+        .eq('id', sessionDetail.session.id);
+      if (error) throw error;
+      setSessionDetail(prev => prev ? { ...prev, session: { ...prev.session, materials } } : prev);
+      setSessions(prev => prev.map(s => s.id === sessionDetail.session.id ? { ...s, materials } : s));
+    } catch (err) {
+      console.error('Materials error:', err);
+      toast('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSavingMaterials(false);
+    }
+  };
+
+  const handleAddMaterial = () => {
+    const item = newMaterial.trim();
+    if (!item || !sessionDetail) return;
+    const updated = [...sessionDetail.session.materials, item];
+    saveMaterials(updated);
+    setNewMaterial('');
+  };
+
+  const handleRemoveMaterial = (index: number) => {
+    if (!sessionDetail) return;
+    const updated = sessionDetail.session.materials.filter((_, i) => i !== index);
+    saveMaterials(updated);
   };
 
   const handleStartEditGroup = (group: SessionGroup) => {
@@ -870,6 +909,53 @@ export function GroupSessions() {
                     <div className="mt-2 text-sm text-[var(--text-dim)]">
                       Total: {sessionDetail.criteria.reduce((sum, c) => sum + c.max_points, 0)} points
                     </div>
+                  </div>
+                </div>
+
+                {/* Materials section */}
+                <div className="px-6 py-4 border-b border-[var(--border)]">
+                  <h4 className="text-sm font-medium text-[var(--text-muted)] mb-3">
+                    Matériel nécessaire
+                  </h4>
+                  {sessionDetail.session.materials.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {sessionDetail.session.materials.map((item, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--surface)] border border-[var(--border)] group"
+                          style={{ borderRadius: 'var(--radius)' }}
+                        >
+                          {item}
+                          <button
+                            onClick={() => handleRemoveMaterial(i)}
+                            className="w-4 h-4 flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--neg)] opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ fontSize: 14, lineHeight: 1 }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newMaterial}
+                      onChange={(e) => setNewMaterial(e.target.value)}
+                      placeholder="Ex: microscope, lame, bleu de méthylène..."
+                      className="flex-1 px-3 py-2 text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
+                      style={{ borderRadius: 'var(--radius)' }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddMaterial(); }}
+                      disabled={isSavingMaterials}
+                    />
+                    <button
+                      onClick={handleAddMaterial}
+                      disabled={!newMaterial.trim() || isSavingMaterials}
+                      className="px-3 py-2 text-sm font-medium bg-[var(--surface-3)] text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-40"
+                      style={{ borderRadius: 'var(--radius)' }}
+                    >
+                      <Icon name="plus" size={14} />
+                    </button>
                   </div>
                 </div>
 
