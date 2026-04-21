@@ -192,6 +192,81 @@ export function GoldParticles({ active, count = 60 }: { active: boolean; count?:
   );
 }
 
+// --- BokehField ---
+export function BokehField({ density = 45, houseColor, houseColorLight }: {
+  density?: number;
+  houseColor?: string;
+  houseColorLight?: string;
+}) {
+  const particles = useMemo(() =>
+    Array.from({ length: density }, () => {
+      const sizeClass = Math.random(); // 0-1, determines particle type
+      let size: number, blur: number, opacity: number;
+
+      if (sizeClass < 0.5) {
+        // Tiny dots — sharp, subtle
+        size = 1.5 + Math.random() * 2.5;
+        blur = 0;
+        opacity = 0.15 + Math.random() * 0.25;
+      } else if (sizeClass < 0.82) {
+        // Medium orbs — soft glow
+        size = 5 + Math.random() * 8;
+        blur = 2 + Math.random() * 3;
+        opacity = 0.08 + Math.random() * 0.15;
+      } else {
+        // Large bokeh — very blurry, faint
+        size = 14 + Math.random() * 22;
+        blur = 6 + Math.random() * 8;
+        opacity = 0.04 + Math.random() * 0.08;
+      }
+
+      return {
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size,
+        blur,
+        opacity,
+        drift: Math.floor(Math.random() * 6), // 0-5 animation variants
+        duration: 15 + Math.random() * 20, // 15-35s — very slow
+        delay: Math.random() * 10,
+        twinkle: 4 + Math.random() * 6, // opacity pulse duration
+        twinkleDelay: Math.random() * 5,
+        // Color variation: mostly gold, some warm white
+        colorType: Math.random() < 0.7 ? 'gold' : Math.random() < 0.5 ? 'warm' : 'house',
+      };
+    }), [density]);
+
+  const getColor = (type: string) => {
+    if (type === 'house' && houseColor) return houseColor;
+    if (type === 'warm') return 'oklch(0.90 0.04 80)';
+    return 'var(--gold-bright)';
+  };
+
+  const getGlowColor = (type: string) => {
+    if (type === 'house' && houseColorLight) return houseColorLight;
+    if (type === 'warm') return 'oklch(0.85 0.03 75)';
+    return 'var(--gold)';
+  };
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden>
+      {particles.map((p, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${p.x}%`, top: `${p.y}%`,
+          width: p.size, height: p.size,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${getColor(p.colorType)} 0%, ${getColor(p.colorType)}88 40%, transparent 70%)`,
+          boxShadow: p.size > 4 ? `0 0 ${p.size * 1.5}px ${getGlowColor(p.colorType)}` : 'none',
+          filter: p.blur > 0 ? `blur(${p.blur}px)` : undefined,
+          opacity: p.opacity,
+          animation: `academy-bokeh-${p.drift} ${p.duration}s ease-in-out ${p.delay}s infinite, academy-twinkle ${p.twinkle}s ease-in-out ${p.twinkleDelay}s infinite`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
 // --- RollingNumber ---
 export function RollingNumber({ value, duration = 2500 }: { value: number; duration?: number }) {
   const [display, setDisplay] = useState(value);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { calculateHousePoints, type HousePoints, type HouseId } from '../../lib/academyQueries';
-import { Starfield, Ornament, GoldParticles, RollingNumber } from './Atmosphere';
+import { BokehField, Ornament, GoldParticles, RollingNumber } from './Atmosphere';
 import { HouseCrest } from './HouseCrest';
 import { HOUSE_DATA } from './houses';
 import './tokens.css';
@@ -89,7 +89,7 @@ export function MyHouse({ houseId, classId }: MyHouseProps) {
       position: 'relative', overflow: 'hidden',
       fontFamily: 'var(--font-body)', color: 'var(--parchment)',
     }}>
-      <Starfield density={60} />
+      <BokehField density={50} houseColor={myHouse.c1} houseColorLight={myHouse.cInkLight} />
 
       <div style={{ position: 'relative', zIndex: 2, padding: '40px 20px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Header */}
