@@ -3,6 +3,7 @@ import { HOUSE_DATA, HOUSE_LIST } from './houses';
 import { HouseCrest } from './HouseCrest';
 import { calculateStudentScores, runSortingAlgorithm, type StudentScores } from '../../lib/sortingAlgorithm';
 import { saveAssignment, fetchAssignments, type HouseId, type AcademyAssignment } from '../../lib/academyQueries';
+import choixpeauImg from '../../assets/choixpeau.png';
 
 interface Props {
   classId: string;
@@ -231,32 +232,23 @@ export function SortingCeremony({ classId, students, assignments, onAssigned, on
             <button
               onClick={clickHat}
               style={{
-                width: 180, height: 180, borderRadius: '50%',
-                background: 'radial-gradient(circle at 40% 30%, #3a2e22, #1a1410)',
-                border: '3px solid #d4a843',
+                background: 'none', border: 'none', padding: 0,
                 cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 72,
-                boxShadow: '0 0 40px rgba(212,168,67,0.3), 0 0 80px rgba(212,168,67,0.1)',
-                transition: 'transform 200ms, box-shadow 200ms',
+                filter: 'drop-shadow(0 0 30px rgba(212,168,67,0.4)) drop-shadow(0 0 60px rgba(212,168,67,0.15))',
+                transition: 'transform 200ms, filter 200ms',
                 animation: 'academy-float 3s ease-in-out infinite',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 0 60px rgba(212,168,67,0.5), 0 0 100px rgba(212,168,67,0.2)';
+                e.currentTarget.style.transform = 'scale(1.08)';
+                e.currentTarget.style.filter = 'drop-shadow(0 0 40px rgba(212,168,67,0.6)) drop-shadow(0 0 80px rgba(212,168,67,0.3))';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 0 40px rgba(212,168,67,0.3), 0 0 80px rgba(212,168,67,0.1)';
+                e.currentTarget.style.filter = 'drop-shadow(0 0 30px rgba(212,168,67,0.4)) drop-shadow(0 0 60px rgba(212,168,67,0.15))';
               }}
             >
-              🎩
+              <img src={choixpeauImg} alt="Choixpeau Magique" style={{ width: 220, height: 'auto' }} />
             </button>
-            <div style={{
-              fontSize: 12, color: '#6a5c4e', marginTop: 20,
-            }}>
-              Placeholder — un visuel sera ajouté plus tard
-            </div>
           </div>
         )}
 
@@ -269,10 +261,11 @@ export function SortingCeremony({ classId, students, assignments, onAssigned, on
               {currentStudent.pseudo}
             </div>
             <div style={{
-              fontSize: 64, marginBottom: 16,
+              marginBottom: 16,
               animation: 'academy-shake 0.4s ease-in-out infinite',
+              filter: 'drop-shadow(0 0 20px rgba(212,168,67,0.5))',
             }}>
-              🎩
+              <img src={choixpeauImg} alt="Choixpeau" style={{ width: 160, height: 'auto' }} />
             </div>
             <div style={{
               fontSize: 18, color: '#d4a843', fontStyle: 'italic',
