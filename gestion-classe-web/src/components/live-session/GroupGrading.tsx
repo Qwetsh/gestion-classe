@@ -362,7 +362,7 @@ export function GroupGrading() {
 /* ========================================
    STEPPER — with theme support
    ======================================== */
-function CriteriaStepper({ label, maxPoints, value, onChange, accent, accentLight, bgCard, bgCardBorder, bgMuted, textMain, textDim, textMuted, fontDisplay, hp }: {
+function CriteriaStepper({ label, maxPoints, value, onChange, accent, bgCard, bgCardBorder, bgMuted, textMain, textDim, textMuted, fontDisplay, hp }: {
   label: string; maxPoints: number; value: number;
   onChange: (v: number) => void;
   accent: string;
