@@ -105,6 +105,7 @@ function parseYear(s: string): number {
 export default function TimelineGenerator() {
   const previewRef = useRef<HTMLDivElement>(null);
   const previewPaneRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
   const [previewScale, setPreviewScale] = useState(1);
@@ -157,6 +158,9 @@ export default function TimelineGenerator() {
       color: EVENT_COLORS[config.events.length % EVENT_COLORS.length],
     };
     setConfig(prev => ({ ...prev, events: [...prev.events, evt] }));
+    setTimeout(() => {
+      editorRef.current?.scrollTo({ top: editorRef.current.scrollHeight, behavior: 'smooth' });
+    }, 50);
   }, [config.events.length]);
 
   const updateEvent = useCallback((id: string, patch: Partial<TimelineEvent>) => {
@@ -632,7 +636,7 @@ export default function TimelineGenerator() {
 
   return (
     <div style={rootS.container}>
-      <div style={rootS.editor}>{renderEditor()}</div>
+      <div ref={editorRef} style={rootS.editor}>{renderEditor()}</div>
       <div ref={previewPaneRef} style={rootS.preview}>
         <div
           ref={previewRef}
