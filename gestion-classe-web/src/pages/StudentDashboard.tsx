@@ -7,6 +7,34 @@ import { MyHouse } from '../components/academy/MyHouse';
 import type { HouseId } from '../lib/academyQueries';
 
 // ============================================
+// Student theme — warm dark palette
+// ============================================
+const T = {
+  bg: '#1a1410',
+  bg2: '#221b14',
+  card: '#2a2018',
+  cardBorder: '#3a2e22',
+  surface: '#1e1712',
+  text: '#e8dcc8',
+  textMuted: '#a09080',
+  textDim: '#6a5c4e',
+  gold: '#d4a843',
+  goldBright: '#e8c066',
+  goldDeep: '#b8860b',
+  accent: '#c084fc',
+  accentSoft: '#2e1065',
+  pos: '#4ade80',
+  posSoft: '#14532d',
+  neg: '#f87171',
+  negSoft: '#450a0a',
+  warn: '#fbbf24',
+  warnSoft: '#451a03',
+  indigo: '#a5b4fc',
+  indigoSoft: '#1e1b4b',
+  font: "'Cormorant Garamond', Georgia, serif",
+} as const;
+
+// ============================================
 // Stamp card types
 // ============================================
 
@@ -86,7 +114,6 @@ export function StudentDashboard() {
   const currentCodeRef = useRef('');
   const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup celebration timer on unmount
   useEffect(() => {
     return () => {
       if (celebrationTimerRef.current) clearTimeout(celebrationTimerRef.current);
@@ -127,131 +154,73 @@ export function StudentDashboard() {
       newCode[i] = pasted[i];
     }
     setCode(newCode);
-    const focusIndex = Math.min(pasted.length, 5);
-    inputRefs.current[focusIndex]?.focus();
+    if (pasted.length < 6) {
+      inputRefs.current[pasted.length]?.focus();
+    }
   }, [code]);
 
   const handleSubmit = async () => {
     const fullCode = code.join('');
-    if (fullCode.length !== 6) {
-      setError('Entre ton code a 6 chiffres');
-      return;
-    }
-
+    if (fullCode.length !== 6) return;
     setIsLoading(true);
     setError(null);
     currentCodeRef.current = fullCode;
 
     try {
-      const { data: result, error: rpcError } = await supabase
-        .rpc('get_student_dashboard', { p_code: fullCode });
-
+      const { data: result, error: rpcError } = await supabase.rpc('get_student_dashboard', { p_code: fullCode });
       if (rpcError) throw rpcError;
-
-      if (result?.error === 'invalid_code') {
-        setError('Code invalide. Verifie et reessaye.');
+      if (result?.error) {
+        setError(result.error === 'not_found' ? 'Code incorrect. Vérifie et réessaie.' : 'Erreur inconnue');
+        setIsLoading(false);
         return;
       }
+      setData(result);
 
-      setData({
-        ...result,
-        top10_class: result.top10_class || [],
-        top10_overall: result.top10_overall || [],
-        all_classes_ranking: result.all_classes_ranking || [],
-        my_class_rank_among_classes: result.my_class_rank_among_classes || 0,
-        total_classes: result.total_classes || 0,
-        my_class_avg: result.my_class_avg || 0,
-      } as DashboardData);
+      // Load stamp data
+      if (result.student_id) {
+        setStampLoading(true);
+        try {
+          const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_student_id: result.student_id });
+          if (!sErr && sData) setStampData(sData);
+          else setStampError('Impossible de charger les tampons');
+        } catch {
+          setStampError('Erreur de chargement des tampons');
+        }
+        setStampLoading(false);
+      }
 
       // Load academy data
       try {
-        const { data: academyResult } = await supabase
-          .rpc('get_student_academy', { p_code: fullCode });
-        if (academyResult && !academyResult.error) {
+        const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
+        if (aData && !aData.error) {
           setAcademyData({
-            enabled: academyResult.enabled ?? false,
-            house: academyResult.house ?? null,
-            test_completed: academyResult.test_completed ?? false,
-            classId: academyResult.class_id ?? null,
+            enabled: aData.enabled ?? false,
+            house: aData.house ?? null,
+            test_completed: aData.test_completed ?? false,
+            classId: aData.class_id ?? null,
           });
-        } else {
-          setAcademyData(null);
         }
-      } catch {
-        setAcademyData(null);
-      }
+      } catch { /* ignore */ }
     } catch {
-      setError('Erreur de connexion. Reessaye.');
-    } finally {
-      setIsLoading(false);
+      setError('Erreur de connexion. Réessaie.');
     }
+    setIsLoading(false);
   };
 
-  const loadStampData = useCallback(async () => {
-    const fullCode = currentCodeRef.current;
-    if (!fullCode || fullCode.length !== 6) return;
-    setStampLoading(true);
-    setStampError(null);
-    try {
-      const { data: result, error: rpcError } = await supabase
-        .rpc('get_student_stamps', { p_code: fullCode });
-      if (rpcError) throw rpcError;
-      if (result?.error) {
-        setStampError(result.error);
-        return;
-      }
-      setStampData(result as StampData);
-    } catch {
-      setStampError('Erreur de chargement des tampons');
-    } finally {
-      setStampLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'stamps' && data && !stampData) {
-      loadStampData();
-    }
-  }, [activeTab, data, stampData, loadStampData]);
-
-  // Realtime subscription for stamp updates
-  useEffect(() => {
-    if (!data || !currentCodeRef.current) return;
-
-    const channel = supabase
-      .channel('student-stamps-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stamps' }, () => {
-        if (activeTab === 'stamps') loadStampData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_selections' }, () => {
-        if (activeTab === 'stamps') loadStampData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [data, activeTab, loadStampData]);
-
   const handleSelectBonus = async (bonusId: string) => {
-    const fullCode = currentCodeRef.current;
-    if (!fullCode) return;
+    if (!stampData?.active_card) return;
+    const cardId = stampData.active_card.id;
     try {
-      const { data: result, error: rpcError } = await supabase
-        .rpc('select_student_bonus', { p_code: fullCode, p_bonus_id: bonusId });
-      if (rpcError) throw rpcError;
-      if (result?.error) {
-        setStampError(result.error);
-        return;
-      }
+      const { error: err } = await supabase.rpc('select_card_bonus', { p_card_id: cardId, p_bonus_id: bonusId });
+      if (err) throw err;
       setShowBonusSelect(false);
       setShowCelebration(true);
-      if (celebrationTimerRef.current) clearTimeout(celebrationTimerRef.current);
-      celebrationTimerRef.current = setTimeout(() => setShowCelebration(false), 3000);
+      celebrationTimerRef.current = setTimeout(() => setShowCelebration(false), 3500);
       // Reload stamp data
-      await loadStampData();
+      const { data: sData } = await supabase.rpc('get_student_stamps', { p_student_id: stampData.student_id });
+      if (sData) setStampData(sData);
     } catch {
-      setStampError('Erreur lors de la sélection du bonus');
+      setError('Erreur lors de la selection du bonus');
     }
   };
 
@@ -267,52 +236,46 @@ export function StudentDashboard() {
   };
 
   const gradeColor = (grade: number) => {
-    if (grade >= 16) return 'var(--pos)';
-    if (grade >= 12) return 'var(--indigo)';
-    if (grade >= 8) return 'var(--warn)';
-    return 'var(--neg)';
+    if (grade >= 16) return T.pos;
+    if (grade >= 12) return T.indigo;
+    if (grade >= 8) return T.warn;
+    return T.neg;
   };
 
   const gradePercent = (grade: number) => Math.min(100, (grade / 20) * 100);
 
-  // Code entry screen
+  // ============================================
+  // CODE ENTRY SCREEN
+  // ============================================
   if (!data) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        background: `radial-gradient(ellipse at 50% 30%, ${T.bg2} 0%, ${T.bg} 70%)`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: '24px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: T.font,
       }}>
         <div style={{
-          background: 'var(--surface)',
+          background: T.card,
           borderRadius: '20px',
           padding: '40px 32px',
           maxWidth: '400px',
           width: '100%',
-          boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-          border: '1px solid var(--border)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+          border: `1px solid ${T.cardBorder}`,
         }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
-            <h1 style={{ color: 'var(--bg)', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
+            <h1 style={{ color: T.goldBright, fontFamily: T.font, fontWeight: 600, fontSize: 36, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
               Mon espace
             </h1>
-            <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '8px' }}>
-              Entre ton code personnel pour voir tes resultats
+            <p style={{ color: T.textMuted, fontSize: '14px', marginTop: '8px' }}>
+              Entre ton code personnel pour voir tes résultats
             </p>
           </div>
 
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            justifyContent: 'center',
-            marginBottom: '24px',
-          }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '24px' }}>
             {code.map((digit, i) => (
               <input
                 key={i}
@@ -325,31 +288,20 @@ export function StudentDashboard() {
                 onKeyDown={e => handleKeyDown(i, e)}
                 onPaste={i === 0 ? handlePaste : undefined}
                 style={{
-                  width: '48px',
-                  height: '56px',
-                  textAlign: 'center',
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  borderRadius: '12px',
-                  border: `2px solid ${digit ? 'var(--indigo)' : 'var(--border)'}`,
-                  background: 'var(--bg)',
-                  color: 'var(--text)',
-                  outline: 'none',
+                  width: '48px', height: '56px', textAlign: 'center',
+                  fontSize: '24px', fontWeight: 700, borderRadius: '12px',
+                  border: `2px solid ${digit ? T.gold : T.cardBorder}`,
+                  background: T.surface, color: T.text, outline: 'none',
                   transition: 'border-color 0.2s',
                 }}
-                onFocus={e => { e.target.style.borderColor = 'var(--indigo)'; }}
-                onBlur={e => { if (!digit) e.target.style.borderColor = 'var(--border)'; }}
+                onFocus={e => { e.target.style.borderColor = T.gold; }}
+                onBlur={e => { if (!digit) e.target.style.borderColor = T.cardBorder; }}
               />
             ))}
           </div>
 
           {error && (
-            <p style={{
-              color: 'var(--neg)',
-              textAlign: 'center',
-              fontSize: '14px',
-              marginBottom: '16px',
-            }}>
+            <p style={{ color: T.neg, textAlign: 'center', fontSize: '14px', marginBottom: '16px' }}>
               {error}
             </p>
           )}
@@ -358,36 +310,36 @@ export function StudentDashboard() {
             onClick={handleSubmit}
             disabled={isLoading || code.join('').length !== 6}
             style={{
-              width: '100%',
-              padding: '14px',
-              borderRadius: '12px',
-              border: 'none',
-              background: code.join('').length === 6 ? 'var(--indigo)' : 'var(--border)',
-              color: '#ffffff',
-              fontSize: '16px',
-              fontWeight: 600,
+              width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+              background: code.join('').length === 6
+                ? `linear-gradient(135deg, ${T.gold}, ${T.goldDeep})`
+                : T.surface,
+              color: code.join('').length === 6 ? T.bg : T.textDim,
+              fontSize: '16px', fontWeight: 700, fontFamily: T.font,
               cursor: code.join('').length === 6 ? 'pointer' : 'default',
               opacity: isLoading ? 0.7 : 1,
               transition: 'all 0.2s',
+              boxShadow: code.join('').length === 6 ? '0 4px 16px rgba(180,130,50,0.3)' : 'none',
             }}
           >
-            {isLoading ? 'Chargement...' : 'Voir mes resultats'}
+            {isLoading ? 'Chargement...' : 'Voir mes résultats'}
           </button>
         </div>
       </div>
     );
   }
 
-  // Dashboard screen
+  // ============================================
+  // DASHBOARD SCREEN
+  // ============================================
   const isInTop10Class = data.class_rank <= 10;
   const isInTop10Overall = data.overall_rank <= 10;
-
   const isAcademyTab = activeTab === 'academy' && academyData?.enabled;
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: isAcademyTab ? 'transparent' : 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)',
+      background: isAcademyTab ? 'transparent' : `radial-gradient(ellipse at 50% 0%, ${T.bg2} 0%, ${T.bg} 60%)`,
       padding: isAcademyTab ? 0 : '16px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       position: 'relative',
@@ -395,9 +347,7 @@ export function StudentDashboard() {
       <div style={{ maxWidth: isAcademyTab ? 'none' : '480px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: isAcademyTab ? 0 : '20px',
           padding: isAcademyTab ? '10px 16px' : '0 4px',
           ...(isAcademyTab ? {
@@ -408,28 +358,26 @@ export function StudentDashboard() {
         }}>
           <div>
             <h1 style={{
-              color: isAcademyTab ? 'oklch(0.85 0.04 60)' : 'var(--bg)',
-              fontFamily: 'var(--font-display)', fontWeight: 400,
-              fontSize: isAcademyTab ? 20 : 40, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0,
+              color: isAcademyTab ? 'oklch(0.85 0.04 60)' : T.goldBright,
+              fontFamily: T.font, fontWeight: 600,
+              fontSize: isAcademyTab ? 20 : 32, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0,
             }}>
               {data.pseudo}
             </h1>
             {!isAcademyTab && (
-            <p style={{ color: 'var(--text-dim)', fontSize: '13px', margin: '2px 0 0 0' }}>
-              {data.class_name} · Trimestre {data.trimester} · {data.school_year}
-            </p>
+              <p style={{ color: T.textDim, fontSize: '13px', margin: '2px 0 0 0' }}>
+                {data.class_name} · Trimestre {data.trimester} · {data.school_year}
+              </p>
             )}
           </div>
           <button
             onClick={handleLogout}
             style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              border: isAcademyTab ? '1px solid oklch(0.35 0.04 60 / 0.4)' : '1px solid var(--border)',
+              padding: '8px 14px', borderRadius: '8px',
+              border: isAcademyTab ? '1px solid oklch(0.35 0.04 60 / 0.4)' : `1px solid ${T.cardBorder}`,
               background: 'transparent',
-              color: isAcademyTab ? 'oklch(0.60 0.03 60)' : 'var(--text-dim)',
-              fontSize: '13px',
-              cursor: 'pointer',
+              color: isAcademyTab ? 'oklch(0.60 0.03 60)' : T.textMuted,
+              fontSize: '13px', cursor: 'pointer',
             }}
           >
             Quitter
@@ -438,8 +386,7 @@ export function StudentDashboard() {
 
         {/* Tabs */}
         <div style={{
-          display: 'flex',
-          gap: '4px',
+          display: 'flex', gap: '4px',
           marginBottom: isAcademyTab ? 0 : '16px',
           ...(isAcademyTab ? {
             position: 'absolute' as const, bottom: 0, left: 0, right: 0, zIndex: 10,
@@ -447,31 +394,27 @@ export function StudentDashboard() {
             backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
             borderRadius: 0, padding: '6px 12px',
             paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
-          } : { background: 'var(--bg)', borderRadius: '12px', padding: '4px' }),
+          } : { background: T.surface, borderRadius: '12px', padding: '4px' }),
         }}>
           {[
-            { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: 'var(--indigo)' },
-            { key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: 'var(--warn)' },
-            ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: '#8B5CF6' }] : []),
+            { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: T.indigoSoft, activeText: T.indigo },
+            { key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn },
+            ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
           ].map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               style={{
-                flex: 1,
-                padding: isAcademyTab ? '8px' : '10px',
-                borderRadius: '10px',
-                border: 'none',
+                flex: 1, padding: isAcademyTab ? '8px' : '10px',
+                borderRadius: '10px', border: 'none',
                 background: activeTab === tab.key
                   ? (isAcademyTab ? 'oklch(0.25 0.03 50 / 0.9)' : tab.activeColor)
                   : 'transparent',
                 color: activeTab === tab.key
-                  ? (isAcademyTab ? 'oklch(0.90 0.06 60)' : '#ffffff')
-                  : (isAcademyTab ? 'oklch(0.55 0.03 60)' : 'var(--text-dim)'),
+                  ? (isAcademyTab ? 'oklch(0.90 0.06 60)' : tab.activeText)
+                  : (isAcademyTab ? 'oklch(0.55 0.03 60)' : T.textDim),
                 fontSize: isAcademyTab ? '12px' : '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
+                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
               {tab.icon} {tab.label}
@@ -510,165 +453,87 @@ export function StudentDashboard() {
         <>
         {/* Grade Card */}
         <div style={{
-          background: 'var(--surface)',
-          borderRadius: '16px',
-          padding: '24px',
-          marginBottom: '12px',
-          border: '1px solid var(--border)',
-          textAlign: 'center',
+          background: T.card, borderRadius: '16px', padding: '24px',
+          marginBottom: '12px', border: `1px solid ${T.cardBorder}`, textAlign: 'center',
         }}>
-          <p style={{ color: 'var(--text-dim)', fontSize: '13px', marginBottom: '8px' }}>Ma note actuelle</p>
-          <div style={{
-            fontSize: '56px',
-            fontWeight: 800,
-            color: gradeColor(data.grade),
-            lineHeight: 1,
-          }}>
+          <p style={{ color: T.textMuted, fontSize: '13px', marginBottom: '8px' }}>Ma note actuelle</p>
+          <div style={{ fontSize: '56px', fontWeight: 800, color: gradeColor(data.grade), lineHeight: 1 }}>
             {data.grade.toFixed(1)}
-            <span style={{ fontSize: '24px', color: 'var(--text-muted)' }}>/20</span>
+            <span style={{ fontSize: '24px', color: T.textDim }}>/20</span>
           </div>
-          {/* Grade bar */}
           <div style={{
-            marginTop: '16px',
-            height: '8px',
-            background: 'var(--bg)',
-            borderRadius: '4px',
-            overflow: 'hidden',
+            marginTop: '16px', height: '8px', background: T.surface,
+            borderRadius: '4px', overflow: 'hidden',
           }}>
             <div style={{
               height: '100%',
               width: `${gradePercent(data.grade)}%`,
               background: `linear-gradient(90deg, ${gradeColor(data.grade)}88, ${gradeColor(data.grade)})`,
-              borderRadius: '4px',
-              transition: 'width 0.8s ease',
+              borderRadius: '4px', transition: 'width 0.8s ease',
             }} />
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '8px' }}>
+          <p style={{ color: T.textDim, fontSize: '12px', marginTop: '8px' }}>
             Objectif : {data.target} implications
           </p>
         </div>
 
         {/* Stats Row */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '8px',
-          marginBottom: '12px',
-        }}>
-          <StatCard label="Implications" value={data.participations} color="var(--pos)" />
-          <StatCard label="Malus" value={data.malus} color="var(--warn)" />
-          <StatCard label="Absences" value={data.absences} color="var(--neg)" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+          <StatCard label="Implications" value={data.participations} color={T.pos} />
+          <StatCard label="Malus" value={data.malus} color={T.warn} />
+          <StatCard label="Absences" value={data.absences} color={T.neg} />
         </div>
 
         {/* Rankings */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '8px',
-          marginBottom: '12px',
-        }}>
-          {/* Class Ranking */}
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: '16px',
-            padding: '16px',
-            border: '1px solid var(--border)',
-          }}>
-            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ background: T.card, borderRadius: '16px', padding: '16px', border: `1px solid ${T.cardBorder}` }}>
+            <p style={{ color: T.textMuted, fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
               Classement classe
             </p>
-            <RankingDisplay
-              rank={data.class_rank}
-              total={data.class_total}
-              top10={data.top10_class}
-              isInTop10={isInTop10Class}
-              studentGrade={data.grade}
-            />
+            <RankingDisplay rank={data.class_rank} total={data.class_total} top10={data.top10_class} isInTop10={isInTop10Class} studentGrade={data.grade} />
           </div>
-
-          {/* Overall Ranking */}
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: '16px',
-            padding: '16px',
-            border: '1px solid var(--border)',
-          }}>
-            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
-              Classement general
+          <div style={{ background: T.card, borderRadius: '16px', padding: '16px', border: `1px solid ${T.cardBorder}` }}>
+            <p style={{ color: T.textMuted, fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+              Classement général
             </p>
-            <RankingDisplay
-              rank={data.overall_rank}
-              total={data.overall_total}
-              top10={data.top10_overall}
-              isInTop10={isInTop10Overall}
-              studentGrade={data.grade}
-            />
+            <RankingDisplay rank={data.overall_rank} total={data.overall_total} top10={data.top10_overall} isInTop10={isInTop10Overall} studentGrade={data.grade} />
           </div>
         </div>
 
-        {/* Class vs Classes Ranking */}
+        {/* Class vs Classes */}
         {data.all_classes_ranking.length > 1 && (
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '12px',
-            border: '1px solid var(--border)',
-          }}>
-            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+          <div style={{ background: T.card, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid ${T.cardBorder}` }}>
+            <p style={{ color: T.textMuted, fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
               Classement des classes
             </p>
-            {/* Position de ma classe */}
             <div style={{
-              textAlign: 'center',
-              marginBottom: '12px',
-              padding: '8px',
-              background: 'var(--bg)',
-              borderRadius: '8px',
+              textAlign: 'center', marginBottom: '12px', padding: '8px',
+              background: T.surface, borderRadius: '8px',
             }}>
-              <span style={{ fontSize: '24px', fontWeight: 700, color: '#a78bfa' }}>
+              <span style={{ fontSize: '24px', fontWeight: 700, color: T.accent }}>
                 {data.my_class_rank_among_classes}<sup style={{ fontSize: '12px' }}>e</sup>
               </span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}> / {data.total_classes} classes</span>
-              <div style={{ color: 'var(--text-dim)', fontSize: '11px', marginTop: '4px' }}>
-                Moyenne {data.class_name} : <span style={{ color: '#a78bfa', fontWeight: 600 }}>{data.my_class_avg.toFixed(1)}</span>
+              <span style={{ color: T.textMuted, fontSize: '13px' }}> / {data.total_classes} classes</span>
+              <div style={{ color: T.textDim, fontSize: '11px', marginTop: '4px' }}>
+                Moyenne {data.class_name} : <span style={{ color: T.accent, fontWeight: 600 }}>{data.my_class_avg.toFixed(1)}</span>
               </div>
             </div>
-            {/* Liste de toutes les classes */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {data.all_classes_ranking.map((entry, index) => {
                 const isMyClass = entry.class_name === data.class_name;
-                const medalEmoji = (r: number) => {
-                  if (r === 1) return '\u{1F947}';
-                  if (r === 2) return '\u{1F948}';
-                  if (r === 3) return '\u{1F949}';
-                  return `${r}.`;
-                };
+                const medalEmoji = (r: number) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `${r}.`;
                 return (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '6px 8px',
-                      borderRadius: '6px',
-                      background: isMyClass ? '#2e1065' : 'transparent',
-                      fontSize: '12px',
-                    }}
-                  >
-                    <span style={{
-                      color: isMyClass ? '#c4b5fd' : 'var(--text-dim)',
-                      fontWeight: isMyClass ? 700 : 400,
-                    }}>
+                  <div key={index} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 8px', borderRadius: '6px',
+                    background: isMyClass ? T.accentSoft : 'transparent', fontSize: '12px',
+                  }}>
+                    <span style={{ color: isMyClass ? T.accent : T.textDim, fontWeight: isMyClass ? 700 : 400 }}>
                       {medalEmoji(entry.rank)} {entry.class_name}
                     </span>
-                    <span style={{
-                      color: isMyClass ? '#c4b5fd' : 'var(--text)',
-                      fontWeight: isMyClass ? 700 : 400,
-                    }}>
+                    <span style={{ color: isMyClass ? T.accent : T.text, fontWeight: isMyClass ? 700 : 400 }}>
                       {entry.avg_grade.toFixed(1)}
-                      <span style={{ color: 'var(--text-muted)', fontSize: '10px', marginLeft: '4px' }}>
+                      <span style={{ color: T.textDim, fontSize: '10px', marginLeft: '4px' }}>
                         ({entry.student_count} el.)
                       </span>
                     </span>
@@ -678,18 +543,12 @@ export function StudentDashboard() {
             </div>
           </div>
         )}
-
         </>
         )}
 
         {/* Footer */}
-        <p style={{
-          textAlign: 'center',
-          color: 'var(--text-muted)',
-          fontSize: '11px',
-          marginTop: '16px',
-        }}>
-          Donnees mises a jour en temps reel
+        <p style={{ textAlign: 'center', color: T.textDim, fontSize: '11px', marginTop: '16px' }}>
+          Données mises à jour en temps réel
         </p>
       </div>
     </div>
@@ -699,14 +558,11 @@ export function StudentDashboard() {
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div style={{
-      background: 'var(--surface)',
-      borderRadius: '12px',
-      padding: '14px 10px',
-      textAlign: 'center',
-      border: '1px solid var(--border)',
+      background: T.card, borderRadius: '12px', padding: '14px 10px',
+      textAlign: 'center', border: `1px solid ${T.cardBorder}`,
     }}>
       <div style={{ fontSize: '28px', fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>{label}</div>
+      <div style={{ fontSize: '11px', color: T.textDim, marginTop: '4px' }}>{label}</div>
     </div>
   );
 }
@@ -730,17 +586,9 @@ function StampCardView({
 }) {
   const { confirm: showConfirm } = useUIFeedback();
 
-  if (stampLoading) {
-    return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '40px 0' }}>Chargement...</div>;
-  }
-
-  if (stampError) {
-    return <div style={{ textAlign: 'center', color: 'var(--neg)', padding: '40px 0' }}>{stampError}</div>;
-  }
-
-  if (!stampData) {
-    return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '40px 0' }}>Aucune donnee</div>;
-  }
+  if (stampLoading) return <div style={{ textAlign: 'center', color: T.textDim, padding: '40px 0' }}>Chargement...</div>;
+  if (stampError) return <div style={{ textAlign: 'center', color: T.neg, padding: '40px 0' }}>{stampError}</div>;
+  if (!stampData) return <div style={{ textAlign: 'center', color: T.textDim, padding: '40px 0' }}>Aucune donnée</div>;
 
   const card = stampData.active_card;
   const stampCount = card?.stamp_count || 0;
@@ -755,29 +603,21 @@ function StampCardView({
         <div style={{
           position: 'fixed', inset: 0, zIndex: 100,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.8)',
-          animation: 'fadeIn 0.3s ease',
+          background: 'rgba(0,0,0,0.85)', animation: 'fadeIn 0.3s ease',
         }}>
-          {/* Confetti particles */}
           {['🎊', '⭐', '🌟', '✨', '🎉', '💫', '🏆', '🎁'].map((emoji, i) => (
             <div key={i} style={{
-              position: 'absolute',
-              fontSize: '28px',
-              left: `${12 + i * 11}%`,
-              top: '40%',
+              position: 'absolute', fontSize: '28px', left: `${12 + i * 11}%`, top: '40%',
               animation: `confetti ${1.2 + i * 0.15}s ease-out forwards`,
               animationDelay: `${i * 0.1}s`,
             }}>{emoji}</div>
           ))}
           <div style={{ textAlign: 'center', animation: 'pulse 1.5s ease infinite' }}>
             <div style={{ fontSize: '80px', animation: 'bounce 0.6s ease infinite' }}>🎉</div>
-            <p style={{
-              color: 'var(--warn)', fontSize: '24px', fontWeight: 700, marginTop: '16px',
-              textShadow: '0 0 20px rgba(251,191,36,0.5)',
-            }}>
-              Bravo ! Bonus enregistre !
+            <p style={{ color: T.warn, fontSize: '24px', fontWeight: 700, marginTop: '16px', textShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
+              Bravo ! Bonus enregistré !
             </p>
-            <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '8px' }}>
+            <p style={{ color: T.textMuted, fontSize: '14px', marginTop: '8px' }}>
               Ton enseignant le prendra en compte.
             </p>
           </div>
@@ -786,21 +626,18 @@ function StampCardView({
 
       {/* Stamp detail popup */}
       {selectedStampDetail && (
-        <div
-          onClick={() => setSelectedStampDetail(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 90,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
-          }}
-        >
+        <div onClick={() => setSelectedStampDetail(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 90,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.7)',
+        }}>
           <div style={{
-            background: 'var(--surface)', borderRadius: '16px', padding: '24px',
-            border: '1px solid var(--border)', textAlign: 'center', maxWidth: '280px',
+            background: T.card, borderRadius: '16px', padding: '24px',
+            border: `1px solid ${T.cardBorder}`, textAlign: 'center', maxWidth: '280px',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>{selectedStampDetail.icon}</div>
-            <p style={{ color: 'var(--bg)', fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
-            <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginTop: '8px' }}>
+            <p style={{ color: T.text, fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
+            <p style={{ color: T.textDim, fontSize: '12px', marginTop: '8px' }}>
               {new Date(selectedStampDetail.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
             <div style={{ width: '20px', height: '4px', borderRadius: '2px', background: selectedStampDetail.color, margin: '12px auto 0' }} />
@@ -816,9 +653,7 @@ function StampCardView({
         position: 'relative', overflow: 'hidden',
         animation: cardComplete ? 'cardComplete 2s ease infinite' : undefined,
       }}>
-        {/* Background pattern */}
         <div style={{ position: 'absolute', inset: 0, background: tier.bgPattern, pointerEvents: 'none' }} />
-
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '24px' }}>{tier.emoji}</span>
@@ -831,14 +666,12 @@ function StampCardView({
           </div>
           <span style={{
             padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
-            background: 'rgba(255,255,255,0.2)', color: '#ffffff',
-            backdropFilter: 'blur(4px)',
+            background: 'rgba(255,255,255,0.2)', color: '#ffffff', backdropFilter: 'blur(4px)',
           }}>
             {stampCount}/10
           </span>
         </div>
 
-        {/* Progress bar */}
         <div style={{
           position: 'relative', height: '8px', background: 'rgba(0,0,0,0.25)', borderRadius: '4px',
           overflow: 'hidden', marginBottom: '20px',
@@ -852,26 +685,19 @@ function StampCardView({
           }} />
         </div>
 
-        {/* Stamp grid: 2 rows x 5 columns */}
-        <div style={{
-          position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: '8px',
-        }}>
+        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
           {Array.from({ length: 10 }, (_, i) => {
             const stamp = stamps.find(s => s.slot_number === i + 1);
             return (
               <button
                 key={i}
                 onClick={() => stamp ? setSelectedStampDetail({
-                  label: stamp.category_label,
-                  icon: stamp.category_icon,
-                  color: stamp.category_color,
-                  date: stamp.awarded_at,
+                  label: stamp.category_label, icon: stamp.category_icon,
+                  color: stamp.category_color, date: stamp.awarded_at,
                 }) : undefined}
                 disabled={!stamp}
                 style={{
-                  aspectRatio: '1',
-                  borderRadius: '14px',
+                  aspectRatio: '1', borderRadius: '14px',
                   border: stamp ? `2px solid ${stamp.category_color}90` : '2px dashed rgba(255,255,255,0.3)',
                   background: stamp ? `${stamp.category_color}25` : 'rgba(0,0,0,0.2)',
                   backdropFilter: 'blur(4px)',
@@ -882,8 +708,6 @@ function StampCardView({
                   boxShadow: stamp ? `0 2px 8px ${stamp.category_color}30` : 'none',
                   animation: stamp ? `stampAppear 0.4s ease ${i * 0.05}s both` : undefined,
                 }}
-                onMouseEnter={e => { if (stamp) (e.currentTarget.style.transform = 'scale(1.1)'); }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 {stamp ? <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>{stamp.category_icon}</span> : (
                   <span style={{ color: 'rgba(255,255,255,0.3)' }}>{tier.emptyIcon}</span>
@@ -893,20 +717,16 @@ function StampCardView({
           })}
         </div>
 
-        {/* Card complete: choose bonus */}
         {cardComplete && !showBonusSelect && stampData.available_bonuses.length > 0 && (
           <button
             onClick={() => setShowBonusSelect(true)}
             style={{
               position: 'relative', width: '100%', marginTop: '20px', padding: '14px',
               borderRadius: '12px', border: 'none',
-              background: 'linear-gradient(135deg, var(--warn), var(--warn))',
-              color: 'var(--surface)', fontSize: '15px', fontWeight: 700,
-              cursor: 'pointer', transition: 'transform 0.2s',
-              animation: 'pulse 2s ease infinite',
+              background: `linear-gradient(135deg, ${T.gold}, ${T.goldDeep})`,
+              color: T.bg, fontSize: '15px', fontWeight: 700,
+              cursor: 'pointer', animation: 'pulse 2s ease infinite',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
           >
             🎁 Choisir ton bonus !
           </button>
@@ -916,14 +736,14 @@ function StampCardView({
       {/* Bonus selection */}
       {showBonusSelect && (
         <div style={{
-          background: 'var(--surface)', borderRadius: '20px', padding: '20px',
-          marginBottom: '12px', border: '1px solid color-mix(in srgb, var(--warn) 25%, transparent)',
+          background: T.card, borderRadius: '20px', padding: '20px',
+          marginBottom: '12px', border: `1px solid ${T.cardBorder}`,
         }}>
-          <p style={{ color: 'var(--warn)', fontSize: '16px', fontWeight: 700, marginBottom: '4px', textAlign: 'center' }}>
+          <p style={{ color: T.warn, fontSize: '16px', fontWeight: 700, marginBottom: '4px', textAlign: 'center' }}>
             🎁 Choisis ton bonus !
           </p>
-          <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '16px', textAlign: 'center' }}>
-            Tu as rempli ta carte, bravo ! Choisis ta recompense :
+          <p style={{ color: T.textDim, fontSize: '12px', marginBottom: '16px', textAlign: 'center' }}>
+            Tu as rempli ta carte, bravo ! Choisis ta récompense :
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {stampData.available_bonuses.map(bonus => (
@@ -935,18 +755,9 @@ function StampCardView({
                 }}
                 style={{
                   padding: '14px 16px', borderRadius: '12px',
-                  border: '1px solid var(--border)', background: 'var(--bg)',
-                  color: 'var(--bg)', fontSize: '14px', fontWeight: 500,
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'var(--warn)';
-                  e.currentTarget.style.background = 'var(--surface)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--border)';
-                  e.currentTarget.style.background = 'var(--bg)';
+                  border: `1px solid ${T.cardBorder}`, background: T.surface,
+                  color: T.text, fontSize: '14px', fontWeight: 500,
+                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
                 }}
               >
                 🎁 {bonus.label}
@@ -957,9 +768,8 @@ function StampCardView({
             onClick={() => setShowBonusSelect(false)}
             style={{
               width: '100%', marginTop: '12px', padding: '10px',
-              borderRadius: '10px', border: '1px solid var(--border)',
-              background: 'transparent', color: 'var(--text-dim)', fontSize: '13px',
-              cursor: 'pointer',
+              borderRadius: '10px', border: `1px solid ${T.cardBorder}`,
+              background: 'transparent', color: T.textDim, fontSize: '13px', cursor: 'pointer',
             }}
           >
             Annuler
@@ -970,10 +780,10 @@ function StampCardView({
       {/* Completed cards history */}
       {stampData.completed_cards.length > 0 && (
         <div style={{
-          background: 'var(--surface)', borderRadius: '16px', padding: '16px',
-          marginBottom: '12px', border: '1px solid var(--border)',
+          background: T.card, borderRadius: '16px', padding: '16px',
+          marginBottom: '12px', border: `1px solid ${T.cardBorder}`,
         }}>
-          <p style={{ color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
+          <p style={{ color: T.textMuted, fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
             Historique des cartes
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -982,32 +792,29 @@ function StampCardView({
               return (
                 <div key={c.id || `card-${c.card_number}`} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 12px', borderRadius: '10px', background: 'var(--bg)',
+                  padding: '8px 12px', borderRadius: '10px', background: T.surface,
                 }}>
                   <div>
                     <span style={{ fontSize: '14px', marginRight: '6px' }}>{cTier.emoji}</span>
-                    <span style={{ color: 'var(--bg)', fontSize: '13px', fontWeight: 600 }}>
+                    <span style={{ color: T.text, fontSize: '13px', fontWeight: 600 }}>
                       Carte n°{c.card_number}
                     </span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }}>
+                    <span style={{ color: T.textDim, fontSize: '11px', marginLeft: '6px' }}>
                       {cTier.name}
                     </span>
                     {c.completed_at && (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '10px', marginLeft: '8px' }}>
+                      <span style={{ color: T.textDim, fontSize: '10px', marginLeft: '8px' }}>
                         {new Date(c.completed_at).toLocaleDateString('fr-FR')}
                       </span>
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     {c.bonus_label ? (
-                      <span style={{
-                        fontSize: '11px', fontWeight: 500,
-                        color: c.bonus_used ? 'var(--pos)' : 'var(--warn)',
-                      }}>
+                      <span style={{ fontSize: '11px', fontWeight: 500, color: c.bonus_used ? T.pos : T.warn }}>
                         🎁 {c.bonus_label} {c.bonus_used ? '✓' : '⏳'}
                       </span>
                     ) : (
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pas de bonus</span>
+                      <span style={{ fontSize: '11px', color: T.textDim }}>Pas de bonus</span>
                     )}
                   </div>
                 </div>
@@ -1017,16 +824,14 @@ function StampCardView({
         </div>
       )}
 
-      {/* How to earn stamps (accordion) */}
+      {/* How to earn stamps */}
       {stampData.categories.length > 0 && (
         <details style={{
-          background: 'var(--surface)', borderRadius: '16px',
-          marginBottom: '12px', border: '1px solid var(--border)',
-          overflow: 'hidden',
+          background: T.card, borderRadius: '16px',
+          marginBottom: '12px', border: `1px solid ${T.cardBorder}`, overflow: 'hidden',
         }}>
           <summary style={{
-            padding: '14px 16px',
-            color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600,
+            padding: '14px 16px', color: T.textMuted, fontSize: '13px', fontWeight: 600,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             listStyle: 'none', userSelect: 'none',
           }}>
@@ -1034,25 +839,23 @@ function StampCardView({
             <span style={{ fontSize: '11px', transition: 'transform 0.2s' }} className="accordion-arrow">▼</span>
           </summary>
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px',
-            padding: '0 16px 14px',
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', padding: '0 16px 14px',
           }}>
             {stampData.categories.filter((cat, i, arr) =>
               arr.findIndex(c => c.label === cat.label) === i
             ).map((cat, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '6px 10px', borderRadius: '8px', background: 'var(--bg)',
+                padding: '6px 10px', borderRadius: '8px', background: T.surface,
               }}>
                 <span style={{ fontSize: '16px' }}>{cat.icon}</span>
-                <span style={{ color: 'var(--text)', fontSize: '11px' }}>{cat.label}</span>
+                <span style={{ color: T.text, fontSize: '11px' }}>{cat.label}</span>
               </div>
             ))}
           </div>
         </details>
       )}
 
-      {/* CSS animations */}
       <style>{`
         details summary::-webkit-details-marker { display: none; }
         details[open] .accordion-arrow { transform: rotate(180deg); }
@@ -1063,88 +866,49 @@ function StampCardView({
           60% { transform: scale(1.3) rotate(10deg); opacity: 1; }
           100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes confetti {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(-80px) rotate(720deg); opacity: 0; }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-        @keyframes cardComplete {
-          0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
-          70% { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
-          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
-        }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-80px) rotate(720deg); opacity: 0; } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes cardComplete { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); } 70% { box-shadow: 0 0 0 12px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
       `}</style>
     </div>
   );
 }
 
 function RankingDisplay({
-  rank,
-  total,
-  top10,
-  isInTop10,
-  studentGrade,
+  rank, total, top10, isInTop10, studentGrade,
 }: {
-  rank: number;
-  total: number;
+  rank: number; total: number;
   top10: { rank: number; grade: number }[];
-  isInTop10: boolean;
-  studentGrade: number;
+  isInTop10: boolean; studentGrade: number;
 }) {
-  const medalEmoji = (r: number) => {
-    if (r === 1) return '🥇';
-    if (r === 2) return '🥈';
-    if (r === 3) return '🥉';
-    return `${r}.`;
-  };
+  const medalEmoji = (r: number) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `${r}.`;
 
   return (
     <div>
-      {/* Position summary */}
       <div style={{
-        textAlign: 'center',
-        marginBottom: '12px',
-        padding: '8px',
-        background: 'var(--bg)',
-        borderRadius: '8px',
+        textAlign: 'center', marginBottom: '12px', padding: '8px',
+        background: T.surface, borderRadius: '8px',
       }}>
-        <span style={{ fontSize: '24px', fontWeight: 700, color: isInTop10 ? 'var(--pos)' : 'var(--indigo)' }}>
+        <span style={{ fontSize: '24px', fontWeight: 700, color: isInTop10 ? T.pos : T.indigo }}>
           {rank}<sup style={{ fontSize: '12px' }}>e</sup>
         </span>
-        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}> / {total}</span>
+        <span style={{ color: T.textMuted, fontSize: '13px' }}> / {total}</span>
       </div>
 
-      {/* Top 10 list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {top10.map((entry, index) => {
           const isMe = entry.rank === rank && Math.abs(entry.grade - studentGrade) < 0.05;
           return (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '4px 6px',
-                borderRadius: '6px',
-                background: isMe ? '#1e3a5f' : 'transparent',
-                fontSize: '12px',
-              }}
-            >
-              <span style={{ color: isMe ? 'var(--indigo)' : 'var(--text-dim)', fontWeight: isMe ? 700 : 400 }}>
+            <div key={index} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '4px 6px', borderRadius: '6px',
+              background: isMe ? T.indigoSoft : 'transparent', fontSize: '12px',
+            }}>
+              <span style={{ color: isMe ? T.indigo : T.textDim, fontWeight: isMe ? 700 : 400 }}>
                 {medalEmoji(entry.rank)}
               </span>
-              <span style={{
-                color: isMe ? 'var(--indigo)' : 'var(--text)',
-                fontWeight: isMe ? 700 : 400,
-              }}>
+              <span style={{ color: isMe ? T.indigo : T.text, fontWeight: isMe ? 700 : 400 }}>
                 {entry.grade.toFixed(1)}
               </span>
             </div>
@@ -1153,28 +917,16 @@ function RankingDisplay({
 
         {!isInTop10 && (
           <>
-            <div style={{
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontSize: '11px',
-              padding: '2px 0',
-            }}>
+            <div style={{ textAlign: 'center', color: T.textDim, fontSize: '11px', padding: '2px 0' }}>
               ···
             </div>
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              padding: '4px 6px',
-              borderRadius: '6px',
-              background: '#1e3a5f',
-              fontSize: '12px',
+              display: 'flex', justifyContent: 'space-between',
+              padding: '4px 6px', borderRadius: '6px',
+              background: T.indigoSoft, fontSize: '12px',
             }}>
-              <span style={{ color: 'var(--indigo)', fontWeight: 700 }}>
-                {rank}.
-              </span>
-              <span style={{ color: 'var(--indigo)', fontWeight: 700 }}>
-                Toi · {studentGrade.toFixed(1)}
-              </span>
+              <span style={{ color: T.indigo, fontWeight: 700 }}>{rank}.</span>
+              <span style={{ color: T.indigo, fontWeight: 700 }}>Toi · {studentGrade.toFixed(1)}</span>
             </div>
           </>
         )}
