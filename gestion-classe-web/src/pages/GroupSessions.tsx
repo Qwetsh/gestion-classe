@@ -817,8 +817,9 @@ export function GroupSessions() {
                         return (
                           <div
                             key={group.id}
-                            className={`p-4 border ${isFirst ? 'border-[var(--pos)]' : 'border-[var(--border)]'}`}
+                            className={`p-4 border ${isFirst ? 'border-[var(--pos)]' : 'border-[var(--border)]'} cursor-pointer hover:bg-[var(--surface-2)] transition-colors`}
                             style={{ borderRadius: 'var(--radius)' }}
+                            onClick={() => setExpandedGroupId(expandedGroupId === group.id ? null : group.id)}
                           >
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">
@@ -833,7 +834,7 @@ export function GroupSessions() {
                               <div className="flex items-center gap-3">
                                 {editingGroupId !== group.id && (
                                   <button
-                                    onClick={() => handleStartEditGroup(group)}
+                                    onClick={(e) => { e.stopPropagation(); handleStartEditGroup(group); }}
                                     className="p-1.5 text-[var(--text-dim)] hover:text-[var(--indigo)] rounded-lg hover:bg-[var(--surface-3)] transition-colors"
                                     title="Modifier les notes"
                                   >
@@ -886,75 +887,66 @@ export function GroupSessions() {
                               </div>
                             )}
 
-                            {/* Criteria grades — collapsible per group */}
-                            <div className="mt-3 pt-3 border-t border-[var(--border)]">
-                              <button
-                                onClick={() => setExpandedGroupId(expandedGroupId === group.id ? null : group.id)}
-                                className="w-full flex items-center justify-between text-left text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
-                              >
-                                <span>Détail des critères</span>
-                                <span style={{ transition: 'transform 0.2s', transform: expandedGroupId === group.id ? 'rotate(180deg)' : '' }}>▼</span>
-                              </button>
-                              {(expandedGroupId === group.id || editingGroupId === group.id) && (
-                                <div className="mt-3">
-                                  {editingGroupId === group.id ? (
-                                    <>
-                                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                        {sessionDetail.criteria.map(c => (
-                                          <div key={c.id} className="flex items-center gap-2">
-                                            <label className="text-sm text-[var(--text-dim)] flex-1 min-w-0 truncate">{c.label}</label>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                min={0}
-                                                max={c.max_points}
-                                                step={0.5}
-                                                value={editGrades[c.id] ?? 0}
-                                                onChange={(e) => setEditGrades(prev => ({
-                                                  ...prev,
-                                                  [c.id]: Math.min(c.max_points, Math.max(0, parseFloat(e.target.value) || 0)),
-                                                }))}
-                                                className="w-16 px-2 py-1 text-sm text-center border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
-                                              />
-                                              <span className="text-xs text-[var(--text-dim)]">/{c.max_points}</span>
-                                            </div>
+                            {/* Criteria grades — only shown when this group is expanded */}
+                            {(expandedGroupId === group.id || editingGroupId === group.id) && (
+                              <div className="mt-3 pt-3 border-t border-[var(--border)]" onClick={(e) => e.stopPropagation()}>
+                                {editingGroupId === group.id ? (
+                                  <>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                      {sessionDetail.criteria.map(c => (
+                                        <div key={c.id} className="flex items-center gap-2">
+                                          <label className="text-sm text-[var(--text-dim)] flex-1 min-w-0 truncate">{c.label}</label>
+                                          <div className="flex items-center gap-1">
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              max={c.max_points}
+                                              step={0.5}
+                                              value={editGrades[c.id] ?? 0}
+                                              onChange={(e) => setEditGrades(prev => ({
+                                                ...prev,
+                                                [c.id]: Math.min(c.max_points, Math.max(0, parseFloat(e.target.value) || 0)),
+                                              }))}
+                                              className="w-16 px-2 py-1 text-sm text-center border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
+                                            />
+                                            <span className="text-xs text-[var(--text-dim)]">/{c.max_points}</span>
                                           </div>
-                                        ))}
-                                      </div>
-                                      <div className="flex gap-2 mt-3 justify-end">
-                                        <button
-                                          onClick={handleCancelEdit}
-                                          className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
-                                          disabled={isSavingGrades}
-                                        >
-                                          Annuler
-                                        </button>
-                                        <button
-                                          onClick={() => handleSaveGrades(group.id)}
-                                          disabled={isSavingGrades}
-                                          className="px-3 py-1.5 text-sm bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-                                        >
-                                          {isSavingGrades ? 'Sauvegarde...' : 'Sauvegarder'}
-                                        </button>
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                      {sessionDetail.criteria.map(c => {
-                                        const grade = group.grades.find(g => g.criteria_id === c.id);
-                                        const points = grade?.points_awarded ?? 0;
-                                        return (
-                                          <div key={c.id} className="text-sm">
-                                            <span className="text-[var(--text-dim)]">{c.label}:</span>{' '}
-                                            <span className="font-medium text-[var(--text)]">{points}/{c.max_points}</span>
-                                          </div>
-                                        );
-                                      })}
+                                        </div>
+                                      ))}
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                                    <div className="flex gap-2 mt-3 justify-end">
+                                      <button
+                                        onClick={handleCancelEdit}
+                                        className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]"
+                                        disabled={isSavingGrades}
+                                      >
+                                        Annuler
+                                      </button>
+                                      <button
+                                        onClick={() => handleSaveGrades(group.id)}
+                                        disabled={isSavingGrades}
+                                        className="px-3 py-1.5 text-sm bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                                      >
+                                        {isSavingGrades ? 'Sauvegarde...' : 'Sauvegarder'}
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    {sessionDetail.criteria.map(c => {
+                                      const grade = group.grades.find(g => g.criteria_id === c.id);
+                                      const points = grade?.points_awarded ?? 0;
+                                      return (
+                                        <div key={c.id} className="text-sm">
+                                          <span className="text-[var(--text-dim)]">{c.label}:</span>{' '}
+                                          <span className="font-medium text-[var(--text)]">{points}/{c.max_points}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
