@@ -38,7 +38,7 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
     }).sort((a, b) => b.points - a.points);
   }, [housePoints]);
 
-  const maxPoints = Math.max(1, ...ranked.map(h => h.points));
+  const pointsCap = 500; // fixed max — beyond this the hourglass is full
 
   const assignedIds = new Set(assignments.map(a => a.student_id));
   const unassignedCount = students.filter(s => !assignedIds.has(s.id)).length;
@@ -168,7 +168,7 @@ export function ClassroomDisplay({ classId, housePoints, bonuses, assignments, s
       }}>
         {ranked.map((h, i) => {
           const hc = HOUSE_INLINE[h.id];
-          const pct = maxPoints > 0 ? Math.round((h.points / maxPoints) * 100) : 0;
+          const pct = Math.min(100, Math.round((h.points / pointsCap) * 100));
           return (
             <div key={h.id} style={{
               textAlign: 'center', position: 'relative',
