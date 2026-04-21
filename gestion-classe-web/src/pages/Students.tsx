@@ -1582,7 +1582,15 @@ export function Students() {
                 <div className="class-detail__title">
                   <ClassChip label={selectedClassStats.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3)} color={CLASS_COLORS[selectedClassId] || '#6366F1'} size={44} />
                   <div>
-                    <h2>{selectedClassStats.name}</h2>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {selectedClassStats.name}
+                      <button onClick={() => openConfigModal(selectedClassId)} title="Paramètres de la classe" style={{
+                        background: 'var(--surface-3)', border: 'none', borderRadius: 6, padding: '4px 7px',
+                        cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center',
+                      }}>
+                        <Icon name="settings" size={14} />
+                      </button>
+                    </h2>
                     <div className="class-detail__meta">
                       <span>{selectedClassStats.studentCount} élèves</span>
                       <span>·</span>
@@ -1646,7 +1654,7 @@ export function Students() {
                     const delta = getSparklineDelta(history);
                     const totalSessions = new Set(sg.events.map(e => e.session_id)).size;
                     return (
-                      <div key={sg.student.id} className={`scard scard--${tone}`}>
+                      <div key={sg.student.id} className={`scard scard--${tone}`} onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="scard__head">
                           <div className="scard__id">
                             <div className="scard__avatar" style={{ background: classColor + '22', color: classColor }}>
@@ -1679,10 +1687,10 @@ export function Students() {
                         </div>
 
                         <div className="scard__actions">
-                          <button className="scard__add" onClick={() => openStudentDetail(sg)}>
+                          <button className="scard__add" onClick={(e) => { e.stopPropagation(); openStudentDetail(sg); }}>
                             <Icon name="plus" size={14} /> Ajouter un événement
                           </button>
-                          <button className="scard__eye" onClick={() => openStudentDetail(sg)} title="Ouvrir la fiche"><Icon name="eye" size={14} /></button>
+                          <button className="scard__eye" onClick={(e) => { e.stopPropagation(); openStudentDetail(sg); }} title="Ouvrir la fiche"><Icon name="eye" size={14} /></button>
                         </div>
                       </div>
                     );
