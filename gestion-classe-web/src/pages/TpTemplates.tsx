@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import {
+  TpTemplatePhoto,
+  fetchTemplatePhotos,
+  uploadTemplatePhoto,
+  deleteTemplatePhoto,
+  getPhotoUrl,
+} from '../lib/tpTemplatePhotos';
 
 interface TpTemplate {
   id: string;
   name: string;
   color: string;
+  materials: string[];
   created_at: string;
   criteria_count: number;
   total_points: number;
@@ -48,7 +56,15 @@ export function TpTemplates() {
   const [templateName, setTemplateName] = useState('');
   const [templateColor, setTemplateColor] = useState('green');
   const [criteria, setCriteria] = useState<EditingCriteria[]>([]);
+  const [materials, setMaterials] = useState<string[]>([]);
+  const [newMaterial, setNewMaterial] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Photos
+  const [photos, setPhotos] = useState<TpTemplatePhoto[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -73,7 +89,7 @@ export function TpTemplates() {
       // Load templates
       const { data: templatesData, error: templatesError } = await supabase
         .from('tp_templates')
-        .select('id, name, color, created_at')
+        .select('id, name, color, materials, created_at')
         .eq('user_id', user.id)
         .order('name');
 
@@ -101,6 +117,7 @@ export function TpTemplates() {
           id: t.id,
           name: t.name,
           color: t.color || 'green',
+          materials: t.materials || [],
           created_at: t.created_at,
           criteria_count: statsMap.get(t.id)?.count || 0,
           total_points: statsMap.get(t.id)?.points || 0,
@@ -123,6 +140,10 @@ export function TpTemplates() {
     setTemplateName('');
     setTemplateColor('green');
     setCriteria([{ label: '', max_points: 5, isNew: true }]);
+    setMaterials([]);
+    setNewMaterial('');
+    setPhotos([]);
+    setPhotoUrls({});
     setShowModal(true);
   };
 
@@ -130,6 +151,8 @@ export function TpTemplates() {
     setEditingTemplate(template);
     setTemplateName(template.name);
     setTemplateColor(template.color || 'green');
+    setMaterials(template.materials || []);
+    setNewMaterial('');
 
     // Load criteria for this template
     const { data: criteriaData } = await supabase
@@ -148,6 +171,22 @@ export function TpTemplates() {
       setCriteria([{ label: '', max_points: 5, isNew: true }]);
     }
 
+    // Load photos
+    try {
+      const templatePhotos = await fetchTemplatePhotos(template.id);
+      setPhotos(templatePhotos);
+      // Load signed URLs
+      const urls: Record<string, string> = {};
+      await Promise.all(templatePhotos.map(async (p) => {
+        const url = await getPhotoUrl(p.file_path);
+        if (url) urls[p.id] = url;
+      }));
+      setPhotoUrls(urls);
+    } catch {
+      setPhotos([]);
+      setPhotoUrls({});
+    }
+
     setShowModal(true);
   };
 
@@ -157,6 +196,10 @@ export function TpTemplates() {
     setTemplateName('');
     setTemplateColor('green');
     setCriteria([]);
+    setMaterials([]);
+    setNewMaterial('');
+    setPhotos([]);
+    setPhotoUrls({});
   };
 
   const handleAddCriteria = () => {
@@ -179,6 +222,53 @@ export function TpTemplates() {
     setCriteria(updated);
   };
 
+  const handleAddMaterial = () => {
+    const trimmed = newMaterial.trim();
+    if (trimmed && !materials.includes(trimmed)) {
+      setMaterials([...materials, trimmed]);
+      setNewMaterial('');
+    }
+  };
+
+  const handleRemoveMaterial = (index: number) => {
+    setMaterials(materials.filter((_, i) => i !== index));
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !editingTemplate) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const photo = await uploadTemplatePhoto(user.id, editingTemplate.id, file, '');
+      const url = await getPhotoUrl(photo.file_path);
+      setPhotos(prev => [...prev, photo]);
+      if (url) setPhotoUrls(prev => ({ ...prev, [photo.id]: url }));
+      toast('Photo ajoutee', 'success');
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+      toast('Erreur lors de l\'upload');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photo: TpTemplatePhoto) => {
+    try {
+      await deleteTemplatePhoto(photo);
+      setPhotos(prev => prev.filter(p => p.id !== photo.id));
+      setPhotoUrls(prev => {
+        const copy = { ...prev };
+        delete copy[photo.id];
+        return copy;
+      });
+    } catch (err) {
+      console.error('Error deleting photo:', err);
+      toast('Erreur lors de la suppression');
+    }
+  };
+
   const handleSave = async () => {
     if (!user || !templateName.trim()) return;
 
@@ -195,7 +285,7 @@ export function TpTemplates() {
         // Update existing template
         const { error: updateError } = await supabase
           .from('tp_templates')
-          .update({ name: templateName.trim(), color: templateColor })
+          .update({ name: templateName.trim(), color: templateColor, materials })
           .eq('id', editingTemplate.id);
 
         if (updateError) throw updateError;
@@ -226,6 +316,7 @@ export function TpTemplates() {
             user_id: user.id,
             name: templateName.trim(),
             color: templateColor,
+            materials,
           })
           .select()
           .single();
@@ -486,6 +577,30 @@ export function TpTemplates() {
                     </div>
                   )}
 
+                  {/* Materials badge */}
+                  {template.materials && template.materials.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-1">
+                      {template.materials.slice(0, 3).map((mat, idx) => (
+                        <span
+                          key={idx}
+                          className="text-xs px-2 py-0.5"
+                          style={{
+                            borderRadius: 'var(--radius-full)',
+                            background: preset.accentLight,
+                            color: preset.accent,
+                          }}
+                        >
+                          {mat}
+                        </span>
+                      ))}
+                      {template.materials.length > 3 && (
+                        <span className="text-xs text-[var(--text-muted)]">
+                          +{template.materials.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Date */}
                   <div className="text-xs text-[var(--text-dim)] text-center">
                     Cree le {formatDate(template.created_at)}
@@ -616,6 +731,105 @@ export function TpTemplates() {
                   + Ajouter un critere
                 </button>
               </div>
+
+              {/* Materials */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
+                  Materiel necessaire
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newMaterial}
+                    onChange={e => setNewMaterial(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMaterial(); } }}
+                    placeholder="Ex: Microscope, lames..."
+                    className="flex-1 px-3 py-2 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] text-sm"
+                    style={{ borderRadius: 'var(--radius-md)' }}
+                  />
+                  <button
+                    onClick={handleAddMaterial}
+                    disabled={!newMaterial.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white disabled:opacity-40 transition-colors"
+                    style={{ background: getColorPreset(templateColor).accent, borderRadius: 'var(--radius-md)' }}
+                  >
+                    +
+                  </button>
+                </div>
+                {materials.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {materials.map((mat, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium"
+                        style={{
+                          borderRadius: 'var(--radius-full)',
+                          background: getColorPreset(templateColor).accentLight,
+                          color: getColorPreset(templateColor).accent,
+                        }}
+                      >
+                        {mat}
+                        <button
+                          onClick={() => handleRemoveMaterial(idx)}
+                          className="ml-1 hover:opacity-60 transition-opacity font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Photos (only when editing an existing template) */}
+              {editingTemplate && (
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
+                    Photos de reference
+                  </label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  {photos.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {photos.map(photo => (
+                        <div key={photo.id} className="relative group/photo aspect-square overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
+                          {photoUrls[photo.id] ? (
+                            <img
+                              src={photoUrls[photo.id]}
+                              alt={photo.caption || 'Photo TP'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-[var(--surface-3)] flex items-center justify-center">
+                              <span className="text-[var(--text-dim)] text-xs">Chargement...</span>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleDeletePhoto(photo)}
+                            className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity"
+                            style={{ borderRadius: 'var(--radius-full)' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="w-full py-3 border-2 border-dashed border-[var(--indigo)]/30 text-[var(--indigo)] hover:border-[var(--indigo)] hover:bg-[var(--indigo-soft)] transition-colors text-sm font-medium disabled:opacity-50"
+                    style={{ borderRadius: 'var(--radius)' }}
+                  >
+                    {isUploadingPhoto ? 'Upload en cours...' : '📷 Ajouter une photo'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
