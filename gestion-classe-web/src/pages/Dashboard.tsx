@@ -374,7 +374,6 @@ export function Dashboard() {
         // Grade calculations
         if (studentsData && studentsData.length > 0) {
           const classIds = cls.map(c => c.id);
-          const studentIds = studentsData.map(s => s.id);
 
           // Parallel batch 2: config + events (via sessions join) + manual participations (via user_id)
           const [
