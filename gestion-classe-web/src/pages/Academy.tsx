@@ -231,6 +231,7 @@ export function Academy() {
       {classroomMode && selectedClassId && (
         <ClassroomDisplay
           classId={selectedClassId}
+          userId={user!.id}
           housePoints={housePoints}
           bonuses={bonuses}
           assignments={assignments}
