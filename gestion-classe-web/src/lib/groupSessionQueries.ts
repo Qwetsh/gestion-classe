@@ -107,12 +107,12 @@ export async function createGroupSession(
   const batchInserts: Promise<any>[] = [];
   if (allMemberRows.length > 0) {
     batchInserts.push(
-      supabase.from('session_group_members').insert(allMemberRows).then(({ error }) => { if (error) throw error; })
+      Promise.resolve(supabase.from('session_group_members').insert(allMemberRows)).then(({ error }) => { if (error) throw error; })
     );
   }
   if (allGradeRows.length > 0) {
     batchInserts.push(
-      supabase.from('group_grades').insert(allGradeRows).then(({ error }) => { if (error) throw error; })
+      Promise.resolve(supabase.from('group_grades').insert(allGradeRows)).then(({ error }) => { if (error) throw error; })
     );
   }
   await Promise.all(batchInserts);
