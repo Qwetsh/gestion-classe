@@ -376,15 +376,15 @@ export function Dashboard() {
           const classIds = cls.map(c => c.id);
           const studentIds = studentsData.map(s => s.id);
 
-          // Parallel batch 2: config + events + manual participations
+          // Parallel batch 2: config + events (via sessions join) + manual participations (via user_id)
           const [
             { data: configsData },
             { data: allEventsData },
             { data: manualPartData },
           ] = await Promise.all([
             supabase.from('class_trimester_config').select('*').in('class_id', classIds),
-            supabase.from('events').select('student_id, type, session_id').in('student_id', studentIds),
-            supabase.from('manual_participations').select('student_id, count').in('student_id', studentIds),
+            supabase.from('events').select('student_id, type, session_id, sessions!inner(user_id)').eq('sessions.user_id', user.id),
+            supabase.from('manual_participations').select('student_id, count').eq('user_id', user.id),
           ]);
 
           const configMap = new Map<string, any>();
