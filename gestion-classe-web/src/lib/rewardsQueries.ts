@@ -704,23 +704,30 @@ export async function initializeCardsForClass(userId: string, classId: string): 
 
   if (!students || students.length === 0) return 0;
 
-  let created = 0;
-  for (const student of students) {
-    // Check if already has an active card
-    const { data: existing } = await supabase
-      .from('stamp_cards')
-      .select('id')
-      .eq('student_id', student.id)
-      .eq('status', 'active')
-      .limit(1);
+  const studentIds = students.map(s => s.id);
 
-    if (!existing || existing.length === 0) {
-      await supabase
-        .from('stamp_cards')
-        .insert({ student_id: student.id, user_id: userId, card_number: 1, status: 'active' });
-      created++;
-    }
-  }
+  // Batch fetch all existing active cards in one query
+  const { data: existingCards } = await supabase
+    .from('stamp_cards')
+    .select('student_id')
+    .in('student_id', studentIds)
+    .eq('status', 'active');
 
-  return created;
+  const studentsWithCards = new Set((existingCards || []).map(c => c.student_id));
+  const studentsWithoutCards = studentIds.filter(id => !studentsWithCards.has(id));
+
+  if (studentsWithoutCards.length === 0) return 0;
+
+  // Batch insert all missing cards at once
+  const newCards = studentsWithoutCards.map(studentId => ({
+    student_id: studentId,
+    user_id: userId,
+    card_number: 1,
+    status: 'active',
+  }));
+
+  const { error } = await supabase.from('stamp_cards').insert(newCards);
+  if (error) throw error;
+
+  return studentsWithoutCards.length;
 }

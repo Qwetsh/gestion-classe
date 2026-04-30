@@ -306,46 +306,51 @@ export interface HousePoints {
 }
 
 export async function calculateHousePoints(classId: string): Promise<HousePoints[]> {
-  const { data: groupSessions } = await supabase
-    .from('group_sessions')
-    .select('id, status')
-    .eq('class_id', classId)
-    .eq('status', 'completed');
+  // Fetch sessions and bonuses in parallel
+  const [{ data: groupSessions }, bonuses] = await Promise.all([
+    supabase
+      .from('group_sessions')
+      .select('id, status')
+      .eq('class_id', classId)
+      .eq('status', 'completed'),
+    fetchBonuses(classId),
+  ]);
 
   const sessionIds = (groupSessions || []).map(gs => gs.id);
-  const { data: coefficients } = sessionIds.length > 0
-    ? await supabase
-        .from('academy_session_coefficients')
-        .select('*')
-        .in('group_session_id', sessionIds)
-    : { data: [] };
-
-  const coeffMap = new Map((coefficients || []).map(c => [c.group_session_id, c.coefficient]));
 
   let gradePointsByHouse: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
 
   if (sessionIds.length > 0) {
-    const { data: sessionGroups } = await supabase
-      .from('session_groups')
-      .select('id, session_id, name, conduct_malus')
-      .in('session_id', sessionIds);
+    // Fetch coefficients, session_groups, and all grades in parallel
+    const [{ data: coefficients }, { data: sessionGroups }] = await Promise.all([
+      supabase.from('academy_session_coefficients').select('*').in('group_session_id', sessionIds),
+      supabase.from('session_groups').select('id, session_id, name, conduct_malus').in('session_id', sessionIds),
+    ]);
+
+    const coeffMap = new Map((coefficients || []).map(c => [c.group_session_id, c.coefficient]));
+    const groupIds = (sessionGroups || []).map(sg => sg.id);
+
+    // Batch fetch ALL grades at once instead of N+1
+    let allGrades: any[] = [];
+    if (groupIds.length > 0) {
+      const { data: gradesData } = await supabase
+        .from('group_grades')
+        .select('group_id, points_awarded')
+        .in('group_id', groupIds);
+      allGrades = gradesData || [];
+    }
 
     for (const sg of sessionGroups || []) {
       const houseId = HOUSE_NAME_TO_ID[sg.name.toLowerCase()];
       if (!houseId) continue;
 
-      const { data: grades } = await supabase
-        .from('group_grades')
-        .select('points_awarded')
-        .eq('group_id', sg.id);
-
-      const totalGrade = (grades || []).reduce((sum, g) => sum + g.points_awarded, 0) - (sg.conduct_malus || 0);
+      const grades = allGrades.filter(g => g.group_id === sg.id);
+      const totalGrade = grades.reduce((sum, g) => sum + g.points_awarded, 0) - (sg.conduct_malus || 0);
       const coeff = coeffMap.get(sg.session_id) || 1.0;
       gradePointsByHouse[houseId] += totalGrade * coeff;
     }
   }
 
-  const bonuses = await fetchBonuses(classId);
   const bonusPointsByHouse: Record<HouseId, number> = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };
   for (const b of bonuses) {
     if (b.visible && HOUSES.includes(b.house)) {
