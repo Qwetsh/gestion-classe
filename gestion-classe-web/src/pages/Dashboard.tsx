@@ -189,39 +189,46 @@ export function Dashboard() {
     const stored = loadStoredPronoteSession();
     if (!stored) return;
 
-    (async () => {
-      try {
-        const pw = await import('pawnote');
-        const sess = pw.createSessionHandle(pronoteFetcher);
-        const refreshInfo = await pw.loginToken(sess, {
-          url: stored.url,
-          kind: stored.kind as typeof pw.AccountKind[keyof typeof pw.AccountKind],
-          username: stored.username,
-          token: stored.token,
-          deviceUUID: stored.deviceUUID,
-        });
+    // Timeout to avoid blocking if Pronote is slow
+    const PRONOTE_TIMEOUT = 8000;
 
-        savePronoteSession(refreshInfo, stored.deviceUUID);
-        pronoteSessionRef.current = sess;
-        pawnoteRef.current = pw;
+    const pronotePromise = (async () => {
+      const pw = await import('pawnote');
+      const sess = pw.createSessionHandle(pronoteFetcher);
+      const refreshInfo = await pw.loginToken(sess, {
+        url: stored.url,
+        kind: stored.kind as typeof pw.AccountKind[keyof typeof pw.AccountKind],
+        username: stored.username,
+        token: stored.token,
+        deviceUUID: stored.deviceUUID,
+      });
 
-        // Load current week timetable
-        const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
-        if (startDay) {
-          pronoteFirstDay.current = new Date(startDay);
-          const weekStart = getMonday(new Date());
-          const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
-          const timetable = await pw.timetableFromWeek(sess, weekNum);
-          const parsed = parseLessons(timetable);
-          setPronoteLessons(parsed);
-        }
+      savePronoteSession(refreshInfo, stored.deviceUUID);
+      pronoteSessionRef.current = sess;
+      pawnoteRef.current = pw;
 
-        setPronoteConnected(true);
-      } catch (err) {
-        console.error('Dashboard Pronote auto-reconnect failed:', err);
-        // Silent fail — Pronote sections just won't show
+      // Load current week timetable
+      const startDay = sess.instance?.firstMonday || sess.instance?.firstDate;
+      if (startDay) {
+        pronoteFirstDay.current = new Date(startDay);
+        const weekStart = getMonday(new Date());
+        const weekNum = pw.translateToWeekNumber(weekStart, new Date(startDay));
+        const timetable = await pw.timetableFromWeek(sess, weekNum);
+        const parsed = parseLessons(timetable);
+        setPronoteLessons(parsed);
       }
+
+      setPronoteConnected(true);
     })();
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Pronote timeout')), PRONOTE_TIMEOUT)
+    );
+
+    Promise.race([pronotePromise, timeoutPromise]).catch(err => {
+      console.error('Dashboard Pronote auto-reconnect failed:', err);
+      // Silent fail — Pronote sections just won't show
+    });
   }, []);
 
   // ---- Load specific week ----
@@ -301,23 +308,46 @@ export function Dashboard() {
       setIsLoading(true);
 
       try {
-        // 1. Load classes
-        const { data: classesData } = await supabase
-          .from('classes').select('id, name').eq('user_id', user.id).order('name');
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+        const monday = getMonday(new Date());
+        const sunday = new Date(monday);
+        sunday.setDate(sunday.getDate() + 6);
+
+        // Parallel batch 1: all independent queries
+        const [
+          { data: classesData },
+          { data: sessionsData },
+          { data: weekSessions },
+          { data: studentsData },
+        ] = await Promise.all([
+          supabase.from('classes').select('id, name').eq('user_id', user.id).order('name'),
+          supabase.from('sessions')
+            .select('id, class_id, started_at, ended_at, topic, classes (name)')
+            .eq('user_id', user.id)
+            .gte('started_at', tenDaysAgo.toISOString())
+            .order('started_at', { ascending: false })
+            .limit(5),
+          supabase.from('sessions')
+            .select('id, started_at, ended_at')
+            .eq('user_id', user.id)
+            .gte('started_at', monday.toISOString())
+            .lte('started_at', sunday.toISOString()),
+          supabase.from('students')
+            .select('id, pseudo, class_id, classes (name)')
+            .eq('user_id', user.id),
+        ]);
+
         const cls = (classesData || []) as DashClass[];
         setClasses(cls);
 
-        // 2. Load recent sessions (10 derniers jours)
-        const tenDaysAgo = new Date();
-        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-        const { data: sessionsData } = await supabase
-          .from('sessions')
-          .select('id, class_id, started_at, ended_at, topic, classes (name)')
-          .eq('user_id', user.id)
-          .gte('started_at', tenDaysAgo.toISOString())
-          .order('started_at', { ascending: false })
-          .limit(5);
+        // Week sessions
+        const wSessions = weekSessions || [];
+        setWeekSessionsCount(wSessions.length);
+        setWeekSessionsDone(wSessions.filter(s => s.ended_at).length);
+        setWeekSessionsUpcoming(wSessions.filter(s => !s.ended_at && new Date(s.started_at) > now).length);
 
+        // Recent sessions — need events for those sessions
         if (sessionsData && sessionsData.length > 0) {
           const sessionIds = sessionsData.map(s => s.id);
           const { data: eventsData } = await supabase
@@ -341,48 +371,24 @@ export function Dashboard() {
           setRecentSessions(sessions);
         }
 
-        // 3. Week sessions count
-        const monday = getMonday(new Date());
-        const sunday = new Date(monday);
-        sunday.setDate(sunday.getDate() + 6);
-        const { data: weekSessions } = await supabase
-          .from('sessions')
-          .select('id, started_at, ended_at')
-          .eq('user_id', user.id)
-          .gte('started_at', monday.toISOString())
-          .lte('started_at', sunday.toISOString());
-
-        const wSessions = weekSessions || [];
-        setWeekSessionsCount(wSessions.length);
-        setWeekSessionsDone(wSessions.filter(s => s.ended_at).length);
-        setWeekSessionsUpcoming(wSessions.filter(s => !s.ended_at && new Date(s.started_at) > now).length);
-
-        // 4. Load all students + events for grade calculations
-        const { data: studentsData } = await supabase
-          .from('students')
-          .select('id, pseudo, class_id, classes (name)')
-          .eq('user_id', user.id);
-
+        // Grade calculations
         if (studentsData && studentsData.length > 0) {
-          // Load class configs
           const classIds = cls.map(c => c.id);
-          const { data: configsData } = await supabase
-            .from('class_trimester_config').select('*').in('class_id', classIds);
+          const studentIds = studentsData.map(s => s.id);
+
+          // Parallel batch 2: config + events + manual participations
+          const [
+            { data: configsData },
+            { data: allEventsData },
+            { data: manualPartData },
+          ] = await Promise.all([
+            supabase.from('class_trimester_config').select('*').in('class_id', classIds),
+            supabase.from('events').select('student_id, type, session_id').in('student_id', studentIds),
+            supabase.from('manual_participations').select('student_id, count').in('student_id', studentIds),
+          ]);
+
           const configMap = new Map<string, any>();
           (configsData || []).forEach(c => configMap.set(c.class_id, c));
-
-          // Load events for all students
-          const studentIds = studentsData.map(s => s.id);
-          const { data: allEventsData } = await supabase
-            .from('events')
-            .select('student_id, type, session_id')
-            .in('student_id', studentIds);
-
-          // Load manual participations
-          const { data: manualPartData } = await supabase
-            .from('manual_participations')
-            .select('student_id, count')
-            .in('student_id', studentIds);
 
           // Calculate grades per student
           const eventsByStudent = new Map<string, any[]>();

@@ -39,22 +39,17 @@ export interface GroupData {
 export async function fetchTpTemplates(userId: string): Promise<TpTemplate[]> {
   const { data, error } = await supabase
     .from('tp_templates')
-    .select('id, name')
+    .select('id, name, tp_template_criteria (id, label, max_points, display_order)')
     .eq('user_id', userId)
     .order('name');
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
-  const templates: TpTemplate[] = [];
-  for (const t of data) {
-    const { data: criteria } = await supabase
-      .from('tp_template_criteria')
-      .select('id, label, max_points, display_order')
-      .eq('template_id', t.id)
-      .order('display_order');
-    templates.push({ ...t, criteria: criteria || [] });
-  }
-  return templates;
+  return data.map((t: any) => ({
+    id: t.id,
+    name: t.name,
+    criteria: (t.tp_template_criteria || []).sort((a: any, b: any) => a.display_order - b.display_order),
+  }));
 }
 
 export async function createGroupSession(
@@ -62,12 +57,15 @@ export async function createGroupSession(
   classId: string,
   name: string,
   criteria: { label: string; max_points: number }[],
-  groups: { name: string; memberIds: string[] }[]
+  groups: { name: string; memberIds: string[] }[],
+  templateId?: string | null,
 ): Promise<string> {
   // 1. Create session
+  const insertPayload: Record<string, unknown> = { user_id: userId, class_id: classId, name, status: 'active', created_at: new Date().toISOString() };
+  if (templateId) insertPayload.template_id = templateId;
   const { data: session, error: sessionError } = await supabase
     .from('group_sessions')
-    .insert({ user_id: userId, class_id: classId, name, status: 'active', created_at: new Date().toISOString() })
+    .insert(insertPayload)
     .select('id')
     .single();
   if (sessionError) throw sessionError;
@@ -86,80 +84,79 @@ export async function createGroupSession(
     .select('id, label, max_points, display_order');
   if (criteriaError) throw criteriaError;
 
-  // 3. Insert groups + members
-  for (const g of groups) {
-    const { data: grp, error: grpError } = await supabase
-      .from('session_groups')
-      .insert({ session_id: sessionId, name: g.name, conduct_malus: 0 })
-      .select('id')
-      .single();
-    if (grpError) throw grpError;
+  // 3. Insert all groups in one batch
+  const groupRows = groups.map(g => ({ session_id: sessionId, name: g.name, conduct_malus: 0 }));
+  const { data: insertedGroups, error: grpError } = await supabase
+    .from('session_groups')
+    .insert(groupRows)
+    .select('id');
+  if (grpError) throw grpError;
 
-    if (g.memberIds.length > 0) {
-      const memberRows = g.memberIds.map(sid => ({ group_id: grp.id, student_id: sid }));
-      const { error: memError } = await supabase
-        .from('session_group_members')
-        .insert(memberRows);
-      if (memError) throw memError;
-    }
+  // 4. Batch insert all members and grades in parallel
+  const allMemberRows: { group_id: string; student_id: string }[] = [];
+  const allGradeRows: { group_id: string; criteria_id: string; points_awarded: number }[] = [];
 
-    // Initialize grades to 0
+  (insertedGroups || []).forEach((grp, i) => {
+    const g = groups[i];
+    g.memberIds.forEach(sid => allMemberRows.push({ group_id: grp.id, student_id: sid }));
     if (insertedCriteria) {
-      const gradeRows = insertedCriteria.map(c => ({
-        group_id: grp.id,
-        criteria_id: c.id,
-        points_awarded: 0,
-      }));
-      const { error: gradeError } = await supabase
-        .from('group_grades')
-        .insert(gradeRows);
-      if (gradeError) throw gradeError;
+      insertedCriteria.forEach(c => allGradeRows.push({ group_id: grp.id, criteria_id: c.id, points_awarded: 0 }));
     }
+  });
+
+  const batchInserts: Promise<any>[] = [];
+  if (allMemberRows.length > 0) {
+    batchInserts.push(
+      supabase.from('session_group_members').insert(allMemberRows).then(({ error }) => { if (error) throw error; })
+    );
   }
+  if (allGradeRows.length > 0) {
+    batchInserts.push(
+      supabase.from('group_grades').insert(allGradeRows).then(({ error }) => { if (error) throw error; })
+    );
+  }
+  await Promise.all(batchInserts);
 
   return sessionId;
 }
 
 export async function loadGroupSession(sessionId: string): Promise<GroupSessionData> {
-  const { data: session, error: sErr } = await supabase
-    .from('group_sessions')
-    .select('id, name, status')
-    .eq('id', sessionId)
-    .single();
+  // Parallel: session + criteria + groups (with nested members and grades)
+  const [
+    { data: session, error: sErr },
+    { data: criteria },
+    { data: groups },
+  ] = await Promise.all([
+    supabase.from('group_sessions').select('id, name, status').eq('id', sessionId).single(),
+    supabase.from('grading_criteria').select('id, label, max_points, display_order').eq('session_id', sessionId).order('display_order'),
+    supabase.from('session_groups').select('id, name, conduct_malus').eq('session_id', sessionId),
+  ]);
   if (sErr) throw sErr;
 
-  const { data: criteria } = await supabase
-    .from('grading_criteria')
-    .select('id, label, max_points, display_order')
-    .eq('session_id', sessionId)
-    .order('display_order');
+  const groupIds = (groups || []).map(g => g.id);
 
-  const { data: groups } = await supabase
-    .from('session_groups')
-    .select('id, name, conduct_malus')
-    .eq('session_id', sessionId);
+  let allMembers: any[] = [];
+  let allGrades: any[] = [];
 
-  const groupsData: GroupData[] = [];
-  for (const g of groups || []) {
-    const { data: members } = await supabase
-      .from('session_group_members')
-      .select('student_id, students(pseudo)')
-      .eq('group_id', g.id);
-
-    const { data: grades } = await supabase
-      .from('group_grades')
-      .select('criteria_id, points_awarded')
-      .eq('group_id', g.id);
-
-    groupsData.push({
-      ...g,
-      members: (members || []).map((m: any) => ({
-        student_id: m.student_id,
-        pseudo: m.students?.pseudo || '?',
-      })),
-      grades: grades || [],
-    });
+  if (groupIds.length > 0) {
+    // Batch fetch all members and grades in parallel
+    const [{ data: membersData }, { data: gradesData }] = await Promise.all([
+      supabase.from('session_group_members').select('group_id, student_id, students(pseudo)').in('group_id', groupIds),
+      supabase.from('group_grades').select('group_id, criteria_id, points_awarded').in('group_id', groupIds),
+    ]);
+    allMembers = membersData || [];
+    allGrades = gradesData || [];
   }
+
+  const groupsData: GroupData[] = (groups || []).map(g => ({
+    ...g,
+    members: allMembers
+      .filter(m => m.group_id === g.id)
+      .map((m: any) => ({ student_id: m.student_id, pseudo: m.students?.pseudo || '?' })),
+    grades: allGrades
+      .filter(gr => gr.group_id === g.id)
+      .map((gr: any) => ({ criteria_id: gr.criteria_id, points_awarded: gr.points_awarded })),
+  }));
 
   return {
     ...session,
