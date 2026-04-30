@@ -79,13 +79,6 @@ function parseLessons(timetable: Timetable): PronoteLesson[] {
 
 // ---- Time helpers ----
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Bonjour';
-  if (h < 18) return 'Bon après-midi';
-  return 'Bonsoir';
-}
-
 function getTimeOfDay(): string {
   const h = new Date().getHours();
   if (h < 12) return 'matin';

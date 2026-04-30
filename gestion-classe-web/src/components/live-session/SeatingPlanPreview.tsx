@@ -94,7 +94,7 @@ export function SeatingPlanPreview() {
       {/* Start button */}
       <div className="p-4 pb-6">
         <button
-          onClick={startSession}
+          onClick={() => startSession()}
           disabled={loading}
           className="w-full py-4 text-white font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50"
           style={{
