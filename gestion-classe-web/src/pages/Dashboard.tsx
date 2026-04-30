@@ -544,10 +544,7 @@ export function Dashboard() {
             <div className="dash__date-badge">
               {formatDayFr(now)} · {getTimeOfDay()}
             </div>
-            <h1 className="dash__greeting">
-              {getGreeting()}, Thomas.
-            </h1>
-            {pronoteConnected && nextLesson ? (
+            {pronoteConnected && nextLesson && (
               <p className="dash__subtitle">
                 {isSameDay(nextLesson.startDate, tomorrow) ? 'Demain' : 'Prochaine séance'},{' '}
                 {tomorrowLessons.length > 0 ? (
@@ -555,10 +552,6 @@ export function Dashboard() {
                 ) : (
                   <>commence par <strong>{nextLesson.groupNames[0] || nextLesson.subject || 'Cours'}</strong>, {formatTime(nextLesson.startDate)}.</>
                 )}
-              </p>
-            ) : (
-              <p className="dash__subtitle">
-                Voici un aperçu de votre activité.
               </p>
             )}
           </div>
