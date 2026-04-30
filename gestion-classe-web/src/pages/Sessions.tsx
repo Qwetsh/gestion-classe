@@ -144,24 +144,17 @@ export function Sessions() {
       if (sessionsError) throw sessionsError;
 
       if (sessionsData && sessionsData.length > 0) {
-        // Fetch ALL events for all sessions in ONE query
+        // Use server-side RPC to get aggregated event counts per session
         const sessionIds = sessionsData.map(s => s.id);
-        const { data: allEvents } = await supabase
-          .from('events')
-          .select('session_id, type')
-          .in('session_id', sessionIds);
+        const { data: countsData } = await supabase
+          .rpc('get_session_event_counts', { p_session_ids: sessionIds });
 
-        // Group events by session_id
-        const eventsBySession = new Map<string, { type: string }[]>();
-        (allEvents || []).forEach(event => {
-          const existing = eventsBySession.get(event.session_id) || [];
-          existing.push(event);
-          eventsBySession.set(event.session_id, existing);
-        });
+        const countsMap = new Map<string, any>();
+        (countsData || []).forEach((row: any) => countsMap.set(row.session_id, row));
 
-        // Map sessions with counts (no async needed now)
+        // Map sessions with counts
         const sessionsWithCounts = sessionsData.map((session) => {
-          const eventsData = eventsBySession.get(session.id) || [];
+          const counts = countsMap.get(session.id);
           return {
             id: session.id,
             class_id: session.class_id,
@@ -169,12 +162,12 @@ export function Sessions() {
             topic: session.topic,
             started_at: session.started_at,
             ended_at: session.ended_at,
-            events_count: eventsData.length,
-            participations: eventsData.filter(e => e.type === 'participation').length,
-            malus: eventsData.filter(e => e.type === 'bavardage').length,
-            absences: eventsData.filter(e => e.type === 'absence').length,
-            remarques: eventsData.filter(e => e.type === 'remarque').length,
-            sorties: eventsData.filter(e => e.type === 'sortie').length,
+            events_count: Number(counts?.events_count || 0),
+            participations: Number(counts?.participations || 0),
+            malus: Number(counts?.malus || 0),
+            absences: Number(counts?.absences || 0),
+            remarques: Number(counts?.remarques || 0),
+            sorties: Number(counts?.sorties || 0),
           };
         });
         setSessions(sessionsWithCounts);
