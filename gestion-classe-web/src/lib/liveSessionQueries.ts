@@ -76,7 +76,8 @@ export async function fetchSeatingPlan(
 export async function createSession(
   userId: string,
   classId: string,
-  roomId: string
+  roomId: string,
+  topic?: string
 ): Promise<string> {
   const { data, error } = await supabase
     .from('sessions')
@@ -85,6 +86,7 @@ export async function createSession(
       class_id: classId,
       room_id: roomId,
       started_at: new Date().toISOString(),
+      ...(topic ? { topic } : {}),
     })
     .select('id')
     .single();

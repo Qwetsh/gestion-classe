@@ -7,7 +7,7 @@ export function RoomSelector() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div
-        className="flex items-center justify-between p-4 text-white"
+        className="flex items-center justify-between p-4 text-white shrink-0"
         style={{ background: 'var(--gradient-header)' }}
       >
         <button onClick={goBack} className="text-white/80 text-sm font-medium">

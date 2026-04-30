@@ -7,11 +7,11 @@ export function ClassSelector() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div
-        className="flex items-center justify-between p-4 text-white"
+        className="flex items-center justify-between p-4 text-white shrink-0"
         style={{ background: 'var(--gradient-header)' }}
       >
-        <button onClick={cancelFlow} className="text-white/80 text-sm font-medium">
-          Annuler
+        <button onClick={cancelFlow} className="text-white/80 text-sm font-medium flex items-center gap-1">
+          ← Retour
         </button>
         <h1 className="font-bold text-lg">Choisir une classe</h1>
         <div className="w-16" />

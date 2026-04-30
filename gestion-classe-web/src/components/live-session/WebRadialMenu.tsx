@@ -77,7 +77,7 @@ export function WebRadialMenu({ studentPseudo, position, onSelect, onRemarque, o
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[60]"
+      className="fixed inset-0 z-[210]"
       style={{ background: 'rgba(0,0,0,0.3)' }}
       onClick={handleBackdropClick}
       onTouchEnd={handleBackdropClick}
@@ -156,7 +156,7 @@ export function WebRadialMenu({ studentPseudo, position, onSelect, onRemarque, o
               border: 'none',
               WebkitTapHighlightColor: 'transparent',
             }}
-            onClick={(e) => {
+            onPointerDown={(e) => {
               e.stopPropagation();
               if (navigator.vibrate) navigator.vibrate(15);
               if (showSubMenu) {

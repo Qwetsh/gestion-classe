@@ -23,7 +23,7 @@ import {
   type OralEvaluation,
 } from '../lib/liveSessionQueries';
 
-export type LiveSessionStep = 'idle' | 'select-class' | 'select-room' | 'seating-preview' | 'recording';
+export type LiveSessionStep = 'idle' | 'select-class' | 'select-room' | 'session-name' | 'recording';
 
 export interface ActiveSortie {
   subtype: string;
@@ -54,7 +54,7 @@ interface LiveSessionActions {
   selectClass: (cls: ClassInfo) => void;
   selectRoom: (room: RoomInfo) => void;
   goBack: () => void;
-  startSession: () => void;
+  startSession: (topic?: string) => void;
   addEvent: (studentId: string, type: string, subtype?: string | null, note?: string | null, photo?: File | null) => void;
   removeLastEvent: (studentId: string, type: string) => void;
   deleteEventById: (eventId: string) => void;
@@ -120,31 +120,26 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
 
   const selectRoom = useCallback(async (room: RoomInfo) => {
     if (!state.selectedClass) return;
-    setState(s => ({ ...s, selectedRoom: room, step: 'seating-preview', loading: true, error: null }));
-    try {
-      const [students, positions] = await Promise.all([
-        fetchStudentsForClass(state.selectedClass.id),
-        fetchSeatingPlan(state.selectedClass.id, room.id),
-      ]);
-      setState(s => ({ ...s, students, positions, loading: false }));
-    } catch {
-      setState(s => ({ ...s, error: 'Erreur de chargement du plan', loading: false }));
-    }
+    setState(s => ({ ...s, selectedRoom: room, step: 'session-name', error: null }));
   }, [state.selectedClass]);
 
   const goBack = useCallback(() => {
     setState(s => {
       if (s.step === 'select-room') return { ...s, step: 'select-class', selectedClass: null };
-      if (s.step === 'seating-preview') return { ...s, step: 'select-room', selectedRoom: null, students: [], positions: {} };
+      if (s.step === 'session-name') return { ...s, step: 'select-room', selectedRoom: null };
       return s;
     });
   }, []);
 
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (topic?: string) => {
     if (!user || !state.selectedClass || !state.selectedRoom) return;
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const sessionId = await createSession(user.id, state.selectedClass.id, state.selectedRoom.id);
+      const [sessionId, students, positions] = await Promise.all([
+        createSession(user.id, state.selectedClass.id, state.selectedRoom.id, topic),
+        fetchStudentsForClass(state.selectedClass.id),
+        fetchSeatingPlan(state.selectedClass.id, state.selectedRoom.id),
+      ]);
       const now = new Date().toISOString();
       // Load oral evaluations for this class
       let oralEvaluations: OralEvaluation[] = [];
@@ -153,7 +148,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
       } catch {
         // Non-critical - oral eval table might not exist yet
       }
-      setState(s => ({ ...s, sessionId, startedAt: now, step: 'recording', events: [], notes: null, activeSorties: {}, oralEvaluations, loading: false }));
+      setState(s => ({ ...s, sessionId, students, positions, startedAt: now, step: 'recording', events: [], notes: null, activeSorties: {}, oralEvaluations, loading: false }));
     } catch {
       setState(s => ({ ...s, error: 'Erreur lors du demarrage de la seance', loading: false }));
     }

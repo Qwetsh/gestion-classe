@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { SessionTimer } from './SessionTimer';
-import { StudentCell } from './StudentCell';
+import { StudentCell, type StudentCounts } from './StudentCell';
 import { WebRadialMenu } from './WebRadialMenu';
 import { RemarqueInput } from './RemarqueInput';
 
@@ -59,6 +59,22 @@ export function RecordingView() {
   );
 
   const absentIds = useMemo(() => getAbsentStudentIds(), [getAbsentStudentIds, events]);
+
+  // Pre-compute counts per student to avoid passing full events array to each cell
+  const countsByStudent = useMemo(() => {
+    const map = new Map<string, StudentCounts>();
+    const typeMap: Record<string, keyof StudentCounts> = {
+      participation: 'participation', bavardage: 'malus', absence: 'absence', sortie: 'sortie', remarque: 'remarque',
+    };
+    for (const e of events) {
+      const key = typeMap[e.type];
+      if (!key) continue;
+      let c = map.get(e.student_id);
+      if (!c) { c = { participation: 0, malus: 0, absence: 0, sortie: 0, remarque: 0 }; map.set(e.student_id, c); }
+      c[key]++;
+    }
+    return map;
+  }, [events]);
 
   const handleStudentTap = useCallback((studentId: string, pseudo: string, rect: DOMRect) => {
     setMenuTarget({
@@ -327,7 +343,7 @@ export function RecordingView() {
                 key={key}
                 studentId={student.id}
                 pseudo={student.pseudo}
-                events={events}
+                counts={countsByStudent.get(student.id) || { participation: 0, malus: 0, absence: 0, sortie: 0, remarque: 0 }}
                 activeSortie={getStudentWithSortie(student.id)}
                 onTap={(rect) => handleStudentTap(student.id, student.pseudo, rect)}
                 onDoubleTap={() => handleAbsenceCancel(student.id)}

@@ -1,33 +1,26 @@
-import { useMemo, useRef, useCallback } from 'react';
-import type { SessionEvent } from '../../lib/liveSessionQueries';
+import { memo, useMemo, useRef, useCallback } from 'react';
 import type { ActiveSortie } from '../../contexts/LiveSessionContext';
+
+export interface StudentCounts {
+  participation: number;
+  malus: number;
+  absence: number;
+  sortie: number;
+  remarque: number;
+}
 
 interface StudentCellProps {
   studentId: string;
   pseudo: string;
-  events: SessionEvent[];
+  counts: StudentCounts;
   activeSortie: ActiveSortie | null;
   onTap: (rect: DOMRect) => void;
   onDoubleTap?: () => void;
   onSortieReturn?: () => void;
 }
 
-export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, onDoubleTap, onSortieReturn }: StudentCellProps) {
+export const StudentCell = memo(function StudentCell({ studentId, pseudo, counts, activeSortie, onTap, onDoubleTap, onSortieReturn }: StudentCellProps) {
   const lastTapRef = useRef<number>(0);
-
-  const counts = useMemo(() => {
-    const c = { participation: 0, malus: 0, absence: 0, sortie: 0, remarque: 0 };
-    const typeMap: Record<string, keyof typeof c> = {
-      participation: 'participation', bavardage: 'malus', absence: 'absence', sortie: 'sortie', remarque: 'remarque',
-    };
-    for (const e of events) {
-      const key = typeMap[e.type];
-      if (e.student_id === studentId && key) {
-        c[key]++;
-      }
-    }
-    return c;
-  }, [studentId, events]);
 
   const isAbsent = counts.absence > 0 && counts.absence % 2 === 1; // odd = absent
   const isOut = !!activeSortie;
@@ -128,7 +121,7 @@ export function StudentCell({ studentId, pseudo, events, activeSortie, onTap, on
       ) : null}
     </button>
   );
-}
+});
 
 function Badge({ count, color }: { count: number; color: string }) {
   return (
