@@ -19,7 +19,7 @@ interface StudentCellProps {
   onSortieReturn?: () => void;
 }
 
-export const StudentCell = memo(function StudentCell({ studentId, pseudo, counts, activeSortie, onTap, onDoubleTap, onSortieReturn }: StudentCellProps) {
+export const StudentCell = memo(function StudentCell({ studentId: _studentId, pseudo, counts, activeSortie, onTap, onDoubleTap, onSortieReturn }: StudentCellProps) {
   const lastTapRef = useRef<number>(0);
 
   const isAbsent = counts.absence > 0 && counts.absence % 2 === 1; // odd = absent
