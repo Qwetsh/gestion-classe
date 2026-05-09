@@ -82,6 +82,14 @@ export const tools: Tool[] = [
     component: lazy(() => import('./TimelineGenerator')),
     tags: ['frise', 'chronologie', 'histoire', 'dates', 'événements', 'timeline', 'pdf'],
   },
+  {
+    id: 'docgenerator',
+    name: 'Documents Officiels',
+    description: 'Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour)',
+    icon: '📄',
+    component: lazy(() => import('./DocumentGenerator')),
+    tags: ['document', 'pdf', 'autorisation', 'captation', 'sortie', 'séjour', 'officiel', 'formulaire'],
+  },
 ];
 
 export function getToolById(id: string): Tool | undefined {
