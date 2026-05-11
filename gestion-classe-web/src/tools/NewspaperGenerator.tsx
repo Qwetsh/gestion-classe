@@ -37,7 +37,16 @@ interface ImageBlock {
   fit?: 'cover' | 'contain'; // cover = crop, contain = show all
 }
 
-type Block = TextBlock | ImageBlock;
+interface QuoteBlock {
+  type: 'quote';
+  id: string;
+  content: string;
+  author: string;
+  style: 'boxed' | 'pullquote'; // encadré ou citation mise en avant
+  wide?: boolean;
+}
+
+type Block = TextBlock | ImageBlock | QuoteBlock;
 
 interface NewspaperConfig {
   journalName: string;
@@ -45,6 +54,7 @@ interface NewspaperConfig {
   date: string;
   price: string;
   mainTitle: string;
+  lead: string; // chapeau
   author: string;
   style: NewspaperStyle;
   pages: 1 | 2;
@@ -117,6 +127,97 @@ function formatDate(dateStr: string): string {
     return d.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   } catch { return dateStr; }
 }
+
+// ─── Templates ──────────────────────────────────────────────
+
+interface NewspaperTemplate {
+  label: string;
+  description: string;
+  config: Omit<NewspaperConfig, 'date'>;
+}
+
+const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
+  {
+    label: 'Journal scolaire',
+    description: 'Gazette de classe avec articles élèves',
+    config: {
+      journalName: 'La Gazette du Collège',
+      slogan: 'Par les élèves, pour les élèves',
+      price: 'Gratuit',
+      mainTitle: 'Les projets de la rentrée',
+      lead: 'Cette année, le collège se mobilise autour de nouveaux projets ambitieux. Retour sur les temps forts qui attendent nos élèves.',
+      author: 'La rédaction',
+      style: 'lemonde',
+      pages: 1,
+      blocks: [
+        { type: 'text', id: 'tpl_t1', content: 'Les élèves de 6e ont inauguré la semaine du développement durable avec la création d\'un jardin pédagogique dans la cour du collège. Encadrés par leurs professeurs de SVT, ils ont planté des aromates, des légumes de saison et installé un composteur. « C\'est génial de voir pousser ce qu\'on a planté », s\'enthousiasme Léa, élève de 6eB.', subtitle: 'Le jardin pédagogique prend racine' },
+        { type: 'quote', id: 'tpl_q1', content: 'Apprendre en faisant, c\'est la meilleure façon de comprendre le monde qui nous entoure.', author: 'M. Martin, professeur de SVT', style: 'pullquote' as const, wide: true },
+        { type: 'text', id: 'tpl_t2', content: 'Le club lecture a sélectionné ses coups de cœur du trimestre. Parmi eux, trois romans jeunesse et une bande dessinée qui aborde avec humour la vie au collège. Les fiches de lecture sont disponibles au CDI.', subtitle: 'Les coups de cœur du club lecture' },
+        { type: 'text', id: 'tpl_t3', content: 'L\'équipe de handball du collège s\'est qualifiée pour les championnats départementaux après une victoire éclatante face au collège Victor Hugo. Bravo à tous les joueurs et à leur entraîneur !', subtitle: 'Handball : qualification historique !' },
+      ],
+    },
+  },
+  {
+    label: 'Revue scientifique',
+    description: 'Style magazine scientifique pour exposés',
+    config: {
+      journalName: 'Science Actu',
+      slogan: 'Comprendre le monde par la science',
+      price: '2,50 €',
+      mainTitle: 'Les mystères des fonds marins',
+      lead: 'À plus de 10 000 mètres de profondeur, la fosse des Mariannes abrite des formes de vie que les scientifiques commencent à peine à découvrir.',
+      author: '',
+      style: 'scientifique',
+      pages: 1,
+      blocks: [
+        { type: 'text', id: 'tpl_s1', content: 'Les abysses représentent l\'un des derniers territoires inexplorés de notre planète. Les conditions extrêmes qui y règnent — pression colossale, obscurité totale, températures glaciales — en font un environnement hostile à la vie telle que nous la connaissons. Pourtant, des organismes y prospèrent.', subtitle: 'Un monde d\'obscurité' },
+        { type: 'quote', id: 'tpl_sq1', content: 'Nous connaissons mieux la surface de Mars que les fonds de nos propres océans.', author: 'Dr. Sylvia Earle, océanographe', style: 'boxed' as const },
+        { type: 'text', id: 'tpl_s2', content: 'Les sources hydrothermales, véritables oasis des profondeurs, crachent une eau à plus de 350°C chargée en minéraux. Autour de ces cheminées se développent des écosystèmes uniques, basés non pas sur la photosynthèse mais sur la chimiosynthèse.', subtitle: 'Les cheminées de vie' },
+        { type: 'text', id: 'tpl_s3', content: 'En 2025, la mission Deep Ocean Explorer a permis de cartographier une zone inédite de la fosse des Mariannes. Les premiers résultats révèlent la présence de bactéries capables de résister à des pressions mille fois supérieures à celle de la surface.', subtitle: 'Dernières découvertes' },
+      ],
+    },
+  },
+  {
+    label: 'Gazette historique',
+    description: 'Journal d\'époque pour cours d\'histoire',
+    config: {
+      journalName: 'Le Moniteur Universel',
+      slogan: 'Journal officiel de la République',
+      price: '5 centimes',
+      mainTitle: 'La prise de la Bastille',
+      lead: 'Paris, le 14 juillet 1789. Une foule immense s\'est emparée de la forteresse royale de la Bastille, symbole de l\'arbitraire monarchique. Les événements de cette journée marquent un tournant décisif.',
+      author: 'Un correspondant',
+      style: 'figaro',
+      pages: 1,
+      blocks: [
+        { type: 'text', id: 'tpl_h1', content: 'Dès les premières heures de la matinée, une foule considérable s\'est rassemblée aux abords de la forteresse. Les esprits, échauffés par les récents événements et la disette qui frappe la capitale, réclamaient la libération des prisonniers et la remise des armes entreposées dans la place forte.', subtitle: 'Le peuple en marche' },
+        { type: 'quote', id: 'tpl_hq1', content: 'La Bastille est prise ! Le peuple est victorieux ! Vive la Nation !', author: 'Cris entendus dans les rues de Paris', style: 'pullquote' as const, wide: true },
+        { type: 'text', id: 'tpl_h2', content: 'Le gouverneur de Launay, après avoir tenté de résister, a finalement ordonné l\'ouverture des portes. Sept prisonniers ont été libérés. La garnison, composée d\'une centaine de soldats, s\'est rendue sans conditions.', subtitle: 'La reddition' },
+        { type: 'text', id: 'tpl_h3', content: 'Sa Majesté le Roi, informée des événements par le duc de La Rochefoucauld, aurait prononcé ces mots restés célèbres : « C\'est une révolte ? — Non, Sire, c\'est une révolution. »', subtitle: 'La réaction du Roi' },
+      ],
+    },
+  },
+  {
+    label: 'Magazine moderne',
+    description: 'Style contemporain pour projets créatifs',
+    config: {
+      journalName: 'ZOOM',
+      slogan: 'L\'info qui bouge',
+      price: '3,90 €',
+      mainTitle: 'L\'intelligence artificielle change nos vies',
+      lead: 'De la médecine à l\'éducation, l\'IA bouleverse nos habitudes. Tour d\'horizon des innovations qui transforment notre quotidien.',
+      author: 'Sophie Laurent',
+      style: 'moderne',
+      pages: 1,
+      blocks: [
+        { type: 'text', id: 'tpl_m1', content: 'Les assistants vocaux, les recommandations de streaming, la reconnaissance faciale de nos téléphones : l\'intelligence artificielle est déjà partout dans notre vie quotidienne. Mais ce n\'est que le début d\'une révolution technologique sans précédent.', subtitle: 'Une révolution silencieuse' },
+        { type: 'quote', id: 'tpl_mq1', content: 'L\'IA ne remplacera pas les enseignants, mais les enseignants qui utilisent l\'IA remplaceront ceux qui ne l\'utilisent pas.', author: 'Rapport UNESCO 2025', style: 'boxed' as const, wide: true },
+        { type: 'text', id: 'tpl_m2', content: 'Dans les hôpitaux, des algorithmes analysent les radiographies avec une précision supérieure à celle des médecins. Dans les écoles, des programmes adaptatifs personnalisent les exercices en fonction du niveau de chaque élève.', subtitle: 'Santé et éducation en première ligne' },
+        { type: 'text', id: 'tpl_m3', content: 'Malgré les promesses, des questions éthiques se posent. Quid de la protection des données personnelles ? De la responsabilité en cas d\'erreur d\'un algorithme ? Le débat ne fait que commencer.', subtitle: 'Les défis à relever' },
+      ],
+    },
+  },
+];
 
 // ─── Smart layout engine ────────────────────────────────────
 
@@ -214,6 +315,7 @@ export default function NewspaperGenerator() {
     date: new Date().toISOString().split('T')[0],
     price: '1,50 €',
     mainTitle: 'Un titre accrocheur ici',
+    lead: '',
     author: '',
     style: 'lemonde',
     pages: 1,
@@ -223,11 +325,59 @@ export default function NewspaperGenerator() {
   const [isExporting, setIsExporting] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overflow, setOverflow] = useState(false);
+  const [savedList, setSavedList] = useState<string[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
   const previewPaneRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
 
-  // Load Google Fonts on mount
-  useEffect(() => { loadGoogleFonts(); }, []);
+  // Load Google Fonts on mount + refresh saved list
+  useEffect(() => {
+    loadGoogleFonts();
+    refreshSavedList();
+  }, []);
+
+  const STORAGE_PREFIX = 'newspaper_saved_';
+
+  const refreshSavedList = useCallback(() => {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(STORAGE_PREFIX)) keys.push(k.slice(STORAGE_PREFIX.length));
+    }
+    keys.sort();
+    setSavedList(keys);
+  }, []);
+
+  const saveNewspaper = useCallback((name: string) => {
+    if (!name.trim()) return;
+    localStorage.setItem(STORAGE_PREFIX + name.trim(), JSON.stringify(config));
+    refreshSavedList();
+    setShowSaveDialog(false);
+    setSaveName('');
+  }, [config, refreshSavedList]);
+
+  const loadNewspaper = useCallback((name: string) => {
+    const raw = localStorage.getItem(STORAGE_PREFIX + name);
+    if (!raw) return;
+    try {
+      const loaded = JSON.parse(raw) as NewspaperConfig;
+      setConfig(loaded);
+      setShowLoadDialog(false);
+    } catch { /* ignore */ }
+  }, []);
+
+  const deleteSaved = useCallback((name: string) => {
+    localStorage.removeItem(STORAGE_PREFIX + name);
+    refreshSavedList();
+  }, [refreshSavedList]);
+
+  const applyTemplate = useCallback((tpl: NewspaperTemplate) => {
+    setConfig({ ...tpl.config, date: new Date().toISOString().split('T')[0] });
+    setShowTemplates(false);
+  }, []);
 
   // Auto-scale preview to fit available space
   useEffect(() => {
@@ -285,6 +435,11 @@ export default function NewspaperGenerator() {
 
   const addTextBlock = useCallback(() => {
     const block: TextBlock = { type: 'text', id: newId(), content: '', subtitle: '' };
+    setConfig(prev => ({ ...prev, blocks: [...prev.blocks, block] }));
+  }, []);
+
+  const addQuoteBlock = useCallback(() => {
+    const block: QuoteBlock = { type: 'quote', id: newId(), content: '', author: '', style: 'pullquote' };
     setConfig(prev => ({ ...prev, blocks: [...prev.blocks, block] }));
   }, []);
 
@@ -380,6 +535,106 @@ export default function NewspaperGenerator() {
 
   const renderEditor = () => (
     <div style={editorStyles.container}>
+      {/* Templates + Save/Load */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <button
+          style={{ ...editorStyles.addBtn, flex: 1, border: '2px solid #8B5CF6', color: '#8B5CF6', backgroundColor: '#F5F3FF' }}
+          onClick={() => setShowTemplates(!showTemplates)}
+        >
+          Modèles
+        </button>
+        <button
+          style={{ ...editorStyles.addBtn, flex: 1, border: '2px solid #10B981', color: '#10B981', backgroundColor: '#F0FDF4' }}
+          onClick={() => { setSaveName(config.journalName); setShowSaveDialog(true); }}
+        >
+          Sauvegarder
+        </button>
+        <button
+          style={{ ...editorStyles.addBtn, flex: 1, border: '2px solid #F59E0B', color: '#92400E', backgroundColor: '#FFFBEB' }}
+          onClick={() => { refreshSavedList(); setShowLoadDialog(true); }}
+        >
+          Charger
+        </button>
+      </div>
+
+      {/* Template picker */}
+      {showTemplates && (
+        <div style={{ border: '1px solid #DDD6FE', borderRadius: 8, padding: 10, marginBottom: 10, backgroundColor: '#FAFAFE' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#6D28D9', marginBottom: 8 }}>Choisir un modèle :</div>
+          {NEWSPAPER_TEMPLATES.map((tpl, i) => (
+            <button
+              key={i}
+              onClick={() => applyTemplate(tpl)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 4, borderRadius: 6, border: '1px solid #E5E7EB', backgroundColor: '#FFF', cursor: 'pointer' }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{tpl.label}</div>
+              <div style={{ fontSize: 11, color: '#6B7280' }}>{tpl.description}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Save dialog */}
+      {showSaveDialog && (
+        <div style={{ border: '1px solid #A7F3D0', borderRadius: 8, padding: 10, marginBottom: 10, backgroundColor: '#F0FDF4' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 6 }}>Nom de la sauvegarde :</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              style={{ ...editorStyles.input, flex: 1 }}
+              value={saveName}
+              onChange={e => setSaveName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveNewspaper(saveName)}
+              autoFocus
+            />
+            <button
+              style={{ padding: '6px 14px', borderRadius: 6, border: 'none', backgroundColor: '#10B981', color: '#FFF', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+              onClick={() => saveNewspaper(saveName)}
+            >
+              OK
+            </button>
+            <button
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #D1D5DB', backgroundColor: '#FFF', fontSize: 12, cursor: 'pointer' }}
+              onClick={() => setShowSaveDialog(false)}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Load dialog */}
+      {showLoadDialog && (
+        <div style={{ border: '1px solid #FDE68A', borderRadius: 8, padding: 10, marginBottom: 10, backgroundColor: '#FFFBEB' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 6 }}>Journaux sauvegardés :</div>
+          {savedList.length === 0 ? (
+            <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>Aucune sauvegarde</div>
+          ) : (
+            savedList.map(name => (
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <button
+                  onClick={() => loadNewspaper(name)}
+                  style={{ flex: 1, textAlign: 'left', padding: '6px 10px', borderRadius: 6, border: '1px solid #E5E7EB', backgroundColor: '#FFF', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+                >
+                  {name}
+                </button>
+                <button
+                  onClick={() => deleteSaved(name)}
+                  style={{ padding: '4px 8px', borderRadius: 4, border: 'none', backgroundColor: '#FEE2E2', color: '#DC2626', fontSize: 11, cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          )}
+          <button
+            style={{ marginTop: 6, padding: '4px 10px', borderRadius: 6, border: '1px solid #D1D5DB', backgroundColor: '#FFF', fontSize: 12, cursor: 'pointer' }}
+            onClick={() => setShowLoadDialog(false)}
+          >
+            Fermer
+          </button>
+        </div>
+      )}
+
       <h3 style={editorStyles.sectionTitle}>Style du journal</h3>
       <div style={editorStyles.styleGrid}>
         {(Object.entries(STYLE_PRESETS) as [NewspaperStyle, typeof preset][]).map(([key, p]) => (
@@ -428,6 +683,17 @@ export default function NewspaperGenerator() {
       </label>
 
       <label style={editorStyles.label}>
+        Chapeau (introduction)
+        <textarea
+          style={{ ...editorStyles.textarea, fontWeight: 600, fontSize: 12 }}
+          value={config.lead}
+          onChange={e => update({ lead: e.target.value })}
+          placeholder="Texte d'accroche en gras sous le titre principal..."
+          rows={2}
+        />
+      </label>
+
+      <label style={editorStyles.label}>
         Auteur
         <input style={editorStyles.input} value={config.author} onChange={e => update({ author: e.target.value })} placeholder="Ex: Jean Dupont" />
       </label>
@@ -447,6 +713,7 @@ export default function NewspaperGenerator() {
       <h3 style={editorStyles.sectionTitle}>Contenu</h3>
       <div style={editorStyles.addButtons}>
         <button style={editorStyles.addBtn} onClick={addTextBlock}>+ Paragraphe</button>
+        <button style={editorStyles.addBtn} onClick={addQuoteBlock}>+ Citation</button>
         <button style={editorStyles.addBtn} onClick={addImageBlock}>+ Photo</button>
         <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
       </div>
@@ -462,12 +729,12 @@ export default function NewspaperGenerator() {
             style={{
               ...editorStyles.blockItem,
               opacity: draggedId === block.id ? 0.5 : 1,
-              borderLeft: `3px solid ${block.type === 'text' ? '#3B82F6' : '#10B981'}`,
+              borderLeft: `3px solid ${block.type === 'text' ? '#3B82F6' : block.type === 'quote' ? '#8B5CF6' : '#10B981'}`,
             }}
           >
             <div style={editorStyles.blockHeader}>
               <span style={editorStyles.blockDragHandle}>⠿</span>
-              <span style={editorStyles.blockType}>{block.type === 'text' ? 'Paragraphe' : 'Photo'}</span>
+              <span style={editorStyles.blockType}>{block.type === 'text' ? 'Paragraphe' : block.type === 'quote' ? 'Citation' : 'Photo'}</span>
               <div style={editorStyles.blockActions}>
                 <button style={editorStyles.blockActionBtn} onClick={() => moveBlock(block.id, -1)} disabled={idx === 0}>▲</button>
                 <button style={editorStyles.blockActionBtn} onClick={() => moveBlock(block.id, 1)} disabled={idx === config.blocks.length - 1}>▼</button>
@@ -498,6 +765,50 @@ export default function NewspaperGenerator() {
                   />
                   Pleine largeur
                 </label>
+              </>
+            ) : block.type === 'quote' ? (
+              <>
+                <textarea
+                  style={{ ...editorStyles.textarea, fontStyle: 'italic' }}
+                  placeholder="Texte de la citation..."
+                  value={(block as QuoteBlock).content}
+                  onChange={e => updateBlock(block.id, { content: e.target.value })}
+                  rows={2}
+                />
+                <input
+                  style={{ ...editorStyles.input, marginTop: 4 }}
+                  placeholder="Auteur de la citation"
+                  value={(block as QuoteBlock).author}
+                  onChange={e => updateBlock(block.id, { author: e.target.value })}
+                />
+                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                  <label style={editorStyles.checkboxLabel}>
+                    <input
+                      type="radio"
+                      name={`quote-style-${block.id}`}
+                      checked={(block as QuoteBlock).style === 'pullquote'}
+                      onChange={() => updateBlock(block.id, { style: 'pullquote' })}
+                    />
+                    Citation
+                  </label>
+                  <label style={editorStyles.checkboxLabel}>
+                    <input
+                      type="radio"
+                      name={`quote-style-${block.id}`}
+                      checked={(block as QuoteBlock).style === 'boxed'}
+                      onChange={() => updateBlock(block.id, { style: 'boxed' })}
+                    />
+                    Encadré
+                  </label>
+                  <label style={editorStyles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={(block as QuoteBlock).wide || false}
+                      onChange={e => updateBlock(block.id, { wide: e.target.checked })}
+                    />
+                    Pleine largeur
+                  </label>
+                </div>
               </>
             ) : (
               <>
@@ -693,6 +1004,17 @@ export default function NewspaperGenerator() {
               </div>
             )}
 
+            {/* Lead / chapeau */}
+            {config.lead && (
+              <p style={{
+                fontSize: 11.5, lineHeight: 1.5, margin: '0 0 6px',
+                fontWeight: 700, fontFamily: preset.fonts.body,
+                color: preset.colors.text, textAlign: 'justify',
+              }}>
+                {config.lead}
+              </p>
+            )}
+
             {/* Thin rule */}
             <div style={{ height: 0.5, backgroundColor: preset.colors.rule, margin: '6px -28px 14px', opacity: 0.4 }} />
           </>
@@ -732,6 +1054,49 @@ export default function NewspaperGenerator() {
                     }}>
                       {tb.content}
                     </p>
+                  </div>
+                );
+              } else if (item.block.type === 'quote') {
+                const qb = item.block as QuoteBlock;
+                const isPullquote = qb.style === 'pullquote';
+                return (
+                  <div key={item.block.id} style={{
+                    gridColumn: `${item.col + 1} / span ${item.span}`,
+                    padding: isPullquote ? '10px 16px' : '12px 16px',
+                    margin: '4px 0',
+                    ...(isPullquote ? {
+                      borderTop: `2px solid ${preset.colors.accent}`,
+                      borderBottom: `2px solid ${preset.colors.accent}`,
+                    } : {
+                      border: `1px solid ${preset.colors.rule}`,
+                      backgroundColor: preset.colors.bg === '#FFFFFF' ? '#F9FAFB' : 'rgba(0,0,0,0.03)',
+                      borderRadius: 2,
+                    }),
+                  }}>
+                    {isPullquote && (
+                      <div style={{ fontSize: 28, lineHeight: 1, color: preset.colors.accent, fontFamily: 'Georgia, serif', marginBottom: -4 }}>"</div>
+                    )}
+                    <p style={{
+                      fontSize: isPullquote ? 13 : 10.5,
+                      lineHeight: 1.5,
+                      margin: 0,
+                      fontStyle: 'italic',
+                      fontFamily: preset.fonts.title,
+                      fontWeight: isPullquote ? 400 : 400,
+                      color: preset.colors.text,
+                      textAlign: 'center',
+                    }}>
+                      {qb.content}
+                    </p>
+                    {qb.author && (
+                      <div style={{
+                        fontSize: 9, marginTop: 6, textAlign: 'right',
+                        fontFamily: preset.fonts.accent, color: preset.colors.accent,
+                        fontWeight: 600, fontStyle: 'normal',
+                      }}>
+                        — {qb.author}
+                      </div>
+                    )}
                   </div>
                 );
               } else {
