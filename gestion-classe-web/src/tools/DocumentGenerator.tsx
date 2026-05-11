@@ -12,7 +12,6 @@ const labelCls = "block text-xs font-medium text-[var(--text-muted)] mb-1";
 const cardCls = "p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-3";
 const cardTitle = "font-semibold text-sm text-[var(--indigo)]";
 const btnPrimary = "px-5 py-2.5 rounded-xl text-white font-medium text-sm transition-all hover:scale-105";
-const btnSecondary = "px-5 py-2.5 rounded-xl font-medium text-sm text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] transition-all hover:bg-[var(--border)]";
 const btnSmall = "px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--indigo)] bg-[var(--indigo-soft)] hover:bg-[var(--indigo)]/20 transition-all";
 const btnRemove = "px-2 py-1 rounded-lg text-xs font-medium text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-all";
 
