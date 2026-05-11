@@ -105,6 +105,18 @@ export function StudentDashboard() {
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy'>('grades');
+  const [rewardsHidden] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('gc-app-settings') || '{}');
+      return s.hiddenTabs?.rewards === true;
+    } catch { return false; }
+  });
+  const [academyHidden] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('gc-app-settings') || '{}');
+      return s.hiddenTabs?.academy === true;
+    } catch { return false; }
+  });
   const [stampData, setStampData] = useState<StampData | null>(null);
   const [academyData, setAcademyData] = useState<{ enabled: boolean; house: HouseId | null; test_completed: boolean; classId: string | null } | null>(null);
   const [stampLoading, setStampLoading] = useState(false);
@@ -440,8 +452,8 @@ export function StudentDashboard() {
         }}>
           {[
             { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: T.indigoSoft, activeText: T.indigo },
-            { key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn },
-            ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
+            ...(!rewardsHidden ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
+            ...(academyData?.enabled && !academyHidden ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
           ].map(tab => (
             <button
               key={tab.key}
@@ -464,7 +476,7 @@ export function StudentDashboard() {
           ))}
         </div>
 
-        {activeTab === 'academy' && academyData?.enabled ? (
+        {activeTab === 'academy' && academyData?.enabled && !academyHidden ? (
           academyData.house && academyData.classId ? (
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <MyHouse houseId={academyData.house} classId={academyData.classId} />
@@ -520,7 +532,7 @@ export function StudentDashboard() {
               />
             </div>
           )
-        ) : activeTab === 'stamps' ? (
+        ) : activeTab === 'stamps' && !rewardsHidden ? (
           <StampCardView
             stampData={stampData}
             stampLoading={stampLoading}

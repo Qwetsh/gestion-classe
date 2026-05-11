@@ -4,6 +4,7 @@ import { LiveSessionProvider } from './contexts/LiveSessionContext';
 import { GroupSessionProvider } from './contexts/GroupSessionContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UIFeedbackProvider } from './contexts/UIFeedbackContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Analytics } from './pages/Analytics';
@@ -28,6 +29,7 @@ function App() {
     <ErrorBoundary>
     <AuthProvider>
     <UIFeedbackProvider>
+    <SettingsProvider>
     <LiveSessionProvider>
     <GroupSessionProvider>
     <BrowserRouter basename="/gestion-classe">
@@ -159,6 +161,7 @@ function App() {
     </BrowserRouter>
     </GroupSessionProvider>
     </LiveSessionProvider>
+    </SettingsProvider>
     </UIFeedbackProvider>
     </AuthProvider>
     </ErrorBoundary>

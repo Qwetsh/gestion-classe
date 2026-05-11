@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useSettings } from '../contexts/SettingsContext';
+import SettingsModal from './SettingsModal';
 import { FeedbackButton } from './FeedbackButton';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { supabase } from '../lib/supabase';
@@ -55,7 +57,9 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
 
 export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const { user, signOut } = useAuth();
+  const { settings, isTabVisible } = useSettings();
   const location = useLocation();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<{id: string; message: string; type: string; created_at: string}[]>([]);
@@ -64,9 +68,10 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const isDev = user?.email === DEV_EMAIL;
+  const visibleSecondaryItems = secondaryNavItems.filter(item => isTabVisible(item.path.slice(1)));
   const allSecondaryItems = isDev
-    ? [...secondaryNavItems, { path: '/dev', label: 'Dev', icon: '🛠️' }]
-    : secondaryNavItems;
+    ? [...visibleSecondaryItems, { path: '/dev', label: 'Dev', icon: '🛠️' }]
+    : visibleSecondaryItems;
   const allNavItems = [...primaryNavItems, ...allSecondaryItems];
 
   useEffect(() => {
@@ -157,7 +162,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
                 Gestion Classe
               </span>
               <span style={{ fontSize: 11, color: fullBleed ? 'oklch(0.55 0.03 60)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                T3 · 2025–2026
+                T{settings.schoolYear.trimestre} · {settings.schoolYear.label}
               </span>
             </div>
           </Link>
@@ -331,6 +336,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
               )}
             </div>
             <button
+              onClick={() => setIsSettingsOpen(true)}
               style={{
                 width: 32, height: 32, display: 'grid', placeItems: 'center',
                 borderRadius: 8, color: 'var(--text-muted)', border: 'none', background: 'none',
@@ -431,6 +437,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
       </main>
 
       <FeedbackButton />
+      <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

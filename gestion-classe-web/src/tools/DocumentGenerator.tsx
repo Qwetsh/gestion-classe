@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useSettings } from '../contexts/SettingsContext';
 import {
   loadLogoPNG, formatDate,
   buildCaptationPDF, buildSortiePDF, buildDemandePDF,
@@ -111,6 +112,7 @@ const EMPTY_BUDGET: BudgetData = {
 };
 
 export default function DocumentGenerator() {
+  const { settings } = useSettings();
   const [tab, setTab] = useState<Tab>('captation');
   const [logoPNG, setLogoPNG] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -135,15 +137,37 @@ export default function DocumentGenerator() {
     window.addEventListener('mouseup', onUp);
   }, []);
 
+  // ── Settings-aware initial values ──
+  const initialCapt = useMemo(() => ({
+    ...INITIAL_CAPT,
+    etablissement: settings.establishment.name || INITIAL_CAPT.etablissement,
+    tel: settings.establishment.tel || INITIAL_CAPT.tel,
+    codepostal: settings.establishment.codePostal || INITIAL_CAPT.codepostal,
+    annee: settings.schoolYear.label.split('-')[1] || INITIAL_CAPT.annee,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const initialSortie = useMemo(() => ({
+    ...INITIAL_SORTIE,
+    organisateur: settings.teacher.nom || INITIAL_SORTIE.organisateur,
+    fonction: settings.teacher.fonction || INITIAL_SORTIE.fonction,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const initialDem = useMemo(() => ({
+    ...INITIAL_DEM,
+    responsable: settings.teacher.nom || INITIAL_DEM.responsable,
+    qualite: settings.teacher.fonction || INITIAL_DEM.qualite,
+    telChef: settings.establishment.tel || INITIAL_DEM.telChef,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Captation state ──
-  const [capt, setCapt] = useState(INITIAL_CAPT);
+  const [capt, setCapt] = useState(initialCapt);
   const [supports, setSupports] = useState<FormSupport[]>(INITIAL_SUPPORTS);
 
   // ── Sortie state ──
-  const [sortie, setSortie] = useState(INITIAL_SORTIE);
+  const [sortie, setSortie] = useState(initialSortie);
 
   // ── Demande state ──
-  const [dem, setDem] = useState(INITIAL_DEM);
+  const [dem, setDem] = useState(initialDem);
   const [demDomaines, setDemDomaines] = useState<string[]>([]);
   const [classes, setClasses] = useState<ClasseRow[]>([{ nom: '', effectif: '', participants: '' }]);
   const [accomps, setAccomps] = useState<AccompRow[]>([{ nom: '', qualite: '', tel: '' }]);
