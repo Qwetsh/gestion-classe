@@ -524,106 +524,123 @@ export default function TimelineGenerator() {
 
         {/* Axis area */}
         <div style={{ position: 'relative', height: totalH - 80, marginTop: 10 }}>
-          {/* Axis line */}
-          <div style={{
-            position: 'absolute', top: AXIS_Y - 20, left: AXIS_PAD - 10, right: AXIS_PAD - 10, height: 3,
-            backgroundColor: preset.axisBg, borderRadius: 2,
-          }} />
-
-          {/* Start/end year labels */}
-          <div style={{
-            position: 'absolute', top: AXIS_Y - 20 - 18, left: AXIS_PAD - 10,
-            fontSize: 11, fontWeight: 700, color: preset.axisBg,
-          }}>{formatAxisLabel(startY)}</div>
-          <div style={{
-            position: 'absolute', top: AXIS_Y - 20 - 18, right: AXIS_PAD - 10,
-            fontSize: 11, fontWeight: 700, color: preset.axisBg, textAlign: 'right',
-          }}>{formatAxisLabel(endY)}</div>
-
-          {/* Graduations */}
-          {Array.from({ length: 6 }, (_, i) => {
-            const frac = i / 5;
-            const year = startY + frac * range;
-            return (
-              <div key={`tick-${i}`} style={{
-                position: 'absolute',
-                left: AXIS_PAD + frac * axisW - 0.5,
-                top: AXIS_Y - 20 - 4,
-                width: 1,
-                height: 10,
-                backgroundColor: preset.axisBg,
-                opacity: 0.4,
-              }}>
-                <span style={{
-                  position: 'absolute',
-                  top: 12,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: preset.axisBg,
-                  opacity: 0.7,
-                  whiteSpace: 'nowrap',
-                }}>{formatAxisLabel(Math.round(year))}</span>
-              </div>
-            );
-          })}
-
-          {/* Périodes — bandes colorées derrière les événements */}
+          {/* Axe : soit un trait simple, soit des bandes de périodes entre des traits */}
           {(() => {
+            const axisTopPos = AXIS_Y - 20;
+            const AXIS_H = 28;
+            const LABEL_H = 18;
+            const hasPeriods = config.periods.some(p => p.startDate.trim() && p.endDate.trim());
+
+            if (!hasPeriods) {
+              // Axe simple (trait + graduations)
+              return (
+                <>
+                  <div style={{
+                    position: 'absolute', top: axisTopPos, left: AXIS_PAD - 10, right: AXIS_PAD - 10, height: 3,
+                    backgroundColor: preset.axisBg, borderRadius: 2,
+                  }} />
+                  <div style={{
+                    position: 'absolute', top: axisTopPos - 18, left: AXIS_PAD - 10,
+                    fontSize: 11, fontWeight: 700, color: preset.axisBg,
+                  }}>{formatAxisLabel(startY)}</div>
+                  <div style={{
+                    position: 'absolute', top: axisTopPos - 18, right: AXIS_PAD - 10,
+                    fontSize: 11, fontWeight: 700, color: preset.axisBg, textAlign: 'right',
+                  }}>{formatAxisLabel(endY)}</div>
+                  {Array.from({ length: 6 }, (_, i) => {
+                    const frac = i / 5;
+                    const year = startY + frac * range;
+                    return (
+                      <div key={`tick-${i}`} style={{
+                        position: 'absolute', left: AXIS_PAD + frac * axisW - 0.5,
+                        top: axisTopPos - 4, width: 1, height: 10,
+                        backgroundColor: preset.axisBg, opacity: 0.4,
+                      }}>
+                        <span style={{
+                          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+                          fontSize: 9, fontWeight: 600, color: preset.axisBg, opacity: 0.7, whiteSpace: 'nowrap',
+                        }}>{formatAxisLabel(Math.round(year))}</span>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            }
+
+            // Mode périodes : bandes colorées = l'axe, séparées par des traits noirs
             const periodBands = config.periods
               .filter(p => p.startDate.trim() && p.endDate.trim())
               .map(p => {
                 const sY = parseYear(p.startDate);
                 const eY = parseYear(p.endDate);
-                const fracStart = Math.max(0, Math.min(1, (sY - startY) / range));
-                const fracEnd = Math.max(0, Math.min(1, (eY - startY) / range));
-                return { ...p, fracStart, fracEnd, tier: 0 };
-              });
-            const placedPeriods: Array<{ fracStart: number; fracEnd: number; tier: number }> = [];
+                const fracStart = Math.max(0, Math.min(1, (Math.min(sY, eY) - startY) / range));
+                const fracEnd = Math.max(0, Math.min(1, (Math.max(sY, eY) - startY) / range));
+                return { ...p, fracStart, fracEnd };
+              })
+              .sort((a, b) => a.fracStart - b.fracStart);
+
+            // Collecter toutes les frontières uniques pour les traits séparateurs
+            const boundaries = new Set<number>();
+            boundaries.add(0);
+            boundaries.add(1);
             for (const pb of periodBands) {
-              let t = 0;
-              // eslint-disable-next-line no-constant-condition
-              while (true) {
-                const sameTier = placedPeriods.filter(pp => pp.tier === t);
-                const overlaps = sameTier.some(pp => pb.fracStart < pp.fracEnd && pb.fracEnd > pp.fracStart);
-                if (!overlaps) break;
-                t++;
-              }
-              pb.tier = t;
-              placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
+              boundaries.add(pb.fracStart);
+              boundaries.add(pb.fracEnd);
             }
-            const BAND_H = 22;
-            const LABEL_H = 16;
-            const axisTopPos = AXIS_Y - 20;
-            return periodBands.map(pb => {
-              const pLeft = AXIS_PAD + pb.fracStart * axisW;
-              const pWidth = (pb.fracEnd - pb.fracStart) * axisW;
-              const opacity = pb.opacity ?? 0.5;
-              const bandTop = axisTopPos - BAND_H / 2 - pb.tier * (BAND_H + LABEL_H + 4);
-              return (
-                <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), zIndex: 0 }}>
-                  {/* Bande colorée */}
-                  <div style={{
-                    width: '100%', height: BAND_H, borderRadius: 4,
-                    backgroundColor: pb.color, opacity,
-                    border: `1.5px solid ${pb.color}`,
-                  }} />
-                  {/* Label en dessous de la bande */}
-                  <div style={{
-                    width: '100%', textAlign: 'center', marginTop: 1,
-                    fontSize: 10, fontWeight: 700, color: pb.color,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    lineHeight: `${LABEL_H}px`,
-                  }}>
-                    {pb.label}
-                    {pb.description && (
-                      <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.7, marginLeft: 4 }}>{pb.description}</span>
-                    )}
-                  </div>
-                </div>
-              );
-            });
+            const sortedBoundaries = [...boundaries].sort((a, b) => a - b);
+
+            return (
+              <>
+                {/* Bandes de périodes */}
+                {periodBands.map(pb => {
+                  const pLeft = AXIS_PAD + pb.fracStart * axisW;
+                  const pWidth = (pb.fracEnd - pb.fracStart) * axisW;
+                  const opacity = pb.opacity ?? 0.5;
+                  return (
+                    <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: axisTopPos - AXIS_H / 2, width: Math.max(pWidth, 2), zIndex: 0 }}>
+                      {/* Bande colorée */}
+                      <div style={{
+                        width: '100%', height: AXIS_H,
+                        backgroundColor: pb.color, opacity,
+                      }} />
+                      {/* Label en dessous */}
+                      <div style={{
+                        width: '100%', textAlign: 'center', marginTop: 2,
+                        fontSize: 10, fontWeight: 700, color: pb.color,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        lineHeight: `${LABEL_H}px`,
+                      }}>
+                        {pb.label}
+                        {pb.description && (
+                          <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.7, marginLeft: 4 }}>{pb.description}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Traits noirs séparateurs aux frontières */}
+                {sortedBoundaries.map((frac, i) => {
+                  const xPos = AXIS_PAD + frac * axisW;
+                  const year = startY + frac * range;
+                  return (
+                    <div key={`sep-${i}`} style={{ position: 'absolute', left: xPos - 1, top: axisTopPos - AXIS_H / 2 - 4, zIndex: 1 }}>
+                      {/* Trait vertical */}
+                      <div style={{
+                        width: 2, height: AXIS_H + 8,
+                        backgroundColor: preset.axisBg,
+                      }} />
+                      {/* Date au-dessus */}
+                      <span style={{
+                        position: 'absolute', bottom: AXIS_H + 12, left: '50%', transform: 'translateX(-50%)',
+                        fontSize: 9, fontWeight: 700, color: preset.axisBg,
+                        whiteSpace: 'nowrap',
+                      }}>{formatAxisLabel(Math.round(year))}</span>
+                    </div>
+                  );
+                })}
+              </>
+            );
           })()}
 
           {/* Events */}
