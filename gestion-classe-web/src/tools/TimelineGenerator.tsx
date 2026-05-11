@@ -23,6 +23,7 @@ interface TimelinePeriod {
   label: string;
   color: string;
   description: string;
+  opacity: number;
 }
 
 interface TimelineConfig {
@@ -228,6 +229,7 @@ export default function TimelineGenerator() {
       label: '',
       color: PERIOD_COLORS[config.periods.length % PERIOD_COLORS.length],
       description: '',
+      opacity: 0.5,
     };
     setConfig(prev => ({ ...prev, periods: [...prev.periods, period] }));
     setTimeout(() => {
@@ -434,6 +436,16 @@ export default function TimelineGenerator() {
               onChange={e => updatePeriod(period.id, { description: e.target.value })}
               rows={2}
             />
+            <div style={{ ...editorS.row, gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', whiteSpace: 'nowrap' }}>Opacité</span>
+              <input
+                type="range" min="0.1" max="1" step="0.05"
+                value={period.opacity ?? 0.5}
+                onChange={e => updatePeriod(period.id, { opacity: parseFloat(e.target.value) })}
+                style={{ flex: 1, accentColor: period.color }}
+              />
+              <span style={{ fontSize: 11, color: '#6B7280', minWidth: 28 }}>{Math.round((period.opacity ?? 0.5) * 100)}%</span>
+            </div>
           </div>
         ))}
       </div>
@@ -581,16 +593,34 @@ export default function TimelineGenerator() {
               pb.tier = t;
               placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
             }
-            const BAND_H = 20;
+            const BAND_H = 22;
+            const LABEL_H = 16;
             const axisTopPos = AXIS_Y - 20;
             return periodBands.map(pb => {
               const pLeft = AXIS_PAD + pb.fracStart * axisW;
               const pWidth = (pb.fracEnd - pb.fracStart) * axisW;
-              const bandTop = axisTopPos - BAND_H / 2 - pb.tier * (BAND_H + 2);
+              const opacity = pb.opacity ?? 0.5;
+              const bandTop = axisTopPos - BAND_H / 2 - pb.tier * (BAND_H + LABEL_H + 4);
               return (
-                <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), height: BAND_H, backgroundColor: pb.color, opacity: 0.25, borderRadius: 4, zIndex: 0 }}>
-                  <div style={{ position: 'absolute', inset: 0, border: `1.5px solid ${pb.color}`, borderRadius: 4, opacity: 0.6, pointerEvents: 'none' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: pb.color, opacity: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 4px', position: 'relative', zIndex: 1, lineHeight: `${BAND_H}px` }}>{pb.label}</span>
+                <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), zIndex: 0 }}>
+                  {/* Bande colorée */}
+                  <div style={{
+                    width: '100%', height: BAND_H, borderRadius: 4,
+                    backgroundColor: pb.color, opacity,
+                    border: `1.5px solid ${pb.color}`,
+                  }} />
+                  {/* Label en dessous de la bande */}
+                  <div style={{
+                    width: '100%', textAlign: 'center', marginTop: 1,
+                    fontSize: 10, fontWeight: 700, color: pb.color,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    lineHeight: `${LABEL_H}px`,
+                  }}>
+                    {pb.label}
+                    {pb.description && (
+                      <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.7, marginLeft: 4 }}>{pb.description}</span>
+                    )}
+                  </div>
                 </div>
               );
             });
@@ -745,13 +775,29 @@ export default function TimelineGenerator() {
               pb.tier = t;
               placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
             }
-            const BAND_W = 20;
+            const BAND_W = 22;
+            const LABEL_W = 60;
             return periodBands.map(pb => {
-              const bandLeft = AXIS_X - BAND_W / 2 - pb.tier * (BAND_W + 2);
+              const opacity = pb.opacity ?? 0.5;
+              const bandLeft = AXIS_X - BAND_W / 2 - pb.tier * (BAND_W + LABEL_W + 4);
               return (
-                <div key={pb.id} style={{ position: 'absolute', left: bandLeft, top: `${pb.fracStart * 100}%`, width: BAND_W, height: `${Math.max((pb.fracEnd - pb.fracStart) * 100, 0.5)}%`, backgroundColor: pb.color, opacity: 0.25, borderRadius: 4, zIndex: 0 }}>
-                  <div style={{ position: 'absolute', inset: 0, border: `1.5px solid ${pb.color}`, borderRadius: 4, opacity: 0.6, pointerEvents: 'none' }} />
-                  <span style={{ fontSize: 8, fontWeight: 700, color: pb.color, opacity: 1, writingMode: 'vertical-rl', textOrientation: 'mixed', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '4px 0', position: 'relative', zIndex: 1 }}>{pb.label}</span>
+                <div key={pb.id} style={{ position: 'absolute', left: bandLeft, top: `${pb.fracStart * 100}%`, height: `${Math.max((pb.fracEnd - pb.fracStart) * 100, 0.5)}%`, zIndex: 0, display: 'flex', flexDirection: 'row-reverse', alignItems: 'stretch' }}>
+                  {/* Bande colorée */}
+                  <div style={{
+                    width: BAND_W, height: '100%', borderRadius: 4,
+                    backgroundColor: pb.color, opacity,
+                    border: `1.5px solid ${pb.color}`,
+                  }} />
+                  {/* Label à côté de la bande */}
+                  <div style={{
+                    width: LABEL_W, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                    paddingRight: 4, textAlign: 'right',
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: pb.color, lineHeight: 1.2 }}>{pb.label}</div>
+                    {pb.description && (
+                      <div style={{ fontSize: 8, color: pb.color, opacity: 0.7, lineHeight: 1.2 }}>{pb.description}</div>
+                    )}
+                  </div>
                 </div>
               );
             });
