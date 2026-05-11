@@ -15,6 +15,16 @@ interface TimelineEvent {
   image?: string;
 }
 
+// Période colorée sur l'axe de la frise
+interface TimelinePeriod {
+  id: string;
+  startDate: string;
+  endDate: string;
+  label: string;
+  color: string;
+  description: string;
+}
+
 interface TimelineConfig {
   title: string;
   subtitle: string;
@@ -22,6 +32,7 @@ interface TimelineConfig {
   endYear: string;
   style: TimelineStyle;
   events: TimelineEvent[];
+  periods: TimelinePeriod[];
   orientation: 'horizontal' | 'vertical';
 }
 
@@ -95,9 +106,29 @@ function newId() { return `evt_${Date.now()}_${counter++}`; }
 
 const EVENT_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
 
+// Couleurs pastel pour les périodes
+const PERIOD_COLORS = ['#93C5FD', '#FCA5A5', '#6EE7B7', '#FDE68A', '#C4B5FD', '#F9A8D4', '#67E8F9', '#FDBA74'];
+
 function parseYear(s: string): number {
-  const n = parseInt(s);
-  return isNaN(n) ? 0 : n;
+  const trimmed = s.trim().replace(/\s+/g, '');
+  // Check for suffixes: Ga (billion), Ma (million), Ka (thousand)
+  const match = trimmed.match(/^(-?[\d.]+)\s*(Ga|Ma|Ka)?$/i);
+  if (!match) return parseInt(s) || 0;
+  const num = parseFloat(match[1]);
+  if (isNaN(num)) return 0;
+  const suffix = (match[2] || '').toLowerCase();
+  if (suffix === 'ga') return num * 1_000_000_000;
+  if (suffix === 'ma') return num * 1_000_000;
+  if (suffix === 'ka') return num * 1_000;
+  return num;
+}
+
+function formatAxisLabel(year: number): string {
+  const abs = Math.abs(year);
+  if (abs >= 1_000_000_000) return (year / 1_000_000_000).toFixed(1) + ' Ga';
+  if (abs >= 1_000_000) return (year / 1_000_000).toFixed(0) + ' Ma';
+  if (abs >= 10_000) return (year / 1_000).toFixed(0) + ' Ka';
+  return year.toString();
 }
 
 // ─── Component ──────────────────────────────────────────────
@@ -119,6 +150,7 @@ export default function TimelineGenerator() {
     style: 'classique',
     orientation: 'horizontal',
     events: [],
+    periods: [],
   });
 
   const preset = STYLE_PRESETS[config.style];
@@ -184,6 +216,34 @@ export default function TimelineGenerator() {
       [events[idx], events[newIdx]] = [events[newIdx], events[idx]];
       return { ...prev, events };
     });
+  }, []);
+
+  // ─── Gestion des périodes ──────────
+
+  const addPeriod = useCallback(() => {
+    const period: TimelinePeriod = {
+      id: newId(),
+      startDate: '',
+      endDate: '',
+      label: '',
+      color: PERIOD_COLORS[config.periods.length % PERIOD_COLORS.length],
+      description: '',
+    };
+    setConfig(prev => ({ ...prev, periods: [...prev.periods, period] }));
+    setTimeout(() => {
+      editorRef.current?.scrollTo({ top: editorRef.current.scrollHeight, behavior: 'smooth' });
+    }, 50);
+  }, [config.periods.length]);
+
+  const updatePeriod = useCallback((id: string, patch: Partial<TimelinePeriod>) => {
+    setConfig(prev => ({
+      ...prev,
+      periods: prev.periods.map(p => p.id === id ? { ...p, ...patch } : p),
+    }));
+  }, []);
+
+  const removePeriod = useCallback((id: string) => {
+    setConfig(prev => ({ ...prev, periods: prev.periods.filter(p => p.id !== id) }));
   }, []);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,6 +405,40 @@ export default function TimelineGenerator() {
 
       <button style={editorS.addBtn} onClick={addEvent}>+ Événement</button>
 
+      <h3 style={editorS.section}>Périodes ({config.periods.length})</h3>
+      <div style={editorS.eventList}>
+        {config.periods.map((period, idx) => (
+          <div key={period.id} style={{
+            ...editorS.eventCard,
+            borderLeft: `3px dashed ${period.color}`,
+          }}>
+            <div style={editorS.eventHeader}>
+              <input
+                type="color"
+                value={period.color}
+                onChange={e => updatePeriod(period.id, { color: e.target.value })}
+                style={{ width: 24, height: 24, border: 'none', cursor: 'pointer', padding: 0 }}
+              />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', flex: 1 }}>Période {idx + 1}</span>
+              <button style={{ ...editorS.smallBtn, color: '#EF4444' }} onClick={() => removePeriod(period.id)}>✕</button>
+            </div>
+            <div style={editorS.row}>
+              <input style={{ ...editorS.input, width: 80 }} placeholder="Début" value={period.startDate} onChange={e => updatePeriod(period.id, { startDate: e.target.value })} />
+              <input style={{ ...editorS.input, width: 80 }} placeholder="Fin" value={period.endDate} onChange={e => updatePeriod(period.id, { endDate: e.target.value })} />
+              <input style={{ ...editorS.input, flex: 1 }} placeholder="Nom" value={period.label} onChange={e => updatePeriod(period.id, { label: e.target.value })} />
+            </div>
+            <textarea
+              style={editorS.textarea}
+              placeholder="Description (optionnel)"
+              value={period.description}
+              onChange={e => updatePeriod(period.id, { description: e.target.value })}
+              rows={2}
+            />
+          </div>
+        ))}
+      </div>
+      <button style={editorS.addBtn} onClick={addPeriod}>+ Période</button>
+
       <h3 style={editorS.section}>Exporter</h3>
       <div style={editorS.row}>
         <button style={{ ...editorS.exportBtn, backgroundColor: '#3B82F6' }} onClick={() => exportAs('png')} disabled={isExporting}>
@@ -428,11 +522,79 @@ export default function TimelineGenerator() {
           <div style={{
             position: 'absolute', top: AXIS_Y - 20 - 18, left: AXIS_PAD - 10,
             fontSize: 11, fontWeight: 700, color: preset.axisBg,
-          }}>{config.startYear}</div>
+          }}>{formatAxisLabel(startY)}</div>
           <div style={{
             position: 'absolute', top: AXIS_Y - 20 - 18, right: AXIS_PAD - 10,
             fontSize: 11, fontWeight: 700, color: preset.axisBg, textAlign: 'right',
-          }}>{config.endYear}</div>
+          }}>{formatAxisLabel(endY)}</div>
+
+          {/* Graduations */}
+          {Array.from({ length: 6 }, (_, i) => {
+            const frac = i / 5;
+            const year = startY + frac * range;
+            return (
+              <div key={`tick-${i}`} style={{
+                position: 'absolute',
+                left: AXIS_PAD + frac * axisW - 0.5,
+                top: AXIS_Y - 20 - 4,
+                width: 1,
+                height: 10,
+                backgroundColor: preset.axisBg,
+                opacity: 0.4,
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  top: 12,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: preset.axisBg,
+                  opacity: 0.7,
+                  whiteSpace: 'nowrap',
+                }}>{formatAxisLabel(Math.round(year))}</span>
+              </div>
+            );
+          })}
+
+          {/* Périodes — bandes colorées derrière les événements */}
+          {(() => {
+            const periodBands = config.periods
+              .filter(p => p.startDate.trim() && p.endDate.trim())
+              .map(p => {
+                const sY = parseYear(p.startDate);
+                const eY = parseYear(p.endDate);
+                const fracStart = Math.max(0, Math.min(1, (sY - startY) / range));
+                const fracEnd = Math.max(0, Math.min(1, (eY - startY) / range));
+                return { ...p, fracStart, fracEnd, tier: 0 };
+              });
+            const placedPeriods: Array<{ fracStart: number; fracEnd: number; tier: number }> = [];
+            for (const pb of periodBands) {
+              let t = 0;
+              // eslint-disable-next-line no-constant-condition
+              while (true) {
+                const sameTier = placedPeriods.filter(pp => pp.tier === t);
+                const overlaps = sameTier.some(pp => pb.fracStart < pp.fracEnd && pb.fracEnd > pp.fracStart);
+                if (!overlaps) break;
+                t++;
+              }
+              pb.tier = t;
+              placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
+            }
+            const BAND_H = 20;
+            const axisTopPos = AXIS_Y - 20;
+            return periodBands.map(pb => {
+              const pLeft = AXIS_PAD + pb.fracStart * axisW;
+              const pWidth = (pb.fracEnd - pb.fracStart) * axisW;
+              const bandTop = axisTopPos - BAND_H / 2 - pb.tier * (BAND_H + 2);
+              return (
+                <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), height: BAND_H, backgroundColor: pb.color, opacity: 0.25, borderRadius: 4, zIndex: 0 }}>
+                  <div style={{ position: 'absolute', inset: 0, border: `1.5px solid ${pb.color}`, borderRadius: 4, opacity: 0.6, pointerEvents: 'none' }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: pb.color, opacity: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 4px', position: 'relative', zIndex: 1, lineHeight: `${BAND_H}px` }}>{pb.label}</span>
+                </div>
+              );
+            });
+          })()}
 
           {/* Events */}
           {eventsWithPos.map(({ evt, side, tier, frac }) => {
@@ -506,8 +668,8 @@ export default function TimelineGenerator() {
                     )}
                     {evt.image && (
                       <img src={evt.image} alt="" style={{
-                        width: '100%', height: 60, objectFit: 'cover',
-                        borderRadius: 4, marginTop: 6,
+                        width: '100%', height: 80, objectFit: 'cover',
+                        borderRadius: 4, marginTop: 8,
                       }} />
                     )}
                   </div>
@@ -541,7 +703,7 @@ export default function TimelineGenerator() {
             <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4, fontStyle: 'italic' }}>{config.subtitle}</div>
           )}
           <div style={{ fontSize: 12, opacity: 0.4, marginTop: 4 }}>
-            {config.startYear} — {config.endYear}
+            {formatAxisLabel(startY)} — {formatAxisLabel(endY)}
           </div>
         </div>
 
@@ -558,6 +720,42 @@ export default function TimelineGenerator() {
             position: 'absolute', top: -6, left: AXIS_X - 5, width: 13, height: 13,
             borderRadius: '50%', backgroundColor: preset.axisBg, zIndex: 2,
           }} />
+
+          {/* Périodes — bandes colorées le long de l'axe vertical */}
+          {(() => {
+            const periodBands = config.periods
+              .filter(p => p.startDate.trim() && p.endDate.trim())
+              .map(p => {
+                const sY = parseYear(p.startDate);
+                const eY = parseYear(p.endDate);
+                const fracStart = Math.max(0, Math.min(1, (sY - startY) / range));
+                const fracEnd = Math.max(0, Math.min(1, (eY - startY) / range));
+                return { ...p, fracStart, fracEnd, tier: 0 };
+              });
+            const placedPeriods: Array<{ fracStart: number; fracEnd: number; tier: number }> = [];
+            for (const pb of periodBands) {
+              let t = 0;
+              // eslint-disable-next-line no-constant-condition
+              while (true) {
+                const sameTier = placedPeriods.filter(pp => pp.tier === t);
+                const overlaps = sameTier.some(pp => pb.fracStart < pp.fracEnd && pb.fracEnd > pp.fracStart);
+                if (!overlaps) break;
+                t++;
+              }
+              pb.tier = t;
+              placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
+            }
+            const BAND_W = 20;
+            return periodBands.map(pb => {
+              const bandLeft = AXIS_X - BAND_W / 2 - pb.tier * (BAND_W + 2);
+              return (
+                <div key={pb.id} style={{ position: 'absolute', left: bandLeft, top: `${pb.fracStart * 100}%`, width: BAND_W, height: `${Math.max((pb.fracEnd - pb.fracStart) * 100, 0.5)}%`, backgroundColor: pb.color, opacity: 0.25, borderRadius: 4, zIndex: 0 }}>
+                  <div style={{ position: 'absolute', inset: 0, border: `1.5px solid ${pb.color}`, borderRadius: 4, opacity: 0.6, pointerEvents: 'none' }} />
+                  <span style={{ fontSize: 8, fontWeight: 700, color: pb.color, opacity: 1, writingMode: 'vertical-rl', textOrientation: 'mixed', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '4px 0', position: 'relative', zIndex: 1 }}>{pb.label}</span>
+                </div>
+              );
+            });
+          })()}
 
           {sortedEvents.map((evt) => (
             <div key={evt.id} style={{
@@ -612,7 +810,7 @@ export default function TimelineGenerator() {
                   </div>
                   {evt.image && (
                     <img src={evt.image} alt="" style={{
-                      width: 80, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0,
+                      width: 100, height: 75, objectFit: 'cover', borderRadius: 6, flexShrink: 0,
                     }} />
                   )}
                 </div>
