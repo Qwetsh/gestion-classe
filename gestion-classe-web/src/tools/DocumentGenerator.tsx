@@ -15,6 +15,18 @@ const btnPrimary = "px-5 py-2.5 rounded-xl text-white font-medium text-sm transi
 const btnSmall = "px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--indigo)] bg-[var(--indigo-soft)] hover:bg-[var(--indigo)]/20 transition-all";
 const btnRemove = "px-2 py-1 rounded-lg text-xs font-medium text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-all";
 
+// ── Input helper component (outside to preserve focus) ──
+function Field({ label, value, onChange, type = 'text', placeholder = '', className = '' }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string;
+}) {
+  return (
+    <div className={className || 'flex-1'}>
+      <label className={labelCls}>{label}</label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={inputCls} />
+    </div>
+  );
+}
+
 type Tab = 'captation' | 'sortie' | 'demande';
 
 // ── Support item for captation form ──
@@ -220,16 +232,6 @@ export default function DocumentGenerator() {
     const timer = setTimeout(() => generatePDF(false), 400);
     return () => clearTimeout(timer);
   }, [generatePDF]);
-
-  // ── Input helper component ──
-  const Field = ({ label, value, onChange, type = 'text', placeholder = '', className = '' }: {
-    label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string;
-  }) => (
-    <div className={className || 'flex-1'}>
-      <label className={labelCls}>{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={inputCls} />
-    </div>
-  );
 
   // ── Tab buttons ──
   const tabs: { id: Tab; label: string }[] = [
