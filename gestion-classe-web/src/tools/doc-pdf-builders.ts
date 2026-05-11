@@ -208,29 +208,29 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
 
   y += 6;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Ecole ou etablissement scolaire : ", ML + 3, y);
+  doc.text("Ecole ou etablissement scolaire :", ML + 3, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.etablissement, ML + 3 + doc.getTextWidth("Ecole ou etablissement scolaire : "), y);
+  doc.text(data.etablissement, ML + 3 + doc.getTextWidth("Ecole ou etablissement scolaire :") + 2, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Telephone : ", ML + 3, y);
+  doc.text("Telephone :", ML + 3, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.tel, ML + 3 + doc.getTextWidth("Telephone : "), y);
+  doc.text(data.tel, ML + 3 + doc.getTextWidth("Telephone :") + 2, y);
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Code postal / Commune : ", W / 2, y);
+  doc.text("Code postal / Commune :", W / 2, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.codepostal, W / 2 + doc.getTextWidth("Code postal / Commune : "), y);
+  doc.text(data.codepostal, W / 2 + doc.getTextWidth("Code postal / Commune :") + 2, y);
 
   y += 7;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Annee scolaire : ", ML + 3, y);
+  doc.text("Annee scolaire :", ML + 3, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.annee, ML + 3 + doc.getTextWidth("Annee scolaire : "), y);
+  doc.text(data.annee, ML + 3 + doc.getTextWidth("Annee scolaire :") + 2, y);
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Classe de : ", W / 2, y);
+  doc.text("Classe de :", W / 2, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.classe, W / 2 + doc.getTextWidth("Classe de : "), y);
+  doc.text(data.classe, W / 2 + doc.getTextWidth("Classe de :") + 2, y);
 
   // Section 1
   y += 14;
@@ -249,15 +249,15 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
   y = sectionTitle('2', 'Designation du projet audio-visuel', y);
   y += 2;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Projet : ", ML, y);
+  doc.text("Projet :", ML, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(`\u00AB ${data.projet} \u00BB`, ML + doc.getTextWidth("Projet : "), y);
+  doc.text(`\u00AB ${data.projet} \u00BB`, ML + doc.getTextWidth("Projet :") + 2, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Titre de l'oeuvre si applicable : ", ML, y);
+  doc.text("Titre de l'oeuvre si applicable :", ML, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.titreOeuvre || '', ML + doc.getTextWidth("Titre de l'oeuvre si applicable : "), y);
+  doc.text(data.titreOeuvre || '', ML + doc.getTextWidth("Titre de l'oeuvre si applicable :") + 2, y);
 
   y += 6;
   setFont(doc, 'normal', 8.5, BLACK);
@@ -265,17 +265,17 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
 
   y += 5;
   setFont(doc, 'bold', 9, BLACK);
-  const dateLabel = "Date(s) d'enregistrement  ";
+  const dateLabel = "Date(s) d'enregistrement :";
   doc.text(dateLabel, ML, y);
   setFont(doc, 'normal', 9, [200, 0, 0]);
   const dateRange = `du ${data.dateDebut || '...'} au ${data.dateFin || '...'}`;
   doc.text(dateRange, ML + doc.getTextWidth(dateLabel) + 2, y);
 
   setFont(doc, 'bold', 9, BLACK);
-  const lieuX = ML + doc.getTextWidth(dateLabel) + 2 + doc.getTextWidth(dateRange) + 5;
-  doc.text("Lieu(x) : ", Math.min(lieuX, W / 2 + 20), y);
+  const lieuX = ML + doc.getTextWidth(dateLabel) + 2 + doc.getTextWidth(dateRange) + 6;
+  doc.text("Lieu(x) :", Math.min(lieuX, W / 2 + 20), y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.lieu || '', Math.min(lieuX, W / 2 + 20) + doc.getTextWidth("Lieu(x) : "), y);
+  doc.text(data.lieu || '', Math.min(lieuX, W / 2 + 20) + doc.getTextWidth("Lieu(x) :") + 2, y);
 
   y += 6;
   setFont(doc, 'normal', 7.5, BLACK);
@@ -355,10 +355,10 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
 
   y += 4;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Nom prenom de l'eleve : ", ML, y);
+  doc.text("Nom prenom de l'eleve :", ML, y);
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.3);
-  doc.line(ML + doc.getTextWidth("Nom prenom de l'eleve : "), y + 1, ML + CW, y + 1);
+  doc.line(ML + doc.getTextWidth("Nom prenom de l'eleve :") + 2, y + 1, ML + CW, y + 1);
   y += 8;
   doc.text("Signature :", ML + CW - 30, y);
 
@@ -368,29 +368,29 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
   y = sectionTitle('5', 'Autorisation parentale', y);
   y += 2;
   setFont(doc, 'normal', 9, BLACK);
-  doc.text("Je (Nous) soussigne(e)(s) : ", ML, y);
+  doc.text("Je (Nous) soussigne(e)(s) :", ML, y);
   setFont(doc, 'italic', 9, GRAY);
-  doc.text("[Nom - Prenom]", ML + doc.getTextWidth("Je (Nous) soussigne(e)(s) : "), y);
+  doc.text("[Nom - Prenom]", ML + doc.getTextWidth("Je (Nous) soussigne(e)(s) :") + 2, y);
   y += 5;
   setFont(doc, 'normal', 9, BLACK);
-  doc.text("Demeurant : ", ML, y);
+  doc.text("Demeurant :", ML, y);
   setFont(doc, 'italic', 9, GRAY);
-  doc.text("[adresse]", ML + doc.getTextWidth("Demeurant : "), y);
+  doc.text("[adresse]", ML + doc.getTextWidth("Demeurant :") + 2, y);
   y += 5;
   setFont(doc, 'normal', 9, BLACK);
-  doc.text("Et ", ML, y);
+  doc.text("Et :", ML, y);
   setFont(doc, 'italic', 9, GRAY);
-  doc.text("[Nom - Prenom]", ML + doc.getTextWidth("Et "), y);
+  doc.text("[Nom - Prenom]", ML + doc.getTextWidth("Et :") + 2, y);
   y += 5;
   setFont(doc, 'normal', 9, BLACK);
-  doc.text("Demeurant : ", ML, y);
+  doc.text("Demeurant :", ML, y);
   setFont(doc, 'italic', 9, GRAY);
-  doc.text("[adresses a preciser si differentes]", ML + doc.getTextWidth("Demeurant : "), y);
+  doc.text("[adresses a preciser si differentes]", ML + doc.getTextWidth("Demeurant :") + 2, y);
   y += 5;
   setFont(doc, 'normal', 9, BLACK);
-  doc.text("Agissant en qualite de representant(s) legal(aux) de : ", ML, y);
+  doc.text("Agissant en qualite de representant(s) legal(aux) de :", ML, y);
   setFont(doc, 'italic', 9, GRAY);
-  doc.text("[Nom - Prenom de l'eleve]", ML + doc.getTextWidth("Agissant en qualite de representant(s) legal(aux) de : "), y);
+  doc.text("[Nom - Prenom de l'eleve]", ML + doc.getTextWidth("Agissant en qualite de representant(s) legal(aux) de :") + 2, y);
   y += 7;
 
   setFont(doc, 'normal', 8, BLACK);
@@ -492,7 +492,7 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
   setFont(doc, 'bold', 10, BLACK);
   doc.text('gratuite', ML + doc.getTextWidth('Une sortie pedagogique '), y);
   setFont(doc, 'normal', 10, BLACK);
-  doc.text(' est organisee par :', ML + doc.getTextWidth('Une sortie pedagogique gratuite'), y);
+  doc.text(' est organisee par :', ML + doc.getTextWidth('Une sortie pedagogique ') + doc.getTextWidth('gratuite'), y);
 
   // Info box
   y += 6;
@@ -503,42 +503,42 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Organisateur :', ML + 4, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(`${data.organisateur} (${data.fonction})`, ML + 35, y);
+  doc.text(`${data.organisateur} (${data.fonction})`, ML + 36, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Date :', ML + 4, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.date || '...', ML + 35, y);
+  doc.text(data.date || '...', ML + 20, y);
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Classe(s) :', W / 2 + 10, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.classe || '...', W / 2 + 35, y);
+  doc.text(data.classe || '...', W / 2 + 36, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Lieu :', ML + 4, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.lieu || '...', ML + 35, y);
+  doc.text(data.lieu || '...', ML + 20, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Horaires :', ML + 4, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(`De ${data.heureDepart || '...'} a ${data.heureRetour || '...'}`, ML + 35, y);
+  doc.text(`De ${data.heureDepart || '...'} a ${data.heureRetour || '...'}`, ML + 28, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Matiere(s) :', ML + 4, y);
   setFont(doc, 'normal', 9, BLACK);
-  doc.text(data.matiere || '...', ML + 35, y);
+  doc.text(data.matiere || '...', ML + 28, y);
 
   y += 6;
   setFont(doc, 'bold', 9, BLUE);
   doc.text('Objectifs :', ML + 4, y);
   setFont(doc, 'normal', 9, BLACK);
-  const objLines = doc.splitTextToSize(data.objectifs || '...', CW - 39);
-  doc.text(objLines, ML + 35, y);
+  const objLines = doc.splitTextToSize(data.objectifs || '...', CW - 32);
+  doc.text(objLines, ML + 28, y);
 
   const objH = objLines.length * 4;
   y += objH + 4;
@@ -577,8 +577,8 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
 
   y += 7;
   setFont(doc, 'bold', 9, BLACK);
-  doc.text(`A retourner a ${data.organisateur || 'M/Mme _______________'}`, ML, y);
-  doc.text(`Avant le : ${data.dateRetourCoupon || '___ / ___ / 20___'}`, W - MR, y, { align: 'right' });
+  doc.text(`A retourner a  ${data.organisateur || 'M/Mme _______________'}`, ML, y);
+  doc.text(`Avant le :  ${data.dateRetourCoupon || '___ / ___ / 20___'}`, W - MR, y, { align: 'right' });
 
   y += 8;
   setFont(doc, 'normal', 9, BLACK);
@@ -588,12 +588,12 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
   y += 6;
   doc.text(`accuse reception de l'information de sortie scolaire gratuite et obligatoire organisee le ${data.date || '___ / ___ / 20___'}.`, ML, y);
   y += 6;
-  doc.text(`Heure de depart : ${data.heureDepart || '___h___'}  -  Heure de retour : ${data.heureRetour || '___h___'}`, ML, y);
+  doc.text(`Heure de depart :  ${data.heureDepart || '___h___'}   -   Heure de retour :  ${data.heureRetour || '___h___'}`, ML, y);
   y += 6;
-  doc.text(`Lieu de la sortie : ${data.lieu || '______________________________'}`, ML, y);
-  doc.text(`Mode de transport : ${data.transport}`, W / 2 + 10, y);
+  doc.text(`Lieu de la sortie :  ${data.lieu || '______________________________'}`, ML, y);
+  doc.text(`Mode de transport :  ${data.transport}`, W / 2 + 10, y);
   y += 6;
-  doc.text(`Lieu de depart : ${data.lieuDepart}  -  Lieu d'arrivee : ${data.lieuArrivee}`, ML, y);
+  doc.text(`Lieu de depart :  ${data.lieuDepart}   -   Lieu d'arrivee :  ${data.lieuArrivee}`, ML, y);
 
   y += 8;
   setFont(doc, 'normal', 8.5, BLACK);
@@ -698,11 +698,11 @@ export function buildDemandePDF(data: DemandeData, logoPNG: string | null): jsPD
 
   // Deplacement
   sHead('RENSEIGNEMENTS DU DEPLACEMENT');
-  lbl('Depart :', ML, y); val(data.dateDepart + ' a ' + (data.heureDepart || '...'), ML + 20, y);
-  lbl('Lieu :', ML + 80, y); val(data.lieuDepart, ML + 92, y);
+  lbl('Depart :', ML, y); val(data.dateDepart + '  a  ' + (data.heureDepart || '...'), ML + 22, y);
+  lbl('Lieu :', ML + 80, y); val(data.lieuDepart, ML + 94, y);
   y += 5;
-  lbl('Retour :', ML, y); val(data.dateRetour + ' a ' + (data.heureRetour || '...'), ML + 20, y);
-  lbl('Lieu :', ML + 80, y); val(data.lieuRetour, ML + 92, y);
+  lbl('Retour :', ML, y); val(data.dateRetour + '  a  ' + (data.heureRetour || '...'), ML + 22, y);
+  lbl('Lieu :', ML + 80, y); val(data.lieuRetour, ML + 94, y);
   y += 5;
   lbl('Nb demi-journee(s) sur temps scolaire :', ML, y); val(data.nbJournees, ML + 65, y);
   y += 7;
