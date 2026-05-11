@@ -39,6 +39,17 @@ interface TimelineConfig {
   orientation: 'horizontal' | 'vertical';
   categories: string[];
   zoomLevel: number; // 0.5 to 3, default 1
+  // Comparative mode
+  comparative?: boolean;
+  line1Label?: string;
+  line2Label?: string;
+}
+
+// Exercise mode options
+interface ExerciseOptions {
+  hideDates: boolean;
+  hideLabels: boolean;
+  hideDescriptions: boolean;
 }
 
 // ─── Style presets ──────────────────────────────────────────
@@ -180,6 +191,8 @@ export default function TimelineGenerator() {
   const [filterCategory, setFilterCategory] = useState<string | ''>('');
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number; scrollX: number; scrollY: number } | null>(null);
+  const [exerciseMode, setExerciseMode] = useState<ExerciseOptions>({ hideDates: false, hideLabels: false, hideDescriptions: false });
+  const [showExerciseOptions, setShowExerciseOptions] = useState(false);
 
   const defaultConfig: TimelineConfig = {
     title: 'Ma frise chronologique',
@@ -466,6 +479,224 @@ export default function TimelineGenerator() {
     }
   }, [config.title, config.orientation, config.zoomLevel, preset.bg]);
 
+  // ─── Export HTML interactif ──────────
+
+  const exportInteractiveHTML = useCallback(() => {
+    const evts = sortedEvents.map(e => ({
+      date: e.date, label: e.label, description: e.description,
+      color: e.color, category: e.category, image: e.image,
+    }));
+    const pds = config.periods.filter(p => p.startDate.trim() && p.endDate.trim()).map(p => ({
+      startDate: p.startDate, endDate: p.endDate, label: p.label,
+      color: p.color, description: p.description, opacity: p.opacity,
+    }));
+    const htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${config.title} - Frise Interactive</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:${preset.bodyFont};background:${preset.bg};color:${preset.textColor};overflow-x:auto;min-height:100vh}
+.controls{position:fixed;top:12px;right:12px;z-index:100;display:flex;gap:6px;background:rgba(0,0,0,0.7);padding:8px 12px;border-radius:8px}
+.controls button{background:#3B82F6;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.controls button:hover{background:#2563EB}
+.controls span{color:#fff;font-size:12px;line-height:32px}
+.header{text-align:center;padding:30px 20px 10px}
+.header h1{font-family:${preset.titleFont};font-size:28px;font-weight:700}
+.header .sub{font-size:13px;opacity:0.6;margin-top:4px;font-style:italic}
+.timeline-container{position:relative;overflow-x:auto;padding:20px 0 40px}
+.axis{position:relative;margin:0 60px}
+.axis-line{height:3px;background:${preset.axisBg};border-radius:2px;position:absolute;left:0;right:0}
+.period-band{position:absolute;border-radius:4px;transition:opacity 0.2s}
+.period-band:hover{opacity:0.9!important}
+.period-label{text-align:center;font-size:10px;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.event-dot{position:absolute;border-radius:50%;border:3px solid ${preset.bg};z-index:10;cursor:pointer;transition:transform 0.2s}
+.event-dot:hover{transform:scale(1.5)}
+.event-card{position:absolute;z-index:5;transition:transform 0.2s,box-shadow 0.2s;cursor:pointer}
+.event-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.15)!important}
+.event-inner{background:${preset.cardBg};border:1px solid ${preset.cardBorder};border-radius:8px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.event-date{font-size:11px;font-weight:700;margin-bottom:2px}
+.event-label{font-size:13px;font-weight:700;line-height:1.2;margin-bottom:3px}
+.event-desc{font-size:10px;opacity:0.7;line-height:1.4}
+.event-img{width:100%;height:80px;object-fit:cover;border-radius:4px;margin-top:8px}
+.connector{position:absolute;width:2px;opacity:0.5;z-index:1}
+.tooltip{display:none;position:fixed;background:#1F2937;color:#fff;padding:12px 16px;border-radius:8px;font-size:12px;max-width:300px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.3);pointer-events:none}
+.tooltip.show{display:block}
+.tooltip h4{font-size:14px;margin-bottom:4px}
+.tooltip p{opacity:0.8;line-height:1.5}
+.cat-badge{font-size:8px;font-weight:600;padding:1px 5px;border-radius:8px;display:inline-block}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:10px 20px}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;padding:3px 8px;border-radius:12px;border:1px solid transparent;transition:all 0.2s}
+.legend-item:hover{border-color:currentColor}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="controls">
+  <button onclick="zoom(-0.1)">-</button>
+  <span id="zoom-label">100%</span>
+  <button onclick="zoom(0.1)">+</button>
+  <button onclick="resetZoom()">Reset</button>
+</div>
+<div class="header">
+  <h1>${config.title}</h1>
+  ${config.subtitle ? `<div class="sub">${config.subtitle}</div>` : ''}
+</div>
+<div id="legend" class="legend"></div>
+<div id="timeline" class="timeline-container"></div>
+<div id="tooltip" class="tooltip"></div>
+<script>
+const EVENTS=${JSON.stringify(evts)};
+const PERIODS=${JSON.stringify(pds)};
+const START=${startY};
+const END=${endY};
+const RANGE=Math.max(END-START,1);
+const PRESET={axisBg:'${preset.axisBg}',bg:'${preset.bg}',dotSize:${preset.dotSize},cardBg:'${preset.cardBg}',cardBorder:'${preset.cardBorder}'};
+let scale=1;
+function parseYear(s){const m=s.trim().replace(/\\s+/g,'').match(/^(-?[\\d.]+)\\s*(Ga|Ma|Ka)?$/i);if(!m)return parseInt(s)||0;const n=parseFloat(m[1]);const su=(m[2]||'').toLowerCase();if(su==='ga')return n*1e9;if(su==='ma')return n*1e6;if(su==='ka')return n*1e3;return n}
+function fmtYear(y){const a=Math.abs(y);if(a>=1e9)return(y/1e9).toFixed(1)+' Ga';if(a>=1e6)return(y/1e6).toFixed(0)+' Ma';if(a>=1e4)return(y/1e3).toFixed(0)+' Ka';return y.toString()}
+function zoom(d){scale=Math.max(0.3,Math.min(3,scale+d));document.getElementById('zoom-label').textContent=Math.round(scale*100)+'%';document.getElementById('timeline').style.transform='scale('+scale+')';document.getElementById('timeline').style.transformOrigin='top left'}
+function resetZoom(){scale=1;zoom(0)}
+function render(){
+  const container=document.getElementById('timeline');
+  const CARD_W=160,CARD_GAP=12,TIER_H=130,DOT_R=PRESET.dotSize/2,AXIS_PAD=60;
+  const baseW=Math.max(EVENTS.length*(CARD_W+20)+120,800);
+  const axisW=baseW-AXIS_PAD*2;
+  const evtsPos=EVENTS.map((e,i)=>{
+    const y=parseYear(e.date);const f=Math.max(0.02,Math.min(0.98,(y-START)/RANGE));
+    return{...e,frac:f,side:i%2===0?'top':'bottom',tier:0};
+  });
+  const placed=[];
+  for(const ep of evtsPos){
+    const px=ep.frac*axisW;let tier=0;
+    while(true){const st=placed.filter(p=>p.side===ep.side&&p.tier===tier);if(!st.some(p=>Math.abs(p.px-px)<CARD_W+CARD_GAP))break;tier++}
+    ep.tier=tier;placed.push({px,side:ep.side,tier});
+  }
+  const maxTop=Math.max(0,...evtsPos.filter(e=>e.side==='top').map(e=>e.tier));
+  const maxBot=Math.max(0,...evtsPos.filter(e=>e.side==='bottom').map(e=>e.tier));
+  const AXIS_Y=60+(maxTop+1)*TIER_H;
+  const totalH=AXIS_Y+30+(maxBot+1)*TIER_H+20;
+  container.style.width=baseW+'px';container.style.height=totalH+'px';container.style.position='relative';
+  let html='<div class="axis-line" style="top:'+(AXIS_Y-20)+'px;left:'+(AXIS_PAD-10)+'px;right:'+(AXIS_PAD-10)+'px"></div>';
+  // Periods
+  PERIODS.forEach(p=>{
+    const s=parseYear(p.startDate),e=parseYear(p.endDate);
+    const f0=Math.max(0,Math.min(1,(Math.min(s,e)-START)/RANGE));
+    const f1=Math.max(0,Math.min(1,(Math.max(s,e)-START)/RANGE));
+    const left=AXIS_PAD+f0*axisW,w=(f1-f0)*axisW;
+    html+='<div class="period-band" style="left:'+left+'px;top:'+(AXIS_Y-34)+'px;width:'+Math.max(w,2)+'px;height:28px;background:'+p.color+';opacity:'+p.opacity+'"></div>';
+    html+='<div class="period-label" style="position:absolute;left:'+left+'px;top:'+(AXIS_Y-4)+'px;width:'+Math.max(w,2)+'px;color:'+p.color+'">'+p.label+'</div>';
+  });
+  // Events
+  evtsPos.forEach((ev,i)=>{
+    const leftPx=AXIS_PAD+ev.frac*axisW;const axisTop=AXIS_Y-20;const isTop=ev.side==='top';
+    const GAP=22;const cardTop=isTop?axisTop-GAP-(ev.tier+1)*TIER_H:axisTop+GAP+ev.tier*TIER_H;
+    const connTop=isTop?cardTop:axisTop+2;const connH=isTop?axisTop-cardTop:cardTop-axisTop;
+    html+='<div class="event-dot" style="left:'+(leftPx-DOT_R)+'px;top:'+(axisTop-DOT_R+1)+'px;width:'+PRESET.dotSize+'px;height:'+PRESET.dotSize+'px;background:'+ev.color+';box-shadow:0 0 0 2px '+ev.color+'" data-idx="'+i+'"></div>';
+    html+='<div class="connector" style="left:'+(leftPx-1)+'px;top:'+connTop+'px;height:'+Math.max(0,connH)+'px;background:'+ev.color+'"></div>';
+    html+='<div class="event-card" style="left:'+(leftPx-CARD_W/2)+'px;top:'+cardTop+'px;width:'+CARD_W+'px" data-idx="'+i+'">';
+    html+='<div class="event-inner" style="border-top:3px solid '+ev.color+'">';
+    html+='<div class="event-date" style="color:'+ev.color+'">'+ev.date+'</div>';
+    html+='<div class="event-label">'+ev.label+'</div>';
+    if(ev.description)html+='<div class="event-desc">'+ev.description+'</div>';
+    if(ev.image)html+='<img class="event-img" src="'+ev.image+'" alt="">';
+    html+='</div></div>';
+  });
+  container.innerHTML=html;
+  // Tooltip
+  const tooltip=document.getElementById('tooltip');
+  container.querySelectorAll('[data-idx]').forEach(el=>{
+    el.addEventListener('mouseenter',e=>{
+      const ev=evtsPos[el.dataset.idx];
+      tooltip.innerHTML='<h4 style="color:'+ev.color+'">'+ev.date+' - '+ev.label+'</h4>'+(ev.description?'<p>'+ev.description+'</p>':'');
+      tooltip.classList.add('show');
+    });
+    el.addEventListener('mousemove',e=>{tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY+12)+'px'});
+    el.addEventListener('mouseleave',()=>tooltip.classList.remove('show'));
+  });
+  // Legend
+  const cats=[...new Set(EVENTS.filter(e=>e.category).map(e=>e.category))];
+  if(cats.length>0){
+    const lg=document.getElementById('legend');
+    lg.innerHTML=cats.map(c=>'<div class="legend-item"><div class="legend-dot" style="background:'+EVENTS.find(e=>e.category===c).color+'"></div>'+c+'</div>').join('');
+  }
+}
+render();
+<\/script>
+</body>
+</html>`;
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const link = document.createElement('a');
+    link.download = `${config.title.replace(/\s+/g, '_')}_interactive.html`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, [config, sortedEvents, startY, endY, preset]);
+
+  // ─── Export exercice (frise à compléter) ──────────
+
+  const exportExercise = useCallback(async (format: 'png' | 'pdf') => {
+    if (!previewRef.current) return;
+    setIsExporting(true);
+    const savedZoom = config.zoomLevel;
+    if (savedZoom !== 1) {
+      setConfig(prev => ({ ...prev, zoomLevel: 1 }));
+      await new Promise(r => setTimeout(r, 250));
+    }
+    const container = previewRef.current;
+    // Save original text and replace with blanks
+    const saved: Array<{ el: HTMLElement; text: string; display?: string }> = [];
+    if (exerciseMode.hideDates) {
+      container.querySelectorAll<HTMLElement>('[data-exercise="date"]').forEach(el => {
+        saved.push({ el, text: el.textContent || '' });
+        el.textContent = '???';
+      });
+    }
+    if (exerciseMode.hideLabels) {
+      container.querySelectorAll<HTMLElement>('[data-exercise="label"]').forEach(el => {
+        saved.push({ el, text: el.textContent || '' });
+        el.textContent = '________';
+      });
+    }
+    if (exerciseMode.hideDescriptions) {
+      container.querySelectorAll<HTMLElement>('[data-exercise="desc"]').forEach(el => {
+        saved.push({ el, text: el.textContent || '', display: el.style.display });
+        el.style.display = 'none';
+      });
+    }
+    await new Promise(r => setTimeout(r, 100));
+    try {
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: preset.bg });
+      if (format === 'png') {
+        const link = document.createElement('a');
+        link.download = `${config.title.replace(/\s+/g, '_')}_exercice.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        const imgData = canvas.toDataURL('image/png');
+        const ratio = canvas.height / canvas.width;
+        const isLandscape = config.orientation === 'horizontal';
+        const pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+        const pdfW = pdf.internal.pageSize.getWidth();
+        const pdfH = Math.min(pdfW * ratio, pdf.internal.pageSize.getHeight());
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+        pdf.save(`${config.title.replace(/\s+/g, '_')}_exercice.pdf`);
+      }
+    } catch (err) { console.error('Export error:', err); }
+    finally {
+      // Restore originals
+      saved.forEach(({ el, text, display }) => {
+        el.textContent = text;
+        if (display !== undefined) el.style.display = display;
+      });
+      if (savedZoom !== 1) setConfig(prev => ({ ...prev, zoomLevel: savedZoom }));
+      setIsExporting(false);
+    }
+  }, [config, exerciseMode, preset.bg]);
+
   // ─── Render: Editor ──────────
 
   const renderEditor = () => (
@@ -709,6 +940,71 @@ export default function TimelineGenerator() {
       </div>
       <button style={editorS.addBtn} onClick={addPeriod}>+ Période</button>
 
+      {/* Mode comparatif */}
+      <h3 style={editorS.section}>Mode comparatif</h3>
+      <div style={editorS.row}>
+        <button
+          style={{ ...editorS.toggleBtn, ...(config.comparative ? editorS.toggleActive : {}) }}
+          onClick={() => update({ comparative: !config.comparative })}
+        >{config.comparative ? 'Actif' : 'Inactif'}</button>
+        <span style={{ fontSize: 11, color: '#6B7280' }}>2 lignes selon les categories</span>
+      </div>
+      {config.comparative && config.categories.length >= 2 && (
+        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ ...editorS.label }}>
+            Ligne haut : <strong style={{ color: getCategoryColor(config.categories[0]) }}>{config.categories[0]}</strong>
+          </label>
+          <label style={{ ...editorS.label }}>
+            Ligne bas : <strong style={{ color: getCategoryColor(config.categories[1]) }}>{config.categories[1]}</strong>
+          </label>
+          <span style={{ fontSize: 10, color: '#9CA3AF' }}>Les 2 premieres categories definissent les 2 lignes</span>
+        </div>
+      )}
+      {config.comparative && config.categories.length < 2 && (
+        <div style={{ fontSize: 11, color: '#EF4444', marginTop: 4 }}>
+          Ajoutez au moins 2 categories et assignez-les aux evenements
+        </div>
+      )}
+
+      {/* Exercice / Frise à compléter */}
+      <h3 style={editorS.section}>Frise a completer</h3>
+      <button
+        style={{ ...editorS.toggleBtn, ...(showExerciseOptions ? editorS.toggleActive : {}), marginBottom: 6, width: '100%' }}
+        onClick={() => setShowExerciseOptions(!showExerciseOptions)}
+      >
+        {showExerciseOptions ? 'Masquer les options' : 'Generer un exercice'}
+      </button>
+      {showExerciseOptions && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8, backgroundColor: '#FEF3C7', borderRadius: 8, border: '1px solid #FDE68A' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={exerciseMode.hideDates} onChange={e => setExerciseMode(prev => ({ ...prev, hideDates: e.target.checked }))} />
+            Masquer les dates (remplace par « ? »)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={exerciseMode.hideLabels} onChange={e => setExerciseMode(prev => ({ ...prev, hideLabels: e.target.checked }))} />
+            Masquer les titres (remplace par « ___ »)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={exerciseMode.hideDescriptions} onChange={e => setExerciseMode(prev => ({ ...prev, hideDescriptions: e.target.checked }))} />
+            Masquer les descriptions
+          </label>
+          <div style={{ ...editorS.row, marginTop: 4 }}>
+            <button
+              style={{ ...editorS.exportBtn, backgroundColor: '#F59E0B', flex: 1 }}
+              onClick={() => exportExercise('png')} disabled={isExporting}
+            >
+              {isExporting ? 'Export...' : 'Exercice PNG'}
+            </button>
+            <button
+              style={{ ...editorS.exportBtn, backgroundColor: '#D97706', flex: 1 }}
+              onClick={() => exportExercise('pdf')} disabled={isExporting}
+            >
+              {isExporting ? 'Export...' : 'Exercice PDF'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <h3 style={editorS.section}>Exporter</h3>
       <div style={editorS.row}>
         <button style={{ ...editorS.exportBtn, backgroundColor: '#3B82F6' }} onClick={() => exportAs('png')} disabled={isExporting}>
@@ -718,6 +1014,12 @@ export default function TimelineGenerator() {
           {isExporting ? 'Export...' : 'PDF'}
         </button>
       </div>
+      <button
+        style={{ ...editorS.exportBtn, backgroundColor: '#8B5CF6', width: '100%', marginTop: 6 }}
+        onClick={exportInteractiveHTML} disabled={isExporting}
+      >
+        Export HTML interactif
+      </button>
     </div>
   );
 
@@ -734,11 +1036,22 @@ export default function TimelineGenerator() {
     const DOT_R = z(preset.dotSize) / 2;
     const AXIS_PAD = z(60);
 
+    // In comparative mode, assign side based on category (first 2 categories = top/bottom)
+    const isComparative = config.comparative && config.categories.length >= 2;
+    const cat1 = config.categories[0];
+    const cat2 = config.categories[1];
+
     // Compute pixel positions for all events
     const eventsWithPos = sortedEvents.map((evt, idx) => {
       const year = parseYear(evt.date);
       const frac = Math.max(0.02, Math.min(0.98, (year - startY) / range));
-      return { evt, idx, frac, side: (idx % 2 === 0 ? 'top' : 'bottom') as 'top' | 'bottom', tier: 0 };
+      let side: 'top' | 'bottom';
+      if (isComparative) {
+        side = evt.category === cat2 ? 'bottom' : 'top';
+      } else {
+        side = idx % 2 === 0 ? 'top' : 'bottom';
+      }
+      return { evt, idx, frac, side, tier: 0 };
     });
 
     const baseW = Math.max(sortedEvents.length * (CARD_W + z(20)) + z(120), z(800));
@@ -782,6 +1095,20 @@ export default function TimelineGenerator() {
             <div style={{ fontSize: z(13), opacity: 0.6, marginTop: z(4), fontStyle: 'italic' }}>{config.subtitle}</div>
           )}
         </div>
+
+        {/* Comparative mode labels */}
+        {isComparative && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: z(40), marginBottom: z(8) }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: z(6) }}>
+              <div style={{ width: z(12), height: z(12), borderRadius: '50%', backgroundColor: getCategoryColor(cat1) }} />
+              <span style={{ fontSize: z(12), fontWeight: 700, color: getCategoryColor(cat1) }}>{cat1} (haut)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: z(6) }}>
+              <div style={{ width: z(12), height: z(12), borderRadius: '50%', backgroundColor: getCategoryColor(cat2) }} />
+              <span style={{ fontSize: z(12), fontWeight: 700, color: getCategoryColor(cat2) }}>{cat2} (bas)</span>
+            </div>
+          </div>
+        )}
 
         {/* Axis area */}
         <div style={{ position: 'relative', height: totalH - z(80), marginTop: z(10) }}>
@@ -1022,7 +1349,7 @@ export default function TimelineGenerator() {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: z(2) }}>
-                      <span style={{ fontSize: z(11), fontWeight: 700, color: evt.color }}>{evt.date}</span>
+                      <span data-exercise="date" style={{ fontSize: z(11), fontWeight: 700, color: evt.color }}>{evt.date}</span>
                       {evt.category && (
                         <span style={{
                           fontSize: z(8), fontWeight: 600, padding: `${z(1)}px ${z(5)}px`, borderRadius: z(8),
@@ -1031,11 +1358,11 @@ export default function TimelineGenerator() {
                         }}>{evt.category}</span>
                       )}
                     </div>
-                    <div style={{ fontSize: z(13), fontWeight: 700, lineHeight: 1.2, marginBottom: z(3) }}>
+                    <div data-exercise="label" style={{ fontSize: z(13), fontWeight: 700, lineHeight: 1.2, marginBottom: z(3) }}>
                       {evt.label}
                     </div>
                     {evt.description && (
-                      <div style={{ fontSize: z(10), opacity: 0.7, lineHeight: 1.4 }}>
+                      <div data-exercise="desc" style={{ fontSize: z(10), opacity: 0.7, lineHeight: 1.4 }}>
                         {evt.description}
                       </div>
                     )}
@@ -1186,7 +1513,7 @@ export default function TimelineGenerator() {
                 <div style={{ display: 'flex', gap: z(10), alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: z(2) }}>
-                      <span style={{ fontSize: z(12), fontWeight: 700, color: evt.color }}>{evt.date}</span>
+                      <span data-exercise="date" style={{ fontSize: z(12), fontWeight: 700, color: evt.color }}>{evt.date}</span>
                       {evt.category && (
                         <span style={{
                           fontSize: z(8), fontWeight: 600, padding: `${z(1)}px ${z(5)}px`, borderRadius: z(8),
@@ -1195,11 +1522,11 @@ export default function TimelineGenerator() {
                         }}>{evt.category}</span>
                       )}
                     </div>
-                    <div style={{ fontSize: z(14), fontWeight: 700, lineHeight: 1.2, marginBottom: z(4) }}>
+                    <div data-exercise="label" style={{ fontSize: z(14), fontWeight: 700, lineHeight: 1.2, marginBottom: z(4) }}>
                       {evt.label}
                     </div>
                     {evt.description && (
-                      <div style={{ fontSize: z(11), opacity: 0.7, lineHeight: 1.5 }}>
+                      <div data-exercise="desc" style={{ fontSize: z(11), opacity: 0.7, lineHeight: 1.5 }}>
                         {evt.description}
                       </div>
                     )}
