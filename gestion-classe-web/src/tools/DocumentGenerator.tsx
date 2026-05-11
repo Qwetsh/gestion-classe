@@ -55,6 +55,25 @@ export default function DocumentGenerator() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // ── Splitter state ──
+  const [leftPct, setLeftPct] = useState(38);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const onSplitterDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setLeftPct(Math.max(25, Math.min(70, pct)));
+    };
+    const onUp = () => { dragging.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+
   // ── Captation state ──
   const [capt, setCapt] = useState({
     etablissement: 'College Pierre Mendes France', tel: '03 87 54 36 40',
@@ -193,10 +212,15 @@ export default function DocumentGenerator() {
     } else {
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      setTimeout(() => iframeRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
     }
   }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, logoPNG]);
+
+  // ── Auto-preview with debounce ──
+  useEffect(() => {
+    const timer = setTimeout(() => generatePDF(false), 400);
+    return () => clearTimeout(timer);
+  }, [generatePDF]);
 
   // ── Input helper component ──
   const Field = ({ label, value, onChange, type = 'text', placeholder = '', className = '' }: {
@@ -233,6 +257,10 @@ export default function DocumentGenerator() {
           </button>
         ))}
       </div>
+
+      <div ref={containerRef} className="flex items-start" style={{ userSelect: dragging.current ? 'none' : 'auto' }}>
+      {/* ── LEFT: Form ── */}
+      <div className="min-w-0 space-y-4 overflow-y-auto pr-2" style={{ width: `${leftPct}%` }}>
 
       {/* ═══ CAPTATION FORM ═══ */}
       {tab === 'captation' && (
@@ -592,21 +620,34 @@ export default function DocumentGenerator() {
 
       {/* ═══ ACTIONS ═══ */}
       <div className="flex gap-3">
-        <button onClick={() => generatePDF(false)} className={btnSecondary}>
-          Apercu PDF
-        </button>
         <button onClick={() => generatePDF(true)} className={btnPrimary} style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}>
           Telecharger PDF
         </button>
       </div>
+      </div>{/* end left column */}
 
-      {/* ═══ PREVIEW ═══ */}
-      {previewUrl && (
+      {/* ── SPLITTER ── */}
+      <div
+        onMouseDown={onSplitterDown}
+        className="shrink-0 w-2 cursor-col-resize flex items-center justify-center group self-stretch"
+      >
+        <div className="w-0.5 h-full min-h-[400px] rounded-full bg-[var(--border)] group-hover:bg-[var(--indigo)] transition-colors" />
+      </div>
+
+      {/* ── RIGHT: PDF Preview ── */}
+      <div className="min-w-0 sticky top-4 self-start pl-2" style={{ width: `${100 - leftPct}%` }}>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
           <h3 className="font-semibold text-sm text-[var(--indigo)] mb-2">Apercu</h3>
-          <iframe ref={iframeRef} src={previewUrl} className="w-full border border-[var(--border)] rounded-lg" style={{ height: 800 }} />
+          {previewUrl ? (
+            <iframe ref={iframeRef} src={previewUrl} className="w-full border border-[var(--border)] rounded-lg" style={{ height: 800 }} />
+          ) : (
+            <div className="w-full border border-dashed border-[var(--border)] rounded-lg bg-[var(--surface-3)] flex items-center justify-center" style={{ height: 800 }}>
+              <p className="text-sm text-[var(--text-dim)]">Chargement...</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+      </div>{/* end splitter row */}
     </div>
   );
 }
