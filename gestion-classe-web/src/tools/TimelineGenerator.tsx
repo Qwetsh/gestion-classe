@@ -579,11 +579,29 @@ export default function TimelineGenerator() {
               })
               .sort((a, b) => a.fracStart - b.fracStart);
 
+            // Assigner des tiers aux périodes qui se chevauchent (style frise géologique)
+            const tieredBands = periodBands.map(pb => ({ ...pb, tier: 0 }));
+            const placedPeriods: Array<{ fracStart: number; fracEnd: number; tier: number }> = [];
+            for (const pb of tieredBands) {
+              let t = 0;
+              while (true) {
+                const sameTier = placedPeriods.filter(pp => pp.tier === t);
+                const overlaps = sameTier.some(pp => pb.fracStart < pp.fracEnd && pb.fracEnd > pp.fracStart);
+                if (!overlaps) break;
+                t++;
+              }
+              pb.tier = t;
+              placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
+            }
+            const maxTier = Math.max(0, ...tieredBands.map(pb => pb.tier));
+            const ROW_H = AXIS_H + LABEL_H + 4;
+            const totalAxisH = (maxTier + 1) * ROW_H;
+
             // Collecter toutes les frontières uniques pour les traits séparateurs
             const boundaries = new Set<number>();
             boundaries.add(0);
             boundaries.add(1);
-            for (const pb of periodBands) {
+            for (const pb of tieredBands) {
               boundaries.add(pb.fracStart);
               boundaries.add(pb.fracEnd);
             }
@@ -591,13 +609,14 @@ export default function TimelineGenerator() {
 
             return (
               <>
-                {/* Bandes de périodes */}
-                {periodBands.map(pb => {
+                {/* Bandes de périodes empilées par tier */}
+                {tieredBands.map(pb => {
                   const pLeft = AXIS_PAD + pb.fracStart * axisW;
                   const pWidth = (pb.fracEnd - pb.fracStart) * axisW;
                   const opacity = pb.opacity ?? 0.5;
+                  const bandTop = axisTopPos - totalAxisH / 2 + pb.tier * ROW_H;
                   return (
-                    <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: axisTopPos - AXIS_H / 2, width: Math.max(pWidth, 2), zIndex: 0 }}>
+                    <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), zIndex: 0 }}>
                       {/* Bande colorée */}
                       <div style={{
                         width: '100%', height: AXIS_H,
@@ -619,20 +638,20 @@ export default function TimelineGenerator() {
                   );
                 })}
 
-                {/* Traits noirs séparateurs aux frontières */}
+                {/* Traits noirs séparateurs aux frontières (sur toute la hauteur empilée) */}
                 {sortedBoundaries.map((frac, i) => {
                   const xPos = AXIS_PAD + frac * axisW;
                   const year = startY + frac * range;
                   return (
-                    <div key={`sep-${i}`} style={{ position: 'absolute', left: xPos - 1, top: axisTopPos - AXIS_H / 2 - 4, zIndex: 1 }}>
+                    <div key={`sep-${i}`} style={{ position: 'absolute', left: xPos - 1, top: axisTopPos - totalAxisH / 2 - 4, zIndex: 1 }}>
                       {/* Trait vertical */}
                       <div style={{
-                        width: 2, height: AXIS_H + 8,
+                        width: 2, height: totalAxisH + 8,
                         backgroundColor: preset.axisBg,
                       }} />
                       {/* Date au-dessus */}
                       <span style={{
-                        position: 'absolute', bottom: AXIS_H + 12, left: '50%', transform: 'translateX(-50%)',
+                        position: 'absolute', bottom: totalAxisH + 12, left: '50%', transform: 'translateX(-50%)',
                         fontSize: 9, fontWeight: 700, color: preset.axisBg,
                         whiteSpace: 'nowrap',
                       }}>{formatAxisLabel(Math.round(year))}</span>
