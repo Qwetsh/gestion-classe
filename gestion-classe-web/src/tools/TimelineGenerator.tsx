@@ -610,6 +610,13 @@ export default function TimelineGenerator() {
 
             return (
               <>
+                {/* Axe de base continu (trait fin sur toute la largeur) */}
+                <div style={{
+                  position: 'absolute', top: axisOriginY + AXIS_H / 2 - 1,
+                  left: AXIS_PAD - 4, right: AXIS_PAD - 4,
+                  height: 3, backgroundColor: preset.axisBg, borderRadius: 2, zIndex: 0,
+                }} />
+
                 {/* Bandes de périodes + traits par période */}
                 {tieredBands.map(pb => {
                   const pLeft = AXIS_PAD + pb.fracStart * axisW;
@@ -657,7 +664,7 @@ export default function TimelineGenerator() {
                   );
                 })}
 
-                {/* Dates au-dessus : une par frontière unique */}
+                {/* Dates au-dessus : une par frontière unique, sans chevauchement */}
                 {(() => {
                   const boundaries = new Set<number>();
                   boundaries.add(0);
@@ -666,7 +673,19 @@ export default function TimelineGenerator() {
                     boundaries.add(pb.fracStart);
                     boundaries.add(pb.fracEnd);
                   }
-                  return [...boundaries].sort((a, b) => a - b).map((frac, i) => {
+                  const sorted = [...boundaries].sort((a, b) => a - b);
+                  // Filtrer les dates trop proches (< 45px d'écart)
+                  const MIN_PX_GAP = 45;
+                  const filtered: number[] = [];
+                  for (const frac of sorted) {
+                    const xPos = AXIS_PAD + frac * axisW;
+                    const tooClose = filtered.some(prev => {
+                      const prevX = AXIS_PAD + prev * axisW;
+                      return Math.abs(xPos - prevX) < MIN_PX_GAP;
+                    });
+                    if (!tooClose) filtered.push(frac);
+                  }
+                  return filtered.map((frac, i) => {
                     const xPos = AXIS_PAD + frac * axisW;
                     const year = startY + frac * range;
                     return (
