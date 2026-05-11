@@ -105,18 +105,9 @@ export function StudentDashboard() {
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy'>('grades');
-  const [rewardsHidden] = useState(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem('gc-app-settings') || '{}');
-      return s.hiddenTabs?.rewards === true;
-    } catch { return false; }
-  });
-  const [academyHidden] = useState(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem('gc-app-settings') || '{}');
-      return s.hiddenTabs?.academy === true;
-    } catch { return false; }
-  });
+  // Student view: never hide tabs based on teacher settings
+  const rewardsHidden = false;
+  const academyHidden = false;
   const [stampData, setStampData] = useState<StampData | null>(null);
   const [academyData, setAcademyData] = useState<{ enabled: boolean; house: HouseId | null; test_completed: boolean; classId: string | null } | null>(null);
   const [stampLoading, setStampLoading] = useState(false);
