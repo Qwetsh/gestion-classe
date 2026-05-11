@@ -660,6 +660,8 @@ export default function TimelineGenerator() {
                 {/* Dates au-dessus : une par frontière unique */}
                 {(() => {
                   const boundaries = new Set<number>();
+                  boundaries.add(0);
+                  boundaries.add(1);
                   for (const pb of tieredBands) {
                     boundaries.add(pb.fracStart);
                     boundaries.add(pb.fracEnd);
