@@ -54,7 +54,9 @@ interface NewspaperConfig {
   date: string;
   price: string;
   mainTitle: string;
+  showTitle: boolean;
   lead: string; // chapeau
+  showLead: boolean;
   author: string;
   style: NewspaperStyle;
   pages: 1 | 2;
@@ -146,7 +148,9 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       slogan: 'Par les élèves, pour les élèves',
       price: 'Gratuit',
       mainTitle: 'Les projets de la rentrée',
+      showTitle: true,
       lead: 'Cette année, le collège se mobilise autour de nouveaux projets ambitieux. Retour sur les temps forts qui attendent nos élèves.',
+      showLead: true,
       author: 'La rédaction',
       style: 'lemonde',
       pages: 1,
@@ -166,7 +170,9 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       slogan: 'Comprendre le monde par la science',
       price: '2,50 €',
       mainTitle: 'Les mystères des fonds marins',
+      showTitle: true,
       lead: 'À plus de 10 000 mètres de profondeur, la fosse des Mariannes abrite des formes de vie que les scientifiques commencent à peine à découvrir.',
+      showLead: true,
       author: '',
       style: 'scientifique',
       pages: 1,
@@ -186,7 +192,9 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       slogan: 'Journal officiel de la République',
       price: '5 centimes',
       mainTitle: 'La prise de la Bastille',
+      showTitle: true,
       lead: 'Paris, le 14 juillet 1789. Une foule immense s\'est emparée de la forteresse royale de la Bastille, symbole de l\'arbitraire monarchique. Les événements de cette journée marquent un tournant décisif.',
+      showLead: true,
       author: 'Un correspondant',
       style: 'figaro',
       pages: 1,
@@ -206,7 +214,9 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       slogan: 'L\'info qui bouge',
       price: '3,90 €',
       mainTitle: 'L\'intelligence artificielle change nos vies',
+      showTitle: true,
       lead: 'De la médecine à l\'éducation, l\'IA bouleverse nos habitudes. Tour d\'horizon des innovations qui transforment notre quotidien.',
+      showLead: true,
       author: 'Sophie Laurent',
       style: 'moderne',
       pages: 1,
@@ -317,7 +327,9 @@ export default function NewspaperGenerator() {
     date: new Date().toISOString().split('T')[0],
     price: '1,50 €',
     mainTitle: 'Un titre accrocheur ici',
+    showTitle: true,
     lead: '',
+    showLead: false,
     author: '',
     style: 'lemonde',
     pages: 1,
@@ -678,77 +690,20 @@ export default function NewspaperGenerator() {
         ))}
       </div>
 
-      <h3 style={editorStyles.sectionTitle}>Informations</h3>
-      <div style={editorStyles.fieldGrid}>
-        <label style={editorStyles.label}>
-          Nom du journal
-          <input style={editorStyles.input} value={config.journalName} onChange={e => update({ journalName: e.target.value })} />
-        </label>
-        <label style={editorStyles.label}>
-          Slogan
-          <input style={editorStyles.input} value={config.slogan} onChange={e => update({ slogan: e.target.value })} />
-        </label>
-        <label style={editorStyles.label}>
-          Date
-          <input style={editorStyles.input} type="date" value={config.date} onChange={e => update({ date: e.target.value })} />
-        </label>
-        <label style={editorStyles.label}>
-          Prix
-          <input style={editorStyles.input} value={config.price} onChange={e => update({ price: e.target.value })} />
-        </label>
-      </div>
-
-      <label style={{ ...editorStyles.label, marginTop: 12 }}>
-        Titre principal
-        <input
-          style={{ ...editorStyles.input, fontWeight: 700, fontSize: 16 }}
-          value={config.mainTitle}
-          onChange={e => update({ mainTitle: e.target.value })}
-        />
-      </label>
-
-      <label style={editorStyles.label}>
-        Chapeau (introduction)
-        <textarea
-          style={{ ...editorStyles.textarea, fontWeight: 600, fontSize: 12 }}
-          value={config.lead}
-          onChange={e => update({ lead: e.target.value })}
-          placeholder="Texte d'accroche en gras sous le titre principal..."
-          rows={2}
-        />
-      </label>
-
-      <label style={editorStyles.label}>
-        Auteur
-        <input style={editorStyles.input} value={config.author} onChange={e => update({ author: e.target.value })} placeholder="Ex: Jean Dupont" />
-      </label>
-
-      <div style={editorStyles.pagesToggle}>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>Pages :</span>
-        <button
-          style={{ ...editorStyles.toggleBtn, ...(config.pages === 1 ? editorStyles.toggleBtnActive : {}) }}
-          onClick={() => update({ pages: 1 })}
-        >1 page</button>
-        <button
-          style={{ ...editorStyles.toggleBtn, ...(config.pages === 2 ? editorStyles.toggleBtnActive : {}) }}
-          onClick={() => update({ pages: 2 })}
-        >2 pages</button>
-      </div>
-
       <h3 style={editorStyles.sectionTitle}>Fond de page</h3>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button
           style={{ ...editorStyles.toggleBtn, ...(config.background.type === 'preset' ? editorStyles.toggleBtnActive : {}) }}
           onClick={() => update({ background: { type: 'preset' } })}
-        >Style par défaut</button>
+        >Par défaut</button>
         <button
           style={{ ...editorStyles.toggleBtn, ...(config.background.type === 'color' ? editorStyles.toggleBtnActive : {}) }}
           onClick={() => update({ background: { type: 'color', value: preset.colors.bg } })}
-        >Couleur unie</button>
+        >Couleur</button>
         <button
           style={{ ...editorStyles.toggleBtn, ...(config.background.type === 'image' ? editorStyles.toggleBtnActive : {}) }}
           onClick={() => bgFileInputRef.current?.click()}
-        >Texture / Image</button>
+        >Texture</button>
         <input ref={bgFileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgImageUpload} />
       </div>
       {config.background.type === 'color' && (
@@ -780,6 +735,81 @@ export default function NewspaperGenerator() {
           )}
         </div>
       )}
+
+      <h3 style={editorStyles.sectionTitle}>Informations</h3>
+      <div style={editorStyles.fieldGrid}>
+        <label style={editorStyles.label}>
+          Nom du journal
+          <input style={editorStyles.input} value={config.journalName} onChange={e => update({ journalName: e.target.value })} />
+        </label>
+        <label style={editorStyles.label}>
+          Slogan
+          <input style={editorStyles.input} value={config.slogan} onChange={e => update({ slogan: e.target.value })} />
+        </label>
+        <label style={editorStyles.label}>
+          Date
+          <input style={editorStyles.input} type="date" value={config.date} onChange={e => update({ date: e.target.value })} />
+        </label>
+        <label style={editorStyles.label}>
+          Prix
+          <input style={editorStyles.input} value={config.price} onChange={e => update({ price: e.target.value })} />
+        </label>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={editorStyles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={config.showTitle}
+            onChange={e => update({ showTitle: e.target.checked })}
+          />
+          <span style={{ fontWeight: 600 }}>Titre principal</span>
+        </label>
+        {config.showTitle && (
+          <input
+            style={{ ...editorStyles.input, fontWeight: 700, fontSize: 16, marginTop: 4 }}
+            value={config.mainTitle}
+            onChange={e => update({ mainTitle: e.target.value })}
+          />
+        )}
+      </div>
+
+      <div style={{ marginTop: 8 }}>
+        <label style={editorStyles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={config.showLead}
+            onChange={e => update({ showLead: e.target.checked })}
+          />
+          <span style={{ fontWeight: 600 }}>Chapeau (introduction)</span>
+        </label>
+        {config.showLead && (
+          <textarea
+            style={{ ...editorStyles.textarea, fontWeight: 600, fontSize: 12, marginTop: 4 }}
+            value={config.lead}
+            onChange={e => update({ lead: e.target.value })}
+            placeholder="Texte d'accroche en gras sous le titre principal..."
+            rows={2}
+          />
+        )}
+      </div>
+
+      <label style={editorStyles.label}>
+        Auteur
+        <input style={editorStyles.input} value={config.author} onChange={e => update({ author: e.target.value })} placeholder="Ex: Jean Dupont" />
+      </label>
+
+      <div style={editorStyles.pagesToggle}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Pages :</span>
+        <button
+          style={{ ...editorStyles.toggleBtn, ...(config.pages === 1 ? editorStyles.toggleBtnActive : {}) }}
+          onClick={() => update({ pages: 1 })}
+        >1 page</button>
+        <button
+          style={{ ...editorStyles.toggleBtn, ...(config.pages === 2 ? editorStyles.toggleBtnActive : {}) }}
+          onClick={() => update({ pages: 2 })}
+        >2 pages</button>
+      </div>
 
       <h3 style={editorStyles.sectionTitle}>Contenu</h3>
 
@@ -1056,22 +1086,24 @@ export default function NewspaperGenerator() {
             <div style={{ height: 0.5, backgroundColor: preset.colors.rule, margin: '2px -28px 12px' }} />
 
             {/* Main title */}
-            <h1 style={{
-              fontFamily: preset.fonts.title,
-              fontSize: rows.length > 3 ? 26 : 32,
-              fontWeight: preset.serifTitle ? 400 : 800,
-              textAlign: 'center',
-              lineHeight: 1.15,
-              margin: '0 0 4px',
-              textTransform: preset.uppercase ? 'uppercase' : 'none',
-              color: preset.colors.text,
-              letterSpacing: preset.uppercase ? '0.02em' : '-0.01em',
-            }}>
-              {config.mainTitle}
-            </h1>
+            {config.showTitle && (
+              <h1 style={{
+                fontFamily: preset.fonts.title,
+                fontSize: rows.length > 3 ? 26 : 32,
+                fontWeight: preset.serifTitle ? 400 : 800,
+                textAlign: 'center',
+                lineHeight: 1.15,
+                margin: '0 0 4px',
+                textTransform: preset.uppercase ? 'uppercase' : 'none',
+                color: preset.colors.text,
+                letterSpacing: preset.uppercase ? '0.02em' : '-0.01em',
+              }}>
+                {config.mainTitle}
+              </h1>
+            )}
 
             {/* Author */}
-            {config.author && (
+            {config.showTitle && config.author && (
               <div style={{
                 textAlign: 'center', fontSize: 10, fontStyle: 'italic',
                 color: preset.colors.text, opacity: 0.5, marginBottom: 4,
@@ -1082,7 +1114,7 @@ export default function NewspaperGenerator() {
             )}
 
             {/* Lead / chapeau */}
-            {config.lead && (
+            {config.showLead && config.lead && (
               <p style={{
                 fontSize: 11.5, lineHeight: 1.5, margin: '0 0 6px',
                 fontWeight: 700, fontFamily: preset.fonts.body,
