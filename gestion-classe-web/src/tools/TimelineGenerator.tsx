@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, type CSSProperties } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { TIMELINE_TEMPLATES } from './timeline-templates';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ interface TimelineEvent {
   description: string;
   color: string;
   image?: string;
+  category?: string;
 }
 
 // Période colorée sur l'axe de la frise
@@ -35,6 +37,8 @@ interface TimelineConfig {
   events: TimelineEvent[];
   periods: TimelinePeriod[];
   orientation: 'horizontal' | 'vertical';
+  categories: string[];
+  zoomLevel: number; // 0.5 to 3, default 1
 }
 
 // ─── Style presets ──────────────────────────────────────────
@@ -132,6 +136,35 @@ function formatAxisLabel(year: number): string {
   return year.toString();
 }
 
+// ─── localStorage persistence ───────────────────────────────
+
+const STORAGE_KEY = 'gc-timeline-autosave';
+
+function loadSavedConfig(): TimelineConfig | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function saveConfig(config: TimelineConfig) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+// ─── Category colors ────────────────────────────────────────
+
+const CATEGORY_COLORS: Record<string, string> = {};
+const CAT_PALETTE = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#6366F1', '#14B8A6'];
+function getCategoryColor(cat: string): string {
+  if (!CATEGORY_COLORS[cat]) {
+    CATEGORY_COLORS[cat] = CAT_PALETTE[Object.keys(CATEGORY_COLORS).length % CAT_PALETTE.length];
+  }
+  return CATEGORY_COLORS[cat];
+}
+
 // ─── Component ──────────────────────────────────────────────
 
 export default function TimelineGenerator() {
@@ -139,11 +172,16 @@ export default function TimelineGenerator() {
   const previewPaneRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
   const [previewScale, setPreviewScale] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string | ''>('');
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef<{ x: number; y: number; scrollX: number; scrollY: number } | null>(null);
 
-  const [config, setConfig] = useState<TimelineConfig>({
+  const defaultConfig: TimelineConfig = {
     title: 'Ma frise chronologique',
     subtitle: '',
     startYear: '1789',
@@ -152,14 +190,28 @@ export default function TimelineGenerator() {
     orientation: 'horizontal',
     events: [],
     periods: [],
-  });
+    categories: [],
+    zoomLevel: 1,
+  };
+
+  const [config, setConfig] = useState<TimelineConfig>(() => loadSavedConfig() || defaultConfig);
 
   const preset = STYLE_PRESETS[config.style];
 
   useEffect(() => { loadFonts(); }, []);
 
-  // Auto-scale
+  // Auto-save to localStorage
   useEffect(() => {
+    const t = setTimeout(() => saveConfig(config), 300);
+    return () => clearTimeout(t);
+  }, [config]);
+
+  // Auto-scale (only when zoomLevel === 0 = auto-fit)
+  useEffect(() => {
+    if (config.zoomLevel !== 0) {
+      setPreviewScale(config.zoomLevel);
+      return;
+    }
     const updateScale = () => {
       if (!previewPaneRef.current || !previewRef.current) return;
       const paneW = previewPaneRef.current.clientWidth - 32;
@@ -175,6 +227,58 @@ export default function TimelineGenerator() {
     window.addEventListener('resize', updateScale);
     return () => { clearTimeout(t); window.removeEventListener('resize', updateScale); };
   }, [config]);
+
+  // ─── Drag to pan & wheel to zoom ──────────
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0 || !previewPaneRef.current) return;
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollX: previewPaneRef.current.scrollLeft,
+      scrollY: previewPaneRef.current.scrollTop,
+    };
+    e.preventDefault();
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging || !dragStart.current || !previewPaneRef.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    previewPaneRef.current.scrollLeft = dragStart.current.scrollX - dx;
+    previewPaneRef.current.scrollTop = dragStart.current.scrollY - dy;
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    dragStart.current = null;
+  }, []);
+
+  // Release drag if mouse leaves window
+  useEffect(() => {
+    const up = () => { setIsDragging(false); dragStart.current = null; };
+    window.addEventListener('mouseup', up);
+    return () => window.removeEventListener('mouseup', up);
+  }, []);
+
+  // Wheel to zoom — must be native listener with passive:false to prevent scroll
+  useEffect(() => {
+    const pane = previewPaneRef.current;
+    if (!pane) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setConfig(prev => {
+        const current = prev.zoomLevel || 1;
+        const next = Math.round(Math.max(0.2, Math.min(3, current + delta)) * 100) / 100;
+        return { ...prev, zoomLevel: next };
+      });
+    };
+    pane.addEventListener('wheel', onWheel, { passive: false });
+    return () => pane.removeEventListener('wheel', onWheel);
+  }, []);
 
   // ─── Config helpers ──────────
 
@@ -260,9 +364,58 @@ export default function TimelineGenerator() {
     setUploadTargetId(null);
   }, [uploadTargetId, updateEvent]);
 
-  // Sort events by date for preview
+  // ─── Import/Export JSON ──────────
+
+  const exportJSON = useCallback(() => {
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = `${config.title.replace(/\s+/g, '_')}_frise.json`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, [config]);
+
+  const handleJSONImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result as string) as TimelineConfig;
+        setConfig({ ...defaultConfig, ...imported, categories: imported.categories || [], zoomLevel: imported.zoomLevel ?? 1 });
+      } catch { alert('Fichier JSON invalide'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
+
+  // ─── Catégories ──────────
+
+  const addCategory = useCallback((name: string) => {
+    if (!name.trim() || config.categories.includes(name.trim())) return;
+    setConfig(prev => ({ ...prev, categories: [...prev.categories, name.trim()] }));
+  }, [config.categories]);
+
+  const removeCategory = useCallback((name: string) => {
+    setConfig(prev => ({
+      ...prev,
+      categories: prev.categories.filter(c => c !== name),
+      events: prev.events.map(e => e.category === name ? { ...e, category: undefined } : e),
+    }));
+  }, []);
+
+  // ─── Reset ──────────
+
+  const resetTimeline = useCallback(() => {
+    if (!confirm('Réinitialiser la frise ? Les données non exportées seront perdues.')) return;
+    setConfig(defaultConfig);
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  // Sort events by date for preview (with optional category filter)
   const sortedEvents = [...config.events]
     .filter(e => e.date.trim())
+    .filter(e => !filterCategory || e.category === filterCategory)
     .sort((a, b) => parseYear(a.date) - parseYear(b.date));
 
   const startY = parseYear(config.startYear);
@@ -274,6 +427,12 @@ export default function TimelineGenerator() {
   const exportAs = useCallback(async (format: 'png' | 'pdf') => {
     if (!previewRef.current) return;
     setIsExporting(true);
+    // Temporarily set zoom to 1 for export
+    const savedZoom = config.zoomLevel;
+    if (savedZoom !== 1) {
+      setConfig(prev => ({ ...prev, zoomLevel: 1 }));
+      await new Promise(r => setTimeout(r, 250));
+    }
     try {
       const canvas = await html2canvas(previewRef.current, {
         scale: 2,
@@ -302,14 +461,32 @@ export default function TimelineGenerator() {
     } catch (err) {
       console.error('Export error:', err);
     } finally {
+      if (savedZoom !== 1) setConfig(prev => ({ ...prev, zoomLevel: savedZoom }));
       setIsExporting(false);
     }
-  }, [config.title, config.orientation, preset.bg]);
+  }, [config.title, config.orientation, config.zoomLevel, preset.bg]);
 
   // ─── Render: Editor ──────────
 
   const renderEditor = () => (
     <div style={editorS.container}>
+      {/* Actions rapides */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button style={{ ...editorS.actionBtn, backgroundColor: '#8B5CF6' }} onClick={() => setShowTemplates(true)}>
+          Templates
+        </button>
+        <button style={{ ...editorS.actionBtn, backgroundColor: '#10B981' }} onClick={exportJSON}>
+          Exporter JSON
+        </button>
+        <button style={{ ...editorS.actionBtn, backgroundColor: '#3B82F6' }} onClick={() => jsonInputRef.current?.click()}>
+          Importer JSON
+        </button>
+        <button style={{ ...editorS.actionBtn, backgroundColor: '#EF4444' }} onClick={resetTimeline}>
+          Réinitialiser
+        </button>
+      </div>
+      <input ref={jsonInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleJSONImport} />
+
       <h3 style={editorS.section}>Style</h3>
       <div style={editorS.styleGrid}>
         {(Object.entries(STYLE_PRESETS) as [TimelineStyle, typeof preset][]).map(([key, p]) => (
@@ -358,6 +535,77 @@ export default function TimelineGenerator() {
         >Verticale</button>
       </div>
 
+      {/* Zoom */}
+      <h3 style={editorS.section}>Zoom</h3>
+      <div style={{ ...editorS.row, gap: 6 }}>
+        <button
+          style={{ ...editorS.toggleBtn, ...(config.zoomLevel === 0 ? editorS.toggleActive : {}), fontSize: 11, padding: '4px 8px' }}
+          onClick={() => update({ zoomLevel: 0 })}
+        >Ajuster</button>
+        <button style={editorS.smallBtn} onClick={() => update({ zoomLevel: Math.max(0.2, (config.zoomLevel || 1) - 0.1) })}>−</button>
+        <input
+          type="range" min="0.2" max="3" step="0.1"
+          value={config.zoomLevel || 1}
+          onChange={e => update({ zoomLevel: parseFloat(e.target.value) })}
+          style={{ flex: 1 }}
+        />
+        <button style={editorS.smallBtn} onClick={() => update({ zoomLevel: Math.min(3, (config.zoomLevel || 1) + 0.1) })}>+</button>
+        <span style={{ fontSize: 11, color: '#6B7280', minWidth: 36 }}>
+          {config.zoomLevel === 0 ? 'Auto' : `${Math.round((config.zoomLevel || 1) * 100)}%`}
+        </span>
+      </div>
+
+      {/* Catégories */}
+      <h3 style={editorS.section}>Catégories ({config.categories.length})</h3>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+        {config.categories.map(cat => (
+          <span key={cat} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+            backgroundColor: getCategoryColor(cat) + '22', color: getCategoryColor(cat),
+            border: `1px solid ${getCategoryColor(cat)}44`,
+          }}>
+            {cat}
+            <button style={{ ...editorS.smallBtn, fontSize: 10, color: getCategoryColor(cat) }} onClick={() => removeCategory(cat)}>✕</button>
+          </span>
+        ))}
+      </div>
+      <div style={editorS.row}>
+        <input
+          id="new-cat-input"
+          style={{ ...editorS.input, flex: 1 }}
+          placeholder="Nouvelle catégorie..."
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              addCategory((e.target as HTMLInputElement).value);
+              (e.target as HTMLInputElement).value = '';
+            }
+          }}
+        />
+        <button style={{ ...editorS.smallBtn, fontSize: 11, fontWeight: 600 }} onClick={() => {
+          const inp = document.getElementById('new-cat-input') as HTMLInputElement;
+          if (inp) { addCategory(inp.value); inp.value = ''; }
+        }}>+</button>
+      </div>
+
+      {/* Filtre par catégorie */}
+      {config.categories.length > 0 && (
+        <div style={{ ...editorS.row, marginTop: 4, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280' }}>Filtrer :</span>
+          <button
+            style={{ ...editorS.toggleBtn, fontSize: 10, padding: '2px 8px', ...(filterCategory === '' ? editorS.toggleActive : {}) }}
+            onClick={() => setFilterCategory('')}
+          >Tous</button>
+          {config.categories.map(cat => (
+            <button
+              key={cat}
+              style={{ ...editorS.toggleBtn, fontSize: 10, padding: '2px 8px', ...(filterCategory === cat ? { backgroundColor: getCategoryColor(cat), color: '#FFF', borderColor: getCategoryColor(cat) } : {}) }}
+              onClick={() => setFilterCategory(filterCategory === cat ? '' : cat)}
+            >{cat}</button>
+          ))}
+        </div>
+      )}
+
       <h3 style={editorS.section}>Événements ({config.events.length})</h3>
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
 
@@ -388,6 +636,16 @@ export default function TimelineGenerator() {
               rows={2}
             />
             <div style={editorS.row}>
+              {config.categories.length > 0 && (
+                <select
+                  style={{ ...editorS.input, width: 'auto', flex: 0 }}
+                  value={evt.category || ''}
+                  onChange={e => updateEvent(evt.id, { category: e.target.value || undefined })}
+                >
+                  <option value="">Sans catégorie</option>
+                  {config.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
               <button
                 style={editorS.imgBtn}
                 onClick={() => { setUploadTargetId(evt.id); fileInputRef.current?.click(); }}
@@ -463,14 +721,18 @@ export default function TimelineGenerator() {
     </div>
   );
 
+  // ─── Zoom helper ──────────
+  const zf = config.zoomLevel > 0 ? config.zoomLevel : 1;
+  const z = (px: number) => Math.round(px * zf);
+
   // ─── Render: Horizontal preview ──────────
 
   const renderHorizontal = () => {
-    const CARD_W = 160;
-    const CARD_GAP = 12;
-    const TIER_H = 130; // height per tier (card ~100px + spacing)
-    const DOT_R = preset.dotSize / 2;
-    const AXIS_PAD = 60; // left/right padding for axis
+    const CARD_W = z(160);
+    const CARD_GAP = z(12);
+    const TIER_H = z(130);
+    const DOT_R = z(preset.dotSize) / 2;
+    const AXIS_PAD = z(60);
 
     // Compute pixel positions for all events
     const eventsWithPos = sortedEvents.map((evt, idx) => {
@@ -479,8 +741,7 @@ export default function TimelineGenerator() {
       return { evt, idx, frac, side: (idx % 2 === 0 ? 'top' : 'bottom') as 'top' | 'bottom', tier: 0 };
     });
 
-    // We need a total width to compute px positions for overlap detection
-    const baseW = Math.max(sortedEvents.length * (CARD_W + 20) + 120, 800);
+    const baseW = Math.max(sortedEvents.length * (CARD_W + z(20)) + z(120), z(800));
     const axisW = baseW - AXIS_PAD * 2;
 
     // Assign tiers: greedy — for each event on a given side, find the lowest tier without overlap
@@ -502,33 +763,33 @@ export default function TimelineGenerator() {
     const maxTopTier = Math.max(0, ...eventsWithPos.filter(e => e.side === 'top').map(e => e.tier));
     const maxBotTier = Math.max(0, ...eventsWithPos.filter(e => e.side === 'bottom').map(e => e.tier));
 
-    const AXIS_Y = 60 + (maxTopTier + 1) * TIER_H; // axis Y position
-    const totalH = AXIS_Y + 30 + (maxBotTier + 1) * TIER_H + 20;
+    const AXIS_Y = z(60) + (maxTopTier + 1) * TIER_H;
+    const totalH = AXIS_Y + z(30) + (maxBotTier + 1) * TIER_H + z(20);
     const timelineW = baseW;
 
     return (
       <div style={{
-        width: timelineW, height: totalH, padding: '20px 0',
+        width: timelineW, height: totalH, padding: `${z(20)}px 0`,
         backgroundColor: preset.bg, fontFamily: preset.bodyFont, color: preset.textColor,
         position: 'relative',
       }}>
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: 16, padding: '0 20px' }}>
-          <h1 style={{ fontFamily: preset.titleFont, fontSize: 28, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
+        <div style={{ textAlign: 'center', marginBottom: z(16), padding: `0 ${z(20)}px` }}>
+          <h1 style={{ fontFamily: preset.titleFont, fontSize: z(28), fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
             {config.title}
           </h1>
           {config.subtitle && (
-            <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4, fontStyle: 'italic' }}>{config.subtitle}</div>
+            <div style={{ fontSize: z(13), opacity: 0.6, marginTop: z(4), fontStyle: 'italic' }}>{config.subtitle}</div>
           )}
         </div>
 
         {/* Axis area */}
-        <div style={{ position: 'relative', height: totalH - 80, marginTop: 10 }}>
+        <div style={{ position: 'relative', height: totalH - z(80), marginTop: z(10) }}>
           {/* Axe : soit un trait simple, soit des bandes de périodes entre des traits */}
           {(() => {
-            const axisTopPos = AXIS_Y - 20;
-            const AXIS_H = 28;
-            const LABEL_H = 18;
+            const axisTopPos = AXIS_Y - z(20);
+            const AXIS_H = z(28);
+            const LABEL_H = z(18);
             const hasPeriods = config.periods.some(p => p.startDate.trim() && p.endDate.trim());
 
             if (!hasPeriods) {
@@ -536,16 +797,16 @@ export default function TimelineGenerator() {
               return (
                 <>
                   <div style={{
-                    position: 'absolute', top: axisTopPos, left: AXIS_PAD - 10, right: AXIS_PAD - 10, height: 3,
+                    position: 'absolute', top: axisTopPos, left: AXIS_PAD - z(10), right: AXIS_PAD - z(10), height: z(3),
                     backgroundColor: preset.axisBg, borderRadius: 2,
                   }} />
                   <div style={{
-                    position: 'absolute', top: axisTopPos - 18, left: AXIS_PAD - 10,
-                    fontSize: 11, fontWeight: 700, color: preset.axisBg,
+                    position: 'absolute', top: axisTopPos - z(18), left: AXIS_PAD - z(10),
+                    fontSize: z(11), fontWeight: 700, color: preset.axisBg,
                   }}>{formatAxisLabel(startY)}</div>
                   <div style={{
-                    position: 'absolute', top: axisTopPos - 18, right: AXIS_PAD - 10,
-                    fontSize: 11, fontWeight: 700, color: preset.axisBg, textAlign: 'right',
+                    position: 'absolute', top: axisTopPos - z(18), right: AXIS_PAD - z(10),
+                    fontSize: z(11), fontWeight: 700, color: preset.axisBg, textAlign: 'right',
                   }}>{formatAxisLabel(endY)}</div>
                   {Array.from({ length: 6 }, (_, i) => {
                     const frac = i / 5;
@@ -553,12 +814,12 @@ export default function TimelineGenerator() {
                     return (
                       <div key={`tick-${i}`} style={{
                         position: 'absolute', left: AXIS_PAD + frac * axisW - 0.5,
-                        top: axisTopPos - 4, width: 1, height: 10,
+                        top: axisTopPos - z(4), width: 1, height: z(10),
                         backgroundColor: preset.axisBg, opacity: 0.4,
                       }}>
                         <span style={{
-                          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-                          fontSize: 9, fontWeight: 600, color: preset.axisBg, opacity: 0.7, whiteSpace: 'nowrap',
+                          position: 'absolute', top: z(12), left: '50%', transform: 'translateX(-50%)',
+                          fontSize: z(9), fontWeight: 600, color: preset.axisBg, opacity: 0.7, whiteSpace: 'nowrap',
                         }}>{formatAxisLabel(Math.round(year))}</span>
                       </div>
                     );
@@ -638,14 +899,14 @@ export default function TimelineGenerator() {
                         }} />
                         {/* Label en dessous */}
                         <div style={{
-                          width: '100%', textAlign: 'center', marginTop: 2,
-                          fontSize: 10, fontWeight: 700, color: pb.color,
+                          width: '100%', textAlign: 'center', marginTop: z(2),
+                          fontSize: z(10), fontWeight: 700, color: pb.color,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           lineHeight: `${LABEL_H}px`,
                         }}>
                           {pb.label}
                           {pb.description && (
-                            <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.7, marginLeft: 4 }}>{pb.description}</span>
+                            <span style={{ fontWeight: 400, fontSize: z(8), opacity: 0.7, marginLeft: z(4) }}>{pb.description}</span>
                           )}
                         </div>
                       </div>
@@ -675,7 +936,7 @@ export default function TimelineGenerator() {
                   }
                   const sorted = [...boundaries].sort((a, b) => a - b);
                   // Filtrer les dates trop proches (< 45px d'écart)
-                  const MIN_PX_GAP = 45;
+                  const MIN_PX_GAP = z(45);
                   const filtered: number[] = [];
                   for (const frac of sorted) {
                     const xPos = AXIS_PAD + frac * axisW;
@@ -690,9 +951,9 @@ export default function TimelineGenerator() {
                     const year = startY + frac * range;
                     return (
                       <span key={`date-${i}`} style={{
-                        position: 'absolute', left: xPos, top: axisOriginY - 18,
+                        position: 'absolute', left: xPos, top: axisOriginY - z(18),
                         transform: 'translateX(-50%)',
-                        fontSize: 9, fontWeight: 700, color: preset.axisBg,
+                        fontSize: z(9), fontWeight: 700, color: preset.axisBg,
                         whiteSpace: 'nowrap', zIndex: 2,
                       }}>{formatAxisLabel(Math.round(year))}</span>
                     );
@@ -705,11 +966,10 @@ export default function TimelineGenerator() {
           {/* Events */}
           {eventsWithPos.map(({ evt, side, tier, frac }) => {
             const leftPx = AXIS_PAD + frac * axisW;
-            const axisTop = AXIS_Y - 20; // axis line Y in this container
+            const axisTop = AXIS_Y - z(20);
             const isTop = side === 'top';
 
-            // Card Y position: tiers stack outward from axis
-            const GAP_FROM_AXIS = 22; // space between axis and nearest card
+            const GAP_FROM_AXIS = z(22);
             const cardTop = isTop
               ? axisTop - GAP_FROM_AXIS - (tier + 1) * TIER_H
               : axisTop + GAP_FROM_AXIS + tier * TIER_H;
@@ -756,26 +1016,33 @@ export default function TimelineGenerator() {
                   <div style={{
                     backgroundColor: preset.cardBg,
                     border: `1px solid ${preset.cardBorder}`,
-                    borderTop: `3px solid ${evt.color}`,
-                    borderRadius: 8,
-                    padding: 10,
+                    borderTop: `${z(3)}px solid ${evt.color}`,
+                    borderRadius: z(8),
+                    padding: z(10),
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: evt.color, marginBottom: 2 }}>
-                      {evt.date}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: z(2) }}>
+                      <span style={{ fontSize: z(11), fontWeight: 700, color: evt.color }}>{evt.date}</span>
+                      {evt.category && (
+                        <span style={{
+                          fontSize: z(8), fontWeight: 600, padding: `${z(1)}px ${z(5)}px`, borderRadius: z(8),
+                          backgroundColor: getCategoryColor(evt.category) + '22',
+                          color: getCategoryColor(evt.category),
+                        }}>{evt.category}</span>
+                      )}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2, marginBottom: 3 }}>
+                    <div style={{ fontSize: z(13), fontWeight: 700, lineHeight: 1.2, marginBottom: z(3) }}>
                       {evt.label}
                     </div>
                     {evt.description && (
-                      <div style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.4 }}>
+                      <div style={{ fontSize: z(10), opacity: 0.7, lineHeight: 1.4 }}>
                         {evt.description}
                       </div>
                     )}
                     {evt.image && (
                       <img src={evt.image} alt="" style={{
-                        width: '100%', height: 80, objectFit: 'cover',
-                        borderRadius: 4, marginTop: 8,
+                        width: '100%', height: z(80), objectFit: 'cover',
+                        borderRadius: z(4), marginTop: z(8),
                       }} />
                     )}
                   </div>
@@ -791,39 +1058,39 @@ export default function TimelineGenerator() {
   // ─── Render: Vertical preview ──────────
 
   const renderVertical = () => {
-    const AXIS_X = 16; // center of the axis line
-    const CONNECTOR_LEN = 30; // horizontal connector from dot to card
-    const DOT_R = preset.dotSize / 2;
+    const AXIS_X = z(16);
+    const CONNECTOR_LEN = z(30);
+    const DOT_R = z(preset.dotSize) / 2;
 
     return (
       <div style={{
-        width: 600, minHeight: 400, padding: '40px 40px',
+        width: z(600), minHeight: z(400), padding: `${z(40)}px`,
         backgroundColor: preset.bg, fontFamily: preset.bodyFont, color: preset.textColor,
       }}>
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: 30 }}>
-          <h1 style={{ fontFamily: preset.titleFont, fontSize: 28, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
+        <div style={{ textAlign: 'center', marginBottom: z(30) }}>
+          <h1 style={{ fontFamily: preset.titleFont, fontSize: z(28), fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
             {config.title}
           </h1>
           {config.subtitle && (
-            <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4, fontStyle: 'italic' }}>{config.subtitle}</div>
+            <div style={{ fontSize: z(13), opacity: 0.6, marginTop: z(4), fontStyle: 'italic' }}>{config.subtitle}</div>
           )}
-          <div style={{ fontSize: 12, opacity: 0.4, marginTop: 4 }}>
+          <div style={{ fontSize: z(12), opacity: 0.4, marginTop: z(4) }}>
             {formatAxisLabel(startY)} — {formatAxisLabel(endY)}
           </div>
         </div>
 
         {/* Vertical timeline */}
-        <div style={{ position: 'relative', paddingLeft: AXIS_X + CONNECTOR_LEN + 16 }}>
+        <div style={{ position: 'relative', paddingLeft: AXIS_X + CONNECTOR_LEN + z(16) }}>
           {/* Axis line */}
           <div style={{
-            position: 'absolute', top: 0, bottom: 0, left: AXIS_X - 1, width: 3,
+            position: 'absolute', top: 0, bottom: 0, left: AXIS_X - 1, width: z(3),
             backgroundColor: preset.axisBg, borderRadius: 2,
           }} />
 
           {/* Start marker */}
           <div style={{
-            position: 'absolute', top: -6, left: AXIS_X - 5, width: 13, height: 13,
+            position: 'absolute', top: z(-6), left: AXIS_X - z(5), width: z(13), height: z(13),
             borderRadius: '50%', backgroundColor: preset.axisBg, zIndex: 2,
           }} />
 
@@ -851,27 +1118,27 @@ export default function TimelineGenerator() {
               pb.tier = t;
               placedPeriods.push({ fracStart: pb.fracStart, fracEnd: pb.fracEnd, tier: t });
             }
-            const BAND_W = 22;
-            const LABEL_W = 60;
+            const BAND_W = z(22);
+            const LABEL_W = z(60);
             return periodBands.map(pb => {
               const opacity = pb.opacity ?? 0.5;
-              const bandLeft = AXIS_X - BAND_W / 2 - pb.tier * (BAND_W + LABEL_W + 4);
+              const bandLeft = AXIS_X - BAND_W / 2 - pb.tier * (BAND_W + LABEL_W + z(4));
               return (
                 <div key={pb.id} style={{ position: 'absolute', left: bandLeft, top: `${pb.fracStart * 100}%`, height: `${Math.max((pb.fracEnd - pb.fracStart) * 100, 0.5)}%`, zIndex: 0, display: 'flex', flexDirection: 'row-reverse', alignItems: 'stretch' }}>
                   {/* Bande colorée */}
                   <div style={{
-                    width: BAND_W, height: '100%', borderRadius: 4,
+                    width: BAND_W, height: '100%', borderRadius: z(4),
                     backgroundColor: pb.color, opacity,
                     border: `1.5px solid ${pb.color}`,
                   }} />
                   {/* Label à côté de la bande */}
                   <div style={{
                     width: LABEL_W, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                    paddingRight: 4, textAlign: 'right',
+                    paddingRight: z(4), textAlign: 'right',
                   }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: pb.color, lineHeight: 1.2 }}>{pb.label}</div>
+                    <div style={{ fontSize: z(10), fontWeight: 700, color: pb.color, lineHeight: 1.2 }}>{pb.label}</div>
                     {pb.description && (
-                      <div style={{ fontSize: 8, color: pb.color, opacity: 0.7, lineHeight: 1.2 }}>{pb.description}</div>
+                      <div style={{ fontSize: z(8), color: pb.color, opacity: 0.7, lineHeight: 1.2 }}>{pb.description}</div>
                     )}
                   </div>
                 </div>
@@ -882,15 +1149,15 @@ export default function TimelineGenerator() {
           {sortedEvents.map((evt) => (
             <div key={evt.id} style={{
               position: 'relative',
-              marginBottom: 24,
+              marginBottom: z(24),
             }}>
               {/* Dot on axis */}
               <div style={{
                 position: 'absolute',
-                left: -(CONNECTOR_LEN + 16) + AXIS_X - DOT_R + 1,
-                top: 14 - DOT_R,
-                width: preset.dotSize, height: preset.dotSize, borderRadius: '50%',
-                backgroundColor: evt.color, border: `3px solid ${preset.bg}`,
+                left: -(CONNECTOR_LEN + z(16)) + AXIS_X - DOT_R + 1,
+                top: z(14) - DOT_R,
+                width: z(preset.dotSize), height: z(preset.dotSize), borderRadius: '50%',
+                backgroundColor: evt.color, border: `${z(3)}px solid ${preset.bg}`,
                 boxShadow: `0 0 0 2px ${evt.color}`,
                 zIndex: 3,
               }} />
@@ -898,10 +1165,10 @@ export default function TimelineGenerator() {
               {/* Horizontal connector line from dot to card */}
               <div style={{
                 position: 'absolute',
-                left: -(CONNECTOR_LEN + 16) + AXIS_X + DOT_R + 3,
-                top: 13,
-                width: CONNECTOR_LEN - DOT_R + 12,
-                height: 2,
+                left: -(CONNECTOR_LEN + z(16)) + AXIS_X + DOT_R + z(3),
+                top: z(13),
+                width: CONNECTOR_LEN - DOT_R + z(12),
+                height: z(2),
                 backgroundColor: evt.color,
                 opacity: 0.5,
                 zIndex: 1,
@@ -911,28 +1178,35 @@ export default function TimelineGenerator() {
               <div style={{
                 backgroundColor: preset.cardBg,
                 border: `1px solid ${preset.cardBorder}`,
-                borderLeft: `3px solid ${evt.color}`,
-                borderRadius: 8,
-                padding: 12,
+                borderLeft: `${z(3)}px solid ${evt.color}`,
+                borderRadius: z(8),
+                padding: z(12),
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
               }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: z(10), alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: evt.color, marginBottom: 2 }}>
-                      {evt.date}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: z(2) }}>
+                      <span style={{ fontSize: z(12), fontWeight: 700, color: evt.color }}>{evt.date}</span>
+                      {evt.category && (
+                        <span style={{
+                          fontSize: z(8), fontWeight: 600, padding: `${z(1)}px ${z(5)}px`, borderRadius: z(8),
+                          backgroundColor: getCategoryColor(evt.category) + '22',
+                          color: getCategoryColor(evt.category),
+                        }}>{evt.category}</span>
+                      )}
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
+                    <div style={{ fontSize: z(14), fontWeight: 700, lineHeight: 1.2, marginBottom: z(4) }}>
                       {evt.label}
                     </div>
                     {evt.description && (
-                      <div style={{ fontSize: 11, opacity: 0.7, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: z(11), opacity: 0.7, lineHeight: 1.5 }}>
                         {evt.description}
                       </div>
                     )}
                   </div>
                   {evt.image && (
                     <img src={evt.image} alt="" style={{
-                      width: 100, height: 75, objectFit: 'cover', borderRadius: 6, flexShrink: 0,
+                      width: z(100), height: z(75), objectFit: 'cover', borderRadius: z(6), flexShrink: 0,
                     }} />
                   )}
                 </div>
@@ -943,9 +1217,69 @@ export default function TimelineGenerator() {
           {/* End marker */}
           {sortedEvents.length > 0 && (
             <div style={{
-              position: 'absolute', bottom: -8, left: AXIS_X - 5, width: 13, height: 13,
+              position: 'absolute', bottom: z(-8), left: AXIS_X - z(5), width: z(13), height: z(13),
               borderRadius: '50%', backgroundColor: preset.axisBg, zIndex: 2,
             }} />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Templates modal ──────────
+
+  const renderTemplatesModal = () => {
+    if (!showTemplates) return null;
+    const templates = TIMELINE_TEMPLATES;
+    const cats = [...new Set(templates.map(t => t.category))];
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+        display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999,
+      }} onClick={() => setShowTemplates(false)}>
+        <div style={{
+          backgroundColor: '#FFF', borderRadius: 12, width: 600, maxHeight: '80vh',
+          overflow: 'auto', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        }} onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Templates de frises</h2>
+            <button style={{ ...editorS.smallBtn, fontSize: 18 }} onClick={() => setShowTemplates(false)}>✕</button>
+          </div>
+          {cats.map(cat => (
+            <div key={cat} style={{ marginBottom: 16 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>{cat}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {templates.filter(t => t.category === cat).map(t => (
+                  <button
+                    key={t.id}
+                    style={{
+                      padding: '12px 14px', borderRadius: 8, border: '1px solid #E5E7EB',
+                      backgroundColor: '#FAFAFA', cursor: 'pointer', textAlign: 'left',
+                      display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.borderColor = '#3B82F6'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FAFAFA'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
+                    onClick={() => {
+                      setConfig({ ...defaultConfig, ...t.config, categories: [], zoomLevel: 1 });
+                      setShowTemplates(false);
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>{t.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{t.name}</div>
+                      <div style={{ fontSize: 11, color: '#6B7280' }}>
+                        {t.config.events.length} événements · {t.config.periods.length} périodes
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {templates.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF' }}>
+              Aucun template disponible
+            </div>
           )}
         </div>
       </div>
@@ -956,11 +1290,28 @@ export default function TimelineGenerator() {
 
   return (
     <div style={rootS.container}>
+      {renderTemplatesModal()}
       <div ref={editorRef} style={rootS.editor}>{renderEditor()}</div>
-      <div ref={previewPaneRef} style={rootS.preview}>
+      <div
+        ref={previewPaneRef}
+        style={{
+          ...rootS.preview,
+          cursor: isDragging ? 'grabbing' : 'grab',
+          backgroundColor: preset.bg,
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
         <div
           ref={previewRef}
-          style={{ transform: `scale(${previewScale})`, transformOrigin: 'top center' }}
+          style={{
+            transform: config.zoomLevel === 0 ? `scale(${previewScale})` : undefined,
+            transformOrigin: 'top left',
+            pointerEvents: isDragging ? 'none' : 'auto',
+            margin: '0 auto',
+            flexShrink: 0,
+          }}
         >
           {config.orientation === 'horizontal' ? renderHorizontal() : renderVertical()}
         </div>
@@ -975,7 +1326,7 @@ const rootS: Record<string, CSSProperties> = {
   container: { display: 'flex', gap: 24, height: 'calc(100vh - 200px)', minHeight: 500 },
   editor: { width: 360, minWidth: 320, flexShrink: 0, overflowY: 'auto', padding: '0 4px 20px 0' },
   preview: {
-    flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+    flex: 1, display: 'flex', alignItems: 'flex-start',
     backgroundColor: '#E5E7EB', borderRadius: 8, overflow: 'auto', padding: 16, position: 'relative',
   },
 };
@@ -1025,5 +1376,9 @@ const editorS: Record<string, CSSProperties> = {
   exportBtn: {
     flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
     cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#FFF',
+  },
+  actionBtn: {
+    padding: '5px 10px', borderRadius: 6, border: 'none',
+    cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#FFF',
   },
 };

@@ -2,6 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 
 const EXPORT_SIZE = 1024;
+const WORD_TEMPLATES = [
+  'Correction', 'Application', 'Documents', 'Exercice',
+  'Leçon', 'Évaluation', 'Ressource', 'Vidéo',
+];
+
 const COLORS = [
   { label: 'Noir', dark: '#000000', light: '#ffffff' },
   { label: 'Bleu', dark: '#1a56db', light: '#ffffff' },
@@ -13,6 +18,7 @@ export default function QrCodeGenerator() {
   const [url, setUrl] = useState('');
   const [colorIdx, setColorIdx] = useState(0);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
+  const [wordTemplate, setWordTemplate] = useState<string | null>(null);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,6 +77,49 @@ export default function QrCodeGenerator() {
     ctx.drawImage(logo, x + padding, y + padding, logoSize, logoSize);
   }, []);
 
+  const drawWord = useCallback((canvas: HTMLCanvasElement, word: string) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const canvasSize = canvas.width;
+    // Measure text to determine background size
+    const fontSize = Math.round(canvasSize * 0.07);
+    ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+    const metrics = ctx.measureText(word);
+    const textWidth = metrics.width;
+    const textHeight = fontSize;
+
+    const paddingH = Math.round(textHeight * 0.6);
+    const paddingV = Math.round(textHeight * 0.4);
+    const bgWidth = textWidth + paddingH * 2;
+    const bgHeight = textHeight + paddingV * 2;
+    const x = Math.round((canvasSize - bgWidth) / 2);
+    const y = Math.round((canvasSize - bgHeight) / 2);
+
+    // White rounded background
+    const radius = Math.round(bgHeight * 0.3);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + bgWidth - radius, y);
+    ctx.quadraticCurveTo(x + bgWidth, y, x + bgWidth, y + radius);
+    ctx.lineTo(x + bgWidth, y + bgHeight - radius);
+    ctx.quadraticCurveTo(x + bgWidth, y + bgHeight, x + bgWidth - radius, y + bgHeight);
+    ctx.lineTo(x + radius, y + bgHeight);
+    ctx.quadraticCurveTo(x, y + bgHeight, x, y + bgHeight - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw word centered
+    ctx.fillStyle = '#000000';
+    ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(word, canvasSize / 2, canvasSize / 2);
+  }, []);
+
   useEffect(() => {
     if (!url.trim()) {
       setDataUrl(null);
@@ -79,8 +128,9 @@ export default function QrCodeGenerator() {
     }
 
     const color = COLORS[colorIdx];
-    // Use H (high) error correction when logo is present, M otherwise
-    const errorCorrectionLevel = logoSrc ? 'H' : 'M';
+    // Use H (high) error correction when logo or word template is present, M otherwise
+    const hasCenterOverlay = !!(logoSrc || wordTemplate);
+    const errorCorrectionLevel = hasCenterOverlay ? 'H' : 'M';
 
     QRCode.toCanvas(canvasRef.current, url, {
       width: EXPORT_SIZE,
@@ -91,23 +141,40 @@ export default function QrCodeGenerator() {
       .then(() => {
         if (logoSrc && logoRef.current) {
           drawLogo(canvasRef.current!);
+        } else if (wordTemplate) {
+          drawWord(canvasRef.current!, wordTemplate);
         }
         setDataUrl(canvasRef.current?.toDataURL('image/png') ?? null);
+        // Force display size after QRCode.toCanvas overwrites it
+        if (canvasRef.current) {
+          canvasRef.current.style.width = '100%';
+          canvasRef.current.style.height = '100%';
+        }
         setError('');
       })
       .catch(() => setError('Impossible de générer le QR code'));
-  }, [url, colorIdx, logoSrc, logoReady, drawLogo]);
+  }, [url, colorIdx, logoSrc, logoReady, wordTemplate, drawLogo, drawWord]);
 
   function handleLogoUpload(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
       setLogoSrc(e.target?.result as string);
+      setWordTemplate(null); // Un seul élément central
     };
     reader.readAsDataURL(file);
   }
 
   function removeLogo() {
     setLogoSrc(null);
+  }
+
+  function selectWordTemplate(word: string) {
+    if (wordTemplate === word) {
+      setWordTemplate(null); // Désélectionner
+    } else {
+      setWordTemplate(word);
+      setLogoSrc(null); // Un seul élément central
+    }
   }
 
   function download() {
@@ -194,22 +261,42 @@ export default function QrCodeGenerator() {
             </label>
           )}
         </div>
+
+        {/* Word template */}
+        <div>
+          <label className="block text-xs font-medium text-[var(--text-dim)] mb-1">Mot central</label>
+          <div className="flex flex-wrap gap-1">
+            {WORD_TEMPLATES.map((word) => (
+              <button
+                key={word}
+                onClick={() => selectWordTemplate(word)}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                  wordTemplate === word
+                    ? 'bg-[var(--indigo)] text-white'
+                    : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
+                }`}
+              >
+                {word}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* QR Code display */}
       <div className="flex flex-col items-center gap-4">
         <div
           className={`rounded-2xl p-4 bg-white ${url.trim() ? '' : 'opacity-30'}`}
-          style={{ boxShadow: 'var(--shadow-md)' }}
+          style={{ boxShadow: 'var(--shadow-md)', width: 232, height: 232 }}
         >
-          <canvas ref={canvasRef} style={{ width: 300, height: 300 }} />
+          <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
         </div>
 
         {error && <p className="text-sm text-[var(--neg)]">{error}</p>}
 
-        {logoSrc && dataUrl && (
+        {(logoSrc || wordTemplate) && dataUrl && (
           <p className="text-xs text-[var(--text-dim)]">
-            Correction d'erreur haute (H) activee pour compenser le logo
+            Correction d'erreur haute (H) activée pour compenser {logoSrc ? 'le logo' : 'le mot central'}
           </p>
         )}
 

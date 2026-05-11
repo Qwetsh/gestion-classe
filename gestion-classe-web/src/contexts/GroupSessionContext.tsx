@@ -34,6 +34,7 @@ interface GroupSessionState {
   students: StudentInfo[];
   templates: TpTemplate[];
   sessionName: string;
+  selectedTemplateId: string | null;
   tempCriteria: TempCriteria[];
   tempGroups: TempGroup[];
   // Academy
@@ -82,6 +83,7 @@ const initialState: GroupSessionState = {
   students: [],
   templates: [],
   sessionName: '',
+  selectedTemplateId: null,
   tempCriteria: [],
   tempGroups: [],
   academyMode: false,
@@ -174,6 +176,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
   const applyTemplate = useCallback((template: TpTemplate) => {
     setState(s => ({
       ...s,
+      selectedTemplateId: template.id,
       tempCriteria: template.criteria.map(c => ({ label: c.label, max_points: c.max_points })),
     }));
   }, []);
@@ -246,6 +249,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         state.sessionName,
         state.tempCriteria,
         state.tempGroups,
+        state.selectedTemplateId,
       );
 
       // Save academy coefficient if in academy mode
@@ -258,7 +262,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       setState(s => ({ ...s, error: 'Erreur de creation', loading: false }));
     }
-  }, [user, state.selectedClass, state.sessionName, state.tempCriteria, state.tempGroups, state.academyMode, state.academyCoefficient]);
+  }, [user, state.selectedClass, state.sessionName, state.selectedTemplateId, state.tempCriteria, state.tempGroups, state.academyMode, state.academyCoefficient]);
 
   const setActiveGroup = useCallback((index: number) => {
     setState(s => ({ ...s, activeGroupIndex: index }));
