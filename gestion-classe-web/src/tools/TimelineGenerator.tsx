@@ -597,67 +597,86 @@ export default function TimelineGenerator() {
             const ROW_H = AXIS_H + LABEL_H + 4;
             const totalAxisH = (maxTier + 1) * ROW_H;
 
-            // Collecter toutes les frontières uniques pour les traits séparateurs
-            const boundaries = new Set<number>();
-            boundaries.add(0);
-            boundaries.add(1);
-            for (const pb of tieredBands) {
-              boundaries.add(pb.fracStart);
-              boundaries.add(pb.fracEnd);
-            }
-            const sortedBoundaries = [...boundaries].sort((a, b) => a - b);
+            // Fonction pour assombrir une couleur hex
+            const darkenColor = (hex: string, factor = 0.4): string => {
+              const c = hex.replace('#', '');
+              const r = Math.round(parseInt(c.substring(0, 2), 16) * factor);
+              const g = Math.round(parseInt(c.substring(2, 4), 16) * factor);
+              const b = Math.round(parseInt(c.substring(4, 6), 16) * factor);
+              return `rgb(${r},${g},${b})`;
+            };
+
+            const axisOriginY = axisTopPos - totalAxisH / 2;
 
             return (
               <>
-                {/* Bandes de périodes empilées par tier */}
+                {/* Bandes de périodes + traits par période */}
                 {tieredBands.map(pb => {
                   const pLeft = AXIS_PAD + pb.fracStart * axisW;
                   const pWidth = (pb.fracEnd - pb.fracStart) * axisW;
                   const opacity = pb.opacity ?? 0.5;
-                  const bandTop = axisTopPos - totalAxisH / 2 + pb.tier * ROW_H;
+                  const bandTop = axisOriginY + pb.tier * ROW_H;
+                  const darkColor = darkenColor(pb.color);
+                  // Traits : du haut de l'axe jusqu'au bas de cette période
+                  const traitTop = axisOriginY - 4;
+                  const traitH = (bandTop + AXIS_H) - traitTop + 4;
+
                   return (
-                    <div key={pb.id} style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), zIndex: 0 }}>
+                    <div key={pb.id}>
                       {/* Bande colorée */}
-                      <div style={{
-                        width: '100%', height: AXIS_H,
-                        backgroundColor: pb.color, opacity,
-                      }} />
-                      {/* Label en dessous */}
-                      <div style={{
-                        width: '100%', textAlign: 'center', marginTop: 2,
-                        fontSize: 10, fontWeight: 700, color: pb.color,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        lineHeight: `${LABEL_H}px`,
-                      }}>
-                        {pb.label}
-                        {pb.description && (
-                          <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.7, marginLeft: 4 }}>{pb.description}</span>
-                        )}
+                      <div style={{ position: 'absolute', left: pLeft, top: bandTop, width: Math.max(pWidth, 2), zIndex: 0 }}>
+                        <div style={{
+                          width: '100%', height: AXIS_H,
+                          backgroundColor: pb.color, opacity,
+                        }} />
+                        {/* Label en dessous */}
+                        <div style={{
+                          width: '100%', textAlign: 'center', marginTop: 2,
+                          fontSize: 10, fontWeight: 700, color: pb.color,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          lineHeight: `${LABEL_H}px`,
+                        }}>
+                          {pb.label}
+                          {pb.description && (
+                            <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.7, marginLeft: 4 }}>{pb.description}</span>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Trait gauche (début de période) */}
+                      <div style={{
+                        position: 'absolute', left: pLeft - 1, top: traitTop,
+                        width: 2, height: traitH, backgroundColor: darkColor, zIndex: 1,
+                      }} />
+                      {/* Trait droit (fin de période) */}
+                      <div style={{
+                        position: 'absolute', left: AXIS_PAD + pb.fracEnd * axisW - 1, top: traitTop,
+                        width: 2, height: traitH, backgroundColor: darkColor, zIndex: 1,
+                      }} />
                     </div>
                   );
                 })}
 
-                {/* Traits noirs séparateurs aux frontières (sur toute la hauteur empilée) */}
-                {sortedBoundaries.map((frac, i) => {
-                  const xPos = AXIS_PAD + frac * axisW;
-                  const year = startY + frac * range;
-                  return (
-                    <div key={`sep-${i}`} style={{ position: 'absolute', left: xPos - 1, top: axisTopPos - totalAxisH / 2 - 4, zIndex: 1 }}>
-                      {/* Trait vertical */}
-                      <div style={{
-                        width: 2, height: totalAxisH + 8,
-                        backgroundColor: preset.axisBg,
-                      }} />
-                      {/* Date au-dessus */}
-                      <span style={{
-                        position: 'absolute', bottom: totalAxisH + 12, left: '50%', transform: 'translateX(-50%)',
+                {/* Dates au-dessus : une par frontière unique */}
+                {(() => {
+                  const boundaries = new Set<number>();
+                  for (const pb of tieredBands) {
+                    boundaries.add(pb.fracStart);
+                    boundaries.add(pb.fracEnd);
+                  }
+                  return [...boundaries].sort((a, b) => a - b).map((frac, i) => {
+                    const xPos = AXIS_PAD + frac * axisW;
+                    const year = startY + frac * range;
+                    return (
+                      <span key={`date-${i}`} style={{
+                        position: 'absolute', left: xPos, top: axisOriginY - 18,
+                        transform: 'translateX(-50%)',
                         fontSize: 9, fontWeight: 700, color: preset.axisBg,
-                        whiteSpace: 'nowrap',
+                        whiteSpace: 'nowrap', zIndex: 2,
                       }}>{formatAxisLabel(Math.round(year))}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </>
             );
           })()}
