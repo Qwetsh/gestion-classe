@@ -90,6 +90,14 @@ export const tools: Tool[] = [
     component: lazy(() => import('./DocumentGenerator')),
     tags: ['document', 'pdf', 'autorisation', 'captation', 'sortie', 'séjour', 'officiel', 'formulaire'],
   },
+  {
+    id: 'fileconverter',
+    name: 'Convertisseur de fichiers',
+    description: 'Convertir, redimensionner, compresser des images et assembler en PDF',
+    icon: '🔄',
+    component: lazy(() => import('./FileConverter')),
+    tags: ['convertir', 'image', 'png', 'jpg', 'webp', 'pdf', 'redimensionner', 'compresser', 'fichier'],
+  },
 ];
 
 export function getToolById(id: string): Tool | undefined {
