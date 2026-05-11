@@ -236,10 +236,9 @@ export function StudentDashboard() {
   };
 
   const handleSelectBonus = async (bonusId: string) => {
-    if (!stampData?.active_card) return;
-    const cardId = stampData.active_card.id;
+    if (!stampData?.active_card || !currentCodeRef.current) return;
     try {
-      const { error: err } = await supabase.rpc('select_card_bonus', { p_card_id: cardId, p_bonus_id: bonusId });
+      const { error: err } = await supabase.rpc('select_student_bonus', { p_code: currentCodeRef.current, p_bonus_id: bonusId });
       if (err) throw err;
       setShowBonusSelect(false);
       setShowCelebration(true);
