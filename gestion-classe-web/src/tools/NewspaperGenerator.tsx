@@ -154,6 +154,7 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       author: 'La rédaction',
       style: 'lemonde',
       pages: 1,
+      background: { type: 'preset' },
       blocks: [
         { type: 'text', id: 'tpl_t1', content: 'Les élèves de 6e ont inauguré la semaine du développement durable avec la création d\'un jardin pédagogique dans la cour du collège. Encadrés par leurs professeurs de SVT, ils ont planté des aromates, des légumes de saison et installé un composteur. « C\'est génial de voir pousser ce qu\'on a planté », s\'enthousiasme Léa, élève de 6eB.', subtitle: 'Le jardin pédagogique prend racine' },
         { type: 'quote', id: 'tpl_q1', content: 'Apprendre en faisant, c\'est la meilleure façon de comprendre le monde qui nous entoure.', author: 'M. Martin, professeur de SVT', style: 'pullquote' as const, wide: true },
@@ -176,6 +177,7 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       author: '',
       style: 'scientifique',
       pages: 1,
+      background: { type: 'preset' },
       blocks: [
         { type: 'text', id: 'tpl_s1', content: 'Les abysses représentent l\'un des derniers territoires inexplorés de notre planète. Les conditions extrêmes qui y règnent — pression colossale, obscurité totale, températures glaciales — en font un environnement hostile à la vie telle que nous la connaissons. Pourtant, des organismes y prospèrent.', subtitle: 'Un monde d\'obscurité' },
         { type: 'quote', id: 'tpl_sq1', content: 'Nous connaissons mieux la surface de Mars que les fonds de nos propres océans.', author: 'Dr. Sylvia Earle, océanographe', style: 'boxed' as const },
@@ -198,6 +200,7 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       author: 'Un correspondant',
       style: 'figaro',
       pages: 1,
+      background: { type: 'preset' },
       blocks: [
         { type: 'text', id: 'tpl_h1', content: 'Dès les premières heures de la matinée, une foule considérable s\'est rassemblée aux abords de la forteresse. Les esprits, échauffés par les récents événements et la disette qui frappe la capitale, réclamaient la libération des prisonniers et la remise des armes entreposées dans la place forte.', subtitle: 'Le peuple en marche' },
         { type: 'quote', id: 'tpl_hq1', content: 'La Bastille est prise ! Le peuple est victorieux ! Vive la Nation !', author: 'Cris entendus dans les rues de Paris', style: 'pullquote' as const, wide: true },
@@ -220,6 +223,7 @@ const NEWSPAPER_TEMPLATES: NewspaperTemplate[] = [
       author: 'Sophie Laurent',
       style: 'moderne',
       pages: 1,
+      background: { type: 'preset' },
       blocks: [
         { type: 'text', id: 'tpl_m1', content: 'Les assistants vocaux, les recommandations de streaming, la reconnaissance faciale de nos téléphones : l\'intelligence artificielle est déjà partout dans notre vie quotidienne. Mais ce n\'est que le début d\'une révolution technologique sans précédent.', subtitle: 'Une révolution silencieuse' },
         { type: 'quote', id: 'tpl_mq1', content: 'L\'IA ne remplacera pas les enseignants, mais les enseignants qui utilisent l\'IA remplaceront ceux qui ne l\'utilisent pas.', author: 'Rapport UNESCO 2025', style: 'boxed' as const, wide: true },
