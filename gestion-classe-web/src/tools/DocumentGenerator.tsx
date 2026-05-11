@@ -29,6 +29,32 @@ function Field({ label, value, onChange, type = 'text', placeholder = '', classN
 
 type Tab = 'captation' | 'sortie' | 'demande';
 
+// ── History ──
+const HISTORY_KEY = 'doc-generator-history';
+
+interface HistoryEntry {
+  id: string;
+  tab: Tab;
+  date: string;
+  label: string;
+  capt?: typeof INITIAL_CAPT;
+  supports?: FormSupport[];
+  sortie?: typeof INITIAL_SORTIE;
+  dem?: typeof INITIAL_DEM;
+  demDomaines?: string[];
+  classes?: ClasseRow[];
+  accomps?: AccompRow[];
+  eleves?: Eleve[];
+  budget?: BudgetData;
+}
+
+function loadHistory(): HistoryEntry[] {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+}
+function saveHistory(entries: HistoryEntry[]) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, 50)));
+}
+
 // ── Support item for captation form ──
 interface FormSupport {
   id: string;
@@ -52,6 +78,30 @@ const INITIAL_SUPPORTS: FormSupport[] = [
 ];
 
 const DOMAINES = ['Arts / Culture', 'Orientation', 'Scientifique', 'Linguistique', 'Technique / Technologique', 'Sportif', 'Appariement', 'Autre'];
+
+const INITIAL_CAPT = {
+  etablissement: 'College Pierre Mendes France', tel: '03 87 54 36 40',
+  codepostal: '57140 WOIPPY', annee: '2026', classe: '',
+  finalites: '', projet: '', titreOeuvre: '', dateDebut: '', dateFin: '', lieu: '',
+};
+
+const INITIAL_SORTIE = {
+  organisateur: '', fonction: '', date: '', classe: '', lieu: '',
+  heureDepart: '', heureRetour: '', matiere: '', objectifs: '',
+  transport: 'Bus', dateRetourCoupon: '', lieuDepart: 'Clg P. Mendes France WOIPPY', lieuArrivee: 'Clg P. Mendes France WOIPPY',
+};
+
+const INITIAL_DEM = {
+  pays: 'france', departement: '', adresse: '',
+  nature: 'obligatoire', type: 'sortie', reciprocite: 'sans', hebergement: '',
+  transport: 'Bus', transportPrecision: '',
+  responsable: '', qualite: '', telUrgence: '', telChef: '03 87 54 36 40',
+  dateDepart: '', heureDepart: '', dateRetour: '', heureRetour: '',
+  lieuDepart: 'Clg P. Mendes France WOIPPY', lieuRetour: 'Clg P. Mendes France WOIPPY',
+  nbJournees: '1', disciplines: '', objectifs: '', liens: '', activites: '',
+  travauxPrepa: '', restitution: '', nonParticipants: '', datePrepa: '', dateBilan: '',
+  elevesClasse: '', incidences: '',
+};
 
 const EMPTY_BUDGET: BudgetData = {
   nbFamilles: 0, montantFamille: 0, etablissement: 0, dons: 0,
@@ -86,38 +136,69 @@ export default function DocumentGenerator() {
   }, []);
 
   // ── Captation state ──
-  const [capt, setCapt] = useState({
-    etablissement: 'College Pierre Mendes France', tel: '03 87 54 36 40',
-    codepostal: '57140 WOIPPY', annee: '2026', classe: '',
-    finalites: '', projet: '', titreOeuvre: '', dateDebut: '', dateFin: '', lieu: '',
-  });
+  const [capt, setCapt] = useState(INITIAL_CAPT);
   const [supports, setSupports] = useState<FormSupport[]>(INITIAL_SUPPORTS);
 
   // ── Sortie state ──
-  const [sortie, setSortie] = useState({
-    organisateur: '', fonction: '', date: '', classe: '', lieu: '',
-    heureDepart: '', heureRetour: '', matiere: '', objectifs: '',
-    transport: 'Bus', dateRetourCoupon: '', lieuDepart: 'Clg P. Mendes France WOIPPY', lieuArrivee: 'Clg P. Mendes France WOIPPY',
-  });
+  const [sortie, setSortie] = useState(INITIAL_SORTIE);
 
   // ── Demande state ──
-  const [dem, setDem] = useState({
-    pays: 'france', departement: '', adresse: '',
-    nature: 'obligatoire', type: 'sortie', reciprocite: 'sans', hebergement: '',
-    transport: 'Bus', transportPrecision: '',
-    responsable: '', qualite: '', telUrgence: '', telChef: '03 87 54 36 40',
-    dateDepart: '', heureDepart: '', dateRetour: '', heureRetour: '',
-    lieuDepart: 'Clg P. Mendes France WOIPPY', lieuRetour: 'Clg P. Mendes France WOIPPY',
-    nbJournees: '1', disciplines: '', objectifs: '', liens: '', activites: '',
-    travauxPrepa: '', restitution: '', nonParticipants: '', datePrepa: '', dateBilan: '',
-    elevesClasse: '', incidences: '',
-  });
+  const [dem, setDem] = useState(INITIAL_DEM);
   const [demDomaines, setDemDomaines] = useState<string[]>([]);
   const [classes, setClasses] = useState<ClasseRow[]>([{ nom: '', effectif: '', participants: '' }]);
   const [accomps, setAccomps] = useState<AccompRow[]>([{ nom: '', qualite: '', tel: '' }]);
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [budget, setBudget] = useState<BudgetData>(EMPTY_BUDGET);
   const csvRef = useRef<HTMLInputElement>(null);
+
+  // ── History state ──
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
+  const [showHistory, setShowHistory] = useState(false);
+
+  const saveToHistory = useCallback(() => {
+    const TAB_LABELS: Record<Tab, string> = { captation: 'Captation', sortie: 'Sortie', demande: 'Demande' };
+    let label = TAB_LABELS[tab];
+    if (tab === 'captation') label += ` - ${capt.classe || capt.projet || 'sans titre'}`;
+    else if (tab === 'sortie') label += ` - ${sortie.classe || sortie.lieu || 'sans titre'}`;
+    else label += ` - ${dem.disciplines || dem.responsable || 'sans titre'}`;
+
+    const entry: HistoryEntry = {
+      id: Date.now().toString(),
+      tab,
+      date: new Date().toLocaleString('fr-FR'),
+      label,
+      ...(tab === 'captation' && { capt, supports }),
+      ...(tab === 'sortie' && { sortie }),
+      ...(tab === 'demande' && { dem, demDomaines, classes, accomps, eleves, budget }),
+    };
+    const updated = [entry, ...history];
+    setHistory(updated);
+    saveHistory(updated);
+  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, history]);
+
+  const restoreEntry = (entry: HistoryEntry) => {
+    setTab(entry.tab);
+    if (entry.tab === 'captation' && entry.capt) {
+      setCapt(entry.capt);
+      if (entry.supports) setSupports(entry.supports);
+    } else if (entry.tab === 'sortie' && entry.sortie) {
+      setSortie(entry.sortie);
+    } else if (entry.tab === 'demande' && entry.dem) {
+      setDem(entry.dem);
+      if (entry.demDomaines) setDemDomaines(entry.demDomaines);
+      if (entry.classes) setClasses(entry.classes);
+      if (entry.accomps) setAccomps(entry.accomps);
+      if (entry.eleves) setEleves(entry.eleves);
+      if (entry.budget) setBudget(entry.budget);
+    }
+    setShowHistory(false);
+  };
+
+  const deleteEntry = (id: string) => {
+    const updated = history.filter(h => h.id !== id);
+    setHistory(updated);
+    saveHistory(updated);
+  };
 
   // ── Load logo ──
   useEffect(() => { loadLogoPNG().then(setLogoPNG); }, []);
@@ -220,12 +301,13 @@ export default function DocumentGenerator() {
 
     if (download) {
       doc.save(filename.replace(/\s+/g, '_'));
+      saveToHistory();
     } else {
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
     }
-  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, logoPNG]);
+  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, logoPNG, saveToHistory]);
 
   // ── Auto-preview with debounce ──
   useEffect(() => {
@@ -624,6 +706,9 @@ export default function DocumentGenerator() {
         <button onClick={() => generatePDF(true)} className={btnPrimary} style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}>
           Telecharger PDF
         </button>
+        <button onClick={() => setShowHistory(true)} className="px-5 py-2.5 rounded-xl font-medium text-sm text-[var(--text-muted)] bg-[var(--surface-3)] border border-[var(--border)] transition-all hover:bg-[var(--border)]">
+          Historique ({history.length})
+        </button>
       </div>
       </div>{/* end left column */}
 
@@ -649,6 +734,47 @@ export default function DocumentGenerator() {
         </div>
       </div>
       </div>{/* end splitter row */}
+
+      {/* ═══ HISTORY MODAL ═══ */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowHistory(false)}>
+          <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+              <h2 className="font-semibold text-[var(--text)]">Historique des documents</h2>
+              <button onClick={() => setShowHistory(false)} className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg px-2">&times;</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {history.length === 0 ? (
+                <p className="text-sm text-[var(--text-dim)] text-center py-8">Aucun document dans l'historique</p>
+              ) : (
+                <div className="space-y-1">
+                  {history.map(entry => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--surface-3)] cursor-pointer transition-colors group"
+                      onClick={() => restoreEntry(entry)}
+                    >
+                      <div className={`shrink-0 w-2 h-2 rounded-full ${
+                        entry.tab === 'captation' ? 'bg-blue-500' : entry.tab === 'sortie' ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[var(--text)] truncate">{entry.label}</p>
+                        <p className="text-xs text-[var(--text-dim)]">{entry.date}</p>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteEntry(entry.id); }}
+                        className="opacity-0 group-hover:opacity-100 text-xs text-[var(--neg)] hover:bg-[var(--neg-soft)] px-2 py-1 rounded-lg transition-all"
+                      >
+                        Suppr.
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
