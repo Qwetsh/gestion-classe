@@ -58,6 +58,7 @@ interface NewspaperConfig {
   author: string;
   style: NewspaperStyle;
   pages: 1 | 2;
+  background: { type: 'preset'; } | { type: 'color'; value: string } | { type: 'image'; src: string };
   blocks: Block[];
 }
 
@@ -308,6 +309,7 @@ function computeLayout(blocks: Block[], totalCols: number): LayoutItem[][] {
 export default function NewspaperGenerator() {
   const previewRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
 
   const [config, setConfig] = useState<NewspaperConfig>({
     journalName: 'Le Courrier des Classes',
@@ -319,6 +321,7 @@ export default function NewspaperGenerator() {
     author: '',
     style: 'lemonde',
     pages: 1,
+    background: { type: 'preset' },
     blocks: [],
   });
 
@@ -433,31 +436,53 @@ export default function NewspaperGenerator() {
     }));
   }, []);
 
+  const scrollToBlock = useCallback((id: string) => {
+    setTimeout(() => {
+      const el = document.querySelector(`[data-block-id="${id}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }, []);
+
   const addTextBlock = useCallback(() => {
     const block: TextBlock = { type: 'text', id: newId(), content: '', subtitle: '' };
     setConfig(prev => ({ ...prev, blocks: [...prev.blocks, block] }));
-  }, []);
+    scrollToBlock(block.id);
+  }, [scrollToBlock]);
 
   const addQuoteBlock = useCallback(() => {
     const block: QuoteBlock = { type: 'quote', id: newId(), content: '', author: '', style: 'pullquote' };
     setConfig(prev => ({ ...prev, blocks: [...prev.blocks, block] }));
-  }, []);
+    scrollToBlock(block.id);
+  }, [scrollToBlock]);
 
   const addImageBlock = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
+
+  const handleBgImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      update({ background: { type: 'image', src: reader.result as string } });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }, [update]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const block: ImageBlock = { type: 'image', id: newId(), src: reader.result as string, caption: '', wide: false };
+      const id = newId();
+      const block: ImageBlock = { type: 'image', id, src: reader.result as string, caption: '', wide: false };
       setConfig(prev => ({ ...prev, blocks: [...prev.blocks, block] }));
+      scrollToBlock(id);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
-  }, []);
+  }, [scrollToBlock]);
 
   const removeBlock = useCallback((id: string) => {
     setConfig(prev => ({ ...prev, blocks: prev.blocks.filter(b => b.id !== id) }));
@@ -503,7 +528,7 @@ export default function NewspaperGenerator() {
       const canvas = await html2canvas(previewRef.current, {
         scale: 2,
         useCORS: true,
-        backgroundColor: preset.colors.bg,
+        backgroundColor: config.background.type === 'color' ? config.background.value : preset.colors.bg,
       });
 
       if (format === 'png') {
@@ -710,18 +735,59 @@ export default function NewspaperGenerator() {
         >2 pages</button>
       </div>
 
-      <h3 style={editorStyles.sectionTitle}>Contenu</h3>
-      <div style={editorStyles.addButtons}>
-        <button style={editorStyles.addBtn} onClick={addTextBlock}>+ Paragraphe</button>
-        <button style={editorStyles.addBtn} onClick={addQuoteBlock}>+ Citation</button>
-        <button style={editorStyles.addBtn} onClick={addImageBlock}>+ Photo</button>
-        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+      <h3 style={editorStyles.sectionTitle}>Fond de page</h3>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button
+          style={{ ...editorStyles.toggleBtn, ...(config.background.type === 'preset' ? editorStyles.toggleBtnActive : {}) }}
+          onClick={() => update({ background: { type: 'preset' } })}
+        >Style par défaut</button>
+        <button
+          style={{ ...editorStyles.toggleBtn, ...(config.background.type === 'color' ? editorStyles.toggleBtnActive : {}) }}
+          onClick={() => update({ background: { type: 'color', value: preset.colors.bg } })}
+        >Couleur unie</button>
+        <button
+          style={{ ...editorStyles.toggleBtn, ...(config.background.type === 'image' ? editorStyles.toggleBtnActive : {}) }}
+          onClick={() => bgFileInputRef.current?.click()}
+        >Texture / Image</button>
+        <input ref={bgFileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgImageUpload} />
       </div>
+      {config.background.type === 'color' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+          <input
+            type="color"
+            value={config.background.value}
+            onChange={e => update({ background: { type: 'color', value: e.target.value } })}
+            style={{ width: 36, height: 28, border: '1px solid #D1D5DB', borderRadius: 4, cursor: 'pointer', padding: 0 }}
+          />
+          <input
+            style={{ ...editorStyles.input, flex: 1 }}
+            value={config.background.value}
+            onChange={e => update({ background: { type: 'color', value: e.target.value } })}
+            placeholder="#FFFFFF"
+          />
+        </div>
+      )}
+      {config.background.type === 'image' && (
+        <div style={{ marginTop: 6 }}>
+          {'src' in config.background && config.background.src && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src={config.background.src} alt="" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid #D1D5DB' }} />
+              <button
+                style={{ ...editorStyles.toggleBtn, fontSize: 11 }}
+                onClick={() => bgFileInputRef.current?.click()}
+              >Changer</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <h3 style={editorStyles.sectionTitle}>Contenu</h3>
 
       <div style={editorStyles.blockList}>
         {config.blocks.map((block, idx) => (
           <div
             key={block.id}
+            data-block-id={block.id}
             draggable
             onDragStart={() => handleDragStart(block.id)}
             onDragOver={handleDragOver}
@@ -845,6 +911,13 @@ export default function NewspaperGenerator() {
         ))}
       </div>
 
+      <div style={editorStyles.addButtons}>
+        <button style={editorStyles.addBtn} onClick={addTextBlock}>+ Paragraphe</button>
+        <button style={editorStyles.addBtn} onClick={addQuoteBlock}>+ Citation</button>
+        <button style={editorStyles.addBtn} onClick={addImageBlock}>+ Photo</button>
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+      </div>
+
       <h3 style={editorStyles.sectionTitle}>Exporter</h3>
       <div style={editorStyles.exportButtons}>
         <button
@@ -904,10 +977,14 @@ export default function NewspaperGenerator() {
   const page2Rows = config.pages === 2 ? layoutRows.slice(splitIndex) : [];
 
   const renderPageContent = (rows: LayoutItem[][], showHeader: boolean, pageNum: number, contentRef?: React.RefObject<HTMLDivElement | null>) => {
+    const bgColor = config.background.type === 'color' ? config.background.value : preset.colors.bg;
+    const bgImage = config.background.type === 'image' && 'src' in config.background ? config.background.src : undefined;
+
     const pageStyle: CSSProperties = {
       width: 595,
       minHeight: 842,
-      backgroundColor: preset.colors.bg,
+      backgroundColor: bgColor,
+      ...(bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
       color: preset.colors.text,
       fontFamily: preset.fonts.body,
       padding: '0 28px 28px',
