@@ -40,7 +40,7 @@ async function renderPageThumbnail(pdfBytes: ArrayBuffer, pageIndex: number): Pr
   canvas.height = viewport.height;
   const ctx = canvas.getContext('2d')!;
 
-  await page.render({ canvasContext: ctx, viewport }).promise;
+  await page.render({ canvasContext: ctx, viewport, canvas } as never).promise;
   const url = canvas.toDataURL('image/jpeg', 0.6);
   doc.destroy();
   return url;
@@ -177,7 +177,7 @@ export default function PdfSplitter() {
           copiedPages.forEach(p => newDoc.addPage(p));
 
           const bytes = await newDoc.save();
-          const blob = new Blob([bytes], { type: 'application/pdf' });
+          const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
 
           const label = pagesPerFile === 1
             ? `${baseName}_page${start + 1}.pdf`
@@ -205,7 +205,7 @@ export default function PdfSplitter() {
         copiedPages.forEach(p => newDoc.addPage(p));
 
         const bytes = await newDoc.save();
-        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
 
         newResults.push({
           name: `${baseName}_modifie.pdf`,
@@ -227,7 +227,7 @@ export default function PdfSplitter() {
         copiedPages.forEach(p => newDoc.addPage(p));
 
         const bytes = await newDoc.save();
-        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
 
         newResults.push({
           name: `${baseName}_extrait.pdf`,
