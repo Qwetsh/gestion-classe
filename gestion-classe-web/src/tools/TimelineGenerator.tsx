@@ -701,11 +701,16 @@ render();
 
   const renderEditor = () => (
     <div style={editorS.container}>
+      {/* Template */}
+      <button
+        style={{ ...editorS.exportBtn, backgroundColor: '#8B5CF6', width: '100%', marginBottom: 8 }}
+        onClick={() => setShowTemplates(true)}
+      >
+        Templates
+      </button>
+
       {/* Actions rapides */}
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-        <button style={{ ...editorS.actionBtn, backgroundColor: '#8B5CF6' }} onClick={() => setShowTemplates(true)}>
-          Templates
-        </button>
         <button style={{ ...editorS.actionBtn, backgroundColor: '#10B981' }} onClick={exportJSON}>
           Exporter JSON
         </button>

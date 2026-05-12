@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, type CSSProperties } from 'react';
 import jsPDF from 'jspdf';
+import { Document, Packer, Paragraph, TextRun, PageBreak, HeadingLevel } from 'docx';
 
 // ─── Types ──────────────────────────────────────────────────
 
-type ConversionMode = 'convert' | 'resize' | 'pdf' | 'effects';
+type ConversionMode = 'convert' | 'resize' | 'pdf' | 'effects' | 'pdfToWord';
 type ImageFormat = 'png' | 'jpeg' | 'webp';
 type ImageEffect = 'none' | 'grayscale' | 'sepia' | 'invert' | 'blur' | 'sharpen';
 type CropPreset = 'free' | '1:1' | '4:3' | '16:9' | '3:4' | '9:16';
@@ -207,6 +208,81 @@ async function processImage(
   });
 }
 
+// ─── PDF to Word helpers ────────────────────────────────────
+
+let pdfjsReady: Promise<typeof import('pdfjs-dist')> | null = null;
+
+function getPdfjs() {
+  if (!pdfjsReady) {
+    pdfjsReady = import('pdfjs-dist').then(lib => {
+      lib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.min.mjs',
+        import.meta.url,
+      ).toString();
+      return lib;
+    });
+  }
+  return pdfjsReady;
+}
+
+async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string[]> {
+  const pdfjsLib = await getPdfjs();
+  const doc = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
+  const pageTexts: string[] = [];
+
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    const lines: string[] = [];
+    let lastY: number | null = null;
+
+    for (const item of content.items) {
+      if (!('str' in item)) continue;
+      const y = Math.round((item as { transform: number[] }).transform[5]);
+      if (lastY !== null && Math.abs(y - lastY) > 2) {
+        lines.push('\n');
+      }
+      lines.push(item.str);
+      lastY = y;
+    }
+
+    pageTexts.push(lines.join('').trim());
+  }
+
+  doc.destroy();
+  return pageTexts;
+}
+
+async function createDocxFromPages(pageTexts: string[], title: string): Promise<Blob> {
+  const children: Paragraph[] = [];
+
+  pageTexts.forEach((text, i) => {
+    if (i > 0) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+
+    children.push(new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      children: [new TextRun({ text: `Page ${i + 1}`, bold: true })],
+    }));
+
+    const lines = text.split('\n');
+    for (const line of lines) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: line, size: 24 })],
+        spacing: { after: 120 },
+      }));
+    }
+  });
+
+  const doc = new Document({
+    title,
+    sections: [{ children }],
+  });
+
+  return await Packer.toBlob(doc);
+}
+
 // ─── Component ──────────────────────────────────────────────
 
 export default function FileConverter() {
@@ -239,6 +315,11 @@ export default function FileConverter() {
   const [pdfOrientation, setPdfOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [pdfMargin, setPdfMargin] = useState(10);
   const [pdfFit, setPdfFit] = useState<'fit' | 'fill' | 'stretch'>('fit');
+
+  // PDF to Word
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const [pdfFile, setPdfFile] = useState<{ name: string; size: number; buffer: ArrayBuffer } | null>(null);
+  const [pdfDragOver, setPdfDragOver] = useState(false);
 
   // ─── File handling ──────────
 
@@ -376,6 +457,52 @@ export default function FileConverter() {
     }
   }, [files, pdfOrientation, pdfMargin, pdfFit]);
 
+  // ─── PDF to Word ──────────
+
+  const loadPdfFile = useCallback(async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    setPdfFile({ name: file.name, size: file.size, buffer });
+    setResults([]);
+  }, []);
+
+  const handlePdfInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') loadPdfFile(file);
+    e.target.value = '';
+  }, [loadPdfFile]);
+
+  const handlePdfDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setPdfDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type === 'application/pdf') loadPdfFile(file);
+  }, [loadPdfFile]);
+
+  const convertPdfToWord = useCallback(async () => {
+    if (!pdfFile) return;
+    setIsConverting(true);
+    setResults([]);
+
+    try {
+      const pageTexts = await extractTextFromPdf(pdfFile.buffer);
+      const baseName = pdfFile.name.replace(/\.pdf$/i, '');
+      const blob = await createDocxFromPages(pageTexts, baseName);
+
+      setResults([{
+        name: `${baseName}.docx`,
+        url: URL.createObjectURL(blob),
+        size: blob.size,
+        width: 0,
+        height: 0,
+      }]);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la conversion en Word');
+    } finally {
+      setIsConverting(false);
+    }
+  }, [pdfFile]);
+
   // ─── Download ──────────
 
   const download = useCallback((url: string, name: string) => {
@@ -410,7 +537,8 @@ export default function FileConverter() {
           ['convert', 'Convertir'],
           ['resize', 'Redimensionner'],
           ['effects', 'Effets'],
-          ['pdf', 'Images → PDF'],
+          ['pdf', 'Images \u2192 PDF'],
+          ['pdfToWord', 'PDF \u2192 Word'],
         ] as [ConversionMode, string][]).map(([m, label]) => (
           <button
             key={m}
@@ -423,36 +551,85 @@ export default function FileConverter() {
       </div>
 
       {/* Drop zone */}
-      <div
-        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        style={{
-          ...styles.dropZone,
-          borderColor: dragOver ? '#3B82F6' : '#D1D5DB',
-          backgroundColor: dragOver ? '#EFF6FF' : '#FAFAFA',
-        }}
-      >
-        <div style={{ fontSize: 32, color: '#9CA3AF' }}>+</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>
-          Glisser des images ici ou cliquer pour parcourir
+      {mode === 'pdfToWord' ? (
+        <>
+          <div
+            onDragOver={e => { e.preventDefault(); setPdfDragOver(true); }}
+            onDragLeave={() => setPdfDragOver(false)}
+            onDrop={handlePdfDrop}
+            onClick={() => pdfInputRef.current?.click()}
+            style={{
+              ...styles.dropZone,
+              borderColor: pdfDragOver ? '#3B82F6' : '#D1D5DB',
+              backgroundColor: pdfDragOver ? '#EFF6FF' : '#FAFAFA',
+            }}
+          >
+            <div style={{ fontSize: 32, color: '#9CA3AF' }}>+</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>
+              Glisser un fichier PDF ici ou cliquer pour parcourir
+            </div>
+            <div style={{ fontSize: 12, color: '#9CA3AF' }}>PDF uniquement</div>
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              style={{ display: 'none' }}
+              onChange={handlePdfInput}
+            />
+          </div>
+
+          {pdfFile && (
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{pdfFile.name}</div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF' }}>{formatBytes(pdfFile.size)}</div>
+                </div>
+                <button onClick={() => { setPdfFile(null); setResults([]); }} style={styles.clearBtn}>Retirer</button>
+              </div>
+
+              <button
+                onClick={convertPdfToWord}
+                disabled={isConverting}
+                style={{ ...styles.actionBtn, opacity: isConverting ? 0.6 : 1 }}
+              >
+                {isConverting ? 'Conversion en cours...' : 'Convertir en Word (.docx)'}
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            ...styles.dropZone,
+            borderColor: dragOver ? '#3B82F6' : '#D1D5DB',
+            backgroundColor: dragOver ? '#EFF6FF' : '#FAFAFA',
+          }}
+        >
+          <div style={{ fontSize: 32, color: '#9CA3AF' }}>+</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>
+            Glisser des images ici ou cliquer pour parcourir
+          </div>
+          <div style={{ fontSize: 12, color: '#9CA3AF' }}>
+            PNG, JPG, WebP, GIF, SVG, BMP
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleFileInput}
+          />
         </div>
-        <div style={{ fontSize: 12, color: '#9CA3AF' }}>
-          PNG, JPG, WebP, GIF, SVG, BMP
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFileInput}
-        />
-      </div>
+      )}
 
       {/* File list */}
-      {files.length > 0 && (
+      {files.length > 0 && mode !== 'pdfToWord' && (
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <span style={styles.sectionLabel}>
@@ -478,7 +655,7 @@ export default function FileConverter() {
       )}
 
       {/* Options */}
-      {files.length > 0 && (
+      {files.length > 0 && mode !== 'pdfToWord' && (
         <div style={styles.section}>
           {/* Format + Quality (all modes except pdf) */}
           {mode !== 'pdf' && (
@@ -737,8 +914,13 @@ export default function FileConverter() {
                   {r.width > 0 ? (
                     <img src={r.url} alt="" style={styles.fileThumb} />
                   ) : (
-                    <div style={{ ...styles.fileThumb, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
-                      PDF
+                    <div style={{
+                      ...styles.fileThumb, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: r.name.endsWith('.docx') ? 11 : 20, fontWeight: 700,
+                      backgroundColor: r.name.endsWith('.docx') ? '#DBEAFE' : '#FEE2E2',
+                      color: r.name.endsWith('.docx') ? '#2563EB' : '#DC2626',
+                    }}>
+                      {r.name.endsWith('.docx') ? 'DOCX' : 'PDF'}
                     </div>
                   )}
                   <div style={styles.fileInfo}>

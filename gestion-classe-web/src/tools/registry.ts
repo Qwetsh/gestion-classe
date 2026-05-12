@@ -91,12 +91,20 @@ export const tools: Tool[] = [
     tags: ['document', 'pdf', 'autorisation', 'captation', 'sortie', 'séjour', 'officiel', 'formulaire'],
   },
   {
+    id: 'pdfsplitter',
+    name: 'Separateur PDF',
+    description: 'Decouper, extraire ou supprimer des pages d\'un fichier PDF',
+    icon: '\u2702\uFE0F',
+    component: lazy(() => import('./PdfSplitter')),
+    tags: ['pdf', 'decouper', 'separer', 'supprimer', 'page', 'extraire', 'split'],
+  },
+  {
     id: 'fileconverter',
     name: 'Convertisseur de fichiers',
-    description: 'Convertir, redimensionner, compresser des images et assembler en PDF',
+    description: 'Convertir images (PNG, JPG, WebP), assembler en PDF, ou convertir PDF en Word',
     icon: '🔄',
     component: lazy(() => import('./FileConverter')),
-    tags: ['convertir', 'image', 'png', 'jpg', 'webp', 'pdf', 'redimensionner', 'compresser', 'fichier'],
+    tags: ['convertir', 'image', 'png', 'jpg', 'webp', 'pdf', 'word', 'docx', 'redimensionner', 'compresser', 'fichier'],
   },
 ];
 

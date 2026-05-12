@@ -1237,3 +1237,21 @@ textarea:focus-visible {
   .dash__class-avgs { padding: 8px 16px 14px; }
   .dash__shortcuts { grid-template-columns: 1fr; }
 }
+
+/* ---- Print: only show seating plan ---- */
+@media print {
+  body * { visibility: hidden; }
+  .room-canvas,
+  .room-canvas * { visibility: visible; }
+  .room-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: auto;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .room-canvas::before { opacity: 0.1; }
+}
