@@ -2,6 +2,25 @@ import { jsPDF } from 'jspdf';
 
 // ── Types ──
 
+export interface RapportData {
+  academie: string;
+  region: string;
+  etablissement: string;
+  adresse: string;
+  tel: string;
+  email: string;
+  siteWeb: string;
+  date: string;
+  redacteur: string;
+  lieuDateHeure: string;
+  elevesConcernes: string;
+  faits: string;
+  punitions: string[];
+  sanctions: string[];
+  exclusionClasse: boolean;
+  exclusionCollege: boolean;
+}
+
 export interface SupportItem {
   label: string;
   detail: string;
@@ -909,6 +928,239 @@ export function buildDemandePDF(data: DemandeData, logoPNG: string | null): jsPD
     doc.text(`${p}/${totalPages}`, W - MR, H - 8, { align: 'right' });
     doc.text('College Pierre Mendes France - Woippy', ML, H - 8);
   }
+
+  return doc;
+}
+
+// ══════════════════════════════════════════
+// RAPPORT D'INCIDENT PDF
+// ══════════════════════════════════════════
+
+export function buildRapportPDF(data: RapportData): jsPDF {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const ML = 15, MR = 15, CW = W - ML - MR;
+  let y = 15;
+
+  // ── Header left: Academy info ──
+  setFont(doc, 'bold', 9, BLACK);
+  doc.text(`Academie ${data.academie}`, ML, y);
+  y += 4;
+  setFont(doc, 'normal', 8, BLACK);
+  doc.text(`Region academique ${data.region}`, ML, y);
+  y += 4;
+  doc.text("Ministere de l'Education Nationale,", ML, y);
+  y += 3.5;
+  doc.text("de l'Enseignement Superieur", ML, y);
+  y += 3.5;
+  doc.text("et de la Recherche", ML, y);
+  y += 4;
+  setFont(doc, 'italic', 8, BLACK);
+  doc.text("Republique Francaise", ML, y);
+
+  // ── Header right: Title ──
+  setFont(doc, 'bold', 16, BLACK);
+  doc.text("RAPPORT D'INCIDENT", W - MR, 18, { align: 'right' });
+  setFont(doc, 'italic', 9, BLACK);
+  doc.text("(pour tout fait ne relevant pas de l'exclusion de cours)", W - MR, 24, { align: 'right' });
+
+  // ── Date ──
+  y = 42;
+  setFont(doc, 'normal', 10, BLACK);
+  doc.text(`Date : ${data.date || '____ / ____ / 20____'}`, W - MR, y, { align: 'right' });
+
+  // ── Redacteur ──
+  y += 10;
+  const redLabel = "Rapport redige par (Nom, Prenom et fonctions) :";
+  setFont(doc, 'bold', 10, BLACK);
+  doc.text(redLabel, ML, y);
+  const redLabelW = doc.getTextWidth(redLabel); // measure while still bold
+  y += 6;
+  if (data.redacteur) {
+    setFont(doc, 'normal', 10, BLACK);
+    doc.text(data.redacteur, ML, y);
+  } else {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(ML + redLabelW + 4, y - 5, W - MR, y - 5);
+  }
+
+  // ── Two-column box ──
+  y += 6;
+  const boxTop = y;
+  const boxH = 34;
+  const midX = ML + CW / 2;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+  doc.rect(ML, boxTop, CW, boxH);
+  doc.line(midX, boxTop, midX, boxTop + boxH);
+
+  setFont(doc, 'bold', 9, BLACK);
+  doc.text("Lieu, date et heure de l'incident :", ML + 2, boxTop + 6);
+  doc.text("Eleve(s) concerne(s) et classe(s) :", midX + 2, boxTop + 6);
+
+  setFont(doc, 'normal', 9, BLACK);
+  if (data.lieuDateHeure) {
+    const leftLines = doc.splitTextToSize(data.lieuDateHeure, CW / 2 - 6);
+    doc.text(leftLines, ML + 2, boxTop + 13);
+  }
+  if (data.elevesConcernes) {
+    const rightLines = doc.splitTextToSize(data.elevesConcernes, CW / 2 - 6);
+    doc.text(rightLines, midX + 2, boxTop + 13);
+  }
+
+  // ── FAITS ──
+  y = boxTop + boxH + 10;
+  setFont(doc, 'bold', 11, BLACK);
+  doc.text("FAITS :", W / 2, y, { align: 'center' });
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+  const faitsTw = doc.getTextWidth("FAITS :");
+  doc.line((W - faitsTw) / 2, y + 1, (W + faitsTw) / 2, y + 1);
+
+  y += 6;
+  setFont(doc, 'italic', 8, GRAY);
+  doc.text("NB : Si plusieurs eleves sont impliques, merci de bien preciser l'action de chacun.", ML, y);
+
+  y += 6;
+  setFont(doc, 'normal', 9, BLACK);
+  if (data.faits) {
+    y = wrappedText(doc, data.faits, ML, y, CW, 4.5);
+  }
+
+  // ── "Si besoin, TSVP" ──
+  const tsvpY = Math.max(y + 10, 200);
+  setFont(doc, 'italic', 9, BLACK);
+  doc.text("Si besoin, TSVP \u2192", W - MR, tsvpY, { align: 'right' });
+
+  // ── Horizontal separator ──
+  const sepY = tsvpY + 8;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(ML, sepY, ML + CW, sepY);
+
+  // ── SUITE section ──
+  let sy = sepY + 7;
+  setFont(doc, 'bolditalic', 9, BLACK);
+  doc.text("SUITE (les personnels non enseignant transmettront ce document au CPE) :", W / 2, sy, { align: 'center' });
+
+  sy += 7;
+  setFont(doc, 'bolditalic', 9, BLACK);
+  doc.text("Punition demandee (enseignants) / suggeree (personnel non enseignant) a saisir sur Pronote :", ML, sy);
+
+  const PUNITIONS = [
+    "Observation ecrite et le carnet de liaison de l'eleve a faire signer par les parents",
+    "Excuse publique orale ou ecrite",
+    "Devoir supplementaire signe par les parents",
+    "Retenue",
+  ];
+
+  sy += 6;
+  for (const p of PUNITIONS) {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(ML + 1, sy - 2.8, 3, 3);
+    if (data.punitions.includes(p)) {
+      setFont(doc, 'bold', 9, BLACK);
+      doc.text("X", ML + 1.6, sy);
+    }
+    setFont(doc, 'normal', 9, BLACK);
+    doc.text(p, ML + 7, sy);
+    sy += 5.5;
+  }
+
+  // ── Sanctions ──
+  sy += 2;
+  setFont(doc, 'bolditalic', 9, BLACK);
+  doc.text("Sanction suggeree (decision reservee au chef d'etablissement) :", ML, sy);
+
+  sy += 6;
+  const sanctionStartY = sy;
+
+  // Left column
+  const SANCTIONS_LEFT = ["Avertissement", "Blame"];
+  for (const s of SANCTIONS_LEFT) {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(ML + 1, sy - 2.8, 3, 3);
+    if (data.sanctions.includes(s)) {
+      setFont(doc, 'bold', 9, BLACK);
+      doc.text("X", ML + 1.6, sy);
+    }
+    setFont(doc, 'normal', 9, BLACK);
+    doc.text(s, ML + 7, sy);
+    sy += 5.5;
+  }
+
+  // Right column
+  let ry = sanctionStartY;
+  const rCol = W / 2 + 5;
+
+  // Exclusion temporaire with sub-checkboxes
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.3);
+  doc.rect(rCol, ry - 2.8, 3, 3);
+  if (data.sanctions.includes('Exclusion temporaire')) {
+    setFont(doc, 'bold', 9, BLACK);
+    doc.text("X", rCol + 0.6, ry);
+  }
+  setFont(doc, 'normal', 9, BLACK);
+  const exclLabel = "Exclusion temporaire (";
+  doc.text(exclLabel, rCol + 6, ry);
+  const etX = rCol + 6 + doc.getTextWidth(exclLabel);
+  doc.rect(etX, ry - 2.8, 3, 3);
+  if (data.exclusionClasse) {
+    setFont(doc, 'bold', 9, BLACK);
+    doc.text("X", etX + 0.6, ry);
+    setFont(doc, 'normal', 9, BLACK);
+  }
+  const classeLabel = " de classe, ";
+  doc.text(classeLabel, etX + 3.5, ry);
+  const etX2 = etX + 3.5 + doc.getTextWidth(classeLabel);
+  doc.rect(etX2, ry - 2.8, 3, 3);
+  if (data.exclusionCollege) {
+    setFont(doc, 'bold', 9, BLACK);
+    doc.text("X", etX2 + 0.6, ry);
+    setFont(doc, 'normal', 9, BLACK);
+  }
+  doc.text(" du", etX2 + 3.5, ry);
+  ry += 4;
+  doc.text("college)", rCol + 6, ry);
+
+  ry += 2;
+  doc.rect(rCol, ry - 2.8, 3, 3);
+  if (data.sanctions.includes('Saisine du Conseil de discipline')) {
+    setFont(doc, 'bold', 9, BLACK);
+    doc.text("X", rCol + 0.6, ry);
+    setFont(doc, 'normal', 9, BLACK);
+  }
+  doc.text("Saisine du Conseil de discipline", rCol + 6, ry);
+
+  // ── Signature & Regulation ──
+  sy = Math.max(sy, ry) + 6;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+  doc.line(ML, sy, ML + CW, sy);
+  sy += 5;
+
+  const col1 = ML;
+  const col2 = ML + CW / 3;
+  const col3 = ML + CW * 2 / 3;
+
+  setFont(doc, 'bold', 9, BLACK);
+  doc.text("Signature :", col1, sy);
+  setFont(doc, 'italic', 9, BLACK);
+  doc.text("le cas echeant :", col2, sy);
+  setFont(doc, 'bold', 9, BLACK);
+  doc.text("Regulation effectuee le ___ / ___ /", col3, sy);
+  sy += 5;
+  doc.text("20____", col3, sy);
+  sy += 5;
+  doc.text("Sanction decidee :", col3, sy);
+
+  // ── Footer ──
+  setFont(doc, 'normal', 7, GRAY);
+  const footerParts = [data.adresse, 'Tel. ' + data.tel, data.email, data.siteWeb].filter(Boolean);
+  doc.text(footerParts.join('  '), W / 2, H - 8, { align: 'center' });
 
   return doc;
 }

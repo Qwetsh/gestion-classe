@@ -85,10 +85,10 @@ export const tools: Tool[] = [
   {
     id: 'docgenerator',
     name: 'Documents Officiels',
-    description: 'Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour)',
+    description: 'Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d\'incident)',
     icon: '📄',
     component: lazy(() => import('./DocumentGenerator')),
-    tags: ['document', 'pdf', 'autorisation', 'captation', 'sortie', 'séjour', 'officiel', 'formulaire'],
+    tags: ['document', 'pdf', 'autorisation', 'captation', 'sortie', 'séjour', 'officiel', 'formulaire', 'rapport', 'incident'],
   },
   {
     id: 'pdfsplitter',

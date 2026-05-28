@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import {
   loadLogoPNG, formatDate,
-  buildCaptationPDF, buildSortiePDF, buildDemandePDF,
-  type CaptationData, type SortieData, type DemandeData,
+  buildCaptationPDF, buildSortiePDF, buildDemandePDF, buildRapportPDF,
+  type CaptationData, type SortieData, type DemandeData, type RapportData,
   type Eleve, type ClasseRow, type AccompRow, type BudgetData,
 } from './doc-pdf-builders';
 
@@ -28,7 +28,7 @@ function Field({ label, value, onChange, type = 'text', placeholder = '', classN
   );
 }
 
-type Tab = 'captation' | 'sortie' | 'demande';
+type Tab = 'captation' | 'sortie' | 'demande' | 'rapport';
 
 // ── History ──
 const HISTORY_KEY = 'doc-generator-history';
@@ -47,6 +47,11 @@ interface HistoryEntry {
   accomps?: AccompRow[];
   eleves?: Eleve[];
   budget?: BudgetData;
+  rapport?: typeof INITIAL_RAPPORT;
+  rapportPunitions?: string[];
+  rapportSanctions?: string[];
+  rapportExclClasse?: boolean;
+  rapportExclCollege?: boolean;
 }
 
 function loadHistory(): HistoryEntry[] {
@@ -111,6 +116,29 @@ const EMPTY_BUDGET: BudgetData = {
   depHebergement: 0, depRepas: 0, depActivites: 0, depMateriel: 0, depDivers: 0,
 };
 
+const RAPPORT_PUNITIONS = [
+  "Observation ecrite et le carnet de liaison de l'eleve a faire signer par les parents",
+  "Excuse publique orale ou ecrite",
+  "Devoir supplementaire signe par les parents",
+  "Retenue",
+];
+
+const RAPPORT_SANCTIONS = [
+  "Avertissement",
+  "Blame",
+  "Exclusion temporaire",
+  "Saisine du Conseil de discipline",
+];
+
+const INITIAL_RAPPORT = {
+  academie: 'Nancy-Metz', region: 'GRAND EST',
+  etablissement: 'College Pierre Mendes France',
+  adresse: '1 rue Jean Laurain 57140 WOIPPY',
+  tel: '03.87.54.36.40', email: 'ce.0572582@ac-nancy-metz.fr',
+  siteWeb: 'http://www4.ac-nancy-metz.fr/clg-mendes-france-woippy',
+  date: new Date().toISOString().slice(0, 10), redacteur: '', lieuDateHeure: '', elevesConcernes: '', faits: '',
+};
+
 export default function DocumentGenerator() {
   const { settings } = useSettings();
   const [tab, setTab] = useState<Tab>('captation');
@@ -159,12 +187,25 @@ export default function DocumentGenerator() {
     telChef: settings.establishment.tel || INITIAL_DEM.telChef,
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const initialRapport = useMemo(() => ({
+    ...INITIAL_RAPPORT,
+    redacteur: settings.teacher.nom ? `${settings.teacher.nom}, ${settings.teacher.fonction || ''}` : '',
+    tel: settings.establishment.tel || INITIAL_RAPPORT.tel,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Captation state ──
   const [capt, setCapt] = useState(initialCapt);
   const [supports, setSupports] = useState<FormSupport[]>(INITIAL_SUPPORTS);
 
   // ── Sortie state ──
   const [sortie, setSortie] = useState(initialSortie);
+
+  // ── Rapport state ──
+  const [rapport, setRapport] = useState(initialRapport);
+  const [rapportPunitions, setRapportPunitions] = useState<string[]>([]);
+  const [rapportSanctions, setRapportSanctions] = useState<string[]>([]);
+  const [rapportExclClasse, setRapportExclClasse] = useState(false);
+  const [rapportExclCollege, setRapportExclCollege] = useState(false);
 
   // ── Demande state ──
   const [dem, setDem] = useState(initialDem);
@@ -180,11 +221,12 @@ export default function DocumentGenerator() {
   const [showHistory, setShowHistory] = useState(false);
 
   const saveToHistory = useCallback(() => {
-    const TAB_LABELS: Record<Tab, string> = { captation: 'Captation', sortie: 'Sortie', demande: 'Demande' };
+    const TAB_LABELS: Record<Tab, string> = { captation: 'Captation', sortie: 'Sortie', demande: 'Demande', rapport: 'Rapport' };
     let label = TAB_LABELS[tab];
     if (tab === 'captation') label += ` - ${capt.classe || capt.projet || 'sans titre'}`;
     else if (tab === 'sortie') label += ` - ${sortie.classe || sortie.lieu || 'sans titre'}`;
-    else label += ` - ${dem.disciplines || dem.responsable || 'sans titre'}`;
+    else if (tab === 'demande') label += ` - ${dem.disciplines || dem.responsable || 'sans titre'}`;
+    else label += ` - ${rapport.elevesConcernes || rapport.redacteur || 'sans titre'}`;
 
     const entry: HistoryEntry = {
       id: Date.now().toString(),
@@ -194,11 +236,12 @@ export default function DocumentGenerator() {
       ...(tab === 'captation' && { capt, supports }),
       ...(tab === 'sortie' && { sortie }),
       ...(tab === 'demande' && { dem, demDomaines, classes, accomps, eleves, budget }),
+      ...(tab === 'rapport' && { rapport, rapportPunitions, rapportSanctions, rapportExclClasse, rapportExclCollege }),
     };
     const updated = [entry, ...history];
     setHistory(updated);
     saveHistory(updated);
-  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, history]);
+  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, rapport, rapportPunitions, rapportSanctions, rapportExclClasse, rapportExclCollege, history]);
 
   const restoreEntry = (entry: HistoryEntry) => {
     setTab(entry.tab);
@@ -214,6 +257,12 @@ export default function DocumentGenerator() {
       if (entry.accomps) setAccomps(entry.accomps);
       if (entry.eleves) setEleves(entry.eleves);
       if (entry.budget) setBudget(entry.budget);
+    } else if (entry.tab === 'rapport' && entry.rapport) {
+      setRapport(entry.rapport);
+      if (entry.rapportPunitions) setRapportPunitions(entry.rapportPunitions);
+      if (entry.rapportSanctions) setRapportSanctions(entry.rapportSanctions);
+      setRapportExclClasse(entry.rapportExclClasse ?? false);
+      setRapportExclCollege(entry.rapportExclCollege ?? false);
     }
     setShowHistory(false);
   };
@@ -232,6 +281,7 @@ export default function DocumentGenerator() {
   const totalDepenses = budget.depBus + budget.depTrain + budget.depAvion + budget.depTransportAutre + budget.depHebergement + budget.depRepas + budget.depActivites + budget.depMateriel + budget.depDivers;
 
   // ── Helpers ──
+  const updateRapport = (f: string, v: string) => setRapport(p => ({ ...p, [f]: v }));
   const updateCapt = (f: string, v: string) => setCapt(p => ({ ...p, [f]: v }));
   const updateSortie = (f: string, v: string) => setSortie(p => ({ ...p, [f]: v }));
   const updateDem = (f: string, v: string) => setDem(p => ({ ...p, [f]: v }));
@@ -306,7 +356,7 @@ export default function DocumentGenerator() {
       };
       doc = buildSortiePDF(data, logoPNG);
       filename = `Sortie_scolaire_${sortie.classe || 'classe'}_${sortie.date || 'date'}.pdf`;
-    } else {
+    } else if (tab === 'demande') {
       const data: DemandeData = {
         ...dem,
         dateDepart: formatDate(dem.dateDepart),
@@ -321,6 +371,17 @@ export default function DocumentGenerator() {
       };
       doc = buildDemandePDF(data, logoPNG);
       filename = `Demande_sortie_${classes.map(c => c.nom).filter(Boolean).join('-') || 'classes'}.pdf`;
+    } else {
+      const data: RapportData = {
+        ...rapport,
+        date: formatDate(rapport.date),
+        punitions: rapportPunitions,
+        sanctions: rapportSanctions,
+        exclusionClasse: rapportExclClasse,
+        exclusionCollege: rapportExclCollege,
+      };
+      doc = buildRapportPDF(data);
+      filename = `Rapport_incident_${rapport.elevesConcernes || 'eleve'}.pdf`;
     }
 
     if (download) {
@@ -331,7 +392,7 @@ export default function DocumentGenerator() {
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
     }
-  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, logoPNG, saveToHistory]);
+  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, rapport, rapportPunitions, rapportSanctions, rapportExclClasse, rapportExclCollege, logoPNG, saveToHistory]);
 
   // ── Auto-preview with debounce ──
   useEffect(() => {
@@ -344,6 +405,7 @@ export default function DocumentGenerator() {
     { id: 'captation', label: 'Captation Image/Son' },
     { id: 'sortie', label: 'Sortie Obligatoire' },
     { id: 'demande', label: 'Demande Sortie/Sejour' },
+    { id: 'rapport', label: "Rapport d'Incident" },
   ];
 
   return (
@@ -725,6 +787,100 @@ export default function DocumentGenerator() {
         </div>
       )}
 
+      {/* ═══ RAPPORT FORM ═══ */}
+      {tab === 'rapport' && (
+        <div className="space-y-4">
+          <div className={cardCls}>
+            <h3 className={cardTitle}>En-tete academique</h3>
+            <div className="flex gap-3">
+              <Field label="Academie" value={rapport.academie} onChange={v => updateRapport('academie', v)} placeholder="Nancy-Metz" />
+              <Field label="Region academique" value={rapport.region} onChange={v => updateRapport('region', v)} placeholder="GRAND EST" />
+            </div>
+          </div>
+
+          <div className={cardCls}>
+            <h3 className={cardTitle}>Etablissement</h3>
+            <Field label="Nom" value={rapport.etablissement} onChange={v => updateRapport('etablissement', v)} />
+            <Field label="Adresse" value={rapport.adresse} onChange={v => updateRapport('adresse', v)} />
+            <div className="flex gap-3">
+              <Field label="Telephone" value={rapport.tel} onChange={v => updateRapport('tel', v)} />
+              <Field label="Email" value={rapport.email} onChange={v => updateRapport('email', v)} />
+            </div>
+            <Field label="Site web" value={rapport.siteWeb} onChange={v => updateRapport('siteWeb', v)} />
+          </div>
+
+          <div className={cardCls}>
+            <h3 className={cardTitle}>Informations du rapport</h3>
+            <Field label="Date" value={rapport.date} onChange={v => updateRapport('date', v)} type="date" />
+            <Field label="Redige par (Nom, Prenom et fonctions)" value={rapport.redacteur} onChange={v => updateRapport('redacteur', v)} placeholder="DUPONT Jean, Professeur de SVT" />
+          </div>
+
+          <div className={cardCls}>
+            <h3 className={cardTitle}>Contexte de l'incident</h3>
+            <div>
+              <label className={labelCls}>Lieu, date et heure de l'incident</label>
+              <textarea value={rapport.lieuDateHeure} onChange={e => updateRapport('lieuDateHeure', e.target.value)} rows={2} className={inputCls} placeholder="Ex: Salle 204, le 15/01/2026 a 10h30" />
+            </div>
+            <div>
+              <label className={labelCls}>Eleve(s) concerne(s) et classe(s)</label>
+              <textarea value={rapport.elevesConcernes} onChange={e => updateRapport('elevesConcernes', e.target.value)} rows={2} className={inputCls} placeholder="Ex: MARTIN Lucas (5e3), DURAND Emma (5e3)" />
+            </div>
+          </div>
+
+          <div className={cardCls}>
+            <h3 className={cardTitle}>Faits</h3>
+            <p className="text-xs text-[var(--text-dim)]">Si plusieurs eleves sont impliques, merci de bien preciser l'action de chacun.</p>
+            <textarea value={rapport.faits} onChange={e => updateRapport('faits', e.target.value)} rows={8} className={inputCls} placeholder="Decrivez les faits de maniere factuelle et chronologique..." />
+          </div>
+
+          <div className={cardCls}>
+            <h3 className={cardTitle}>Punition demandee / suggeree</h3>
+            <p className="text-xs text-[var(--text-dim)]">A saisir sur Pronote</p>
+            <div className="space-y-2">
+              {RAPPORT_PUNITIONS.map(p => (
+                <label key={p} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={rapportPunitions.includes(p)} onChange={e => {
+                    if (e.target.checked) setRapportPunitions(prev => [...prev, p]);
+                    else setRapportPunitions(prev => prev.filter(x => x !== p));
+                  }} className="accent-[var(--indigo)]" />
+                  <span className="text-[var(--text)]">{p}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className={cardCls}>
+            <h3 className={cardTitle}>Sanction suggeree</h3>
+            <p className="text-xs text-[var(--text-dim)]">Decision reservee au chef d'etablissement</p>
+            <div className="space-y-2">
+              {RAPPORT_SANCTIONS.map(s => (
+                <div key={s}>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={rapportSanctions.includes(s)} onChange={e => {
+                      if (e.target.checked) setRapportSanctions(prev => [...prev, s]);
+                      else setRapportSanctions(prev => prev.filter(x => x !== s));
+                    }} className="accent-[var(--indigo)]" />
+                    <span className="text-[var(--text)]">{s}</span>
+                  </label>
+                  {s === 'Exclusion temporaire' && rapportSanctions.includes('Exclusion temporaire') && (
+                    <div className="ml-6 mt-1 flex gap-4">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={rapportExclClasse} onChange={e => setRapportExclClasse(e.target.checked)} className="accent-[var(--indigo)]" />
+                        <span className="text-[var(--text-muted)]">de classe</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={rapportExclCollege} onChange={e => setRapportExclCollege(e.target.checked)} className="accent-[var(--indigo)]" />
+                        <span className="text-[var(--text-muted)]">du college</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ ACTIONS ═══ */}
       <div className="flex gap-3">
         <button onClick={() => generatePDF(true)} className={btnPrimary} style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}>
@@ -779,7 +935,7 @@ export default function DocumentGenerator() {
                       onClick={() => restoreEntry(entry)}
                     >
                       <div className={`shrink-0 w-2 h-2 rounded-full ${
-                        entry.tab === 'captation' ? 'bg-blue-500' : entry.tab === 'sortie' ? 'bg-amber-500' : 'bg-emerald-500'
+                        entry.tab === 'captation' ? 'bg-blue-500' : entry.tab === 'sortie' ? 'bg-amber-500' : entry.tab === 'demande' ? 'bg-emerald-500' : 'bg-red-500'
                       }`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-[var(--text)] truncate">{entry.label}</p>
