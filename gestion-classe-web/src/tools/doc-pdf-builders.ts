@@ -2,6 +2,11 @@ import { jsPDF } from 'jspdf';
 
 // ── Types ──
 
+export interface DeplacementData {
+  anneeScolaire: string;
+  etablissement: string;
+}
+
 export interface RapportData {
   academie: string;
   region: string;
@@ -1161,6 +1166,107 @@ export function buildRapportPDF(data: RapportData): jsPDF {
   setFont(doc, 'normal', 7, GRAY);
   const footerParts = [data.adresse, 'Tel. ' + data.tel, data.email, data.siteWeb].filter(Boolean);
   doc.text(footerParts.join('  '), W / 2, H - 8, { align: 'center' });
+
+  return doc;
+}
+
+// ══════════════════════════════════════════
+// AUTORISATION DE DEPLACEMENT PDF
+// ══════════════════════════════════════════
+
+export function buildDeplacementPDF(data: DeplacementData): jsPDF {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const ML = 12, MR = 12, CW = W - ML - MR;
+  const colW = (CW - 6) / 2; // 2 columns with 6mm gap
+  const rowH = 82; // height of each card
+  const gap = 6;
+
+  // ── Header ──
+  setFont(doc, 'italic', 10, BLACK);
+  doc.text(`Annee Scolaire ${data.anneeScolaire} \u2014 ${data.etablissement}`, W / 2, 12, { align: 'center' });
+
+  function drawCard(x: number, y: number) {
+    // Border
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(x, y, colW, rowH);
+
+    let cy = y + 7;
+    const px = x + 5; // padding left
+    const lineEnd = x + colW - 5;
+
+    // Title
+    setFont(doc, 'bold', 10, BLACK);
+    doc.text("Autorisation de deplacement", x + colW / 2, cy, { align: 'center' });
+    cy += 7;
+
+    // Fields with underlines
+    const fields = [
+      { label: "Date :", lineW: 35 },
+      { label: "Nom :", lineW: 40 },
+      { label: "Prenom :", lineW: 38 },
+      { label: "Classe :", lineW: 15 },
+      { label: "Professeur :", lineW: 30 },
+    ];
+
+    setFont(doc, 'normal', 9, BLACK);
+    for (const f of fields) {
+      doc.text(f.label, px, cy);
+      const labelW = doc.getTextWidth(f.label);
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.2);
+      doc.line(px + labelW + 2, cy + 0.5, px + labelW + 2 + f.lineW, cy + 0.5);
+      cy += 5;
+    }
+
+    // "est autorisé·e à se rendre"
+    cy += 1;
+    setFont(doc, 'normal', 9, BLACK);
+    doc.text("est autorise\u00B7e a se rendre", px, cy);
+    cy += 6;
+
+    // Checkbox: aux toilettes
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(px, cy - 2.8, 3, 3);
+    doc.text("aux toilettes", px + 5, cy);
+    cy += 4;
+
+    // (cas d'urgence uniquement)
+    setFont(doc, 'italic', 8, BLACK);
+    doc.text("(cas d'urgence uniquement)", px + 5, cy);
+    cy += 5;
+
+    // Checkbox: autre
+    setFont(doc, 'normal', 9, BLACK);
+    doc.rect(px, cy - 2.8, 3, 3);
+    doc.text("autre :", px + 5, cy);
+    const autreW = doc.getTextWidth("autre :");
+    doc.setLineWidth(0.2);
+    doc.line(px + 5 + autreW + 2, cy + 0.5, lineEnd, cy + 0.5);
+    cy += 5.5;
+
+    // Heure
+    doc.text("Heure :", px, cy);
+    const heureW = doc.getTextWidth("Heure :");
+    doc.line(px + heureW + 2, cy + 0.5, px + heureW + 2 + 28, cy + 0.5);
+    cy += 5;
+
+    // Retour en classe
+    doc.text("Retour en classe heure :", px, cy);
+    const retourW = doc.getTextWidth("Retour en classe heure :");
+    doc.line(px + retourW + 2, cy + 0.5, lineEnd, cy + 0.5);
+  }
+
+  // ── Draw 6 cards: 2 columns × 3 rows ──
+  const startY = 18;
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 2; col++) {
+      const x = ML + col * (colW + gap);
+      const y = startY + row * (rowH + gap);
+      drawCard(x, y);
+    }
+  }
 
   return doc;
 }

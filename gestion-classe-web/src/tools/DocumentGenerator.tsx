@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import {
   loadLogoPNG, formatDate,
-  buildCaptationPDF, buildSortiePDF, buildDemandePDF, buildRapportPDF,
-  type CaptationData, type SortieData, type DemandeData, type RapportData,
+  buildCaptationPDF, buildSortiePDF, buildDemandePDF, buildRapportPDF, buildDeplacementPDF,
+  type CaptationData, type SortieData, type DemandeData, type RapportData, type DeplacementData,
   type Eleve, type ClasseRow, type AccompRow, type BudgetData,
 } from './doc-pdf-builders';
 
@@ -28,7 +28,7 @@ function Field({ label, value, onChange, type = 'text', placeholder = '', classN
   );
 }
 
-type Tab = 'captation' | 'sortie' | 'demande' | 'rapport';
+type Tab = 'captation' | 'sortie' | 'demande' | 'rapport' | 'deplacement';
 
 // ── History ──
 const HISTORY_KEY = 'doc-generator-history';
@@ -221,7 +221,7 @@ export default function DocumentGenerator() {
   const [showHistory, setShowHistory] = useState(false);
 
   const saveToHistory = useCallback(() => {
-    const TAB_LABELS: Record<Tab, string> = { captation: 'Captation', sortie: 'Sortie', demande: 'Demande', rapport: 'Rapport' };
+    const TAB_LABELS: Record<Tab, string> = { captation: 'Captation', sortie: 'Sortie', demande: 'Demande', rapport: 'Rapport', deplacement: 'Deplacement' };
     let label = TAB_LABELS[tab];
     if (tab === 'captation') label += ` - ${capt.classe || capt.projet || 'sans titre'}`;
     else if (tab === 'sortie') label += ` - ${sortie.classe || sortie.lieu || 'sans titre'}`;
@@ -371,7 +371,7 @@ export default function DocumentGenerator() {
       };
       doc = buildDemandePDF(data, logoPNG);
       filename = `Demande_sortie_${classes.map(c => c.nom).filter(Boolean).join('-') || 'classes'}.pdf`;
-    } else {
+    } else if (tab === 'rapport') {
       const data: RapportData = {
         ...rapport,
         date: formatDate(rapport.date),
@@ -382,6 +382,13 @@ export default function DocumentGenerator() {
       };
       doc = buildRapportPDF(data);
       filename = `Rapport_incident_${rapport.elevesConcernes || 'eleve'}.pdf`;
+    } else {
+      const data: DeplacementData = {
+        anneeScolaire: settings.schoolYear.label || '2026/2027',
+        etablissement: settings.establishment.name || 'College Pierre Mendes France',
+      };
+      doc = buildDeplacementPDF(data);
+      filename = 'Autorisation_deplacement.pdf';
     }
 
     if (download) {
@@ -406,6 +413,7 @@ export default function DocumentGenerator() {
     { id: 'sortie', label: 'Sortie Obligatoire' },
     { id: 'demande', label: 'Demande Sortie/Sejour' },
     { id: 'rapport', label: "Rapport d'Incident" },
+    { id: 'deplacement', label: 'Autorisation Deplacement' },
   ];
 
   return (
@@ -784,6 +792,19 @@ export default function DocumentGenerator() {
             <h3 className={cardTitle}>Incidences sur l'emploi du temps</h3>
             <textarea value={dem.incidences} onChange={e => updateDem('incidences', e.target.value)} rows={3} className={inputCls} placeholder="Classes et accompagnateurs impactes..." />
           </div>
+        </div>
+      )}
+
+      {/* ═══ DEPLACEMENT (print only) ═══ */}
+      {tab === 'deplacement' && (
+        <div className={cardCls}>
+          <h3 className={cardTitle}>Autorisation de deplacement</h3>
+          <p className="text-sm text-[var(--text)]">
+            Fiche pre-formatee avec 6 autorisations de deplacement par page (2 colonnes x 3 lignes), a remplir a la main.
+          </p>
+          <p className="text-xs text-[var(--text-dim)]">
+            Les informations (annee scolaire, etablissement) sont recuperees depuis vos parametres.
+          </p>
         </div>
       )}
 
