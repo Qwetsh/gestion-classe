@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { buildPhotoUrl } from '../lib/security';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
+import { generateBulletinContext, downloadBulletinContext, getOralLabel } from '../lib/generateBulletinContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import QRCode from 'qrcode';
@@ -1496,6 +1497,144 @@ export function Students() {
 
   const selectedClassStats = classStats.find(c => c.id === selectedClassId);
 
+  // Export bulletin context for Claude
+  const exportBulletinContext = async () => {
+    if (!selectedClassId || !user) return;
+    const cls = classes.find(c => c.id === selectedClassId);
+    if (!cls) return;
+
+    const classStudents = studentGrades.filter(sg => sg.student.class_id === selectedClassId);
+    if (classStudents.length === 0) {
+      toast('Aucun eleve dans cette classe', 'error');
+      return;
+    }
+
+    toast('Generation du fichier bulletin...', 'info');
+
+    // Load stamp data and group grades in parallel for all students
+    const studentIds = classStudents.map(sg => sg.student.id);
+
+    const [stampCardsResult, membershipsResult] = await Promise.all([
+      supabase
+        .from('stamp_cards')
+        .select('student_id, card_number, status, id')
+        .in('student_id', studentIds)
+        .eq('status', 'active'),
+      supabase
+        .from('session_group_members')
+        .select(`
+          student_id,
+          group_id,
+          session_groups (
+            id, name, conduct_malus, session_id,
+            group_sessions ( id, name, class_id )
+          )
+        `)
+        .in('student_id', studentIds),
+    ]);
+
+    // Load stamps count per active card
+    const activeCards = stampCardsResult.data || [];
+    const cardIds = activeCards.map(c => c.id);
+    let stampCounts = new Map<string, number>();
+    if (cardIds.length > 0) {
+      const { data: stamps } = await supabase
+        .from('stamps')
+        .select('card_id')
+        .in('card_id', cardIds);
+      (stamps || []).forEach(s => {
+        stampCounts.set(s.card_id, (stampCounts.get(s.card_id) || 0) + 1);
+      });
+    }
+
+    // Load group grades
+    const memberships = membershipsResult.data || [];
+    const groupIds = [...new Set(memberships.map(m => (m.session_groups as any)?.id).filter(Boolean))];
+    const sessionIds = [...new Set(memberships.map(m => (m.session_groups as any)?.session_id).filter(Boolean))];
+
+    let gradesMap = new Map<string, number>();
+    let criteriaMaxMap = new Map<string, number>();
+    if (groupIds.length > 0) {
+      const [{ data: gradesData }, { data: criteriaData }] = await Promise.all([
+        supabase.from('group_grades').select('group_id, points_awarded').in('group_id', groupIds),
+        supabase.from('grading_criteria').select('id, session_id, max_points').in('session_id', sessionIds),
+      ]);
+      (gradesData || []).forEach(g => {
+        gradesMap.set(g.group_id, (gradesMap.get(g.group_id) || 0) + g.points_awarded);
+      });
+      (criteriaData || []).forEach(c => {
+        criteriaMaxMap.set(c.session_id, (criteriaMaxMap.get(c.session_id) || 0) + c.max_points);
+      });
+    }
+
+    const bulletinStudents = classStudents.map(sg => {
+      // Remarques
+      const remarques = sg.events
+        .filter(e => e.type === 'remarque' && e.note)
+        .map(e => e.note!);
+
+      // Sorties by subtype
+      const sortieEvents = sg.events.filter(e => e.type === 'sortie');
+      const sortieMap = new Map<string, number>();
+      sortieEvents.forEach(e => {
+        const sub = e.subtype || 'autre';
+        sortieMap.set(sub, (sortieMap.get(sub) || 0) + 1);
+      });
+      const sorties = Array.from(sortieMap.entries()).map(([subtype, count]) => ({ subtype, count }));
+
+      // Stamp progress
+      const card = activeCards.find(c => c.student_id === sg.student.id);
+      const stampProgress = card ? {
+        cardNumber: card.card_number,
+        stampCount: stampCounts.get(card.id) || 0,
+        tier: getCardTier(card.card_number).name,
+      } : null;
+
+      // Group grades
+      const studentMemberships = memberships.filter(m => m.student_id === sg.student.id);
+      const groupGrades = studentMemberships
+        .map(m => {
+          const group = m.session_groups as any;
+          if (!group?.group_sessions) return null;
+          const session = group.group_sessions;
+          if (session.class_id !== selectedClassId) return null;
+          const score = (gradesMap.get(group.id) || 0) - (group.conduct_malus || 0);
+          const maxPoints = criteriaMaxMap.get(session.id) || 20;
+          return { sessionName: session.name, score: Math.max(0, score), maxPoints };
+        })
+        .filter(Boolean) as { sessionName: string; score: number; maxPoints: number }[];
+
+      return {
+        pseudo: sg.student.pseudo,
+        gender: sg.student.gender,
+        participations: sg.participations,
+        manualParticipations: sg.manualParticipations,
+        totalParticipations: sg.totalParticipations,
+        malus: sg.malus,
+        absences: sg.absences,
+        grade: sg.grade,
+        bonus: sg.bonus,
+        oralGrade: sg.oralEvaluation?.grade ?? null,
+        oralLabel: sg.oralEvaluation ? getOralLabel(sg.oralEvaluation.grade) : null,
+        remarques,
+        sorties,
+        stampProgress,
+        groupGrades,
+      };
+    });
+
+    const content = generateBulletinContext({
+      className: cls.name,
+      trimester: trimesterSettings.current_trimester,
+      schoolYear: trimesterSettings.school_year,
+      classAverage: selectedClassStats?.averageGrade || 0,
+      students: bulletinStudents,
+    });
+
+    downloadBulletinContext(content, cls.name, trimesterSettings.current_trimester);
+    toast('Fichier bulletin exporte !', 'success');
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -1532,6 +1671,9 @@ export function Students() {
             </div>
           </div>
           <div className="track-header__actions">
+            <button className="btn btn--ghost" onClick={exportBulletinContext} disabled={!selectedClassId} title="Exporter les donnees pour generer les appreciations de bulletin avec Claude">
+              <Icon name="download" size={14} /> Bulletin IA
+            </button>
             <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
               <Icon name="qr" size={14} /> QR
             </button>
