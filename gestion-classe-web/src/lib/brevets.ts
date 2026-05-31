@@ -1,5 +1,7 @@
-// Généré automatiquement — annales DNB SVT hébergées sur Supabase Storage (bucket 'brevets').
-// Régénérer via _build/scripts/make_brevets_data.py côté projet SVT_Only_v2.
+// Généré automatiquement — annales DNB hébergées sur Supabase Storage (bucket 'brevets').
+// Régénérer via scripts/make_brevets_data.py (lit scripts/brevets_manifest.csv).
+export type Matiere = 'SVT' | 'Maths' | 'Français' | 'Histoire-Géo-EMC' | 'Physique-Chimie';
+
 export interface Brevet {
   code: string;
   annee: number;
@@ -8,6 +10,8 @@ export interface Brevet {
   points: number;
   url: string;
   tailleKo: number;
+  /** Matière de l'épreuve. Absent = 'SVT' (entrées historiques). */
+  matiere?: Matiere;
 }
 
 export const brevets: Brevet[] = [

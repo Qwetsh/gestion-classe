@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Brevets — cache local des PDF (scripts/make_brevets_data.py)
+scripts/.pdf_cache/

@@ -1,8 +1,15 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout } from '../components/Layout';
-import { brevets, type Brevet } from '../lib/brevets';
+import { brevets, type Brevet, type Matiere } from '../lib/brevets';
 
 const ANNEES = Array.from(new Set(brevets.map((b) => b.annee))).sort((a, b) => b - a);
+
+// Matière d'un sujet (entrées historiques sans champ = SVT)
+const matiereOf = (b: Brevet): Matiere => b.matiere ?? 'SVT';
+
+// Ordre d'affichage des onglets matière, restreint à celles réellement présentes
+const MATIERE_ORDER: Matiere[] = ['SVT', 'Maths', 'Français', 'Histoire-Géo-EMC', 'Physique-Chimie'];
+const MATIERES = MATIERE_ORDER.filter((m) => brevets.some((b) => matiereOf(b) === m));
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -11,16 +18,27 @@ function normalize(s: string) {
 export function Brevets() {
   const [query, setQuery] = useState('');
   const [annee, setAnnee] = useState<number | 'all'>('all');
+  const [matiere, setMatiere] = useState<Matiere | 'all'>('all');
   const [copied, setCopied] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Brevet | null>(null);
+
+  // Fermeture de la modale de visualisation au clavier (Échap)
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [preview]);
 
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
     return brevets.filter((b) => {
+      if (matiere !== 'all' && matiereOf(b) !== matiere) return false;
       if (annee !== 'all' && b.annee !== annee) return false;
       if (!q) return true;
       return normalize(`${b.theme} ${b.centre} ${b.code} ${b.annee}`).includes(q);
     });
-  }, [query, annee]);
+  }, [query, annee, matiere]);
 
   const groupes = useMemo(() => {
     const map = new Map<number, Brevet[]>();
@@ -49,12 +67,23 @@ export function Brevets() {
             className="text-[var(--text)]"
             style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}
           >
-            Annales Brevet SVT
+            Annales Brevet
           </h1>
           <p className="text-[var(--text-muted)] mt-1">
-            {brevets.length} sujets de DNB Sciences (partie SVT) — sujet, barème et corrigé dans chaque PDF
+            {filtered.length} sujet{filtered.length > 1 ? 's' : ''} de DNB
+            {matiere !== 'all' ? ` — ${matiere}` : ' — toutes matières'}
           </p>
         </div>
+
+        {/* Onglets matière */}
+        {MATIERES.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={matiere === 'all'} onClick={() => setMatiere('all')}>Toutes matières</Chip>
+            {MATIERES.map((m) => (
+              <Chip key={m} active={matiere === m} onClick={() => setMatiere(m)}>{m}</Chip>
+            ))}
+          </div>
+        )}
 
         {/* Filtres */}
         <div className="flex flex-wrap items-center gap-3">
@@ -91,27 +120,44 @@ export function Brevets() {
                   style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span
-                      className="text-xs font-medium px-2 py-0.5 text-[var(--indigo)]"
-                      style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius-sm)' }}
-                    >
-                      {b.centre}
-                    </span>
-                    <span className="text-xs text-[var(--text-dim)] tabular-nums">{b.points} pts · 30 min</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {matiere === 'all' && (
+                        <span
+                          className="text-xs font-semibold px-2 py-0.5 text-[var(--indigo)] shrink-0"
+                          style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius-sm)' }}
+                        >
+                          {matiereOf(b)}
+                        </span>
+                      )}
+                      <span className="text-xs font-medium text-[var(--text-dim)] truncate">
+                        {b.centre}
+                      </span>
+                    </div>
+                    {b.points > 0 && (
+                      <span className="text-xs text-[var(--text-dim)] tabular-nums shrink-0">{b.points} pts</span>
+                    )}
                   </div>
 
                   <h3 className="font-semibold text-[var(--text)] leading-snug flex-1">{b.theme}</h3>
                   {b.code && <p className="text-xs text-[var(--text-dim)] mt-1 font-mono">{b.code}</p>}
 
                   <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => setPreview(b)}
+                      className="flex-1 text-center text-sm font-medium py-2 text-white transition-opacity hover:opacity-90"
+                      style={{ background: 'var(--indigo)', borderRadius: 'var(--radius-sm)' }}
+                    >
+                      Visualiser
+                    </button>
                     <a
                       href={b.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-center text-sm font-medium py-2 text-white transition-opacity hover:opacity-90"
-                      style={{ background: 'var(--indigo)', borderRadius: 'var(--radius-sm)' }}
+                      title="Ouvrir dans un nouvel onglet"
+                      className="px-3 py-2 text-sm bg-[var(--surface-3)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)] transition-colors"
+                      style={{ borderRadius: 'var(--radius-sm)' }}
                     >
-                      Ouvrir le PDF
+                      ↗
                     </a>
                     <button
                       onClick={() => copyLink(b.url, b.code || b.theme)}
@@ -128,6 +174,66 @@ export function Brevets() {
           </section>
         ))}
       </div>
+
+      {/* Modale de visualisation PDF */}
+      {preview && (
+        <div
+          onClick={() => setPreview(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', flexDirection: 'column',
+            padding: 24, boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              maxWidth: 1100, width: '100%', margin: '0 auto',
+              background: 'var(--surface)', borderRadius: 'var(--radius)',
+              overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            }}
+          >
+            {/* En-tête modale */}
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border)]"
+            >
+              <div className="min-w-0">
+                <div className="font-semibold text-[var(--text)] truncate">{preview.theme}</div>
+                <div className="text-xs text-[var(--text-dim)] truncate">
+                  {preview.centre} · {preview.annee}{preview.code ? ` · ${preview.code}` : ''}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={preview.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium py-2 px-3 text-white transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--indigo)', borderRadius: 'var(--radius-sm)' }}
+                >
+                  Ouvrir dans un onglet ↗
+                </a>
+                <button
+                  onClick={() => setPreview(null)}
+                  title="Fermer (Échap)"
+                  className="w-9 h-9 flex items-center justify-center text-lg bg-[var(--surface-3)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)] transition-colors"
+                  style={{ borderRadius: 'var(--radius-sm)' }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            {/* Viewer PDF natif */}
+            <iframe
+              src={preview.url}
+              title={preview.theme}
+              style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }}
+            />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
