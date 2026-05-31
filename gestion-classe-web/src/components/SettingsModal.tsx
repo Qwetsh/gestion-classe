@@ -34,6 +34,7 @@ const TAB_OPTIONS: { key: keyof HiddenTabs; label: string }[] = [
   { key: 'group-sessions', label: 'Groupes' },
   { key: 'academy', label: 'Academie' },
   { key: 'tp-templates', label: 'Mes TP' },
+  { key: 'brevets', label: 'Annales' },
   { key: 'tools', label: 'Outils' },
   { key: 'pronote', label: 'Pronote' },
 ];

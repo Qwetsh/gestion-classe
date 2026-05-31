@@ -27,6 +27,7 @@ export interface HiddenTabs {
   'group-sessions': boolean;
   academy: boolean;
   'tp-templates': boolean;
+  brevets: boolean;
   tools: boolean;
   pronote: boolean;
 }
@@ -45,6 +46,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     'group-sessions': false,
     academy: false,
     'tp-templates': false,
+    brevets: false,
     tools: false,
     pronote: false,
   },
