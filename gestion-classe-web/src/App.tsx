@@ -20,6 +20,7 @@ import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
+import { Brevets } from './pages/Brevets';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
 import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
@@ -87,6 +88,14 @@ function App() {
           element={
             <ProtectedRoute>
               <TpTemplates />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/brevets"
+          element={
+            <ProtectedRoute>
+              <Brevets />
             </ProtectedRoute>
           }
         />

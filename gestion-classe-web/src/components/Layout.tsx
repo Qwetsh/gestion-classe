@@ -31,6 +31,7 @@ const secondaryNavItems = [
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
   { path: '/academy', label: 'Académie', icon: '🏰' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
+  { path: '/brevets', label: 'Annales', icon: '📚' },
   { path: '/tools', label: 'Outils', icon: '🧰' },
   { path: '/pronote', label: 'Pronote', icon: '🔗' },
 ];
