@@ -55,9 +55,6 @@ export function ClassroomDisplay({ classId, userId, housePoints, bonuses, assign
 
   const pointsCap = 500;
 
-  const assignedIds = new Set(assignments.map(a => a.student_id));
-  const unassignedCount = students.filter(s => !assignedIds.has(s.id)).length;
-
   const hiddenBonuses = bonuses.filter(b => !b.visible);
   const hasHiddenBonuses = hiddenBonuses.length > 0;
 
@@ -109,10 +106,8 @@ export function ClassroomDisplay({ classId, userId, housePoints, bonuses, assign
   if (showCeremony) {
     return (
       <SortingCeremony
-        classId={classId}
         students={students}
         assignments={assignments}
-        onAssigned={onReload}
         onClose={() => { setShowCeremony(false); onReload(); }}
       />
     );
@@ -155,7 +150,9 @@ export function ClassroomDisplay({ classId, userId, housePoints, bonuses, assign
               fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
             }}
           >← Retour</button>
-          {unassignedCount > 0 && (
+          {/* Cérémonie purement visuelle, rejouable à volonté : rejoue les Maisons déjà attribuées.
+              L'affectation réelle se lance depuis le dashboard (« Lancer la répartition »). */}
+          {students.length > 0 && (
             <button
               onClick={() => setShowCeremony(true)}
               style={{
@@ -166,7 +163,7 @@ export function ClassroomDisplay({ classId, userId, housePoints, bonuses, assign
                 border: '1px solid #d4a843', borderRadius: 8, cursor: 'pointer',
               }}
             >
-              🎩 Répartition ({unassignedCount})
+              🎩 Cérémonie ({assignments.length})
             </button>
           )}
         </div>

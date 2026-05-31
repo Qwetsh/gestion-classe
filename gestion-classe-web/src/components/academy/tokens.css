@@ -224,3 +224,11 @@
     inset -2px -2px 8px oklch(0.15 0.06 20 / 0.7),
     0 2px 6px oklch(0.10 0.04 20 / 0.6);
 }
+
+/* Zones scrollables sans barre de défilement visible (défilement conservé) */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; } /* Chrome/Safari */
+

@@ -169,6 +169,10 @@ export function Academy() {
 
   const handleRunSorting = async () => {
     if (!selectedClassId) return;
+    if (assignments.length > 0 && !window.confirm(
+      `${assignments.length} élève(s) sont déjà réparti(e)s. Relancer la répartition recalculera les Maisons `
+      + `(les affectations manuelles sont conservées). Continuer ?`
+    )) return;
     const scores = await calculateStudentScores(selectedClassId);
     setSortingScores(scores);
     const overrides = assignments.filter(a => a.override).map(a => ({ student_id: a.student_id, house: a.house }));
