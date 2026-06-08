@@ -1,4 +1,7 @@
 import { jsPDF } from 'jspdf';
+// Asset gere par Vite : l'URL est resolue au build avec le base path applique,
+// ce qui evite les 404 lies a un chemin absolu racine '/tools/...' ignorant le base.
+import logoAcademieUrl from './logo-academie.svg?url';
 
 // ── Types ──
 
@@ -183,7 +186,7 @@ export async function loadLogoPNG(): Promise<string | null> {
       resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve(null);
-    img.src = '/tools/logo-academie.svg';
+    img.src = logoAcademieUrl;
   });
 }
 
@@ -444,6 +447,11 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
   doc.text("Le .................................................", ML, y);
   doc.text("Signature (s) :", ML + CW - 40, y);
 
+  // Visa du chef d'etablissement
+  y += 10;
+  setFont(doc, 'bold', 9, BLACK);
+  doc.text("Vise par le chef d'etablissement (signature et cachet) :", ML, y);
+
   // Section 6: Droits
   y += 10;
   y = checkPage(50);
@@ -581,6 +589,14 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
   y = wrappedText(doc, "Le reglement interieur de l'etablissement s'applique aux eleves pendant la sortie.", ML, y, CW, 4);
   y += 4;
   y = wrappedText(doc, "Nous vous remercions de nous signaler tout probleme physique auquel votre enfant pourrait etre sujet pendant la sortie (allergie, precautions particulieres).", ML, y, CW, 4);
+
+  // Visa du chef d'etablissement (sur la note d'information)
+  y += 8;
+  setFont(doc, 'normal', 9, BLACK);
+  doc.text("Le chef d'etablissement,", W - MR, y, { align: 'right' });
+  y += 5;
+  setFont(doc, 'italic', 8, GRAY);
+  doc.text("(signature et cachet)", W - MR, y, { align: 'right' });
 
   // Separator
   y += 8;
@@ -941,10 +957,13 @@ export function buildDemandePDF(data: DemandeData, logoPNG: string | null): jsPD
 // RAPPORT D'INCIDENT PDF
 // ══════════════════════════════════════════
 
-export function buildRapportPDF(data: RapportData): jsPDF {
+export function buildRapportPDF(data: RapportData, logoPNG: string | null): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const ML = 15, MR = 15, CW = W - ML - MR;
   let y = 15;
+
+  // Logo officiel (centre, entre l'en-tete academie a gauche et le titre a droite)
+  if (logoPNG) doc.addImage(logoPNG, 'PNG', W / 2 - 11, 5, 22, 22);
 
   // ── Header left: Academy info ──
   setFont(doc, 'bold', 9, BLACK);
@@ -1152,10 +1171,8 @@ export function buildRapportPDF(data: RapportData): jsPDF {
   const col3 = ML + CW * 2 / 3;
 
   setFont(doc, 'bold', 9, BLACK);
-  doc.text("Signature :", col1, sy);
-  setFont(doc, 'italic', 9, BLACK);
-  doc.text("le cas echeant :", col2, sy);
-  setFont(doc, 'bold', 9, BLACK);
+  doc.text("Signature du redacteur :", col1, sy);
+  doc.text("Visa du chef d'etab. et cachet :", col2, sy);
   doc.text("Regulation effectuee le ___ / ___ /", col3, sy);
   sy += 5;
   doc.text("20____", col3, sy);
@@ -1174,7 +1191,7 @@ export function buildRapportPDF(data: RapportData): jsPDF {
 // AUTORISATION DE DEPLACEMENT PDF
 // ══════════════════════════════════════════
 
-export function buildDeplacementPDF(data: DeplacementData): jsPDF {
+export function buildDeplacementPDF(data: DeplacementData, logoPNG: string | null): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const ML = 12, MR = 12, CW = W - ML - MR;
   const colW = (CW - 6) / 2; // 2 columns with 6mm gap
@@ -1182,6 +1199,7 @@ export function buildDeplacementPDF(data: DeplacementData): jsPDF {
   const gap = 6;
 
   // ── Header ──
+  if (logoPNG) doc.addImage(logoPNG, 'PNG', ML, 2, 14, 14);
   setFont(doc, 'italic', 10, BLACK);
   doc.text(`Annee Scolaire ${data.anneeScolaire} \u2014 ${data.etablissement}`, W / 2, 12, { align: 'center' });
 
@@ -1256,6 +1274,14 @@ export function buildDeplacementPDF(data: DeplacementData): jsPDF {
     doc.text("Retour en classe heure :", px, cy);
     const retourW = doc.getTextWidth("Retour en classe heure :");
     doc.line(px + retourW + 2, cy + 0.5, lineEnd, cy + 0.5);
+
+    // Visa du chef d'etablissement
+    cy += 7;
+    setFont(doc, 'italic', 8, BLACK);
+    doc.text("Visa du chef d'etab. :", px, cy);
+    const visaW = doc.getTextWidth("Visa du chef d'etab. :");
+    doc.setLineWidth(0.2);
+    doc.line(px + visaW + 2, cy + 0.5, lineEnd, cy + 0.5);
   }
 
   // ── Draw 6 cards: 2 columns × 3 rows ──

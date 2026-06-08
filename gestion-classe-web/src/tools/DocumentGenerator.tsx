@@ -380,14 +380,14 @@ export default function DocumentGenerator() {
         exclusionClasse: rapportExclClasse,
         exclusionCollege: rapportExclCollege,
       };
-      doc = buildRapportPDF(data);
+      doc = buildRapportPDF(data, logoPNG);
       filename = `Rapport_incident_${rapport.elevesConcernes || 'eleve'}.pdf`;
     } else {
       const data: DeplacementData = {
         anneeScolaire: settings.schoolYear.label || '2026/2027',
         etablissement: settings.establishment.name || 'College Pierre Mendes France',
       };
-      doc = buildDeplacementPDF(data);
+      doc = buildDeplacementPDF(data, logoPNG);
       filename = 'Autorisation_deplacement.pdf';
     }
 
