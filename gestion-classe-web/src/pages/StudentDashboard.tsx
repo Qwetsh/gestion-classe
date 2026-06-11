@@ -4,6 +4,7 @@ import { getCardTier } from '../lib/rewardsQueries';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
+import { StudentAnnales } from '../components/StudentAnnales';
 import type { HouseId } from '../lib/academyQueries';
 import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
 
@@ -104,7 +105,7 @@ export function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy'>('grades');
+  const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy' | 'annales'>('grades');
   // Student view: never hide tabs based on teacher settings
   const rewardsHidden = false;
   const academyHidden = false;
@@ -444,6 +445,7 @@ export function StudentDashboard() {
             { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: T.indigoSoft, activeText: T.indigo },
             ...(!rewardsHidden ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
             ...(academyData?.enabled && !academyHidden ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
+            { key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos },
           ].map(tab => (
             <button
               key={tab.key}
@@ -522,6 +524,8 @@ export function StudentDashboard() {
               />
             </div>
           )
+        ) : activeTab === 'annales' ? (
+          <StudentAnnales />
         ) : activeTab === 'stamps' && !rewardsHidden ? (
           <StampCardView
             stampData={stampData}
