@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Layout } from '../components/Layout';
 import { brevets, type Brevet, type Matiere } from '../lib/brevets';
-
-const ANNEES = Array.from(new Set(brevets.map((b) => b.annee))).sort((a, b) => b - a);
+import {
+  fetchCustomAnnales,
+  addCustomAnnale,
+  deleteCustomAnnale,
+  type BrevetItem,
+  type NewAnnaleInput,
+} from '../lib/customAnnales';
 
 // Matière d'un sujet (entrées historiques sans champ = SVT)
 const matiereOf = (b: Brevet): Matiere => b.matiere ?? 'SVT';
 
-// Ordre d'affichage des onglets matière, restreint à celles réellement présentes
+// Ordre d'affichage des onglets matière (les 5 matières du brevet)
 const MATIERE_ORDER: Matiere[] = ['SVT', 'Maths', 'Français', 'Histoire-Géo-EMC', 'Physique-Chimie'];
-const MATIERES = MATIERE_ORDER.filter((m) => brevets.some((b) => matiereOf(b) === m));
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -22,6 +26,27 @@ export function Brevets() {
   const [copied, setCopied] = useState<string | null>(null);
   const [preview, setPreview] = useState<Brevet | null>(null);
 
+  // Sujets ajoutés manuellement (table custom_annales)
+  const [custom, setCustom] = useState<BrevetItem[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCustomAnnales().then(setCustom).catch((e) => console.error('Annales custom:', e));
+  }, []);
+
+  // Liste fusionnée : sujets ajoutés en premier, puis le catalogue statique
+  const allBrevets = useMemo<BrevetItem[]>(() => [...custom, ...brevets], [custom]);
+
+  const ANNEES = useMemo(
+    () => Array.from(new Set(allBrevets.map((b) => b.annee))).sort((a, b) => b - a),
+    [allBrevets],
+  );
+  const MATIERES = useMemo(
+    () => MATIERE_ORDER.filter((m) => allBrevets.some((b) => matiereOf(b) === m)),
+    [allBrevets],
+  );
+
   // Fermeture de la modale de visualisation au clavier (Échap)
   useEffect(() => {
     if (!preview) return;
@@ -32,22 +57,42 @@ export function Brevets() {
 
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
-    return brevets.filter((b) => {
+    return allBrevets.filter((b) => {
       if (matiere !== 'all' && matiereOf(b) !== matiere) return false;
       if (annee !== 'all' && b.annee !== annee) return false;
       if (!q) return true;
       return normalize(`${b.theme} ${b.centre} ${b.code} ${b.annee}`).includes(q);
     });
-  }, [query, annee, matiere]);
+  }, [allBrevets, query, annee, matiere]);
 
   const groupes = useMemo(() => {
-    const map = new Map<number, Brevet[]>();
+    const map = new Map<number, BrevetItem[]>();
     for (const b of filtered) {
       if (!map.has(b.annee)) map.set(b.annee, []);
       map.get(b.annee)!.push(b);
     }
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, [filtered]);
+
+  const handleAdded = (item: BrevetItem) => {
+    setCustom((prev) => [item, ...prev]);
+    setShowAdd(false);
+  };
+
+  const handleDelete = async (item: BrevetItem) => {
+    if (!item.id) return;
+    if (!window.confirm(`Supprimer le sujet « ${item.theme} » ?`)) return;
+    setDeletingId(item.id);
+    try {
+      await deleteCustomAnnale(item);
+      setCustom((prev) => prev.filter((c) => c.id !== item.id));
+    } catch (e) {
+      console.error('Suppression annale:', e);
+      window.alert("La suppression a échoué.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const copyLink = async (url: string, code: string) => {
     try {
@@ -62,17 +107,26 @@ export function Brevets() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1
-            className="text-[var(--text)]"
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1
+              className="text-[var(--text)]"
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}
+            >
+              Annales Brevet
+            </h1>
+            <p className="text-[var(--text-muted)] mt-1">
+              {filtered.length} sujet{filtered.length > 1 ? 's' : ''} de DNB
+              {matiere !== 'all' ? ` — ${matiere}` : ' — toutes matières'}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="text-sm font-medium py-2 px-4 text-white transition-opacity hover:opacity-90 shrink-0"
+            style={{ background: 'var(--indigo)', borderRadius: 'var(--radius-sm)' }}
           >
-            Annales Brevet
-          </h1>
-          <p className="text-[var(--text-muted)] mt-1">
-            {filtered.length} sujet{filtered.length > 1 ? 's' : ''} de DNB
-            {matiere !== 'all' ? ` — ${matiere}` : ' — toutes matières'}
-          </p>
+            + Ajouter un sujet
+          </button>
         </div>
 
         {/* Onglets matière */}
@@ -115,7 +169,7 @@ export function Brevets() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map((b) => (
                 <div
-                  key={b.url}
+                  key={b.id ?? b.url}
                   className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--border)]"
                   style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
                 >
@@ -127,6 +181,14 @@ export function Brevets() {
                           style={{ background: 'var(--indigo-soft)', borderRadius: 'var(--radius-sm)' }}
                         >
                           {matiereOf(b)}
+                        </span>
+                      )}
+                      {b.isCustom && (
+                        <span
+                          className="text-xs font-semibold px-2 py-0.5 shrink-0"
+                          style={{ background: 'var(--green-soft, #14532d)', color: 'var(--green, #4ade80)', borderRadius: 'var(--radius-sm)' }}
+                        >
+                          Ajouté
                         </span>
                       )}
                       <span className="text-xs font-medium text-[var(--text-dim)] truncate">
@@ -167,6 +229,17 @@ export function Brevets() {
                     >
                       {copied === (b.code || b.theme) ? 'Copié ✓' : 'Lien'}
                     </button>
+                    {b.isCustom && (
+                      <button
+                        onClick={() => handleDelete(b)}
+                        disabled={deletingId === b.id}
+                        title="Supprimer ce sujet"
+                        className="px-3 py-2 text-sm bg-[var(--surface-3)] border border-[var(--border)] hover:text-[var(--red,#f87171)] transition-colors disabled:opacity-50"
+                        style={{ borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)' }}
+                      >
+                        {deletingId === b.id ? '…' : '🗑'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -234,7 +307,151 @@ export function Brevets() {
           </div>
         </div>
       )}
+
+      {/* Modale d'ajout manuel d'un sujet */}
+      {showAdd && <AddAnnaleModal onClose={() => setShowAdd(false)} onAdded={handleAdded} />}
     </Layout>
+  );
+}
+
+function AddAnnaleModal({
+  onClose,
+  onAdded,
+}: {
+  onClose: () => void;
+  onAdded: (item: BrevetItem) => void;
+}) {
+  const [matiere, setMatiere] = useState<Matiere>('Maths');
+  const [annee, setAnnee] = useState<number>(new Date().getFullYear());
+  const [centre, setCentre] = useState('');
+  const [theme, setTheme] = useState('');
+  const [points, setPoints] = useState<number>(100);
+  const [code, setCode] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!theme.trim()) { setError('Indique un thème.'); return; }
+    if (!file) { setError('Choisis un fichier PDF.'); return; }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const input: NewAnnaleInput = { matiere, annee, centre, theme, points, code };
+      const item = await addCustomAnnale(input, file);
+      onAdded(item);
+    } catch (err) {
+      console.error('Ajout annale:', err);
+      setError("L'ajout a échoué. Vérifie ta connexion et réessaie.");
+      setSubmitting(false);
+    }
+  };
+
+  const inputCls = 'w-full px-3 py-2 bg-[var(--surface-2,var(--surface))] border border-[var(--border)] text-[var(--text)] outline-none focus:border-[var(--indigo)]';
+  const inputStyle = { borderRadius: 'var(--radius-sm)' } as const;
+  const labelCls = 'text-xs font-medium text-[var(--text-dim)] mb-1 block';
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1100,
+        background: 'rgba(0,0,0,0.7)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24, boxSizing: 'border-box',
+      }}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={submit}
+        style={{
+          width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
+          background: 'var(--surface)', borderRadius: 'var(--radius)',
+          border: '1px solid var(--border)', padding: 24,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-[var(--text)]">Ajouter un sujet</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center text-lg bg-[var(--surface-3)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)]"
+            style={{ borderRadius: 'var(--radius-sm)' }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className={labelCls}>Thème *</label>
+            <input className={inputCls} style={inputStyle} value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="Ex. Fonctions et probabilités" />
+          </div>
+          <div>
+            <label className={labelCls}>Matière *</label>
+            <select className={inputCls} style={inputStyle} value={matiere} onChange={(e) => setMatiere(e.target.value as Matiere)}>
+              {MATIERE_ORDER.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Année *</label>
+            <input type="number" className={inputCls} style={inputStyle} value={annee} onChange={(e) => setAnnee(Number(e.target.value))} />
+          </div>
+          <div>
+            <label className={labelCls}>Centre</label>
+            <input className={inputCls} style={inputStyle} value={centre} onChange={(e) => setCentre(e.target.value)} placeholder="Ex. Métropole" />
+          </div>
+          <div>
+            <label className={labelCls}>Points</label>
+            <input type="number" className={inputCls} style={inputStyle} value={points} onChange={(e) => setPoints(Number(e.target.value))} />
+          </div>
+          <div className="col-span-2">
+            <label className={labelCls}>Code (optionnel)</label>
+            <input className={inputCls} style={inputStyle} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ex. 25MATMETRO1" />
+          </div>
+          <div className="col-span-2">
+            <label className={labelCls}>Fichier PDF *</label>
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="w-full text-sm text-[var(--text-muted)] file:mr-3 file:py-2 file:px-3 file:border-0 file:text-white file:text-sm"
+              style={{ borderRadius: 'var(--radius-sm)' }}
+            />
+            {file && <p className="text-xs text-[var(--text-dim)] mt-1 truncate">{file.name}</p>}
+          </div>
+        </div>
+
+        {error && <p className="text-sm mt-3" style={{ color: 'var(--red,#f87171)' }}>{error}</p>}
+
+        <div className="flex items-center justify-end gap-2 mt-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-medium py-2 px-4 bg-[var(--surface-3)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)]"
+            style={{ borderRadius: 'var(--radius-sm)' }}
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="text-sm font-medium py-2 px-5 text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'var(--indigo)', borderRadius: 'var(--radius-sm)' }}
+          >
+            {submitting ? 'Ajout…' : 'Ajouter'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

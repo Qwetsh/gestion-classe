@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { brevets, type Brevet, type Matiere } from '../lib/brevets';
+import { fetchCustomAnnales, type BrevetItem } from '../lib/customAnnales';
 
 // Palette du dashboard élève (StudentDashboard.tsx) — dupliquée ici pour
 // éviter un import circulaire dashboard <-> composant.
@@ -16,13 +17,10 @@ const T = {
   indigoSoft: '#1e1b4b',
 } as const;
 
-const ANNEES = Array.from(new Set(brevets.map((b) => b.annee))).sort((a, b) => b - a);
-
 // Matière d'un sujet (entrées historiques sans champ = SVT)
 const matiereOf = (b: Brevet): Matiere => b.matiere ?? 'SVT';
 
 const MATIERE_ORDER: Matiere[] = ['SVT', 'Maths', 'Français', 'Histoire-Géo-EMC', 'Physique-Chimie'];
-const MATIERES = MATIERE_ORDER.filter((m) => brevets.some((b) => matiereOf(b) === m));
 
 const MATIERE_ICONS: Record<Matiere, string> = {
   'SVT': '🧬',
@@ -42,6 +40,22 @@ export function StudentAnnales() {
   const [matiere, setMatiere] = useState<Matiere | 'all'>('all');
   const [preview, setPreview] = useState<Brevet | null>(null);
 
+  // Sujets ajoutés manuellement par l'enseignante (lecture seule côté élève)
+  const [custom, setCustom] = useState<BrevetItem[]>([]);
+  useEffect(() => {
+    fetchCustomAnnales().then(setCustom).catch((e) => console.error('Annales custom:', e));
+  }, []);
+
+  const allBrevets = useMemo<BrevetItem[]>(() => [...custom, ...brevets], [custom]);
+  const ANNEES = useMemo(
+    () => Array.from(new Set(allBrevets.map((b) => b.annee))).sort((a, b) => b - a),
+    [allBrevets],
+  );
+  const MATIERES = useMemo(
+    () => MATIERE_ORDER.filter((m) => allBrevets.some((b) => matiereOf(b) === m)),
+    [allBrevets],
+  );
+
   // Fermeture de la modale au clavier (Échap)
   useEffect(() => {
     if (!preview) return;
@@ -52,16 +66,16 @@ export function StudentAnnales() {
 
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
-    return brevets.filter((b) => {
+    return allBrevets.filter((b) => {
       if (matiere !== 'all' && matiereOf(b) !== matiere) return false;
       if (annee !== 'all' && b.annee !== annee) return false;
       if (!q) return true;
       return normalize(`${b.theme} ${b.centre} ${b.code} ${b.annee}`).includes(q);
     });
-  }, [query, annee, matiere]);
+  }, [allBrevets, query, annee, matiere]);
 
   const groupes = useMemo(() => {
-    const map = new Map<number, Brevet[]>();
+    const map = new Map<number, BrevetItem[]>();
     for (const b of filtered) {
       if (!map.has(b.annee)) map.set(b.annee, []);
       map.get(b.annee)!.push(b);
