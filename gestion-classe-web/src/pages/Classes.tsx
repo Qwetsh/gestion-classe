@@ -4,12 +4,13 @@ import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Layout } from '../components/Layout';
 import { RoomModal } from '../components/RoomModal';
-import type { Room } from '../components/RoomModal';
+import type { Room, TableGroup } from '../components/RoomModal';
 import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
 import * as XLSX from 'xlsx';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Icon } from '../components/design-system';
 import { fetchAcademyConfig, toggleAcademyModule } from '../lib/academyQueries';
+import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib/studentTabsQueries';
 
 interface Class {
   id: string;
@@ -60,6 +61,44 @@ function getClassLabel(name: string): string {
   return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
 }
 
+function VisibilityToggle({ icon, label, enabled, disabled, onToggle, accent }: {
+  icon: string; label: string; enabled: boolean; disabled?: boolean; onToggle: () => void; accent?: string;
+}) {
+  const color = accent || 'var(--indigo)';
+  return (
+    <label
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '6px 8px', borderRadius: 8,
+        background: enabled ? 'var(--surface-3)' : 'transparent',
+        cursor: disabled ? 'wait' : 'pointer', transition: 'background 0.2s',
+        fontSize: 12, color: 'var(--text)',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontWeight: 500 }}>{label}</span>
+      </span>
+      <div
+        onClick={disabled ? undefined : onToggle}
+        style={{
+          width: 34, height: 18, borderRadius: 9,
+          background: enabled ? color : 'var(--border)',
+          position: 'relative', cursor: disabled ? 'wait' : 'pointer',
+          transition: 'background 0.2s', flexShrink: 0, opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        <div style={{
+          width: 14, height: 14, borderRadius: '50%',
+          background: '#fff', position: 'absolute', top: 2,
+          left: enabled ? 18 : 2,
+          transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+        }} />
+      </div>
+    </label>
+  );
+}
+
 function MiniSpark({ history }: { history: (number | null)[] }) {
   const w = 38, h = 14;
   const max = 2, min = -2;
@@ -97,6 +136,9 @@ export function Classes() {
   // Drag state
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
+  // Lien de tables (édité dans le plan, enregistré sur la salle)
+  const [linkMode, setLinkMode] = useState(false);
+  const [linkSel, setLinkSel] = useState<{ row: number; col: number } | null>(null);
 
   // Student grades for visual display
   const [studentGrades, setStudentGrades] = useState<Map<string, StudentGradeData>>(new Map());
@@ -124,6 +166,11 @@ export function Classes() {
   // Academy module
   const [academyEnabled, setAcademyEnabled] = useState(false);
   const [academyLoading, setAcademyLoading] = useState(false);
+
+  // Visibilité des onglets élève (par classe)
+  const [showStampsTab, setShowStampsTab] = useState(false);
+  const [showAnnalesTab, setShowAnnalesTab] = useState(false);
+  const [tabsLoading, setTabsLoading] = useState(false);
 
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -205,15 +252,58 @@ export function Classes() {
     if (selectedClass) {
       loadStudents(selectedClass.id);
       loadAcademyConfig(selectedClass.id);
+      loadStudentTabs(selectedClass.id);
     } else {
       setStudents([]);
       setAcademyEnabled(false);
+      setShowStampsTab(false);
+      setShowAnnalesTab(false);
     }
   }, [selectedClass]);
 
   const loadAcademyConfig = async (classId: string) => {
     const config = await fetchAcademyConfig(classId);
     setAcademyEnabled(config?.enabled ?? false);
+  };
+
+  const loadStudentTabs = async (classId: string) => {
+    const cfg = await fetchStudentTabs(classId);
+    setShowStampsTab(cfg?.show_stamps ?? false);
+    setShowAnnalesTab(cfg?.show_annales ?? false);
+  };
+
+  const handleToggleStudentTab = async (tab: 'stamps' | 'annales') => {
+    if (!selectedClass || !user) return;
+    const nextStamps = tab === 'stamps' ? !showStampsTab : showStampsTab;
+    const nextAnnales = tab === 'annales' ? !showAnnalesTab : showAnnalesTab;
+    setShowStampsTab(nextStamps);
+    setShowAnnalesTab(nextAnnales);
+    setTabsLoading(true);
+    try {
+      await saveStudentTabs(selectedClass.id, user.id, { show_stamps: nextStamps, show_annales: nextAnnales });
+    } catch (err) {
+      console.error('Error saving student tabs:', err);
+      toast('Erreur lors de la mise à jour', 'error');
+      // rollback
+      setShowStampsTab(showStampsTab);
+      setShowAnnalesTab(showAnnalesTab);
+    } finally {
+      setTabsLoading(false);
+    }
+  };
+
+  const handleApplyTabsToAll = async () => {
+    if (!user || classes.length === 0) return;
+    setTabsLoading(true);
+    try {
+      await applyStudentTabsToAll(user.id, classes.map(c => c.id), { show_stamps: showStampsTab, show_annales: showAnnalesTab });
+      toast(`Tampons/Annales appliqués à ${classes.length} classe${classes.length > 1 ? 's' : ''}`, 'success');
+    } catch (err) {
+      console.error('Error applying tabs to all classes:', err);
+      toast('Erreur lors de la mise à jour', 'error');
+    } finally {
+      setTabsLoading(false);
+    }
   };
 
   const handleToggleAcademy = async () => {
@@ -529,6 +619,51 @@ export function Classes() {
       return newPositions;
     });
     setHasChanges(true);
+  };
+
+  // --- Lien de tables (deux cases adjacentes -> elles se rapprochent) ---
+  const roomLinks: TableGroup[] = selectedRoom?.table_groups || [];
+  const cellK = (r: number, c: number) => `${r},${c}`;
+  const hasLink = (a: string, b: string) =>
+    roomLinks.some((g) => g.cells.length === 2 && g.cells.includes(a) && g.cells.includes(b));
+  const isLinkedLeft = (r: number, c: number) => c > 0 && hasLink(cellK(r, c), cellK(r, c - 1));
+  const isLinkedTop = (r: number, c: number) => r > 0 && hasLink(cellK(r, c), cellK(r - 1, c));
+  const isLinkedRight = (r: number, c: number) => hasLink(cellK(r, c), cellK(r, c + 1));
+  const isLinkedBottom = (r: number, c: number) => hasLink(cellK(r, c), cellK(r + 1, c));
+
+  const persistLinks = async (next: TableGroup[]) => {
+    if (!selectedRoom) return;
+    setRooms((prev) => prev.map((rm) => (rm.id === selectedRoom.id ? { ...rm, table_groups: next } : rm)));
+    setSelectedRoom({ ...selectedRoom, table_groups: next });
+    await supabase
+      .from('rooms')
+      .update({ table_groups: next, updated_at: new Date().toISOString() })
+      .eq('id', selectedRoom.id);
+  };
+
+  const handleLinkClick = (row: number, col: number) => {
+    if (isCellDisabled(row, col)) return;
+    if (!linkSel) {
+      setLinkSel({ row, col });
+      return;
+    }
+    if (linkSel.row === row && linkSel.col === col) {
+      setLinkSel(null);
+      return;
+    }
+    const adjacent = Math.abs(linkSel.row - row) + Math.abs(linkSel.col - col) === 1;
+    if (adjacent) {
+      const ka = cellK(linkSel.row, linkSel.col);
+      const kb = cellK(row, col);
+      const exists = hasLink(ka, kb);
+      const next = exists
+        ? roomLinks.filter((g) => !(g.cells.length === 2 && g.cells.includes(ka) && g.cells.includes(kb)))
+        : [...roomLinks, { id: `${ka}|${kb}`, cells: [ka, kb] }];
+      persistLinks(next);
+      setLinkSel({ row, col }); // chaîner
+    } else {
+      setLinkSel({ row, col });
+    }
   };
 
   // Save plan
@@ -849,6 +984,14 @@ export function Classes() {
           <button onClick={() => setShowStudentsPanel(!showStudentsPanel)} className="btn btn--ghost" style={{ fontSize: 13 }}>
             <Icon name="grid" size={14} /> Vue tableau
           </button>
+          <button
+            onClick={() => { setLinkMode((m) => !m); setLinkSel(null); }}
+            className={`btn ${linkMode ? 'btn--accent' : 'btn--ghost'}`}
+            style={{ fontSize: 13 }}
+            title="Cliquer deux tables adjacentes pour les rapprocher (re-cliquer pour délier)"
+          >
+            {linkMode ? 'Liaison : ON' : 'Lier les tables'}
+          </button>
           <button className="btn btn--ghost" style={{ fontSize: 13 }} onClick={() => window.print()}>
             Imprimer le plan
           </button>
@@ -1068,15 +1211,27 @@ export function Classes() {
                           const grade = gradeData?.grade ?? 10;
                           const barColor = grade >= 16 ? 'var(--pos)' : grade >= 12 ? 'var(--indigo)' : grade >= 8 ? 'var(--warn)' : 'var(--neg)';
 
+                          const selLink = linkMode && linkSel?.row === rowIdx && linkSel?.col === colIdx;
                           return (
                             <div
                               key={`${rowIdx}-${colIdx}`}
-                              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: student ? 'grab' : 'default' }}
-                              draggable={!!student}
-                              onDragStart={() => student && handleDragStart(student.id, { row: rowIdx, col: colIdx })}
-                              onDragOver={(e) => handleDragOver(e, rowIdx, colIdx)}
+                              style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                cursor: linkMode ? 'pointer' : (student ? 'grab' : 'default'),
+                                marginLeft: isLinkedLeft(rowIdx, colIdx) ? -4 : 0,
+                                marginRight: isLinkedRight(rowIdx, colIdx) ? -4 : 0,
+                                marginTop: isLinkedTop(rowIdx, colIdx) ? -9 : 0,
+                                marginBottom: isLinkedBottom(rowIdx, colIdx) ? -9 : 0,
+                                outline: selLink ? '2px solid var(--indigo)' : 'none',
+                                outlineOffset: 2,
+                                borderRadius: 6,
+                              }}
+                              draggable={!linkMode && !!student}
+                              onClick={linkMode ? () => handleLinkClick(rowIdx, colIdx) : undefined}
+                              onDragStart={() => !linkMode && student && handleDragStart(student.id, { row: rowIdx, col: colIdx })}
+                              onDragOver={(e) => !linkMode && handleDragOver(e, rowIdx, colIdx)}
                               onDragLeave={handleDragLeave}
-                              onDrop={() => handleDrop(rowIdx, colIdx)}
+                              onDrop={() => !linkMode && handleDrop(rowIdx, colIdx)}
                             >
                               {/* Chair */}
                               <div className={student ? 'desk-3d__chair' : 'desk-3d--empty desk-3d__chair'} />
@@ -1210,39 +1365,29 @@ export function Classes() {
 
             {/* Footer actions */}
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Academy toggle */}
-              <label
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '6px 8px', borderRadius: 8,
-                  background: academyEnabled ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
-                  cursor: academyLoading ? 'wait' : 'pointer',
-                  transition: 'background 0.2s',
-                  fontSize: 12, color: 'var(--text)',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>🏰</span>
-                  <span style={{ fontWeight: 500 }}>Académie</span>
-                </span>
-                <div
-                  onClick={handleToggleAcademy}
-                  style={{
-                    width: 34, height: 18, borderRadius: 9,
-                    background: academyEnabled ? 'var(--indigo)' : 'var(--border)',
-                    position: 'relative', cursor: academyLoading ? 'wait' : 'pointer',
-                    transition: 'background 0.2s', flexShrink: 0,
-                    opacity: academyLoading ? 0.5 : 1,
-                  }}
-                >
-                  <div style={{
-                    width: 14, height: 14, borderRadius: '50%',
-                    background: '#fff', position: 'absolute', top: 2,
-                    left: academyEnabled ? 18 : 2,
-                    transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                  }} />
+              {/* Ce que voient les élèves (espace /eleve) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '0 8px 2px' }}>
+                  Ce que voient les élèves
                 </div>
-              </label>
+                <VisibilityToggle icon="⭐" label="Tampons" enabled={showStampsTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('stamps')} accent="var(--warn)" />
+                <VisibilityToggle icon="🏰" label="Maison" enabled={academyEnabled} disabled={academyLoading} onToggle={handleToggleAcademy} />
+                <VisibilityToggle icon="📚" label="Annales" enabled={showAnnalesTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('annales')} accent="var(--pos)" />
+                {classes.length > 1 && (
+                  <button
+                    onClick={handleApplyTabsToAll}
+                    disabled={tabsLoading}
+                    style={{
+                      marginTop: 2, padding: '4px 8px', borderRadius: 7, border: 'none',
+                      background: 'transparent', color: 'var(--text-muted)', fontSize: 11,
+                      cursor: tabsLoading ? 'wait' : 'pointer', textAlign: 'left',
+                    }}
+                    title="Applique l'état Tampons/Annales courant à toutes vos classes (la Maison reste par classe)"
+                  >
+                    ↳ Appliquer Tampons/Annales à toutes les classes
+                  </button>
+                )}
+              </div>
 
               <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx,.xls,.csv" className="hidden" />
               <button onClick={() => fileInputRef.current?.click()} className="btn btn--ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>

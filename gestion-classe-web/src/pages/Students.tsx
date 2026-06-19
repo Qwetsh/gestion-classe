@@ -7,6 +7,8 @@ import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepa
 import { generateBulletinContext, downloadBulletinContext, getOralLabel } from '../lib/generateBulletinContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
+import { fetchStudentValidatedGrades, type StudentValidatedGrade } from '../lib/evaluationQueries';
+import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import QRCode from 'qrcode';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Sparkline, TrendBadge, AvgRing, Token, Distribution, Indic, Icon } from '../components/design-system';
@@ -19,6 +21,7 @@ interface Student {
   created_at: string;
   gender: 'M' | 'F';
   student_code?: string;
+  is_witness: boolean;
 }
 
 interface Event {
@@ -145,6 +148,34 @@ interface ClassStats {
 type SortField = 'pseudo' | 'grade' | 'participations' | 'bonus' | 'abs';
 type SortOrder = 'asc' | 'desc';
 
+// Couleur + libellé d'engagement selon la dernière connexion à l'espace élève.
+function engagementInfo(last: string | null): { color: string; label: string } {
+  if (!last) return { color: 'var(--text-dim)', label: 'Jamais connecté' };
+  const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+  let color = 'var(--text-dim)';
+  if (days <= 7) color = 'var(--pos)';
+  else if (days <= 21) color = 'var(--warn)';
+  let label: string;
+  if (days <= 0) label = "Aujourd'hui";
+  else if (days === 1) label = 'Hier';
+  else if (days < 7) label = `Il y a ${days} j`;
+  else if (days < 30) label = `Il y a ${Math.floor(days / 7)} sem`;
+  else label = `Il y a ${Math.floor(days / 30)} mois`;
+  return { color, label };
+}
+
+// Répartition des connexions sur les N dernières semaines (pour le mini-graphe).
+function weeklyBuckets(timestamps: string[], weeks = 10): number[] {
+  const now = Date.now();
+  const wk = 7 * 86400000;
+  const buckets = new Array(weeks).fill(0);
+  timestamps.forEach(ts => {
+    const idx = weeks - 1 - Math.floor((now - new Date(ts).getTime()) / wk);
+    if (idx >= 0 && idx < weeks) buckets[idx]++;
+  });
+  return buckets;
+}
+
 export function Students() {
   const { user } = useAuth();
   const { toast, confirm: showConfirm } = useUIFeedback();
@@ -210,6 +241,14 @@ export function Students() {
   // Stamp detail in student modal
   const [studentStampDetail, setStudentStampDetail] = useState<StudentStampDetail | null>(null);
   const [stampDetailLoading, setStampDetailLoading] = useState(false);
+
+  // Notes d'eval validees (informatives) dans la fiche eleve
+  const [studentExamGrades, setStudentExamGrades] = useState<StudentValidatedGrade[]>([]);
+  const [examGradesLoading, setExamGradesLoading] = useState(false);
+
+  // Métriques de connexion à l'espace élève
+  const [connectionStats, setConnectionStats] = useState<Map<string, ConnectionStat>>(new Map());
+  const [studentConnections, setStudentConnections] = useState<string[]>([]);
 
   // Manual participation modal state
   const [showAddManualModal, setShowAddManualModal] = useState(false);
@@ -312,6 +351,7 @@ export function Students() {
           created_at,
           gender,
           student_code,
+          is_witness,
           classes (name)
         `)
         .eq('user_id', user.id)
@@ -515,6 +555,7 @@ export function Students() {
           created_at: student.created_at,
           gender: (student.gender as 'M' | 'F') || 'M',
           student_code: (student as any).student_code || undefined,
+          is_witness: (student as any).is_witness ?? false,
         },
         participations,
         manualParticipations: manualParticipationsCount,
@@ -549,6 +590,15 @@ export function Students() {
     loadData();
   }, [loadData]);
 
+  // Charger les métriques de connexion de la classe sélectionnée
+  useEffect(() => {
+    if (selectedClassId) {
+      fetchConnectionStats(selectedClassId).then(setConnectionStats);
+    } else {
+      setConnectionStats(new Map());
+    }
+  }, [selectedClassId]);
+
   // Class colors for visual identification
   const CLASS_COLORS: Record<string, string> = {};
   const COLOR_PALETTE = ['#6366F1', '#3B82F6', '#059669', '#D97706', '#DC2626', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6B7280', '#EF4444', '#10B981', '#F59E0B'];
@@ -557,7 +607,7 @@ export function Students() {
   // Calculate stats for each class
   const classStats = useMemo((): ClassStats[] => {
     return classes.map(cls => {
-      const classStudents = studentGrades.filter(s => s.student.class_id === cls.id);
+      const classStudents = studentGrades.filter(s => s.student.class_id === cls.id && !s.student.is_witness);
       const studentCount = classStudents.length;
       const averageGrade = studentCount > 0
         ? classStudents.reduce((sum, s) => sum + s.grade, 0) / studentCount
@@ -577,7 +627,7 @@ export function Students() {
   }, [classes, studentGrades]);
 
   const filterCounts = useMemo(() => {
-    const classStudents = studentGrades.filter(s => !selectedClassId || s.student.class_id === selectedClassId);
+    const classStudents = studentGrades.filter(s => (!selectedClassId || s.student.class_id === selectedClassId) && !s.student.is_witness);
     return {
       all: classStudents.length,
       attention: classStudents.filter(s => s.grade < 8).length,
@@ -1170,12 +1220,26 @@ export function Students() {
     setIsLoadingGroupGrades(true);
     setStudentStampDetail(null);
     setStampDetailLoading(true);
+    setStudentExamGrades([]);
+    setExamGradesLoading(true);
+    setStudentConnections([]);
+
+    // Connexions de l'élève (fire and forget)
+    fetchStudentConnections(studentGrade.student.id)
+      .then(rows => setStudentConnections(rows))
+      .catch(() => {});
 
     // Load stamp detail in parallel (fire and forget, update state when ready)
     fetchStudentStampDetail(studentGrade.student.id)
       .then(detail => setStudentStampDetail(detail))
       .catch(() => {})
       .finally(() => setStampDetailLoading(false));
+
+    // Load validated exam grades (informatives) in parallel
+    fetchStudentValidatedGrades(studentGrade.student.id)
+      .then(rows => setStudentExamGrades(rows))
+      .catch(() => {})
+      .finally(() => setExamGradesLoading(false));
 
     try {
       // Load detailed events with session info (on demand, not at initial load)
@@ -1356,6 +1420,39 @@ export function Students() {
       ));
     } catch (error) {
       console.error('Failed to update gender:', error);
+      toast('Erreur lors de la mise a jour.');
+    }
+  };
+
+  const toggleWitness = async () => {
+    if (!selectedStudentForDetail) return;
+
+    const newValue = !selectedStudentForDetail.student.is_witness;
+
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ is_witness: newValue })
+        .eq('id', selectedStudentForDetail.student.id);
+
+      if (error) throw error;
+
+      setSelectedStudentForDetail({
+        ...selectedStudentForDetail,
+        student: { ...selectedStudentForDetail.student, is_witness: newValue },
+      });
+
+      setStudentGrades(prev => prev.map(sg =>
+        sg.student.id === selectedStudentForDetail.student.id
+          ? { ...sg, student: { ...sg.student, is_witness: newValue } }
+          : sg
+      ));
+
+      toast(newValue
+        ? 'Élève témoin : exclu des classements et métriques'
+        : 'Élève redevenu normal', 'success');
+    } catch (error) {
+      console.error('Failed to update witness flag:', error);
       toast('Erreur lors de la mise a jour.');
     }
   };
@@ -1795,6 +1892,8 @@ export function Students() {
                     const history = getSparklineHistory(sg.events);
                     const delta = getSparklineDelta(history);
                     const totalSessions = new Set(sg.events.map(e => e.session_id)).size;
+                    const conn = connectionStats.get(sg.student.id);
+                    const eng = engagementInfo(conn?.last ?? null);
                     return (
                       <div key={sg.student.id} className={`scard scard--${tone}`} onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="scard__head">
@@ -1803,8 +1902,18 @@ export function Students() {
                               {initials}
                             </div>
                             <div>
-                              <div className="scard__name">{sg.student.pseudo}</div>
-                              <div className="scard__meta">{totalSessions}/25 sessions</div>
+                              <div className="scard__name">
+                                {sg.student.pseudo}
+                                {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ marginLeft: 6, fontSize: 11 }}>👁️</span>}
+                              </div>
+                              <div className="scard__meta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <span>{totalSessions}/25 sessions</span>
+                                <span>·</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={conn ? `${conn.count} connexion${conn.count > 1 ? 's' : ''} à l'espace élève` : 'Jamais connecté à l\'espace élève'}>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: eng.color, display: 'inline-block', flexShrink: 0 }} />
+                                  {eng.label}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <div className="scard__mark">
@@ -1854,11 +1963,16 @@ export function Students() {
                     const classColor = CLASS_COLORS[sg.student.class_id] || '#6366F1';
                     const history = getSparklineHistory(sg.events);
                     const delta = getSparklineDelta(history);
+                    const eng = engagementInfo(connectionStats.get(sg.student.id)?.last ?? null);
                     return (
                       <div key={sg.student.id} className="srow" onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="srow__id">
                           <div className="srow__avatar" style={{ background: classColor + '22', color: classColor }}>{initials}</div>
-                          <div className="srow__name">{sg.student.pseudo}</div>
+                          <div className="srow__name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: eng.color, flexShrink: 0 }} title={`Connexion espace élève : ${eng.label}`} />
+                            {sg.student.pseudo}
+                            {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ fontSize: 11 }}>👁️</span>}
+                          </div>
                         </div>
                         <div className="srow__mark" style={{ color: sg.grade < 8 ? 'var(--neg)' : sg.grade >= 12 ? 'var(--pos)' : 'var(--text)' }}>{sg.grade.toFixed(1)}</div>
                         <div className="srow__spark" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2215,6 +2329,18 @@ export function Students() {
                   >
                     {selectedStudentForDetail.student.gender === 'F' ? '♀ Fille' : '♂ Garcon'}
                   </button>
+                  {/* Witness toggle button */}
+                  <button
+                    onClick={toggleWitness}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      selectedStudentForDetail.student.is_witness
+                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
+                    }`}
+                    title="Élève témoin : voit tous les onglets, exclu des classements et des métriques de connexion. Son code sert de code admin pour prévisualiser l'espace élève."
+                  >
+                    {selectedStudentForDetail.student.is_witness ? '👁️ Témoin' : 'Témoin ?'}
+                  </button>
                 </div>
                 <button
                   onClick={() => setShowStudentDetailModal(false)}
@@ -2404,6 +2530,48 @@ export function Students() {
                 </div>
               )}
 
+              {/* Connexions à l'espace élève */}
+              <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border)]">
+                <h4 className="font-medium text-[var(--text)] mb-3 flex items-center gap-2">
+                  <span>📱</span> Connexions à l'espace élève
+                </h4>
+                {selectedStudentForDetail.student.is_witness ? (
+                  <p className="text-sm text-[var(--text-dim)]">Élève témoin : connexions non comptabilisées.</p>
+                ) : (() => {
+                  const conn = connectionStats.get(selectedStudentForDetail.student.id);
+                  const eng = engagementInfo(conn?.last ?? null);
+                  const buckets = weeklyBuckets(studentConnections);
+                  const maxB = Math.max(1, ...buckets);
+                  return (
+                    <>
+                      <div className="flex items-center gap-6 mb-3">
+                        <div>
+                          <div className="text-2xl font-bold text-[var(--text)]">{conn?.count ?? 0}</div>
+                          <div className="text-xs text-[var(--text-dim)]">connexions</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: eng.color }} />
+                          <span className="text-sm text-[var(--text-muted)]">{eng.label}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 48 }}>
+                        {buckets.map((b, i) => (
+                          <div
+                            key={i}
+                            title={`${b} connexion${b > 1 ? 's' : ''}`}
+                            style={{
+                              flex: 1, height: `${(b / maxB) * 100}%`, minHeight: b > 0 ? 4 : 1,
+                              background: b > 0 ? 'var(--indigo)' : 'var(--border)', borderRadius: 3,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-dim)] mt-1 text-center">10 dernières semaines</div>
+                    </>
+                  );
+                })()}
+              </div>
+
               {/* Oral Evaluation Section */}
               <div className="bg-purple-50 rounded-xl p-4">
                 <h4 className="font-medium text-purple-900 mb-2 flex items-center gap-2">
@@ -2479,6 +2647,61 @@ export function Students() {
                           <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)]">
                             <span>{grade.class_name}</span>
                             <span>{formatDate(grade.created_at)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Notes d'evaluation (informatives, validees) */}
+              <div className="bg-purple-50 rounded-xl p-4">
+                <h4 className="font-medium text-purple-900 mb-3 flex items-center gap-2">
+                  <span>📄</span> Notes d'évaluation ({studentExamGrades.length})
+                </h4>
+                {examGradesLoading ? (
+                  <div className="flex justify-center py-4">
+                    <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : studentExamGrades.length === 0 ? (
+                  <p className="text-purple-600 text-sm">
+                    Aucune note d'évaluation validée
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {studentExamGrades.map((g) => {
+                      const bareme = g.written_assessments?.bareme_total ?? 20;
+                      const pct = g.grade != null ? Math.round((g.grade / 20) * 100) : 0;
+                      return (
+                        <div key={g.id} className="bg-white rounded-lg p-3 border border-purple-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <div>
+                              <span className="font-medium text-[var(--text)]">
+                                {g.written_assessments?.name ?? 'Évaluation'}
+                              </span>
+                              {g.written_assessments?.subject && (
+                                <span className="text-xs text-[var(--text-dim)] ml-2">
+                                  ({g.written_assessments.subject})
+                                </span>
+                              )}
+                            </div>
+                            <span className={`font-bold ${pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                              {g.grade != null ? `${g.grade}/20` : '—'}
+                            </span>
+                          </div>
+                          {g.comment && (
+                            <p className="text-sm text-[var(--text)] mt-1">{g.comment}</p>
+                          )}
+                          <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)]">
+                            <span>{g.grade_raw != null ? `${g.grade_raw}/${bareme} brut` : ''}</span>
+                            <span>
+                              {g.written_assessments?.date
+                                ? formatDate(g.written_assessments.date)
+                                : g.validated_at
+                                ? formatDate(g.validated_at)
+                                : ''}
+                            </span>
                           </div>
                         </div>
                       );

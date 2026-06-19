@@ -82,6 +82,8 @@ interface DashboardData {
   class_name: string;
   trimester: number;
   school_year: string;
+  is_witness?: boolean;
+  tabs?: { stamps: boolean; annales: boolean };
   grade: number;
   participations: number;
   malus: number;
@@ -106,9 +108,11 @@ export function StudentDashboard() {
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy' | 'annales'>('grades');
-  // Student view: never hide tabs based on teacher settings
-  const rewardsHidden = false;
-  const academyHidden = false;
+  // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
+  // Un élève témoin voit tout (preview en conditions réelles).
+  const isWitness = !!data?.is_witness;
+  const showStamps = isWitness || !!data?.tabs?.stamps;
+  const showAnnales = isWitness || !!data?.tabs?.annales;
   const [stampData, setStampData] = useState<StampData | null>(null);
   const [academyData, setAcademyData] = useState<{ enabled: boolean; house: HouseId | null; test_completed: boolean; classId: string | null } | null>(null);
   const [stampLoading, setStampLoading] = useState(false);
@@ -443,9 +447,9 @@ export function StudentDashboard() {
         }}>
           {[
             { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: T.indigoSoft, activeText: T.indigo },
-            ...(!rewardsHidden ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
-            ...(academyData?.enabled && !academyHidden ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
-            { key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos },
+            ...(showStamps ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
+            ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
+            ...(showAnnales ? [{ key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos }] : []),
           ].map(tab => (
             <button
               key={tab.key}
@@ -468,7 +472,7 @@ export function StudentDashboard() {
           ))}
         </div>
 
-        {activeTab === 'academy' && academyData?.enabled && !academyHidden ? (
+        {activeTab === 'academy' && academyData?.enabled ? (
           academyData.house && academyData.classId ? (
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <MyHouse houseId={academyData.house} classId={academyData.classId} />
@@ -526,7 +530,7 @@ export function StudentDashboard() {
           )
         ) : activeTab === 'annales' ? (
           <StudentAnnales />
-        ) : activeTab === 'stamps' && !rewardsHidden ? (
+        ) : activeTab === 'stamps' && showStamps ? (
           <StampCardView
             stampData={stampData}
             stampLoading={stampLoading}
