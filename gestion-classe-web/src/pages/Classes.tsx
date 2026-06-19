@@ -760,6 +760,44 @@ export function Classes() {
     setShowStudentModal(true);
   };
 
+  // Continuité d'une année sur l'autre : rerattache les élèves détachés (class_id NULL)
+  // de même pseudo à la nouvelle classe, au lieu de créer des doublons. Sinon insère.
+  const attachOrInsertStudents = async (
+    classId: string,
+    rows: { pseudo: string; class_id: string; user_id: string }[],
+  ) => {
+    if (rows.length === 0) return;
+    const { data: detached } = await supabase
+      .from('students')
+      .select('id, pseudo')
+      .eq('user_id', user!.id)
+      .is('class_id', null);
+    const byPseudo = new Map<string, string[]>();
+    (detached || []).forEach(d => {
+      const list = byPseudo.get(d.pseudo) || [];
+      list.push(d.id);
+      byPseudo.set(d.pseudo, list);
+    });
+    const toReattach: string[] = [];
+    const toInsert: typeof rows = [];
+    rows.forEach(r => {
+      const matches = byPseudo.get(r.pseudo);
+      if (matches && matches.length > 0) toReattach.push(matches.shift()!);
+      else toInsert.push(r);
+    });
+    if (toReattach.length > 0) {
+      const { error } = await supabase
+        .from('students')
+        .update({ class_id: classId, updated_at: new Date().toISOString() })
+        .in('id', toReattach);
+      if (error) throw error;
+    }
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('students').insert(toInsert);
+      if (error) throw error;
+    }
+  };
+
   const handleSaveStudent = async () => {
     const trimmedFirst = studentFirstName.trim();
     const trimmedLast = studentLastName.trim();
@@ -780,12 +818,11 @@ export function Classes() {
           .eq('id', editingStudent.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('students').insert({
+        await attachOrInsertStudents(selectedClass.id, [{
           pseudo,
           class_id: selectedClass.id,
           user_id: user!.id,
-        });
-        if (error) throw error;
+        }]);
       }
 
       setShowStudentModal(false);
@@ -932,7 +969,7 @@ export function Classes() {
         }
 
         if (studentsToInsert.length > 0) {
-          await supabase.from('students').insert(studentsToInsert);
+          await attachOrInsertStudents(selectedClass.id, studentsToInsert);
           loadStudents(selectedClass.id);
           loadClasses();
         }

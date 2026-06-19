@@ -62,6 +62,7 @@ interface ClassConfig {
 interface ArchivedGrade {
   trimester: number;
   school_year: string;
+  class_name: string | null;
   participations: number;
   absences: number;
   target_participations: number;
@@ -226,6 +227,8 @@ export function Students() {
   const [showNextTrimesterModal, setShowNextTrimesterModal] = useState(false);
   const [showEndYearModal, setShowEndYearModal] = useState(false);
   const [endYearConfirmText, setEndYearConfirmText] = useState('');
+  // Classes "sortantes" (3e) : leurs élèves seront supprimés ; les autres détachés/conservés.
+  const [leavingClassIds, setLeavingClassIds] = useState<Set<string>>(new Set());
   const [generateReportOnTrimesterEnd, setGenerateReportOnTrimesterEnd] = useState(true);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isEndingYear, setIsEndingYear] = useState(false);
@@ -534,6 +537,7 @@ export function Students() {
         .map(g => ({
           trimester: g.trimester,
           school_year: g.school_year,
+          class_name: g.class_name ?? null,
           participations: g.participations,
           absences: g.absences,
           target_participations: g.target_participations,
@@ -598,6 +602,13 @@ export function Students() {
       setConnectionStats(new Map());
     }
   }, [selectedClassId]);
+
+  // À l'ouverture du modal fin d'année, pré-cocher les classes "3e" (sortantes)
+  useEffect(() => {
+    if (showEndYearModal) {
+      setLeavingClassIds(new Set(classes.filter(c => /3\s*[eè]/i.test(c.name)).map(c => c.id)));
+    }
+  }, [showEndYearModal, classes]);
 
   // Class colors for visual identification
   const CLASS_COLORS: Record<string, string> = {};
@@ -958,20 +969,24 @@ export function Students() {
         }
       }
 
-      // 2. Archive T3 grades first
-      const gradesToArchive = studentGrades.map(sg => ({
-        student_id: sg.student.id,
-        class_id: sg.student.class_id,
-        user_id: user.id,
-        trimester: trimesterSettings.current_trimester,
-        school_year: trimesterSettings.school_year,
-        participations: sg.totalParticipations,
-        absences: sg.absences,
-        target_participations: sg.targetParticipations,
-        adjusted_target: sg.adjustedTarget,
-        grade: sg.grade,
-        bonus: sg.bonus,
-      }));
+      // 2. Archiver les notes du trimestre courant (T3) avec le nom de classe,
+      //    pour les élèves conservés uniquement (les sortants vont être supprimés).
+      const gradesToArchive = studentGrades
+        .filter(sg => !leavingClassIds.has(sg.student.class_id))
+        .map(sg => ({
+          student_id: sg.student.id,
+          class_id: sg.student.class_id,
+          class_name: sg.student.class_name,
+          user_id: user.id,
+          trimester: trimesterSettings.current_trimester,
+          school_year: trimesterSettings.school_year,
+          participations: sg.totalParticipations,
+          absences: sg.absences,
+          target_participations: sg.targetParticipations,
+          adjusted_target: sg.adjustedTarget,
+          grade: sg.grade,
+          bonus: sg.bonus,
+        }));
 
       if (gradesToArchive.length > 0) {
         const { error: archiveError } = await supabase.from('trimester_grades').upsert(gradesToArchive, {
@@ -1027,43 +1042,49 @@ export function Students() {
         }, { onConflict: 'user_id,class_name,school_year' });
       }
 
-      // 4. Identify 3eme students to delete
-      const thirdYearStudentIds = studentGrades
-        .filter(sg => sg.student.class_name.toLowerCase().includes('3e') || sg.student.class_name.toLowerCase().includes('3è'))
+      // 4. Élèves sortants (classes cochées) vs conservés
+      const leavingStudentIds = studentGrades
+        .filter(sg => leavingClassIds.has(sg.student.class_id))
+        .map(sg => sg.student.id);
+      const keptStudentIds = studentGrades
+        .filter(sg => !leavingClassIds.has(sg.student.class_id))
         .map(sg => sg.student.id);
 
-      // 5. Delete events (all)
+      // 5. Supprimer définitivement les élèves sortants (cascade : notes, tampons, événements, maison…)
+      if (leavingStudentIds.length > 0) {
+        const { error: delErr } = await supabase.from('students').delete().in('id', leavingStudentIds);
+        if (delErr) throw delErr;
+      }
+
+      // 6. Remise à zéro des maisons pour les élèves conservés (re-tri chaque année)
+      if (keptStudentIds.length > 0) {
+        await supabase.from('academy_responses').delete().in('student_id', keptStudentIds);
+        await supabase.from('academy_preferences').delete().in('student_id', keptStudentIds);
+      }
+
+      // 7. Remise à zéro de l'activité quotidienne (événements, séances, oral, sessions de groupe)
       const { data: userSessions } = await supabase
         .from('sessions')
         .select('id')
         .eq('user_id', user.id);
       const sessionIds = (userSessions || []).map(s => s.id);
-
       if (sessionIds.length > 0) {
         await supabase.from('events').delete().in('session_id', sessionIds);
       }
-
-      // 6. Delete sessions
       await supabase.from('sessions').delete().eq('user_id', user.id);
-
-      // 7. Delete oral_evaluations
       await supabase.from('oral_evaluations').delete().eq('user_id', user.id);
 
-      // 8. Delete group_sessions and related data
       const { data: groupSessions } = await supabase
         .from('group_sessions')
         .select('id')
         .eq('user_id', user.id);
       const groupSessionIds = (groupSessions || []).map(gs => gs.id);
-
       if (groupSessionIds.length > 0) {
-        // Get group IDs
         const { data: groups } = await supabase
           .from('session_groups')
           .select('id')
           .in('session_id', groupSessionIds);
         const groupIds = (groups || []).map(g => g.id);
-
         if (groupIds.length > 0) {
           await supabase.from('group_grades').delete().in('group_id', groupIds);
           await supabase.from('session_group_members').delete().in('group_id', groupIds);
@@ -1073,80 +1094,17 @@ export function Students() {
       }
       await supabase.from('group_sessions').delete().eq('user_id', user.id);
 
-      // 9. Delete classes
+      // 8. Supprimer toutes les classes.
+      //    → Les élèves conservés se DÉTACHENT (class_id NULL) au lieu d'être supprimés (FK SET NULL).
+      //    → Leurs notes se détachent aussi mais survivent (class_name déjà enregistré).
+      //    → academy_config / assignments / house_bonuses (FK classe) sont effacés en cascade (maisons réinitialisées).
       await supabase.from('classes').delete().eq('user_id', user.id);
 
-      // 10. Delete 3eme students and their trimester_grades
-      if (thirdYearStudentIds.length > 0) {
-        await supabase.from('trimester_grades').delete().in('student_id', thirdYearStudentIds);
-        await supabase.from('manual_participations').delete().in('student_id', thirdYearStudentIds);
-        await supabase.from('students').delete().in('id', thirdYearStudentIds);
-      }
-
-      // 11. Detach remaining students from classes (set class_id to null or keep for matching)
-      // Actually, since classes are deleted, we need to handle this differently
-      // The students table has a FK to classes, so we need to handle this
-      // Option: Keep students but they'll be orphaned - need to check FK constraint
-
-      // For now, let's update students to remove class_id reference
-      // This requires the FK to be nullable or we delete students too
-      // Let's delete all students but keep trimester_grades (which has student_id)
-      // The student can be recreated with same pseudo and we can match by trimester_grades
-
-      // Actually, let's keep non-3eme students for matching next year
-      // But since class_id FK will fail, we need to handle this
-      // Solution: Delete students too, matching will be done via trimester_grades.student_id + pseudo stored somewhere
-
-      // Simplest approach: store pseudo in a new field in trimester_grades or separate table
-      // For now, let's delete all students (matching will need to be rethought)
-      // OR: make class_id nullable in students table
-
-      // Let's delete non-3eme students' class associations by deleting them
-      // We'll rely on trimester_grades for history (which keeps student_id)
-      // And we'll need a way to match new imports to old student_ids
-
-      // For the matching feature, we need to store pseudo somewhere persistent
-      // Let's NOT delete non-3eme students, just their class association
-      // But FK constraint... let's check if it's nullable
-
-      // Actually the safest is: we already have trimester_grades with student_id
-      // When importing next year, we can match by looking at students table (pseudo)
-      // So let's keep students (non-3eme) but they won't have a valid class_id
-      // This might cause issues... let's delete all for now and revisit matching logic
-
-      // Delete remaining students (non-3eme) - their trimester_grades are preserved
-      const nonThirdYearStudentIds = studentGrades
-        .filter(sg => !thirdYearStudentIds.includes(sg.student.id))
-        .map(sg => sg.student.id);
-
-      // Before deleting, let's store the pseudo mapping for future matching
-      // We can use the students table itself - just don't delete non-3eme students
-      // But class_id FK... let's see if cascade handles it
-
-      // Actually, ON DELETE CASCADE on class_id means students will be auto-deleted when class is deleted
-      // So we need to remove the class_id first OR change our approach
-
-      // New approach: Don't delete students, update their class_id to NULL (if allowed)
-      // OR delete classes last and let cascade handle it, but preserve student info elsewhere
-
-      // Let's just note that students will be deleted by cascade when classes are deleted
-      // The trimester_grades will remain (student_id is UUID, not FK usually)
-      // For matching, we need another approach - store pseudo in trimester_grades or new table
-
-      // For now, accept that students are deleted. Matching feature will need a different approach.
-      // The user can manually re-link if needed.
-
-      // 12. Delete manual_participations for remaining students
-      if (nonThirdYearStudentIds.length > 0) {
-        await supabase.from('manual_participations').delete().in('student_id', nonThirdYearStudentIds);
-      }
-
-      // 13. Delete trimester_boundaries for this year
+      // 9. Reset trimestre/année
       await supabase.from('trimester_boundaries').delete()
         .eq('user_id', user.id)
         .eq('school_year', trimesterSettings.school_year);
 
-      // 14. Update trimester settings for new year
       const [startYear] = trimesterSettings.school_year.split('-').map(Number);
       const nextSchoolYear = `${startYear + 1}-${startYear + 2}`;
 
@@ -1156,7 +1114,6 @@ export function Students() {
         updated_at: new Date().toISOString(),
       }).eq('user_id', user.id);
 
-      // 15. Create first trimester boundary for new year
       await supabase.from('trimester_boundaries').insert({
         user_id: user.id,
         trimester: 1,
@@ -1166,7 +1123,10 @@ export function Students() {
 
       setShowEndYearModal(false);
       setEndYearConfirmText('');
-      toast('Annee scolaire terminee avec succes ! Les donnees ont ete archivees.', 'success');
+      toast(
+        `Annee cloturee. ${leavingStudentIds.length} eleve(s) sortant(s) supprime(s), ${keptStudentIds.length} conserve(s) pour l'an prochain.`,
+        'success',
+      );
       loadData();
     } catch (error) {
       console.error('Error ending year:', error);
@@ -1732,6 +1692,29 @@ export function Students() {
     toast('Fichier bulletin exporte !', 'success');
   };
 
+  // Élèves détachés (class_id NULL) : conservés d'une année mais pas encore réaffectés.
+  const detachedStudents = studentGrades.filter(sg => !sg.student.class_id);
+
+  const handlePurgeDetached = async () => {
+    if (!user || detachedStudents.length === 0) return;
+    const ok = await showConfirm({
+      title: 'Supprimer les anciens élèves',
+      message: `${detachedStudents.length} élève(s) non réaffecté(s) à une classe seront définitivement supprimés (avec leur historique). Continuer ?`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const { error } = await supabase.from('students').delete().eq('user_id', user.id).is('class_id', null);
+      if (error) throw error;
+      toast('Anciens élèves supprimés.', 'success');
+      loadData();
+    } catch (e) {
+      console.error('Error purging detached students:', e);
+      toast('Erreur lors de la suppression.');
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -1782,6 +1765,17 @@ export function Students() {
             </button>
           </div>
         </header>
+
+        {detachedStudents.length > 0 && (
+          <div style={{ background: 'var(--warn-soft)', border: '1px solid var(--warn)', borderRadius: 'var(--radius)', padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>
+              👤 <strong>{detachedStudents.length}</strong> ancien(s) élève(s) non réaffecté(s) à une classe — conservés de l'an dernier, ils seront repris automatiquement à l'import s'ils reviennent.
+            </span>
+            <button className="btn btn--ghost" style={{ fontSize: 12 }} onClick={handlePurgeDetached}>
+              Supprimer définitivement
+            </button>
+          </div>
+        )}
 
         <div className="track-body">
           {/* Sidebar: classes */}
@@ -2221,28 +2215,52 @@ export function Students() {
 
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-red-800">
-                <strong>Action irreversible !</strong> Cette action va :
+                <strong>Coche les classes qui partent</strong> (les 3e). Leurs élèves seront
+                <strong> supprimés définitivement</strong>. Les autres sont conservés (notes + tampons)
+                et réattachés à leurs nouvelles classes à la rentrée, par rapprochement du pseudo.
               </p>
-              <ul className="text-sm text-red-700 mt-2 list-disc list-inside space-y-1">
-                <li>Archiver toutes les notes du trimestre 3</li>
-                <li>Sauvegarder les statistiques annuelles par classe</li>
-                <li>Supprimer les sessions, evenements et classes</li>
-                <li>Supprimer definitivement les eleves de 3eme</li>
-                <li>Reinitialiser pour l'annee {(() => {
-                  const [startYear] = trimesterSettings.school_year.split('-').map(Number);
-                  return `${startYear + 1}-${startYear + 2}`;
-                })()}</li>
-              </ul>
+              <div className="mt-3 space-y-1">
+                {classes.map(c => {
+                  const count = studentGrades.filter(sg => sg.student.class_id === c.id && !sg.student.is_witness).length;
+                  const leaving = leavingClassIds.has(c.id);
+                  return (
+                    <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer px-2 py-1 rounded hover:bg-red-100/60">
+                      <input
+                        type="checkbox"
+                        checked={leaving}
+                        onChange={() => setLeavingClassIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                          return next;
+                        })}
+                        className="w-4 h-4"
+                      />
+                      <span className={leaving ? 'text-red-700 font-medium' : 'text-[var(--text)]'}>{c.name}</span>
+                      <span className="text-xs text-[var(--text-dim)]">· {count} él.</span>
+                      <span className="ml-auto text-xs">{leaving ? '🗑️ supprimée' : '↪ conservée'}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
-            <p className="text-[var(--text-muted)] mb-4">
-              Annee actuelle : <strong>{trimesterSettings.school_year}</strong>
-              <br />
-              <span className="text-sm text-[var(--text-dim)]">
-                {studentGrades.length} eleve{studentGrades.length > 1 ? 's' : ''} -
-                {' '}{studentGrades.filter(sg => sg.student.class_name.toLowerCase().includes('3e') || sg.student.class_name.toLowerCase().includes('3è')).length} eleve(s) de 3eme seront supprimes
-              </span>
-            </p>
+            {(() => {
+              const leavingCount = studentGrades.filter(sg => leavingClassIds.has(sg.student.class_id) && !sg.student.is_witness).length;
+              const keptCount = studentGrades.filter(sg => !leavingClassIds.has(sg.student.class_id) && !sg.student.is_witness).length;
+              const [startYear] = trimesterSettings.school_year.split('-').map(Number);
+              return (
+                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-lg p-3 mb-4 text-sm">
+                  <div className="text-[var(--text-muted)]">
+                    Année <strong>{trimesterSettings.school_year}</strong> → <strong>{startYear + 1}-{startYear + 2}</strong>
+                  </div>
+                  <ul className="mt-2 space-y-0.5 text-[var(--text)]">
+                    <li>🗑️ <strong>{leavingCount}</strong> élève(s) sortant(s) supprimé(s) définitivement</li>
+                    <li>↪ <strong>{keptCount}</strong> élève(s) conservé(s) (notes + tampons), détachés puis réattachés à la rentrée</li>
+                    <li>♻️ Séances, événements et maisons remis à zéro</li>
+                  </ul>
+                </div>
+              );
+            })()}
 
             {/* Generate report option */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -2796,36 +2814,48 @@ export function Students() {
                 )}
               </div>
 
-              {/* Archived Grades */}
+              {/* Archived Grades — groupé par année scolaire */}
               {selectedStudentForDetail.archivedGrades.length > 0 && (
                 <div>
                   <h4 className="font-medium text-[var(--text)] mb-3">Historique des notes</h4>
-                  <div className="space-y-2">
-                    {selectedStudentForDetail.archivedGrades.map((ag, idx) => (
-                      <div key={idx} className="bg-[var(--bg)] rounded-lg p-3 flex items-center justify-between">
-                        <div>
-                          <span className="font-medium text-[var(--text)]">
-                            Trimestre {ag.trimester}
-                          </span>
-                          <span className="text-[var(--text-dim)] ml-2">
-                            ({ag.school_year})
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-[var(--text-muted)]">
-                            {ag.participations} part. / {ag.absences} abs.
-                          </span>
-                          <span className={`font-bold ${getGradeColor(ag.grade)}`} style={{ fontFamily: 'var(--font-display)' }}>
-                            {ag.grade.toFixed(1)}/20
-                          </span>
-                          {ag.bonus > 0 && (
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">
-                              +{ag.bonus.toFixed(1)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    {Object.entries(
+                      selectedStudentForDetail.archivedGrades.reduce((acc, ag) => {
+                        (acc[ag.school_year] ||= []).push(ag);
+                        return acc;
+                      }, {} as Record<string, ArchivedGrade[]>),
+                    )
+                      .sort((a, b) => b[0].localeCompare(a[0]))
+                      .map(([year, grades]) => {
+                        const sorted = [...grades].sort((a, b) => a.trimester - b.trimester);
+                        const className = sorted.find(g => g.class_name)?.class_name;
+                        const avg = sorted.reduce((s, g) => s + g.grade, 0) / sorted.length;
+                        return (
+                          <div key={year} className="bg-[var(--bg)] rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-[var(--text)]">
+                                {year}{className ? ` · ${className}` : ''}
+                              </span>
+                              <span className="text-sm text-[var(--text-muted)]">
+                                moy.{' '}
+                                <span className={`font-bold ${getGradeColor(avg)}`} style={{ fontFamily: 'var(--font-display)' }}>
+                                  {avg.toFixed(1)}
+                                </span>
+                                /20
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {sorted.map((ag, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-sm bg-[var(--surface)] rounded px-2 py-1 border border-[var(--border)]">
+                                  <span className="text-[var(--text-dim)]">T{ag.trimester}</span>
+                                  <span className={`font-semibold ${getGradeColor(ag.grade)}`}>{ag.grade.toFixed(1)}</span>
+                                  {ag.bonus > 0 && <span className="text-xs text-yellow-600">+{ag.bonus.toFixed(1)}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
