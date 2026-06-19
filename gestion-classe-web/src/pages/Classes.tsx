@@ -55,6 +55,20 @@ interface ClassRoomPlan {
 
 type DragItem = { studentId: string; fromCell?: { row: number; col: number } };
 
+interface ImportMatch {
+  pseudo: string;
+  detachedId: string;
+  prevClass: string | null;
+  prevGrade: number | null;
+  accepted: boolean;
+}
+
+interface ImportPreview {
+  classId: string;
+  matches: ImportMatch[];
+  newPseudos: string[];
+}
+
 const COLOR_PALETTE = ['#6366F1','#EC4899','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EF4444','#14B8A6','#F97316','#06B6D4','#84CC16','#E879F9','#FB923C'];
 
 function getClassLabel(name: string): string {
@@ -171,6 +185,10 @@ export function Classes() {
   const [showStampsTab, setShowStampsTab] = useState(false);
   const [showAnnalesTab, setShowAnnalesTab] = useState(false);
   const [tabsLoading, setTabsLoading] = useState(false);
+
+  // Aperçu de reconnaissance à l'import (continuité inter-années)
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [isApplyingImport, setIsApplyingImport] = useState(false);
 
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -798,6 +816,105 @@ export function Classes() {
     }
   };
 
+  // Prépare l'aperçu de reconnaissance : rapproche les pseudos importés des élèves détachés.
+  const prepareImportPreview = async (classId: string, pseudos: string[]) => {
+    const { data: detached } = await supabase
+      .from('students')
+      .select('id, pseudo')
+      .eq('user_id', user!.id)
+      .is('class_id', null);
+    const detachedList = detached || [];
+
+    // Historique (classe précédente + moyenne) des détachés
+    const ids = detachedList.map(d => d.id);
+    const hist = new Map<string, { prevClass: string | null; prevGrade: number | null }>();
+    if (ids.length > 0) {
+      const { data: grades } = await supabase
+        .from('trimester_grades')
+        .select('student_id, school_year, class_name, grade')
+        .in('student_id', ids)
+        .order('school_year', { ascending: false });
+      const byStudent = new Map<string, { school_year: string; class_name: string | null; grade: number }[]>();
+      (grades || []).forEach((g: { student_id: string; school_year: string; class_name: string | null; grade: number }) => {
+        const l = byStudent.get(g.student_id) || [];
+        l.push({ school_year: g.school_year, class_name: g.class_name ?? null, grade: Number(g.grade) });
+        byStudent.set(g.student_id, l);
+      });
+      byStudent.forEach((rows, sid) => {
+        const latestYear = rows[0].school_year;
+        const yearRows = rows.filter(r => r.school_year === latestYear);
+        const prevClass = yearRows.find(r => r.class_name)?.class_name ?? null;
+        const prevGrade = yearRows.length ? yearRows.reduce((s, r) => s + r.grade, 0) / yearRows.length : null;
+        hist.set(sid, { prevClass, prevGrade });
+      });
+    }
+
+    const byPseudo = new Map<string, string[]>();
+    detachedList.forEach(d => {
+      const l = byPseudo.get(d.pseudo) || [];
+      l.push(d.id);
+      byPseudo.set(d.pseudo, l);
+    });
+
+    const matches: ImportMatch[] = [];
+    const newPseudos: string[] = [];
+    pseudos.forEach(p => {
+      const q = byPseudo.get(p);
+      if (q && q.length > 0) {
+        const detachedId = q.shift()!;
+        const h = hist.get(detachedId) || { prevClass: null, prevGrade: null };
+        matches.push({ pseudo: p, detachedId, prevClass: h.prevClass, prevGrade: h.prevGrade, accepted: true });
+      } else {
+        newPseudos.push(p);
+      }
+    });
+
+    // Aucun ancien élève à rapprocher → import direct, sans fenêtre.
+    if (matches.length === 0) {
+      const { error } = await supabase.from('students').insert(
+        newPseudos.map(pseudo => ({ pseudo, class_id: classId, user_id: user!.id })),
+      );
+      if (error) { console.error('Import error:', error); toast('Erreur lors de l\'import', 'error'); return; }
+      if (selectedClass) loadStudents(selectedClass.id);
+      loadClasses();
+      toast(`${newPseudos.length} élève(s) importé(s).`, 'success');
+      return;
+    }
+
+    setImportPreview({ classId, matches, newPseudos });
+  };
+
+  const applyImportPreview = async () => {
+    if (!importPreview || !user) return;
+    setIsApplyingImport(true);
+    try {
+      const accepted = importPreview.matches.filter(m => m.accepted);
+      const rejected = importPreview.matches.filter(m => !m.accepted);
+      if (accepted.length > 0) {
+        const { error } = await supabase
+          .from('students')
+          .update({ class_id: importPreview.classId, updated_at: new Date().toISOString() })
+          .in('id', accepted.map(m => m.detachedId));
+        if (error) throw error;
+      }
+      const toInsert = [...importPreview.newPseudos, ...rejected.map(m => m.pseudo)]
+        .map(pseudo => ({ pseudo, class_id: importPreview.classId, user_id: user.id }));
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from('students').insert(toInsert);
+        if (error) throw error;
+      }
+      setImportPreview(null);
+      if (selectedClass) loadStudents(selectedClass.id);
+      loadClasses();
+      toast(`Import terminé : ${accepted.length} retrouvé(s), ${toInsert.length} nouveau(x).`, 'success');
+    } catch (e) {
+      console.error('Error applying import:', e);
+      toast('Erreur lors de l\'import', 'error');
+    } finally {
+      setIsApplyingImport(false);
+    }
+  };
+
   const handleSaveStudent = async () => {
     const trimmedFirst = studentFirstName.trim();
     const trimmedLast = studentLastName.trim();
@@ -969,9 +1086,7 @@ export function Classes() {
         }
 
         if (studentsToInsert.length > 0) {
-          await attachOrInsertStudents(selectedClass.id, studentsToInsert);
-          loadStudents(selectedClass.id);
-          loadClasses();
+          await prepareImportPreview(selectedClass.id, studentsToInsert.map(s => s.pseudo));
         }
       } catch (error) {
         console.error('Import error:', error);
@@ -1645,6 +1760,57 @@ export function Classes() {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'En cours...' : editingStudent ? 'Modifier' : 'Ajouter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import recognition preview */}
+      {importPreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surface)] rounded-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div className="p-5 border-b border-[var(--border)]">
+              <h3 className="text-lg font-semibold text-[var(--text)]">Reconnaissance des élèves</h3>
+              <p className="text-sm text-[var(--text-dim)] mt-1">
+                {importPreview.matches.length} ancien(s) élève(s) reconnu(s), {importPreview.newPseudos.length} nouveau(x).
+                Décoche un rapprochement si ce n'est pas le même élève (il sera alors créé comme nouveau).
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-1">
+              {importPreview.matches.map((m, i) => (
+                <label key={m.detachedId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--bg)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={m.accepted}
+                    onChange={() => setImportPreview(prev => prev ? {
+                      ...prev,
+                      matches: prev.matches.map((mm, idx) => idx === i ? { ...mm, accepted: !mm.accepted } : mm),
+                    } : prev)}
+                    className="w-4 h-4"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-[var(--text)]">{m.pseudo}</div>
+                    <div className="text-xs text-[var(--text-dim)]">
+                      {m.accepted ? '↪ retrouvé' : '＋ sera créé comme nouveau'}
+                      {m.prevClass && <> · était en <strong>{m.prevClass}</strong></>}
+                      {m.prevGrade != null && <> · moy {m.prevGrade.toFixed(1)}</>}
+                    </div>
+                  </div>
+                </label>
+              ))}
+              {importPreview.newPseudos.length > 0 && (
+                <div className="pt-3 mt-2 border-t border-[var(--border)] text-xs text-[var(--text-dim)]">
+                  <strong>{importPreview.newPseudos.length} nouveau(x) élève(s)</strong> : {importPreview.newPseudos.join(', ')}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-[var(--border)] flex justify-end gap-3">
+              <button onClick={() => setImportPreview(null)} className="px-4 py-2 border border-[var(--border)] rounded-lg text-[var(--text)] hover:bg-[var(--bg)]" disabled={isApplyingImport}>
+                Annuler
+              </button>
+              <button onClick={applyImportPreview} className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50" disabled={isApplyingImport}>
+                {isApplyingImport ? 'Import...' : "Confirmer l'import"}
               </button>
             </div>
           </div>
