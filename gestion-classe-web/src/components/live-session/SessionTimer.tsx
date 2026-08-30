@@ -1,27 +1,24 @@
 import { useState, useEffect } from 'react';
+import { DB } from './directionB';
 
+/** Chrono Direction B : "● {n} min" vert (maquette 6a). */
 export function SessionTimer({ startedAt }: { startedAt: string }) {
-  const [elapsed, setElapsed] = useState('00:00');
+  const [minutes, setMinutes] = useState(0);
 
   useEffect(() => {
     const start = new Date(startedAt).getTime();
     const tick = () => {
-      const diff = Math.floor((Date.now() - start) / 1000);
-      const h = Math.floor(diff / 3600);
-      const m = Math.floor((diff % 3600) / 60);
-      const s = diff % 60;
-      setElapsed(
-        h > 0
-          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-          : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-      );
+      setMinutes(Math.max(0, Math.floor((Date.now() - start) / 60000)));
     };
     tick();
-    const id = setInterval(tick, 1000);
+    const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, [startedAt]);
 
   return (
-    <span className="font-mono text-sm text-white/80">{elapsed}</span>
+    <span className="inline-flex items-center gap-1">
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: DB.action }} />
+      <span style={{ fontSize: 12, fontWeight: 600, color: DB.action }}>{minutes} min</span>
+    </span>
   );
 }

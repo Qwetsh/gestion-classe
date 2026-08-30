@@ -67,6 +67,7 @@ interface GroupSessionActions {
   setActiveGroup: (index: number) => void;
   setGrade: (groupId: string, criteriaId: string, points: number) => void;
   applyMalus: (groupId: string) => void;
+  decreaseMalus: (groupId: string) => void;
   resetMalus: (groupId: string) => void;
   finishSession: () => void;
   setAcademyCoefficient: (coeff: number) => void;
@@ -301,6 +302,20 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
     if (navigator.vibrate) navigator.vibrate(30);
   }, []);
 
+  // Stepper malus : retire 1 point de malus (jamais en dessous de 0)
+  const decreaseMalusAction = useCallback(async (groupId: string) => {
+    setState(s => {
+      if (!s.sessionData) return s;
+      const groups = s.sessionData.groups.map(g =>
+        g.id === groupId ? { ...g, conduct_malus: Math.max(0, g.conduct_malus - 1) } : g
+      );
+      const newMalus = groups.find(g => g.id === groupId)!.conduct_malus;
+      updateMalus(groupId, newMalus).catch(() => {});
+      return { ...s, sessionData: { ...s.sessionData, groups } };
+    });
+    if (navigator.vibrate) navigator.vibrate(15);
+  }, []);
+
   const resetMalusAction = useCallback(async (groupId: string) => {
     setState(s => {
       if (!s.sessionData) return s;
@@ -356,6 +371,7 @@ export function GroupSessionProvider({ children }: { children: ReactNode }) {
         setActiveGroup,
         setGrade,
         applyMalus: applyMalusAction,
+        decreaseMalus: decreaseMalusAction,
         resetMalus: resetMalusAction,
         finishSession,
         setAcademyCoefficient,

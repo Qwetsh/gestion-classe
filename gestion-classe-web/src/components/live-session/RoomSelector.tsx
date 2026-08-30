@@ -1,67 +1,95 @@
+import { Check } from 'lucide-react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
+import { DB } from './directionB';
+import { FlowHeader, SectionLabel } from './FlowHeader';
 
 export function RoomSelector() {
-  const { rooms, selectedClass, loading, error, selectRoom, goBack, cancelFlow } = useLiveSession();
+  const { rooms, selectedClass, selectedRoom, loading, error, selectRoom, goBack, cancelFlow } = useLiveSession();
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 text-white shrink-0"
-        style={{ background: 'var(--gradient-header)' }}
-      >
-        <button onClick={goBack} className="text-white/80 text-sm font-medium">
-          ← Retour
-        </button>
-        <div className="text-center">
-          <h1 className="font-bold text-lg">Choisir une salle</h1>
-          <p className="text-white/70 text-xs">{selectedClass?.name}</p>
-        </div>
-        <button onClick={cancelFlow} className="text-white/80 text-sm font-medium">
-          Annuler
-        </button>
-      </div>
+    <div className="flex flex-col h-full" style={{ background: DB.background }}>
+      <FlowHeader
+        title="Nouvelle séance"
+        subtitle={selectedClass?.name}
+        onBack={goBack}
+        onCancel={cancelFlow}
+      />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
+        <SectionLabel>2 · Choisir une salle</SectionLabel>
+
         {error && (
-          <div className="p-3 bg-[var(--neg-soft)] text-[var(--neg)] rounded-xl text-sm">
+          <div
+            className="p-3 text-sm mb-3"
+            style={{ background: DB.errorSoft, color: DB.error, borderRadius: 12 }}
+          >
             {error}
           </div>
         )}
 
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="w-8 h-8 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+            <div
+              className="w-8 h-8 rounded-full animate-spin"
+              style={{ border: `3px solid ${DB.primary}`, borderTopColor: 'transparent' }}
+            />
           </div>
         ) : rooms.length === 0 ? (
-          <div className="text-center py-12 text-[var(--text-dim)]">
-            <div className="text-4xl mb-3">🏫</div>
-            <p>Aucune salle trouvee</p>
+          <div className="text-center py-12" style={{ color: DB.textTertiary }}>
+            <p style={{ color: DB.text, fontWeight: 600 }}>Aucune salle trouvée</p>
             <p className="text-sm mt-1">Configurez une salle depuis la page Classes</p>
           </div>
         ) : (
-          rooms.map((room) => (
-            <button
-              key={room.id}
-              onClick={() => selectRoom(room)}
-              className="w-full p-4 bg-[var(--surface)] flex items-center gap-4 active:scale-[0.98] transition-transform"
-              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
-            >
-              <div
-                className="w-12 h-12 flex items-center justify-center text-xl bg-[var(--color-remarque-soft)] rounded-xl"
-              >
-                🏫
-              </div>
-              <div className="text-left">
-                <span className="font-semibold text-[var(--text)] text-lg block">{room.name}</span>
-                <span className="text-sm text-[var(--text-dim)]">
-                  {room.grid_rows} × {room.grid_cols} places
-                </span>
-              </div>
-              <span className="ml-auto text-[var(--text-dim)] text-xl">›</span>
-            </button>
-          ))
+          <div
+            style={{
+              background: DB.surface,
+              border: `1px solid ${DB.border}`,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            {rooms.map((room, index) => {
+              const isSelected = selectedRoom?.id === room.id;
+              return (
+                <button
+                  key={room.id}
+                  onClick={() => selectRoom(room)}
+                  className="w-full flex items-center text-left active:bg-black/5"
+                  style={{
+                    padding: '13px 16px',
+                    border: 'none',
+                    borderTop: index > 0 ? `1px solid ${DB.borderLight}` : 'none',
+                    background: isSelected ? DB.primarySoft : 'transparent',
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className="block truncate"
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: isSelected ? DB.primary : DB.text,
+                      }}
+                    >
+                      {room.name}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: DB.textTertiary }}>
+                      {room.grid_rows} × {room.grid_cols} places
+                    </span>
+                  </div>
+                  {isSelected && (
+                    <span
+                      className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: DB.primary }}
+                    >
+                      <Check size={14} color="#fff" strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

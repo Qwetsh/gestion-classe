@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useGroupSession } from '../../contexts/GroupSessionContext';
 import '../../components/academy/tokens.css';
 
@@ -21,11 +21,10 @@ function getHouseStyle(name: string) {
 export function GroupGrading() {
   const {
     sessionData, activeGroupIndex, loading, academyMode,
-    setActiveGroup, setGrade, applyMalus, resetMalus, finishSession, goBack,
+    setActiveGroup, setGrade, applyMalus, decreaseMalus, finishSession, goBack,
   } = useGroupSession();
 
   const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   if (!sessionData) return null;
 
@@ -40,16 +39,9 @@ export function GroupGrading() {
   }, 0);
   const totalScore = Math.max(0, rawScore - group.conduct_malus);
   const pctTotal = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+  const isLastGroup = activeGroupIndex >= groups.length - 1;
 
-  const handleMalusDown = () => {
-    longPressTimer.current = setTimeout(() => {
-      resetMalus(group.id);
-      if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
-    }, 600);
-  };
-  const handleMalusUp = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-  };
+  const decMalus = () => decreaseMalus(group.id);
 
   // ── Theme based on mode ──
   const hp = academyMode;
@@ -201,73 +193,113 @@ export function GroupGrading() {
           })}
         </div>
 
-        {/* ===== MALUS ===== */}
+        {/* ===== MALUS — steppers explicites (maquette 10b) ===== */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12,
           marginTop: 16, padding: 12,
           background: group.conduct_malus > 0
-            ? (hp ? '#3a1515' : 'var(--neg-soft, #fef2f2)')
+            ? (hp ? '#3a1515' : '#FEF2F2')
             : bgMuted,
           borderRadius: 12,
-          border: hp ? `1px solid ${bgCardBorder}` : 'none',
+          border: group.conduct_malus > 0 && !hp
+            ? '1px solid #FECACA'
+            : (hp ? `1px solid ${bgCardBorder}` : 'none'),
         }}>
-          <button
-            onClick={() => applyMalus(group.id)}
-            onTouchStart={handleMalusDown}
-            onTouchEnd={handleMalusUp}
-            onMouseDown={handleMalusDown}
-            onMouseUp={handleMalusUp}
-            style={{
-              width: 48, height: 48, borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 800, fontSize: 18,
-              background: '#dc2626', border: 'none', cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >−1</button>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: textMain, fontFamily: fontDisplay }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: hp ? textMain : '#B91C1C', fontFamily: fontDisplay }}>
               Malus conduite
             </div>
-            <div style={{ fontSize: 12, color: textMuted }}>
+            <div style={{ fontSize: 12.5, color: hp ? textMuted : '#B91C1C', marginTop: 1 }}>
               {group.conduct_malus > 0
-                ? <><strong style={{ color: '#dc2626' }}>−{group.conduct_malus} pt{group.conduct_malus > 1 ? 's' : ''}</strong> · maintenir pour annuler</>
-                : 'Aucun malus'
+                ? `−${group.conduct_malus} pt${group.conduct_malus > 1 ? 's' : ''}`
+                : 'Aucun'
               }
             </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => { if (group.conduct_malus > 0) { decMalus(); } }}
+              disabled={group.conduct_malus <= 0}
+              style={{
+                width: 38, height: 38, borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, fontWeight: 700,
+                background: hp ? '#1e1712' : '#fff',
+                color: group.conduct_malus <= 0 ? textDim : (hp ? textMain : '#1F2433'),
+                border: `1px solid ${hp ? bgCardBorder : '#E5E7EB'}`,
+                cursor: group.conduct_malus <= 0 ? 'default' : 'pointer',
+                opacity: group.conduct_malus <= 0 ? 0.45 : 1,
+              }}
+            >−</button>
+            <span style={{
+              minWidth: 30, textAlign: 'center',
+              fontSize: 17, fontWeight: 700,
+              color: hp ? textMain : '#B91C1C',
+              fontFamily: fontDisplay,
+            }}>
+              {group.conduct_malus}
+            </span>
+            <button
+              onClick={() => { applyMalus(group.id); if (navigator.vibrate) navigator.vibrate([20, 40, 20]); }}
+              style={{
+                width: 38, height: 38, borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, fontWeight: 700,
+                background: '#EF4444', color: '#fff',
+                border: 'none', cursor: 'pointer',
+              }}
+            >+</button>
           </div>
         </div>
 
         <div style={{ height: 80 }} />
       </div>
 
-      {/* ===== FIXED BOTTOM ===== */}
+      {/* ===== FIXED BOTTOM — total + navigation inter-groupes (10b) ===== */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
+        display: 'flex', alignItems: 'center', gap: 12,
         padding: '12px 12px max(12px, env(safe-area-inset-bottom))',
-        background: `linear-gradient(transparent, ${bgMain} 25%)`,
+        background: hp ? '#1e1712' : '#fff',
+        borderTop: `1px solid ${hp ? '#3a2e22' : '#F1F5F9'}`,
         flexShrink: 0,
       }}>
+        <div style={{ flexShrink: 0 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 600, color: textMuted,
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}>
+            Total
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: textMain, fontFamily: fontDisplay }}>
+            {totalScore}<span style={{ fontSize: 14, fontWeight: 500, color: textDim }}>/{maxScore}</span>
+          </div>
+        </div>
         <button
-          onClick={() => setShowEndConfirm(true)}
+          onClick={() => {
+            if (isLastGroup) {
+              setShowEndConfirm(true);
+            } else {
+              setActiveGroup(activeGroupIndex + 1);
+              if (navigator.vibrate) navigator.vibrate(10);
+            }
+          }}
           style={{
-            width: '100%', padding: '16px 0',
-            background: hp
-              ? `linear-gradient(135deg, ${goldAccent}, #b8860b)`
-              : '#fff',
-            color: hp ? '#1a1410' : '#059669',
-            fontWeight: 800, fontSize: 17,
+            flex: 1, padding: '14px 0',
+            background: isLastGroup
+              ? (hp ? `linear-gradient(135deg, ${goldAccent}, #b8860b)` : '#059669')
+              : (hp ? '#251c15' : '#4F46E5'),
+            color: isLastGroup && hp ? '#1a1410' : '#fff',
+            fontWeight: 600, fontSize: 15,
             fontFamily: fontDisplay,
-            letterSpacing: hp ? '0.02em' : '-0.01em',
-            borderRadius: 14,
-            border: hp ? 'none' : '2px solid #059669',
+            borderRadius: 12,
+            border: !isLastGroup && hp ? `1px solid ${goldAccent}` : 'none',
             cursor: 'pointer',
-            boxShadow: hp
-              ? '0 4px 16px rgba(180, 130, 50, 0.4)'
-              : '0 4px 12px rgba(0,0,0,0.1)',
           }}
         >
-          {hp ? '⚔ Terminer l\'épreuve' : '✓ Terminer'}
+          {isLastGroup
+            ? (hp ? '⚔ Terminer l\'épreuve' : 'Terminer la notation')
+            : 'Groupe suivant →'}
         </button>
       </div>
 

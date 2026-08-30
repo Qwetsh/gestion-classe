@@ -1,5 +1,6 @@
 import { memo, useMemo, useRef, useCallback } from 'react';
 import type { ActiveSortie } from '../../contexts/LiveSessionContext';
+import { DB } from './directionB';
 
 export interface StudentCounts {
   participation: number;
@@ -14,17 +15,26 @@ interface StudentCellProps {
   pseudo: string;
   counts: StudentCounts;
   activeSortie: ActiveSortie | null;
-  onTap: (rect: DOMRect) => void;
+  /** Declenche sur pointerdown : ouvre le menu radial (press-slide possible). */
+  onPress: (rect: DOMRect) => void;
   onDoubleTap?: () => void;
   onSortieReturn?: () => void;
 }
 
-export const StudentCell = memo(function StudentCell({ studentId: _studentId, pseudo, counts, activeSortie, onTap, onDoubleTap, onSortieReturn }: StudentCellProps) {
+/** Cellule du plan de classe, style Direction B (maquette 8b). */
+export const StudentCell = memo(function StudentCell({
+  studentId: _studentId,
+  pseudo,
+  counts,
+  activeSortie,
+  onPress,
+  onDoubleTap,
+  onSortieReturn,
+}: StudentCellProps) {
   const lastTapRef = useRef<number>(0);
 
   const isAbsent = counts.absence > 0 && counts.absence % 2 === 1; // odd = absent
   const isOut = !!activeSortie;
-  const hasEvents = counts.participation + counts.malus + counts.sortie + counts.remarque > 0;
 
   // Format elapsed time for sortie
   const sortieElapsed = useMemo(() => {
@@ -38,84 +48,92 @@ export const StudentCell = memo(function StudentCell({ studentId: _studentId, ps
     return `${hours}h${(minutes % 60).toString().padStart(2, '0')}`;
   }, [activeSortie]);
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const now = Date.now();
     const timeSinceLastTap = now - lastTapRef.current;
     lastTapRef.current = now;
 
-    // Double-tap detection (< 400ms)
+    // Double-tap (< 400 ms) : annuler l'absence ou marquer le retour
     if (timeSinceLastTap < 400) {
-      // If absent, cancel absence
       if (isAbsent && onDoubleTap) {
         onDoubleTap();
         return;
       }
-      // If out on sortie, mark return
       if (isOut && onSortieReturn) {
         onSortieReturn();
         return;
       }
     }
 
-    // Normal tap — don't open menu for absent/out students
+    // Tap simple : pas de menu pour les absents/sortis
     if (isAbsent || isOut) return;
 
-    onTap(rect);
-  }, [isAbsent, isOut, onTap, onDoubleTap, onSortieReturn]);
+    // Ouvre le menu des le pointerdown (press-slide-release possible)
+    onPress(rect);
+  }, [isAbsent, isOut, onPress, onDoubleTap, onSortieReturn]);
+
+  const background = isAbsent ? DB.absentBg : isOut ? DB.sortieBg : DB.surface;
+  const borderColor = isAbsent ? DB.absentBorder : isOut ? DB.sortieBorder : DB.border;
+  const nameColor = isAbsent ? DB.absentText : isOut ? DB.sortieText : DB.text;
 
   return (
     <button
-      className={`relative flex flex-col items-center justify-center p-1 text-center transition-transform active:scale-95 ${
-        isAbsent ? 'opacity-40' : isOut ? 'opacity-60' : ''
-      }`}
+      className="relative flex flex-col items-center justify-center p-1 text-center transition-transform active:scale-95"
       style={{
-        background: isAbsent
-          ? 'var(--color-absence-soft)'
-          : isOut
-            ? 'var(--color-sortie-soft)'
-            : hasEvents
-              ? 'var(--surface)'
-              : 'var(--surface-3)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: hasEvents ? 'var(--shadow-xs)' : undefined,
-        border: isOut ? '2px solid var(--color-sortie)' : 'none',
-        minHeight: '52px',
+        background,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 8,
+        minHeight: 52,
         WebkitTapHighlightColor: 'transparent',
+        touchAction: 'none',
       }}
-      onClick={handleClick}
+      onPointerDown={handlePointerDown}
     >
-      {/* Pseudo */}
+      {/* Prenom */}
       <span
-        className={`text-[11px] font-semibold leading-tight ${
-          isAbsent ? 'line-through text-[var(--text-dim)]' :
-          isOut ? 'text-[var(--color-sortie)]' :
-          'text-[var(--text)]'
-        }`}
+        className="leading-tight truncate max-w-full"
+        style={{ fontSize: 11, fontWeight: 600, color: nameColor }}
       >
-        {truncate(pseudo, 7)}
+        {truncate(pseudo, 8)}
       </span>
 
-      {/* Event badges or status */}
+      {/* Badges */}
       {isAbsent ? (
-        <span className="text-[9px] font-bold text-[var(--color-absence)] mt-0.5">ABS</span>
+        <span
+          className="mt-0.5"
+          style={{
+            fontSize: 7.5,
+            fontWeight: 700,
+            color: '#fff',
+            background: DB.absentBadge,
+            borderRadius: 999,
+            padding: '1px 5px',
+          }}
+        >
+          ABS
+        </span>
       ) : isOut ? (
-        <span className="text-[9px] font-bold text-[var(--color-sortie)] mt-0.5">
+        <span
+          className="mt-0.5"
+          style={{
+            fontSize: 7.5,
+            fontWeight: 700,
+            color: DB.sortieText,
+            background: DB.sortieBorder,
+            borderRadius: 999,
+            padding: '1px 5px',
+          }}
+        >
           {sortieElapsed}
         </span>
-      ) : hasEvents ? (
+      ) : (counts.participation > 0 || counts.malus > 0) ? (
         <div className="flex gap-0.5 mt-0.5">
           {counts.participation > 0 && (
-            <Badge count={counts.participation} color="var(--color-participation)" />
+            <Pill text={`+${counts.participation}`} bg={DB.actionSoft} fg={DB.action} />
           )}
           {counts.malus > 0 && (
-            <Badge count={counts.malus} color="var(--color-bavardage)" />
-          )}
-          {counts.sortie > 0 && (
-            <Badge count={counts.sortie} color="var(--color-sortie)" />
-          )}
-          {counts.remarque > 0 && (
-            <Badge count={counts.remarque} color="var(--color-remarque)" />
+            <Pill text={`${counts.malus}`} bg={DB.malusSoft} fg={DB.malusText} />
           )}
         </div>
       ) : null}
@@ -123,13 +141,22 @@ export const StudentCell = memo(function StudentCell({ studentId: _studentId, ps
   );
 });
 
-function Badge({ count, color }: { count: number; color: string }) {
+function Pill({ text, bg, fg }: { text: string; bg: string; fg: string }) {
   return (
     <span
-      className="text-[9px] font-bold text-white min-w-[14px] h-[14px] flex items-center justify-center rounded-full"
-      style={{ background: color }}
+      className="flex items-center justify-center"
+      style={{
+        fontSize: 9,
+        fontWeight: 700,
+        color: fg,
+        background: bg,
+        borderRadius: 999,
+        minWidth: 16,
+        padding: '0 4px',
+        height: 13,
+      }}
     >
-      {count}
+      {text}
     </span>
   );
 }

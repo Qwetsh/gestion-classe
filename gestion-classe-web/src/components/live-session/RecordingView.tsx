@@ -1,17 +1,29 @@
 import { useState, useCallback, useMemo } from 'react';
+import { ChevronLeft, Mic, Pencil, MessageSquare, Shuffle, Trash2, X } from 'lucide-react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { SessionTimer } from './SessionTimer';
 import { StudentCell, type StudentCounts } from './StudentCell';
 import { WebRadialMenu } from './WebRadialMenu';
 import { RemarqueInput } from './RemarqueInput';
+import { DB, ACTION_LABELS } from './directionB';
+import { MobileSheet, SheetTitle, SheetButton, SheetGhostButton } from './MobileSheet';
+import { StudentPickerSheet } from './StudentPickerSheet';
+import { UndoBanner, type UndoBannerState } from './UndoBanner';
 
 const ORAL_GRADE_LABELS: Record<number, string> = {
   1: 'Insuffisant',
   2: 'Fragile',
   3: 'Satisfaisant',
   4: 'Bien',
-  5: 'Tres bien',
+  5: 'Très bien',
+};
+
+const SORTIE_LABELS: Record<string, string> = {
+  infirmerie: 'Infirmerie',
+  toilettes: 'Toilettes',
+  convocation: 'Convocation',
+  exclusion: 'Exclusion',
 };
 
 interface MenuTarget {
@@ -32,18 +44,23 @@ export function RecordingView() {
 
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
   const [remarqueTarget, setRemarqueTarget] = useState<{ studentId: string; pseudo: string } | null>(null);
+  const [showRemarquePicker, setShowRemarquePicker] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  // Random student picker
-  const [randomStudent, setRandomStudent] = useState<string | null>(null);
+  // Banniere verte de confirmation (undo 4 s)
+  const [undoBanner, setUndoBanner] = useState<UndoBannerState | null>(null);
 
-  // Session notes
-  const [showNotesModal, setShowNotesModal] = useState(false);
+  // Tirage au sort (sheet 9a)
+  const [randomPicked, setRandomPicked] = useState<string | null>(null);
+  const [showRandomSheet, setShowRandomSheet] = useState(false);
+
+  // Session notes (sheet 9c)
+  const [showNotesSheet, setShowNotesSheet] = useState(false);
   const [notesText, setNotesText] = useState(notes || '');
 
-  // Oral evaluation
-  const [showOralModal, setShowOralModal] = useState(false);
+  // Oral evaluation (sheet 9b)
+  const [showOralSheet, setShowOralSheet] = useState(false);
   const [showOralPicker, setShowOralPicker] = useState(false);
   const [oralStudent, setOralStudent] = useState<{ id: string; pseudo: string } | null>(null);
   const [oralGrade, setOralGrade] = useState<number | null>(null);
@@ -51,7 +68,6 @@ export function RecordingView() {
   // Event deletion
   const [showDeletePicker, setShowDeletePicker] = useState(false);
   const [deleteStudentId, setDeleteStudentId] = useState<string | null>(null);
-  const [showDeleteEvents, setShowDeleteEvents] = useState(false);
 
   const studentMap = useMemo(
     () => new Map(students.map(s => [s.id, s])),
@@ -76,7 +92,12 @@ export function RecordingView() {
     return map;
   }, [events]);
 
-  const handleStudentTap = useCallback((studentId: string, pseudo: string, rect: DOMRect) => {
+  const presentStudents = useMemo(
+    () => students.filter(s => !absentIds.has(s.id) && !activeSorties[s.id]),
+    [students, absentIds, activeSorties]
+  );
+
+  const handleStudentPress = useCallback((studentId: string, pseudo: string, rect: DOMRect) => {
     setMenuTarget({
       studentId,
       pseudo,
@@ -89,19 +110,27 @@ export function RecordingView() {
 
   const handleMenuSelect = useCallback((type: string, subtype?: string | null) => {
     if (!menuTarget) return;
-    addEvent(menuTarget.studentId, type, subtype);
+    const { studentId, pseudo } = menuTarget;
+    addEvent(studentId, type, subtype);
     setMenuTarget(null);
-  }, [menuTarget, addEvent]);
-
-  const handleRemarqueRequest = useCallback(() => {
-    if (!menuTarget) return;
-    setRemarqueTarget({ studentId: menuTarget.studentId, pseudo: menuTarget.pseudo });
-    setMenuTarget(null);
-  }, [menuTarget]);
+    const label = subtype
+      ? `${ACTION_LABELS[type] ?? type} · ${SORTIE_LABELS[subtype] ?? subtype}`
+      : ACTION_LABELS[type] ?? type;
+    setUndoBanner({
+      message: `${pseudo} · ${label}`,
+      variant: 'success',
+      onUndo: () => removeLastEvent(studentId, type),
+    });
+  }, [menuTarget, addEvent, removeLastEvent]);
 
   const handleRemarqueSubmit = useCallback((note: string, photo?: File | null) => {
     if (!remarqueTarget) return;
     addEvent(remarqueTarget.studentId, 'remarque', null, note, photo);
+    setUndoBanner({
+      message: `${remarqueTarget.pseudo} · Remarque`,
+      variant: 'success',
+      onUndo: null,
+    });
     setRemarqueTarget(null);
   }, [remarqueTarget, addEvent]);
 
@@ -115,32 +144,34 @@ export function RecordingView() {
     markReturn(studentId);
   }, [markReturn]);
 
-  // Random student
-  const handleRandomStudent = useCallback(() => {
-    const presentStudents = students.filter(s => !absentIds.has(s.id) && !activeSorties[s.id]);
+  // Tirage au sort (9a)
+  const drawRandom = useCallback(() => {
     if (presentStudents.length === 0) {
-      setRandomStudent('Aucun eleve present');
-      setTimeout(() => setRandomStudent(null), 2000);
+      setRandomPicked(null);
       return;
     }
     const selected = presentStudents[Math.floor(Math.random() * presentStudents.length)];
-    setRandomStudent(selected.pseudo);
-    if (navigator.vibrate) navigator.vibrate([15, 50, 15]);
-    setTimeout(() => setRandomStudent(null), 3000);
-  }, [students, absentIds, activeSorties]);
+    setRandomPicked(selected.pseudo);
+    if (navigator.vibrate) navigator.vibrate([15]);
+  }, [presentStudents]);
 
-  // Notes
+  const handleRandomOpen = useCallback(() => {
+    drawRandom();
+    setShowRandomSheet(true);
+  }, [drawRandom]);
+
+  // Notes (9c)
   const handleOpenNotes = useCallback(() => {
     setNotesText(notes || '');
-    setShowNotesModal(true);
+    setShowNotesSheet(true);
   }, [notes]);
 
   const handleSaveNotes = useCallback(() => {
     updateNotes(notesText.trim() || null);
-    setShowNotesModal(false);
+    setShowNotesSheet(false);
   }, [notesText, updateNotes]);
 
-  // Oral evaluation
+  // Oral evaluation (9b)
   const evaluatedStudentIds = useMemo(
     () => new Set(oralEvaluations.map(e => e.student_id)),
     [oralEvaluations]
@@ -151,37 +182,37 @@ export function RecordingView() {
     [students, absentIds, evaluatedStudentIds]
   );
 
-  const handleOralRandom = useCallback(() => {
+  const drawOralStudent = useCallback(() => {
     if (unevaluatedStudents.length === 0) return;
     const selected = unevaluatedStudents[Math.floor(Math.random() * unevaluatedStudents.length)];
     setOralStudent({ id: selected.id, pseudo: selected.pseudo });
     setOralGrade(null);
-    setShowOralModal(true);
   }, [unevaluatedStudents]);
 
-  const handleOralManual = useCallback((studentId: string, pseudo: string) => {
+  const handleOralButton = useCallback(async () => {
+    if (unevaluatedStudents.length === 0) {
+      const ok = await showConfirm({ title: 'Réinitialiser', message: 'Tous les élèves ont été évalués.\n\nRéinitialiser les évaluations ?', confirmLabel: 'Réinitialiser', variant: 'warning' });
+      if (ok) resetOralEvaluations();
+      return;
+    }
+    drawOralStudent();
+    setShowOralSheet(true);
+  }, [unevaluatedStudents, resetOralEvaluations, showConfirm, drawOralStudent]);
+
+  const handleOralManual = useCallback((student: { id: string; pseudo: string }) => {
     setShowOralPicker(false);
-    setOralStudent({ id: studentId, pseudo });
+    setOralStudent(student);
     setOralGrade(null);
-    setShowOralModal(true);
+    setShowOralSheet(true);
   }, []);
 
   const handleSaveOral = useCallback(() => {
     if (!oralStudent || oralGrade === null) return;
     addOralEvaluation(oralStudent.id, oralGrade);
-    setShowOralModal(false);
+    setShowOralSheet(false);
     setOralStudent(null);
     setOralGrade(null);
   }, [oralStudent, oralGrade, addOralEvaluation]);
-
-  const handleOralButton = useCallback(async () => {
-    if (unevaluatedStudents.length === 0) {
-      const ok = await showConfirm({ title: 'Reinitialiser', message: 'Tous les eleves ont ete evalues.\n\nReinitialiser les evaluations ?', confirmLabel: 'Reinitialiser', variant: 'warning' });
-      if (ok) resetOralEvaluations();
-      return;
-    }
-    setShowOralPicker(true);
-  }, [unevaluatedStudents, resetOralEvaluations, showConfirm]);
 
   // Delete events
   const studentsWithEventsList = useMemo(() => {
@@ -190,8 +221,9 @@ export function RecordingView() {
       eventsByStudent[e.student_id] = (eventsByStudent[e.student_id] || 0) + 1;
     }
     return students.filter(s => (eventsByStudent[s.id] || 0) > 0).map(s => ({
-      ...s,
-      eventCount: eventsByStudent[s.id],
+      id: s.id,
+      pseudo: s.pseudo,
+      badge: `${eventsByStudent[s.id]} evt${eventsByStudent[s.id] > 1 ? 's' : ''}`,
     }));
   }, [students, events]);
 
@@ -200,96 +232,91 @@ export function RecordingView() {
     return events.filter(e => e.student_id === deleteStudentId);
   }, [deleteStudentId, events]);
 
-  const handleDeleteSelectStudent = useCallback((studentId: string) => {
-    setDeleteStudentId(studentId);
-    setShowDeletePicker(false);
-    setShowDeleteEvents(true);
-  }, []);
-
   const handleDeleteEvent = useCallback(async (eventId: string) => {
-    const ok = await showConfirm({ title: 'Supprimer', message: 'Supprimer cet evenement ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    const ok = await showConfirm({ title: 'Supprimer', message: 'Supprimer cet événement ?', confirmLabel: 'Supprimer', variant: 'danger' });
     if (ok) deleteEventById(eventId);
   }, [deleteEventById, showConfirm]);
-
-  const handleEndSession = useCallback(() => {
-    setShowEndConfirm(true);
-  }, []);
 
   if (!selectedRoom || !startedAt) return null;
 
   // Build grid
   const totalCells = selectedRoom.grid_rows * selectedRoom.grid_cols;
-
-  // Event summary counts
   const totalEvents = events.length;
-  const participations = events.filter(e => e.type === 'participation').length;
-  const malus = events.filter(e => e.type === 'bavardage').length;
-  const absences = absentIds.size;
-  const sortiesCount = Object.keys(activeSorties).length;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ overscrollBehavior: 'contain' }}>
-      {/* Header */}
+    <div className="flex flex-col h-full overflow-hidden" style={{ overscrollBehavior: 'contain', background: DB.background }}>
+      {/* Header blanc plat (6a) */}
       <div
-        className="flex items-center justify-between px-3 py-2.5 text-white shrink-0"
-        style={{ background: 'var(--gradient-header)' }}
+        className="flex items-center shrink-0"
+        style={{
+          background: DB.surface,
+          borderBottom: `1px solid ${DB.border}`,
+          padding: '8px 12px',
+          gap: 4,
+        }}
       >
-        <div className="flex items-center gap-2">
-          {/* Minimize button */}
-          <button
-            onClick={minimize}
-            className="w-8 h-8 flex items-center justify-center bg-white/15 rounded-lg text-white/80 text-sm"
-            style={{ border: 'none' }}
-            title="Retour au dashboard"
-          >
-            ←
-          </button>
+        <button
+          onClick={minimize}
+          className="w-9 h-9 flex items-center justify-center rounded-full active:bg-black/5 shrink-0"
+          style={{ border: 'none', background: 'transparent' }}
+          title="Retour au dashboard"
+        >
+          <ChevronLeft size={20} color={DB.text} strokeWidth={2} />
+        </button>
+        <button
+          onClick={() => setShowCancelConfirm(true)}
+          className="shrink-0"
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: DB.error,
+            fontSize: 13,
+            fontWeight: 500,
+            padding: '6px 4px',
+          }}
+        >
+          Annuler
+        </button>
+        <div className="flex-1 min-w-0 text-center">
+          <div className="truncate" style={{ fontSize: 15, fontWeight: 700, color: DB.text }}>
+            {selectedClass?.name}{selectedRoom ? ` · ${selectedRoom.name}` : ''}
+          </div>
           <SessionTimer startedAt={startedAt} />
-          <span className="text-white/30">|</span>
-          <span className="text-xs text-white/70">{selectedClass?.name}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowCancelConfirm(true)}
-            className="px-3 py-1.5 text-white/70 text-xs font-medium"
-            style={{ border: '1px solid rgba(255,255,255,0.2)', borderRadius: 'var(--radius-full)', background: 'transparent' }}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleEndSession}
-            className="px-4 py-1.5 bg-white/20 text-white font-semibold text-sm rounded-full"
-            style={{ border: 'none' }}
-          >
-            Terminer
-          </button>
-        </div>
+        <button
+          onClick={() => setShowEndConfirm(true)}
+          className="shrink-0 active:scale-[0.97] transition-transform"
+          style={{
+            background: DB.action,
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 600,
+            border: 'none',
+            borderRadius: 9,
+            padding: '8px 14px',
+          }}
+        >
+          Terminer
+        </button>
       </div>
 
-      {/* Quick stats bar */}
-      <div className="flex items-center justify-center gap-3 py-1.5 px-4 bg-[var(--surface)] border-b border-[var(--border)] shrink-0">
-        <span className="text-xs text-[var(--text-dim)]">{totalEvents} evt</span>
-        <span className="text-xs font-bold" style={{ color: 'var(--color-participation)' }}>+{participations}</span>
-        <span className="text-xs font-bold" style={{ color: 'var(--color-bavardage)' }}>-{malus}</span>
-        {absences > 0 && <span className="text-xs font-bold" style={{ color: 'var(--color-absence)' }}>A:{absences}</span>}
-        {sortiesCount > 0 && <span className="text-xs font-bold" style={{ color: 'var(--color-sortie)' }}>S:{sortiesCount}</span>}
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center justify-around py-2 px-2 bg-[var(--surface-3)] border-b border-[var(--border)] shrink-0">
-        <ToolbarButton icon="🎲" label="Aleatoire" onClick={handleRandomStudent} />
-        <div className="w-px h-6 bg-[var(--border)]" />
+      {/* Toolbar 5 cartes */}
+      <div className="flex shrink-0" style={{ gap: 6, padding: '10px 12px 0' }}>
+        <ToolbarButton icon={<Shuffle size={17} color={DB.text} strokeWidth={1.8} />} label="Aléatoire" onClick={handleRandomOpen} />
         <ToolbarButton
-          icon="🎤"
+          icon={<Mic size={17} color={DB.text} strokeWidth={1.8} />}
           label="Oral"
           badge={`${evaluatedStudentIds.size}/${students.filter(s => !absentIds.has(s.id)).length}`}
           onClick={handleOralButton}
         />
-        <div className="w-px h-6 bg-[var(--border)]" />
-        <ToolbarButton icon="📝" label="Note" indicator={!!notes} onClick={handleOpenNotes} />
-        <div className="w-px h-6 bg-[var(--border)]" />
+        <ToolbarButton icon={<Pencil size={17} color={DB.text} strokeWidth={1.8} />} label="Note" indicator={!!notes} onClick={handleOpenNotes} />
         <ToolbarButton
-          icon="🗑"
+          icon={<MessageSquare size={17} color={DB.text} strokeWidth={1.8} />}
+          label="Remarque"
+          onClick={() => setShowRemarquePicker(true)}
+        />
+        <ToolbarButton
+          icon={<Trash2 size={17} color={DB.text} strokeWidth={1.8} />}
           label="Supprimer"
           onClick={() => {
             if (studentsWithEventsList.length === 0) return;
@@ -299,27 +326,26 @@ export function RecordingView() {
         />
       </div>
 
-      {/* Random student popup */}
-      {randomStudent && (
-        <div className="mx-4 mt-2 p-3 bg-[var(--indigo-soft)] text-[var(--indigo)] rounded-xl text-center font-bold text-lg shrink-0 animate-bounce">
-          🎲 {randomStudent}
-        </div>
-      )}
+      {/* Hint */}
+      <p className="text-center shrink-0" style={{ fontSize: 12.5, color: DB.textTertiary, margin: '8px 0 0' }}>
+        Appuyer sur un élève
+      </p>
 
-      {/* Error toast */}
-      {error && (
-        <div className="mx-4 mt-2 p-2 bg-[var(--neg-soft)] text-[var(--neg)] rounded-lg text-xs text-center shrink-0">
-          {error}
-        </div>
-      )}
+      {/* Banniere de confirmation / undo */}
+      {error ? (
+        <UndoBanner banner={{ message: error, variant: 'error' }} onDismiss={() => {}} />
+      ) : undoBanner ? (
+        <UndoBanner banner={undoBanner} onDismiss={() => setUndoBanner(null)} />
+      ) : null}
 
       {/* Seating grid */}
-      <div className="flex-1 overflow-auto p-3">
+      <div className="flex-1 overflow-auto" style={{ padding: 12 }}>
         <div
-          className="grid gap-1.5 mx-auto"
+          className="grid mx-auto"
           style={{
+            gap: 3,
             gridTemplateColumns: `repeat(${selectedRoom.grid_cols}, 1fr)`,
-            maxWidth: `${selectedRoom.grid_cols * 65}px`,
+            maxWidth: `${selectedRoom.grid_cols * 63}px`,
           }}
         >
           {Array.from({ length: totalCells }).map((_, idx) => {
@@ -330,12 +356,8 @@ export function RecordingView() {
             const studentId = positions[key];
             const student = studentId ? studentMap.get(studentId) : null;
 
-            if (isDisabled) {
-              return <div key={key} className="h-[52px] rounded-lg bg-[var(--surface-3)]" />;
-            }
-
-            if (!student) {
-              return <div key={key} className="h-[52px] rounded-lg bg-[var(--surface-3)]" />;
+            if (isDisabled || !student) {
+              return <div key={key} style={{ minHeight: 52, borderRadius: 8, background: DB.surfaceDisabled }} />;
             }
 
             return (
@@ -345,7 +367,7 @@ export function RecordingView() {
                 pseudo={student.pseudo}
                 counts={countsByStudent.get(student.id) || { participation: 0, malus: 0, absence: 0, sortie: 0, remarque: 0 }}
                 activeSortie={getStudentWithSortie(student.id)}
-                onTap={(rect) => handleStudentTap(student.id, student.pseudo, rect)}
+                onPress={(rect) => handleStudentPress(student.id, student.pseudo, rect)}
                 onDoubleTap={() => handleAbsenceCancel(student.id)}
                 onSortieReturn={() => handleSortieReturn(student.id)}
               />
@@ -353,11 +375,22 @@ export function RecordingView() {
           })}
         </div>
 
-        {/* Teacher desk */}
-        <div className="mt-3 text-center">
-          <div className="inline-block px-4 py-1.5 bg-[var(--surface-3)] text-[var(--text-dim)] text-xs font-medium rounded-lg">
-            Bureau
-          </div>
+        {/* Tableau */}
+        <div
+          className="mx-auto mt-3 text-center"
+          style={{
+            maxWidth: `${selectedRoom.grid_cols * 63}px`,
+            background: DB.segmentTrack,
+            borderRadius: 8,
+            padding: '8px 0',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: DB.textSecondary,
+          }}
+        >
+          Tableau
         </div>
       </div>
 
@@ -367,12 +400,23 @@ export function RecordingView() {
           studentPseudo={menuTarget.pseudo}
           position={menuTarget.position}
           onSelect={handleMenuSelect}
-          onRemarque={handleRemarqueRequest}
           onClose={() => setMenuTarget(null)}
         />
       )}
 
-      {/* Remarque input */}
+      {/* Remarque : selecteur d'eleve puis saisie */}
+      {showRemarquePicker && (
+        <StudentPickerSheet
+          title="Remarque"
+          subtitle="Sélectionner un élève"
+          students={students.filter(s => !absentIds.has(s.id)).map(s => ({ id: s.id, pseudo: s.pseudo }))}
+          onSelect={(s) => {
+            setShowRemarquePicker(false);
+            setRemarqueTarget({ studentId: s.id, pseudo: s.pseudo });
+          }}
+          onClose={() => setShowRemarquePicker(false)}
+        />
+      )}
       {remarqueTarget && (
         <RemarqueInput
           studentPseudo={remarqueTarget.pseudo}
@@ -381,282 +425,292 @@ export function RecordingView() {
         />
       )}
 
-      {/* ========== MODALS ========== */}
+      {/* ========== SHEETS ========== */}
 
-      {/* End session confirmation */}
-      {showEndConfirm && (
-        <ModalBackdrop onClose={() => setShowEndConfirm(false)}>
-          <h3 className="font-bold text-lg text-[var(--text)] text-center">
-            Terminer la seance ?
-          </h3>
-          <p className="text-sm text-[var(--text-muted)] text-center">
-            {totalEvents} evenement{totalEvents !== 1 ? 's' : ''} enregistre{totalEvents !== 1 ? 's' : ''}
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowEndConfirm(false)}
-              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
-              style={{ borderRadius: 'var(--radius)', border: 'none' }}
-            >
-              Continuer
-            </button>
-            <button
-              onClick={() => { setShowEndConfirm(false); endSession(); }}
-              disabled={loading}
-              className="flex-1 py-3 font-bold text-white"
-              style={{
-                background: 'var(--gradient-error)',
-                borderRadius: 'var(--radius)',
-                border: 'none',
-              }}
-            >
-              Terminer
-            </button>
+      {/* Tirage au sort (9a) */}
+      {showRandomSheet && (
+        <MobileSheet onClose={() => setShowRandomSheet(false)}>
+          <div className="flex items-baseline justify-between mb-3">
+            <SheetTitle>Tirage au sort</SheetTitle>
+            <span style={{ fontSize: 13, fontWeight: 500, color: DB.textSecondary }}>
+              {presentStudents.length} présent{presentStudents.length > 1 ? 's' : ''}
+            </span>
           </div>
-        </ModalBackdrop>
+          <div
+            className="text-center mb-4"
+            style={{ background: DB.primarySoft, borderRadius: 16, padding: 24 }}
+          >
+            <p style={{ fontSize: 12, fontWeight: 600, color: DB.primary, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
+              Élève tiré
+            </p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: DB.text, margin: '6px 0' }}>
+              {randomPicked ?? '—'}
+            </p>
+            <p style={{ fontSize: 13.5, color: DB.textSecondary, margin: 0 }}>
+              Parmi les élèves présents
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <SheetGhostButton onClick={drawRandom}>
+              <span className="inline-flex items-center gap-2">
+                <Shuffle size={16} color={DB.text} strokeWidth={1.8} /> Relancer
+              </span>
+            </SheetGhostButton>
+            <SheetButton onClick={() => setShowRandomSheet(false)}>C'est lui !</SheetButton>
+          </div>
+        </MobileSheet>
       )}
 
-      {/* Cancel session confirmation */}
-      {showCancelConfirm && (
-        <ModalBackdrop onClose={() => setShowCancelConfirm(false)}>
-          <h3 className="font-bold text-lg text-[var(--text)] text-center">
-            Annuler la seance ?
-          </h3>
-          <p className="text-sm text-[var(--text-muted)] text-center">
-            La seance sera supprimee et aucun evenement ne sera conserve.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowCancelConfirm(false)}
-              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
-              style={{ borderRadius: 'var(--radius)', border: 'none' }}
-            >
-              Non
-            </button>
-            <button
-              onClick={() => { setShowCancelConfirm(false); cancelSessionAction(); }}
-              disabled={loading}
-              className="flex-1 py-3 font-bold text-white"
-              style={{
-                background: 'var(--gradient-error)',
-                borderRadius: 'var(--radius)',
-                border: 'none',
-              }}
-            >
-              Oui, annuler
-            </button>
-          </div>
-        </ModalBackdrop>
-      )}
-
-      {/* Session notes modal */}
-      {showNotesModal && (
-        <ModalBackdrop onClose={() => setShowNotesModal(false)}>
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[var(--text)]">Note de seance</h3>
-            <button onClick={() => setShowNotesModal(false)} className="text-[var(--text-dim)] text-lg">✕</button>
-          </div>
-          <textarea
-            value={notesText}
-            onChange={(e) => setNotesText(e.target.value)}
-            placeholder="Commentaire sur la seance..."
-            rows={4}
-            autoFocus
-            className="w-full p-3 border border-[var(--border)] text-[var(--text)] bg-[var(--surface-3)] resize-none"
-            style={{ borderRadius: 'var(--radius)', fontSize: '16px' }}
-          />
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowNotesModal(false)}
-              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
-              style={{ borderRadius: 'var(--radius)', border: 'none' }}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleSaveNotes}
-              className="flex-1 py-3 font-bold text-white"
-              style={{ background: 'var(--indigo)', borderRadius: 'var(--radius)', border: 'none' }}
-            >
-              Enregistrer
-            </button>
-          </div>
-        </ModalBackdrop>
-      )}
-
-      {/* Oral: mode picker (random vs manual) */}
-      {showOralPicker && (
-        <ModalBackdrop onClose={() => setShowOralPicker(false)}>
-          <h3 className="font-bold text-lg text-[var(--text)] text-center">
-            Evaluation orale
-          </h3>
-          <p className="text-sm text-[var(--text-muted)] text-center">
-            {unevaluatedStudents.length} eleve{unevaluatedStudents.length > 1 ? 's' : ''} non evalue{unevaluatedStudents.length > 1 ? 's' : ''}
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setShowOralPicker(false); handleOralRandom(); }}
-              className="flex-1 py-4 font-bold text-white text-center"
-              style={{ background: 'var(--indigo)', borderRadius: 'var(--radius)', border: 'none' }}
-            >
-              🎲 Hasard
-            </button>
-            <button
-              onClick={() => setShowOralPicker(false)}
-              className="flex-1 py-4 font-bold text-white text-center"
-              style={{ background: 'var(--color-remarque)', borderRadius: 'var(--radius)', border: 'none' }}
-              // This opens the student list instead
-              onClickCapture={(e) => {
-                e.stopPropagation();
-                setShowOralPicker(false);
-                // Show inline student picker via a second state
-                setTimeout(() => setShowOralPicker(false), 0);
-              }}
-            >
-              🎯 Choisir
-            </button>
-          </div>
-          {/* Student list for manual selection */}
-          <div className="max-h-60 overflow-auto space-y-1 mt-2">
-            <p className="text-xs text-[var(--text-dim)] font-medium px-1">Ou selectionnez un eleve :</p>
-            {unevaluatedStudents.map(s => (
-              <button
-                key={s.id}
-                onClick={() => handleOralManual(s.id, s.pseudo)}
-                className="w-full text-left px-3 py-2.5 text-sm font-medium text-[var(--text)] hover:bg-[var(--indigo-soft)] transition-colors"
-                style={{ borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--surface-3)' }}
+      {/* Evaluation orale (9b) */}
+      {showOralSheet && (
+        <MobileSheet onClose={() => { setShowOralSheet(false); setOralStudent(null); }}>
+          <SheetTitle
+            right={
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: DB.primary,
+                  background: DB.primarySoft,
+                  borderRadius: 999,
+                  padding: '4px 10px',
+                }}
               >
-                {s.pseudo}
-              </button>
-            ))}
-          </div>
-        </ModalBackdrop>
-      )}
-
-      {/* Oral: grade modal */}
-      {showOralModal && oralStudent && (
-        <ModalBackdrop onClose={() => { setShowOralModal(false); setOralStudent(null); }}>
-          <h3 className="font-bold text-lg text-[var(--text)] text-center">
-            {oralStudent.pseudo}
-          </h3>
-          <p className="text-sm text-[var(--text-muted)] text-center">
-            Evaluation orale — selectionnez une note
+                {evaluatedStudentIds.size}/{students.filter(s => !absentIds.has(s.id)).length} évalués
+              </span>
+            }
+          >
+            Évaluation orale
+          </SheetTitle>
+          <p style={{ fontSize: 13, color: DB.textSecondary, margin: '0 0 12px' }}>
+            {unevaluatedStudents.length} restant{unevaluatedStudents.length > 1 ? 's' : ''}
           </p>
-          <div className="grid grid-cols-5 gap-2">
-            {[1, 2, 3, 4, 5].map(grade => (
+
+          {/* Eleve tire */}
+          <div
+            className="flex items-center gap-3 mb-4"
+            style={{
+              background: DB.background,
+              border: `1px solid ${DB.border}`,
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: DB.text }}
+            >
+              <span style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>
+                {oralStudent ? oralStudent.pseudo.charAt(0).toUpperCase() : '?'}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="truncate" style={{ fontSize: 16, fontWeight: 600, color: DB.text, margin: 0 }}>
+                {oralStudent?.pseudo ?? '—'}
+              </p>
+              <p style={{ fontSize: 12, color: DB.textTertiary, margin: 0 }}>
+                Tiré parmi les non-évalués
+              </p>
+            </div>
+            <button
+              onClick={() => { setShowOralSheet(false); setShowOralPicker(true); }}
+              style={{ border: 'none', background: 'transparent', color: DB.primary, fontSize: 14, fontWeight: 600 }}
+            >
+              Choisir
+            </button>
+          </div>
+
+          {/* Notes 0-5 */}
+          <div className="grid grid-cols-6 gap-2">
+            {[0, 1, 2, 3, 4, 5].map(grade => (
               <button
                 key={grade}
-                onClick={() => setOralGrade(grade)}
-                className={`py-3 font-bold text-center transition-all ${
-                  oralGrade === grade ? 'text-white scale-105' : 'text-[var(--text)]'
-                }`}
+                onClick={() => { setOralGrade(grade); if (navigator.vibrate) navigator.vibrate(8); }}
                 style={{
-                  background: oralGrade === grade ? 'var(--indigo)' : 'var(--surface-3)',
-                  borderRadius: 'var(--radius)',
-                  border: oralGrade === grade ? 'none' : '1px solid var(--border)',
+                  height: 52,
+                  borderRadius: 12,
+                  fontSize: 17,
+                  fontWeight: 700,
+                  border: oralGrade === grade ? 'none' : `1px solid ${DB.border}`,
+                  background: oralGrade === grade ? DB.primary : DB.surface,
+                  color: oralGrade === grade ? '#fff' : DB.text,
                 }}
               >
                 {grade}
               </button>
             ))}
           </div>
-          {oralGrade !== null && (
-            <p className="text-center text-sm font-medium text-[var(--indigo)]">
-              {ORAL_GRADE_LABELS[oralGrade]}
-            </p>
-          )}
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setShowOralModal(false); setOralStudent(null); }}
-              className="flex-1 py-3 font-medium text-[var(--text-muted)] bg-[var(--surface-3)]"
-              style={{ borderRadius: 'var(--radius)', border: 'none' }}
-            >
-              Annuler
-            </button>
-            <button
+          <p className="text-center" style={{ fontSize: 13, fontWeight: 500, color: DB.textSecondary, margin: '10px 0 14px', minHeight: 18 }}>
+            {oralGrade !== null && ORAL_GRADE_LABELS[oralGrade] ? ORAL_GRADE_LABELS[oralGrade] : ' '}
+          </p>
+
+          <div className="flex">
+            <SheetButton
               onClick={handleSaveOral}
-              disabled={oralGrade === null}
-              className="flex-1 py-3 font-bold text-white disabled:opacity-50"
-              style={{ background: 'var(--indigo)', borderRadius: 'var(--radius)', border: 'none' }}
+              disabled={oralGrade === null || !oralStudent}
+              color={DB.action}
             >
-              Enregistrer
-            </button>
+              Enregistrer {oralGrade !== null ? `${oralGrade}/5` : ''}
+            </SheetButton>
           </div>
-        </ModalBackdrop>
+        </MobileSheet>
       )}
 
-      {/* Delete: student picker */}
+      {/* Oral : choisir un eleve */}
+      {showOralPicker && (
+        <StudentPickerSheet
+          title="Choisir un élève"
+          subtitle={`${unevaluatedStudents.length} élève${unevaluatedStudents.length > 1 ? 's' : ''} non évalué${unevaluatedStudents.length > 1 ? 's' : ''}`}
+          students={unevaluatedStudents.map(s => ({ id: s.id, pseudo: s.pseudo }))}
+          onSelect={(s) => handleOralManual({ id: s.id, pseudo: s.pseudo })}
+          onClose={() => setShowOralPicker(false)}
+        />
+      )}
+
+      {/* Note de seance (9c) */}
+      {showNotesSheet && (
+        <MobileSheet onClose={() => setShowNotesSheet(false)}>
+          <SheetTitle>Note de séance</SheetTitle>
+          <p style={{ fontSize: 13, color: DB.textSecondary, margin: '0 0 12px' }}>
+            Notions incomprises, remarques générales, à reprendre la prochaine fois…
+          </p>
+          <textarea
+            value={notesText}
+            onChange={(e) => setNotesText(e.target.value)}
+            placeholder="Vos notes sur cette séance…"
+            rows={4}
+            maxLength={500}
+            autoFocus
+            className="w-full resize-none"
+            style={{
+              padding: 14,
+              fontSize: 16,
+              background: DB.background,
+              color: DB.text,
+              border: `1px solid ${DB.border}`,
+              borderRadius: 12,
+              outline: 'none',
+              minHeight: 110,
+            }}
+          />
+          <p className="text-right" style={{ fontSize: 11.5, color: DB.textTertiary, margin: '4px 0 14px' }}>
+            {notesText.length}/500
+          </p>
+          <div className="flex gap-3">
+            <SheetGhostButton onClick={() => setShowNotesSheet(false)}>Annuler</SheetGhostButton>
+            <SheetButton onClick={handleSaveNotes}>Enregistrer</SheetButton>
+          </div>
+        </MobileSheet>
+      )}
+
+      {/* Suppression : selecteur d'eleve */}
       {showDeletePicker && (
-        <ModalBackdrop onClose={() => setShowDeletePicker(false)}>
-          <h3 className="font-bold text-[var(--text)]">Supprimer un evenement</h3>
-          <p className="text-sm text-[var(--text-muted)]">Selectionnez un eleve :</p>
-          <div className="max-h-72 overflow-auto space-y-1">
-            {studentsWithEventsList.map(s => (
-              <button
-                key={s.id}
-                onClick={() => handleDeleteSelectStudent(s.id)}
-                className="w-full text-left px-3 py-2.5 flex items-center justify-between text-sm font-medium text-[var(--text)] hover:bg-[var(--neg-soft)] transition-colors"
-                style={{ borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--surface-3)' }}
-              >
-                <span>{s.pseudo}</span>
-                <span className="text-xs text-[var(--text-dim)] bg-[var(--surface)] px-2 py-0.5 rounded-full">
-                  {s.eventCount} evt
-                </span>
-              </button>
-            ))}
-          </div>
-        </ModalBackdrop>
+        <StudentPickerSheet
+          title="Supprimer un événement"
+          subtitle="Sélectionner un élève"
+          students={studentsWithEventsList}
+          onSelect={(s) => {
+            setShowDeletePicker(false);
+            setDeleteStudentId(s.id);
+          }}
+          onClose={() => setShowDeletePicker(false)}
+        />
       )}
 
-      {/* Delete: events list for selected student */}
-      {showDeleteEvents && deleteStudentId && (
-        <ModalBackdrop onClose={() => { setShowDeleteEvents(false); setDeleteStudentId(null); }}>
-          <h3 className="font-bold text-[var(--text)]">
-            Evenements — {studentMap.get(deleteStudentId)?.pseudo}
-          </h3>
-          <div className="max-h-72 overflow-auto space-y-1">
+      {/* Suppression : evenements de l'eleve */}
+      {deleteStudentId && (
+        <MobileSheet onClose={() => setDeleteStudentId(null)}>
+          <SheetTitle>Événements — {studentMap.get(deleteStudentId)?.pseudo}</SheetTitle>
+          <div className="overflow-y-auto my-3" style={{ maxHeight: 320 }}>
             {studentEventsForDelete.length === 0 ? (
-              <p className="text-sm text-[var(--text-dim)] text-center py-4">
-                Aucun evenement restant
+              <p className="text-center py-4" style={{ fontSize: 14, color: DB.textTertiary }}>
+                Aucun événement restant
               </p>
             ) : (
-              studentEventsForDelete.map(evt => (
+              studentEventsForDelete.map((evt, index) => (
                 <div
                   key={evt.id}
-                  className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-3)]"
-                  style={{ borderRadius: 'var(--radius-md)' }}
+                  className="flex items-center justify-between"
+                  style={{
+                    padding: '11px 4px',
+                    borderTop: index > 0 ? `1px solid ${DB.borderLight}` : 'none',
+                  }}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{getEventEmoji(evt.type)}</span>
-                    <span className="text-sm font-medium text-[var(--text)]">
+                  <div className="flex-1 min-w-0">
+                    <span style={{ fontSize: 14, fontWeight: 600, color: DB.text }}>
                       {getEventLabel(evt.type)}
-                      {evt.subtype ? ` (${evt.subtype})` : ''}
+                      {evt.subtype ? ` · ${SORTIE_LABELS[evt.subtype] ?? evt.subtype}` : ''}
                     </span>
                     {evt.note && (
-                      <span className="text-xs text-[var(--text-dim)] truncate max-w-[100px]">
+                      <span className="block truncate" style={{ fontSize: 12, color: DB.textTertiary }}>
                         {evt.note}
                       </span>
                     )}
                   </div>
                   <button
                     onClick={() => handleDeleteEvent(evt.id)}
-                    className="text-[var(--neg)] text-xs font-bold px-2 py-1"
-                    style={{ border: '1px solid var(--neg)', borderRadius: 'var(--radius-md)', background: 'transparent' }}
+                    className="w-8 h-8 flex items-center justify-center shrink-0 ml-2"
+                    style={{
+                      border: `1px solid ${DB.error}`,
+                      borderRadius: 8,
+                      background: 'transparent',
+                    }}
                   >
-                    ✕
+                    <X size={14} color={DB.error} strokeWidth={2.5} />
                   </button>
                 </div>
               ))
             )}
           </div>
-          <button
-            onClick={() => { setShowDeleteEvents(false); setShowDeletePicker(true); setDeleteStudentId(null); }}
-            className="w-full py-2.5 text-sm font-medium text-[var(--indigo)] bg-[var(--indigo-soft)]"
-            style={{ borderRadius: 'var(--radius)', border: 'none' }}
-          >
-            ← Autre eleve
-          </button>
-        </ModalBackdrop>
+          <div className="flex gap-3">
+            <SheetGhostButton
+              onClick={() => { setDeleteStudentId(null); setShowDeletePicker(true); }}
+            >
+              ← Autre élève
+            </SheetGhostButton>
+            <SheetButton onClick={() => setDeleteStudentId(null)}>Fermer</SheetButton>
+          </div>
+        </MobileSheet>
+      )}
+
+      {/* Terminer la seance */}
+      {showEndConfirm && (
+        <MobileSheet onClose={() => setShowEndConfirm(false)}>
+          <SheetTitle>Terminer la séance ?</SheetTitle>
+          <p style={{ fontSize: 13.5, color: DB.textSecondary, margin: '0 0 16px' }}>
+            {totalEvents} événement{totalEvents !== 1 ? 's' : ''} enregistré{totalEvents !== 1 ? 's' : ''}
+          </p>
+          <div className="flex gap-3">
+            <SheetGhostButton onClick={() => setShowEndConfirm(false)}>Continuer</SheetGhostButton>
+            <SheetButton
+              onClick={() => { setShowEndConfirm(false); endSession(); }}
+              disabled={loading}
+              color={DB.action}
+            >
+              Terminer
+            </SheetButton>
+          </div>
+        </MobileSheet>
+      )}
+
+      {/* Annuler la seance */}
+      {showCancelConfirm && (
+        <MobileSheet onClose={() => setShowCancelConfirm(false)}>
+          <SheetTitle>Annuler la séance ?</SheetTitle>
+          <p style={{ fontSize: 13.5, color: DB.textSecondary, margin: '0 0 16px' }}>
+            La séance sera supprimée et aucun événement ne sera conservé.
+          </p>
+          <div className="flex gap-3">
+            <SheetGhostButton onClick={() => setShowCancelConfirm(false)}>Non</SheetGhostButton>
+            <SheetButton
+              onClick={() => { setShowCancelConfirm(false); cancelSessionAction(); }}
+              disabled={loading}
+              color={DB.error}
+            >
+              Oui, annuler
+            </SheetButton>
+          </div>
+        </MobileSheet>
       )}
     </div>
   );
@@ -672,7 +726,7 @@ function ToolbarButton({
   onClick,
   disabled,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   badge?: string;
   indicator?: boolean;
@@ -683,38 +737,41 @@ function ToolbarButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex flex-col items-center gap-0.5 px-3 py-1 relative transition-opacity ${disabled ? 'opacity-30' : 'active:opacity-60'}`}
-      style={{ border: 'none', background: 'transparent' }}
+      className={`flex-1 flex flex-col items-center relative transition-all ${disabled ? 'opacity-30' : 'active:scale-[0.97]'}`}
+      style={{
+        gap: 3,
+        padding: '9px 2px',
+        background: DB.surface,
+        border: `1px solid ${DB.border}`,
+        borderRadius: 10,
+      }}
     >
-      <span className="text-base">{icon}</span>
-      <span className="text-[10px] font-medium text-[var(--text-muted)]">{label}</span>
+      {icon}
+      <span style={{ fontSize: 10.5, fontWeight: 600, color: DB.text }}>{label}</span>
       {badge && (
-        <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-white bg-[var(--indigo)] px-1 rounded-full min-w-[16px] text-center">
+        <span
+          className="absolute"
+          style={{
+            top: 3,
+            right: 3,
+            fontSize: 9,
+            fontWeight: 600,
+            color: DB.primary,
+            background: DB.primarySoft,
+            borderRadius: 999,
+            padding: '1px 4px',
+          }}
+        >
           {badge}
         </span>
       )}
       {indicator && (
-        <span className="absolute top-0 right-1 w-2 h-2 bg-[var(--color-remarque)] rounded-full" />
+        <span
+          className="absolute rounded-full"
+          style={{ top: 5, right: 5, width: 7, height: 7, background: DB.primary }}
+        />
       )}
     </button>
-  );
-}
-
-function ModalBackdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={onClose}
-    >
-      <div
-        className="bg-[var(--surface)] p-5 mx-4 space-y-4 max-w-sm w-full"
-        style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
   );
 }
 
@@ -728,16 +785,4 @@ function getEventLabel(type: string): string {
     retour: 'Retour',
   };
   return labels[type] || type;
-}
-
-function getEventEmoji(type: string): string {
-  const emojis: Record<string, string> = {
-    participation: '✋',
-    bavardage: '💬',
-    absence: '❌',
-    remarque: '📝',
-    sortie: '🚪',
-    retour: '↩️',
-  };
-  return emojis[type] || '•';
 }

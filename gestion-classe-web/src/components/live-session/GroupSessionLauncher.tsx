@@ -1,5 +1,7 @@
+import { Users, Castle, Play } from 'lucide-react';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useGroupSession } from '../../contexts/GroupSessionContext';
+import { DB } from './directionB';
 
 export function GroupSessionLauncher() {
   const isMobile = useIsMobile();
@@ -15,26 +17,29 @@ export function GroupSessionLauncher() {
       {hasSuspended && (
         <button
           onClick={resumeFlow}
+          className="active:scale-[0.98] transition-transform"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 12,
             padding: 14,
-            background: 'linear-gradient(135deg, #d4a843, #b8860b)',
-            borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 16px rgba(180,130,50,0.3)',
-            border: 'none',
+            background: DB.surface,
+            borderRadius: 16,
+            border: '1.5px solid #d4a843',
             textAlign: 'left',
             cursor: 'pointer',
           }}
         >
           <div style={{
-            width: 44, height: 44, background: 'rgba(255,255,255,0.2)',
-            borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-          }}>▶</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: '#1a1410', fontSize: 15 }}>Reprendre la notation</div>
-            <div style={{ color: 'rgba(26,20,16,0.7)', fontSize: 11, marginTop: 2 }}>
+            width: 44, height: 44, background: '#FDF6E3',
+            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Play size={19} color="#b8860b" fill="#b8860b" strokeWidth={0} style={{ marginLeft: 2 }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, color: DB.text, fontSize: 16 }}>Reprendre la notation</div>
+            <div style={{ color: DB.textSecondary, fontSize: 13, marginTop: 1 }}>
               {sessionData?.name || 'Session en cours'}
             </div>
           </div>
@@ -44,53 +49,59 @@ export function GroupSessionLauncher() {
       <div style={{ display: 'flex', gap: 10 }}>
         <button
           onClick={startFlow}
+          className="active:scale-[0.98] transition-transform"
           style={{
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 10,
             padding: 14,
-            background: 'var(--gradient-success)',
-            borderRadius: 'var(--radius)',
-            boxShadow: 'var(--shadow-1)',
-            border: 'none',
+            background: DB.surface,
+            borderRadius: 16,
+            border: `1px solid ${DB.border}`,
             textAlign: 'left',
             cursor: 'pointer',
           }}
         >
           <div style={{
-            width: 44, height: 44, background: 'rgba(255,255,255,0.2)',
-            borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-          }}>👥</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>Travail de groupe</div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>Noter un TP collaboratif</div>
+            width: 40, height: 40, background: DB.primarySoft,
+            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Users size={19} color={DB.primary} strokeWidth={1.8} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, color: DB.text, fontSize: 14 }}>Travail de groupe</div>
+            <div style={{ color: DB.textSecondary, fontSize: 12, marginTop: 1 }}>Noter un TP</div>
           </div>
         </button>
 
         <button
           onClick={startEpreuveFlow}
+          className="active:scale-[0.98] transition-transform"
           style={{
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 10,
             padding: 14,
-            background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-            borderRadius: 'var(--radius)',
-            boxShadow: 'var(--shadow-1)',
-            border: 'none',
+            background: DB.surface,
+            borderRadius: 16,
+            border: `1px solid ${DB.border}`,
             textAlign: 'left',
             cursor: 'pointer',
           }}
         >
           <div style={{
-            width: 44, height: 44, background: 'rgba(255,255,255,0.2)',
-            borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-          }}>🏰</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>Épreuve</div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>Points de maison</div>
+            width: 40, height: 40, background: '#F5F3FF',
+            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Castle size={19} color="#7c3aed" strokeWidth={1.8} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, color: DB.text, fontSize: 14 }}>Épreuve</div>
+            <div style={{ color: DB.textSecondary, fontSize: 12, marginTop: 1 }}>Points de maison</div>
           </div>
         </button>
       </div>

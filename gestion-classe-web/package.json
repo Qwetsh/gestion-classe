@@ -17,6 +17,7 @@
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "jsqr": "^1.4.0",
+    "lucide-react": "^1.37.0",
     "pawnote": "^1.6.2",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.7.284",

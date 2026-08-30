@@ -1,68 +1,69 @@
+import { BookOpen } from 'lucide-react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
+import { DB } from './directionB';
+import { FlowHeader, SectionLabel } from './FlowHeader';
 
 export function ClassSelector() {
   const { classes, loading, error, selectClass, cancelFlow } = useLiveSession();
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 text-white shrink-0"
-        style={{ background: 'var(--gradient-header)' }}
-      >
-        <button onClick={cancelFlow} className="text-white/80 text-sm font-medium flex items-center gap-1">
-          ← Retour
-        </button>
-        <h1 className="font-bold text-lg">Choisir une classe</h1>
-        <div className="w-16" />
-      </div>
+    <div className="flex flex-col h-full" style={{ background: DB.background }}>
+      <FlowHeader title="Nouvelle séance" onBack={cancelFlow} />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
+        <SectionLabel>1 · Choisir une classe</SectionLabel>
+
         {error && (
-          <div className="p-3 bg-[var(--neg-soft)] text-[var(--neg)] rounded-xl text-sm">
+          <div
+            className="p-3 text-sm mb-3"
+            style={{ background: DB.errorSoft, color: DB.error, borderRadius: 12 }}
+          >
             {error}
           </div>
         )}
 
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="w-8 h-8 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
+            <div
+              className="w-8 h-8 rounded-full animate-spin"
+              style={{ border: `3px solid ${DB.primary}`, borderTopColor: 'transparent' }}
+            />
           </div>
         ) : classes.length === 0 ? (
-          <div className="text-center py-12 text-[var(--text-dim)]">
-            <div className="text-4xl mb-3">📚</div>
-            <p>Aucune classe trouvee</p>
-            <p className="text-sm mt-1">Creez d'abord une classe depuis le menu Classes</p>
+          <div className="text-center py-12" style={{ color: DB.textTertiary }}>
+            <div
+              className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center"
+              style={{ background: DB.primarySoft }}
+            >
+              <BookOpen size={28} color={DB.primary} strokeWidth={1.7} />
+            </div>
+            <p style={{ color: DB.text, fontWeight: 600 }}>Aucune classe trouvée</p>
+            <p className="text-sm mt-1">Créez d'abord une classe depuis le menu Classes</p>
           </div>
         ) : (
-          classes.map((cls, i) => (
-            <button
-              key={cls.id}
-              onClick={() => selectClass(cls)}
-              className="w-full p-4 bg-[var(--surface)] flex items-center gap-4 active:scale-[0.98] transition-transform"
-              style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}
-            >
-              <div
-                className="w-12 h-12 flex items-center justify-center text-white font-bold rounded-xl"
-                style={{ background: CLASS_COLORS[i % CLASS_COLORS.length] }}
+          <div className="grid grid-cols-3 gap-2">
+            {classes.map((cls) => (
+              <button
+                key={cls.id}
+                onClick={() => selectClass(cls)}
+                className="active:scale-[0.97] transition-transform"
+                style={{
+                  padding: '14px 8px',
+                  background: DB.surface,
+                  border: `1px solid ${DB.border}`,
+                  borderRadius: 12,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: DB.text,
+                }}
               >
-                {cls.name.substring(0, 2).toUpperCase()}
-              </div>
-              <span className="font-semibold text-[var(--text)] text-lg">{cls.name}</span>
-              <span className="ml-auto text-[var(--text-dim)] text-xl">›</span>
-            </button>
-          ))
+                {cls.name}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
   );
 }
-
-const CLASS_COLORS = [
-  'linear-gradient(135deg, #4A90D9, #357ABD)',
-  'linear-gradient(135deg, #81C784, #66BB6A)',
-  'linear-gradient(135deg, #FFB74D, #FFA726)',
-  'linear-gradient(135deg, #E57373, #EF5350)',
-  'linear-gradient(135deg, #9575CD, #7E57C2)',
-];

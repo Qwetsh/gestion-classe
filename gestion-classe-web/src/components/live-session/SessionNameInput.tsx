@@ -1,5 +1,8 @@
 import { useState } from 'react';
+import { Play } from 'lucide-react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
+import { DB } from './directionB';
+import { FlowHeader, SectionLabel } from './FlowHeader';
 
 export function SessionNameInput() {
   const { selectedClass, selectedRoom, loading, startSession, goBack, cancelFlow } = useLiveSession();
@@ -10,61 +13,80 @@ export function SessionNameInput() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 text-white shrink-0"
-        style={{ background: 'var(--gradient-header)' }}
-      >
-        <button onClick={goBack} className="text-white/80 text-sm font-medium">
-          ← Retour
-        </button>
-        <div className="text-center">
-          <h1 className="font-bold text-lg">Nom de la seance</h1>
-          <p className="text-white/70 text-xs">{selectedClass?.name} — {selectedRoom?.name}</p>
-        </div>
-        <button onClick={cancelFlow} className="text-white/80 text-sm font-medium">
-          Annuler
-        </button>
-      </div>
+    <div className="flex flex-col h-full" style={{ background: DB.background }}>
+      <FlowHeader
+        title="Nouvelle séance"
+        subtitle={`${selectedClass?.name} · ${selectedRoom?.name}`}
+        onBack={goBack}
+        onCancel={cancelFlow}
+      />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-        <div>
-          <label className="block text-sm font-medium text-[var(--text-dim)] mb-2">
-            Sujet / titre de la seance (optionnel)
-          </label>
-          <input
-            type="text"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="Ex: GIEC, Dictee, Revision..."
-            autoFocus
-            onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
-            className="w-full px-4 py-3 text-lg bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] focus:border-[var(--indigo)] focus:outline-none transition-colors"
-            style={{ borderRadius: 'var(--radius)' }}
-          />
+      <div className="flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
+        <div className="flex items-baseline justify-between">
+          <SectionLabel>3 · Thème de la séance</SectionLabel>
+          <span style={{ fontSize: 12, color: DB.textTertiary }}>Optionnel</span>
         </div>
-
-        <p className="text-sm text-[var(--text-dim)]">
-          Vous pouvez laisser vide et commencer directement.
-        </p>
+        <textarea
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          placeholder="Ex : Chapitre 3 - Les fonctions linéaires..."
+          rows={2}
+          maxLength={200}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleStart();
+            }
+          }}
+          className="w-full resize-none"
+          style={{
+            padding: '14px 16px',
+            fontSize: 16,
+            background: DB.surface,
+            color: DB.text,
+            border: `1px solid ${DB.border}`,
+            borderRadius: 12,
+            outline: 'none',
+          }}
+        />
+        {topic.length > 0 && (
+          <p className="text-right" style={{ fontSize: 11, color: DB.textTertiary, margin: '4px 0 0' }}>
+            {topic.length}/200
+          </p>
+        )}
       </div>
 
-      {/* Start button */}
-      <div className="p-4 pb-6 shrink-0">
+      {/* Footer */}
+      <div
+        className="shrink-0"
+        style={{
+          padding: '14px 20px',
+          paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
+          background: DB.surface,
+          borderTop: `1px solid ${DB.border}`,
+        }}
+      >
+        <p className="text-center" style={{ fontSize: 13, fontWeight: 600, color: DB.textSecondary, margin: '0 0 10px' }}>
+          {selectedClass?.name} · {selectedRoom?.name}
+        </p>
         <button
           onClick={handleStart}
           disabled={loading}
-          className="w-full py-4 text-white font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
           style={{
-            background: 'var(--gradient-success)',
-            borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
+            padding: '16px',
+            background: DB.action,
+            color: '#fff',
+            fontSize: 16,
+            fontWeight: 600,
+            borderRadius: 12,
             border: 'none',
           }}
         >
-          {loading ? 'Demarrage...' : 'Demarrer la seance'}
+          <Play size={17} color="#fff" fill="#fff" strokeWidth={0} />
+          {loading ? 'Démarrage…' : 'Démarrer la séance'}
         </button>
       </div>
     </div>

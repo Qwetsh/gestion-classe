@@ -2,7 +2,24 @@
 
 /* Mobile-only nav: visible below 768px, hidden above */
 .mobile-nav { display: flex; }
-@media (min-width: 768px) { .mobile-nav { display: none !important; } }
+@media (min-width: 768px) {
+  .mobile-nav { display: none !important; }
+  .mobile-nav-sheet { display: none !important; }
+}
+
+/* La tab bar mobile est fixee en bas : on reserve la place sous le contenu */
+@media (max-width: 767px) {
+  .gc-main {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important;
+  }
+  /* Le bouton de feedback flottant doit rester au-dessus de la tab bar */
+  .gc-feedback-fab {
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    right: 16px !important;
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
 
 /* ============================================================
    Design System — Gestion Classe (refonte UX)

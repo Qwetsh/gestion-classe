@@ -45,8 +45,8 @@ export function FeedbackButton() {
       {/* Floating button */}
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center transition-all hover:scale-110 hover:shadow-xl"
-        style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)' }}
+        className="gc-feedback-fab fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center transition-all hover:scale-110 hover:shadow-xl"
+        style={{ background: 'var(--indigo)', boxShadow: '0 4px 20px rgba(79, 70, 229, 0.25)' }}
         title="Envoyer un retour"
       >
         <span className="text-2xl">💬</span>

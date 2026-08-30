@@ -29,6 +29,7 @@ const primaryNavItems = [
 const secondaryNavItems = [
   { path: '/rewards', label: 'Récompenses', icon: '⭐' },
   { path: '/group-sessions', label: 'Groupes', icon: '👥' },
+  { path: '/evaluations', label: 'Évaluations', icon: '📄' },
   { path: '/academy', label: 'Académie', icon: '🏰' },
   { path: '/tp-templates', label: 'Mes TP', icon: '📋' },
   { path: '/brevets', label: 'Annales', icon: '📚' },
@@ -392,53 +393,203 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
           </div>
         </div>
 
-        {/* Mobile nav — hidden on md+ where the pill nav is visible */}
-        <nav className="mobile-nav" style={{
-          borderTop: '1px solid var(--border)',
-          padding: '8px 12px',
-          gap: 4,
-          overflowX: 'auto',
-          background: 'var(--surface)',
-        }}>
-          {allNavItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 7,
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--text)' : 'var(--text-muted)',
-                  background: isActive ? 'var(--surface-3)' : 'transparent',
-                  boxShadow: isActive ? 'var(--shadow-1)' : 'none',
-                  transition: 'all 0.12s',
-                }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
       </header>
 
       <AnnouncementBanner />
 
       {/* Main content */}
-      <main style={{
-        maxWidth: fullBleed ? 'none' : fluid ? 1600 : 1400,
-        margin: '0 auto',
-        padding: fullBleed ? 0 : 28,
-      }}>
+      <main
+        className="gc-main"
+        style={{
+          maxWidth: fullBleed ? 'none' : fluid ? 1600 : 1400,
+          margin: '0 auto',
+          padding: fullBleed ? 0 : 28,
+        }}
+      >
         {children}
       </main>
+
+      {/* Tab bar mobile (reskin Direction B) — masquee sur desktop via .mobile-nav */}
+      <MobileTabBar
+        items={allNavItems}
+        currentPath={location.pathname}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
 
       <FeedbackButton />
       <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
+  );
+}
+
+/* ============================================================
+   Tab bar mobile — 4 onglets + "Plus" (reskin Direction B)
+   ============================================================ */
+
+const TAB_BAR_PATHS = ['/', '/classes', '/sessions', '/students'];
+
+const TAB_LABELS: Record<string, string> = {
+  '/': 'Accueil',
+  '/classes': 'Classes',
+  '/sessions': 'Séances',
+  '/students': 'Élèves',
+};
+
+function MobileTabBar({
+  items,
+  currentPath,
+  onOpenSettings,
+}: {
+  items: { path: string; label: string; icon: string }[];
+  currentPath: string;
+  onOpenSettings: () => void;
+}) {
+  const [showMore, setShowMore] = useState(false);
+  const tabs = TAB_BAR_PATHS.map(path => items.find(i => i.path === path)).filter(Boolean) as typeof items;
+  const moreItems = items.filter(i => !TAB_BAR_PATHS.includes(i.path));
+  const isMoreActive = moreItems.some(i => i.path === currentPath);
+
+  return (
+    <>
+      <nav
+        className="mobile-nav"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 60,
+          background: '#FFFFFF',
+          borderTop: '1px solid #E5E7EB',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {tabs.map(item => {
+          const isActive = currentPath === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 3,
+                padding: '8px 2px 7px',
+                textDecoration: 'none',
+                color: isActive ? '#4F46E5' : '#9CA3AF',
+              }}
+            >
+              <NavIcon name={item.icon} size={22} />
+              <span style={{ fontSize: 11, fontWeight: isActive ? 600 : 500 }}>
+                {TAB_LABELS[item.path] ?? item.label}
+              </span>
+            </Link>
+          );
+        })}
+        <button
+          onClick={() => setShowMore(true)}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 3,
+            padding: '8px 2px 7px',
+            background: 'none',
+            border: 'none',
+            color: isMoreActive ? '#4F46E5' : '#9CA3AF',
+          }}
+        >
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round">
+            <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />
+          </svg>
+          <span style={{ fontSize: 11, fontWeight: isMoreActive ? 600 : 500 }}>Plus</span>
+        </button>
+      </nav>
+
+      {/* Sheet "Plus" : les autres pages + reglages */}
+      {showMore && (
+        <div
+          className="mobile-nav-sheet"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 90,
+            background: 'rgba(15,23,42,0.35)',
+            display: 'flex',
+            alignItems: 'flex-end',
+          }}
+          onClick={() => setShowMore(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              background: '#FFFFFF',
+              borderRadius: '20px 20px 0 0',
+              padding: '10px 20px 20px',
+              paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ width: 38, height: 4, borderRadius: 2, background: '#E5E7EB', margin: '0 auto 16px' }} />
+            {moreItems.map(item => {
+              const isActive = currentPath === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setShowMore(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '13px 12px',
+                    borderRadius: 12,
+                    textDecoration: 'none',
+                    color: isActive ? '#4F46E5' : '#1F2433',
+                    background: isActive ? '#EEF0FF' : 'transparent',
+                    fontSize: 15,
+                    fontWeight: 500,
+                  }}
+                >
+                  <span style={{ fontSize: 18, width: 24, display: 'grid', placeItems: 'center' }}>
+                    {/* Les items principaux portent un nom d'icone SVG, les secondaires un emoji */}
+                    {/^[a-z]+$/.test(item.icon) ? <NavIcon name={item.icon} size={18} /> : item.icon}
+                  </span>
+                  {item.label}
+                </Link>
+              );
+            })}
+            <button
+              onClick={() => { setShowMore(false); onOpenSettings(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                width: '100%',
+                padding: '13px 12px',
+                marginTop: 4,
+                borderRadius: 12,
+                border: 'none',
+                background: 'transparent',
+                color: '#1F2433',
+                fontSize: 15,
+                fontWeight: 500,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ width: 24, display: 'grid', placeItems: 'center' }}>
+                <NavIcon name="settings" size={18} />
+              </span>
+              Réglages
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
