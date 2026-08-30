@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { TableGroup } from './seatingLayouts';
 
 export interface ClassInfo {
   id: string;
@@ -11,6 +12,7 @@ export interface RoomInfo {
   grid_rows: number;
   grid_cols: number;
   disabled_cells: string[];
+  table_groups?: TableGroup[];
 }
 
 export interface StudentInfo {
@@ -42,7 +44,7 @@ export async function fetchClassesForUser(userId: string): Promise<ClassInfo[]> 
 export async function fetchRoomsForUser(userId: string): Promise<RoomInfo[]> {
   const { data, error } = await supabase
     .from('rooms')
-    .select('id, name, grid_rows, grid_cols, disabled_cells')
+    .select('id, name, grid_rows, grid_cols, disabled_cells, table_groups')
     .eq('user_id', userId)
     .order('name');
   if (error) throw error;
@@ -246,7 +248,7 @@ function getCurrentSchoolYear(): string {
 
 function getCurrentTrimester(): number {
   const month = new Date().getMonth() + 1;
-  if (month >= 9 || month <= 12) return 1; // Sep-Dec
+  if (month >= 9 && month <= 12) return 1; // Sep-Dec
   if (month >= 1 && month <= 3) return 2;  // Jan-Mar
   return 3; // Apr-Jun/Jul
 }

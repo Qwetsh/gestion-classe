@@ -25,6 +25,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export interface HiddenTabs {
   rewards: boolean;
   'group-sessions': boolean;
+  evaluations: boolean;
   academy: boolean;
   'tp-templates': boolean;
   brevets: boolean;
@@ -44,6 +45,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   hiddenTabs: {
     rewards: false,
     'group-sessions': false,
+    evaluations: false,
     academy: false,
     'tp-templates': false,
     brevets: false,

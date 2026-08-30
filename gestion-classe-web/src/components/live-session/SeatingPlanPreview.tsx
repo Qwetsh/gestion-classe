@@ -1,4 +1,5 @@
 import { useLiveSession } from '../../contexts/LiveSessionContext';
+import { buildCellToGroup, tableColor } from '../../lib/seatingLayouts';
 
 export function SeatingPlanPreview() {
   const { selectedClass, selectedRoom, students, positions, loading, error, startSession, goBack, cancelFlow } = useLiveSession();
@@ -6,6 +7,10 @@ export function SeatingPlanPreview() {
   if (!selectedRoom) return null;
 
   const studentMap = new Map(students.map(s => [s.id, s]));
+  const tableGroups = selectedRoom.table_groups || [];
+  const cellToGroup = buildCellToGroup(tableGroups);
+  const groupIndex: Record<string, number> = {};
+  tableGroups.forEach((g, i) => (groupIndex[g.id] = i));
 
   return (
     <div className="flex flex-col h-full">
@@ -55,6 +60,28 @@ export function SeatingPlanPreview() {
 
                 if (isDisabled) {
                   return <div key={key} className="h-12 rounded-lg bg-[var(--surface-3)]" />;
+                }
+
+                const groupId = cellToGroup[`${row},${col}`];
+                const palette = groupId ? tableColor(groupIndex[groupId]) : null;
+
+                // Case d'une table : on garde la couleur de la table ; l'élève placé est en gras + ombre
+                if (palette) {
+                  return (
+                    <div
+                      key={key}
+                      className="h-12 rounded-lg flex items-center justify-center text-xs px-1 text-center border"
+                      style={{
+                        backgroundColor: palette.bg,
+                        borderColor: palette.border,
+                        color: palette.border,
+                        fontWeight: student ? 700 : 500,
+                        boxShadow: student ? 'var(--shadow-xs)' : undefined,
+                      }}
+                    >
+                      {student ? truncate(student.pseudo, 8) : ''}
+                    </div>
+                  );
                 }
 
                 return (

@@ -21,6 +21,7 @@ import { StudentDashboard } from './pages/StudentDashboard';
 import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
 import { Brevets } from './pages/Brevets';
+import { Evaluations } from './pages/Evaluations';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
 import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
@@ -96,6 +97,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Brevets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/evaluations"
+          element={
+            <ProtectedRoute>
+              <Evaluations />
             </ProtectedRoute>
           }
         />
