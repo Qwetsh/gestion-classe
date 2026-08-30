@@ -1886,8 +1886,6 @@ export function Students() {
                     const history = getSparklineHistory(sg.events);
                     const delta = getSparklineDelta(history);
                     const totalSessions = new Set(sg.events.map(e => e.session_id)).size;
-                    const conn = connectionStats.get(sg.student.id);
-                    const eng = engagementInfo(conn?.last ?? null);
                     return (
                       <div key={sg.student.id} className={`scard scard--${tone}`} onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="scard__head">
@@ -1900,13 +1898,8 @@ export function Students() {
                                 {sg.student.pseudo}
                                 {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ marginLeft: 6, fontSize: 11 }}>👁️</span>}
                               </div>
-                              <div className="scard__meta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                <span>{totalSessions}/25 sessions</span>
-                                <span>·</span>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={conn ? `${conn.count} connexion${conn.count > 1 ? 's' : ''} à l'espace élève` : 'Jamais connecté à l\'espace élève'}>
-                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: eng.color, display: 'inline-block', flexShrink: 0 }} />
-                                  {eng.label}
-                                </span>
+                              <div className="scard__meta">
+                                {totalSessions}/25 sessions
                               </div>
                             </div>
                           </div>

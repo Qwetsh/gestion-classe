@@ -643,7 +643,7 @@ textarea:focus-visible {
   border-radius: var(--radius);
   padding: 14px;
   display: flex; flex-direction: column; gap: 10px;
-  position: relative;
+  position: relative; min-width: 0;
   transition: all 0.12s ease;
 }
 .scard:hover { border-color: var(--border-strong); box-shadow: var(--shadow-2); transform: translateY(-1px); }
@@ -651,16 +651,21 @@ textarea:focus-visible {
 .scard--warn { background: linear-gradient(180deg, var(--warn-soft) 0%, var(--surface) 40%); border-color: var(--warn-soft); }
 .scard--good { background: linear-gradient(180deg, var(--pos-soft) 0%, var(--surface) 40%); border-color: var(--pos-soft); }
 
-.scard__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.scard__id { display: flex; gap: 10px; align-items: center; }
+.scard__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-width: 0; }
+.scard__id { display: flex; gap: 10px; align-items: center; min-width: 0; flex: 1; }
+.scard__id > div { min-width: 0; }
 .scard__avatar {
   width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center;
   font-weight: 600; font-size: 12px; letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
-.scard__name { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; }
-.scard__meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.scard__mark { font-family: var(--font-display); font-size: 28px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.scard__name {
+  font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scard__meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scard__mark { font-family: var(--font-display); font-size: 28px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scard__mark small { font-size: 12px; color: var(--text-muted); font-weight: 400; }
 
 .scard__trend {}
@@ -868,10 +873,8 @@ textarea:focus-visible {
   }
   .scard:last-child { border-bottom: none !important; }
   .scard:hover { transform: none !important; box-shadow: none !important; }
-  .scard__head { width: 100%; min-width: 0; }
-  .scard__id { gap: 8px; min-width: 0; flex: 1; }
-  .scard__id > div { min-width: 0; }
-  .scard__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scard__head { width: 100%; }
+  .scard__id { gap: 8px; }
   .scard__avatar { width: 28px; height: 28px; font-size: 10px; }
   .scard__name { font-size: 13px; }
   .scard__meta { font-size: 10px; }
