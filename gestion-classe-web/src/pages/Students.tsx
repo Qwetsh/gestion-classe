@@ -11,7 +11,7 @@ import { fetchStudentValidatedGrades, type StudentValidatedGrade } from '../lib/
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import QRCode from 'qrcode';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
-import { ClassChip, Sparkline, TrendBadge, AvgRing, Token, Distribution, Indic, Icon } from '../components/design-system';
+import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
 
 interface Student {
   id: string;
@@ -1924,18 +1924,6 @@ export function Students() {
                           </div>
                         </div>
 
-                        <div className="scard__breakdown">
-                          <Token kind="pos" value={sg.totalParticipations} label="+" />
-                          <Token kind="neg" value={sg.malus} label="−" />
-                          <Token kind="abs" value={sg.absences} label="abs" />
-                          <Token kind="oral" value={sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'} label="oral" />
-                        </div>
-
-                        <div className="scard__footer">
-                          <span className="scard__footer-item">{totalSessions} séance{totalSessions > 1 ? 's' : ''}</span>
-                          <span className="scard__footer-sep">·</span>
-                          <span className="scard__footer-item">{sg.totalParticipations + sg.malus + sg.absences} évén.</span>
-                        </div>
                       </div>
                     );
                   })}
