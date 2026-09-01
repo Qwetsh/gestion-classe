@@ -381,6 +381,44 @@ textarea:focus-visible {
 .class-row__name { font-weight: 600; font-size: 13px; }
 .class-row__meta { font-size: 11px; color: var(--text-muted); }
 
+/* Actions (renommer / supprimer) revelees au survol de la ligne */
+.class-row-wrap { position: relative; }
+.class-row-wrap:hover .class-row:not(.is-active) { background: var(--surface-3); }
+.class-row__actions {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+  padding-left: 8px;
+  border-radius: 8px;
+  background: var(--surface-3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.class-row-wrap:has(.class-row.is-active) .class-row__actions { background: var(--indigo-soft); }
+.class-row-wrap:hover .class-row__actions,
+.class-row-wrap:focus-within .class-row__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.class-row__actions button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.class-row__actions button:hover { background: var(--surface); color: var(--text); }
+.class-row__actions button.is-danger:hover { background: var(--neg-soft); color: var(--neg); }
+
 /* ---- ClassChip (colored badge) ---- */
 .class-chip {
   display: inline-flex;
@@ -830,6 +868,12 @@ textarea:focus-visible {
   .class-row .class-row__main,
   .class-row > svg { display: none; }
   .class-row.is-active { border-color: var(--indigo); background: var(--indigo-soft); }
+  .class-row-wrap { display: inline-flex; align-items: center; flex-shrink: 0; }
+  .class-row__actions {
+    position: static; transform: none; opacity: 1; pointer-events: auto;
+    background: none; padding-left: 2px;
+  }
+  .class-row-wrap .class-row__count { display: none; }
 
   /* Class detail */
   .class-detail__head {

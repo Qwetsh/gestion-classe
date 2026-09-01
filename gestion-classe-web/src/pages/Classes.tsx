@@ -169,6 +169,8 @@ export function Classes() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'class' | 'student'; item: Class | Student } | null>(null);
+  // Suppression de classe : supprimer aussi les eleves (sinon ils sont simplement detaches)
+  const [purgeStudents, setPurgeStudents] = useState(false);
 
   // Form states
   const [className, setClassName] = useState('');
@@ -741,11 +743,14 @@ export function Classes() {
       if (editingClass) {
         const { error } = await supabase
           .from('classes')
-          .update({ name: className.trim(), updated_at: new Date().toISOString() })
+          .update({ name: trimmedName, updated_at: new Date().toISOString() })
           .eq('id', editingClass.id);
         if (error) throw error;
+        // La classe selectionnee est un objet a part : refleter le nouveau nom tout de suite
+        setSelectedClass(prev => (prev && prev.id === editingClass.id ? { ...prev, name: trimmedName } : prev));
+        toast('Classe renommée', 'success');
       } else {
-        const { error } = await supabase.from('classes').insert({ name: className.trim(), user_id: user!.id });
+        const { error } = await supabase.from('classes').insert({ name: trimmedName, user_id: user!.id });
         if (error) throw error;
       }
 
@@ -956,6 +961,7 @@ export function Classes() {
   // Delete
   const handleOpenDeleteModal = (type: 'class' | 'student', item: Class | Student) => {
     setDeleteTarget({ type, item });
+    setPurgeStudents(false);
     setShowDeleteModal(true);
   };
 
@@ -965,14 +971,26 @@ export function Classes() {
 
     try {
       if (deleteTarget.type === 'class') {
-        const { error: studentsError } = await supabase.from('students').delete().eq('class_id', deleteTarget.item.id);
-        if (studentsError) throw studentsError;
-        const { error: plansError } = await supabase.from('class_room_plans').delete().eq('class_id', deleteTarget.item.id);
-        if (plansError) throw plansError;
-        const { error: classError } = await supabase.from('classes').delete().eq('id', deleteTarget.item.id);
+        const classId = deleteTarget.item.id;
+        // Par defaut les eleves sont detaches (students.class_id -> NULL en cascade) :
+        // leur historique reste et ils sont reconnus au prochain import.
+        if (purgeStudents) {
+          const { error: studentsError } = await supabase.from('students').delete().eq('class_id', classId);
+          if (studentsError) throw studentsError;
+        }
+        // Plans, seances et configs sont supprimes en cascade par la base.
+        const { error: classError } = await supabase.from('classes').delete().eq('id', classId);
         if (classError) throw classError;
-        setSelectedClass(null);
-        setSelectedRoom(null);
+        if (selectedClass?.id === classId) {
+          setSelectedClass(null);
+          setSelectedRoom(null);
+        }
+        toast(
+          purgeStudents
+            ? 'Classe et élèves supprimés'
+            : 'Classe supprimée · élèves conservés hors classe',
+          'success',
+        );
       } else {
         const { error } = await supabase.from('students').delete().eq('id', deleteTarget.item.id);
         if (error) throw error;
@@ -1180,23 +1198,41 @@ export function Classes() {
                 classes.map(cls => {
                   const isActive = selectedClass?.id === cls.id;
                   return (
-                    <button
-                      key={cls.id}
-                      onClick={() => {
-                        setSelectedClass(cls);
-                        setSelectedRoom(null);
-                      }}
-                      className={`class-row ${isActive ? 'is-active' : ''}`}
-                    >
-                      <ClassChip label={getClassLabel(cls.name)} color={COLOR_PALETTE[classes.indexOf(cls) % COLOR_PALETTE.length]} size={28} muted={!isActive} />
-                      <div>
-                        <div className="class-row__name">{cls.name}</div>
-                        <div className="class-row__meta">{cls.students_count} élèves</div>
+                    <div key={cls.id} className="class-row-wrap">
+                      <button
+                        onClick={() => {
+                          setSelectedClass(cls);
+                          setSelectedRoom(null);
+                        }}
+                        className={`class-row ${isActive ? 'is-active' : ''}`}
+                      >
+                        <ClassChip label={getClassLabel(cls.name)} color={COLOR_PALETTE[classes.indexOf(cls) % COLOR_PALETTE.length]} size={28} muted={!isActive} />
+                        <div style={{ minWidth: 0 }}>
+                          <div className="class-row__name">{cls.name}</div>
+                          <div className="class-row__meta">{cls.students_count} élèves</div>
+                        </div>
+                        <span className="class-row__count" style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                          {cls.students_count}
+                        </span>
+                      </button>
+                      <div className="class-row__actions">
+                        <button
+                          onClick={() => handleOpenClassModal(cls)}
+                          title="Renommer la classe"
+                          aria-label={`Renommer ${cls.name}`}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </button>
+                        <button
+                          onClick={() => handleOpenDeleteModal('class', cls)}
+                          title="Supprimer la classe"
+                          aria-label={`Supprimer ${cls.name}`}
+                          className="is-danger"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
                       </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                        {cls.students_count}
-                      </span>
-                    </button>
+                    </div>
                   );
                 })
               )}
@@ -1219,6 +1255,30 @@ export function Classes() {
                 <option key={cls.id} value={cls.id}>{cls.name} ({cls.students_count})</option>
               ))}
             </select>
+            {selectedClass && (
+              <>
+                <button
+                  onClick={() => handleOpenClassModal(selectedClass)}
+                  className="p-2 border border-[var(--border)] rounded-lg text-[var(--text-muted)]"
+                  title="Renommer la classe"
+                  aria-label="Renommer la classe"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => handleOpenDeleteModal('class', selectedClass)}
+                  className="p-2 border border-[var(--border)] rounded-lg text-red-500"
+                  title="Supprimer la classe"
+                  aria-label="Supprimer la classe"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </>
+            )}
             <button
               onClick={() => handleOpenClassModal()}
               className="p-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90"
@@ -1824,11 +1884,35 @@ export function Classes() {
             <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Confirmer la suppression
             </h3>
-            <p className="text-[var(--text-muted)] mb-6">
-              {deleteTarget.type === 'class'
-                ? `Supprimer la classe "${(deleteTarget.item as Class).name}" et tous ses eleves ?`
-                : `Supprimer l'eleve "${(deleteTarget.item as Student).pseudo}" ?`}
-            </p>
+            {deleteTarget.type === 'class' ? (
+              <>
+                <p className="text-[var(--text-muted)] mb-4">
+                  Supprimer la classe <strong>{(deleteTarget.item as Class).name}</strong> ?
+                  Son plan de salle, ses séances et ses réglages seront perdus.
+                </p>
+                <label className="flex items-start gap-3 p-3 mb-2 rounded-lg bg-[var(--bg)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={purgeStudents}
+                    onChange={() => setPurgeStudents(v => !v)}
+                    className="w-4 h-4 mt-0.5"
+                  />
+                  <span className="text-sm text-[var(--text)]">
+                    Supprimer aussi les {(deleteTarget.item as Class).students_count} élève(s)
+                    <span className="block text-xs text-[var(--text-dim)] mt-0.5">
+                      {purgeStudents
+                        ? '⚠️ Notes, participations et tampons seront définitivement effacés.'
+                        : 'Décoché : les élèves sont conservés hors classe avec leur historique et seront reconnus au prochain import.'}
+                    </span>
+                  </span>
+                </label>
+                <div className="mb-6" />
+              </>
+            ) : (
+              <p className="text-[var(--text-muted)] mb-6">
+                Supprimer l'eleve "{(deleteTarget.item as Student).pseudo}" ?
+              </p>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteModal(false)}
