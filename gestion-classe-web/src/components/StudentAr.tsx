@@ -107,28 +107,59 @@ type TargetDef = {
   key: string;
   name: string;
   size: string;
+  um?: number;              // taille réelle en µm (microbes seulement)
   ratio?: number;           // combien de fois plus petit que le Demodex
   build: () => string;      // contenu 3D, dressé sur l'image
   reference: () => string;  // repère de comparaison, à plat sur l'image
 };
 
 // ── Mise en regard avec le Demodex ──────────────────────────────────────────
-// Les deux objets occupent la même place à l'écran ; l'écart réel est porté par
-// le rapport annoncé au-dessus. Les mettre à l'échelle l'un de l'autre rendrait
-// le microbe invisible : un staphylocoque est 300 fois plus court qu'un acarien.
-const REF_X = -0.26;      // Demodex étalon, à gauche
-const MICROBE_X = 0.26;   // organisme de l'image, à droite
-const REF_SIZE = 0.34;
+// L'acarien domine l'image : c'est lui le géant de la série. Le microbe est
+// montré à sa taille RÉELLE près de lui — un point minuscule, cerclé — puis
+// repris en agrandissement à droite, comme sur une planche de SVT. Afficher les
+// deux à la même taille laissait croire qu'ils sont comparables.
+const REF_X = -0.25;      // Demodex étalon, à gauche
+const REF_SIZE = 0.46;
+const SPOT_X = 0.04;      // emplacement du microbe à l'échelle du Demodex
+const SPOT_Y = 0.02;
+const SPOT_R = 0.035;     // rayon du cercle qui signale ce point
+const MICROBE_X = 0.32;   // agrandissement, à droite
+const MICROBE_SIZE = 0.26;
+const DEMODEX_UM = 300;   // 0,3 mm, l'étalon de toutes les comparaisons
 
 const demodexReference = () => `
   <a-entity gltf-model="${REF_MODEL_URL}" position="${num(REF_X)} 0 0"
             fit-to-target="size: ${num(REF_SIZE)}"></a-entity>`;
 
-// Échelles retenues, en unités de scène par µm : chaque organisme occupe environ
-// un tiers de la largeur de l'image, pour laisser la place au Demodex étalon.
-const U_STAPH = 0.129;   // amas d'environ 2,8 µm
-const U_HERPES = 1.8;    // virion de 0,2 µm
-const U_CANDIDA = 0.03;  // groupe d'environ 12 µm
+// Segment tracé à plat sur l'image, entre deux points du plan.
+function line2d(x1: number, y1: number, x2: number, y2: number, w = 0.006) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+  return `<a-box position="${num((x1 + x2) / 2)} ${num((y1 + y2) / 2)} 0.011"
+                 rotation="0 0 ${num(angle)}"
+                 width="${num(len)}" height="${num(w)}" depth="0.001"
+                 material="color: #ffffff; opacity: 0.75; transparent: true"></a-box>`;
+}
+
+// Le microbe à sa taille réelle par rapport au Demodex affiché, le cercle qui
+// le rend repérable, et les traits vers son agrandissement.
+function magnifier(microbeUm: number) {
+  const realR = (REF_SIZE / DEMODEX_UM) * microbeUm / 2;
+  return `
+    <a-circle position="${num(SPOT_X)} ${num(SPOT_Y)} 0.012" radius="${num(Math.max(realR, 0.0006))}"
+              material="color: #ffe08a"></a-circle>
+    <a-ring position="${num(SPOT_X)} ${num(SPOT_Y)} 0.011"
+            radius-inner="${num(SPOT_R)}" radius-outer="${num(SPOT_R + 0.005)}"
+            material="color: #ffe08a"></a-ring>
+    ${line2d(SPOT_X + SPOT_R, SPOT_Y + SPOT_R * 0.7, MICROBE_X - MICROBE_SIZE / 2, SPOT_Y + MICROBE_SIZE / 2)}
+    ${line2d(SPOT_X + SPOT_R, SPOT_Y - SPOT_R * 0.7, MICROBE_X - MICROBE_SIZE / 2, SPOT_Y - MICROBE_SIZE / 2)}`;
+}
+
+// Échelles de l'agrandissement, en unités de scène par µm : l'organisme y occupe
+// MICROBE_SIZE, quelle que soit sa taille réelle.
+const U_STAPH = MICROBE_SIZE / 2.8;   // amas d'environ 2,8 µm
+const U_HERPES = MICROBE_SIZE / 0.2;  // virion de 0,2 µm
+const U_CANDIDA = MICROBE_SIZE / 12;  // groupe d'environ 12 µm
 
 // Demodex : le grain de sel (1 mm) sert d'étalon, c'est le seul organisme de
 // taille comparable à un objet familier.
@@ -156,6 +187,7 @@ const TARGETS: TargetDef[] = [
     key: 'staphylocoque',
     name: 'Staphylocoque',
     size: '≈ 1 µm',
+    um: 1,
     ratio: 300,
     build: () => staphylocoque(U_STAPH),
     reference: demodexReference,
@@ -164,6 +196,7 @@ const TARGETS: TargetDef[] = [
     key: 'herpesvirus',
     name: 'Herpèsvirus',
     size: '≈ 0,15 µm',
+    um: 0.15,
     ratio: 2000,
     build: () => herpesvirus(U_HERPES),
     reference: demodexReference,
@@ -172,6 +205,7 @@ const TARGETS: TargetDef[] = [
     key: 'candida',
     name: 'Candida albicans',
     size: '≈ 5 µm',
+    um: 5,
     ratio: 60,
     build: () => candida(U_CANDIDA),
     reference: demodexReference,
@@ -309,11 +343,13 @@ function targetMarkup(def: TargetDef, index: number) {
                 material="transparent: true"></a-image>`
     : '';
 
-  // Étiquette de l'étalon, sous celui-ci.
+  // Étiquette de l'étalon, sous celui-ci, plus le repérage du microbe à sa
+  // taille réelle et les traits vers son agrandissement.
   const refLabel = def.ratio
     ? `<a-image src="${labelTexture('Demodex', '≈ 0,3 mm')}"
-                position="${num(REF_X)} ${num(BAR_Y)} 0.011" width="0.5" height="0.155"
-                material="transparent: true"></a-image>`
+                position="${num(REF_X)} ${num(BAR_Y)} 0.011" width="0.44" height="0.135"
+                material="transparent: true"></a-image>
+       ${magnifier(def.um ?? 1)}`
     : '';
 
   return `
@@ -332,7 +368,8 @@ function targetMarkup(def: TargetDef, index: number) {
         ${banner}
         <a-image src="${labelTexture(def.name, def.size)}"
                  position="${num(objectX)} ${num(BAR_Y)} 0.011"
-                 width="0.6" height="0.185" material="transparent: true"></a-image>
+                 width="${def.ratio ? '0.44' : '0.6'}" height="${def.ratio ? '0.135' : '0.185'}"
+                 material="transparent: true"></a-image>
         ${refLabel}
         ${isDemodex ? def.reference() : ''}
       </a-entity>
