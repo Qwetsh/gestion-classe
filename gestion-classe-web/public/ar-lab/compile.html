@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AR Lab — Compilation de cible</title>
+  <!-- Libs servies en local (public/ar/vendor), partagées avec l’app élève : pas de dépendance CDN au collège. -->
+  <style>
+    :root {
+      --bg: oklch(0.16 0.02 260);
+      --bg2: oklch(0.22 0.03 260);
+      --card: oklch(0.22 0.02 260 / 0.7);
+      --border: oklch(0.40 0.03 260 / 0.6);
+      --text: oklch(0.94 0.01 260);
+      --dim: oklch(0.70 0.02 260);
+      --gold: oklch(0.82 0.13 85);
+      --ok: oklch(0.75 0.15 155);
+      --err: oklch(0.68 0.18 25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg2) 0%, var(--bg) 60%);
+      color: var(--text); min-height: 100vh;
+    }
+    .wrap { max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 4px; color: var(--gold); }
+    .sub { color: var(--dim); font-size: 13px; margin: 0 0 20px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    label.file {
+      display: block; text-align: center; padding: 22px 12px;
+      border: 1px dashed var(--border); border-radius: 12px;
+      cursor: pointer; color: var(--dim); font-size: 14px;
+    }
+    label.file:active { background: oklch(0.28 0.03 260 / 0.6); }
+    input[type=file] { display: none; }
+    button {
+      width: 100%; padding: 14px; margin-top: 12px;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+      background: var(--gold); color: oklch(0.20 0.03 85); cursor: pointer;
+    }
+    button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bar { height: 8px; border-radius: 6px; background: oklch(0.30 0.02 260); overflow: hidden; margin-top: 14px; }
+    .bar > i { display: block; height: 100%; width: 0%; background: var(--gold); transition: width 0.2s; }
+    .msg { font-size: 13px; margin-top: 10px; color: var(--dim); white-space: pre-line; }
+    .msg.ok { color: var(--ok); }
+    .msg.err { color: var(--err); }
+    .meta { font-size: 12px; color: var(--dim); margin-top: 8px; line-height: 1.6; }
+    a.nav { color: var(--gold); font-size: 14px; text-decoration: none; }
+    ul { padding-left: 18px; margin: 8px 0 0; font-size: 13px; color: var(--dim); line-height: 1.7; }
+
+    /* Recadrage */
+    #cropBox {
+      position: relative; margin-top: 12px; border-radius: 10px; overflow: hidden;
+      touch-action: none; user-select: none; -webkit-user-select: none; line-height: 0;
+    }
+    #cropBox img { width: 100%; display: block; }
+    #sel {
+      position: absolute; display: none; border: 2px solid var(--gold);
+      box-shadow: 0 0 0 9999px oklch(0.10 0.02 260 / 0.6);
+      pointer-events: none;
+    }
+    #sel.on { display: block; }
+    .hint { font-size: 12px; color: var(--dim); margin-top: 8px; text-align: center; }
+    .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .duo button { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Compilation de cible</h1>
+    <p class="sub">Étape 1 — transformer une photo en cible reconnaissable (fichier <code>.mind</code>).</p>
+
+    <div class="card">
+      <label class="file" for="pick">
+        📷 Choisir ou photographier l'image cible
+      </label>
+      <input id="pick" type="file" accept="image/*" />
+
+      <div id="cropWrap" hidden>
+        <div id="cropBox">
+          <img id="preview" alt="" />
+          <div id="sel"></div>
+        </div>
+        <p class="hint">Fais glisser sur l'image pour délimiter la zone à reconnaître.</p>
+        <div class="duo">
+          <button id="crop" class="ghost" disabled>✂️ Recadrer</button>
+          <button id="reset" class="ghost">↺ Image entière</button>
+        </div>
+        <div id="dims" class="meta"></div>
+      </div>
+
+      <button id="go" disabled>Compiler la cible</button>
+      <div class="bar"><i id="bar"></i></div>
+      <div id="msg" class="msg"></div>
+      <button id="use" class="ghost" hidden>➜ Tester dans le scanner</button>
+      <button id="dl" class="ghost" hidden>⬇ Télécharger le .mind</button>
+    </div>
+
+    <div class="card">
+      <strong style="font-size:14px">Ce qui fait une bonne cible</strong>
+      <ul>
+        <li>Beaucoup de détails contrastés (texte, dessin dense, photo riche)</li>
+        <li>Pas de surface unie, de dégradé lisse ou de motif répétitif</li>
+        <li>Recadrer sur la zone utile : ce qui dépasse parasite le suivi</li>
+        <li>Un score de qualité faible = tracking instable</li>
+      </ul>
+    </div>
+
+    <a class="nav" href="./index.html">← Scanner RA</a>
+  </div>
+
+<script type="module">
+// mindar-image.prod.js est un module ES : il doit être importé, pas chargé en <script src>.
+import { Compiler } from '../ar/vendor/mindar-image.prod.js';
+
+const $ = (id) => document.getElementById(id);
+
+let fileName = 'cible';
+let originalImg = null;  // image d'origine, jamais modifiée (bouton « Image entière »)
+let workImg = null;      // image effectivement compilée
+let lastBuffer = null;
+
+// --- Chargement ------------------------------------------------------------
+$('pick').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  fileName = f.name.replace(/\.[^.]+$/, '');
+  const img = new Image();
+  img.onload = async () => {
+    originalImg = await downscale(img, 1400);
+    setWorkImage(originalImg);
+    $('cropWrap').hidden = false;
+    setMsg('');
+    $('use').hidden = true; $('dl').hidden = true;
+    $('bar').style.width = '0%';
+  };
+  img.onerror = () => setMsg('Image illisible.', 'err');
+  img.src = URL.createObjectURL(f);
+});
+
+// Au-delà de ~1400 px la compilation devient très lente sans gain de détection.
+function downscale(img, maxW) {
+  if (img.naturalWidth <= maxW) return Promise.resolve(img);
+  const scale = maxW / img.naturalWidth;
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * scale);
+  c.height = Math.round(img.naturalHeight * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return loadImage(c.toDataURL('image/jpeg', 0.92));
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = src;
+  });
+}
+
+function setWorkImage(img) {
+  workImg = img;
+  $('preview').src = img.src;
+  $('dims').textContent = `${img.naturalWidth} × ${img.naturalHeight} px — ratio ${(img.naturalHeight / img.naturalWidth).toFixed(3)}`;
+  clearSelection();
+  $('go').disabled = false;
+}
+
+// --- Sélection de la zone (souris + tactile) -------------------------------
+const box = $('cropBox');
+const sel = $('sel');
+let dragging = false, startX = 0, startY = 0, rect = null;
+
+box.addEventListener('pointerdown', (e) => {
+  if (!workImg) return;
+  rect = box.getBoundingClientRect();
+  dragging = true;
+  startX = e.clientX - rect.left;
+  startY = e.clientY - rect.top;
+  sel.classList.add('on');
+  drawSelection(startX, startY, 0, 0);
+  box.setPointerCapture(e.pointerId);
+});
+
+box.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  const x = clamp(e.clientX - rect.left, 0, rect.width);
+  const y = clamp(e.clientY - rect.top, 0, rect.height);
+  drawSelection(Math.min(startX, x), Math.min(startY, y), Math.abs(x - startX), Math.abs(y - startY));
+});
+
+box.addEventListener('pointerup', () => {
+  dragging = false;
+  // Une sélection minuscule est un clic accidentel, pas un recadrage.
+  const usable = sel.offsetWidth > 20 && sel.offsetHeight > 20;
+  $('crop').disabled = !usable;
+  if (!usable) clearSelection();
+});
+
+function drawSelection(x, y, w, h) {
+  sel.style.left = x + 'px';
+  sel.style.top = y + 'px';
+  sel.style.width = w + 'px';
+  sel.style.height = h + 'px';
+}
+
+function clearSelection() {
+  sel.classList.remove('on');
+  drawSelection(0, 0, 0, 0);
+  $('crop').disabled = true;
+}
+
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+$('crop').addEventListener('click', async () => {
+  const r = box.getBoundingClientRect();
+  const scale = workImg.naturalWidth / r.width;   // affichage → pixels natifs
+  const sx = Math.round(sel.offsetLeft * scale);
+  const sy = Math.round(sel.offsetTop * scale);
+  const sw = Math.round(sel.offsetWidth * scale);
+  const sh = Math.round(sel.offsetHeight * scale);
+
+  const c = document.createElement('canvas');
+  c.width = sw; c.height = sh;
+  c.getContext('2d').drawImage(workImg, sx, sy, sw, sh, 0, 0, sw, sh);
+  setWorkImage(await loadImage(c.toDataURL('image/jpeg', 0.95)));
+  setMsg('Zone recadrée — c\'est elle qui sera reconnue.', 'ok');
+});
+
+$('reset').addEventListener('click', () => {
+  if (!originalImg) return;
+  setWorkImage(originalImg);
+  setMsg('');
+});
+
+function setMsg(text, cls = '') {
+  const m = $('msg');
+  m.textContent = text;
+  m.className = 'msg ' + cls;
+}
+
+// --- Compilation -----------------------------------------------------------
+$('go').addEventListener('click', async () => {
+  if (!workImg) return;
+  $('go').disabled = true;
+  setMsg('Compilation en cours… (30 s à 2 min selon le téléphone, ne pas quitter la page)');
+
+  try {
+    const compiler = new Compiler();
+    const data = await compiler.compileImageTargets([workImg], (progress) => {
+      $('bar').style.width = progress.toFixed(1) + '%';
+    });
+    lastBuffer = await compiler.exportData();
+
+    // Nombre de points de suivi détectés = indicateur de qualité de la cible.
+    const points = data?.[0]?.trackingData?.reduce((n, lvl) => n + (lvl.points?.length || 0), 0) ?? 0;
+    const quality = points > 400 ? 'excellente' : points > 150 ? 'correcte' : 'faible';
+
+    $('bar').style.width = '100%';
+    setMsg(`Cible compilée ✔\n${points} points de suivi — qualité ${quality}.`, quality === 'faible' ? 'err' : 'ok');
+    $('use').hidden = false;
+    $('dl').hidden = false;
+  } catch (err) {
+    setMsg('Échec de la compilation : ' + (err?.message || err), 'err');
+  } finally {
+    $('go').disabled = false;
+  }
+});
+
+$('dl').addEventListener('click', () => {
+  const blob = new Blob([lastBuffer], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName + '.mind';
+  a.click();
+});
+
+$('use').addEventListener('click', () => {
+  try {
+    const bytes = new Uint8Array(lastBuffer);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 8192) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    }
+    localStorage.setItem('arlab.target', btoa(bin));
+    localStorage.setItem('arlab.targetName', fileName);
+    localStorage.setItem('arlab.targetRatio', String(workImg.naturalHeight / workImg.naturalWidth));
+    location.href = './index.html';
+  } catch (err) {
+    // localStorage plafonne à ~5 Mo : au-delà, passer par le fichier .mind.
+    setMsg('Cible trop volumineuse pour le stockage local. Télécharge le .mind et charge-le dans le scanner.', 'err');
+  }
+});
+</script>
+</body>
+</html>

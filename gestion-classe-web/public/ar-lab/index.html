@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AR Lab — Scanner</title>
+  <!-- Libs servies en local (public/ar/vendor), partagées avec l’app élève : pas de dépendance CDN au collège. -->
+  <script src="../ar/vendor/aframe.min.js"></script>
+  <script src="../ar/vendor/mindar-image-aframe.prod.js"></script>
+  <style>
+    :root {
+      --bg: oklch(0.16 0.02 260);
+      --bg2: oklch(0.22 0.03 260);
+      --card: oklch(0.22 0.02 260 / 0.7);
+      --border: oklch(0.40 0.03 260 / 0.6);
+      --text: oklch(0.94 0.01 260);
+      --dim: oklch(0.70 0.02 260);
+      --gold: oklch(0.82 0.13 85);
+      --ok: oklch(0.75 0.15 155);
+      --err: oklch(0.68 0.18 25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg2) 0%, var(--bg) 60%);
+      color: var(--text); min-height: 100vh;
+    }
+    .wrap { max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 4px; color: var(--gold); }
+    .sub { color: var(--dim); font-size: 13px; margin: 0 0 20px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+    label.file, .row {
+      display: block; padding: 12px; border: 1px dashed var(--border);
+      border-radius: 10px; cursor: pointer; color: var(--dim); font-size: 14px; margin-bottom: 8px;
+    }
+    input[type=file] { display: none; }
+    .modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .modes button {
+      padding: 12px 8px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      background: transparent; border: 1px solid var(--border); color: var(--dim);
+    }
+    .modes button[aria-pressed="true"] { background: var(--gold); color: oklch(0.20 0.03 85); border-color: var(--gold); }
+    button {
+      width: 100%; padding: 14px; margin-top: 4px; cursor: pointer;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+      background: var(--gold); color: oklch(0.20 0.03 85);
+    }
+    button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    select {
+      width: 100%; padding: 12px; border-radius: 10px; font-size: 14px;
+      background: oklch(0.26 0.02 260); color: var(--text); border: 1px solid var(--border);
+    }
+    .state { font-size: 13px; color: var(--dim); margin-top: 10px; }
+    .state.ok { color: var(--ok); }
+    .state.err { color: var(--err); }
+    a.nav { color: var(--gold); font-size: 14px; text-decoration: none; }
+
+    /* Vue RA plein écran */
+    #ar { position: fixed; inset: 0; z-index: 10; display: none; background: #000; }
+    #ar.on { display: block; }
+    #hud {
+      position: fixed; z-index: 20; left: 0; right: 0; bottom: 0;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      display: none; gap: 10px; align-items: center;
+      background: linear-gradient(to top, oklch(0.16 0.02 260 / 0.92), transparent);
+    }
+    #hud.on { display: flex; }
+    #hud .status {
+      flex: 1; font-size: 14px; color: var(--text);
+      text-shadow: 0 1px 4px #000;
+    }
+    #hud button { width: auto; padding: 10px 16px; margin: 0; font-size: 14px; }
+
+    /* Journal visible : aucune console n'est accessible depuis le téléphone. */
+    #debug {
+      position: fixed; z-index: 25; left: 0; right: 0; top: 0; max-height: 40vh;
+      margin: 0; padding: 8px 10px; display: none; overflow: auto;
+      font-size: 11px; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
+      background: oklch(0.12 0.02 260 / 0.88); color: var(--dim);
+      border-bottom: 1px solid var(--border);
+    }
+    #debug.on { display: block; }
+    #debug b { color: var(--err); font-weight: 400; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="setup">
+    <h1>Scanner RA</h1>
+    <p class="sub">Étape 2 — pointer la caméra sur la cible pour faire apparaître le contenu.</p>
+
+    <div class="card">
+      <h2>1. Cible</h2>
+      <div id="stored" class="row" hidden></div>
+      <button id="export" class="ghost" hidden>⬇ Exporter la cible mémorisée (.mind)</button>
+      <label class="file" for="mind">📁 Charger un fichier .mind</label>
+      <input id="mind" type="file" accept=".mind" />
+      <div id="targetState" class="state">Aucune cible chargée.</div>
+    </div>
+
+    <div class="card">
+      <h2>2. Contenu à afficher</h2>
+      <div class="modes">
+        <button data-mode="demo" aria-pressed="true">🧊 Objet 3D démo</button>
+        <button data-mode="model" aria-pressed="false">📦 Modèle .glb</button>
+        <button data-mode="video" aria-pressed="false">🎬 Vidéo</button>
+        <button data-mode="image" aria-pressed="false">🖼️ Image</button>
+      </div>
+      <div id="builtinPick" hidden style="margin-top:10px">
+        <select id="builtin">
+          <option value="">— Modèle fourni avec le lab —</option>
+          <option value="../ar/models/demodex.glb">Demodex folliculorum (2,4 Mo)</option>
+        </select>
+      </div>
+      <div id="assetPick" hidden style="margin-top:10px">
+        <label class="file" for="asset" id="assetLabel">Choisir le fichier</label>
+        <input id="asset" type="file" />
+        <div id="assetState" class="state"></div>
+      </div>
+      <div id="modelOpts" hidden>
+        <label class="row" style="cursor:default; border-style:solid; margin-top:10px">
+          <input type="checkbox" id="stand" checked style="display:inline; width:auto" />
+          Modèle posé debout sur l'image
+        </label>
+        <select id="spin" style="margin-top:8px">
+          <option value="14000">Rotation sur lui-même — lente</option>
+          <option value="8000" selected>Rotation sur lui-même — moyenne</option>
+          <option value="4000">Rotation sur lui-même — rapide</option>
+          <option value="0">Immobile</option>
+        </select>
+        <label class="row" style="cursor:default; border-style:solid; margin-top:8px">
+          <input type="checkbox" id="orbit" style="display:inline; width:auto" />
+          Faire le tour de l'image (déplacement circulaire)
+        </label>
+      </div>
+      <label class="row" style="cursor:default; border-style:solid; margin-top:10px">
+        <input type="checkbox" id="frame" checked style="display:inline; width:auto" />
+        Afficher le cadre de calage (contrôle la précision du suivi)
+      </label>
+    </div>
+
+    <button id="start" disabled>Lancer la RA</button>
+    <div id="err" class="state err"></div>
+
+    <p style="margin-top:20px"><a class="nav" href="./compile.html">← Compiler une cible</a></p>
+  </div>
+
+  <div id="ar"></div>
+  <pre id="debug"></pre>
+  <div id="hud">
+    <span class="status" id="status">Recherche de l'image…</span>
+    <button class="ghost" id="turn" hidden>↻</button>
+    <button class="ghost" id="smaller" hidden>−</button>
+    <button class="ghost" id="bigger" hidden>+</button>
+    <button class="ghost" id="stop">Quitter</button>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// --- Journal à l'écran -----------------------------------------------------
+function debug(text, isError = false) {
+  const el = $('debug');
+  el.classList.add('on');
+  el.innerHTML += (isError ? '<b>' + escapeHtml(text) + '</b>' : escapeHtml(text)) + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+const escapeHtml = (s) => String(s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('debug').addEventListener('click', () => $('debug').classList.remove('on'));
+});
+
+window.addEventListener('error', (e) => debug('Erreur : ' + (e.message || e.error), true));
+window.addEventListener('unhandledrejection', (e) => debug('Promesse rejetée : ' + (e.reason?.message || e.reason), true));
+
+let targetUrl = null;      // blob URL du .mind
+let targetRatio = 1;       // hauteur / largeur de l'image cible
+let mode = 'demo';
+let assetUrl = null;       // blob URL du contenu (glb / mp4 / image)
+let assetRatio = null;     // ratio du contenu si connu
+let arSystem = null;
+let userScale = 1;         // ajustement de taille en direct (boutons − / +)
+let modelYaw = 0;          // orientation du modèle sur son axe vertical (bouton ↻)
+
+// Un modèle .glb arrive dans une échelle arbitraire : sans normalisation il est
+// soit invisible, soit gigantesque. On le ramène à la largeur de la cible et on
+// pose sa base sur le plan de l'image.
+// Matrice d'un nœud exprimée dans le repère d'un de ses ancêtres.
+function localMatrix(node, root) {
+  const m = new THREE.Matrix4().identity();
+  let cur = node;
+  while (cur && cur !== root) {
+    cur.updateMatrix();
+    m.premultiply(cur.matrix);
+    cur = cur.parent;
+  }
+  return m;
+}
+
+AFRAME.registerComponent('fit-to-target', {
+  schema: { size: { default: 0.8 }, orbit: { default: 0 } },
+  init() {
+    this.el.addEventListener('model-error', (e) => {
+      debug('Échec du chargement du modèle : ' + (e.detail?.src || ''), true);
+      setStatus('Modèle non chargé', 'err');
+    });
+
+    this.el.addEventListener('model-loaded', () => {
+      const o = this.el.object3D;
+      o.position.set(0, 0, 0);
+      o.scale.setScalar(1);
+      o.quaternion.identity();
+
+      // Mesure dans le repère local de l'entité, sans jamais lire matrixWorld :
+      // l'ancre MindAR n'a pas de matrice valide tant que la cible n'est pas vue,
+      // et sa propagation contaminait tout le calcul (NaN).
+      const box = new THREE.Box3();
+      const tmp = new THREE.Box3();
+      let meshCount = 0;
+      o.traverse((n) => {
+        if (!n.isMesh || !n.geometry) return;
+        meshCount++;
+        if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+        tmp.copy(n.geometry.boundingBox).applyMatrix4(localMatrix(n, o));
+        box.union(tmp);
+      });
+
+      if (!meshCount || box.isEmpty()) {
+        debug(`Aucune géométrie exploitable (${meshCount} mesh trouvés).`, true);
+        return;
+      }
+
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      this.base = { scale: this.data.size / maxDim, center, minY: box.min.y };
+      this.apply();
+      debug(`Modèle chargé — dimensions brutes ${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)}, facteur ${this.base.scale.toFixed(4)}`);
+      setStatus('🎯 Modèle chargé — vise la cible', 'ok');
+    });
+  },
+  apply() {
+    if (!this.base) return;
+    const s = this.base.scale * userScale;
+    const o = this.el.object3D;
+    o.scale.setScalar(s);
+    // Base posée sur le plan (y = 0) et modèle centré sur l'axe de rotation du
+    // parent, sinon « tourner sur lui-même » deviendrait une orbite excentrée.
+    o.position.set(-this.base.center.x * s + this.data.orbit, -this.base.minY * s, -this.base.center.z * s);
+    o.rotation.y = modelYaw;
+  },
+});
+
+// --- Cible : reprise de celle compilée sur cet appareil ---------------------
+(function restoreStoredTarget() {
+  const b64 = localStorage.getItem('arlab.target');
+  if (!b64) return;
+  try {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    targetUrl = URL.createObjectURL(new Blob([bytes]));
+    targetRatio = parseFloat(localStorage.getItem('arlab.targetRatio')) || 1;
+    const name = localStorage.getItem('arlab.targetName') || 'cible';
+    $('stored').hidden = false;
+    $('stored').textContent = '✔ Cible compilée sur cet appareil : ' + name;
+    setTargetState('Cible prête (' + name + ').', 'ok');
+
+    // Export : permet de sortir la cible du téléphone pour l'intégrer à l'app.
+    $('export').hidden = false;
+    $('export').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = targetUrl;
+      a.download = name.replace(/\.[^.]+$/, '') + '.mind';
+      a.click();
+    });
+  } catch (e) {
+    localStorage.removeItem('arlab.target');
+  }
+})();
+
+function setTargetState(text, cls = '') {
+  $('targetState').textContent = text;
+  $('targetState').className = 'state ' + cls;
+  refreshStart();
+}
+
+$('mind').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  targetUrl = URL.createObjectURL(f);
+  targetRatio = parseFloat(localStorage.getItem('arlab.targetRatio')) || 1;
+  setTargetState('Cible prête (' + f.name + ').', 'ok');
+});
+
+// --- Contenu ---------------------------------------------------------------
+const ACCEPT = { model: '.glb,.gltf', video: 'video/*', image: 'image/*' };
+const LABELS = { model: 'Choisir un modèle .glb', video: 'Choisir une vidéo', image: 'Choisir une image' };
+
+document.querySelectorAll('.modes button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mode = btn.dataset.mode;
+    document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    const needsAsset = mode !== 'demo';
+    $('assetPick').hidden = !needsAsset;
+    $('builtinPick').hidden = mode !== 'model';
+    $('modelOpts').hidden = mode !== 'model';
+    if (mode !== 'model') $('builtin').value = '';
+    if (needsAsset) {
+      $('asset').accept = ACCEPT[mode];
+      $('assetLabel').textContent = LABELS[mode];
+      $('asset').value = '';
+      assetUrl = null; assetRatio = null;
+      $('assetState').textContent = '';
+    }
+    refreshStart();
+  });
+});
+
+$('asset').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  assetUrl = URL.createObjectURL(f);
+  assetRatio = null;
+  $('assetState').textContent = f.name;
+  $('assetState').className = 'state ok';
+
+  // Ratio du média : évite de déformer une vidéo ou une image plaquée sur la cible.
+  if (mode === 'image') {
+    const img = new Image();
+    img.onload = () => { assetRatio = img.height / img.width; };
+    img.src = assetUrl;
+  } else if (mode === 'video') {
+    const v = document.createElement('video');
+    v.onloadedmetadata = () => { assetRatio = v.videoHeight / v.videoWidth; };
+    v.src = assetUrl;
+  }
+  refreshStart();
+});
+
+$('builtin').addEventListener('change', (e) => {
+  assetUrl = e.target.value || null;
+  assetRatio = null;
+  $('assetState').textContent = assetUrl ? 'Modèle du lab sélectionné.' : '';
+  $('assetState').className = 'state ok';
+  refreshStart();
+});
+
+function refreshStart() {
+  $('start').disabled = !targetUrl || (mode !== 'demo' && !assetUrl);
+}
+
+// --- Construction de la scène RA -------------------------------------------
+function contentMarkup() {
+  const frame = $('frame').checked
+    ? `<a-plane width="1" height="${targetRatio.toFixed(4)}" color="#4ade80" opacity="0.25"
+                material="transparent: true" position="0 0 0"></a-plane>`
+    : '';
+
+  if (mode === 'demo') {
+    return frame + `
+      <a-box position="0 0 0.15" scale="0.25 0.25 0.25" color="#fbbf24"
+             animation="property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true"></a-box>
+      <a-torus-knot position="0 0 0.35" scale="0.06 0.06 0.06" color="#60a5fa"
+                    p="2" q="3" radius="1" radius-tubular="0.1"
+                    animation="property: rotation; to: 360 360 0; dur: 6000; easing: linear; loop: true"></a-torus-knot>
+      <a-text value="Ca marche !" align="center" color="#ffffff" width="2" position="0 ${(targetRatio / 2 + 0.12).toFixed(3)} 0.1"></a-text>`;
+  }
+  if (mode === 'model') {
+    // Le pivot redresse le modèle : le Y-up du glTF doit sortir de la feuille,
+    // ce qui correspond à +90 en X (et non -90, qui l'enfonçait sous l'image).
+    const rot = $('stand').checked ? '90 0 0' : '0 0 0';
+    const dur = parseInt($('spin').value, 10);
+    const orbit = $('orbit').checked ? 0.35 : 0;
+    // La rotation est portée par un parent : le modèle recentré tourne alors sur
+    // place, alors qu'une rotation appliquée à l'entité décalée l'enverrait en orbite.
+    const spin = dur
+      ? `animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: ${dur}; easing: linear; loop: true"`
+      : '';
+    return frame + `
+      <a-entity rotation="${rot}">
+        <a-entity id="arSpin" ${spin}>
+          <a-entity id="arModel" gltf-model="${assetUrl}" fit-to-target="size: 0.8; orbit: ${orbit}"></a-entity>
+        </a-entity>
+      </a-entity>`;
+  }
+  if (mode === 'video') {
+    const h = (assetRatio || targetRatio).toFixed(4);
+    return frame + `<a-video id="arVideo" src="#arVideoSrc" width="1" height="${h}" position="0 0 0.01"></a-video>`;
+  }
+  // image
+  const h = (assetRatio || targetRatio).toFixed(4);
+  return frame + `<a-image src="${assetUrl}" width="1" height="${h}" position="0 0 0.01"></a-image>`;
+}
+
+function assetsMarkup() {
+  if (mode !== 'video') return '';
+  return `<a-assets>
+            <video id="arVideoSrc" src="${assetUrl}" loop playsinline webkit-playsinline preload="auto"></video>
+          </a-assets>`;
+}
+
+$('start').addEventListener('click', () => {
+  $('err').textContent = '';
+  $('setup').style.display = 'none';
+  $('ar').classList.add('on');
+  $('hud').classList.add('on');
+  setStatus('Démarrage de la caméra…');
+
+  userScale = 1;
+  modelYaw = 0;
+  $('smaller').hidden = $('bigger').hidden = $('turn').hidden = mode !== 'model';
+
+  if (mode === 'model') {
+    debug('Modèle demandé : ' + assetUrl);
+    if (!assetUrl.startsWith('blob:')) {
+      fetch(assetUrl, { method: 'HEAD' })
+        .then((r) => debug(`Fichier : HTTP ${r.status}, ${((r.headers.get('content-length') || 0) / 1e6).toFixed(2)} Mo`))
+        .catch((e) => debug('Fichier inaccessible : ' + e.message, true));
+    }
+  }
+
+  $('ar').innerHTML = `
+    <a-scene mindar-image="imageTargetSrc: ${targetUrl}; autoStart: false; uiScanning: no; uiLoading: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001"
+             gltf-model="dracoDecoderPath: ../ar/vendor/draco/"
+             color-space="sRGB" embedded renderer="colorManagement: true, physicallyCorrectLights"
+             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      ${assetsMarkup()}
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-entity light="type: ambient; intensity: 1.2"></a-entity>
+      <a-entity light="type: directional; intensity: 0.8" position="1 1 2"></a-entity>
+      <a-entity id="target" mindar-image-target="targetIndex: 0">
+        ${contentMarkup()}
+      </a-entity>
+    </a-scene>`;
+
+  const scene = $('ar').querySelector('a-scene');
+
+  scene.addEventListener('arReady', () => setStatus('Vise la cible…'));
+  scene.addEventListener('arError', () => {
+    setStatus('Erreur caméra — HTTPS requis et autorisation caméra nécessaire.', 'err');
+  });
+
+  scene.addEventListener('renderstart', () => {
+    arSystem = scene.systems['mindar-image-system'];
+    arSystem.start();
+  });
+
+  const target = scene.querySelector('#target');
+  target.addEventListener('targetFound', () => {
+    setStatus('🎯 Cible détectée', 'ok');
+    if (mode === 'video') playVideo();
+  });
+  target.addEventListener('targetLost', () => {
+    setStatus('Vise la cible…');
+    if (mode === 'video') document.getElementById('arVideoSrc')?.pause();
+  });
+});
+
+function playVideo() {
+  const v = document.getElementById('arVideoSrc');
+  if (!v) return;
+  v.play().catch(() => {
+    // Autoplay avec son refusé par le navigateur : on rejoue en muet.
+    v.muted = true;
+    v.play().catch(() => {});
+    setStatus('🎯 Cible détectée (son bloqué par le navigateur)', 'ok');
+  });
+}
+
+function resize(factor) {
+  userScale = Math.max(0.1, Math.min(10, userScale * factor));
+  document.getElementById('arModel')?.components['fit-to-target']?.apply();
+}
+$('bigger').addEventListener('click', () => resize(1.3));
+$('smaller').addEventListener('click', () => resize(1 / 1.3));
+$('turn').addEventListener('click', () => {
+  modelYaw += Math.PI / 2;
+  document.getElementById('arModel')?.components['fit-to-target']?.apply();
+});
+
+function setStatus(text, cls = '') {
+  $('status').textContent = text;
+  $('status').style.color = cls === 'err' ? 'var(--err)' : cls === 'ok' ? 'var(--ok)' : 'var(--text)';
+}
+
+$('stop').addEventListener('click', () => {
+  try { arSystem?.stop(); } catch (e) { /* système déjà arrêté */ }
+  $('ar').innerHTML = '';
+  $('ar').classList.remove('on');
+  $('hud').classList.remove('on');
+  // A-Frame passe le document en plein écran : on rétablit la page de réglages.
+  document.documentElement.classList.remove('a-fullscreen');
+  document.body.classList.remove('a-fullscreen');
+  $('setup').style.display = '';
+  arSystem = null;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AR Lab — Compilation groupée</title>
+  <style>
+    :root {
+      --bg: oklch(0.16 0.02 260);
+      --bg2: oklch(0.22 0.03 260);
+      --card: oklch(0.22 0.02 260 / 0.7);
+      --border: oklch(0.40 0.03 260 / 0.6);
+      --text: oklch(0.94 0.01 260);
+      --dim: oklch(0.70 0.02 260);
+      --gold: oklch(0.82 0.13 85);
+      --ok: oklch(0.75 0.15 155);
+      --err: oklch(0.68 0.18 25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg2) 0%, var(--bg) 60%);
+      color: var(--text); min-height: 100vh;
+    }
+    .wrap { max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 4px; color: var(--gold); }
+    .sub { color: var(--dim); font-size: 13px; margin: 0 0 20px; line-height: 1.6; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    ol { padding-left: 20px; margin: 0; font-size: 14px; line-height: 2; color: var(--dim); }
+    ol li b { color: var(--text); font-weight: 600; }
+    ol li img { height: 34px; vertical-align: middle; border-radius: 4px; margin-left: 8px; }
+    button {
+      width: 100%; padding: 14px; margin-top: 12px; cursor: pointer;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+      background: var(--gold); color: oklch(0.20 0.03 85);
+    }
+    button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    button:disabled { opacity: 0.4; }
+    .bar { height: 8px; border-radius: 6px; background: oklch(0.30 0.02 260); overflow: hidden; margin-top: 14px; }
+    .bar > i { display: block; height: 100%; width: 0%; background: var(--gold); transition: width 0.2s; }
+    .msg { font-size: 13px; margin-top: 12px; color: var(--dim); white-space: pre-line; line-height: 1.6; }
+    .msg.ok { color: var(--ok); }
+    .msg.err { color: var(--err); }
+    a.nav { color: var(--gold); font-size: 14px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Compilation groupée</h1>
+    <p class="sub">
+      Compile les 4 images du cours en un seul fichier <code>targets.mind</code>.
+      MindAR ne charge qu'un fichier par scène : elles doivent donc être compilées ensemble
+      pour être toutes reconnues. L'ordre ci-dessous fixe le numéro de chaque cible.
+    </p>
+
+    <div class="card">
+      <ol id="list"></ol>
+      <button id="go">Compiler les 4 cibles</button>
+      <div class="bar"><i id="bar"></i></div>
+      <div id="msg" class="msg"></div>
+      <button id="dl" class="ghost" hidden>⬇ Télécharger targets.mind</button>
+    </div>
+
+    <a class="nav" href="./index.html">← Scanner RA</a>
+  </div>
+
+<script type="module">
+import { Compiler } from '../ar/vendor/mindar-image.prod.js';
+
+// L'ordre définit targetIndex : il doit rester synchronisé avec TARGETS
+// dans src/components/StudentAr.tsx.
+const SOURCES = [
+  { file: 'demodex.png', label: 'Demodex folliculorum' },
+  { file: 'staphylocoque.png', label: 'Staphylocoque' },
+  { file: 'herpesvirus.png', label: 'Herpèsvirus' },
+  { file: 'candida.png', label: 'Candida albicans' },
+];
+
+const $ = (id) => document.getElementById(id);
+let buffer = null;
+
+$('list').innerHTML = SOURCES.map((s, i) =>
+  `<li><b>${i}</b> — ${s.label} <img src="../ar/sources/${s.file}" alt="" /></li>`
+).join('');
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const i = new Image();
+    i.crossOrigin = 'anonymous';
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error('Image introuvable : ' + src));
+    i.src = src;
+  });
+}
+
+// Au-delà de ~1400 px la compilation devient très lente sans gain de détection.
+async function downscale(img, maxW = 1400) {
+  if (img.naturalWidth <= maxW) return img;
+  const scale = maxW / img.naturalWidth;
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * scale);
+  c.height = Math.round(img.naturalHeight * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return loadImage(c.toDataURL('image/jpeg', 0.92));
+}
+
+function setMsg(text, cls = '') {
+  $('msg').textContent = text;
+  $('msg').className = 'msg ' + cls;
+}
+
+$('go').addEventListener('click', async () => {
+  $('go').disabled = true;
+  $('dl').hidden = true;
+  setMsg('Chargement des images…');
+
+  try {
+    const images = [];
+    for (const s of SOURCES) {
+      images.push(await downscale(await loadImage(`../ar/sources/${s.file}`)));
+    }
+
+    setMsg('Compilation des 4 cibles… (plusieurs minutes, ne quitte pas la page)');
+    const compiler = new Compiler();
+    const data = await compiler.compileImageTargets(images, (p) => {
+      $('bar').style.width = p.toFixed(1) + '%';
+    });
+    buffer = await compiler.exportData();
+
+    const report = data.map((t, i) => {
+      const points = t.trackingData?.reduce((n, lvl) => n + (lvl.points?.length || 0), 0) ?? 0;
+      const quality = points > 400 ? 'excellente' : points > 150 ? 'correcte' : 'faible';
+      return `${i} · ${SOURCES[i].label} — ${points} points (${quality})`;
+    }).join('\n');
+
+    $('bar').style.width = '100%';
+    setMsg('4 cibles compilées ✔\n' + report, 'ok');
+    $('dl').hidden = false;
+  } catch (err) {
+    setMsg('Échec : ' + (err?.message || err), 'err');
+  } finally {
+    $('go').disabled = false;
+  }
+});
+
+$('dl').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
+  a.download = 'targets.mind';
+  a.click();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Réinitialisation du cache</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #1a1410; color: #e8dcc8; padding: 24px; text-align: center;
+    }
+    .box { max-width: 380px; }
+    h1 { font-size: 20px; color: #e8c066; margin: 0 0 12px; }
+    p { font-size: 14px; line-height: 1.6; color: #a09080; }
+    a { display: inline-block; margin-top: 20px; padding: 14px 22px; border-radius: 12px;
+        background: #d4a843; color: #241a0c; font-weight: 700; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Réinitialisation du cache</h1>
+    <p id="msg">Suppression en cours…</p>
+    <a id="go" href="./eleve" hidden>Ouvrir l'espace élève</a>
+  </div>
+<script>
+(async () => {
+  const done = [];
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+    done.push(`${regs.length} service worker(s) désinscrit(s)`);
+  }
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    done.push(`${keys.length} cache(s) vidé(s)`);
+  }
+  document.getElementById('msg').textContent =
+    done.join(' · ') + '.\nFerme complètement l\'onglet, puis rouvre l\'application.';
+  document.getElementById('go').hidden = false;
+})();
+</script>
+</body>
+</html>

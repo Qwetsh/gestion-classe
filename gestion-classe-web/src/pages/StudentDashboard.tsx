@@ -5,6 +5,7 @@ import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
 import { StudentAnnales } from '../components/StudentAnnales';
+import { StudentAr } from '../components/StudentAr';
 import type { HouseId } from '../lib/academyQueries';
 import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
 
@@ -107,7 +108,7 @@ export function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy' | 'annales'>('grades');
+  const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy' | 'annales' | 'ar'>('grades');
   // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
   // Un élève témoin voit tout (preview en conditions réelles).
   const isWitness = !!data?.is_witness;
@@ -450,6 +451,7 @@ export function StudentDashboard() {
             ...(showStamps ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
             ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
             ...(showAnnales ? [{ key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos }] : []),
+            { key: 'ar' as const, icon: '🔍', label: 'RA', activeColor: T.accentSoft, activeText: T.accent },
           ].map(tab => (
             <button
               key={tab.key}
@@ -528,6 +530,8 @@ export function StudentDashboard() {
               />
             </div>
           )
+        ) : activeTab === 'ar' ? (
+          <StudentAr />
         ) : activeTab === 'annales' ? (
           <StudentAnnales />
         ) : activeTab === 'stamps' && showStamps ? (
