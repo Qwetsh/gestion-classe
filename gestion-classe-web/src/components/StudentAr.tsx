@@ -109,6 +109,7 @@ type TargetDef = {
   size: string;
   um?: number;              // taille réelle en µm (microbes seulement)
   ratio?: number;           // combien de fois plus petit que le Demodex
+  shape?: (u: number) => string;  // modèle paramétrable, réutilisé à l'échelle réelle
   build: () => string;      // contenu 3D, dressé sur l'image
   reference: () => string;  // repère de comparaison, à plat sur l'image
 };
@@ -141,18 +142,26 @@ function line2d(x1: number, y1: number, x2: number, y2: number, w = 0.006) {
                  material="color: #ffffff; opacity: 0.75; transparent: true"></a-box>`;
 }
 
-// Le microbe à sa taille réelle par rapport au Demodex affiché, le cercle qui
-// le rend repérable, et les traits vers son agrandissement.
-function magnifier(microbeUm: number) {
-  const realR = (REF_SIZE / DEMODEX_UM) * microbeUm / 2;
+// Unités de scène par µm à l'échelle du Demodex : c'est l'échelle VRAIE, celle
+// où le microbe n'est qu'un point. Zoomer suffit à l'atteindre.
+const U_REAL = REF_SIZE / DEMODEX_UM;
+
+// Le cercle qui signale l'emplacement du microbe, et les traits vers son
+// agrandissement. Tout cela sort du champ dès qu'on zoome vraiment — c'est voulu.
+function magnifier() {
   return `
-    <a-circle position="${num(SPOT_X)} ${num(SPOT_Y)} 0.012" radius="${num(Math.max(realR, 0.0006))}"
-              material="color: #ffe08a"></a-circle>
     <a-ring position="${num(SPOT_X)} ${num(SPOT_Y)} 0.011"
             radius-inner="${num(SPOT_R)}" radius-outer="${num(SPOT_R + 0.005)}"
             material="color: #ffe08a"></a-ring>
     ${line2d(SPOT_X + SPOT_R, SPOT_Y + SPOT_R * 0.7, MICROBE_X - MICROBE_SIZE / 2, SPOT_Y + MICROBE_SIZE / 2)}
     ${line2d(SPOT_X + SPOT_R, SPOT_Y - SPOT_R * 0.7, MICROBE_X - MICROBE_SIZE / 2, SPOT_Y - MICROBE_SIZE / 2)}`;
+}
+
+// Le même organisme, mais à sa taille réelle à côté de l'acarien : invisible au
+// départ, il se découvre en zoomant. Le repère du pivot est redressé, d'où le
+// passage de (x, y) du plan de l'image à (x, 0, -y).
+function realScaleModel(build: (u: number) => string) {
+  return `<a-entity position="${num(SPOT_X)} 0 ${num(-SPOT_Y)}">${build(U_REAL)}</a-entity>`;
 }
 
 // Échelles de l'agrandissement, en unités de scène par µm : l'organisme y occupe
@@ -189,6 +198,7 @@ const TARGETS: TargetDef[] = [
     size: '≈ 1 µm',
     um: 1,
     ratio: 300,
+    shape: staphylocoque,
     build: () => staphylocoque(U_STAPH),
     reference: demodexReference,
   },
@@ -198,6 +208,7 @@ const TARGETS: TargetDef[] = [
     size: '≈ 0,15 µm',
     um: 0.15,
     ratio: 2000,
+    shape: herpesvirus,
     build: () => herpesvirus(U_HERPES),
     reference: demodexReference,
   },
@@ -207,6 +218,7 @@ const TARGETS: TargetDef[] = [
     size: '≈ 5 µm',
     um: 5,
     ratio: 60,
+    shape: candida,
     build: () => candida(U_CANDIDA),
     reference: demodexReference,
   },
@@ -349,7 +361,7 @@ function targetMarkup(def: TargetDef, index: number) {
     ? `<a-image src="${labelTexture('Demodex', '≈ 0,3 mm')}"
                 position="${num(REF_X)} ${num(BAR_Y)} 0.011" width="0.44" height="0.135"
                 material="transparent: true"></a-image>
-       ${magnifier(def.um ?? 1)}`
+       ${magnifier()}`
     : '';
 
   return `
@@ -364,6 +376,7 @@ function targetMarkup(def: TargetDef, index: number) {
                    width="${num(SALT_SIZE)}" height="${num(SALT_SIZE)}" depth="${num(SALT_SIZE)}"
                    material="color: #f2f2f2; roughness: 0.25; metalness: 0.05"></a-box>` : ''}
           ${def.ratio ? def.reference() : ''}
+          ${def.shape ? realScaleModel(def.shape) : ''}
         </a-entity>
         ${banner}
         <a-image src="${labelTexture(def.name, def.size)}"
@@ -388,6 +401,26 @@ export function StudentAr() {
   const rigRef = useRef<any>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; cx: number; cy: number } | null>(null);
+  const pan = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const [zoom, setZoom] = useState(1);
+  const hasSpot = useRef(false);
+  const ratioRef = useRef<number | null>(null);
+  const animRef = useRef<number | null>(null);
+  const [canZoom, setCanZoom] = useState(false);
+
+  // Le zoom se recentre progressivement sur le point où se trouve le microbe à
+  // sa taille réelle : sans cela, il quitterait l'écran bien avant d'être visible.
+  const applyTransform = (k: number) => {
+    const rig = rigRef.current?.object3D;
+    if (!rig) return;
+    const t = hasSpot.current ? Math.min(1, Math.max(0, (k - 1) / 3)) : 0;
+    rig.position.set(
+      pan.current.x - k * SPOT_X * t,
+      pan.current.y - k * SPOT_Y * t,
+      0,
+    );
+  };
 
   // Gestes : un doigt fait tourner l'organisme, deux doigts déplacent et zooment
   // l'ensemble. Le zoom porte sur le groupe entier (objet + repère d'échelle) :
@@ -423,12 +456,20 @@ export function StudentAr() {
       const last = pinch.current;
       if (last) {
         const rig = rigRef.current.object3D;
-        const k = Math.min(6, Math.max(0.25, rig.scale.x * (dist / last.dist)));
+        // Jusqu'à ×3000 : il en faut 300 pour voir un staphylocoque à sa taille
+        // réelle, 2000 pour un herpèsvirus.
+        const k = Math.min(3000, Math.max(0.25, rig.scale.x * (dist / last.dist)));
         rig.scale.setScalar(k);
         // Déplacement dans le plan de l'image ; l'axe Y de la cible pointe vers
         // le haut de l'image, d'où l'inversion de dy.
-        rig.position.x += ((cx - last.cx) / window.innerWidth) * 2;
-        rig.position.y -= ((cy - last.cy) / window.innerWidth) * 2;
+        pan.current.x += ((cx - last.cx) / window.innerWidth) * 2;
+        pan.current.y -= ((cy - last.cy) / window.innerWidth) * 2;
+        applyTransform(k);
+        const shown = k < 10 ? Math.round(k * 10) / 10 : Math.round(k);
+        if (shown !== zoomRef.current) {
+          zoomRef.current = shown;
+          setZoom(shown);
+        }
       }
       pinch.current = { dist, cx, cy };
     }
@@ -439,16 +480,54 @@ export function StudentAr() {
     pinch.current = null;
   };
 
+  // Atteindre ×2000 au pincement demanderait une dizaine de gestes : ce bouton
+  // parcourt l'écart d'un trait, ce qui donne à voir l'ordre de grandeur.
+  const zoomToMicrobe = () => {
+    const target = ratioRef.current;
+    const rig = rigRef.current?.object3D;
+    if (!target || !rig || animRef.current) return;
+    const from = rig.scale.x;
+    const t0 = performance.now();
+    const DURATION = 2500;
+
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / DURATION);
+      // Progression géométrique : à échelle multiplicative, une interpolation
+      // linéaire passerait tout l'écart dans les derniers instants.
+      const k = from * Math.pow(target / from, p);
+      rig.scale.setScalar(k);
+      applyTransform(k);
+      const shown = k < 10 ? Math.round(k * 10) / 10 : Math.round(k);
+      if (shown !== zoomRef.current) {
+        zoomRef.current = shown;
+        setZoom(shown);
+      }
+      animRef.current = p < 1 ? requestAnimationFrame(step) : null;
+    };
+    animRef.current = requestAnimationFrame(step);
+  };
+
   const recenter = () => {
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
+    pan.current = { x: 0, y: 0 };
+    zoomRef.current = 1;
+    setZoom(1);
     const rig = rigRef.current?.object3D;
     if (rig) {
-      rig.position.set(0, 0, 0);
       rig.scale.setScalar(1);
+      rig.position.set(0, 0, 0);
     }
     if (spinRef.current) spinRef.current.object3D.rotation.set(0, 0, 0);
   };
 
   const stop = useCallback(() => {
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
     try {
       systemRef.current?.stop();
     } catch {
@@ -525,6 +604,12 @@ export function StudentAr() {
           // Les gestes agissent sur la cible actuellement reconnue.
           rigRef.current = scene.querySelector(`#rig${i}`);
           spinRef.current = scene.querySelector(`#spin${i}`);
+          hasSpot.current = !!def.shape;
+          ratioRef.current = def.ratio ?? null;
+          setCanZoom(!!def.shape);
+          pan.current = { x: 0, y: 0 };
+          zoomRef.current = 1;
+          setZoom(1);
           setFoundName(def.name);
         });
         el.addEventListener('targetLost', () => setFoundName(null));
@@ -592,8 +677,21 @@ export function StudentAr() {
           <span style={{
             flex: 1, fontSize: 14, color: foundName ? T.pos : T.text, textShadow: '0 1px 4px #000',
           }}>
-            {foundName ? `${foundName} · glisse pour tourner` : 'Vise une image de ton cours…'}
+            {foundName
+              ? `${foundName}${zoom > 1.2 ? ` · grossi ${zoom > 10 ? Math.round(zoom) : zoom} ×` : ' · pince pour zoomer'}`
+              : 'Vise une image de ton cours…'}
           </span>
+          {canZoom && (
+            <button
+              onClick={zoomToMicrobe}
+              style={{
+                padding: '10px 14px', borderRadius: 10, fontSize: 14, whiteSpace: 'nowrap',
+                background: 'transparent', border: `1px solid ${T.cardBorder}`, color: T.text,
+              }}
+            >
+              🔎 ×{ratioRef.current}
+            </button>
+          )}
           <button
             onClick={recenter}
             style={{
