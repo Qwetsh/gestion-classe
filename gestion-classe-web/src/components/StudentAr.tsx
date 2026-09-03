@@ -128,6 +128,13 @@ const MICROBE_X = 0.32;   // agrandissement, à droite
 const MICROBE_SIZE = 0.26;
 const DEMODEX_UM = 300;   // 0,3 mm, l'étalon de toutes les comparaisons
 
+// Hors comparaison, l'organisme est seul : rien ne l'oblige à tenir dans la
+// moitié droite de l'image, il occupe donc toute la place disponible.
+const SOLO_SCALE = 1.6;
+// Décalée à droite, l'étiquette du nom déborderait de l'image à sa taille
+// pleine (0,6 de large sur une image qui en fait 1) : elle est donc réduite.
+const CMP_LABEL_SCALE = 0.6;
+
 const demodexReference = () => `
   <a-entity gltf-model="${REF_MODEL_URL}" position="${num(REF_X)} 0 0"
             fit-to-target="size: ${num(REF_SIZE)}"></a-entity>`;
@@ -345,7 +352,6 @@ function registerFitComponent() {
 // étiquette, le tout dans un groupe commun que les gestes déplacent et zooment.
 function targetMarkup(def: TargetDef, index: number) {
   const isDemodex = def.key === 'demodex';
-  const objectX = isDemodex ? MODEL_X : MICROBE_X;
 
   // Bandeau du haut : le rapport de taille pour les microbes, sinon rien —
   // sur la cible Demodex, c'est le grain de sel qui porte la comparaison.
@@ -364,26 +370,32 @@ function targetMarkup(def: TargetDef, index: number) {
        ${magnifier()}`
     : '';
 
+  // L'organisme de l'image est le sujet : seul et centré par défaut. La mise en
+  // regard avec le Demodex encombrait l'écran alors qu'elle n'est utile que
+  // ponctuellement — elle est donc groupée, masquée, et appelée par un bouton.
   return `
     <a-entity id="t${index}" mindar-image-target="targetIndex: ${index}">
       <a-entity id="rig${index}">
         <a-entity rotation="90 0 0">
-          <a-entity id="spin${index}" position="${num(objectX)} 0 0">
+          <a-entity id="spin${index}" position="${num(isDemodex ? MODEL_X : 0)} 0 0"
+                    scale="${isDemodex ? '1 1 1' : `${num(SOLO_SCALE)} ${num(SOLO_SCALE)} ${num(SOLO_SCALE)}`}">
             ${def.build()}
           </a-entity>
           ${isDemodex ? `
             <a-box position="${num(SALT_X)} ${num(SALT_SIZE / 2)} 0"
                    width="${num(SALT_SIZE)}" height="${num(SALT_SIZE)}" depth="${num(SALT_SIZE)}"
                    material="color: #f2f2f2; roughness: 0.25; metalness: 0.05"></a-box>` : ''}
-          ${def.ratio ? def.reference() : ''}
-          ${def.shape ? realScaleModel(def.shape) : ''}
+          ${def.shape ? `
+            <a-entity id="cmp3d${index}" visible="false">
+              ${def.reference()}
+              ${realScaleModel(def.shape)}
+            </a-entity>` : ''}
         </a-entity>
         ${banner}
-        <a-image src="${labelTexture(def.name, def.size)}"
-                 position="${num(objectX)} ${num(BAR_Y)} 0.011"
-                 width="${def.ratio ? '0.44' : '0.6'}" height="${def.ratio ? '0.135' : '0.185'}"
-                 material="transparent: true"></a-image>
-        ${refLabel}
+        <a-image id="name${index}" src="${labelTexture(def.name, def.size)}"
+                 position="0 ${num(BAR_Y)} 0.011"
+                 width="0.6" height="0.185" material="transparent: true"></a-image>
+        ${def.shape ? `<a-entity id="cmp2d${index}" visible="false">${refLabel}</a-entity>` : ''}
         ${isDemodex ? def.reference() : ''}
       </a-entity>
     </a-entity>`;
@@ -408,6 +420,9 @@ export function StudentAr() {
   const ratioRef = useRef<number | null>(null);
   const animRef = useRef<number | null>(null);
   const [canZoom, setCanZoom] = useState(false);
+  const [compare, setCompare] = useState(false);
+  const cmpRefs = useRef<any[]>([]);
+  const nameRef = useRef<any>(null);
 
   // Le zoom se recentre progressivement sur le point où se trouve le microbe à
   // sa taille réelle : sans cela, il quitterait l'écran bien avant d'être visible.
@@ -478,6 +493,27 @@ export function StudentAr() {
   const endDrag = (e: React.PointerEvent) => {
     pointers.current.delete(e.pointerId);
     pinch.current = null;
+  };
+
+  // Bascule la mise en regard : l'organisme se décale à droite pour laisser la
+  // place au Demodex, qui apparaît avec le point marquant la taille réelle.
+  const toggleCompare = () => {
+    const on = !compare;
+    setCompare(on);
+    // Le recentrage du zoom ne vise le point qu'en mode comparaison.
+    hasSpot.current = on;
+    cmpRefs.current.forEach((el) => el?.setAttribute('visible', on));
+    const spin = spinRef.current?.object3D;
+    if (spin) {
+      spin.position.x = on ? MICROBE_X : 0;
+      spin.scale.setScalar(on ? 1 : SOLO_SCALE);
+    }
+    const label = nameRef.current?.object3D;
+    if (label) {
+      label.position.setX(on ? MICROBE_X : 0);
+      label.scale.setScalar(on ? CMP_LABEL_SCALE : 1);
+    }
+    recenter();
   };
 
   // Atteindre ×2000 au pincement demanderait une dizaine de gestes : ce bouton
@@ -604,9 +640,24 @@ export function StudentAr() {
           // Les gestes agissent sur la cible actuellement reconnue.
           rigRef.current = scene.querySelector(`#rig${i}`);
           spinRef.current = scene.querySelector(`#spin${i}`);
-          hasSpot.current = !!def.shape;
+          hasSpot.current = false;
           ratioRef.current = def.ratio ?? null;
           setCanZoom(!!def.shape);
+          // Chaque reconnaissance repart de la vue simple : l'organisme seul.
+          setCompare(false);
+          cmpRefs.current = [scene.querySelector(`#cmp3d${i}`), scene.querySelector(`#cmp2d${i}`)];
+          cmpRefs.current.forEach((cmp) => cmp?.setAttribute('visible', false));
+          nameRef.current = scene.querySelector(`#name${i}`);
+          const label = nameRef.current?.object3D;
+          if (label) {
+            label.position.setX(0);
+            label.scale.setScalar(1);
+          }
+          const spin = spinRef.current?.object3D;
+          if (spin && def.shape) {
+            spin.position.x = 0;
+            spin.scale.setScalar(SOLO_SCALE);
+          }
           pan.current = { x: 0, y: 0 };
           zoomRef.current = 1;
           setZoom(1);
@@ -682,6 +733,19 @@ export function StudentAr() {
               : 'Vise une image de ton cours…'}
           </span>
           {canZoom && (
+            <button
+              onClick={toggleCompare}
+              style={{
+                padding: '10px 14px', borderRadius: 10, fontSize: 14, whiteSpace: 'nowrap',
+                background: compare ? T.gold : 'transparent',
+                border: `1px solid ${compare ? T.gold : T.cardBorder}`,
+                color: compare ? '#241a0c' : T.text,
+              }}
+            >
+              🪳 Comparer
+            </button>
+          )}
+          {canZoom && compare && (
             <button
               onClick={zoomToMicrobe}
               style={{
