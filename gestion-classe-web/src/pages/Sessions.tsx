@@ -75,7 +75,7 @@ function formatWeekLabel(days: Date[]): string {
 
 export function Sessions() {
   const { user } = useAuth();
-  const { toast } = useUIFeedback();
+  const { toast, confirm } = useUIFeedback();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [classes, setClasses] = useState<ClassFilter[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -103,13 +103,15 @@ export function Sessions() {
   const [error, setError] = useState<string | null>(null);
 
 
-  // Add event states
+  // Add / edit event states
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [addEventStudent, setAddEventStudent] = useState('');
   const [addEventType, setAddEventType] = useState('');
   const [addEventSubtype, setAddEventSubtype] = useState('');
   const [addEventNote, setAddEventNote] = useState('');
   const [isAddingEvent, setIsAddingEvent] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -252,44 +254,85 @@ export function Sessions() {
     setShowSessionModal(false);
     setSelectedSession(null);
     setClassroomData(null);
+    resetEventForm();
+  };
+
+  const resetEventForm = () => {
     setShowAddEvent(false);
+    setEditingEventId(null);
     setAddEventStudent('');
     setAddEventType('');
     setAddEventSubtype('');
     setAddEventNote('');
   };
 
-  const handleAddEvent = async () => {
+  const handleStartEditEvent = (event: SessionEvent) => {
+    setEditingEventId(event.id);
+    setAddEventStudent(event.student_id);
+    setAddEventType(event.type);
+    setAddEventSubtype(event.subtype || '');
+    setAddEventNote(event.note || '');
+    setShowAddEvent(true);
+  };
+
+  const handleSubmitEvent = async () => {
     if (!selectedSession || !addEventStudent || !addEventType) return;
+    const isEditing = editingEventId !== null;
     setIsAddingEvent(true);
     try {
-      const { error } = await supabase
-        .from('events')
-        .insert({
-          session_id: selectedSession.id,
-          student_id: addEventStudent,
-          type: addEventType,
-          subtype: addEventSubtype || null,
-          note: addEventNote.trim() || null,
-          timestamp: new Date().toISOString(),
-        });
-      if (error) { toast('Erreur lors de l\'ajout'); return; }
+      const payload = {
+        student_id: addEventStudent,
+        type: addEventType,
+        subtype: addEventSubtype || null,
+        note: addEventNote.trim() || null,
+      };
+      const { error } = isEditing
+        ? await supabase.from('events').update(payload).eq('id', editingEventId)
+        : await supabase.from('events').insert({
+            ...payload,
+            session_id: selectedSession.id,
+            timestamp: new Date().toISOString(),
+          });
+      if (error) { toast(isEditing ? 'Erreur lors de la modification' : 'Erreur lors de l\'ajout', 'error'); return; }
       // Refresh events in the sheet
       await loadClassroomData(selectedSession);
       // Update session counts
       loadSessions();
-      // Reset form
-      setAddEventStudent('');
-      setAddEventType('');
-      setAddEventSubtype('');
-      setAddEventNote('');
-      setShowAddEvent(false);
-      toast('Événement ajouté');
+      resetEventForm();
+      toast(isEditing ? 'Événement modifié' : 'Événement ajouté');
     } catch (err) {
       console.error(err);
-      toast('Erreur lors de l\'ajout');
+      toast(isEditing ? 'Erreur lors de la modification' : 'Erreur lors de l\'ajout', 'error');
     } finally {
       setIsAddingEvent(false);
+    }
+  };
+
+  const handleDeleteEvent = async (event: SessionEvent) => {
+    if (!selectedSession) return;
+    const student = studentsMap.get(event.student_id);
+    const config = EVENT_CONFIG[event.type];
+    const ok = await confirm({
+      title: 'Supprimer cet événement ?',
+      message: `${config?.label || event.type}${event.subtype ? ` (${event.subtype})` : ''} — ${student?.pseudo || 'élève inconnu'} à ${formatTime(event.timestamp)}.`,
+      details: 'Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setDeletingEventId(event.id);
+    try {
+      const { error } = await supabase.from('events').delete().eq('id', event.id);
+      if (error) { toast('Erreur lors de la suppression', 'error'); return; }
+      if (editingEventId === event.id) resetEventForm();
+      await loadClassroomData(selectedSession);
+      loadSessions();
+      toast('Événement supprimé');
+    } catch (err) {
+      console.error(err);
+      toast('Erreur lors de la suppression', 'error');
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -842,8 +885,9 @@ export function Sessions() {
                     const dotColor = event.type === 'participation' ? 'var(--pos)' : event.type === 'bavardage' ? 'var(--neg)' : event.type === 'absence' ? 'var(--text-dim)' : 'var(--indigo)';
                     const label = event.subtype ? `${config.label} (${event.subtype})` : config.label;
                     const isLast = idx === classroomData.events.length - 1;
+                    const isEditing = editingEventId === event.id;
                     return (
-                      <div key={event.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0' }}>
+                      <div key={event.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderRadius: 8, background: isEditing ? 'var(--surface-3)' : 'transparent', opacity: deletingEventId === event.id ? 0.4 : 1, transition: 'background 0.12s, opacity 0.12s' }}>
                         <div style={{ width: 44, flexShrink: 0, textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', paddingTop: 2 }}>
                           {formatTime(event.timestamp)}
                         </div>
@@ -855,6 +899,26 @@ export function Sessions() {
                           <div style={{ fontWeight: 600, fontSize: 13.5 }}>{student?.pseudo || '?'}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{label}</div>
                           {event.note && <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', marginTop: 2 }}>« {event.note} »</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                          <button
+                            onClick={() => handleStartEditEvent(event)}
+                            disabled={deletingEventId === event.id}
+                            title="Modifier l'événement"
+                            aria-label="Modifier l'événement"
+                            style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 7, border: 'none', background: 'none', color: isEditing ? 'var(--indigo)' : 'var(--text-dim)', cursor: 'pointer' }}
+                          >
+                            <Icon name="pencil" size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEvent(event)}
+                            disabled={deletingEventId === event.id}
+                            title="Supprimer l'événement"
+                            aria-label="Supprimer l'événement"
+                            style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 7, border: 'none', background: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+                          >
+                            <Icon name="trash" size={14} />
+                          </button>
                         </div>
                       </div>
                     );
@@ -870,7 +934,9 @@ export function Sessions() {
             {/* Add event form */}
             {showAddEvent && classroomData && (
               <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 10 }}>Nouvel événement</div>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  {editingEventId ? 'Modifier l’événement' : 'Nouvel événement'}
+                </div>
                 {/* Student select */}
                 <select
                   value={addEventStudent}
@@ -920,26 +986,26 @@ export function Sessions() {
                     ))}
                   </div>
                 )}
-                {/* Note for remarque */}
-                {addEventType === 'remarque' && (
+                {/* Note (obligatoirement proposée pour remarque, facultative sinon) */}
+                {addEventType && (
                   <textarea
                     value={addEventNote}
                     onChange={(e) => setAddEventNote(e.target.value)}
-                    placeholder="Remarque..."
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontFamily: 'var(--font-sans)', resize: 'none', marginBottom: 8 }}
+                    placeholder={addEventType === 'remarque' ? 'Remarque...' : 'Note (facultatif)...'}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontFamily: 'var(--font-sans)', color: 'var(--text)', resize: 'none', marginBottom: 8 }}
                     rows={2}
                   />
                 )}
                 {/* Submit */}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowAddEvent(false)} className="btn btn--ghost" style={{ fontSize: 12, padding: '6px 14px' }}>Annuler</button>
+                  <button onClick={resetEventForm} className="btn btn--ghost" style={{ fontSize: 12, padding: '6px 14px' }}>Annuler</button>
                   <button
-                    onClick={handleAddEvent}
+                    onClick={handleSubmitEvent}
                     disabled={isAddingEvent || !addEventStudent || !addEventType || (addEventType === 'sortie' && !addEventSubtype)}
                     className="btn btn--accent"
                     style={{ fontSize: 12, padding: '6px 14px', opacity: (isAddingEvent || !addEventStudent || !addEventType) ? 0.5 : 1 }}
                   >
-                    {isAddingEvent ? '...' : 'Ajouter'}
+                    {isAddingEvent ? '...' : editingEventId ? 'Enregistrer' : 'Ajouter'}
                   </button>
                 </div>
               </div>
@@ -958,7 +1024,20 @@ export function Sessions() {
               <Link to={`/sessions/${selectedSession.id}`} className="btn btn--ghost" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none' }}>
                 Exporter
               </Link>
-              <button onClick={() => setShowAddEvent(!showAddEvent)} className="btn btn--primary" style={{ flex: 1, justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  if (showAddEvent && !editingEventId) { resetEventForm(); return; }
+                  // Depuis le mode édition, on repart sur un formulaire vierge
+                  setEditingEventId(null);
+                  setAddEventStudent('');
+                  setAddEventType('');
+                  setAddEventSubtype('');
+                  setAddEventNote('');
+                  setShowAddEvent(true);
+                }}
+                className="btn btn--primary"
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
                 <Icon name="plus" size={14} /> Ajouter un événement
               </button>
             </div>
