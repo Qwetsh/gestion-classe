@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import { fetchStudentValidatedGrades, type StudentValidatedGrade } from '../lib/evaluationQueries';
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
+import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import QRCode from 'qrcode';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
@@ -1384,6 +1385,34 @@ export function Students() {
     }
   };
 
+  // Changement de classe en cours d'année (historique, tampons et code conservés)
+  const changeStudentClass = async (newClassId: string) => {
+    if (!selectedStudentForDetail) return;
+    const { student } = selectedStudentForDetail;
+    if (!newClassId || newClassId === student.class_id) return;
+    const target = classes.find(c => c.id === newClassId);
+    if (!target) return;
+
+    const ok = await showConfirm({
+      title: 'Changer de classe',
+      message: `Transférer ${student.pseudo} de ${student.class_name || 'sans classe'} vers ${target.name} ?`,
+      details: "Son historique, sa carte à tampons et son code de connexion sont conservés. Sa place dans l'ancien plan de classe est libérée et sa maison est reprise si le module est actif dans la nouvelle classe.",
+      confirmLabel: 'Transférer',
+      variant: 'warning',
+    });
+    if (!ok) return;
+
+    try {
+      const r = await transferStudent(student.id, newClassId, student.class_id || null);
+      toast(describeTransfer(student.pseudo, target.name, r), 'success');
+      setShowStudentDetailModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Failed to transfer student:', error);
+      toast('Erreur lors du changement de classe.');
+    }
+  };
+
   const toggleWitness = async () => {
     if (!selectedStudentForDetail) return;
 
@@ -2311,8 +2340,18 @@ export function Students() {
                     <h3 className="text-xl font-semibold text-[var(--text)]">
                       {selectedStudentForDetail.student.pseudo}
                     </h3>
-                    <p className="text-sm text-[var(--text-dim)]">
-                      {selectedStudentForDetail.student.class_name}
+                    <p className="text-sm text-[var(--text-dim)] flex items-center gap-2 flex-wrap">
+                      <select
+                        value={selectedStudentForDetail.student.class_id || ''}
+                        onChange={(e) => changeStudentClass(e.target.value)}
+                        className="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm cursor-pointer"
+                        title="Changer de classe"
+                      >
+                        {!selectedStudentForDetail.student.class_id && <option value="">Sans classe</option>}
+                        {classes.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
                       {selectedStudentForDetail.student.student_code && (
                         <span className="ml-2 px-2 py-0.5 bg-[var(--surface-3)] rounded text-xs font-mono">
                           {selectedStudentForDetail.student.student_code}

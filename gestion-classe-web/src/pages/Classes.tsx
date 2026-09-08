@@ -11,6 +11,7 @@ import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Icon } from '../components/design-system';
 import { fetchAcademyConfig, toggleAcademyModule } from '../lib/academyQueries';
 import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib/studentTabsQueries';
+import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 
 interface Class {
   id: string;
@@ -58,6 +59,11 @@ type DragItem = { studentId: string; fromCell?: { row: number; col: number } };
 interface ImportMatch {
   pseudo: string;
   detachedId: string;
+  /** 'detached' : ancien élève sans classe ; 'transfer' : élève actuellement dans une autre classe */
+  kind: 'detached' | 'transfer';
+  /** Classe actuelle (transfert uniquement) */
+  currentClassId: string | null;
+  currentClassName: string | null;
   prevClass: string | null;
   prevGrade: number | null;
   accepted: boolean;
@@ -176,6 +182,8 @@ export function Classes() {
   const [className, setClassName] = useState('');
   const [studentFirstName, setStudentFirstName] = useState('');
   const [studentLastName, setStudentLastName] = useState('');
+  // Changement de classe depuis la modale de modification ('' = inchangée)
+  const [studentTargetClassId, setStudentTargetClassId] = useState('');
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -779,6 +787,7 @@ export function Classes() {
     }
     setStudentFirstName('');
     setStudentLastName('');
+    setStudentTargetClassId('');
     setFormError('');
     setShowStudentModal(true);
   };
@@ -830,6 +839,22 @@ export function Classes() {
       .is('class_id', null);
     const detachedList = detached || [];
 
+    // Élèves actuellement dans une AUTRE classe : changement de classe en cours d'année.
+    const { data: elsewhere } = await supabase
+      .from('students')
+      .select('id, pseudo, class_id, classes(name)')
+      .eq('user_id', user!.id)
+      .not('class_id', 'is', null)
+      .neq('class_id', classId);
+    const elsewhereByPseudo = new Map<string, { id: string; classId: string; className: string }[]>();
+    (elsewhere || []).forEach((st) => {
+      const cls = st.classes as unknown as { name: string } | { name: string }[] | null;
+      const className = Array.isArray(cls) ? cls[0]?.name : cls?.name;
+      const l = elsewhereByPseudo.get(st.pseudo) || [];
+      l.push({ id: st.id, classId: st.class_id as string, className: className ?? '?' });
+      elsewhereByPseudo.set(st.pseudo, l);
+    });
+
     // Historique (classe précédente + moyenne) des détachés
     const ids = detachedList.map(d => d.id);
     const hist = new Map<string, { prevClass: string | null; prevGrade: number | null }>();
@@ -865,10 +890,14 @@ export function Classes() {
     const newPseudos: string[] = [];
     pseudos.forEach(p => {
       const q = byPseudo.get(p);
+      const e = elsewhereByPseudo.get(p);
       if (q && q.length > 0) {
         const detachedId = q.shift()!;
         const h = hist.get(detachedId) || { prevClass: null, prevGrade: null };
-        matches.push({ pseudo: p, detachedId, prevClass: h.prevClass, prevGrade: h.prevGrade, accepted: true });
+        matches.push({ pseudo: p, detachedId, kind: 'detached', currentClassId: null, currentClassName: null, prevClass: h.prevClass, prevGrade: h.prevGrade, accepted: true });
+      } else if (e && e.length > 0) {
+        const cur = e.shift()!;
+        matches.push({ pseudo: p, detachedId: cur.id, kind: 'transfer', currentClassId: cur.classId, currentClassName: cur.className, prevClass: null, prevGrade: null, accepted: true });
       } else {
         newPseudos.push(p);
       }
@@ -895,12 +924,17 @@ export function Classes() {
     try {
       const accepted = importPreview.matches.filter(m => m.accepted);
       const rejected = importPreview.matches.filter(m => !m.accepted);
-      if (accepted.length > 0) {
+      const reattached = accepted.filter(m => m.kind === 'detached');
+      const transferred = accepted.filter(m => m.kind === 'transfer');
+      if (reattached.length > 0) {
         const { error } = await supabase
           .from('students')
           .update({ class_id: importPreview.classId, updated_at: new Date().toISOString() })
-          .in('id', accepted.map(m => m.detachedId));
+          .in('id', reattached.map(m => m.detachedId));
         if (error) throw error;
+      }
+      for (const m of transferred) {
+        await transferStudent(m.detachedId, importPreview.classId, m.currentClassId);
       }
       const toInsert = [...importPreview.newPseudos, ...rejected.map(m => m.pseudo)]
         .map(pseudo => ({ pseudo, class_id: importPreview.classId, user_id: user.id }));
@@ -911,7 +945,11 @@ export function Classes() {
       setImportPreview(null);
       if (selectedClass) loadStudents(selectedClass.id);
       loadClasses();
-      toast(`Import terminé : ${accepted.length} retrouvé(s), ${toInsert.length} nouveau(x).`, 'success');
+      const parts = [];
+      if (reattached.length > 0) parts.push(`${reattached.length} retrouvé(s)`);
+      if (transferred.length > 0) parts.push(`${transferred.length} transféré(s) d'une autre classe`);
+      if (toInsert.length > 0) parts.push(`${toInsert.length} nouveau(x)`);
+      toast(`Import terminé : ${parts.join(', ')}.`, 'success');
     } catch (e) {
       console.error('Error applying import:', e);
       toast('Erreur lors de l\'import', 'error');
@@ -923,22 +961,39 @@ export function Classes() {
   const handleSaveStudent = async () => {
     const trimmedFirst = studentFirstName.trim();
     const trimmedLast = studentLastName.trim();
-
-    if (!trimmedFirst || !trimmedLast) { setFormError('Le prenom et le nom sont requis'); return; }
-    if (trimmedFirst.length > 50 || trimmedLast.length > 50) { setFormError('Le prenom et le nom ne peuvent pas depasser 50 caracteres'); return; }
-    if (trimmedFirst.length < 2) { setFormError('Le prenom doit contenir au moins 2 caracteres'); return; }
     if (!selectedClass) return;
 
+    // En modification, le renommage est optionnel : on peut ne changer que la classe.
+    const renaming = !editingStudent || !!(trimmedFirst || trimmedLast);
+    const transferring = !!editingStudent && !!studentTargetClassId && studentTargetClassId !== selectedClass.id;
+
+    if (renaming) {
+      if (!trimmedFirst || !trimmedLast) { setFormError('Le prenom et le nom sont requis'); return; }
+      if (trimmedFirst.length > 50 || trimmedLast.length > 50) { setFormError('Le prenom et le nom ne peuvent pas depasser 50 caracteres'); return; }
+      if (trimmedFirst.length < 2) { setFormError('Le prenom doit contenir au moins 2 caracteres'); return; }
+    } else if (!transferring) {
+      setFormError('Renseigne un nouveau nom ou choisis une autre classe');
+      return;
+    }
+
     setIsSubmitting(true);
-    const pseudo = generatePseudo(trimmedFirst, trimmedLast);
+    const pseudo = renaming ? generatePseudo(trimmedFirst, trimmedLast) : editingStudent!.pseudo;
 
     try {
       if (editingStudent) {
-        const { error } = await supabase
-          .from('students')
-          .update({ pseudo, updated_at: new Date().toISOString() })
-          .eq('id', editingStudent.id);
-        if (error) throw error;
+        if (renaming) {
+          const { error } = await supabase
+            .from('students')
+            .update({ pseudo, updated_at: new Date().toISOString() })
+            .eq('id', editingStudent.id);
+          if (error) throw error;
+        }
+        if (transferring) {
+          const target = classes.find(c => c.id === studentTargetClassId);
+          const r = await transferStudent(editingStudent.id, studentTargetClassId, selectedClass.id);
+          toast(describeTransfer(pseudo, target?.name ?? '?', r), 'success');
+          if (selectedRoom) loadPlan(selectedClass.id, selectedRoom.id);
+        }
       } else {
         await attachOrInsertStudents(selectedClass.id, [{
           pseudo,
@@ -1780,7 +1835,7 @@ export function Classes() {
             </h3>
             {editingStudent && (
               <p className="text-sm text-[var(--text-dim)] mb-4">
-                Pseudo actuel: <strong>{editingStudent.pseudo}</strong>
+                Pseudo actuel: <strong>{editingStudent.pseudo}</strong> · laisse le nom vide pour ne changer que la classe
               </p>
             )}
             <div className="space-y-4 mb-4">
@@ -1804,6 +1859,25 @@ export function Classes() {
                   Pseudo: <strong>{generatePseudo(studentFirstName, studentLastName)}</strong>
                 </p>
               )}
+              {editingStudent && classes.length > 1 && (
+                <div className="pt-3 border-t border-[var(--border)]">
+                  <label className="block text-sm text-[var(--text-dim)] mb-1">Classe</label>
+                  <select
+                    value={studentTargetClassId || selectedClass?.id || ''}
+                    onChange={(e) => setStudentTargetClassId(e.target.value)}
+                    className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)]"
+                  >
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {studentTargetClassId && studentTargetClassId !== selectedClass?.id && (
+                    <p className="text-xs text-[var(--text-dim)] mt-2">
+                      L'élève garde son historique, sa carte à tampons et son code. Sa place dans le plan de classe est libérée et sa maison est reprise si le module est actif dans la nouvelle classe.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             {formError && <p className="text-red-500 text-sm mb-4">{formError}</p>}
             <div className="flex gap-3 justify-end">
@@ -1819,7 +1893,7 @@ export function Classes() {
                 className="px-4 py-2 bg-[var(--indigo)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'En cours...' : editingStudent ? 'Modifier' : 'Ajouter'}
+                {isSubmitting ? 'En cours...' : editingStudent ? (studentTargetClassId && studentTargetClassId !== selectedClass?.id ? 'Transférer' : 'Modifier') : 'Ajouter'}
               </button>
             </div>
           </div>
@@ -1833,7 +1907,9 @@ export function Classes() {
             <div className="p-5 border-b border-[var(--border)]">
               <h3 className="text-lg font-semibold text-[var(--text)]">Reconnaissance des élèves</h3>
               <p className="text-sm text-[var(--text-dim)] mt-1">
-                {importPreview.matches.length} ancien(s) élève(s) reconnu(s), {importPreview.newPseudos.length} nouveau(x).
+                {importPreview.matches.filter(m => m.kind === 'detached').length} ancien(s) élève(s) reconnu(s),{' '}
+                {importPreview.matches.filter(m => m.kind === 'transfer').length} déjà dans une autre classe,{' '}
+                {importPreview.newPseudos.length} nouveau(x).
                 Décoche un rapprochement si ce n'est pas le même élève (il sera alors créé comme nouveau).
               </p>
             </div>
@@ -1852,9 +1928,13 @@ export function Classes() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-[var(--text)]">{m.pseudo}</div>
                     <div className="text-xs text-[var(--text-dim)]">
-                      {m.accepted ? '↪ retrouvé' : '＋ sera créé comme nouveau'}
-                      {m.prevClass && <> · était en <strong>{m.prevClass}</strong></>}
-                      {m.prevGrade != null && <> · moy {m.prevGrade.toFixed(1)}</>}
+                      {!m.accepted
+                        ? '＋ sera créé comme nouveau'
+                        : m.kind === 'transfer'
+                          ? <>⇄ sera transféré(e) depuis <strong>{m.currentClassName}</strong> (historique conservé)</>
+                          : '↪ retrouvé'}
+                      {m.kind === 'detached' && m.prevClass && <> · était en <strong>{m.prevClass}</strong></>}
+                      {m.kind === 'detached' && m.prevGrade != null && <> · moy {m.prevGrade.toFixed(1)}</>}
                     </div>
                   </div>
                 </label>
