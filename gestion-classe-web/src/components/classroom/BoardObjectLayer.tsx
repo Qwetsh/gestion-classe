@@ -111,6 +111,8 @@ interface Props {
   onEquationCommit: (id: string, latex: string, raster: Blob | null, ratio: number) => void;
   onWidgetConfig: (id: string, patch: WidgetObject['config']) => void;
   onToggleInteractive: (id: string) => void;
+  /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
+  students?: string[];
 }
 
 type Handle = 'e' | 'w' | 'n' | 's' | 'ne' | 'nw' | 'se' | 'sw';
@@ -184,7 +186,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onToggleInteractive,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onToggleInteractive, students,
   },
   ref
 ) {
@@ -768,7 +770,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             )}
             {o.type === 'audio' && <AudioView o={o} scale={scale} />}
             {o.type === 'link' && <LinkView o={o} scale={scale} active={active} />}
-            {o.type === 'widget' && <WidgetView o={o} scale={scale} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} />}
+            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} />}
             {o.type === 'equation' && (
               <EquationView
                 o={o}

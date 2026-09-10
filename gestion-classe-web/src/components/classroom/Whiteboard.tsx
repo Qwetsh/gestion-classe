@@ -332,6 +332,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [searchOpen, setSearchOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Mode affichage (écran de classe) : barre et panneaux masqués, widgets manipulables. */
+  const [displayMode, setDisplayMode] = useState(false);
   const [pickOpen, setPickOpen] = useState(false);
   /** Élèves déjà tirés dans la séance (sans remise), mémorisés sur l'appareil. */
   const [pickedIds, setPickedIds] = useState<ReadonlySet<string>>(() => {
@@ -1003,9 +1005,21 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [addObject, color]);
 
   const insertWidget = useCallback((widget: WidgetKind) => {
-    const sizes: Record<WidgetKind, [number, number]> = { timer: [320, 170], dice: [260, 180], wheel: [340, 180], noise: [360, 230], calc: [280, 360] };
+    const sizes: Record<WidgetKind, [number, number]> = {
+      timer: [320, 170], dice: [260, 180], wheel: [340, 180], noise: [360, 230], calc: [280, 360],
+      meter: [420, 170], groups: [560, 300], clock: [340, 170], traffic: [120, 260], qr: [220, 240],
+    };
     const [w, h] = sizes[widget];
-    const config: WidgetObject['config'] = widget === 'timer' ? { seconds: 300 } : widget === 'dice' ? { faces: 6 } : widget === 'wheel' ? { entries: ['A', 'B', 'C'] } : widget === 'noise' ? { level: 0 } : {};
+    const config: WidgetObject['config'] = widget === 'timer' ? { seconds: 300 }
+      : widget === 'dice' ? { faces: 6 }
+      : widget === 'wheel' ? { entries: ['A', 'B', 'C'] }
+      : widget === 'noise' ? { level: 0 }
+      : widget === 'meter' ? { threshold: 60 }
+      : widget === 'groups' ? { groupSize: 4 }
+      : widget === 'clock' ? { showDate: true }
+      : widget === 'traffic' ? { level: 2 }
+      : widget === 'qr' ? { text: window.location.origin + window.location.pathname.replace(/\/$/, '') + '/eleve' }
+      : {};
     const obj: WidgetObject = { id: uid(), type: 'widget', ...centered(w, h), w, h, widget, config };
     addObject(obj);
   }, [addObject]);
@@ -1862,7 +1876,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const step = e.shiftKey ? 10 : 1;
         nudgeSelected(e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0, e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0);
       }
-      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setSpotlight(false); }
+      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setSpotlight(false); setDisplayMode(false); }
       else if (ctrl && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomAt(1.2, window.innerWidth / 2, window.innerHeight / 2); }
       else if (ctrl && e.key === '-') { e.preventDefault(); zoomAt(1 / 1.2, window.innerWidth / 2, window.innerHeight / 2); }
       else if (ctrl && e.key === '0') { e.preventDefault(); setView(IDENTITY_VIEW); }
@@ -2115,7 +2129,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       <div
         className={`wb__stage ${view.zoom > 1 ? 'is-zoomed' : ''}`}
         ref={containerRef}
-        style={{ marginRight: navOpen ? 232 : 0 }}
+        style={{ marginRight: navOpen && !displayMode ? 232 : 0 }}
         onPointerDownCapture={onStagePointerDown}
         onPointerMoveCapture={onStagePointerMove}
         onPointerUpCapture={onStagePointerUp}
@@ -2158,6 +2172,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onEquationCommit={(id, latex, raster, ratio) => void onEquationCommit(id, latex, raster, ratio)}
           onWidgetConfig={onWidgetConfig}
           onToggleInteractive={onToggleInteractive}
+          students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
         />
         {page.curtain && pageRevealedFraction(reveal, page.id) < 1 && (() => {
           const f = pageRevealedFraction(reveal, page.id);
@@ -2244,6 +2259,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         )}
       </div>
       {radial && <BoardRadialMenu x={radial.x} y={radial.y} items={radialItems} onClose={() => setRadial(null)} />}
+      {displayMode && (
+        <button type="button" className="wb__display-exit" onClick={() => { setDisplayMode(false); if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined); }} title="Quitter le mode affichage (Échap)">
+          Quitter l'affichage
+        </button>
+      )}
       {spotlight && <BoardSpotlight onClose={() => setSpotlight(false)} />}
       {keyboardOpen && <BoardKeyboard onClose={() => setKeyboardOpen(false)} />}
       {pickOpen && classroom && (
@@ -2285,7 +2305,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         />
       )}
 
-      {navOpen && (
+      {navOpen && !displayMode && (
         <BoardPageNavigator
           pages={pages}
           pageIndex={pageIndex}
@@ -2307,7 +2327,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
       {ticker && <div className="wb__ticker" key={ticker}>{ticker}</div>}
 
-      <div className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -116 : 0 } : { right: tbi.bar === 'right' && navOpen ? 242 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
+      <div hidden={displayMode} className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -116 : 0 } : { right: tbi.bar === 'right' && navOpen ? 242 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
         <div className="wb__group">
           <button className={`wb__btn ${tool === 'select' ? 'is-on' : ''}`} onClick={() => setTool('select')} title="Sélection (V)">
             <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z" /></svg>
@@ -2469,7 +2489,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                   { label: recording ? 'Arrêter l\'enregistrement' : 'Enregistrer au micro', icon: recording ? '⏹' : '🎙', run: () => void toggleRecording() },
                   { label: 'Post-it', icon: '🗒', run: () => insertSticky() },
                   { label: 'Équation (LaTeX)', icon: '∑', run: insertEquation },
-                  ...(['timer', 'dice', 'wheel', 'noise', 'calc'] as WidgetKind[]).map((k) => ({ label: WIDGET_LABELS[k], icon: { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮' }[k], run: () => insertWidget(k) })),
+                  ...(['timer', 'clock', 'meter', 'noise', 'traffic', 'dice', 'wheel', 'groups', 'qr', 'calc'] as WidgetKind[]).map((k) => ({ label: WIDGET_LABELS[k], icon: { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮', meter: '🎚', groups: '👥', clock: '🕒', traffic: '🚦', qr: '▦' }[k], run: () => insertWidget(k) })),
                 ].map((it) => (
                   <button key={it.label} type="button" className="wbi__item" onClick={() => { it.run(); setInsertOpen(false); }}>
                     <span>{it.icon}</span>{it.label}
@@ -2531,6 +2551,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                 <button type="button" className="wbi__item" onClick={() => addInstrument('setsquare')}><span>📐</span>Équerre</button>
                 <button type="button" className="wbi__item" onClick={() => addInstrument('protractor')}><span>🧭</span>Rapporteur</button>
                 <button type="button" className="wbi__item" onClick={() => setSpotlight(true)}><span>🔦</span>Projecteur</button>
+                <button type="button" className="wbi__item" onClick={() => { setDisplayMode(true); setSettingsOpen(false); setTool('select'); void document.documentElement.requestFullscreen?.().catch(() => undefined); }}><span>🖥</span>Mode affichage (écran de classe)</button>
                 <button type="button" className="wbi__item" onClick={() => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2)}><span>🔍</span>Zoom + (Ctrl+molette)</button>
               </div>
             )}
@@ -2583,6 +2604,8 @@ const CSS = `
 .wbi__item { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #F3F4F6; font: 500 13px/1.2 Inter, system-ui, sans-serif; text-align: left; cursor: pointer; }
 .wbi__item:hover { background: #1F2937; }
 .wbi__item span { width: 22px; text-align: center; font-size: 16px; }
+.wb__display-exit { position: fixed; right: 14px; bottom: 14px; z-index: 12; height: 38px; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(17,24,39,0.55); color: #F9FAFB; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0.35; }
+.wb__display-exit:hover { opacity: 1; }
 .wb__curtain { position: absolute; z-index: 4; background: #1F2937; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 18px, transparent 18px 36px); box-shadow: 0 -6px 18px rgba(0,0,0,0.35); }
 .wb__curtain-edge { position: absolute; left: 0; right: 0; top: -14px; height: 28px; cursor: ns-resize; touch-action: none; }
 .wb__curtain-edge::after { content: ''; position: absolute; left: 50%; top: 10px; width: 80px; height: 8px; margin-left: -40px; border-radius: 4px; background: #6366F1; }

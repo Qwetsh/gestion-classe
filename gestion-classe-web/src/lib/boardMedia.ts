@@ -59,14 +59,24 @@ export interface LinkObject extends BoardObjectBase {
   size: number;
 }
 
-export type WidgetKind = 'timer' | 'dice' | 'wheel' | 'noise' | 'calc';
+export type WidgetKind = 'timer' | 'dice' | 'wheel' | 'noise' | 'calc' | 'meter' | 'groups' | 'clock' | 'traffic' | 'qr';
 
 export interface WidgetObject extends BoardObjectBase {
   type: 'widget';
   h: number;
   widget: WidgetKind;
   /** Réglages persistants du widget (durée, faces, entrées de la roue, niveau…). */
-  config: { seconds?: number; faces?: number; entries?: string[]; level?: number; label?: string };
+  config: {
+    seconds?: number; faces?: number; entries?: string[]; level?: number; label?: string;
+    /** Sonomètre : seuil d'alerte (0–100). */
+    threshold?: number;
+    /** Groupes : taille souhaitée et dernier tirage (noms). */
+    groupSize?: number; groups?: string[][];
+    /** Horloge : secondes et date. */
+    showSeconds?: boolean; showDate?: boolean;
+    /** QR code : contenu. */
+    text?: string;
+  };
 }
 
 export interface EquationObject extends BoardObjectBase {
@@ -85,9 +95,29 @@ export const WIDGET_LABELS: Record<WidgetKind, string> = {
   timer: 'Minuteur',
   dice: 'Dé',
   wheel: 'Roue',
-  noise: 'Niveau sonore',
+  noise: 'Consigne sonore',
   calc: 'Calculatrice',
+  meter: 'Sonomètre (micro)',
+  groups: 'Groupes aléatoires',
+  clock: 'Horloge',
+  traffic: 'Feu tricolore',
+  qr: 'QR code',
 };
+
+export const TRAFFIC_LEVELS = [
+  { label: 'Stop', color: '#DC2626' },
+  { label: 'Attention', color: '#F59E0B' },
+  { label: 'Allez-y', color: '#10B981' },
+];
+
+/** Répartition aléatoire en groupes de `size` (les derniers groupes absorbent le reste). */
+export function makeGroups(names: string[], size: number): string[][] {
+  const pool = [...names].sort(() => Math.random() - 0.5);
+  const count = Math.max(1, Math.round(pool.length / Math.max(1, size)));
+  const groups: string[][] = Array.from({ length: count }, () => []);
+  pool.forEach((n, i) => groups[i % count].push(n));
+  return groups;
+}
 
 export const NOISE_LEVELS = [
   { label: 'Silence', color: '#DC2626', icon: '🤫' },
@@ -334,8 +364,15 @@ export function renderMediaObject(ctx: CanvasRenderingContext2D, o: MediaObject,
       const sub = o.widget === 'timer' && o.config.seconds ? `${Math.floor(o.config.seconds / 60)} min ${o.config.seconds % 60 ? `${o.config.seconds % 60} s` : ''}`.trim()
         : o.widget === 'noise' ? NOISE_LEVELS[o.config.level ?? 0]?.label
         : o.widget === 'dice' ? `${o.config.faces ?? 6} faces`
-        : o.widget === 'wheel' ? `${(o.config.entries ?? []).length} entrées` : undefined;
-      labelBox(ctx, o, o.h, scale, o.widget === 'noise' ? NOISE_LEVELS[o.config.level ?? 0]?.color ?? '#1F2937' : '#312E81', o.config.label ?? WIDGET_LABELS[o.widget], sub);
+        : o.widget === 'wheel' ? `${(o.config.entries ?? []).length} entrées`
+        : o.widget === 'groups' ? `${(o.config.groups ?? []).length} groupes`
+        : o.widget === 'clock' ? new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : o.widget === 'traffic' ? TRAFFIC_LEVELS[o.config.level ?? 0]?.label
+        : o.widget === 'qr' ? (o.config.text ?? '').slice(0, 40) : undefined;
+      const fill = o.widget === 'noise' ? NOISE_LEVELS[o.config.level ?? 0]?.color ?? '#1F2937'
+        : o.widget === 'traffic' ? TRAFFIC_LEVELS[o.config.level ?? 0]?.color ?? '#1F2937'
+        : o.widget === 'qr' || o.widget === 'clock' ? '#111827' : '#312E81';
+      labelBox(ctx, o, o.h, scale, fill, o.config.label ?? WIDGET_LABELS[o.widget], sub);
       break;
     }
     case 'equation': {
