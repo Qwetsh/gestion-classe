@@ -156,6 +156,22 @@ export function StudentDashboard() {
     };
   }, []);
 
+  // Connexion automatique depuis un QR code personnel (?code=123456), puis nettoyage de l'URL
+  const autoLoginDone = useRef(false);
+  useEffect(() => {
+    if (autoLoginDone.current) return;
+    autoLoginDone.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = (params.get('code') || '').replace(/\D/g, '').slice(0, 6);
+    if (urlCode.length !== 6) return;
+    setCode(urlCode.split(''));
+    params.delete('code');
+    const rest = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
+    void handleSubmit(urlCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleDigitChange = useCallback((index: number, value: string) => {
     if (value.length > 1) value = value.slice(-1);
     if (value && !/^\d$/.test(value)) return;
@@ -195,8 +211,8 @@ export function StudentDashboard() {
     }
   }, [code]);
 
-  const handleSubmit = async () => {
-    const fullCode = code.join('');
+  const handleSubmit = async (override?: string) => {
+    const fullCode = override ?? code.join('');
     if (fullCode.length !== 6) return;
     setIsLoading(true);
     setError(null);
@@ -340,7 +356,7 @@ export function StudentDashboard() {
           )}
 
           <button
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={isLoading || code.join('').length !== 6}
             style={{
               width: '100%', padding: '14px', borderRadius: '12px', border: 'none',

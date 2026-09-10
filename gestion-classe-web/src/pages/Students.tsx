@@ -11,6 +11,7 @@ import { fetchStudentValidatedGrades, type StudentValidatedGrade } from '../lib/
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import QRCode from 'qrcode';
+import { generateStudentQrCardsPdf } from '../lib/generateStudentQrCards';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
 
@@ -263,6 +264,7 @@ export function Students() {
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [studentCodes, setStudentCodes] = useState<{ pseudo: string; code: string }[]>([]);
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
+  const [isExportingQrCards, setIsExportingQrCards] = useState(false);
 
   // QR code modal
   const [showQrModal, setShowQrModal] = useState(false);
@@ -1163,6 +1165,44 @@ export function Students() {
     navigator.clipboard.writeText(text);
   };
 
+  // Export PDF : cartes QR + code d'accès pour toutes les classes (une classe par page)
+  const exportQrCardsPdf = async () => {
+    if (!user) return;
+    setIsExportingQrCards(true);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('pseudo, student_code, class_id')
+        .eq('user_id', user.id)
+        .not('class_id', 'is', null);
+      if (error) throw error;
+
+      const byClass = new Map<string, { pseudo: string; code: string | null }[]>();
+      for (const s of data || []) {
+        const list = byClass.get(s.class_id) || [];
+        list.push({ pseudo: s.pseudo, code: s.student_code || null });
+        byClass.set(s.class_id, list);
+      }
+      const sortedClasses = [...classes]
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+        .filter(c => byClass.has(c.id))
+        .map(c => ({ name: c.name, students: byClass.get(c.id)! }));
+      if (sortedClasses.length === 0) {
+        toast('Aucun élève à exporter', 'info');
+        return;
+      }
+
+      const doc = await generateStudentQrCardsPdf(sortedClasses, `${window.location.origin}/gestion-classe/eleve`);
+      doc.save(`cartes-acces-eleves-${trimesterSettings.school_year || new Date().getFullYear()}.pdf`);
+      toast('PDF des cartes QR exporté !', 'success');
+    } catch (err) {
+      console.error('QR cards export error:', err);
+      toast("Erreur lors de l'export des cartes QR", 'error');
+    } finally {
+      setIsExportingQrCards(false);
+    }
+  };
+
   const openQrModal = async () => {
     const url = `${window.location.origin}/gestion-classe/eleve`;
     try {
@@ -1785,6 +1825,9 @@ export function Students() {
             </button>
             <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
               <Icon name="qr" size={14} /> QR
+            </button>
+            <button className="btn btn--ghost" onClick={exportQrCardsPdf} disabled={isExportingQrCards || classes.length === 0} title="PDF à imprimer : une carte par élève (QR code + code d'accès), classées par classe">
+              <Icon name="download" size={14} /> {isExportingQrCards ? 'Export…' : 'Cartes QR'}
             </button>
             <button className="btn btn--ghost" onClick={loadStudentCodes} disabled={isLoadingCodes || !selectedClassId}>
               Codes élèves
