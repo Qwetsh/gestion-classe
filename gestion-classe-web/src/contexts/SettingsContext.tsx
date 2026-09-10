@@ -41,6 +41,16 @@ export interface AppSettings {
   theme: ThemeMode;
 }
 
+// Annee scolaire courante deduite de la date (bascule au 1er aout).
+export function currentSchoolYear(now: Date = new Date()): SchoolYear {
+  const m = now.getMonth(); // 0 = janvier
+  const y = now.getFullYear();
+  const startYear = m >= 7 ? y : y - 1;
+  // T1 : septembre -> novembre | T2 : decembre -> mars | T3 : avril -> aout
+  const trimestre = m >= 7 && m <= 10 ? 1 : (m === 11 || m <= 2) ? 2 : 3;
+  return { label: `${startYear}-${startYear + 1}`, trimestre };
+}
+
 const DEFAULT_SETTINGS: AppSettings = {
   hiddenTabs: {
     rewards: false,
@@ -59,7 +69,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     codePostal: '57140 WOIPPY',
   },
   teacher: { nom: '', matiere: '', fonction: '' },
-  schoolYear: { label: '2025-2026', trimestre: 3 },
+  schoolYear: currentSchoolYear(),
   theme: 'light',
 };
 
@@ -69,7 +79,13 @@ function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const merged: AppSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    // Une annee scolaire perimee (reglage d'une annee precedente) est reinitialisee.
+    const current = currentSchoolYear();
+    if (!merged.schoolYear?.label || merged.schoolYear.label < current.label) {
+      merged.schoolYear = current;
+    }
+    return merged;
   } catch {
     return DEFAULT_SETTINGS;
   }

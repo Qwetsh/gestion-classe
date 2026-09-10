@@ -18,6 +18,7 @@ import { ToolGrid, ToolView } from './pages/Toolbox';
 import { Students } from './pages/Students';
 import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
+import { Classroom } from './pages/Classroom';
 import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
 import { Brevets } from './pages/Brevets';
@@ -60,6 +61,15 @@ function App() {
           }
         />
         <Route path="/rooms" element={<Navigate to="/classes" replace />} />
+        {/* Mode « en classe » : vue projetée plein écran, sans layout */}
+        <Route
+          path="/classe"
+          element={
+            <ProtectedRoute>
+              <Classroom />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/sessions"
           element={

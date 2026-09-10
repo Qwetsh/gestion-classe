@@ -78,8 +78,31 @@ C:\Users\Utilisateur\gestion-classe-build
 # 1. Copier les modifications vers le dossier de build
 cp -r gestion-classe-mobile/* /c/Users/Utilisateur/gestion-classe-build/
 
-# 2. Lancer le build depuis ce dossier
+# 2. IMPORTANT : réinitialiser les attributs/ACL hérités de OneDrive,
+#    sinon le tar envoyé à EAS contient des fichiers illisibles
+#    ("tar: Cannot open: Permission denied" en phase Prepare project)
+#    Depuis PowerShell dans le dossier de build :
+#    attrib -r -s -h -o -i /s /d *.* ; icacls . /reset /t /c /q
+
+# 3. Lancer le build depuis ce dossier
 cd /c/Users/Utilisateur/gestion-classe-build && npx eas build --platform android --profile preview
+```
+
+## Développement rapide sur téléphone (dev client)
+
+Un APK de dev « Gestion Classe (Dev) » (package `com.gestionclasse.app.dev`, keystore dédiée)
+coexiste avec l'app de prod sur le téléphone. Config via `app.config.js` (variable `APP_VARIANT`,
+positionnée par le profil `development` de eas.json). Rebuild nécessaire uniquement si les
+dépendances natives ou la config native changent.
+
+```bash
+# Boucle quotidienne (Fast Refresh sur le téléphone, même Wi-Fi) :
+cd gestion-classe-mobile && npx expo start
+# Réseau verrouillé (collège) : ajouter --tunnel, ou câble USB + adb reverse tcp:8081 tcp:8081
+# IMPORTANT : Watchman (installé via winget) est requis — sans lui, le watcher Metro
+# ne voit pas les modifications de fichiers dans OneDrive (Fast Refresh muet).
+# adb/scrcpy : %LOCALAPPDATA%\Microsoft\WinGet\Packages\Genymobile.scrcpy_*\scrcpy-win64-*\
+# Débogage Wi-Fi : adb tcpip 5555 puis adb connect <ip-du-tel>:5555
 ```
 
 ## Commandes utiles

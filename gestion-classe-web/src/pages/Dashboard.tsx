@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { useSettings } from '../contexts/SettingsContext';
 import { ClassChip } from '../components/design-system';
 import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
 import { GroupSessionLauncher } from '../components/live-session/GroupSessionLauncher';
+import { Whiteboard } from '../components/classroom/Whiteboard';
+import { BoardsPanel, FREE_BOARD_ID } from '../components/classroom/BoardsPanel';
 import { pronoteFetcher } from '../lib/pronoteFetcher';
 import type { TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
 
@@ -146,6 +149,8 @@ interface ClassAverage {
 
 export function Dashboard() {
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const [boardOpen, setBoardOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Core data
@@ -609,7 +614,7 @@ export function Dashboard() {
             </div>
             <div className="dash__kpi-hint">
               <span style={{ color: avgImplication >= 10 ? 'var(--pos)' : 'var(--neg)', fontSize: 11, fontWeight: 600 }}>
-                T3 en cours
+                T{settings.schoolYear.trimestre} en cours
               </span>
             </div>
           </div>
@@ -1059,6 +1064,13 @@ export function Dashboard() {
                     <div className="dash__shortcut-sub">Sessions de groupe</div>
                   </div>
                 </Link>
+                <button type="button" onClick={() => setBoardOpen(true)} className="dash__shortcut" style={{ font: 'inherit', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer' }}>
+                  <span className="dash__shortcut-icon">🖊</span>
+                  <div>
+                    <div className="dash__shortcut-title">Tableau blanc</div>
+                    <div className="dash__shortcut-sub">Ardoise libre, sans séance</div>
+                  </div>
+                </button>
                 <Link to="/tools" className="dash__shortcut">
                   <span className="dash__shortcut-icon">🧰</span>
                   <div>
@@ -1082,6 +1094,8 @@ export function Dashboard() {
                 </Link>
               </div>
             </div>
+
+            {user && <BoardsPanel userId={user.id} />}
 
             {/* Moyenne par classe */}
             {classAverages.length > 0 && (
@@ -1113,6 +1127,15 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+      {boardOpen && (
+        <Whiteboard
+          sessionId={FREE_BOARD_ID}
+          userId={user?.id ?? ''}
+          remote={false}
+          title="Brouillon"
+          onClose={() => setBoardOpen(false)}
+        />
+      )}
     </Layout>
   );
 }

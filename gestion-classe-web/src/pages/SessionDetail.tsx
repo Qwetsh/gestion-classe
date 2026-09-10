@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 import { sanitizePhotoPath } from '../lib/security';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { BoardPagesGallery } from '../components/classroom/BoardPagesGallery';
 
 interface Session {
   id: string;
@@ -638,6 +639,12 @@ export function SessionDetail() {
             </button>
           </div>
         )}
+
+        {/* Pages du tableau blanc (mode « en classe ») */}
+        <BoardPagesGallery
+          sessionId={session.id}
+          exportName={`${session.class_name} ${session.started_at.slice(0, 10)}`}
+        />
 
         {/* Groups section */}
         {groups.length > 0 && (

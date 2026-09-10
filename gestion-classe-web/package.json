@@ -17,6 +17,8 @@
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "jsqr": "^1.4.0",
+    "jszip": "^3.10.2",
+    "katex": "^0.16.47",
     "lucide-react": "^1.37.0",
     "pawnote": "^1.6.2",
     "pdf-lib": "^1.17.1",
@@ -26,12 +28,14 @@
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.8.0",
+    "tesseract.js": "^5.1.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@tailwindcss/vite": "^4.1.18",
     "@types/file-saver": "^2.0.7",
+    "@types/katex": "^0.16.8",
     "@types/node": "^24.10.1",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.5",
