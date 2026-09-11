@@ -3,8 +3,9 @@
  * avec la palette complète, les couleurs récentes et une couleur libre (roue du navigateur).
  * Partagé par le stylo, le texte et les formes.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { BOARD_PALETTE, QUICK_COLORS, loadRecentColors, pushRecentColor } from '../../lib/boardPalette';
+import { BoardPopover } from './BoardPopover';
 
 interface Props {
   value: string;
@@ -20,21 +21,13 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<string[]>(() => loadRecentColors());
   const panelRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const hold = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
 
   const pick = (c: string) => {
     onChange(c);
     if (c !== 'none') setRecent(pushRecentColor(c));
   };
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const t = window.setTimeout(() => window.addEventListener('pointerdown', onDown, true), 0);
-    return () => { window.clearTimeout(t); window.removeEventListener('pointerdown', onDown, true); };
-  }, [open]);
 
   const isOn = (c: string) => !muted && value.toLowerCase() === c.toLowerCase();
 
@@ -44,6 +37,7 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
         <button key={c} className={`wb__swatch ${isOn(c) ? 'is-on' : ''}`} style={{ background: c }} onPointerDown={hold} onClick={() => pick(c)} title={title} />
       ))}
       <button
+        ref={btnRef}
         className={`wb__swatch wbc__more ${open ? 'is-on' : ''} ${!QUICK_COLORS.some(isOn) && value !== 'none' && !muted ? 'is-custom' : ''}`}
         style={{ background: !QUICK_COLORS.some(isOn) && value !== 'none' ? value : undefined }}
         onPointerDown={hold}
@@ -53,7 +47,7 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
         {(QUICK_COLORS.some(isOn) || value === 'none') && <span>+</span>}
       </button>
       {open && (
-        <div className="wbc__panel" onPointerDown={(e) => e.stopPropagation()}>
+        <BoardPopover anchorRef={btnRef} onClose={() => setOpen(false)} className="wbc__panel" width={292}>
           <div className="wbc__grid">
             {allowNone && (
               <button className={`wbc__cell wbc__cell--none ${value === 'none' ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => { pick('none'); setOpen(false); }} title="Aucune" />
@@ -76,7 +70,7 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
             <span>Autre couleur</span>
             <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#111827'} onChange={(e) => pick(e.target.value)} />
           </label>
-        </div>
+        </BoardPopover>
       )}
       <style>{CSS}</style>
     </div>
@@ -87,10 +81,7 @@ const CSS = `
 .wbc { position: relative; display: flex; align-items: center; }
 .wbc__more { display: flex; align-items: center; justify-content: center; background: #1F2937; color: #E5E7EB; font: 700 18px/1 Inter, system-ui, sans-serif; }
 .wbc__more.is-custom { border-color: #FFFFFF; box-shadow: 0 0 0 2px #4F46E5; }
-.wbc__panel {
-  position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%); z-index: 13;
-  width: 292px; padding: 12px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45);
-}
+.wbc__panel { padding: 12px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
 .wbc__grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
 .wbc__cell { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #374151; cursor: pointer; padding: 0; }
 .wbc__cell.is-on { border-color: #FFFFFF; box-shadow: 0 0 0 2px #4F46E5; }

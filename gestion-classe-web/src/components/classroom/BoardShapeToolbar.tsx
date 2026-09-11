@@ -2,9 +2,10 @@
  * Barre des formes : choix de la forme (grille), contour, épaisseur, pointillé, remplissage,
  * flèches. Agit sur les réglages par défaut (outil forme) ou sur les formes sélectionnées.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { SHAPE_CATALOG, SHAPE_STROKE_WIDTHS, isLineKind, shapePath, arrowHeadPaths, type ShapeKind, type ShapeObject } from '../../lib/boardShapes';
 import { BoardColorPicker } from './BoardColorPicker';
+import { BoardPopover } from './BoardPopover';
 
 export interface ShapeStyle {
   stroke: string;
@@ -45,26 +46,20 @@ export function ShapeIcon({ kind, size = 26 }: { kind: ShapeKind; size?: number 
 export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const hold = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
   const current = selected[0] ?? null;
   const lineSelected = selected.length > 0 && selected.every((s) => isLineKind(s.kind));
   const widthKey = (Object.keys(SHAPE_STROKE_WIDTHS) as ('S' | 'M' | 'L')[]).find((k) => SHAPE_STROKE_WIDTHS[k] === style.strokeWidth);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const t = window.setTimeout(() => window.addEventListener('pointerdown', onDown, true), 0);
-    return () => { window.clearTimeout(t); window.removeEventListener('pointerdown', onDown, true); };
-  }, [open]);
-
   return (
     <>
       <div className="wb__group" ref={ref} style={{ position: 'relative' }}>
-        <button className="wb__btn is-on" onPointerDown={hold} onClick={() => setOpen((v) => !v)} title="Choisir une forme">
+        <button ref={btnRef} className="wb__btn is-on" onPointerDown={hold} onClick={() => setOpen((v) => !v)} title="Choisir une forme">
           <ShapeIcon kind={current?.kind ?? kind} />
         </button>
         {open && (
-          <div className="wbs__panel" onPointerDown={(e) => e.stopPropagation()}>
+          <BoardPopover anchorRef={btnRef} onClose={() => setOpen(false)} className="wbs__panel" width={300}>
             {SHAPE_CATALOG.map((s) => (
               <button
                 key={s.kind}
@@ -76,7 +71,7 @@ export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLi
                 <ShapeIcon kind={s.kind} size={30} />
               </button>
             ))}
-          </div>
+          </BoardPopover>
         )}
         {(lineSelected || (selected.length === 0 && isLineKind(kind))) && (
           <>
@@ -123,8 +118,7 @@ export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLi
 
 const CSS = `
 .wbs__panel {
-  position: absolute; bottom: 60px; left: 0; z-index: 13; width: 300px; padding: 10px;
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+  padding: 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
   border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45);
 }
 .wbs__cell { display: flex; align-items: center; justify-content: center; height: 50px; border: 0; border-radius: 10px; background: #1F2937; color: #E5E7EB; cursor: pointer; }

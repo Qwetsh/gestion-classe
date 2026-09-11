@@ -72,6 +72,7 @@ import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
 import { BoardKeyboard } from './BoardKeyboard';
 import { BoardLibraryPanel } from './BoardLibraryPanel';
+import { BoardPopover } from './BoardPopover';
 import { BoardPickOverlay, type PickableStudent } from './BoardPickOverlay';
 import { BoardCameraOverlay } from './BoardCameraOverlay';
 import type { ClassroomBus } from '../../lib/classroomBus';
@@ -321,6 +322,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const coverTargetIds = useRef<string[]>([]);
   const curtainDrag = useRef<{ pointerId: number } | null>(null);
   const [insertOpen, setInsertOpen] = useState(false);
+  const insertBtnRef = useRef<HTMLButtonElement>(null);
+  const settingsBtnRef = useRef<HTMLButtonElement>(null);
   const [tbi, setTbi] = useState<TbiSettings>(loadTbi);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [view, setView] = useState<ViewState>(IDENTITY_VIEW);
@@ -1897,13 +1900,6 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     return () => window.removeEventListener('keydown', onKey);
   }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt]);
 
-  useEffect(() => {
-    if (!insertOpen && !settingsOpen) return;
-    const onDown = (e: PointerEvent) => { if (!(e.target as HTMLElement).closest('.wbi__panel')) { setInsertOpen(false); setSettingsOpen(false); } };
-    const t = window.setTimeout(() => window.addEventListener('pointerdown', onDown, true), 0);
-    return () => { window.clearTimeout(t); window.removeEventListener('pointerdown', onDown, true); };
-  }, [insertOpen, settingsOpen]);
-
   // -- Gestes TBI : deux doigts = pincer-zoomer / menu radial (immobiles) / tap = annuler ;
   //    trois doigts = tap rétablir, balayage = changer de page --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -2474,12 +2470,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           <button className="wb__btn" onClick={addPage} title="Nouvelle page (Ctrl+Entrée)">
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
           </button>
-          <div style={{ position: 'relative' }}>
-            <button className={`wb__btn ${insertOpen ? 'is-on' : ''}`} onClick={() => setInsertOpen((v) => !v)} title="Insérer : tableau, vidéo, site, son, lien, post-it, équation, minuteur, dé, roue…">
+          <>
+            <button ref={insertBtnRef} className={`wb__btn ${insertOpen ? 'is-on' : ''}`} onClick={() => { setSettingsOpen(false); setInsertOpen((v) => !v); }} title="Insérer : tableau, vidéo, site, son, lien, post-it, équation, minuteur, dé, roue…">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14M4 4h16v16H4z" /></svg>
             </button>
             {insertOpen && (
-              <div className="wbi__panel" onPointerDown={(e) => e.stopPropagation()}>
+              <BoardPopover anchorRef={insertBtnRef} onClose={() => setInsertOpen(false)} className="wbi__panel" width={300}>
                 {[
                   { label: 'Tableau 3 × 3', icon: '▦', run: () => insertTable(3, 3) },
                   { label: 'Vidéo (YouTube…)', icon: '▶', run: () => { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u); } },
@@ -2495,9 +2491,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                     <span>{it.icon}</span>{it.label}
                   </button>
                 ))}
-              </div>
+              </BoardPopover>
             )}
-          </div>
+          </>
           <button className="wb__btn" onClick={() => { dropPoint.current = null; imageInputRef.current?.click(); }} disabled={!!importing} title="Insérer une image (ou coller, ou glisser-déposer)">
             <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4M15 9h.01" /></svg>
           </button>
@@ -2527,12 +2523,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           <button className={`wb__btn ${keyboardOpen ? 'is-on' : ''}`} onClick={() => setKeyboardOpen((v) => !v)} title="Clavier virtuel">
             <svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6 9h2M10 9h2M14 9h2M18 9h0M6 12h2M10 12h2M14 12h2M18 12h0M7 15h10" /></svg>
           </button>
-          <div style={{ position: 'relative' }}>
-            <button className={`wb__btn ${settingsOpen ? 'is-on' : ''}`} onClick={() => setSettingsOpen((v) => !v)} title="Tableau interactif : gestes, position de la barre, instruments, projecteur">
+          <>
+            <button ref={settingsBtnRef} className={`wb__btn ${settingsOpen ? 'is-on' : ''}`} onClick={() => { setInsertOpen(false); setSettingsOpen((v) => !v); }} title="Tableau interactif : gestes, position de la barre, instruments, projecteur">
               <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4" /></svg>
             </button>
             {settingsOpen && (
-              <div className="wbi__panel wbi__panel--settings" onPointerDown={(e) => e.stopPropagation()}>
+              <BoardPopover anchorRef={settingsBtnRef} onClose={() => setSettingsOpen(false)} className="wbi__panel wbi__panel--settings" width={280}>
                 <button type="button" className={`wbi__item ${tbi.gestures ? 'is-on' : ''}`} onClick={() => setTbi((t) => ({ ...t, gestures: !t.gestures }))}><span>✌️</span>Gestes à deux doigts {tbi.gestures ? 'activés' : 'désactivés'}</button>
                 <button type="button" className="wbi__item" onClick={() => setRadial({ x: window.innerWidth / 2, y: window.innerHeight / 2 })}><span>◎</span>Menu radial</button>
                 {(['bottom', 'left', 'right'] as BarSide[]).map((side) => (
@@ -2553,9 +2549,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                 <button type="button" className="wbi__item" onClick={() => setSpotlight(true)}><span>🔦</span>Projecteur</button>
                 <button type="button" className="wbi__item" onClick={() => { setDisplayMode(true); setSettingsOpen(false); setTool('select'); void document.documentElement.requestFullscreen?.().catch(() => undefined); }}><span>🖥</span>Mode affichage (écran de classe)</button>
                 <button type="button" className="wbi__item" onClick={() => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2)}><span>🔍</span>Zoom + (Ctrl+molette)</button>
-              </div>
+              </BoardPopover>
             )}
-          </div>
+          </>
           <button className={`wb__btn ${navOpen ? 'is-on' : ''}`} onClick={() => setNavOpen((v) => !v)} title="Navigateur de pages (N)">
             <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM14 5v14M16 9h2M16 12h2M16 15h2" /></svg>
           </button>
@@ -2583,7 +2579,7 @@ const CSS = `
 .wb__bar--left .wb__group:last-child, .wb__bar--right .wb__group:last-child { border-bottom: 0; }
 .wb__bar--bottom.wb__bar--hand-left { left: 10px; transform: none; }
 .wb__bar--bottom.wb__bar--hand-right { left: auto; right: 10px; transform: none; }
-.wbi__panel--settings { grid-template-columns: 1fr; width: 280px; }
+.wbi__panel--settings { grid-template-columns: 1fr; }
 .wbi__item.is-on { background: #312E81; }
 .wb__layer { position: absolute; left: 0; top: 0; display: block; }
 .wb.is-dragover .wb__stage { outline: 4px dashed #6366F1; outline-offset: -4px; }
@@ -2600,7 +2596,7 @@ const CSS = `
 .wb__input--select { cursor: default; }
 .wb__input--shape { cursor: crosshair; }
 .wb__input--laser { cursor: crosshair; }
-.wbi__panel { position: absolute; bottom: 60px; left: 0; z-index: 13; width: 300px; max-height: 70vh; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
+.wbi__panel { padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
 .wbi__item { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #F3F4F6; font: 500 13px/1.2 Inter, system-ui, sans-serif; text-align: left; cursor: pointer; }
 .wbi__item:hover { background: #1F2937; }
 .wbi__item span { width: 22px; text-align: center; font-size: 16px; }
