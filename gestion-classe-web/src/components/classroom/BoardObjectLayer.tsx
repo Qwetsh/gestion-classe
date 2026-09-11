@@ -576,6 +576,28 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     });
   }, [onEdit]);
 
+  /**
+   * Toute zone qui entre en saisie prend le clavier : on écrit sans avoir à cliquer dedans.
+   * Couvre la création (texte, post-it, tableau), le menu contextuel et le double-clic ;
+   * quand `beginEdit` a déjà posé le focus au point touché, cet effet ne fait rien.
+   */
+  useEffect(() => {
+    if (!editingId) return;
+    const frame = document.querySelector<HTMLElement>(`[data-obj="${editingId}"]`);
+    const el = editorsRef.current.get(editingId) ?? frame?.querySelector<HTMLElement>('.wbt__cell');
+    if (!el || document.activeElement === el) return;
+    el.focus();
+    // Curseur en fin de contenu si aucun point précis n'a été visé
+    const sel = window.getSelection();
+    if (sel && (!sel.anchorNode || !el.contains(sel.anchorNode))) {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }, [editingId, objects]);
+
   // -- Sélection, déplacement, redimensionnement --
   const clearPress = useCallback((e?: React.PointerEvent) => {
     const p = pressRef.current;
