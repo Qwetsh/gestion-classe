@@ -463,6 +463,20 @@ export async function awardStamp(_userId: string, studentId: string, categoryId:
   return { stampCount: data.stamp_count, cardComplete: !!data.card_complete };
 }
 
+/**
+ * L'enseignant choisit le bonus pour la carte complète d'un élève (migration 036).
+ * Utile quand la classe n'a pas l'onglet Tampons dans l'espace élève.
+ */
+export async function selectBonusForStudent(studentId: string, bonusId: string): Promise<{ newCardNumber: number }> {
+  const { data, error } = await supabase.rpc('select_bonus_for_student', {
+    p_student_id: studentId,
+    p_bonus_id: bonusId,
+  });
+  if (error) throw error;
+  if (!data || data.error) throw new Error(data?.error || 'Choix du bonus impossible');
+  return { newCardNumber: data.new_card_number };
+}
+
 export async function markBonusUsed(selectionId: string): Promise<void> {
   const { error } = await supabase
     .from('bonus_selections')

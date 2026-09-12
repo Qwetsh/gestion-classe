@@ -15,6 +15,7 @@ import {
   deleteBonus as deleteBonusApi,
   awardStamp,
   markBonusUsed,
+  selectBonusForStudent,
   resetAllStampCards,
   resetStudentStampCards,
   fetchStudentStampDetail,
@@ -52,6 +53,7 @@ export function Rewards() {
   const [showBonusModal, setShowBonusModal] = useState(false);
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
   const [showStampModal, setShowStampModal] = useState(false);
+  const [bonusTarget, setBonusTarget] = useState<StudentStampOverview | null>(null);
   const [stampTarget, setStampTarget] = useState<StudentStampOverview | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailTarget, setDetailTarget] = useState<StudentStampOverview | null>(null);
@@ -257,6 +259,18 @@ export function Rewards() {
       } else {
         showSuccess(`Tampon attribué : ${result.stampCount}/10`);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
+  const doChooseBonus = async (bonusId: string) => {
+    if (!bonusTarget) return;
+    try {
+      const { newCardNumber } = await selectBonusForStudent(bonusTarget.student_id, bonusId);
+      setBonusTarget(null);
+      await loadData(true);
+      showSuccess(`Bonus enregistré pour ${bonusTarget.pseudo} — carte n°${newCardNumber} ouverte`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
     }
@@ -473,6 +487,7 @@ export function Rewards() {
                 <OverviewTab
                   overview={filteredOverview}
                   onAwardStamp={openStampModal}
+                  onChooseBonus={setBonusTarget}
                   onMarkBonusUsed={doMarkBonusUsed}
                   onStudentClick={openDetailModal}
                   onResetStudent={doResetStudent}
@@ -588,6 +603,26 @@ export function Rewards() {
                 <span className="text-2xl">{cat.icon}</span>
                 <span className="text-sm font-medium text-[var(--text)]">{cat.label}</span>
                 <div className="w-3 h-3 rounded-full ml-auto flex-shrink-0" style={{ backgroundColor: cat.color }} />
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {bonusTarget && (
+        <Modal title={`Choisir le bonus — ${bonusTarget.pseudo}`} onClose={() => setBonusTarget(null)}>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
+            Carte n°{bonusTarget.card_number} complète. Le bonus choisi termine la carte et en ouvre une nouvelle.
+          </p>
+          <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
+            {bonuses.filter(b => b.is_active).map(b => (
+              <button
+                key={b.id}
+                onClick={() => doChooseBonus(b.id)}
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--indigo)] hover:bg-[var(--surface-3)] transition-all text-left"
+              >
+                <span className="text-xl">🎁</span>
+                <span className="text-sm font-medium text-[var(--text)]">{b.label}</span>
               </button>
             ))}
           </div>
@@ -801,10 +836,11 @@ export function Rewards() {
 // ============================================
 
 function OverviewTab({
-  overview, onAwardStamp, onMarkBonusUsed, onStudentClick, onResetStudent,
+  overview, onAwardStamp, onChooseBonus, onMarkBonusUsed, onStudentClick, onResetStudent,
 }: {
   overview: StudentStampOverview[];
   onAwardStamp: (s: StudentStampOverview) => void;
+  onChooseBonus: (s: StudentStampOverview) => void;
   onMarkBonusUsed: (id: string) => void;
   onStudentClick: (s: StudentStampOverview) => void;
   onResetStudent: (s: StudentStampOverview) => void;
@@ -814,7 +850,7 @@ function OverviewTab({
       {overview.length === 0 ? (
         <div className="text-center py-12 text-[var(--text-muted)]">
           <p className="text-4xl mb-2">⭐</p>
-          <p>Sélectionnez une classe et initialisez les cartes pour commencer</p>
+          <p>Sélectionnez une classe pour commencer</p>
         </div>
       ) : (
         <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] overflow-hidden" style={{ boxShadow: 'var(--shadow-1)' }}>
@@ -881,6 +917,15 @@ function OverviewTab({
                             style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
                           >
                             + Tampon
+                          </button>
+                        )}
+                        {s.stamp_count >= 10 && !s.bonus_selection_id && (
+                          <button
+                            onClick={() => onChooseBonus(s)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                            title="Choisir le bonus avec l'élève"
+                          >
+                            🎁 Choisir le bonus
                           </button>
                         )}
                         {s.bonus_selection_id && !s.bonus_used && (

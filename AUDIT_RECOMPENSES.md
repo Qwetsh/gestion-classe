@@ -170,6 +170,19 @@ Vérifications : `npx tsc --noEmit` OK, `npx jest` 97/97. Pas de changement de s
 
 Non fait, volontairement : Realtime côté PWA élève (anonyme, la RLS ne l'autorise pas — le polling suffit) ; RPC `award_stamp` côté mobile (offline-first, la sync P0 résout les conflits).
 
+## H. Complément avant rebuild (2026-09-12)
+
+| Point | Où | Détail |
+|---|---|---|
+| Carte pleine sans espace élève (**trou fonctionnel prouvé en prod** : deux groupes d'Aurélie tamponnés avec l'onglet Tampons désactivé) | `supabase-migrations/036_select_bonus_for_student.sql` (**appliquée en prod**), `rewardsQueries.ts` + `Rewards.tsx` (bouton « 🎁 Choisir le bonus » sur la ligne à 10/10), `students/[id]/history.tsx` (bouton + modal sous la carte pleine) | RPC enseignant `select_bonus_for_student` : même logique que le RPC élève, `SECURITY INVOKER`, verrou par élève. Testé sous RLS en transaction annulée : carte 1 → `completed`, carte 2 créée. |
+| File de sync « empoisonnée » (audit de rentrée) | `syncService.ts` (`syncAll`) | 19 étapes isolées chacune dans un `try` ; les erreurs sont toutes listées, `success = false` mais les autres tables partent. |
+| Renommage de classe (audit de rentrée) | `syncService.ts` (pull classes) | `UPDATE classes SET name` quand le serveur diffère. |
+| Nettoyage récompenses mobile | `stampRepository.ts`, `database/index.ts` | `selectBonus` retiré ; `getCompletedCards` en `INNER JOIN bonus_selections` ; `deleteStampCategory`/`deleteBonus` via `pending_deletions` (+ `SET NULL` des enfants) ; message « Carte déjà complète » indique quoi faire. |
+
+Vérifié comme déjà corrigé depuis l'audit de rentrée : `students.class_id` nullable (SQLite v13), `getCurrentTrimester`, `authStore` `.catch`, UNIQUE sur `trimester_boundaries`, élève déplacé de classe.
+
+**Toujours ouvert, hors périmètre de cet APK** : 101 policies `anon` sans condition sur 26 tables du projet de jeu hébergées dans la même base que les données élèves (point 7 de `AUDIT_RENTREE_2026.md`).
+
 **Avant P0, un contrôle utile** : sur le téléphone de Thomas et d'Aurélie, exporter `SELECT * FROM stamps WHERE synced_at IS NULL` et `SELECT * FROM stamp_cards WHERE synced_at IS NULL` — ce sont les tampons qui seront détruits au prochain lancement si P0 n'est pas livré avant.
 
 Requête SQL de contrôle des trous côté serveur :
