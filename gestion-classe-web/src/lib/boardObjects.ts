@@ -122,3 +122,19 @@ export function migrateLegacyTexts(objects: BoardObject[] | undefined, texts: Te
     .map((t) => ({ ...t, type: 'text' as const }));
   return [...base, ...migrated];
 }
+
+/** Libellé de type affiché en tête de barre. */
+export function objectTypeLabel(objects: BoardObject[]): string {
+  if (objects.length > 1) return `Objets (${objects.length})`;
+  switch (objects[0]?.type) {
+    case 'image': return 'Image';
+    case 'table': return 'Tableau';
+    case 'video': return 'Vidéo';
+    case 'web': return 'Site';
+    case 'audio': return 'Son';
+    case 'link': return 'Lien';
+    case 'widget': return 'Widget';
+    case 'equation': return 'Équation';
+    default: return 'Objet';
+  }
+}

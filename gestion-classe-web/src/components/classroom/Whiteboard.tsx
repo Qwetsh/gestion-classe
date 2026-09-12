@@ -75,6 +75,7 @@ import { BoardLibraryPanel } from './BoardLibraryPanel';
 import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
+import { BoardObjectToolbar } from './BoardObjectToolbar';
 import { BoardPickOverlay, type PickableStudent } from './BoardPickOverlay';
 import { BoardCameraOverlay } from './BoardCameraOverlay';
 import type { ClassroomBus } from '../../lib/classroomBus';
@@ -88,7 +89,7 @@ import { fetchBoardPages, upsertBoardPages } from '../../lib/boardQueries';
 import { importFilesToPages, isImportableFile, isImageFile, uploadBoardImage, uploadCoverImage, type ImportProgress } from '../../lib/boardImport';
 import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName, GCBOARD_EXTENSION } from '../../lib/boardFile';
 import { renderPageToCanvas } from '../../lib/boardRender';
-import type { ImageObject } from '../../lib/boardObjects';
+import { objectTypeLabel, type ImageObject } from '../../lib/boardObjects';
 import {
   WIDGET_LABELS,
   emptyTable,
@@ -323,6 +324,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [exportOpen, setExportOpen] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const replaceImageInputRef = useRef<HTMLInputElement>(null);
   /** Point de la page visé par un dépôt ou une insertion d'image (unités logiques). */
   const dropPoint = useRef<{ x: number; y: number } | null>(null);
   /** Objet visé par le choix d'une image de ticket à gratter. */
@@ -445,6 +447,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const laserRaf = useRef<number | null>(null);
   /** Déplacement / mise à l'échelle de l'encre sélectionnée. */
   const inkDrag = useRef<{ mode: 'move' | 'scale'; startX: number; startY: number; originals: Stroke[]; box: { x: number; y: number; w: number; h: number }; pointerId: number } | null>(null);
+  /** Appui long (doigt, stylet) sur l'encre sélectionnée = menu contextuel, comme sur un objet. */
+  const inkPressTimer = useRef<number | null>(null);
   // Miroirs pour les gestionnaires d'événements (déclaré avant les effets de redessin)
   useEffect(() => {
     pagesRef.current = pages;
@@ -923,6 +927,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
     return obj;
   }, [handleObjectsChange]);
+
+  /** Remplace le fichier de l'image sélectionnée en gardant sa place et sa largeur. */
+  const replaceSelectedImage = useCallback(async (file: File) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const target = (p?.objects ?? []).find((o): o is ImageObject => o.type === 'image' && selectedIdsRef.current.has(o.id));
+    if (!p || !target) return;
+    try {
+      const img = await uploadBoardImage(file, userId, sessionId);
+      const before = p.objects ?? [];
+      const h = Math.round(target.w * img.height / img.width);
+      handleObjectsChange(before.map((o) => (o.id === target.id ? { ...target, path: img.path, naturalWidth: img.width, naturalHeight: img.height, h } : o)), before);
+    } catch (err) {
+      console.error('[Whiteboard] remplacement image :', err);
+      window.alert(`Remplacement impossible : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+    }
+  }, [handleObjectsChange, userId, sessionId]);
 
   /**
    * Fichiers déposés, ouverts ou collés : images → objets au point donné ; .gcboard → ses pages
@@ -1459,7 +1479,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       ...(target.type === 'text' && gapIdsIn(target.html).length > 0
         ? [{ label: 'Révéler tous les trous', onSelect: () => revealAllGaps(target.id) }]
         : []),
-      ...(target.type === 'image' && !many ? [{ label: 'Mettre en fond de page', onSelect: sendImageToBackground }] : []),
+      ...(target.type === 'image' && !many ? [
+        { label: "Remplacer l'image…", onSelect: () => replaceImageInputRef.current?.click() },
+        { label: 'Mettre en fond de page', onSelect: sendImageToBackground },
+      ] : []),
+      ...(target.type === 'equation' && !many && !locked ? [{ label: "Modifier l'équation", shortcut: 'Double-clic', onSelect: () => setEditingId(id) }] : []),
       ...(target.type === 'web' && !many ? [{ label: target.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site', onSelect: () => onToggleInteractive(target.id) }] : []),
       ...(target.type === 'table' && !many ? (() => {
         const cell = tableCellRef.current?.id === target.id ? tableCellRef.current : { r: 0, c: 0 };
@@ -2142,6 +2166,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const selectedShapes = pageObjects.filter((o): o is ShapeObject => o.type === 'shape' && selectedIds.has(o.id));
   const selectedLibrary = pageObjects.filter((o): o is LibraryObject => o.type === 'library' && selectedIds.has(o.id));
   const showShapeToolbar = !showTextToolbar && (tool === 'shape' || (tool === 'select' && (selectedShapes.length > 0 || selectedLibrary.length > 0)));
+  // Les autres objets (image, tableau, widget, médias) partagent une barre commune, posée sur l'objet.
+  const selectedOthers = pageObjects.filter((o) => selectedIds.has(o.id) && o.type !== 'text' && o.type !== 'shape' && o.type !== 'library');
+  const showObjectToolbar = !showTextToolbar && !showShapeToolbar && tool === 'select' && selectedOthers.length > 0;
   const inkSelection = selectedStrokeIds.size > 0 ? strokesBounds(page.strokes.filter((st) => selectedStrokeIds.has(st.id))) : null;
   /** Applique un réglage de zone (police, taille, couleur) à toutes les zones de texte sélectionnées. */
   const patchSelectedTexts = (fn: (o: TextObject) => TextObject) => {
@@ -2247,6 +2274,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         hidden
         onChange={(e) => { if (e.target.files) void importFiles(e.target.files, dropPoint.current ?? undefined); dropPoint.current = null; e.target.value = ''; }}
       />
+      <input
+        ref={replaceImageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void replaceSelectedImage(f); e.target.value = ''; }}
+      />
       {importing && (
         <div className="wb__import">
           <div className="wb__import-box">
@@ -2342,6 +2376,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         {inkSelection && tool === 'select' && (
           <div
             className="wb__inksel"
+            data-obj="ink-selection"
             style={{
               left: stageBox.left + inkSelection.x * textScale - 8,
               top: stageBox.top + inkSelection.y * textScale - 8,
@@ -2354,11 +2389,24 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
               const mode = (e.target as HTMLElement).classList.contains('wb__inksel-scale') ? 'scale' : 'move';
               inkDrag.current = { mode, startX: e.clientX, startY: e.clientY, originals: selectedStrokes(), box: inkSelection, pointerId: e.pointerId };
+              if (e.pointerType !== 'mouse' && mode === 'move') {
+                const { clientX, clientY } = e;
+                if (inkPressTimer.current) window.clearTimeout(inkPressTimer.current);
+                inkPressTimer.current = window.setTimeout(() => {
+                  inkPressTimer.current = null;
+                  inkDrag.current = null;
+                  openInkMenu(clientX, clientY);
+                }, 500);
+              }
             }}
             onPointerMove={(e) => {
               const d = inkDrag.current;
               const p = pagesRef.current[pageIndexRef.current];
               if (!d || e.pointerId !== d.pointerId || !p) return;
+              if (inkPressTimer.current && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 6) {
+                window.clearTimeout(inkPressTimer.current);
+                inkPressTimer.current = null;
+              }
               const dx = (e.clientX - d.startX) / scaleRef.current;
               const dy = (e.clientY - d.startY) / scaleRef.current;
               const k = d.mode === 'scale' && d.box.w > 0 ? Math.max(0.1, (d.box.w + dx) / d.box.w) : 1;
@@ -2369,6 +2417,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             }}
             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openInkMenu(e.clientX, e.clientY); }}
             onPointerUp={(e) => {
+              if (inkPressTimer.current) { window.clearTimeout(inkPressTimer.current); inkPressTimer.current = null; }
               const d = inkDrag.current;
               if (!d || e.pointerId !== d.pointerId) return;
               inkDrag.current = null;
@@ -2377,10 +2426,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               if (next.some((st, i) => st !== d.originals[i])) replaceSelectedStrokes(d.originals, next);
             }}
           >
-            <span className="wb__inksel-label">{selectedStrokeIds.size} trait{selectedStrokeIds.size > 1 ? 's' : ''}</span>
-            <button type="button" className="wb__inksel-text" title="Convertir l'écriture en texte" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void convertInkToText()}>Aa</button>
             <div className="wb__inksel-scale" title="Agrandir / réduire" />
-            <button type="button" className="wb__inksel-del" title="Supprimer l'encre (Suppr)" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={deleteSelectedStrokes}>✕</button>
           </div>
         )}
         {instruments.length > 0 && <BoardInstruments instruments={instruments} stage={stageBox} scale={textScale} onChange={setInstruments} />}
@@ -2559,6 +2605,36 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               onLineKind={(k) => patchSelectedShapes((o) => (isLineKind(o.kind) ? { ...o, kind: k } : o))}
               onDelete={deleteSelected}
             />
+        </BoardFloatingToolbar>
+      )}
+
+      {!displayMode && showObjectToolbar && (
+        <BoardFloatingToolbar objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
+          <BoardObjectToolbar
+            objects={selectedOthers}
+            tableCell={tableCellRef.current && tableCellRef.current.id === selectedOthers[0].id ? { r: tableCellRef.current.r, c: tableCellRef.current.c } : null}
+            onDuplicate={duplicateSelected}
+            onDelete={deleteSelected}
+            onToggleLock={toggleLockSelected}
+            onReorder={reorderSelected}
+            onCover={setCoverOnSelected}
+            onImageBackground={sendImageToBackground}
+            onImageReplace={() => replaceImageInputRef.current?.click()}
+            onPatchTable={patchTable}
+            onToggleInteractive={onToggleInteractive}
+            onEdit={(id) => setEditingId(id)}
+          />
+        </BoardFloatingToolbar>
+      )}
+      {!displayMode && inkSelection && tool === 'select' && (
+        <BoardFloatingToolbar objectId="ink-selection" label={`Encre · ${selectedStrokeIds.size} trait${selectedStrokeIds.size > 1 ? 's' : ''}`}>
+          <div className="wb__group">
+            <button type="button" className="wb__btn wb__txt" title="Convertir l'écriture en texte" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void convertInkToText()}>Aa</button>
+            <button type="button" className="wb__btn wb__txt" title="Exporter en image (PNG)" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void exportSelectionImage()}>⤓</button>
+          </div>
+          <div className="wb__group">
+            <button type="button" className="wb__btn wb__txt wb__btn--danger" title="Supprimer l'encre (Suppr)" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={deleteSelectedStrokes}>✕</button>
+          </div>
         </BoardFloatingToolbar>
       )}
 
@@ -2758,10 +2834,7 @@ const CSS = `
 .wb__curtain-actions button { height: 46px; padding: 0 22px; border: 0; border-radius: 12px; background: #4F46E5; color: #FFFFFF; font: 600 16px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wb__curtain-actions button + button { background: #374151; }
 .wb__inksel { position: absolute; z-index: 2; border: 1.5px dashed #4F46E5; border-radius: 6px; cursor: move; touch-action: none; }
-.wb__inksel-label { position: absolute; left: 0; top: -22px; padding: 2px 8px; border-radius: 6px; background: #4F46E5; color: #FFFFFF; font: 600 11px/1.3 Inter, system-ui, sans-serif; white-space: nowrap; }
 .wb__inksel-scale { position: absolute; right: -8px; bottom: -8px; width: 16px; height: 16px; border-radius: 4px; background: #FFFFFF; border: 2px solid #4F46E5; cursor: nwse-resize; touch-action: none; }
-.wb__inksel-text { position: absolute; left: 0; bottom: -34px; height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: #4F46E5; color: #FFFFFF; font: 700 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
-.wb__inksel-del { position: absolute; right: -14px; top: -30px; width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; background: #DC2626; color: #FFFFFF; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 
 .wb__ticker {
   position: fixed; top: 14px; right: 16px; z-index: 12;

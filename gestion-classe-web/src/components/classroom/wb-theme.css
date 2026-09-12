@@ -563,5 +563,7 @@
 .wb .wbft .wb__swatch--hl { height: calc(var(--wb-swatch) - 14px); }
 .wb .wbft .wb__select { height: var(--wb-btn-sm); padding: 0 10px; font-size: 15px; }
 .wb .wbft .wb__txt { width: var(--wb-btn-sm); font-size: 17px; }
+.wb .wb__btn--danger { color: #FCA5A5; }
+.wb .wb__btn--danger:hover:not(:disabled) { background: #7F1D1D; color: #FFFFFF; }
 /* La seconde rangée (« … ») était ancrée sur la barre du bas : elle suit désormais l'objet. */
 .wb .wbft .wb__row2 { position: absolute; left: 50%; right: auto; bottom: calc(100% + 8px); transform: translateX(-50%); flex-direction: row; }
