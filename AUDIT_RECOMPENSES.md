@@ -158,7 +158,17 @@ Vérifications : `npx tsc --noEmit` OK, `npx jest` 97/97. Pas de changement de s
 | B6 | `gestion-classe-mobile/app/(main)/session/[id].tsx` | Garde `isAwardingStamp` + bouton désactivé pendant l'écriture. |
 | B4 | `rewardsQueries.ts`, `Rewards.tsx` | Bouton « Initialiser les cartes » et `initializeCardsForClass` supprimés : les cartes sont créées à la volée (RPC web, mobile, espace élève). |
 
-Reste P2 : pull ciblé fiche élève + invalidation du cache, polling PWA, publication Realtime + souscription web, seed unique + nettoyage sûr des doublons, RLS (`WITH CHECK`, sous-requête `students`), `search_path` sur les RPC 011-013.
+## G. Réalisation de P2 (2026-09-12)
+
+| Correction | Où | Détail |
+|---|---|---|
+| B2 mobile | `syncService.ts` (`pullStampConfig`, `pullStampCards`, `pullStudentStamps`), `stores/syncStore.ts`, `students/[id]/history.tsx` | Le pull des tampons est découpé en fonctions réutilisables ; `pullStudentStamps(userId, studentId)` rapatrie un seul élève (suppressions locales limitées à lui) et est appelé à l'ouverture de la fiche (`useFocusEffect`). Après une sync complète, `stampStore.invalidateCards()` vide le cache et la fiche recharge sur `lastSyncTime`. |
+| B2 PWA | `StudentDashboard.tsx` | Onglet Tampons ouvert : rappel de `get_student_stamps` toutes les 30 s et au retour sur l'onglet (`visibilitychange`). |
+| B2 web | `supabase-migrations/035_stamps_realtime_rls.sql` (**appliquée en prod**), `Rewards.tsx` | `stamps`, `stamp_cards`, `bonus_selections` ajoutées à la publication Realtime (+ `REPLICA IDENTITY FULL` pour que les DELETE passent le filtre `user_id`). Souscription dans Récompenses avec rechargement silencieux (sans spinner) regroupé à 600 ms. |
+| B3 | `stores/stampStore.ts`, `stampRepository.ts` | Avant de semer les valeurs par défaut, le mobile rapatrie la configuration serveur (`pullStampConfigOnly`) ; seed local seulement si toujours vide (hors ligne). `cleanupDuplicateCategories` réaffecte les tampons vers la catégorie gardée et ne supprime que les doublons jamais poussés. |
+| C / N6 | migration 035 | INSERT/UPDATE de `stamps`, `stamp_cards`, `bonus_selections` exigent que l'élève appartienne au prof ; `WITH CHECK` sur tous les UPDATE ; `SET search_path = public` sur `get_student_stamps` et `select_student_bonus`. RPC `award_stamp` re-testé sous le rôle `authenticated` après le durcissement. |
+
+Non fait, volontairement : Realtime côté PWA élève (anonyme, la RLS ne l'autorise pas — le polling suffit) ; RPC `award_stamp` côté mobile (offline-first, la sync P0 résout les conflits).
 
 **Avant P0, un contrôle utile** : sur le téléphone de Thomas et d'Aurélie, exporter `SELECT * FROM stamps WHERE synced_at IS NULL` et `SELECT * FROM stamp_cards WHERE synced_at IS NULL` — ce sont les tampons qui seront détruits au prochain lancement si P0 n'est pas livré avant.
 

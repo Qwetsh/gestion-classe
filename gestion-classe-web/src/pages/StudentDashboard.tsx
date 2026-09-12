@@ -257,6 +257,23 @@ export function StudentDashboard() {
     setIsLoading(false);
   };
 
+  // Pendant que l'onglet Tampons est ouvert : rafraichir toutes les 30 s et au retour
+  // sur l'onglet (un tampon donne en classe apparait sans recharger la page).
+  useEffect(() => {
+    if (activeTab !== 'stamps' || !showStamps || !currentCodeRef.current) return;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible' || !currentCodeRef.current) return;
+      const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
+      if (sData && !sData.error) setStampData(sData);
+    };
+    const interval = setInterval(refresh, 30000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [activeTab, showStamps]);
+
   const handleSelectBonus = async (bonusId: string) => {
     if (!stampData?.active_card || !currentCodeRef.current) return;
     try {

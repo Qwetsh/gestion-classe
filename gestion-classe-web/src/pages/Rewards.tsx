@@ -26,6 +26,7 @@ import {
   type StudentStampDetail,
 } from '../lib/rewardsQueries';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { supabase } from '../lib/supabase';
 
 type ConfigTab = 'categories' | 'bonuses';
 
@@ -69,9 +70,9 @@ export function Rewards() {
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     if (!user) return;
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     setError(null);
 
     try {
@@ -97,6 +98,25 @@ export function Rewards() {
   }, [user]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Realtime : un tampon donne depuis le telephone apparait sans recharger (migration 035)
+  useEffect(() => {
+    if (!user) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { loadData(true); }, 600);
+    };
+    const channel = supabase.channel(`rewards-${user.id}`);
+    for (const table of ['stamps', 'stamp_cards', 'bonus_selections']) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `user_id=eq.${user.id}` }, scheduleReload);
+    }
+    channel.subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadData]);
 
   // Filter overview client-side based on selected class
   const filteredOverview = classFilter
