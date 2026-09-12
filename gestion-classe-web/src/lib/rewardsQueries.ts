@@ -449,64 +449,18 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
 // Stamp operations
 // ============================================
 
-export async function awardStamp(userId: string, studentId: string, categoryId: string): Promise<{ stampCount: number; cardComplete: boolean }> {
-  // Get or create active card
-  let { data: card } = await supabase
-    .from('stamp_cards')
-    .select('id, card_number')
-    .eq('student_id', studentId)
-    .eq('status', 'active')
-    .single();
+export async function awardStamp(_userId: string, studentId: string, categoryId: string): Promise<{ stampCount: number; cardComplete: boolean }> {
+  // Transaction côté serveur (migration 034) : carte active la plus récente créée si
+  // besoin, premier emplacement libre, une attribution à la fois par élève.
+  const { data, error } = await supabase.rpc('award_stamp', {
+    p_student_id: studentId,
+    p_category_id: categoryId,
+  });
 
-  if (!card) {
-    // Get max card number
-    const { data: maxCard } = await supabase
-      .from('stamp_cards')
-      .select('card_number')
-      .eq('student_id', studentId)
-      .order('card_number', { ascending: false })
-      .limit(1)
-      .single();
+  if (error) throw error;
+  if (!data || data.error) throw new Error(data?.error || 'Attribution impossible');
 
-    const nextNumber = (maxCard?.card_number || 0) + 1;
-
-    const { data: newCard, error: createError } = await supabase
-      .from('stamp_cards')
-      .insert({ student_id: studentId, user_id: userId, card_number: nextNumber, status: 'active' })
-      .select()
-      .single();
-
-    if (createError) throw createError;
-    card = newCard;
-  }
-
-  if (!card) throw new Error('Impossible de créer la carte');
-
-  // Count current stamps
-  const { count } = await supabase
-    .from('stamps')
-    .select('*', { count: 'exact', head: true })
-    .eq('card_id', card.id);
-
-  const currentCount = count || 0;
-  if (currentCount >= 10) throw new Error('Carte déjà complète');
-
-  const slotNumber = currentCount + 1;
-
-  // Insert stamp
-  const { error: stampError } = await supabase
-    .from('stamps')
-    .insert({
-      card_id: card.id,
-      student_id: studentId,
-      user_id: userId,
-      category_id: categoryId,
-      slot_number: slotNumber,
-    });
-
-  if (stampError) throw stampError;
-
-  return { stampCount: slotNumber, cardComplete: slotNumber === 10 };
+  return { stampCount: data.stamp_count, cardComplete: !!data.card_complete };
 }
 
 export async function markBonusUsed(selectionId: string): Promise<void> {
@@ -645,7 +599,7 @@ export async function fetchClasses(userId: string): Promise<{ id: string; name: 
 }
 
 // ============================================
-// Init: create cards for all students
+// Reset des cartes
 // ============================================
 
 export async function resetStudentStampCards(userId: string, studentId: string): Promise<void> {
@@ -693,41 +647,4 @@ export async function resetAllStampCards(userId: string): Promise<number> {
   }
 
   return deletedCount;
-}
-
-export async function initializeCardsForClass(userId: string, classId: string): Promise<number> {
-  const { data: students } = await supabase
-    .from('students')
-    .select('id')
-    .eq('class_id', classId)
-    .eq('is_deleted', false);
-
-  if (!students || students.length === 0) return 0;
-
-  const studentIds = students.map(s => s.id);
-
-  // Batch fetch all existing active cards in one query
-  const { data: existingCards } = await supabase
-    .from('stamp_cards')
-    .select('student_id')
-    .in('student_id', studentIds)
-    .eq('status', 'active');
-
-  const studentsWithCards = new Set((existingCards || []).map(c => c.student_id));
-  const studentsWithoutCards = studentIds.filter(id => !studentsWithCards.has(id));
-
-  if (studentsWithoutCards.length === 0) return 0;
-
-  // Batch insert all missing cards at once
-  const newCards = studentsWithoutCards.map(studentId => ({
-    student_id: studentId,
-    user_id: userId,
-    card_number: 1,
-    status: 'active',
-  }));
-
-  const { error } = await supabase.from('stamp_cards').insert(newCards);
-  if (error) throw error;
-
-  return studentsWithoutCards.length;
 }

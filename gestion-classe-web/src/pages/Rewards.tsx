@@ -15,7 +15,6 @@ import {
   deleteBonus as deleteBonusApi,
   awardStamp,
   markBonusUsed,
-  initializeCardsForClass,
   resetAllStampCards,
   resetStudentStampCards,
   fetchStudentStampDetail,
@@ -253,17 +252,6 @@ export function Rewards() {
     }
   };
 
-  const doInitCards = async () => {
-    if (!user || !classFilter) return;
-    try {
-      const count = await initializeCardsForClass(user.id, classFilter);
-      await loadData();
-      showSuccess(`${count} carte(s) créée(s)`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur');
-    }
-  };
-
   const doResetStudent = async (student: StudentStampOverview) => {
     if (!user) return;
     const ok = await showConfirm({ title: 'Reinitialiser cet eleve', message: `Reinitialiser ${student.pseudo} ?\n\nTous ses tampons, cartes et bonus seront supprimes. Il repartira a la carte n°1.`, confirmLabel: 'Reinitialiser', variant: 'danger' });
@@ -455,14 +443,6 @@ export function Rewards() {
             {/* Header bar */}
             <div className="flex items-center gap-2 border-b border-[var(--border)] px-2 md:px-4 py-2">
               <span className="text-sm font-medium text-[var(--text)]">Vue d'ensemble</span>
-              {classFilter && (
-                <button
-                  onClick={doInitCards}
-                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--indigo)] border border-[var(--indigo)] hover:bg-blue-50 transition-colors"
-                >
-                  Initialiser les cartes
-                </button>
-              )}
             </div>
 
             {/* Content */}
