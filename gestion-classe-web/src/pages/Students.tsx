@@ -15,6 +15,9 @@ import { generateStudentQrCardsPdf } from '../lib/generateStudentQrCards';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
 
+// Seuil de malus a partir duquel un eleve est signale dans le filtre "A suivre"
+const MALUS_ALERT_THRESHOLD = 5;
+
 interface Student {
   id: string;
   pseudo: string;
@@ -644,7 +647,7 @@ export function Students() {
     const classStudents = studentGrades.filter(s => (!selectedClassId || s.student.class_id === selectedClassId) && !s.student.is_witness);
     return {
       all: classStudents.length,
-      attention: classStudents.filter(s => s.grade < 8).length,
+      attention: classStudents.filter(s => s.grade < 8 || s.malus >= MALUS_ALERT_THRESHOLD).length,
       top: classStudents.filter(s => s.grade >= 12).length,
     };
   }, [studentGrades, selectedClassId]);
@@ -669,7 +672,7 @@ export function Students() {
       );
     }
 
-    if (filter === 'attention') filtered = filtered.filter(s => s.grade < 8);
+    if (filter === 'attention') filtered = filtered.filter(s => s.grade < 8 || s.malus >= MALUS_ALERT_THRESHOLD);
     if (filter === 'top') filtered = filtered.filter(s => s.grade >= 12);
 
     const sorted = [...filtered].sort((a, b) => {
@@ -1920,7 +1923,7 @@ export function Students() {
                 </div>
                 <div className="chips">
                   <button className={`chip ${filter === 'all' ? 'is-on' : ''}`} onClick={() => setFilter('all')}>Tous <span className="chip__count">{filterCounts.all}</span></button>
-                  <button className={`chip chip--warn ${filter === 'attention' ? 'is-on' : ''}`} onClick={() => setFilter('attention')}>À suivre <span className="chip__count">{filterCounts.attention}</span></button>
+                  <button className={`chip chip--warn ${filter === 'attention' ? 'is-on' : ''}`} onClick={() => setFilter('attention')} title={`Note d'implication < 8 ou au moins ${MALUS_ALERT_THRESHOLD} malus`}>À suivre <span className="chip__count">{filterCounts.attention}</span></button>
                   <button className={`chip chip--good ${filter === 'top' ? 'is-on' : ''}`} onClick={() => setFilter('top')}>En tête <span className="chip__count">{filterCounts.top}</span></button>
                 </div>
                 <div className="toolbar__spacer" />
@@ -1975,9 +1978,14 @@ export function Students() {
                               </div>
                             </div>
                           </div>
-                          <div className="scard__mark">
-                            <span>{sg.grade.toFixed(1)}</span>
-                            <small>/20</small>
+                          <div className="scard__markbox">
+                            <div className="scard__mark">
+                              <span>{sg.grade.toFixed(1)}</span>
+                              <small>/20</small>
+                            </div>
+                            <div className={`scard__malus ${sg.malus >= 5 ? 'is-high' : ''}`} title="Malus (bavardages) ce trimestre">
+                              {sg.malus > 0 ? `−${sg.malus}` : '0'} malus
+                            </div>
                           </div>
                         </div>
 
