@@ -15,9 +15,11 @@ interface Props {
   title?: string;
   /** La couleur active n'est pas mise en avant (ex. surligneur actif). */
   muted?: boolean;
+  /** Une seule pastille (la couleur courante) au lieu des quatre rapides : barre principale. */
+  compact?: boolean;
 }
 
-export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur', muted }: Props) {
+export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur', muted, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<string[]>(() => loadRecentColors());
   const panelRef = useRef<HTMLDivElement>(null);
@@ -32,7 +34,18 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
   const isOn = (c: string) => !muted && value.toLowerCase() === c.toLowerCase();
 
   return (
-    <div className="wbc" ref={panelRef}>
+    <div className={`wbc ${compact ? 'wbc--compact' : ''}`} ref={panelRef}>
+      {compact ? (
+        <button
+          ref={btnRef}
+          className={`wb__swatch wbc__single ${open ? 'is-on' : ''}`}
+          style={{ background: value === 'none' ? undefined : value }}
+          onPointerDown={hold}
+          onClick={() => setOpen((v) => !v)}
+          title={title}
+        />
+      ) : (
+      <>
       {QUICK_COLORS.map((c) => (
         <button key={c} className={`wb__swatch ${isOn(c) ? 'is-on' : ''}`} style={{ background: c }} onPointerDown={hold} onClick={() => pick(c)} title={title} />
       ))}
@@ -46,8 +59,12 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
       >
         {(QUICK_COLORS.some(isOn) || value === 'none') && <span>+</span>}
       </button>
+      </>
+      )}
       {open && (
-        <BoardPopover anchorRef={btnRef} onClose={() => setOpen(false)} className="wbc__panel" width={292}>
+        // 476 = 8 pastilles de 44 px + 7 gouttières de 12 + 36 de marge intérieure. La grille
+        // est en 8 colonnes : plus court, la droite de la palette sort du panneau.
+        <BoardPopover anchorRef={btnRef} onClose={() => setOpen(false)} className="wbc__panel" width={476}>
           <div className="wbc__grid">
             {allowNone && (
               <button className={`wbc__cell wbc__cell--none ${value === 'none' ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => { pick('none'); setOpen(false); }} title="Aucune" />
@@ -79,6 +96,9 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
 
 const CSS = `
 .wbc { position: relative; display: flex; align-items: center; }
+/* Pastille unique : montre la couleur courante, ouvre la palette complète */
+.wbc__single { margin: 0; }
+.wbc__single.is-on { border-color: #FFFFFF; box-shadow: 0 0 0 2px #4F46E5; }
 .wbc__more { display: flex; align-items: center; justify-content: center; background: #1F2937; color: #E5E7EB; font: 700 18px/1 Inter, system-ui, sans-serif; }
 .wbc__more.is-custom { border-color: #FFFFFF; box-shadow: 0 0 0 2px #4F46E5; }
 .wbc__panel { padding: 12px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }

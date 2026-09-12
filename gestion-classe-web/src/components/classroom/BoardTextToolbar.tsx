@@ -2,6 +2,7 @@
  * Barre de mise en forme des zones de texte (police, taille, gras…, listes, retraits).
  * Les commandes passent par l'API exposée par le calque d'objets (`BoardTextApi`).
  */
+import { useState } from 'react';
 import { BOARD_FONTS, TEXT_SIZES, type TextBox } from '../../lib/boardText';
 import type { BoardTextApi, FormatState } from './BoardObjectLayer';
 
@@ -63,8 +64,15 @@ export function BoardTextToolbar({
 }: ToolbarProps) {
   // `onPointerDown` neutralisé : la sélection dans la zone de texte ne doit pas être perdue
   const hold = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
-  const call = (fn: (a: BoardTextApi) => void) => () => { const a = api.current; if (a) fn(a); };
   const disabled = !editing;
+  // Seconde rangée : ce qui sert plus rarement au tableau (exposant, casse, retraits, trous).
+  // Elle se replie dès qu'une de ses commandes a servi — le curseur est alors reparti dans le texte.
+  const [more, setMore] = useState(false);
+  // Repli quand on quitte la saisie — ajusté au rendu, pas dans un effet (pas de rendu en cascade).
+  const [wasEditing, setWasEditing] = useState(editing);
+  if (wasEditing !== editing) { setWasEditing(editing); if (!editing) setMore(false); }
+  const call = (fn: (a: BoardTextApi) => void) => () => { const a = api.current; if (a) fn(a); setMore(false); };
+  const once = (fn: () => void) => () => { fn(); setMore(false); };
 
   return (
     <>
@@ -93,8 +101,6 @@ export function BoardTextToolbar({
         <button className={`wb__btn wb__txt ${format.italic ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('italic'))} title={`Italique (${TEXT_KEYS.italic})`}><i>I</i></button>
         <button className={`wb__btn wb__txt ${format.underline ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('underline'))} title={`Souligné (${TEXT_KEYS.underline})`}><u>S</u></button>
         <button className={`wb__btn wb__txt ${format.strike ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('strikeThrough'))} title={`Barré (${TEXT_KEYS.strike})`}><s>B</s></button>
-        <button className={`wb__btn wb__txt ${format.sup ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('superscript'))} title={`Exposant (${TEXT_KEYS.superscript})`}>x²</button>
-        <button className={`wb__btn wb__txt ${format.sub ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('subscript'))} title={`Indice (${TEXT_KEYS.subscript})`}>x₂</button>
       </div>
 
       <div className="wb__group">
@@ -144,21 +150,30 @@ export function BoardTextToolbar({
         <button className={`wb__btn ${format.ol ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('insertOrderedList'))} title={`Liste numérotée (${TEXT_KEYS.numbered})`}>
           <svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M4 5h1v4M4 15h2v1H4v2h2" /></svg>
         </button>
-        <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(-1))} title={`Diminuer le retrait (${TEXT_KEYS.indentLess})`}>
-          <svg viewBox="0 0 24 24"><path d="M20 6H9M20 12h-8M20 18H9M7 9l-3 3 3 3" /></svg>
-        </button>
-        <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(1))} title={`Augmenter le retrait (${TEXT_KEYS.indentMore})`}>
-          <svg viewBox="0 0 24 24"><path d="M20 6H9M20 12h-8M20 18H9M4 9l3 3-3 3" /></svg>
-        </button>
         <button className="wb__btn wb__txt" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.clearFormatting())} title={`Effacer la mise en forme (${TEXT_KEYS.clearFormat})`}>T̸</button>
-        <button className="wb__btn wb__txt" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.toggleCase())} title={`Changer la casse (${TEXT_KEYS.toggleCase})`}>Aa</button>
       </div>
 
       <div className="wb__group">
-        <button className="wb__btn wb__txt" disabled={disabled} onPointerDown={hold} onClick={onGap} title="Texte à trous : masquer le mot sélectionné (ou sous le curseur)">▭</button>
-        <button className="wb__btn wb__txt" disabled={!box || gapCount === 0} onPointerDown={hold} onClick={onRevealGaps} title="Révéler tous les trous de la zone">👁</button>
-        <button className="wb__btn wb__txt" disabled={!box || gapCount === 0} onPointerDown={hold} onClick={onRemoveGaps} title="Retirer les trous (le texte redevient ordinaire)">⌧</button>
+        <button className={`wb__btn wb__txt ${more ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => setMore((v) => !v)} title="Plus de mise en forme : exposant, indice, casse, retraits, texte à trous">…</button>
       </div>
+
+      {more && (
+        <div className="wb__row2" onPointerDown={hold}>
+          <button className={`wb__btn wb__txt ${format.sup ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('superscript'))} title={`Exposant (${TEXT_KEYS.superscript})`}>x²</button>
+          <button className={`wb__btn wb__txt ${format.sub ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('subscript'))} title={`Indice (${TEXT_KEYS.subscript})`}>x₂</button>
+          <button className="wb__btn wb__txt" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.toggleCase())} title={`Changer la casse (${TEXT_KEYS.toggleCase})`}>Aa</button>
+          <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(-1))} title={`Diminuer le retrait (${TEXT_KEYS.indentLess})`}>
+            <svg viewBox="0 0 24 24"><path d="M20 6H9M20 12h-8M20 18H9M7 9l-3 3 3 3" /></svg>
+          </button>
+          <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(1))} title={`Augmenter le retrait (${TEXT_KEYS.indentMore})`}>
+            <svg viewBox="0 0 24 24"><path d="M20 6H9M20 12h-8M20 18H9M4 9l3 3-3 3" /></svg>
+          </button>
+          {/* Texte à trous : une action pédagogique, pas une mise en forme — d'où l'orange. */}
+          <button className="wb__btn wb__txt wb__row2-gap" disabled={disabled} onPointerDown={hold} onClick={once(onGap)} title="Texte à trous : masquer le mot sélectionné (ou sous le curseur)">▭</button>
+          <button className="wb__btn wb__txt" disabled={!box || gapCount === 0} onPointerDown={hold} onClick={once(onRevealGaps)} title="Révéler tous les trous de la zone">👁</button>
+          <button className="wb__btn wb__txt" disabled={!box || gapCount === 0} onPointerDown={hold} onClick={once(onRemoveGaps)} title="Retirer les trous (le texte redevient ordinaire)">⌧</button>
+        </div>
+      )}
 
       <div className="wb__group">
         <button className="wb__btn" disabled={!box} onPointerDown={hold} onClick={onDelete} title="Supprimer la zone de texte (Suppr)">

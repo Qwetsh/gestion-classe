@@ -84,5 +84,8 @@ export function BoardPopover({ anchorRef, onClose, className = '', width = 300, 
 }
 
 const CSS = `
-.wbpop { position: fixed; z-index: 24; box-sizing: border-box; max-height: calc(100vh - 16px); overflow-y: auto; }
+/* 130, au-dessus de .wb (z-index 100). Le panneau est portalé sur document.body : il n'est
+   donc plus dans le contexte d'empilement du tableau, et un z-index inférieur à 100 le fait
+   passer DERRIERE la page — visible au bon endroit, mais aucun contact ne l'atteint. */
+.wbpop { position: fixed; z-index: 130; box-sizing: border-box; max-height: calc(100vh - 16px); overflow-y: auto; }
 `;

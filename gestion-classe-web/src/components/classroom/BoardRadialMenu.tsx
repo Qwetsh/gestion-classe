@@ -22,9 +22,9 @@ interface Props {
   onClose: () => void;
 }
 
-const INNER = 44;
-const OUTER = 150;
-const LABEL_R = 100;
+const INNER = 58;
+const OUTER = 214;
+const LABEL_R = 148;
 const GAP = (2 * Math.PI) / 180;
 
 function arc(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number): string {
@@ -87,8 +87,8 @@ export function BoardRadialMenu({ x, y, items, onClose }: Props) {
         return (
           <g key={it.id} className={`wbr__seg ${on ? 'is-hot' : ''} ${it.active ? 'is-active' : ''} ${it.disabled ? 'is-disabled' : ''}`}>
             <path d={arc(OUTER + 10, OUTER + 10, INNER, OUTER, a0, a1)} />
-            <text x={lx} y={ly - 10} textAnchor="middle" className="wbr__icon">{it.icon}</text>
-            <text x={lx} y={ly + 16} textAnchor="middle" className="wbr__label">{it.label}</text>
+            <text x={lx} y={ly - 16} textAnchor="middle" className="wbr__icon">{it.icon}</text>
+            <text x={lx} y={ly + 24} textAnchor="middle" className="wbr__label">{it.label}</text>
           </g>
         );
       })}

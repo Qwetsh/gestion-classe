@@ -73,6 +73,8 @@ import { BoardSearchPanel } from './BoardSearchPanel';
 import { BoardKeyboard } from './BoardKeyboard';
 import { BoardLibraryPanel } from './BoardLibraryPanel';
 import { BoardPopover } from './BoardPopover';
+import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
+import { BoardFloatingToolbar } from './BoardFloatingToolbar';
 import { BoardPickOverlay, type PickableStudent } from './BoardPickOverlay';
 import { BoardCameraOverlay } from './BoardCameraOverlay';
 import type { ClassroomBus } from '../../lib/classroomBus';
@@ -108,6 +110,7 @@ import {
   type WidgetKind,
   type WidgetObject,
 } from '../../lib/boardMedia';
+import './wb-theme.css';
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'select' | 'shape' | 'laser';
 /** Outils qui manipulent les objets de la page (les cadres deviennent cliquables). */
@@ -162,6 +165,10 @@ const REMOTE_RETRY_MS = 15000;
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const newPage = (background: Background = 'blank'): Page => ({ id: uid(), background, strokes: [], objects: [] });
 const NAV_STORAGE_KEY = 'classroom-board-nav';
+/** Premier lancement : les trois bulles ne se montrent qu'une fois par poste. */
+const COACH_STORAGE_KEY = 'classroom-board-coach';
+/** Durée du rattrapage après une action destructive (aucune confirmation n'est demandée avant). */
+const UNDO_BAR_MS = 8000;
 const AUTO_SHAPES_KEY = 'classroom-board-autoshapes';
 const TBI_SETTINGS_KEY = 'classroom-board-tbi';
 /** Deux doigts immobiles pendant ce délai : menu radial. */
@@ -323,9 +330,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const curtainDrag = useRef<{ pointerId: number } | null>(null);
   const [insertOpen, setInsertOpen] = useState(false);
   const insertBtnRef = useRef<HTMLButtonElement>(null);
-  const settingsBtnRef = useRef<HTMLButtonElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const sizeBtnRef = useRef<HTMLButtonElement>(null);
   const [tbi, setTbi] = useState<TbiSettings>(loadTbi);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Menu « Plus » : page, fichier, instruments, séance, réglages. */
+  const [moreOpen, setMoreOpen] = useState(false);
+  /** Panneau d'épaisseur du trait (ou de diamètre de gomme), replié dans un seul bouton. */
+  const [sizeOpen, setSizeOpen] = useState(false);
   const [view, setView] = useState<ViewState>(IDENTITY_VIEW);
   const viewRef = useRef<ViewState>(IDENTITY_VIEW);
   const [radial, setRadial] = useState<{ x: number; y: number } | null>(null);
@@ -362,9 +373,51 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [textFont, setTextFont] = useState('sans');
   const textApiRef = useRef<BoardTextApi | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  /* ── Finitions (lot F) : rien n'interrompt le cours ────────────────────────────
+     Trois niveaux d'erreur seulement — une pilule pour l'état persistant (hors ligne),
+     une carte hors de la zone d'écriture pour ce qui demande un geste (enregistrement),
+     et l'échec d'un objet qui reste dans l'objet. Le destructif n'est jamais confirmé :
+     il agit, puis « Annuler » reste 8 s. Aucun modal, jamais. */
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [undoBar, setUndoBar] = useState<{ message: string; run: () => void } | null>(null);
+  const undoBarTimer = useRef<number | null>(null);
+  const [coachOpen, setCoachOpen] = useState(() => {
+    try { return localStorage.getItem(COACH_STORAGE_KEY) !== 'done'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
+
+  /** Annonce une action destructive déjà faite et laisse 8 s pour revenir en arrière. */
+  const offerUndo = useCallback((message: string, run: () => void) => {
+    if (undoBarTimer.current) window.clearTimeout(undoBarTimer.current);
+    setUndoBar({ message, run });
+    undoBarTimer.current = window.setTimeout(() => { setUndoBar(null); undoBarTimer.current = null; }, UNDO_BAR_MS);
+  }, []);
+
+  const closeUndoBar = useCallback(() => {
+    if (undoBarTimer.current) { window.clearTimeout(undoBarTimer.current); undoBarTimer.current = null; }
+    setUndoBar(null);
+  }, []);
+
+  useEffect(() => () => { if (undoBarTimer.current) window.clearTimeout(undoBarTimer.current); }, []);
+
+  const dismissCoach = useCallback(() => {
+    setCoachOpen(false);
+    try { localStorage.setItem(COACH_STORAGE_KEY, 'done'); } catch { /* stockage indisponible */ }
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  /** Racine `.wb` : la classe `is-drawing` y est posée en direct (sans rendu React) pendant un tracé. */
+  const rootRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<HTMLCanvasElement>(null);
   const mainRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
@@ -585,8 +638,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         syncedRef.current.set(page.id, page);
         syncedPosRef.current.set(page.id, position);
       }
+      setSaveFailed(false);
     } catch (err) {
       console.warn('[Whiteboard] sauvegarde distante échouée, nouvel essai plus tard :', err);
+      setSaveFailed(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, boardId, userId, remote]);
@@ -663,7 +718,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setEditingId(null);
     setSelectedIds(new Set());
     updatePage(p.id, (pg) => ({ ...pg, strokes: [], objects: [] }));
-  }, [pushOp, updatePage]);
+    // Deux opérations ont pu être empilées (objets puis encre) : on les dépile toutes les deux.
+    const steps = (objects.length > 0 ? 1 : 0) + (p.strokes.length > 0 ? 1 : 0);
+    offerUndo('Page effacée.', () => { for (let i = 0; i < steps; i += 1) applyUndo(); });
+  }, [pushOp, updatePage, offerUndo, applyUndo]);
 
   const setBackground = useCallback((bg: Background) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -698,9 +756,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
   const deletePage = useCallback((index: number) => {
     if (pagesRef.current.length <= 1) return;
+    const removed = pagesRef.current[index];
     setPages((prev) => prev.filter((_, i) => i !== index));
     setPageIndex((i) => Math.max(0, Math.min(i > index ? i - 1 : i, pagesRef.current.length - 2)));
-  }, []);
+    if (!removed) return;
+    offerUndo(`Page ${index + 1} supprimée.`, () => {
+      setPages((prev) => [...prev.slice(0, index), removed, ...prev.slice(index)]);
+      setPageIndex(index);
+    });
+  }, [offerUndo]);
 
   const movePage = useCallback((from: number, to: number) => {
     setPages((prev) => {
@@ -1631,6 +1695,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     e.preventDefault();
     activePointer.current = e.pointerId;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* pointeur synthétique ou déjà capturé */ }
+    // La barre recule pendant qu'on écrit : opacité seule, posée sans passer par React
+    // pour ne rien recalculer entre la pointe du stylet et l'encre.
+    rootRef.current?.classList.add('is-drawing');
 
     // Gomme du stylet (bouton 5 / buttons & 32) ou outil gomme
     const isEraser = toolRef.current === 'eraser' || e.button === 5 || (e.buttons & 32) !== 0;
@@ -1773,6 +1840,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const finishPointer = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.pointerId !== activePointer.current) return;
     activePointer.current = null;
+    rootRef.current?.classList.remove('is-drawing');
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
 
     const p = pagesRef.current[pageIndexRef.current];
@@ -2082,8 +2150,74 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     handleObjectsChange(pageObjects.map((o) => (o.type === 'text' && ids.has(o.id) ? fn(o) : o)), pageObjects);
   };
 
+  /**
+   * Contenu du menu « Plus » : cinq sections nommées. Tout ce qui servait 0 à 3 fois par heure
+   * a quitté la barre pour venir ici — rien n'a été retiré du tableau.
+   */
+  const moreSections: MoreSection[] = [
+    {
+      title: 'Page',
+      items: [
+        { id: 'page-new', label: 'Nouvelle page', icon: '＋', onSelect: addPage },
+        ...BACKGROUNDS.map((b) => ({ id: `bg-${b.id}`, label: `Fond : ${b.label}`, icon: '▦', active: page.background === b.id, onSelect: () => setBackground(b.id) })),
+        { id: 'page-cover', label: 'Tout recouvrir', icon: '▥', onSelect: recoverCurrentPage },
+        { id: 'page-clear', label: 'Effacer la page', icon: '🗑', disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
+      ],
+    },
+    {
+      title: 'Fichier',
+      items: [
+        { id: 'file-open', label: `Ouvrir (${GCBOARD_EXTENSION}, PDF, image)`, icon: '📂', disabled: !!importing, onSelect: () => fileInputRef.current?.click() },
+        { id: 'file-save', label: 'Enregistrer le tableau', icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
+        { id: 'file-pdf', label: 'Exporter en PDF', icon: '⤓', onSelect: () => setExportOpen(true) },
+      ],
+    },
+    {
+      title: 'Instruments',
+      items: [
+        { id: 'inst-ruler', label: 'Règle', icon: '📏', onSelect: () => addInstrument('ruler') },
+        { id: 'inst-square', label: 'Équerre', icon: '📐', onSelect: () => addInstrument('setsquare') },
+        { id: 'inst-protractor', label: 'Rapporteur', icon: '🧭', onSelect: () => addInstrument('protractor') },
+        { id: 'inst-spotlight', label: 'Projecteur', icon: '🔦', onSelect: () => setSpotlight(true) },
+        { id: 'inst-keyboard', label: 'Clavier virtuel', icon: '⌨', active: keyboardOpen, onSelect: () => setKeyboardOpen((v) => !v) },
+        { id: 'inst-zoom', label: 'Zoom + (Ctrl+molette)', icon: '🔍', onSelect: () => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2) },
+      ],
+    },
+    {
+      title: 'Séance',
+      items: [
+        { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen(true) },
+        { id: 'ses-search', label: 'Rechercher (Ctrl+K)', icon: '🔎', onSelect: () => setSearchOpen(true) },
+        ...(classroom ? [{ id: 'ses-pick', label: 'Tirage au sort', icon: '🎯', onSelect: () => setPickOpen(true) }] : []),
+        { id: 'ses-radial', label: 'Menu radial', icon: '◎', onSelect: () => setRadial({ x: window.innerWidth / 2, y: window.innerHeight / 2 }) },
+        { id: 'ses-display', label: 'Mode affichage', icon: '🖥', onSelect: () => { setDisplayMode(true); setTool('select'); void document.documentElement.requestFullscreen?.().catch(() => undefined); } },
+      ],
+    },
+    {
+      title: 'Réglages',
+      items: [
+        { id: 'set-gestures', label: `Gestes à deux doigts ${tbi.gestures ? 'activés' : 'désactivés'}`, icon: '✌️', active: tbi.gestures, onSelect: () => setTbi((t) => ({ ...t, gestures: !t.gestures })) },
+        ...(['bottom', 'left', 'right'] as BarSide[]).map((side) => ({
+          id: `set-bar-${side}`,
+          label: `Barre en ${side === 'bottom' ? 'bas' : side === 'left' ? 'à gauche' : 'à droite'}`,
+          icon: '▭',
+          active: tbi.bar === side,
+          onSelect: () => setTbi((t) => ({ ...t, bar: side })),
+        })),
+        ...(['left', 'center', 'right'] as const).map((hand) => ({
+          id: `set-hand-${hand}`,
+          label: hand === 'left' ? 'Je suis à gauche' : hand === 'right' ? 'Je suis à droite' : 'Barre centrée',
+          icon: '🖐',
+          active: tbi.hand === hand,
+          onSelect: () => setTbi((t) => ({ ...t, hand })),
+        })),
+      ],
+    },
+  ];
+
   return (
     <div
+      ref={rootRef}
       className={`wb ${dragOver ? 'is-dragover' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
@@ -2131,7 +2265,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         onPointerUpCapture={onStagePointerUp}
         onPointerCancelCapture={onStagePointerUp}
       >
-      <div className="wb__view" style={{ transform: view.zoom === 1 ? undefined : `translate(${view.tx}px, ${view.ty}px) scale(${view.zoom})` }}>
+      <div
+        className="wb__view"
+        style={{ transform: view.zoom === 1 ? undefined : `translate(${view.tx}px, ${view.ty}px) scale(${view.zoom})` }}
+        onPointerDownCapture={coachOpen ? dismissCoach : undefined}
+      >
         <canvas ref={bgRef} className="wb__layer" />
         <canvas ref={mainRef} className="wb__layer" />
         <canvas
@@ -2246,11 +2384,49 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           </div>
         )}
         {instruments.length > 0 && <BoardInstruments instruments={instruments} stage={stageBox} scale={textScale} onChange={setInstruments} />}
+        {page.strokes.length === 0 && pageObjects.length === 0 && !displayMode && (
+          <div className="wb__empty" aria-hidden>
+            <p>Écrivez.</p>
+            <p>Deux doigts pour les outils.</p>
+          </div>
+        )}
       </div>
         {view.zoom > 1 && (
           <div className="wb__zoom" onPointerDown={(e) => e.stopPropagation()}>
             <span>{Math.round(view.zoom * 100)} %</span>
             <button type="button" onClick={() => setView(IDENTITY_VIEW)} title="Revenir à 100 % (Ctrl+0)">Vue entière</button>
+          </div>
+        )}
+
+        {/* Niveau 1 — état persistant : on continue d'écrire, la pilule ne demande rien. */}
+        {!online && !displayMode && (
+          <div className="wb__offline" role="status">
+            <i />Hors ligne — tout est enregistré sur ce poste.
+          </div>
+        )}
+
+        {/* Niveau 2 — un geste est attendu : en haut à droite, loin de la main et de l'encre. */}
+        {saveFailed && online && !displayMode && (
+          <div className="wb__savefail" role="alert">
+            <span>Enregistrement impossible.</span>
+            <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setSaveFailed(false); void flushRemote(); }}>Réessayer</button>
+          </div>
+        )}
+
+        {/* Le destructif a déjà agi : voici de quoi revenir en arrière, pendant 8 s. */}
+        {undoBar && !displayMode && (
+          <div className="wb__undobar" role="status">
+            <span>{undoBar.message}</span>
+            <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={() => { undoBar.run(); closeUndoBar(); }}>Annuler</button>
+          </div>
+        )}
+
+        {/* Premier lancement : les trois gestes vitaux, ensemble, sans séquence ni « suivant ». */}
+        {coachOpen && !displayMode && (
+          <div className="wb__coach" aria-hidden>
+            <div className="wb__coach-bubble wb__coach-bubble--radial">Deux doigts sur la page : les outils viennent sous la main.</div>
+            <div className="wb__coach-bubble wb__coach-bubble--pages">Le rail de droite tient toutes les pages de la séance.</div>
+            <div className="wb__coach-bubble wb__coach-bubble--hand">Réglages : mettre la barre du côté de votre main.</div>
           </div>
         )}
       </div>
@@ -2323,6 +2499,105 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
       {ticker && <div className="wb__ticker" key={ticker}>{ticker}</div>}
 
+      {/* Barres contextuelles : elles se posent sur l'objet, plus dans la barre principale. */}
+      {!displayMode && showTextToolbar && (
+        <BoardFloatingToolbar objectId={selectedBox?.id ?? null} label="Texte">
+            <BoardTextToolbar
+              api={textApiRef}
+              format={format}
+              box={selectedBox}
+              editing={editingId !== null}
+              fontId={selectedBox?.font ?? textFont}
+              size={selectedBox?.size ?? textSize}
+              color={color}
+              colors={COLORS}
+              highlights={TEXT_HIGHLIGHTS}
+              onFontChange={(id) => {
+                setTextFont(id);
+                if (editingId) textApiRef.current?.applyFontFamily(id);
+                else patchSelectedTexts((o) => ({ ...o, font: id }));
+              }}
+              onSizeChange={(size) => {
+                setTextSize(size);
+                if (editingId) textApiRef.current?.applyFontSize(size);
+                else patchSelectedTexts((o) => ({ ...o, size }));
+              }}
+              onColor={(c) => {
+                setColor(c);
+                if (editingId) textApiRef.current?.applyColor(c);
+                else patchSelectedTexts((o) => ({ ...o, color: c }));
+              }}
+              onDelete={deleteSelected}
+              gapCount={selectedBox ? gapIdsIn(selectedBox.html).length : 0}
+              onGap={() => textApiRef.current?.makeGap()}
+              onRevealGaps={() => { if (selectedBox) revealAllGaps(selectedBox.id); }}
+              onRemoveGaps={() => {
+                if (editingId) textApiRef.current?.removeGaps();
+                else patchSelectedTexts((o) => ({ ...o, html: stripGapsHtml(o.html) }));
+              }}
+            />
+        </BoardFloatingToolbar>
+      )}
+      {!displayMode && showShapeToolbar && (
+        <BoardFloatingToolbar objectId={selectedShapes[0]?.id ?? selectedLibrary[0]?.id ?? null} label={selectedShapes.length === 0 && selectedLibrary.length > 0 ? 'Objet' : 'Forme'}>
+            <BoardShapeToolbar
+              kind={shapeKind}
+              style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
+              selected={selectedShapes}
+              onKind={(k) => {
+                setShapeKind(k);
+                if (selectedShapes.length > 0) patchSelectedShapes((o) => ({ ...o, kind: k, h: isLineKind(k) ? o.h : Math.max(o.h, MIN_SHAPE_H), points: undefined }));
+              }}
+              onStyle={(patch) => {
+                setShapeStyle((st) => ({ ...st, ...patch }));
+                patchSelectedShapes((o) => ({ ...o, ...patch }));
+                if (selectedLibrary.length > 0) {
+                  const ids = new Set(selectedLibrary.map((o) => o.id));
+                  handleObjectsChange(pageObjects.map((o) => (o.type === 'library' && ids.has(o.id) ? { ...o, ...(patch.stroke !== undefined ? { stroke: patch.stroke } : {}), ...(patch.fill !== undefined ? { fill: patch.fill } : {}), ...(patch.strokeWidth !== undefined ? { strokeWidth: patch.strokeWidth } : {}) } : o)), pageObjects);
+                }
+              }}
+              onLineKind={(k) => patchSelectedShapes((o) => (isLineKind(o.kind) ? { ...o, kind: k } : o))}
+              onDelete={deleteSelected}
+            />
+        </BoardFloatingToolbar>
+      )}
+
+      {/* Pages : rail vertical au bord, du côté du navigateur de vignettes — ce n'est pas
+          un outil de dessin, ça n'a rien à faire au milieu des outils. */}
+      {!displayMode && (() => {
+        const side = tbi.bar === 'right' ? 'left' : 'right';
+        return (
+          <div className={`wb__pagerail wb__pagerail--${side}`} style={side === 'right' && navOpen ? { right: 252 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
+            <button className="wb__btn" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0} title="Page précédente">
+              <svg viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" /></svg>
+            </button>
+            <span className="wb__pages">{pageIndex + 1}/{pageCount}</span>
+            <button className="wb__btn" onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))} disabled={pageIndex >= pageCount - 1} title="Page suivante">
+              <svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" /></svg>
+            </button>
+            <button className={`wb__btn ${navOpen ? 'is-on' : ''}`} onClick={() => setNavOpen((v) => !v)} title="Navigateur de pages (N)">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM14 5v14M16 9h2M16 12h2M16 15h2" /></svg>
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Annuler / Rétablir : hors de la barre, dans le coin opposé à la main qui écrit */}
+      {!displayMode && (() => {
+        // Jamais du même côté que la barre, sinon les deux se recouvrent dans le coin.
+        const side = tbi.bar === 'left' ? 'right' : tbi.bar === 'right' ? 'left' : tbi.hand === 'left' ? 'right' : 'left';
+        return (
+          <div className={`wb__history wb__history--${side} wb__history--bar-${tbi.bar}`} style={side === 'right' && navOpen ? { right: 252 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
+            <button className="wb__btn" onClick={applyUndo} disabled={historyLen === 0} title="Annuler (Ctrl+Z)">
+              <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+            </button>
+            <button className="wb__btn" onClick={applyRedo} disabled={redoLen === 0} title="Rétablir (Ctrl+Y)">
+              <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" /></svg>
+            </button>
+          </div>
+        );
+      })()}
+
       <div hidden={displayMode} className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -116 : 0 } : { right: tbi.bar === 'right' && navOpen ? 242 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
         <div className="wb__group">
           <button className={`wb__btn ${tool === 'select' ? 'is-on' : ''}`} onClick={() => setTool('select')} title="Sélection (V)">
@@ -2348,65 +2623,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           </button>
         </div>
 
-        {showTextToolbar ? (
-          <BoardTextToolbar
-            api={textApiRef}
-            format={format}
-            box={selectedBox}
-            editing={editingId !== null}
-            fontId={selectedBox?.font ?? textFont}
-            size={selectedBox?.size ?? textSize}
-            color={color}
-            colors={COLORS}
-            highlights={TEXT_HIGHLIGHTS}
-            onFontChange={(id) => {
-              setTextFont(id);
-              if (editingId) textApiRef.current?.applyFontFamily(id);
-              else patchSelectedTexts((o) => ({ ...o, font: id }));
-            }}
-            onSizeChange={(size) => {
-              setTextSize(size);
-              if (editingId) textApiRef.current?.applyFontSize(size);
-              else patchSelectedTexts((o) => ({ ...o, size }));
-            }}
-            onColor={(c) => {
-              setColor(c);
-              if (editingId) textApiRef.current?.applyColor(c);
-              else patchSelectedTexts((o) => ({ ...o, color: c }));
-            }}
-            onDelete={deleteSelected}
-            gapCount={selectedBox ? gapIdsIn(selectedBox.html).length : 0}
-            onGap={() => textApiRef.current?.makeGap()}
-            onRevealGaps={() => { if (selectedBox) revealAllGaps(selectedBox.id); }}
-            onRemoveGaps={() => {
-              if (editingId) textApiRef.current?.removeGaps();
-              else patchSelectedTexts((o) => ({ ...o, html: stripGapsHtml(o.html) }));
-            }}
-          />
-        ) : showShapeToolbar ? (
-          <BoardShapeToolbar
-            kind={shapeKind}
-            style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
-            selected={selectedShapes}
-            onKind={(k) => {
-              setShapeKind(k);
-              if (selectedShapes.length > 0) patchSelectedShapes((o) => ({ ...o, kind: k, h: isLineKind(k) ? o.h : Math.max(o.h, MIN_SHAPE_H), points: undefined }));
-            }}
-            onStyle={(patch) => {
-              setShapeStyle((st) => ({ ...st, ...patch }));
-              patchSelectedShapes((o) => ({ ...o, ...patch }));
-              if (selectedLibrary.length > 0) {
-                const ids = new Set(selectedLibrary.map((o) => o.id));
-                handleObjectsChange(pageObjects.map((o) => (o.type === 'library' && ids.has(o.id) ? { ...o, ...(patch.stroke !== undefined ? { stroke: patch.stroke } : {}), ...(patch.fill !== undefined ? { fill: patch.fill } : {}), ...(patch.strokeWidth !== undefined ? { strokeWidth: patch.strokeWidth } : {}) } : o)), pageObjects);
-              }
-            }}
-            onLineKind={(k) => patchSelectedShapes((o) => (isLineKind(o.kind) ? { ...o, kind: k } : o))}
-            onDelete={deleteSelected}
-          />
-        ) : (
-        <>
         <div className="wb__group">
           <BoardColorPicker
+            compact
             value={color}
             muted={tool === 'highlighter'}
             onChange={(c) => { setColor(c); if (tool === 'eraser' || tool === 'highlighter') setTool('pen'); }}
@@ -2419,64 +2638,45 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           )}
         </div>
 
+        {/* Épaisseur : un seul bouton, les trois tailles s'ouvrent au besoin */}
         <div className="wb__group">
-          {tool === 'eraser'
-            ? (Object.keys(ERASER_SIZES) as SizeKey[]).map((k) => (
-                <button key={k} className={`wb__btn wb__size wb__size--eraser ${eraserKey === k ? 'is-on' : ''}`} onClick={() => setEraserKey(k)} title={`Diamètre de gomme ${k}`}>
-                  <i style={{ width: 8 + ERASER_SIZES[k] * 0.9, height: 8 + ERASER_SIZES[k] * 0.9 }} />
-                </button>
-              ))
-            : (Object.keys(SIZES) as SizeKey[]).map((k) => (
-                <button key={k} className={`wb__btn wb__size ${sizeKey === k ? 'is-on' : ''}`} onClick={() => setSizeKey(k)} title={`Épaisseur ${k}`}>
-                  <i style={{ width: 6 + SIZES[k] * 2, height: 6 + SIZES[k] * 2 }} />
-                </button>
-              ))}
+          <button
+            ref={sizeBtnRef}
+            className={`wb__btn wb__size ${tool === 'eraser' ? 'wb__size--eraser' : ''} ${sizeOpen ? 'is-on' : ''}`}
+            onClick={() => { setMoreOpen(false); setInsertOpen(false); setSizeOpen((v) => !v); }}
+            title={tool === 'eraser' ? 'Diamètre de la gomme' : 'Épaisseur du trait'}
+          >
+            {tool === 'eraser'
+              ? <i style={{ width: 8 + ERASER_SIZES[eraserKey] * 0.9, height: 8 + ERASER_SIZES[eraserKey] * 0.9 }} />
+              : <i style={{ width: 6 + SIZES[sizeKey] * 2, height: 6 + SIZES[sizeKey] * 2 }} />}
+          </button>
+          {sizeOpen && (
+            <BoardPopover anchorRef={sizeBtnRef} onClose={() => setSizeOpen(false)} className="wb__sizepop" width={168}>
+              {tool === 'eraser'
+                ? (Object.keys(ERASER_SIZES) as SizeKey[]).map((k) => (
+                    <button key={k} className={`wb__btn wb__size wb__size--eraser ${eraserKey === k ? 'is-on' : ''}`} onClick={() => { setEraserKey(k); setSizeOpen(false); }} title={`Diamètre de gomme ${k}`}>
+                      <i style={{ width: 8 + ERASER_SIZES[k] * 0.9, height: 8 + ERASER_SIZES[k] * 0.9 }} />
+                    </button>
+                  ))
+                : (Object.keys(SIZES) as SizeKey[]).map((k) => (
+                    <button key={k} className={`wb__btn wb__size ${sizeKey === k ? 'is-on' : ''}`} onClick={() => { setSizeKey(k); setSizeOpen(false); }} title={`Épaisseur ${k}`}>
+                      <i style={{ width: 6 + SIZES[k] * 2, height: 6 + SIZES[k] * 2 }} />
+                    </button>
+                  ))}
+            </BoardPopover>
+          )}
         </div>
 
+        {/* créer : tout passe par « Insérer » ; le reste est dans le menu « Plus » */}
         <div className="wb__group">
-          <button className="wb__btn" onClick={applyUndo} disabled={historyLen === 0} title="Annuler (Ctrl+Z)">
-            <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
-          </button>
-          <button className="wb__btn" onClick={applyRedo} disabled={redoLen === 0} title="Rétablir (Ctrl+Y)">
-            <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" /></svg>
-          </button>
-          <button className="wb__btn" onClick={clearPage} disabled={page.strokes.length === 0 && pageObjects.length === 0} title="Effacer la page">
-            <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
-          </button>
-        </div>
-
-        <div className="wb__group">
-          <button className={`wb__btn wb__bg ${page.background === 'blank' ? 'is-on' : ''}`} onClick={() => setBackground('blank')} title="Fond blanc">
-            <span />
-          </button>
-          <button className={`wb__btn wb__bg wb__bg--grid ${page.background === 'grid' ? 'is-on' : ''}`} onClick={() => setBackground('grid')} title="Quadrillage">
-            <span />
-          </button>
-          <button className={`wb__btn wb__bg wb__bg--lines ${page.background === 'lines' ? 'is-on' : ''}`} onClick={() => setBackground('lines')} title="Lignes">
-            <span />
-          </button>
-        </div>
-        </>
-        )}
-
-        <div className="wb__group">
-          <button className="wb__btn" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0} title="Page précédente">
-            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
-          </button>
-          <span className="wb__pages">{pageIndex + 1} / {pageCount}</span>
-          <button className="wb__btn" onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))} disabled={pageIndex >= pageCount - 1} title="Page suivante">
-            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
-          </button>
-          <button className="wb__btn" onClick={addPage} title="Nouvelle page (Ctrl+Entrée)">
-            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
           <>
-            <button ref={insertBtnRef} className={`wb__btn ${insertOpen ? 'is-on' : ''}`} onClick={() => { setSettingsOpen(false); setInsertOpen((v) => !v); }} title="Insérer : tableau, vidéo, site, son, lien, post-it, équation, minuteur, dé, roue…">
+            <button ref={insertBtnRef} className={`wb__btn ${insertOpen ? 'is-on' : ''}`} onClick={() => { setMoreOpen(false); setSizeOpen(false); setInsertOpen((v) => !v); }} title="Insérer : tableau, vidéo, site, son, lien, post-it, équation, minuteur, dé, roue…">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14M4 4h16v16H4z" /></svg>
             </button>
             {insertOpen && (
-              <BoardPopover anchorRef={insertBtnRef} onClose={() => setInsertOpen(false)} className="wbi__panel" width={300}>
+              <BoardPopover anchorRef={insertBtnRef} onClose={() => setInsertOpen(false)} className="wbi__panel" width={420}>
                 {[
+                  { label: 'Image', icon: '🖼', run: () => { dropPoint.current = null; imageInputRef.current?.click(); } },
                   { label: 'Tableau 3 × 3', icon: '▦', run: () => insertTable(3, 3) },
                   { label: 'Vidéo (YouTube…)', icon: '▶', run: () => { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u); } },
                   { label: 'Site web', icon: '🌐', run: () => { const u = window.prompt('Adresse du site'); if (u) insertWeb(u); } },
@@ -2494,70 +2694,18 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               </BoardPopover>
             )}
           </>
-          <button className="wb__btn" onClick={() => { dropPoint.current = null; imageInputRef.current?.click(); }} disabled={!!importing} title="Insérer une image (ou coller, ou glisser-déposer)">
-            <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4M15 9h.01" /></svg>
-          </button>
-          <button className="wb__btn" onClick={() => fileInputRef.current?.click()} disabled={!!importing} title={`Ouvrir un tableau (${GCBOARD_EXTENSION}), un PDF ou une image`}>
-            <svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" /></svg>
-          </button>
-          <button className="wb__btn" onClick={() => void saveGcboard()} disabled={!!importing} title={`Enregistrer le tableau (${GCBOARD_EXTENSION}, ré-ouvrable avec ses images)`}>
-            <svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6" /></svg>
-          </button>
-          <button className="wb__btn" onClick={recoverCurrentPage} title="Tout recouvrir sur cette page (rideaux, tickets, trous)">
-            <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 12h16M8 5v14" /></svg>
-          </button>
-          <button className="wb__btn" onClick={() => setExportOpen(true)} title="Exporter en PDF (choix des pages, version élève ou corrigée)">
-            <svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 20h16" /></svg>
-          </button>
-          {classroom && (
-            <button className={`wb__btn ${pickOpen ? 'is-on' : ''}`} onClick={() => setPickOpen(true)} title="Tirage au sort d'un élève (sans remise, absents exclus)">
-              <svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0M17 4l2 2M19 4l-2 2" /></svg>
-            </button>
-          )}
-          <button className={`wb__btn ${libraryOpen ? 'is-on' : ''}`} onClick={() => setLibraryOpen(true)} title="Ressources : bibliothèque d'objets (verrerie, cellules, circuits…), annales, Notion, Drive">
-            <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></svg>
-          </button>
-          <button className={`wb__btn ${searchOpen ? 'is-on' : ''}`} onClick={() => setSearchOpen(true)} title="Rechercher (web, vidéos, images) — Ctrl+K">
-            <svg viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.8-4.8" /></svg>
-          </button>
-          <button className={`wb__btn ${keyboardOpen ? 'is-on' : ''}`} onClick={() => setKeyboardOpen((v) => !v)} title="Clavier virtuel">
-            <svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6 9h2M10 9h2M14 9h2M18 9h0M6 12h2M10 12h2M14 12h2M18 12h0M7 15h10" /></svg>
-          </button>
-          <>
-            <button ref={settingsBtnRef} className={`wb__btn ${settingsOpen ? 'is-on' : ''}`} onClick={() => { setInsertOpen(false); setSettingsOpen((v) => !v); }} title="Tableau interactif : gestes, position de la barre, instruments, projecteur">
-              <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4" /></svg>
-            </button>
-            {settingsOpen && (
-              <BoardPopover anchorRef={settingsBtnRef} onClose={() => setSettingsOpen(false)} className="wbi__panel wbi__panel--settings" width={280}>
-                <button type="button" className={`wbi__item ${tbi.gestures ? 'is-on' : ''}`} onClick={() => setTbi((t) => ({ ...t, gestures: !t.gestures }))}><span>✌️</span>Gestes à deux doigts {tbi.gestures ? 'activés' : 'désactivés'}</button>
-                <button type="button" className="wbi__item" onClick={() => setRadial({ x: window.innerWidth / 2, y: window.innerHeight / 2 })}><span>◎</span>Menu radial</button>
-                {(['bottom', 'left', 'right'] as BarSide[]).map((side) => (
-                  <button key={side} type="button" className={`wbi__item ${tbi.bar === side ? 'is-on' : ''}`} onClick={() => setTbi((t) => ({ ...t, bar: side }))}><span>▭</span>Barre en {side === 'bottom' ? 'bas' : side === 'left' ? 'à gauche' : 'à droite'}</button>
-                ))}
-                {(['left', 'center', 'right'] as const).map((hand) => (
-                  <button key={hand} type="button" className={`wbi__item ${tbi.hand === hand ? 'is-on' : ''}`} onClick={() => setTbi((t) => ({ ...t, hand }))}><span>🖐</span>{hand === 'left' ? 'Je suis à gauche' : hand === 'right' ? 'Je suis à droite' : 'Barre centrée'}</button>
-                ))}
-                <label className="wbi__item" style={{ cursor: 'default' }}>
-                  <span>▦</span>
-                  <select className="wb__select" value={page.background} onChange={(e) => setBackground(e.target.value as Background)} style={{ flex: 1 }}>
-                    {BACKGROUNDS.map((b) => <option key={b.id} value={b.id}>Fond : {b.label}</option>)}
-                  </select>
-                </label>
-                <button type="button" className="wbi__item" onClick={() => addInstrument('ruler')}><span>📏</span>Règle</button>
-                <button type="button" className="wbi__item" onClick={() => addInstrument('setsquare')}><span>📐</span>Équerre</button>
-                <button type="button" className="wbi__item" onClick={() => addInstrument('protractor')}><span>🧭</span>Rapporteur</button>
-                <button type="button" className="wbi__item" onClick={() => setSpotlight(true)}><span>🔦</span>Projecteur</button>
-                <button type="button" className="wbi__item" onClick={() => { setDisplayMode(true); setSettingsOpen(false); setTool('select'); void document.documentElement.requestFullscreen?.().catch(() => undefined); }}><span>🖥</span>Mode affichage (écran de classe)</button>
-                <button type="button" className="wbi__item" onClick={() => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2)}><span>🔍</span>Zoom + (Ctrl+molette)</button>
-              </BoardPopover>
-            )}
-          </>
-          <button className={`wb__btn ${navOpen ? 'is-on' : ''}`} onClick={() => setNavOpen((v) => !v)} title="Navigateur de pages (N)">
-            <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM14 5v14M16 9h2M16 12h2M16 15h2" /></svg>
-          </button>
         </div>
 
-        <div className="wb__group">
+        {/* tout ce qui ne sert pas à chaque instant : un seul bouton, des sections nommées */}
+        <div className="wb__group wb__group--session">
+          <>
+            <button ref={moreBtnRef} className={`wb__btn ${moreOpen ? 'is-on' : ''}`} onClick={() => { setInsertOpen(false); setSizeOpen(false); setMoreOpen((v) => !v); }} title="Plus : page, fichier, instruments, séance, réglages">
+              <svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth="3" /></svg>
+            </button>
+            {moreOpen && (
+              <BoardMoreMenu anchorRef={moreBtnRef} onClose={() => setMoreOpen(false)} sections={moreSections} />
+            )}
+          </>
           <button className="wb__btn wb__close" onClick={onClose} title="Retour au plan de classe">
             <svg viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4" /></svg>
           </button>
@@ -2568,6 +2716,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 }
 
 const CSS = `
+/* Base structurelle. Les dimensions et couleurs finales du chrome (barre, boutons, pastilles)
+   sont posées par ./wb-theme.css, importé plus haut et plus spécifique : modifier les valeurs
+   ci-dessous n'a aucun effet visible tant que le thème est chargé. */
 .wb { position: fixed; inset: 0; z-index: 100; background: #FFFFFF; display: flex; flex-direction: column; user-select: none; }
 .wb__stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #1F2937; touch-action: none; }
 .wb__view { position: absolute; inset: 0; transform-origin: 0 0; }
@@ -2575,11 +2726,9 @@ const CSS = `
 .wb__zoom button { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: #4F46E5; color: #FFFFFF; font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wb__bar--left, .wb__bar--right { left: 10px; right: auto; top: 10px; bottom: 10px; transform: none; flex-direction: column; max-width: none; max-height: calc(100vh - 20px); overflow-x: hidden; overflow-y: auto; }
 .wb__bar--right { left: auto; right: 10px; }
-.wb__bar--left .wb__group, .wb__bar--right .wb__group { flex-direction: column; padding: 6px 0; border-right: 0; border-bottom: 1px solid #374151; }
-.wb__bar--left .wb__group:last-child, .wb__bar--right .wb__group:last-child { border-bottom: 0; }
+.wb__bar--left .wb__group, .wb__bar--right .wb__group { flex-direction: column; }
 .wb__bar--bottom.wb__bar--hand-left { left: 10px; transform: none; }
 .wb__bar--bottom.wb__bar--hand-right { left: auto; right: 10px; transform: none; }
-.wbi__panel--settings { grid-template-columns: 1fr; }
 .wbi__item.is-on { background: #312E81; }
 .wb__layer { position: absolute; left: 0; top: 0; display: block; }
 .wb.is-dragover .wb__stage { outline: 4px dashed #6366F1; outline-offset: -4px; }
@@ -2624,27 +2773,44 @@ const CSS = `
 
 .wb__bar {
   position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 12;
-  display: flex; align-items: center; gap: 10px; padding: 6px 8px;
-  background: #111827; border-radius: 18px; box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  display: flex; align-items: center; gap: 14px; padding: 6px;
+  background: rgba(17,24,39,0.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.28);
   max-width: calc(100vw - 20px); overflow-x: auto;
 }
-.wb__group { display: flex; align-items: center; gap: 4px; padding: 0 6px; border-right: 1px solid #374151; }
-.wb__group:last-child { border-right: 0; }
+/* Paire Annuler/Rétablir, posée dans le coin opposé à la main : moins de trajet au stylet
+   sur un TBI que de traverser l'écran jusqu'à la barre. */
+.wb__history {
+  position: fixed; bottom: 10px; z-index: 12;
+  display: flex; align-items: center; gap: 2px; padding: 6px;
+  background: rgba(17,24,39,0.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+}
+.wb__history--left { left: 10px; }
+.wb__pagerail {
+  position: fixed; top: 50%; transform: translateY(-50%); z-index: 12;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px;
+  background: rgba(17,24,39,0.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+}
+.wb__pagerail--left { left: 10px; }
+.wb__pagerail--right { right: 10px; }
+.wb__history--right { right: 10px; }
+/* Panneau des trois épaisseurs, ouvert depuis le bouton unique de la barre */
+.wb__sizepop { display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
+.wb__group { display: flex; align-items: center; gap: 2px; }
 .wb__btn {
-  width: 52px; height: 52px; border-radius: 12px; border: 0; background: transparent; color: #D1D5DB;
+  width: 44px; height: 44px; border-radius: 11px; border: 0; background: transparent; color: #D1D5DB;
   display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
 }
-.wb__btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.wb__btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .wb__btn:hover { background: #1F2937; }
 .wb__btn.is-on { background: #4F46E5; color: #FFFFFF; }
 .wb__btn:disabled { opacity: 0.3; cursor: default; }
-.wb__swatch { width: 34px; height: 34px; margin: 0 4px; border-radius: 50%; border: 3px solid #4B5563; cursor: pointer; flex: none; }
+.wb__swatch { width: 30px; height: 30px; margin: 0 3px; border-radius: 50%; border: 3px solid #4B5563; cursor: pointer; flex: none; }
 .wb__swatch.is-on { border-color: #FFFFFF; box-shadow: 0 0 0 2px #4F46E5; }
 .wb__size i { display: block; border-radius: 50%; background: currentColor; }
 .wb__size--eraser i { background: transparent; border: 2px solid currentColor; }
-.wb__bg span { display: block; width: 26px; height: 26px; border-radius: 4px; background: #F9FAFB; }
-.wb__bg--grid span { background-image: linear-gradient(#9CA3AF 1px, transparent 1px), linear-gradient(90deg, #9CA3AF 1px, transparent 1px); background-size: 6px 6px; }
-.wb__bg--lines span { background-image: linear-gradient(#9CA3AF 1px, transparent 1px); background-size: 100% 7px; }
 .wb__txt { width: 44px; font: 600 19px/1 Inter, system-ui, sans-serif; }
 .wb__select {
   height: 40px; max-width: 150px; border-radius: 10px; border: 1px solid #374151; background: #1F2937; color: #F9FAFB;
@@ -2653,6 +2819,6 @@ const CSS = `
 .wb__select--size { max-width: 74px; }
 .wb__select:disabled { opacity: 0.4; cursor: default; }
 .wb__swatch--hl { border-radius: 8px; }
-.wb__pages { color: #D1D5DB; font: 600 15px/1 Inter, system-ui, sans-serif; min-width: 52px; text-align: center; }
+.wb__pages { color: #9CA3AF; font: 600 12px/1 "IBM Plex Mono", ui-monospace, monospace; text-align: center; }
 .wb__close { color: #A5B4FC; }
 `;

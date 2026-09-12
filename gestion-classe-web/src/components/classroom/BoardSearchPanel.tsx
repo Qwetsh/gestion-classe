@@ -104,6 +104,8 @@ export function BoardSearchPanel({ onInsertImage, onInsertVideo, onInsertLink, o
   const [results, setResults] = useState<SearchResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Dernier terme effectivement cherché : il est répété dans l'état vide. */
+  const [lastQuery, setLastQuery] = useState('');
   const [showPad, setShowPad] = useState(false);
   const [listening, setListening] = useState(false);
   const [keys, setKeys] = useState<ApiKeys>(() => loadApiKeys());
@@ -130,7 +132,8 @@ export function BoardSearchPanel({ onInsertImage, onInsertVideo, onInsertLink, o
         try { list = [...(await searchUnsplash(text, keys)), ...commons]; } catch (err) { list = commons; if (err instanceof MissingKeyError && commons.length === 0) hint = err.hint; }
       }
       setResults(list);
-      setNotice(hint ?? (list.length === 0 ? 'Aucun résultat.' : null));
+      setLastQuery(text);
+      setNotice(hint);
     } catch (err) {
       setNotice(`Recherche impossible : ${err instanceof Error ? err.message : 'erreur'}`);
     } finally {
@@ -203,7 +206,21 @@ export function BoardSearchPanel({ onInsertImage, onInsertVideo, onInsertLink, o
         {showPad && <HandwritingPad onText={(t) => { setQuery((q) => (q ? `${q} ${t}` : t)); setShowPad(false); void run(t, kind); }} onProgress={setNotice} />}
         {notice && <div className="wbsr__notice">{notice}</div>}
 
-        <div className={`wbsr__results ${kind === 'web' ? 'is-list' : ''}`}>
+        {busy && (
+          // Squelettes à la forme des résultats : le panneau reste utilisable, rien ne tourne.
+          <div className={`wbsr__results ${kind === 'web' ? 'is-list' : ''}`} aria-hidden>
+            {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="wb-skel wbsr__skel" />)}
+          </div>
+        )}
+
+        {!busy && results.length === 0 && lastQuery && (
+          <div className="wbsr__empty">
+            <p>Rien pour « {lastQuery} ».</p>
+            <button type="button" onClick={() => { setKind('web'); void run(lastQuery, 'web'); }}>Chercher sur le Web</button>
+          </div>
+        )}
+
+        <div className={`wbsr__results ${kind === 'web' ? 'is-list' : ''}`} hidden={busy}>
           {results.map((r) => (
             <div key={r.id} className="wbsr__item">
               {r.thumbnail && <img src={r.thumbnail} alt="" loading="lazy" onClick={() => void insert(r)} />}

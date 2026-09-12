@@ -1,0 +1,567 @@
+/**
+ * Tableau blanc — patch de thème (lots A→F).
+ * Source unique des valeurs visuelles : design_handoff_tableau_blanc/theme.ts
+ *
+ * POSE : importer UNE fois, dans gestion-classe-web/src/components/classroom/Whiteboard.tsx
+ *        import './wb-theme.css';
+ *   (fichier à placer à côté de Whiteboard.tsx)
+ *
+ * Les blocs `const CSS = \`…\`` des composants sont injectés en <style> au rendu, donc APRÈS
+ * une feuille de <head>. Toutes les règles ci-dessous sont donc écrites avec une spécificité
+ * supérieure (sélecteur doublé `.wbm.wbm` ou ancêtre `.wb …`) : aucun !important n'est requis
+ * et les blocs d'origine restent intacts — le patch se retire en supprimant l'import.
+ */
+
+.wb {
+  --wb-desk: #0D1015;
+  --wb-desk-2: #12161D;
+  --wb-paper: #FFFFFF;
+  --wb-grid: #DFE6EF;
+  --wb-grid-major: #C3CFDF;
+
+  --wb-chrome: #171C24;
+  --wb-chrome-hover: #212936;
+  --wb-chrome-sunk: #1E2530;
+  --wb-chrome-line: #2E3846;
+  --wb-on-chrome: #E7ECF3;
+  --wb-on-chrome-dim: #93A0B4;
+  --wb-on-chrome-mute: #6E7C92;
+
+  --wb-select: #4F46E5;
+  --wb-select-soft: rgba(79,70,229,.14);
+  --wb-accent: #F97316;
+  --wb-ok: #059669;
+  --wb-danger: #DC2626;
+  --wb-danger-soft: #FCA5A5;
+
+  /* Densité du chrome. Valeurs « confort TBI » par défaut ; les paliers plus bas sont
+     définis par les media queries en fin de section B. Une cible de 60 px est juste devant
+     un tableau interactif, absurde sur un portable — et elle y déclenche un défilement
+     horizontal de la barre, qui cache des boutons derrière un geste qu'on ne devine pas. */
+  --wb-btn: 60px;
+  --wb-btn-sm: 52px;
+  --wb-ico: 28px;
+  --wb-swatch: 44px;
+  --wb-bar-gap: 14px;
+  --wb-bar-pad: 10px;
+
+  --wb-r-page: 3px;
+  --wb-r-btn: 14px;
+  --wb-r-bar: 22px;
+  --wb-r-panel: 28px;
+
+  --wb-e1: 0 2px 6px -2px rgba(0,0,0,.7);
+  --wb-e2: 0 14px 30px -14px rgba(0,0,0,.9);
+  --wb-e3: 0 24px 48px -20px rgba(0,0,0,1);
+  --wb-paper-edge: 0 18px 40px -14px rgba(0,0,0,.75);
+
+  --wb-t-fast: 90ms;
+  --wb-t: 140ms;
+  --wb-ease: cubic-bezier(.2,.8,.2,1);
+
+  --wb-font-ui: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', Inter, system-ui, sans-serif;
+  --wb-font-num: 'Space Grotesk', 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* Les mêmes variables pour les couches portalées hors de .wb (menus, panneaux, overlays). */
+.wbm, .wbc__panel, .wbr, .wbn, .wbi__panel, .wbs__panel, .wbx, .wblb, .wbsr, .wbp, .wbcam, .wbk, .wbpop {
+  --wb-desk: #0D1015; --wb-desk-2: #12161D; --wb-paper: #FFFFFF;
+  --wb-chrome: #171C24; --wb-chrome-hover: #212936; --wb-chrome-sunk: #1E2530;
+  --wb-chrome-line: #2E3846; --wb-on-chrome: #E7ECF3; --wb-on-chrome-dim: #93A0B4;
+  --wb-on-chrome-mute: #6E7C92; --wb-select: #4F46E5; --wb-accent: #F97316;
+  --wb-ok: #059669; --wb-danger: #DC2626; --wb-danger-soft: #FCA5A5;
+  --wb-r-btn: 14px; --wb-r-panel: 28px;
+  --wb-e2: 0 14px 30px -14px rgba(0,0,0,.9);
+  --wb-e3: 0 24px 48px -20px rgba(0,0,0,1);
+  --wb-font-ui: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', Inter, system-ui, sans-serif;
+  --wb-font-num: 'Space Grotesk', 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* Polices embarquées dans public/fonts/ — aucun appel CDN (le réseau du collège les filtre).
+   Adaptation par rapport au handoff : les deux familles ne sont distribuées qu'en sous-ensembles
+   (latin / latin-ext), pas en fichier unique. Le français tient entièrement dans « latin » ;
+   latin-ext ne se télécharge que si un nom d'élève sort du répertoire (noms polonais, turcs…). */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('/fonts/AtkinsonHyperlegibleNext-Variable-latin.woff2') format('woff2-variations');
+  font-weight: 200 800; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('/fonts/AtkinsonHyperlegibleNext-Variable-latin-ext.woff2') format('woff2-variations');
+  font-weight: 200 800; font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/SpaceGrotesk-Variable-latin.woff2') format('woff2-variations');
+  font-weight: 300 700; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/SpaceGrotesk-Variable-latin-ext.woff2') format('woff2-variations');
+  font-weight: 300 700; font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ───────── A · Plateau ───────── */
+
+.wb.wb { font-family: var(--wb-font-ui); }
+.wb .wb__stage { background: var(--wb-desk); }
+.wb .wb__view { box-shadow: var(--wb-paper-edge); }
+
+/* Badge de zoom : pilule 44 px, cible TBI */
+.wb .wb__zoom {
+  left: 24px; top: 20px; gap: 10px; height: 44px; padding: 0 8px 0 16px;
+  border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  color: var(--wb-on-chrome-dim); font: 600 17px/1 var(--wb-font-ui);
+}
+.wb .wb__zoom button {
+  height: 36px; padding: 0 12px; border-radius: 10px;
+  background: var(--wb-chrome-sunk); color: var(--wb-on-chrome);
+  font: 600 16px/1 var(--wb-font-ui);
+}
+
+/* ───────── B · Barre ───────── */
+
+.wb .wb__bar {
+  gap: var(--wb-bar-gap); padding: var(--wb-bar-pad); border-radius: var(--wb-r-bar);
+  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  box-shadow: var(--wb-e2);
+  transition: opacity var(--wb-t-fast) ease-out;
+}
+/* La barre ne porte plus qu'une douzaine de commandes (les autres sont dans « Plus ⋯ », le
+   rail des pages et la paire Annuler/Rétablir) : elle tient sur une seule ligne. Le retour à
+   la ligne d'avant en faisait un pavé de deux rangées — c'est ce qui la rendait intimidante. */
+.wb .wb__bar--bottom { flex-wrap: nowrap; justify-content: center; overflow-x: auto; }
+/* La barre se retire pendant le tracé (poser .is-drawing sur .wb pendant le geste). */
+.wb.is-drawing .wb__bar { opacity: .4; }
+
+.wb .wb__bar--bottom { bottom: 24px; }
+.wb .wb__bar--bottom.wb__bar--hand-right { right: 24px; }
+.wb .wb__bar--bottom.wb__bar--hand-left { left: 24px; }
+.wb .wb__bar--left { left: 24px; }
+.wb .wb__bar--right { right: 24px; }
+
+/* ── Paliers de densité ──
+   1600 px et plus : TBI et grands écrans, cibles de 60 px.
+   En dessous : on descend par paliers pour que la barre tienne sur une ligne sans défiler.
+   Un écran tactile garde des cibles confortables même étroit (pointer: coarse). */
+@media (max-width: 1599px) {
+  .wb { --wb-btn: 52px; --wb-btn-sm: 46px; --wb-ico: 24px; --wb-swatch: 38px; --wb-bar-gap: 12px; --wb-bar-pad: 8px; --wb-r-btn: 13px; --wb-r-bar: 20px; }
+}
+@media (max-width: 1279px) {
+  .wb { --wb-btn: 44px; --wb-btn-sm: 40px; --wb-ico: 21px; --wb-swatch: 32px; --wb-bar-gap: 10px; --wb-bar-pad: 6px; --wb-r-btn: 12px; --wb-r-bar: 18px; }
+}
+@media (max-width: 899px) {
+  .wb { --wb-btn: 40px; --wb-btn-sm: 36px; --wb-ico: 19px; --wb-swatch: 28px; --wb-bar-gap: 8px; --wb-bar-pad: 5px; --wb-r-btn: 11px; --wb-r-bar: 16px; }
+}
+@media (max-width: 1279px) and (pointer: coarse) {
+  .wb { --wb-btn: 48px; --wb-btn-sm: 44px; --wb-ico: 23px; --wb-swatch: 34px; }
+}
+/* Écran bas : le rail des pages et l'historique se serrent pour ne pas manger la hauteur. */
+@media (max-height: 720px) {
+  .wb .wb__pagerail, .wb .wb__history { padding: 5px; }
+}
+
+/* Sous 900 px, la barre centrée occupe presque toute la largeur : la paire Annuler/Rétablir
+   ne tient plus à côté d'elle et viendrait se poser dessus. Elle passe au-dessus. */
+@media (max-width: 899px) {
+  .wb .wb__history--bar-bottom { bottom: calc(24px + var(--wb-btn) + 2 * var(--wb-bar-pad) + 10px); }
+}
+
+/* Les grappes sont séparées par du vide (gap de la barre), plus par des filets : un trait de
+   plus par grappe, c'est cinq objets graphiques pour zéro information. */
+.wb .wb__group { gap: 4px; padding: 0; }
+
+/* Cible 60 px ; l'outil actif s'inverse en blanc — seul élément blanc du chrome. */
+.wb .wb__btn {
+  width: var(--wb-btn); height: var(--wb-btn); border-radius: var(--wb-r-btn);
+  background: transparent; color: var(--wb-on-chrome);
+  font: 600 22px/1 var(--wb-font-ui);
+  transition: background var(--wb-t-fast) ease-out, color var(--wb-t-fast) ease-out;
+}
+.wb .wb__btn svg { width: var(--wb-ico); height: var(--wb-ico); }
+.wb .wb__btn:hover { background: var(--wb-chrome-hover); color: #FFFFFF; }
+.wb .wb__btn.is-on { background: #FFFFFF; color: #14181F; }
+.wb .wb__btn:disabled { opacity: .3; }
+/* Grappe « séance » : plus petite, atténuée (poser .wb__group--session sur le dernier groupe). */
+.wb .wb__group--session .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); color: var(--wb-on-chrome-dim); }
+
+.wb .wb__select {
+  height: 52px; padding: 0 14px; border-radius: 13px; border: 0;
+  background: var(--wb-chrome-sunk); color: var(--wb-on-chrome);
+  font: 600 19px/1 var(--wb-font-ui); cursor: pointer;
+}
+.wb .wb__select--size { font-family: var(--wb-font-num); }
+
+.wb .wb__swatch { width: var(--wb-swatch); height: var(--wb-swatch); margin: 0 2px; border: 0; }
+.wb .wb__swatch.is-on { box-shadow: 0 0 0 3px var(--wb-chrome), 0 0 0 6px #FFFFFF; }
+.wb .wb__swatch--hl { border-radius: 12px; height: 34px; }
+
+/* Curseurs par outil */
+.wb .wb__input--select { cursor: default; }
+.wb .wb__input--text { cursor: text; }
+.wb .wb__input--laser, .wb .wb__input--pen, .wb .wb__input--highlighter, .wb .wb__input--shape { cursor: crosshair; }
+
+/* ───────── B · Sélection et objets ───────── */
+
+.wbo__frame.is-selected .wbo__editor,
+.wbo__frame.is-editing .wbo__editor,
+.wbo__frame.is-selected .wbo__image,
+.wbo__frame.is-selected .wbo__lib,
+.wbo__frame.is-selected .wbo__shape { box-shadow: none; outline: 3px solid var(--wb-select, #4F46E5); outline-offset: 6px; }
+.wbo__frame.is-locked.is-selected .wbo__editor,
+.wbo__frame.is-locked.is-selected .wbo__shape { outline-color: #93A0B4; }
+.wbo__frame.is-active:hover .wbo__editor,
+.wbo__frame.is-active:hover .wbo__image,
+.wbo__frame.is-active:hover .wbo__lib,
+.wbo__frame.is-active:hover .wbo__shape { outline: 2px solid rgba(79,70,229,.35); outline-offset: 6px; box-shadow: none; }
+
+/* Poignée : 18 px visibles, 44 px tactiles (la zone passe par ::before, sans décaler le dessin). */
+.wbo__handle.wbo__handle {
+  width: 18px; height: 18px; border-radius: 3px;
+  background: #FFFFFF; border: 3px solid var(--wb-select, #4F46E5); box-sizing: border-box;
+}
+.wbo__handle.wbo__handle::before { content: ''; position: absolute; inset: -13px; }
+.wbo__handle--w.wbo__handle--w, .wbo__handle--e.wbo__handle--e { height: 18px; margin-top: -9px; border-radius: 3px; }
+.wbo__handle--n.wbo__handle--n, .wbo__handle--s.wbo__handle--s { width: 18px; margin-left: -9px; border-radius: 3px; }
+.wbo__lock { right: -10px; top: -18px; font-size: 18px; }
+
+/* ───────── B · Menu contextuel ───────── */
+
+.wbm.wbm {
+  min-width: 320px; padding: 10px; border-radius: 20px;
+  background: var(--wb-chrome); color: var(--wb-on-chrome);
+  box-shadow: var(--wb-e3); font: 500 20px/1.2 var(--wb-font-ui);
+}
+.wbm.wbm .wbm .wbm__item { min-height: 44px; padding: 8px 14px; border-radius: 12px; }
+.wbm.wbm .wbm__item:hover, .wbm.wbm .wbm__item:focus-visible { background: var(--wb-chrome-hover); color: #FFFFFF; }
+.wbm.wbm .wbm__item.is-danger { color: var(--wb-danger-soft); }
+.wbm.wbm .wbm__item kbd { font: 500 15px/1 var(--wb-font-num); color: var(--wb-on-chrome-mute); }
+.wbm.wbm .wbm__sep { background: var(--wb-chrome-line); }
+
+/* ───────── B · Menu radial (géométrie ×1,6 côté TSX : INNER 58 / LABEL_R 148 / OUTER 214) ───── */
+
+.wbr.wbr .wbr__seg path { fill: var(--wb-chrome); stroke: var(--wb-chrome-line); stroke-width: 2; }
+.wbr.wbr .wbr__seg.is-active path { fill: #312E81; }
+.wbr.wbr .wbr__seg.is-hot path { fill: var(--wb-select); }
+.wbr.wbr .wbr__icon { font-size: 30px; fill: #FFFFFF; }
+.wbr.wbr .wbr__label { font: 600 17px/1 var(--wb-font-ui); fill: var(--wb-on-chrome); }
+.wbr.wbr .wbr__x { font: 700 24px/1 var(--wb-font-ui); fill: #14181F; }
+
+/* ───────── C · Palette et formes ───────── */
+
+.wbc__panel.wbc__panel { padding: 18px; border-radius: 20px; background: var(--wb-chrome); box-shadow: var(--wb-e3); }
+.wbc__panel.wbc__panel .wbc__grid { gap: 12px; }
+.wbc__panel.wbc__panel .wbc__cell { width: 44px; height: 44px; border: 0; }
+.wbc__panel.wbc__panel .wbc__cell.is-on { box-shadow: 0 0 0 3px var(--wb-chrome), 0 0 0 6px #FFFFFF; }
+.wbc__panel.wbc__panel .wbc__label { font: 700 14px/1 var(--wb-font-ui); letter-spacing: .08em; color: var(--wb-on-chrome-mute); }
+.wbc__panel.wbc__panel .wbc__custom { font: 500 17px/1 var(--wb-font-ui); color: var(--wb-on-chrome); }
+.wbc .wbc__more { background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font-family: var(--wb-font-ui); }
+
+.wbs__panel.wbs__panel { border-radius: 20px; background: var(--wb-chrome); box-shadow: var(--wb-e3); }
+.wbs__panel.wbs__panel .wbs__cell { height: 72px; border-radius: var(--wb-r-btn); background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); }
+.wbs__panel.wbs__panel .wbs__cell:hover { background: var(--wb-chrome-hover); }
+.wbs__panel.wbs__panel .wbs__cell.is-on { background: #FFFFFF; color: #14181F; }
+.wbs__panel.wbs__panel .wbs__label { font: 600 16px/1 var(--wb-font-ui); color: var(--wb-on-chrome-dim); }
+
+/* ───────── C · Tableau, objets ───────── */
+
+.wbt.wbt td { border: 2px solid #14181F; }
+.wbt.wbt.has-header tr:first-child td { background: #14181F; color: #FFFFFF; }
+.wbt.wbt.is-editing .wbt__cell:focus { box-shadow: inset 0 0 0 3px var(--wb-select, #4F46E5); }
+
+/* ───────── C · Navigateur de pages ───────── */
+
+.wbn.wbn { background: var(--wb-desk-2); border-left: 1px solid #232B37; }
+.wbn.wbn .wbn__head { font: 700 15px/1 var(--wb-font-ui); letter-spacing: .06em; color: var(--wb-on-chrome-mute); }
+.wbn.wbn .wbn__count { font-family: var(--wb-font-num); }
+.wbn.wbn .wbn__thumb { border: 0; padding: 0; border-radius: 4px; }
+.wbn.wbn .wbn__thumb:hover { background: transparent; box-shadow: 0 0 0 3px var(--wb-chrome-line); }
+.wbn.wbn .wbn__thumb.is-active { box-shadow: 0 0 0 3px var(--wb-select), 0 8px 18px -8px rgba(0,0,0,.8); }
+/* Numéro dans le coin, jamais sur la vignette */
+.wbn.wbn .wbn__num {
+  left: -3px; top: -3px; bottom: auto; min-width: 26px; height: 26px; padding: 0 6px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px 0 6px 0; background: var(--wb-chrome-line); color: var(--wb-on-chrome);
+  font: 600 15px/1 var(--wb-font-num);
+}
+.wbn.wbn .wbn__thumb.is-active .wbn__num { background: var(--wb-select); color: #FFFFFF; }
+.wbn.wbn .wbn__btn { height: 48px; border-radius: 12px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 17px/1 var(--wb-font-ui); }
+.wbn.wbn .wbn__btn:hover { background: var(--wb-chrome-hover); }
+.wbn.wbn .wbn__btn--add { background: var(--wb-accent); color: #140A02; }
+/* Réordonnancement : inclinaison + ligne d'insertion orange */
+.wbn.wbn .wbn__thumb.is-dragging { transform: rotate(-2deg); box-shadow: var(--wb-e3); }
+.wbn.wbn .wbn__thumb.is-drop-before { box-shadow: 0 -4px 0 0 var(--wb-accent); }
+
+/* ───────── D · Instruments et widgets ───────── */
+
+.wbi__panel.wbi__panel { padding: 10px; border-radius: 20px; background: var(--wb-chrome); box-shadow: var(--wb-e3); gap: 6px; }
+/* Colonnes en minmax(0, …) : en `1fr` la grille prend la largeur du plus long libellé et les
+   tuiles de droite sortent du panneau — visibles, mais hors de sa boîte, donc hors d'atteinte. */
+.wbi__panel.wbi__panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Réglages sur une colonne, comme le bloc d'origine le prévoit (sa règle y est écrasée par la
+   suivante, de même spécificité). */
+/* Hauteur libre et texte qui passe à la ligne : au TBI on ne tronque pas un libellé à 19 px. */
+.wbi__panel.wbi__panel .wbi__item {
+  min-width: 0; height: auto; min-height: 52px; padding: 8px 14px; border-radius: 12px;
+  color: var(--wb-on-chrome); font: 500 19px/1.2 var(--wb-font-ui); white-space: normal;
+}
+.wbi__panel.wbi__panel .wbi__item:hover { background: var(--wb-chrome-hover); }
+.wbi__panel.wbi__panel .wbi__item.is-on { background: #FFFFFF; color: #14181F; }
+.wbi__panel.wbi__panel .wbi__item span { width: 26px; font-size: 20px; }
+
+.wbw.wbw { background: var(--wb-chrome, #171C24); font-family: var(--wb-font-ui); border-radius: 16px; }
+.wbw.wbw .wbw__time, .wbw.wbw .wbw__screen { font-family: var(--wb-font-num); }
+.wbw.wbw .wbw__time.is-urgent { color: #FCA5A5; }
+.wbw.wbw .wbw__big { font-family: var(--wb-font-ui); }
+.wbw.wbw button.is-on { background: #FFFFFF; color: #14181F; }
+.wbw.wbw .wbw__small, .wbw.wbw .wbw__date, .wbw.wbw .wbw__group b { color: var(--wb-on-chrome-dim, #93A0B4); }
+.wbw.wbw .wbw__meter-fill { transition: width .08s linear; }
+/* Feu tricolore : carte de papier, pas de vignette sombre sur fond sombre */
+.wbw.wbw .wbw__traffic { background: #14181F; border-radius: 20px; }
+
+/* Rideau et cache : graphite du bureau, jamais un gris moyen */
+.wb .wb__curtain { background: var(--wb-desk); background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 18px, transparent 18px 36px); }
+.wbo__cover--curtain { font-family: var(--wb-font-ui); }
+
+/* ───────── E · Panneaux (feuille de graphite) ───────── */
+
+.wbx.wbx, .wblb.wblb, .wbsr.wbsr, .wbp.wbp, .wbcam.wbcam { background: rgba(8,10,14,.66); font-family: var(--wb-font-ui); }
+.wbx.wbx .wbx__box, .wblb.wblb .wblb__box, .wbsr.wbsr .wbsr__box, .wbp.wbp .wbp__box {
+  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  border-radius: var(--wb-r-panel); box-shadow: var(--wb-e3); color: var(--wb-on-chrome);
+}
+.wbx.wbx .wbx__head h2 { font: 800 28px/1.1 var(--wb-font-ui); }
+.wbx.wbx .wbx__close, .wblb.wblb .wblb__close, .wbsr.wbsr .wbsr__close, .wbp.wbp .wbp__close {
+  width: 56px; height: 56px; border-radius: 16px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font-size: 22px;
+}
+.wbx.wbx .wbx__opt { padding: 18px; border-radius: 20px; background: var(--wb-chrome-sunk); font-size: 19px; }
+.wbx.wbx .wbx__opt.is-on { border-color: transparent; background: #FFFFFF; color: #14181F; }
+.wbx.wbx .wbx__opt.is-on small { color: #4A5568; }
+.wbx.wbx .wbx__opt small { color: var(--wb-on-chrome-dim); font-size: 16px; }
+.wbx.wbx .wbx__page { border-width: 3px; border-color: transparent; }
+.wbx.wbx .wbx__page.is-on { border-color: var(--wb-select); }
+.wbx.wbx .wbx__page span { font: 600 14px/1.3 var(--wb-font-num); }
+.wbx.wbx .wbx__btn { height: 76px; padding: 0 32px; border-radius: 20px; background: var(--wb-chrome-sunk); font: 700 22px/1 var(--wb-font-ui); }
+.wbx.wbx .wbx__btn--primary { background: var(--wb-accent); color: #140A02; font-weight: 800; }
+.wbx.wbx .wbx__foot { border-top-color: var(--wb-chrome-line); }
+
+/* Recherche : champ 88 px / 34 px, dictée en rouge, action unique par résultat */
+.wbsr.wbsr .wbsr__input { height: 88px; padding: 0 28px; border-radius: 20px; border: 0; background: var(--wb-desk); color: #FFFFFF; font: 600 34px/1 var(--wb-font-ui); }
+.wbsr.wbsr .wbsr__ico { width: 88px; height: 88px; border-radius: 20px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font-size: 30px; }
+.wbsr.wbsr .wbsr__ico.is-on { background: var(--wb-danger); color: #FFFFFF; }
+.wbsr.wbsr .wbsr__go { height: 88px; padding: 0 28px; border-radius: 20px; background: var(--wb-accent); color: #140A02; font: 800 22px/1 var(--wb-font-ui); }
+.wbsr.wbsr .wbsr__tabs button { height: 56px; padding: 0 26px; border-radius: 999px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 22px/1 var(--wb-font-ui); }
+.wbsr.wbsr .wbsr__tabs button.is-on { background: #FFFFFF; color: #14181F; font-weight: 700; }
+.wbsr.wbsr .wbsr__item { border-radius: 20px; background: var(--wb-desk); border: 1px solid var(--wb-chrome-line); }
+.wbsr.wbsr .wbsr__actions button { height: 52px; padding: 0 20px; border-radius: 999px; background: var(--wb-accent); color: #140A02; font: 800 20px/1 var(--wb-font-ui); }
+.wbsr.wbsr .wbsr__actions a { height: 52px; line-height: 52px; padding: 0 20px; border-radius: 999px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 18px/52px var(--wb-font-ui); }
+.wbsr.wbsr .wbsr__meta b { font-size: 19px; }
+.wbsr.wbsr .wbsr__meta p { font-size: 17px; color: #C7D0DD; }
+.wbsr.wbsr .wbsr__meta small { font-size: 15px; color: var(--wb-on-chrome-dim); }
+.wbsr.wbsr .wbsr__notice, .wblb.wblb .wblb__notice { background: var(--wb-desk); color: #FCD34D; font-size: 17px; border-radius: 14px; }
+
+/* Ressources : onglets en pilules 44 px, vignettes sur fond blanc */
+.wblb.wblb .wblb__tabs button { height: 44px; padding: 0 18px; border-radius: 999px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 18px/1 var(--wb-font-ui); }
+.wblb.wblb .wblb__tabs button.is-on { background: #FFFFFF; color: #14181F; font-weight: 700; }
+.wblb.wblb .wblb__grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 14px; }
+.wblb.wblb .wblb__item { border-radius: 16px; background: #FFFFFF; color: #14181F; font: 600 15px/1.25 var(--wb-font-ui); padding: 14px 8px; }
+.wblb.wblb .wblb__item:hover { outline: 3px solid var(--wb-select); }
+.wblb.wblb .wblb__search input { height: 60px; border-radius: 16px; border: 0; background: var(--wb-desk); font: 500 22px/1 var(--wb-font-ui); }
+.wblb.wblb .wblb__search button, .wblb.wblb .wblb__search select { height: 60px; border-radius: 16px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 18px/1 var(--wb-font-ui); }
+.wblb.wblb .wblb__row { border-radius: 16px; background: var(--wb-chrome-sunk); }
+.wblb.wblb .wblb__row button, .wblb.wblb .wblb__primary { height: 48px; padding: 0 18px; border-radius: 12px; background: var(--wb-select); font: 700 17px/1 var(--wb-font-ui); }
+.wblb.wblb .wblb__row button.is-secondary { background: var(--wb-chrome-line); }
+
+/* Tirage au sort : le nom occupe l'écran */
+.wbp.wbp .wbp__name { border-radius: 24px; background: var(--wb-chrome-sunk); font: 800 clamp(44px, 9vw, 150px)/1 var(--wb-font-ui); }
+.wbp.wbp .wbp__placeholder { font: 800 150px/1 var(--wb-font-num); color: var(--wb-chrome-line); }
+.wbp.wbp .wbp__go { height: 76px; padding: 0 36px; border-radius: 20px; background: var(--wb-accent); color: #140A02; font: 800 24px/1 var(--wb-font-ui); }
+.wbp.wbp .wbp__stamp { height: 52px; padding: 0 20px; border-radius: 14px; background: var(--wb-accent); color: #140A02; font: 800 18px/1 var(--wb-font-ui); }
+.wbp.wbp .wbp__stamp.is-on { background: var(--wb-chrome-line); color: var(--wb-on-chrome); }
+.wbp.wbp .wbp__count button { height: 52px; border-radius: 14px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 18px/1 var(--wb-font-ui); }
+.wbp.wbp .wbp__count button.is-on { background: #FFFFFF; color: #14181F; }
+.wbp.wbp .wbp__reset { height: 52px; border-radius: 14px; background: var(--wb-chrome-line); font: 600 17px/1 var(--wb-font-ui); }
+
+/* Caméra */
+.wbcam.wbcam .wbcam__bar { background: var(--wb-chrome); gap: 12px; padding: 14px; }
+.wbcam.wbcam .wbcam__bar button { height: 60px; padding: 0 24px; border-radius: 16px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 19px/1 var(--wb-font-ui); }
+.wbcam.wbcam .wbcam__bar button.is-primary { background: var(--wb-accent); color: #140A02; font-weight: 800; }
+
+/* Clavier : touches 120 × 88, accents en rangée principale (liste côté TSX) */
+.wbk.wbk { padding: 22px; border-radius: var(--wb-r-panel); background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); box-shadow: var(--wb-e3); gap: 12px; }
+.wbk.wbk .wbk__row { gap: 12px; }
+.wbk.wbk button { min-width: 120px; height: 88px; border-radius: 16px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 30px/1 var(--wb-font-ui); }
+.wbk.wbk button:hover { background: var(--wb-chrome-hover); }
+.wbk.wbk button.is-on { background: var(--wb-select); color: #FFFFFF; }
+.wbk.wbk .wbk__wide { min-width: 174px !important; font-size: 24px; }
+.wbk.wbk .wbk__space { max-width: none; font-size: 22px !important; color: var(--wb-on-chrome-mute); }
+
+/* Projection / import */
+.wb .wb__import-box { border-radius: 20px; background: var(--wb-chrome); font-family: var(--wb-font-ui); box-shadow: var(--wb-e3); }
+.wb .wb__import-bar i { background: var(--wb-accent); }
+.wb .wb__display-exit { right: 24px; bottom: 24px; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); font: 600 17px/1 var(--wb-font-ui); }
+
+/* Seconde rangée de la barre de texte, dépliée par « … ». Ancrée du côté où la barre est posée,
+   jamais au-dessus de la zone d'écriture courante. */
+/* Position fixe et non absolue : la barre défile en `overflow-x: auto`, elle rognerait
+   une rangée posée au-dessus d'elle. Les valeurs suivent la hauteur de barre (82 px) + 24 px. */
+.wb .wb__row2 {
+  position: fixed; z-index: 13; display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--wb-r-bar);
+  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  box-shadow: var(--wb-e2);
+}
+.wb .wb__bar--bottom .wb__row2 { left: 50%; transform: translateX(-50%); bottom: 116px; }
+.wb .wb__bar--bottom.wb__bar--hand-left .wb__row2 { left: 24px; transform: none; }
+.wb .wb__bar--bottom.wb__bar--hand-right .wb__row2 { left: auto; right: 24px; transform: none; }
+.wb .wb__bar--left .wb__row2 { left: 116px; bottom: 24px; flex-direction: column; }
+.wb .wb__bar--right .wb__row2 { right: 116px; bottom: 24px; flex-direction: column; }
+/* Texte à trous : une action pédagogique, pas une mise en forme. */
+.wb .wb__row2-gap { color: var(--wb-accent); }
+
+/* ───────── F · Finitions ───────── */
+
+/* Focus clairement visible sur chrome comme sur papier */
+.wb :focus-visible, .wbm :focus-visible, .wbn :focus-visible, .wbx :focus-visible,
+.wblb :focus-visible, .wbsr :focus-visible, .wbp :focus-visible, .wbk :focus-visible {
+  outline: 3px solid var(--wb-accent, #F97316); outline-offset: 3px; border-radius: 12px;
+}
+
+/* Recherche sans résultat : le terme cherché, et une seule sortie. */
+.wbsr.wbsr .wbsr__results[hidden] { display: none; }
+.wbsr.wbsr .wbsr__skel { height: 132px; }
+.wbsr.wbsr .wbsr__empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  padding: 32px 16px; text-align: center;
+}
+.wbsr.wbsr .wbsr__empty p { margin: 0; font: 600 26px/1.3 var(--wb-font-ui); color: var(--wb-on-chrome); }
+.wbsr.wbsr .wbsr__empty button {
+  height: 60px; padding: 0 28px; border: 0; border-radius: var(--wb-r-btn);
+  background: var(--wb-accent); color: #14181F; cursor: pointer;
+  font: 700 19px/1 var(--wb-font-ui);
+}
+
+/* Squelettes de chargement (poser .wb-skel sur les blocs en attente) */
+.wb-skel { background: #1B212B; border-radius: 14px; animation: wb-skel 1.4s ease-in-out infinite alternate; }
+@keyframes wb-skel { from { opacity: .55; } to { opacity: 1; } }
+
+/* État vide de la page : deux lignes, rien d'autre. Elles s'effacent au premier trait. */
+.wb .wb__empty {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  pointer-events: none; text-align: center;
+}
+.wb .wb__empty p { margin: 0; font: 600 40px/1.2 var(--wb-font-ui); color: var(--wb-grid-major); }
+.wb .wb__empty p + p { font-size: 30px; font-weight: 500; }
+
+/* Niveau 1 — état persistant. Pastille + mot : jamais la couleur seule. */
+/* Ancrée en haut et non « au bord bas » comme au lot F : la barre de ce tableau occupe
+   trois rangées, le bas de l'écran ne peut plus rien recevoir. */
+.wb .wb__offline {
+  position: absolute; left: 50%; top: 20px; transform: translateX(-50%); z-index: 6;
+  display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 20px;
+  border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  box-shadow: var(--wb-e2); font: 600 17px/1 var(--wb-font-ui); color: var(--wb-on-chrome);
+}
+.wb .wb__offline i { width: 10px; height: 10px; border-radius: 50%; background: var(--wb-accent); }
+
+/* Niveau 2 — un geste est attendu. En haut à droite : loin de la main, loin de l'encre. */
+.wb .wb__savefail {
+  position: absolute; right: 16px; top: 16px; z-index: 7;
+  display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 16px 0 20px;
+  border-radius: var(--wb-r-btn); background: var(--wb-chrome);
+  border: 1px solid var(--wb-danger); box-shadow: var(--wb-e2);
+  font: 600 19px/1 var(--wb-font-ui); color: var(--wb-on-chrome);
+}
+.wb .wb__savefail button {
+  height: 44px; padding: 0 18px; border: 0; border-radius: 12px;
+  background: var(--wb-accent); color: #14181F; cursor: pointer;
+  font: 700 17px/1 var(--wb-font-ui);
+}
+
+/* Le rattrapage de 8 s qui remplace toute confirmation. */
+/* Juste sous la pilule hors ligne : deux positions fixes, rien ne saute quand l'une apparaît. */
+.wb .wb__undobar {
+  position: absolute; left: 50%; top: 76px; transform: translateX(-50%); z-index: 7;
+  display: flex; align-items: center; gap: 20px; height: 60px; padding: 0 12px 0 24px;
+  border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  box-shadow: var(--wb-e2); font: 600 19px/1 var(--wb-font-ui); color: var(--wb-on-chrome);
+}
+.wb .wb__undobar button {
+  height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
+  background: var(--wb-accent); color: #14181F; cursor: pointer;
+  font: 700 17px/1 var(--wb-font-ui);
+}
+
+/* Premier lancement : trois bulles ancrées, montrées ensemble, congédiées ensemble. */
+.wb .wb__coach { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.wb .wb__coach-bubble {
+  position: absolute; max-width: 320px; padding: 14px 18px;
+  border-radius: var(--wb-r-btn); background: var(--wb-chrome);
+  border: 1px solid var(--wb-chrome-line); box-shadow: var(--wb-e2);
+  font: 600 19px/1.35 var(--wb-font-ui); color: var(--wb-on-chrome);
+}
+.wb .wb__coach-bubble::after {
+  content: ''; position: absolute; width: 12px; height: 12px;
+  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
+  border-width: 0 1px 1px 0; transform: rotate(45deg);
+}
+/* Décalée du centre : l'état vide de la page y est écrit. */
+.wb .wb__coach-bubble--radial { left: 50%; top: 28%; transform: translateX(-50%); }
+.wb .wb__coach-bubble--radial::after { left: calc(50% - 6px); bottom: -7px; }
+.wb .wb__coach-bubble--pages { right: 24px; top: 96px; }
+.wb .wb__coach-bubble--pages::after { right: 28px; top: -7px; border-width: 1px 0 0 1px; }
+.wb .wb__coach-bubble--hand { left: 50%; bottom: 96px; transform: translateX(-50%); }
+.wb .wb__coach-bubble--hand::after { left: calc(50% - 6px); bottom: -7px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wb *, .wbm *, .wbr *, .wbn *, .wbx *, .wblb *, .wbsr *, .wbp *, .wbk *, .wbw * {
+    animation-duration: 120ms !important; transition-duration: 120ms !important;
+  }
+  .wb-skel { animation: none; }
+}
+
+/* ───────── B bis · Îlots flottants (rail des pages, Annuler/Rétablir) ─────────
+   Même matière que la barre, mais plus discrets : ce ne sont pas des outils de dessin. */
+.wb .wb__pagerail,
+.wb .wb__history {
+  gap: 4px; padding: 8px; border-radius: var(--wb-r-bar);
+  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); box-shadow: var(--wb-e2);
+}
+.wb .wb__pagerail .wb__btn,
+.wb .wb__history .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); color: var(--wb-on-chrome-dim); }
+.wb .wb__pages { color: var(--wb-on-chrome-dim); font: 600 13px/1 var(--wb-font-num); }
+
+/* Panneaux ancrés : épaisseur du trait, menu « Plus ⋯ » */
+.wbpop.wb__sizepop, .wbpop.wbm { background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); border-radius: var(--wb-r-bar); box-shadow: var(--wb-e2); }
+.wbpop.wb__sizepop .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); color: var(--wb-on-chrome); }
+.wbpop.wb__sizepop .wb__btn.is-on { background: #FFFFFF; color: #14181F; }
+.wbm .wbm__title { color: var(--wb-on-chrome-dim); }
+.wbm__item { color: var(--wb-on-chrome); font-family: var(--wb-font-ui); }
+.wbm .wbm__item:hover:not(:disabled) { background: var(--wb-chrome-hover); }
+.wbm .wbm__item.is-on { background: #FFFFFF; color: #14181F; }
+.wbm .wbm__section + .wbm__section { border-top-color: var(--wb-chrome-line); }
+
+/* ───────── B ter · Barre contextuelle flottante ─────────
+   Matière différente de la barre principale (fond creusé + liseré accent) : ce qu'elle porte
+   agit sur l'objet désigné par la flèche, pas sur le tableau. Cibles un cran plus petites —
+   c'est une barre de mise en forme, pas une barre d'outils qu'on vise au stylet à 2 m. */
+.wb .wbft {
+  gap: var(--wb-bar-gap); padding: var(--wb-bar-pad); border-radius: var(--wb-r-bar);
+  background: var(--wb-chrome-sunk); border-color: var(--wb-select); box-shadow: var(--wb-e3);
+}
+.wb .wbft__label { color: var(--wb-on-chrome-dim); font-family: var(--wb-font-ui); }
+.wb .wbft__arrow { background: var(--wb-chrome-sunk); border-color: var(--wb-select); }
+.wb .wbft .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); }
+.wb .wbft .wb__btn svg { width: calc(var(--wb-ico) - 4px); height: calc(var(--wb-ico) - 4px); }
+.wb .wbft .wb__swatch { width: calc(var(--wb-swatch) - 8px); height: calc(var(--wb-swatch) - 8px); }
+.wb .wbft .wb__swatch--hl { height: calc(var(--wb-swatch) - 14px); }
+.wb .wbft .wb__select { height: var(--wb-btn-sm); padding: 0 10px; font-size: 15px; }
+.wb .wbft .wb__txt { width: var(--wb-btn-sm); font-size: 17px; }
+/* La seconde rangée (« … ») était ancrée sur la barre du bas : elle suit désormais l'objet. */
+.wb .wbft .wb__row2 { position: absolute; left: 50%; right: auto; bottom: calc(100% + 8px); transform: translateX(-50%); flex-direction: row; }

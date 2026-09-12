@@ -13,7 +13,15 @@ const ROWS = [
   ['q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm'],
   ['w', 'x', 'c', 'v', 'b', 'n', "'", ',', '.', '?'],
 ];
-const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ù', 'û', 'î', 'ô', 'ë', 'ï', '-', '!'];
+/**
+ * Accents sur deux rangées de 10 au plus : à 120 px la touche, une rangée de 14 déborde d'un
+ * écran 1920. Les majuscules accentuées (É È À Ç) sont des touches à part entière — jamais
+ * derrière ⇧ ni derrière un appui long : elles ouvrent une phrase à chaque dictée.
+ */
+const ACCENT_ROWS = [
+  ['é', 'è', 'ê', 'à', 'â', 'ç', 'ù', 'û', 'î', 'ô'],
+  ['É', 'È', 'À', 'Ç', 'ë', 'ï', 'œ', '-', '!'],
+];
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
 /** Insère du texte dans l'élément actif (champ ou contenteditable). */
@@ -53,7 +61,11 @@ export function BoardKeyboard({ onClose }: Props) {
   return (
     <div className="wbk" onPointerDown={hold} onContextMenu={(e) => e.preventDefault()}>
       <div className="wbk__row">{DIGITS.map((k) => <button key={k} type="button" onPointerDown={hold} onClick={() => press(k)}>{k}</button>)}<button type="button" className="wbk__wide" onPointerDown={hold} onClick={() => special('backspace')}>⌫</button></div>
-      <div className="wbk__row">{ACCENTS.map((k) => <button key={k} type="button" onPointerDown={hold} onClick={() => press(k)}>{shift ? k.toUpperCase() : k}</button>)}</div>
+      {ACCENT_ROWS.map((row, i) => (
+        <div key={`acc${i}`} className="wbk__row">
+          {row.map((k) => <button key={k} type="button" onPointerDown={hold} onClick={() => press(k)}>{shift ? k.toUpperCase() : k}</button>)}
+        </div>
+      ))}
       {ROWS.map((row, i) => (
         <div key={i} className="wbk__row">
           {i === 2 && <button type="button" className={`wbk__wide ${shift ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => setShift((v) => !v)}>⇧</button>}
