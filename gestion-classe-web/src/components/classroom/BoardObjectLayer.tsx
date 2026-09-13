@@ -38,6 +38,7 @@ import { WidgetView } from './objects/WidgetView';
 import { EquationView } from './objects/EquationView';
 import type { TableObject, WidgetObject } from '../../lib/boardMedia';
 import { LIBRARY_STROKE, libraryItem } from '../../lib/boardLibrary';
+import { BoardSpellChecker, type SpellApi, type SpellStatus } from './BoardSpellChecker';
 
 /** Objets dont le contenu se tape au clavier (zone de texte, cellule de tableau, équation). */
 const EDITABLE_TYPES = new Set(['text', 'table', 'equation']);
@@ -113,6 +114,9 @@ interface Props {
   onToggleInteractive: (id: string) => void;
   /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
   students?: string[];
+  /** Correcteur orthographique et grammatical (soulignements + propositions) sur les zones de texte. */
+  spellCheck?: boolean;
+  onSpellStatus?: (status: SpellStatus) => void;
 }
 
 type Handle = 'e' | 'w' | 'n' | 's' | 'ne' | 'nw' | 'se' | 'sw';
@@ -187,10 +191,12 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
     reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onToggleInteractive, students,
+    spellCheck = false, onSpellStatus,
   },
   ref
 ) {
   const editorsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const spellRef = useRef<SpellApi>(null);
   const objectsRef = useRef(objects);
   useEffect(() => { objectsRef.current = objects; }, [objects]);
   const selectedRef = useRef(selectedIds);
@@ -274,6 +280,33 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     if (current.html === html && !commit) return;
     patch(id, (o) => ({ ...o, html }), before);
   }, [emit, patch, textById]);
+
+  /**
+   * Correction proposée par le correcteur : le mot est remplacé dans le DOM puis remonté comme
+   * après une frappe. Hors saisie, la correction entre dans l'historique ; en saisie, elle est
+   * couverte par le pas d'annulation de la session d'édition (pas d'entrée intermédiaire).
+   */
+  const applySpellFix = useCallback((id: string, range: Range, replacement: string) => {
+    const el = editorsRef.current.get(id);
+    if (!el) return;
+    const before = editingId === id ? null : objectsRef.current;
+    const node = document.createTextNode(replacement);
+    range.deleteContents();
+    range.insertNode(node);
+    if (editingId === id) {
+      const sel = window.getSelection();
+      if (sel) {
+        const r = document.createRange();
+        r.setStartAfter(node);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+    }
+    el.normalize();
+    const html = sanitizeBoardHtml(el.innerHTML);
+    patch(id, (o) => (o.type === 'text' ? { ...o, html } : o), before);
+  }, [editingId, patch]);
 
   // -- État de la sélection de texte (barre d'outils) --
   const refreshFormat = useCallback(() => {
@@ -722,6 +755,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     // Clic sans déplacement : curseur si la zone était déjà sélectionnée, ou au doigt / stylet
     if (editingId === p.id) return;
     if (p.wasSelected || p.pointerType !== 'mouse') beginEdit(p.id, e.clientX, e.clientY);
+    // Le pointeur est capturé par le cadre : le clic n'atteint pas l'éditeur, on regarde ici
+    // si un mot souligné par le correcteur était sous le doigt.
+    if (o.type === 'text') spellRef.current?.handleClick(o.id, e.clientX, e.clientY);
   }, [clearPress, emit, editingId, beginEdit]);
 
   const removeObject = useCallback((id: string) => {
@@ -877,7 +913,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   ['--wbo-indent' as string]: `${INDENT_EM}em`,
                 }}
                 onClick={(e) => {
-                  if (isEditing) return;
+                  // En saisie, le clic arrive directement à l'éditeur (pas de capture par le cadre)
+                  if (isEditing) { spellRef.current?.handleClick(o.id, e.clientX, e.clientY); return; }
                   const gap = (e.target as HTMLElement).closest<HTMLElement>('[data-gap].is-hidden');
                   if (gap) { e.stopPropagation(); onRevealGap(o.id, gap.getAttribute('data-gap') || ''); }
                 }}
@@ -961,6 +998,15 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         );
       })}
       <style>{CSS}</style>
+      <BoardSpellChecker
+        ref={spellRef}
+        enabled={spellCheck && active}
+        objects={objects}
+        editingId={editingId}
+        editors={editorsRef}
+        onReplace={applySpellFix}
+        onStatus={onSpellStatus}
+      />
     </div>
   );
 });

@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { BOARD_FONTS, TEXT_SIZES, type TextBox } from '../../lib/boardText';
 import type { BoardTextApi, FormatState } from './BoardObjectLayer';
+import type { SpellStatus } from './BoardSpellChecker';
 
 /**
  * Raccourcis clavier, alignés sur Word (version française, avec les équivalents
@@ -51,6 +52,10 @@ interface ToolbarProps {
   highlights: string[];
   color: string;
   onDelete: () => void;
+  /** Correcteur (LanguageTool) : actif, état de la dernière analyse, bascule. */
+  spell: boolean;
+  spellStatus: SpellStatus;
+  onToggleSpell: () => void;
   /** Texte à trous : nombre de trous dans la zone, et actions. */
   gapCount: number;
   onGap: () => void;
@@ -60,8 +65,17 @@ interface ToolbarProps {
 
 export function BoardTextToolbar({
   api, format, box, editing, fontId, size, onFontChange, onSizeChange, onColor, colors, highlights, color, onDelete,
-  gapCount, onGap, onRevealGaps, onRemoveGaps,
+  spell, spellStatus, onToggleSpell, gapCount, onGap, onRevealGaps, onRemoveGaps,
 }: ToolbarProps) {
+  const spellTitle = !spell
+    ? 'Correcteur orthographique et grammatical : désactivé (LanguageTool, réseau nécessaire)'
+    : spellStatus.error
+      ? 'Correcteur : le service LanguageTool ne répond pas (réseau ou quota) — nouvel essai à la prochaine modification'
+      : spellStatus.checking
+        ? 'Correcteur : analyse en cours…'
+        : spellStatus.count === 0
+          ? 'Correcteur actif : aucune faute relevée'
+          : `Correcteur actif : ${spellStatus.count} faute${spellStatus.count > 1 ? 's' : ''} — toucher un mot souligné pour voir les propositions`;
   // `onPointerDown` neutralisé : la sélection dans la zone de texte ne doit pas être perdue
   const hold = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
   const disabled = !editing;
@@ -174,6 +188,20 @@ export function BoardTextToolbar({
           <button className="wb__btn wb__txt" disabled={!box || gapCount === 0} onPointerDown={hold} onClick={once(onRemoveGaps)} title="Retirer les trous (le texte redevient ordinaire)">⌧</button>
         </div>
       )}
+
+      <div className="wb__group">
+        {/* Correcteur : « abc » ondulé comme les mots soulignés ; le point orange signale un service muet. */}
+        <button
+          className={`wb__btn wb__txt wb__spell ${spell ? 'is-on' : ''} ${spell && spellStatus.error ? 'is-warn' : ''} ${spell && spellStatus.checking ? 'is-busy' : ''}`}
+          onPointerDown={hold}
+          onClick={onToggleSpell}
+          title={spellTitle}
+          aria-pressed={spell}
+        >
+          <span className="wb__spell-abc">abc</span>
+          {spell && spellStatus.count > 0 && <span className="wb__spell-count">{spellStatus.count > 99 ? '99+' : spellStatus.count}</span>}
+        </button>
+      </div>
 
       <div className="wb__group">
         <button className="wb__btn" disabled={!box} onPointerDown={hold} onClick={onDelete} title="Supprimer la zone de texte (Suppr)">

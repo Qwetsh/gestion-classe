@@ -48,6 +48,7 @@ import {
 } from '../../lib/boardObjects';
 import { copyObjects, hasObjects as clipboardHasObjects, pasteObjects } from '../../lib/boardClipboard';
 import { BoardObjectLayer, type BoardTextApi, type FormatState, type StageBox } from './BoardObjectLayer';
+import type { SpellStatus } from './BoardSpellChecker';
 import { BoardTextToolbar } from './BoardTextToolbar';
 import { BoardContextMenu, type MenuItem } from './BoardContextMenu';
 import { BoardPageNavigator } from './BoardPageNavigator';
@@ -171,6 +172,8 @@ const COACH_STORAGE_KEY = 'classroom-board-coach';
 /** Durée du rattrapage après une action destructive (aucune confirmation n'est demandée avant). */
 const UNDO_BAR_MS = 8000;
 const AUTO_SHAPES_KEY = 'classroom-board-autoshapes';
+/** Correcteur orthographique : actif par défaut (comme Word), désactivable d'un bouton. */
+const SPELL_KEY = 'classroom-board-spell';
 const TBI_SETTINGS_KEY = 'classroom-board-tbi';
 /** Deux doigts immobiles pendant ce délai : menu radial. */
 const RADIAL_HOLD_MS = 280;
@@ -179,8 +182,9 @@ const MULTI_TAP_MS = 320;
 const MAX_ZOOM = 4;
 
 type BarSide = 'bottom' | 'left' | 'right';
-interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center' }
-const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center' };
+/** `floating` : les barres contextuelles suivent l'objet sélectionné, ou restent accrochées à la barre principale. */
+interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar' }
+const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object' };
 
 function loadTbi(): TbiSettings {
   try { return { ...DEFAULT_TBI, ...(JSON.parse(localStorage.getItem(TBI_SETTINGS_KEY) || '{}') as Partial<TbiSettings>) }; } catch { return DEFAULT_TBI; }
@@ -317,6 +321,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>({ stroke: COLORS[0], strokeWidth: 4, fill: null, dashed: false });
   const [autoShapes, setAutoShapes] = useState(() => { try { return localStorage.getItem(AUTO_SHAPES_KEY) === '1'; } catch { return false; } });
+  const [spellCheck, setSpellCheck] = useState(() => { try { return localStorage.getItem(SPELL_KEY) !== '0'; } catch { return true; } });
+  const [spellStatus, setSpellStatus] = useState<SpellStatus>({ checking: false, count: 0, error: false });
   /** Encre sélectionnée (outil sélection) : identifiants de traits de la page courante. */
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<ReadonlySet<string>>(() => new Set());
   /** Ce qui a été découvert pendant la séance (hors document). */
@@ -466,6 +472,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   useEffect(() => {
     try { localStorage.setItem(AUTO_SHAPES_KEY, autoShapes ? '1' : '0'); } catch { /* stockage indisponible */ }
   }, [autoShapes]);
+  useEffect(() => {
+    try { localStorage.setItem(SPELL_KEY, spellCheck ? '1' : '0'); } catch { /* stockage indisponible */ }
+  }, [spellCheck]);
   useEffect(() => {
     tbiRef.current = tbi;
     try { localStorage.setItem(TBI_SETTINGS_KEY, JSON.stringify(tbi)); } catch { /* stockage indisponible */ }
@@ -2238,6 +2247,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           active: tbi.hand === hand,
           onSelect: () => setTbi((t) => ({ ...t, hand })),
         })),
+        { id: 'set-float-object', label: 'Options de l’objet posées sur l’objet', icon: '⬒', active: tbi.floating === 'object', onSelect: () => setTbi((t) => ({ ...t, floating: 'object' })) },
+        { id: 'set-float-bar', label: 'Options de l’objet accrochées à la barre', icon: '⬓', active: tbi.floating === 'bar', onSelect: () => setTbi((t) => ({ ...t, floating: 'bar' })) },
       ],
     },
   ];
@@ -2341,6 +2352,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onWidgetConfig={onWidgetConfig}
           onToggleInteractive={onToggleInteractive}
           students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
+          spellCheck={spellCheck && !displayMode}
+          onSpellStatus={setSpellStatus}
         />
         {page.curtain && pageRevealedFraction(reveal, page.id) < 1 && (() => {
           const f = pageRevealedFraction(reveal, page.id);
@@ -2547,7 +2560,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
       {/* Barres contextuelles : elles se posent sur l'objet, plus dans la barre principale. */}
       {!displayMode && showTextToolbar && (
-        <BoardFloatingToolbar objectId={selectedBox?.id ?? null} label="Texte">
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedBox?.id ?? null} label="Texte">
             <BoardTextToolbar
               api={textApiRef}
               format={format}
@@ -2574,6 +2587,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                 else patchSelectedTexts((o) => ({ ...o, color: c }));
               }}
               onDelete={deleteSelected}
+              spell={spellCheck}
+              spellStatus={spellStatus}
+              onToggleSpell={() => setSpellCheck((v) => !v)}
               gapCount={selectedBox ? gapIdsIn(selectedBox.html).length : 0}
               onGap={() => textApiRef.current?.makeGap()}
               onRevealGaps={() => { if (selectedBox) revealAllGaps(selectedBox.id); }}
@@ -2585,7 +2601,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         </BoardFloatingToolbar>
       )}
       {!displayMode && showShapeToolbar && (
-        <BoardFloatingToolbar objectId={selectedShapes[0]?.id ?? selectedLibrary[0]?.id ?? null} label={selectedShapes.length === 0 && selectedLibrary.length > 0 ? 'Objet' : 'Forme'}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedShapes[0]?.id ?? selectedLibrary[0]?.id ?? null} label={selectedShapes.length === 0 && selectedLibrary.length > 0 ? 'Objet' : 'Forme'}>
             <BoardShapeToolbar
               kind={shapeKind}
               style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
@@ -2609,7 +2625,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
 
       {!displayMode && showObjectToolbar && (
-        <BoardFloatingToolbar objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
           <BoardObjectToolbar
             objects={selectedOthers}
             tableCell={tableCellRef.current && tableCellRef.current.id === selectedOthers[0].id ? { r: tableCellRef.current.r, c: tableCellRef.current.c } : null}
@@ -2627,7 +2643,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         </BoardFloatingToolbar>
       )}
       {!displayMode && inkSelection && tool === 'select' && (
-        <BoardFloatingToolbar objectId="ink-selection" label={`Encre · ${selectedStrokeIds.size} trait${selectedStrokeIds.size > 1 ? 's' : ''}`}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId="ink-selection" label={`Encre · ${selectedStrokeIds.size} trait${selectedStrokeIds.size > 1 ? 's' : ''}`}>
           <div className="wb__group">
             <button type="button" className="wb__btn wb__txt" title="Convertir l'écriture en texte" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void convertInkToText()}>Aa</button>
             <button type="button" className="wb__btn wb__txt" title="Exporter en image (PNG)" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void exportSelectionImage()}>⤓</button>

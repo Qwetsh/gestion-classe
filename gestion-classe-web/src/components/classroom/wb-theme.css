@@ -557,12 +557,31 @@
 }
 .wb .wbft__label { color: var(--wb-on-chrome-dim); font-family: var(--wb-font-ui); }
 .wb .wbft__arrow { background: var(--wb-chrome-sunk); border-color: var(--wb-select); }
+/* Pastille repliée (un tap rouvre) et bouton « réduire » en fin de barre, atténué : action rare. */
+.wb .wbft--collapsed { min-height: var(--wb-btn-sm); border-radius: var(--wb-r-btn); gap: 6px; font-family: var(--wb-font-ui); }
+.wb .wbft--collapsed:hover { background: var(--wb-chrome-hover); color: var(--wb-on-chrome); }
+.wb .wbft--collapsed .wbft__label { padding: 0 2px 0 6px; }
+.wb .wbft .wbft__collapse { color: var(--wb-on-chrome-mute); }
+.wb .wbft .wbft__collapse:hover { color: var(--wb-on-chrome); }
 .wb .wbft .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); }
 .wb .wbft .wb__btn svg { width: calc(var(--wb-ico) - 4px); height: calc(var(--wb-ico) - 4px); }
 .wb .wbft .wb__swatch { width: calc(var(--wb-swatch) - 8px); height: calc(var(--wb-swatch) - 8px); }
 .wb .wbft .wb__swatch--hl { height: calc(var(--wb-swatch) - 14px); }
 .wb .wbft .wb__select { height: var(--wb-btn-sm); padding: 0 10px; font-size: 15px; }
 .wb .wbft .wb__txt { width: var(--wb-btn-sm); font-size: 17px; }
+/* Correcteur : « abc » souligné en ondulé, compteur de fautes, point orange si le service est muet. */
+.wb .wb__spell { position: relative; }
+.wb .wb__spell-abc { text-decoration: underline wavy #DC2626; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.wb .wb__spell:not(.is-on) .wb__spell-abc { text-decoration-color: currentColor; opacity: .55; }
+.wb .wb__spell-count {
+  position: absolute; right: -4px; top: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+  background: #DC2626; color: #FFFFFF; font: 700 12px/20px var(--wb-font-num); text-align: center;
+}
+.wb .wb__spell.is-warn::after {
+  content: ''; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--wb-accent);
+}
+.wb .wb__spell.is-busy .wb__spell-abc { animation: wb-spell-busy 1s ease-in-out infinite; }
+@keyframes wb-spell-busy { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .wb .wb__btn--danger { color: #FCA5A5; }
 .wb .wb__btn--danger:hover:not(:disabled) { background: #7F1D1D; color: #FFFFFF; }
 /* La seconde rangée (« … ») était ancrée sur la barre du bas : elle suit désormais l'objet. */
