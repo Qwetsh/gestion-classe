@@ -104,6 +104,7 @@ const CSS = `
 .wbt td { border: 1.5px solid #374151; padding: 0; vertical-align: top; }
 .wbt.has-header tr:first-child td { background: #E5E7EB; font-weight: 600; }
 .wbt__cell { min-height: 1.34em; padding: var(--wbt-pad); outline: none; white-space: pre-wrap; overflow-wrap: break-word; }
-.wbt.is-editing .wbt__cell { cursor: text; }
+.wbt.is-editing .wbt__cell { cursor: text; user-select: text; -webkit-user-select: text; }
+.wbt.is-editing .wbt__cell * { user-select: text; -webkit-user-select: text; }
 .wbt.is-editing .wbt__cell:focus { box-shadow: inset 0 0 0 2px #6366F1; }
 `;

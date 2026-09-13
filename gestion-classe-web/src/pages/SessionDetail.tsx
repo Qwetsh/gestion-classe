@@ -6,6 +6,9 @@ import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 import { sanitizePhotoPath } from '../lib/security';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { BoardPagesGallery } from '../components/classroom/BoardPagesGallery';
+import { Whiteboard } from '../components/classroom/Whiteboard';
+import { fetchSessionSourceBoard, type Board } from '../lib/boardsQueries';
+import { useAuth } from '../hooks/useAuth';
 
 interface Session {
   id: string;
@@ -72,6 +75,16 @@ export function SessionDetail() {
   const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const { toast, confirm: showConfirm } = useUIFeedback();
+  const { user } = useAuth();
+  /** Tableau préparé dont la séance est partie (bibliothèque), et éditeur rouvert sur le tableau de la séance. */
+  const [sourceBoard, setSourceBoard] = useState<Board | null>(null);
+  const [boardOpen, setBoardOpen] = useState(false);
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    fetchSessionSourceBoard(id).then((b) => { if (!cancelled) setSourceBoard(b); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [id]);
 
   // Topic editing states
   const [isEditingTopic, setIsEditingTopic] = useState(false);
@@ -499,6 +512,13 @@ export function SessionDetail() {
                   {' · '}
                   {getDuration(session.started_at, session.ended_at)}
                 </p>
+                {sourceBoard && (
+                  <p className="text-[var(--text-dim)] mt-1 text-sm" title="Le tableau de cette séance est parti de ce tableau préparé (copie : l'original n'a pas bougé)">
+                    📚 Préparé depuis <span className="text-[var(--text)] font-medium">{sourceBoard.title}</span>
+                    {sourceBoard.level && <> · {sourceBoard.level}</>}
+                    {sourceBoard.chapter && <> · {sourceBoard.chapter}</>}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -642,9 +662,20 @@ export function SessionDetail() {
 
         {/* Pages du tableau blanc (mode « en classe ») */}
         <BoardPagesGallery
+          key={boardOpen ? 'closed' : 'open'}
           sessionId={session.id}
           exportName={`${session.class_name} ${session.started_at.slice(0, 10)}`}
+          onOpenEditor={user ? () => setBoardOpen(true) : undefined}
         />
+        {boardOpen && user && (
+          <Whiteboard
+            sessionId={session.id}
+            userId={user.id}
+            className={session.class_name}
+            title={`${session.class_name} ${session.started_at.slice(0, 10)}`}
+            onClose={() => setBoardOpen(false)}
+          />
+        )}
 
         {/* Groups section */}
         {groups.length > 0 && (

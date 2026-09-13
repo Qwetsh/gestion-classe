@@ -176,10 +176,10 @@ export function BoardTextToolbar({
           <button className={`wb__btn wb__txt ${format.sup ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('superscript'))} title={`Exposant (${TEXT_KEYS.superscript})`}>x²</button>
           <button className={`wb__btn wb__txt ${format.sub ? 'is-on' : ''}`} disabled={disabled} onPointerDown={hold} onClick={call((a) => a.exec('subscript'))} title={`Indice (${TEXT_KEYS.subscript})`}>x₂</button>
           <button className="wb__btn wb__txt" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.toggleCase())} title={`Changer la casse (${TEXT_KEYS.toggleCase})`}>Aa</button>
-          <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(-1))} title={`Diminuer le retrait (${TEXT_KEYS.indentLess})`}>
+          <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(-1))} title={`Diminuer l’alinéa (${TEXT_KEYS.indentLess}) — première ligne du paragraphe ; item entier dans une liste`}>
             <svg viewBox="0 0 24 24"><path d="M20 6H9M20 12h-8M20 18H9M7 9l-3 3 3 3" /></svg>
           </button>
-          <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(1))} title={`Augmenter le retrait (${TEXT_KEYS.indentMore})`}>
+          <button className="wb__btn" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.changeIndent(1))} title={`Alinéa (${TEXT_KEYS.indentMore}) — retrait de la première ligne du paragraphe ; item entier dans une liste`}>
             <svg viewBox="0 0 24 24"><path d="M20 6H9M20 12h-8M20 18H9M4 9l3 3-3 3" /></svg>
           </button>
           {/* Texte à trous : une action pédagogique, pas une mise en forme — d'où l'orange. */}

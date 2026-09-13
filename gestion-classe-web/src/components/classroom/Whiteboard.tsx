@@ -73,6 +73,8 @@ import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
 import { BoardKeyboard } from './BoardKeyboard';
 import { BoardLibraryPanel } from './BoardLibraryPanel';
+import { BoardLibraryDialog } from './BoardLibraryDialog';
+import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta } from '../../lib/boardsQueries';
 import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
@@ -146,8 +148,13 @@ interface WhiteboardProps {
   title?: string;
   /** Mode « en classe » : élèves de la séance et bus de commandes partagé avec le téléphone. */
   classroom?: { bus: ClassroomBus; students: PickableStudent[] };
+  /** Nom de la classe (« 6e A ») : sert à déduire le niveau des tableaux préparés à proposer. */
+  className?: string;
   onClose: () => void;
 }
+
+/** Clé locale : le panneau « Tableaux préparés » ne s'ouvre tout seul qu'une fois par séance. */
+const START_PROMPT_PREFIX = 'classroom-board-start:';
 
 const UNIT = BOARD_UNIT;
 const COLORS = ['#111827', '#1D4ED8', '#DC2626', '#059669'];
@@ -302,7 +309,9 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, onClose }: WhiteboardProps) {
+  /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
+  const isSessionBoard = remote && !boardId;
   /** Propriétaire des pages côté serveur. */
   const remoteRef = boardId ? { boardId } : sessionId;
   const [pages, setPages] = useState<Page[]>(() => loadLocal(sessionId).pages);
@@ -354,6 +363,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [searchOpen, setSearchOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Bibliothèque des tableaux préparés : ouvrir un tableau (copie de ses pages) ou enregistrer celui-ci. */
+  const [libraryDialog, setLibraryDialog] = useState<'open' | 'start' | 'save' | null>(null);
   /** Mode affichage (écran de classe) : barre et panneaux masqués, widgets manipulables. */
   const [displayMode, setDisplayMode] = useState(false);
   const [pickOpen, setPickOpen] = useState(false);
@@ -611,12 +622,23 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const remote = await fetchBoardPages(remoteRef);
         if (cancelled) return;
         const useRemote = remote.pages.length > 0 && (remote.updatedAt >= local.savedAt || !hasInk(local.pages));
+        let loaded = local.pages;
         if (useRemote) {
           const remotePages = normalizePages(remote.pages);
           syncedRef.current = new Map(remotePages.map((p) => [p.id, p]));
           syncedPosRef.current = new Map(remotePages.map((p, i) => [p.id, i]));
           setPages(remotePages);
           setPageIndex(0);
+          loaded = remotePages;
+        }
+        // Début de séance sur un tableau vide : proposer une seule fois de partir d'un tableau préparé
+        if (classroom && !hasInk(loaded)) {
+          let seen = false;
+          try { seen = localStorage.getItem(START_PROMPT_PREFIX + sessionId) === '1'; } catch { /* stockage indisponible */ }
+          if (!seen) {
+            try { localStorage.setItem(START_PROMPT_PREFIX + sessionId, '1'); } catch { /* stockage indisponible */ }
+            setLibraryDialog('start');
+          }
         }
       } catch (err) {
         console.warn('[Whiteboard] chargement distant impossible, on garde le local :', err);
@@ -989,6 +1011,41 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [importing, sessionId, userId, insertImage]);
 
   /** Enregistre tout le tableau en .gcboard (ré-ouvrable, images comprises). */
+  /**
+   * Tableau préparé choisi dans la bibliothèque : ses pages sont copiées ici. Sur un tableau
+   * encore vide elles remplacent la page blanche ; sinon elles s'insèrent après la page courante.
+   * Pour une séance, on retient l'origine (session_boards) — l'original n'est jamais modifié.
+   */
+  const insertPreparedBoard = useCallback(async (board: Board) => {
+    setLibraryDialog(null);
+    setImporting({ done: 0, total: 1, label: `Ouverture de « ${board.title} »…` });
+    try {
+      const copied = normalizePages(await copyBoardPages(board.id));
+      if (copied.length === 0) { window.alert('Ce tableau préparé est vide.'); return; }
+      const current = pagesRef.current;
+      if (!hasInk(current)) {
+        setPages(copied);
+        setPageIndex(0);
+      } else {
+        const atIndex = pageIndexRef.current;
+        setPages([...current.slice(0, atIndex + 1), ...copied, ...current.slice(atIndex + 1)]);
+        setPageIndex(atIndex + 1);
+      }
+      if (isSessionBoard && userId) void linkSessionBoard(userId, sessionId, board.id);
+    } catch (err) {
+      console.error('[Whiteboard] tableau préparé :', err);
+      window.alert(`Ouverture impossible : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+    } finally {
+      setImporting(null);
+    }
+  }, [isSessionBoard, sessionId, userId]);
+
+  /** Copie des pages actuelles dans un nouveau tableau préparé (Mes tableaux). */
+  const saveToLibrary = useCallback(async (meta: BoardMeta) => {
+    await createBoardFromPages(userId, meta, pagesRef.current);
+    setLibraryDialog(null);
+  }, [userId]);
+
   const saveGcboard = useCallback(async () => {
     setImporting({ done: 0, total: 1, label: 'Préparation du fichier…' });
     try {
@@ -2204,7 +2261,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       title: 'Fichier',
       items: [
         { id: 'file-open', label: `Ouvrir (${GCBOARD_EXTENSION}, PDF, image)`, icon: '📂', disabled: !!importing, onSelect: () => fileInputRef.current?.click() },
-        { id: 'file-save', label: 'Enregistrer le tableau', icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
+        ...(userId ? [
+          { id: 'file-library-open', label: 'Ouvrir un tableau préparé…', icon: '📚', disabled: !!importing, onSelect: () => setLibraryDialog('open') },
+          { id: 'file-library-save', label: 'Enregistrer dans Mes tableaux…', icon: '🗂', disabled: !!importing, onSelect: () => setLibraryDialog('save') },
+        ] : []),
+        { id: 'file-save', label: `Enregistrer un fichier ${GCBOARD_EXTENSION}`, icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
         { id: 'file-pdf', label: 'Exporter en PDF', icon: '⤓', onSelect: () => setExportOpen(true) },
       ],
     },
@@ -2509,6 +2570,25 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
       {cameraOffer && classroom && (
         <BoardCameraOverlay key={cameraOffer.slice(0, 40)} bus={classroom.bus} offer={cameraOffer} onCapture={(blob) => void onCameraCapture(blob)} onClose={() => setCameraOffer(null)} />
+      )}
+      {libraryDialog && libraryDialog !== 'save' && (
+        <BoardLibraryDialog
+          mode="open"
+          userId={userId}
+          defaultLevel={levelFromClassName(className)}
+          excludeBoardId={boardId ?? null}
+          allowBlank={libraryDialog === 'start'}
+          onPick={(b) => void insertPreparedBoard(b)}
+          onClose={() => setLibraryDialog(null)}
+        />
+      )}
+      {libraryDialog === 'save' && (
+        <BoardLibraryDialog
+          mode="save"
+          defaultMeta={{ title: classroom ? `${className || title} — ${new Date().toLocaleDateString('fr-FR')}` : title, level: levelFromClassName(className), chapter: null }}
+          onSave={saveToLibrary}
+          onClose={() => setLibraryDialog(null)}
+        />
       )}
       {libraryOpen && (
         <BoardLibraryPanel

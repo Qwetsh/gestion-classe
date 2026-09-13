@@ -61,7 +61,10 @@ export const TEXT_SIZES = [16, 20, 24, 28, 34, 42, 54, 72];
 export const DEFAULT_TEXT_SIZE = 28;
 /** Interligne, en multiples de la taille de police. */
 export const LINE_HEIGHT = 1.34;
-/** Décalage horizontal d'un niveau d'indentation, en em. */
+/**
+ * Décalage horizontal d'un niveau d'indentation, en em. Dans un paragraphe ordinaire c'est un
+ * alinéa (première ligne seulement) ; dans une liste, l'item entier est décalé.
+ */
 export const INDENT_EM = 2;
 /** Largeur par défaut d'une nouvelle zone, en unités logiques. */
 export const DEFAULT_TEXT_WIDTH = 420;
@@ -337,16 +340,19 @@ function layout(ctx: CanvasRenderingContext2D, box: TextBox, scale: number): Lai
   const lines: LaidLine[] = [];
 
   for (const block of parseBoardHtml(box.html)) {
-    const indentPx = block.indent * INDENT_EM * box.size * scale;
     const markerWidth = block.marker ? (() => {
       ctx.font = runFont({ ...BASE_STYLE, text: '' }, box, scale);
       return ctx.measureText(`${block.marker} `).width;
     })() : 0;
-    const avail = Math.max(20, maxWidth - indentPx - markerWidth);
+    // Alinéa : dans un paragraphe ordinaire, seule la première ligne est en retrait (comme le
+    // `text-indent` de l'éditeur). Dans une liste, le retrait décale tout l'item (imbrication).
+    const indentFor = (firstLine: boolean) => (block.marker || firstLine ? block.indent : 0);
+    const availFor = (firstLine: boolean) => Math.max(20, maxWidth - indentFor(firstLine) * INDENT_EM * box.size * scale - markerWidth);
 
     let line: LaidRun[] = [];
     let width = 0;
     let first = true;
+    let avail = availFor(true);
     const push = () => {
       const height = line.reduce((h, r) => Math.max(h, box.size * r.em * scale * LINE_HEIGHT), box.size * scale * LINE_HEIGHT);
       lines.push({
@@ -354,10 +360,11 @@ function layout(ctx: CanvasRenderingContext2D, box: TextBox, scale: number): Lai
         width,
         height,
         align: block.align,
-        indent: block.indent,
+        indent: indentFor(first),
         marker: first ? block.marker : null,
       });
       first = false;
+      avail = availFor(false);
       line = [];
       width = 0;
     };

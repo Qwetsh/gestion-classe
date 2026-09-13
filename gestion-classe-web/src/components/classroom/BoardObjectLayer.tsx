@@ -10,7 +10,9 @@
  * - glisser depuis n'importe où sur une zone sélectionnée la déplace (seuil 6 px) ;
  * - un clic sur une zone déjà sélectionnée, ou un double-clic, place le curseur ;
  * - au doigt ou au stylet, toucher = écrire, glisser = déplacer ;
- * - la bordure de préhension (12 px autour) déplace toujours, même en cours de saisie.
+ * - la bordure de préhension (12 px autour) déplace toujours, même en cours de saisie ;
+ * - en saisie, la souris redevient celle d'un traitement de texte : clic = curseur, double-clic =
+ *   mot, triple-clic = paragraphe, glisser = sélection, clic droit = menu natif (copier / coller).
  *
  * Le HTML d'une zone est nettoyé (`sanitizeBoardHtml`) puis re-dessiné sur canvas pour les
  * vignettes et l'export PDF.
@@ -540,12 +542,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     const k = e.key.toLowerCase();
     if (e.key === 'Tab' && !ctrl && !e.altKey) { changeIndent(e.shiftKey ? -1 : 1); return true; }
     if (e.key === 'Enter' && !ctrl && !e.shiftKey && !e.altKey) {
-      // Comme Word : Entrée sur une ligne vide en retrait la ramène d'un niveau au lieu
-      // d'ouvrir une nouvelle ligne au même retrait.
+      // Comme Word : dans une liste, Entrée sur un item vide en retrait le ramène d'un niveau au
+      // lieu d'ouvrir un nouvel item au même retrait. Un paragraphe ordinaire garde son alinéa
+      // d'un paragraphe au suivant (le nouveau <div> hérite de data-indent).
       const el = editingId ? editorsRef.current.get(editingId) : null;
       const sel = window.getSelection();
       const block = el && sel?.isCollapsed ? blockOf(el, sel.anchorNode) : null;
-      if (block && (Number(block.getAttribute('data-indent')) || 0) > 0 && isBlankBlock(block)) {
+      if (block && block.tagName === 'LI' && (Number(block.getAttribute('data-indent')) || 0) > 0 && isBlankBlock(block)) {
         changeIndent(-1);
         return true;
       }
@@ -802,6 +805,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             }}
             onContextMenu={(e) => {
               if (!active) return;
+              // En saisie, le clic droit dans le texte garde le menu natif du navigateur
+              // (couper / copier / coller du texte) ; le menu de l'objet reste sur la bordure.
+              if (isEditing && (e.target as HTMLElement).closest('.wbo__editor, .wbt__cell')) { e.stopPropagation(); return; }
               e.preventDefault();
               e.stopPropagation();
               if (!selectedRef.current.has(o.id)) { const ids = new Set([o.id]); onSelect(ids); selectedRef.current = ids; }
@@ -1016,21 +1022,36 @@ const CSS = `
 .wbo__frame { position: absolute; pointer-events: none; touch-action: none; }
 .wbo__frame.is-active { pointer-events: auto; }
 .wbo__editor { outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: #4F46E5; cursor: default; }
-.wbo__frame.is-editing .wbo__editor { cursor: text; }
+/* Le tableau est en user-select: none (rien ne se surligne en manipulant les outils) ; la zone en
+   saisie doit redevenir un vrai champ texte : clic = curseur, double-clic = mot, triple = paragraphe,
+   glisser = sélection. Sans cette règle, Chrome ignore la souris dans un contentEditable non sélectionnable. */
+.wbo__frame.is-editing .wbo__editor { cursor: text; user-select: text; -webkit-user-select: text; }
+.wbo__frame.is-editing .wbo__editor * { user-select: text; -webkit-user-select: text; }
 .wbo__frame.is-active:hover .wbo__editor { box-shadow: 0 0 0 1px rgba(99,102,241,0.35); }
 .wbo__frame.is-selected .wbo__editor,
 .wbo__frame.is-editing .wbo__editor { box-shadow: 0 0 0 1.5px #6366F1; }
 .wbo__frame.is-locked.is-selected .wbo__editor { box-shadow: 0 0 0 1.5px #9CA3AF; }
 .wbo__editor p, .wbo__editor div { margin: 0; }
 .wbo__editor ul, .wbo__editor ol { margin: 0; padding-left: 1.4em; }
-.wbo__editor [data-indent="1"] { padding-left: var(--wbo-indent); }
-.wbo__editor [data-indent="2"] { padding-left: calc(var(--wbo-indent) * 2); }
-.wbo__editor [data-indent="3"] { padding-left: calc(var(--wbo-indent) * 3); }
-.wbo__editor [data-indent="4"] { padding-left: calc(var(--wbo-indent) * 4); }
-.wbo__editor [data-indent="5"] { padding-left: calc(var(--wbo-indent) * 5); }
-.wbo__editor [data-indent="6"] { padding-left: calc(var(--wbo-indent) * 6); }
-.wbo__editor [data-indent="7"] { padding-left: calc(var(--wbo-indent) * 7); }
-.wbo__editor [data-indent="8"] { padding-left: calc(var(--wbo-indent) * 8); }
+/* Alinéa (Tab) : un paragraphe ordinaire n'est en retrait que sur sa première ligne, comme dans
+   un traitement de texte ; un item de liste est décalé en entier (imbrication). Le rendu canvas
+   (boardText.ts, layout) suit la même règle. */
+.wbo__editor [data-indent="1"] { text-indent: var(--wbo-indent); }
+.wbo__editor [data-indent="2"] { text-indent: calc(var(--wbo-indent) * 2); }
+.wbo__editor [data-indent="3"] { text-indent: calc(var(--wbo-indent) * 3); }
+.wbo__editor [data-indent="4"] { text-indent: calc(var(--wbo-indent) * 4); }
+.wbo__editor [data-indent="5"] { text-indent: calc(var(--wbo-indent) * 5); }
+.wbo__editor [data-indent="6"] { text-indent: calc(var(--wbo-indent) * 6); }
+.wbo__editor [data-indent="7"] { text-indent: calc(var(--wbo-indent) * 7); }
+.wbo__editor [data-indent="8"] { text-indent: calc(var(--wbo-indent) * 8); }
+.wbo__editor li[data-indent="1"] { text-indent: 0; padding-left: var(--wbo-indent); }
+.wbo__editor li[data-indent="2"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 2); }
+.wbo__editor li[data-indent="3"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 3); }
+.wbo__editor li[data-indent="4"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 4); }
+.wbo__editor li[data-indent="5"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 5); }
+.wbo__editor li[data-indent="6"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 6); }
+.wbo__editor li[data-indent="7"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 7); }
+.wbo__editor li[data-indent="8"] { text-indent: 0; padding-left: calc(var(--wbo-indent) * 8); }
 
 .wbo__image { display: flex; align-items: center; justify-content: center; overflow: hidden; background: #F3F4F6; color: #9CA3AF; font: 500 13px/1 Inter, system-ui, sans-serif; user-select: none; }
 .wbo__image img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
@@ -1051,7 +1072,13 @@ const CSS = `
 .wbo__cover { position: absolute; z-index: 2; pointer-events: auto; overflow: hidden; border-radius: 4px; }
 .wbo__cover--curtain { display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; cursor: pointer; user-select: none; }
 .wbo__scratch { display: block; touch-action: none; cursor: crosshair; }
-.wbo__grab { position: absolute; inset: -12px; cursor: move; border-radius: 6px; }
+/* Anneau de 12 px autour de l'objet, et rien au centre : le clip-path vaut aussi pour le test de
+   pointage, donc un clic à l'intérieur atteint le texte (curseur, double-clic, sélection) au lieu
+   d'être avalé par la préhension. Avant, ce calque couvrait tout l'objet. */
+.wbo__grab {
+  position: absolute; inset: -12px; cursor: move; border-radius: 6px;
+  clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, 12px 12px, 12px calc(100% - 12px), calc(100% - 12px) calc(100% - 12px), calc(100% - 12px) 12px, 12px 12px);
+}
 .wbo__lock { position: absolute; right: -8px; top: -14px; font-size: 14px; pointer-events: none; }
 .wbo__handle {
   position: absolute; width: 14px; height: 14px; border-radius: 4px; background: #FFFFFF;

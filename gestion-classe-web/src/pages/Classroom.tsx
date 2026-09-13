@@ -508,6 +508,7 @@ export function Classroom() {
               sessionId={session.id}
               userId={userId ?? ''}
               ticker={tickerText}
+              className={className}
               classroom={bus ? { bus, students: students.map((st) => ({ id: st.id, pseudo: st.pseudo, absent: stateByStudent.get(st.id)?.absent === true })) } : undefined}
               onClose={() => setView('plan')}
             />

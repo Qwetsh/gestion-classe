@@ -11,6 +11,8 @@ interface BoardPagesGalleryProps {
   sessionId: string;
   /** Nom de fichier (sans extension) pour l'export PDF. */
   exportName: string;
+  /** Rouvrir le tableau de la séance dans l'éditeur (corriger, compléter, enregistrer dans Mes tableaux). */
+  onOpenEditor?: () => void;
 }
 
 // Les pages sont dessinées sur un écran 16:9 ; on garde ce ratio à la relecture.
@@ -34,7 +36,7 @@ function PageCanvas({ page, width, className }: { page: BoardPage; width: number
   return <canvas ref={ref} width={width} height={height} className={className} style={{ width: '100%', height: 'auto', display: 'block' }} />;
 }
 
-export function BoardPagesGallery({ sessionId, exportName }: BoardPagesGalleryProps) {
+export function BoardPagesGallery({ sessionId, exportName, onOpenEditor }: BoardPagesGalleryProps) {
   const [pages, setPages] = useState<BoardPage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -68,6 +70,11 @@ export function BoardPagesGallery({ sessionId, exportName }: BoardPagesGalleryPr
         <h2 className="font-semibold text-[var(--text)] flex-1">
           Tableau ({inkPages.length} page{inkPages.length > 1 ? 's' : ''})
         </h2>
+        {onOpenEditor && (
+          <button className="btn btn--ghost" onClick={onOpenEditor} title="Rouvrir le tableau dans l'éditeur : corriger, compléter, l'enregistrer dans Mes tableaux">
+            Ouvrir
+          </button>
+        )}
         <button className="btn btn--ghost" onClick={() => setExporting(true)} title="Télécharger les pages en PDF (pour les absents)">
           PDF
         </button>
