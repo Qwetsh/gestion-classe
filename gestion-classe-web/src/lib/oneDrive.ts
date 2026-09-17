@@ -16,7 +16,14 @@ import type { PublicClientApplication } from '@azure/msal-browser';
 import { MissingKeyError } from './boardSearch';
 import { pushKeys } from './userKeys';
 
-export interface OneDriveKeys { clientId?: string }
+/** Un maillon du fil d'Ariane (dossier parcouru). */
+export interface OneDriveCrumb { id: string; name: string }
+
+export interface OneDriveKeys {
+  clientId?: string;
+  /** Dossier de départ épinglé (chemin complet depuis la racine), ouvert d'office à la connexion. */
+  home?: OneDriveCrumb[];
+}
 const ONEDRIVE_KEY = 'classroom-board-onedrive-keys';
 
 export function loadOneDriveKeys(): OneDriveKeys {
@@ -152,10 +159,11 @@ export async function listOneDrive(token: string, folderId: string | null): Prom
   return toItems(data.value);
 }
 
-/** Recherche dans tout le OneDrive (nom et contenu indexé). */
-export async function searchOneDrive(token: string, query: string): Promise<OneDriveItem[]> {
+/** Recherche (nom et contenu indexé) dans un dossier et ses sous-dossiers, ou dans tout le OneDrive si `folderId` est null. */
+export async function searchOneDrive(token: string, query: string, folderId: string | null): Promise<OneDriveItem[]> {
   const q = encodeURIComponent(query.trim().replace(/'/g, "''"));
-  const data = await graph<{ value: GraphItem[] }>(token, `/me/drive/root/search(q='${q}')?${SELECT}&$top=100`);
+  const base = folderId ? `/me/drive/items/${encodeURIComponent(folderId)}` : '/me/drive/root';
+  const data = await graph<{ value: GraphItem[] }>(token, `${base}/search(q='${q}')?${SELECT}&$top=100`);
   return toItems(data.value);
 }
 

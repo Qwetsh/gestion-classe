@@ -38,6 +38,7 @@ import {
   loadOneDriveKeys,
   saveOneDriveKeys,
   searchOneDrive,
+  type OneDriveCrumb,
   type OneDriveItem,
   type OneDriveKeys,
   type OneDriveSession,
@@ -57,7 +58,9 @@ interface Props {
 type Tab = 'library' | 'brevet' | 'notion' | 'drive';
 
 /** OneDrive ouvert : session, fil d'Ariane (dossiers parcourus) et contenu affiché. */
-interface OneDriveView { session: OneDriveSession; path: OneDriveItem[]; items: OneDriveItem[]; searching: boolean }
+interface OneDriveView { session: OneDriveSession; path: OneDriveCrumb[]; items: OneDriveItem[]; searching: boolean }
+
+const sameCrumbs = (a: OneDriveCrumb[] | undefined, b: OneDriveCrumb[]) => !!a && a.length === b.length && a.every((c, i) => c.id === b[i].id);
 
 const ONEDRIVE_ICON: Record<string, string> = { pdf: '📕', docx: '📝', doc: '📝', odt: '📝', pptx: '📊', ppt: '📊', odp: '📊', xlsx: '📈', xls: '📈', ods: '📈', gcboard: '🖍' };
 function oneDriveIcon(item: OneDriveItem): string {
@@ -192,17 +195,36 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
     if (!cancelled) setNotice(err instanceof MissingKeyError ? err.hint : `OneDrive : ${err instanceof Error ? err.message : 'erreur'}`);
   };
 
-  /** Connexion (silencieuse si possible, sinon fenêtre Microsoft) puis racine du OneDrive. */
+  /** Connexion (silencieuse si possible, sinon fenêtre Microsoft) puis dossier de départ, ou racine. */
   const openOneDrive = async (interactive: boolean) => {
     setBusy('onedrive');
     setNotice(null);
     try {
       const session = await connectOneDrive(oneDriveKeys, interactive);
       if (!session) return;
-      const items = await listOneDrive(session.token, null);
-      setOneDrive({ session, path: [], items, searching: false });
+      const home = oneDriveKeys.home ?? [];
+      const target = home[home.length - 1] ?? null;
+      try {
+        const items = await listOneDrive(session.token, target?.id ?? null);
+        setOneDrive({ session, path: home, items, searching: false });
+      } catch (err) {
+        if (!target || err instanceof OneDriveExpiredError) throw err;
+        // Dossier de départ introuvable (déplacé, supprimé, autre compte) : on repart de la racine
+        const items = await listOneDrive(session.token, null);
+        setOneDrive({ session, path: [], items, searching: false });
+        setNotice(`Dossier de départ « ${target.name} » introuvable : ouverture à la racine. Réépingler un dossier si besoin.`);
+      }
     } catch (err) { oneDriveFail(err); }
     finally { setBusy(null); }
+  };
+
+  /** Épingle le dossier courant comme dossier de départ (ou le désépingle s'il l'est déjà). */
+  const toggleOneDriveHome = () => {
+    if (!oneDrive) return;
+    const isHome = sameCrumbs(oneDriveKeys.home, oneDrive.path);
+    const k: OneDriveKeys = { ...oneDriveKeys, home: isHome || oneDrive.path.length === 0 ? undefined : oneDrive.path };
+    setOneDriveKeys(k);
+    saveOneDriveKeys(k);
   };
 
   // Reconnexion silencieuse dès l'ouverture de l'onglet si un compte est déjà connu
@@ -218,7 +240,7 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
     setNotice(null);
     setOneDriveQuery('');
     try {
-      const path = folder ? [...oneDrive.path.slice(0, depth), folder] : oneDrive.path.slice(0, depth + 1);
+      const path = folder ? [...oneDrive.path.slice(0, depth), { id: folder.id, name: folder.name }] : oneDrive.path.slice(0, depth + 1);
       const target = path[path.length - 1] ?? null;
       const items = await listOneDrive(oneDrive.session.token, target?.id ?? null);
       setOneDrive({ ...oneDrive, path, items, searching: false });
@@ -233,9 +255,10 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
     setBusy('onedrive');
     setNotice(null);
     try {
-      const items = await searchOneDrive(oneDrive.session.token, q);
+      const scope = oneDrive.path[oneDrive.path.length - 1] ?? null;
+      const items = await searchOneDrive(oneDrive.session.token, q, scope?.id ?? null);
       setOneDrive({ ...oneDrive, items, searching: true });
-      if (items.length === 0) setNotice('Aucun résultat dans OneDrive.');
+      if (items.length === 0) setNotice(scope ? `Aucun résultat dans « ${scope.name} » (remonter d'un dossier pour élargir).` : 'Aucun résultat dans OneDrive.');
     } catch (err) { oneDriveFail(err); }
     finally { setBusy(null); }
   };
@@ -393,11 +416,16 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
                     ))}
                     {oneDrive.searching && <span>› <em>Résultats de recherche</em></span>}
                     <span className="wblb__spacer" />
+                    {oneDrive.path.length > 0 && (
+                      <button type="button" className={sameCrumbs(oneDriveKeys.home, oneDrive.path) ? 'is-pinned' : ''} onClick={toggleOneDriveHome} title={sameCrumbs(oneDriveKeys.home, oneDrive.path) ? 'Ne plus ouvrir ce dossier au départ' : "Ouvrir ce dossier au départ, sur tous mes appareils"}>
+                        {sameCrumbs(oneDriveKeys.home, oneDrive.path) ? '📌 Dossier de départ' : '📌 Épingler'}
+                      </button>
+                    )}
                     <small>{oneDrive.session.account}</small>
                     <button type="button" onClick={() => void oneDriveDisconnect()} title="Oublier ce compte sur cet appareil">Déconnecter</button>
                   </div>
                   <div className="wblb__odsearch">
-                    <input value={oneDriveQuery} placeholder="Chercher dans tout le OneDrive" onChange={(e) => setOneDriveQuery(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') void oneDriveSearch(); if (e.key === 'Escape') onClose(); }} />
+                    <input value={oneDriveQuery} placeholder={oneDrive.path.length > 0 ? `Chercher dans « ${oneDrive.path[oneDrive.path.length - 1].name} » et ses sous-dossiers` : 'Chercher dans tout le OneDrive'} onChange={(e) => setOneDriveQuery(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') void oneDriveSearch(); if (e.key === 'Escape') onClose(); }} />
                     <button type="button" disabled={busy === 'onedrive'} onClick={() => void oneDriveSearch()}>{busy === 'onedrive' ? '…' : 'Chercher'}</button>
                   </div>
                   {oneDrive.items.map((item) => item.isFolder ? (
@@ -491,6 +519,7 @@ const CSS = `
 .wblb__crumbs button { padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: #A5B4FC; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wblb__crumbs button:hover { background: #1F2937; }
 .wblb__crumbs button:disabled { opacity: 0.5; cursor: default; }
+.wblb__crumbs button.is-pinned { background: #312E81; color: #E0E7FF; }
 .wblb__crumbs small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 .wblb__spacer { flex: 1; }
 .wblb__odsearch { display: flex; gap: 8px; }
