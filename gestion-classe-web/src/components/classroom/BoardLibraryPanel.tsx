@@ -105,6 +105,14 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
   const [oneDriveKeys, setOneDriveKeys] = useState<OneDriveKeys>(() => loadOneDriveKeys());
   const [oneDrive, setOneDrive] = useState<OneDriveView | null>(null);
   const [oneDriveQuery, setOneDriveQuery] = useState('');
+  /** Formulaire d'identifiant Azure déplié (toujours quand aucun identifiant n'est connu). */
+  const [showOneDriveSetup, setShowOneDriveSetup] = useState(false);
+
+  const oneDriveConfigured = !!oneDriveKeys.clientId?.trim();
+  const googleConfigured = !!(driveKeys.clientId?.trim() || driveKeys.apiKey?.trim());
+  /** Google Drive n'est proposé qu'à ceux qui l'utilisent déjà, ou qui n'ont encore aucun cloud. */
+  const showGoogle = googleConfigured || !oneDriveConfigured;
+  const oneDriveLoading = busy === 'onedrive';
 
   useEffect(() => { saveEnabledModules(modules); }, [modules]);
   useEffect(() => { setNotice(null); }, [tab]);
@@ -399,12 +407,27 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
           {tab === 'drive' && (
             <div className="wblb__list">
               <h3>OneDrive</h3>
-              {!oneDrive && (
+              {!oneDrive && oneDriveLoading && (
+                <div className="wblb__loading">
+                  <div className="wblb__progress"><span /></div>
+                  <p className="wblb__empty">Connexion à OneDrive…</p>
+                </div>
+              )}
+              {!oneDrive && !oneDriveLoading && (
                 <>
-                  <p className="wblb__empty">Parcourir son OneDrive (personnel ou établissement) et insérer un PDF, une image ou un tableau ; les documents Word, PowerPoint et Excel sont convertis en PDF (une page du tableau par page).</p>
-                  <label className="wblb__field">ID d'application (client) Azure<input value={oneDriveKeys.clientId ?? ''} onChange={(e) => { const k = { ...oneDriveKeys, clientId: e.target.value }; setOneDriveKeys(k); saveOneDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
-                  <button type="button" className="wblb__primary" disabled={busy === 'onedrive'} onClick={() => void openOneDrive(true)}>{busy === 'onedrive' ? 'Connexion…' : 'Ouvrir OneDrive'}</button>
-                  <p className="wblb__empty">Inscription gratuite sur portal.azure.com › Microsoft Entra ID › Inscriptions d'applications : comptes « organisation et personnels », plateforme « Application monopage », URI de redirection <code className="wblb__code">{ONEDRIVE_REDIRECT_URI}</code>.</p>
+                  {(!oneDriveConfigured || showOneDriveSetup) && (
+                    <>
+                      <p className="wblb__empty">Parcourir son OneDrive (personnel ou établissement) et insérer un PDF, une image ou un tableau ; les documents Word, PowerPoint et Excel sont convertis en PDF (une page du tableau par page).</p>
+                      <label className="wblb__field">ID d'application (client) Azure<input value={oneDriveKeys.clientId ?? ''} onChange={(e) => { const k = { ...oneDriveKeys, clientId: e.target.value }; setOneDriveKeys(k); saveOneDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
+                    </>
+                  )}
+                  <div className="wblb__actions">
+                    <button type="button" className="wblb__primary" onClick={() => void openOneDrive(true)}>Ouvrir OneDrive</button>
+                    {oneDriveConfigured && !showOneDriveSetup && <button type="button" className="wblb__link" onClick={() => setShowOneDriveSetup(true)}>Modifier l'identifiant</button>}
+                  </div>
+                  {(!oneDriveConfigured || showOneDriveSetup) && (
+                    <p className="wblb__empty">Inscription gratuite sur portal.azure.com › Microsoft Entra ID › Inscriptions d'applications : comptes « organisation et personnels », plateforme « Application monopage », URI de redirection <code className="wblb__code">{ONEDRIVE_REDIRECT_URI}</code>.</p>
+                  )}
                 </>
               )}
               {oneDrive && (
@@ -426,8 +449,9 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
                   </div>
                   <div className="wblb__odsearch">
                     <input value={oneDriveQuery} placeholder={oneDrive.path.length > 0 ? `Chercher dans « ${oneDrive.path[oneDrive.path.length - 1].name} » et ses sous-dossiers` : 'Chercher dans tout le OneDrive'} onChange={(e) => setOneDriveQuery(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') void oneDriveSearch(); if (e.key === 'Escape') onClose(); }} />
-                    <button type="button" disabled={busy === 'onedrive'} onClick={() => void oneDriveSearch()}>{busy === 'onedrive' ? '…' : 'Chercher'}</button>
+                    <button type="button" disabled={oneDriveLoading} onClick={() => void oneDriveSearch()}>{oneDriveLoading ? '…' : 'Chercher'}</button>
                   </div>
+                  {oneDriveLoading && <div className="wblb__progress"><span /></div>}
                   {oneDrive.items.map((item) => item.isFolder ? (
                     <button key={item.id} type="button" className="wblb__row wblb__folder" disabled={busy === 'onedrive'} onClick={() => void oneDriveGo(item, oneDrive.path.length)}>
                       <span className="wblb__ico">📁</span>
@@ -453,11 +477,15 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
                 </>
               )}
 
-              <h3>Google Drive</h3>
-              <p className="wblb__empty">Choisir un document, une image ou un PDF dans Google Drive ; les Google Docs / Slides sont convertis en PDF (une page du tableau par page).</p>
-              <label className="wblb__field">Client ID OAuth Google<input value={driveKeys.clientId ?? ''} onChange={(e) => { const k = { ...driveKeys, clientId: e.target.value }; setDriveKeys(k); saveDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="….apps.googleusercontent.com" /></label>
-              <label className="wblb__field">Clé API Google (Picker)<input value={driveKeys.apiKey ?? ''} onChange={(e) => { const k = { ...driveKeys, apiKey: e.target.value }; setDriveKeys(k); saveDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="AIza…" /></label>
-              <button type="button" className="wblb__primary" disabled={busy === 'drive'} onClick={() => void runDrive()}>{busy === 'drive' ? 'Ouverture…' : 'Ouvrir Google Drive'}</button>
+              {showGoogle && (
+                <>
+                  <h3>Google Drive</h3>
+                  <p className="wblb__empty">Choisir un document, une image ou un PDF dans Google Drive ; les Google Docs / Slides sont convertis en PDF (une page du tableau par page).</p>
+                  <label className="wblb__field">Client ID OAuth Google<input value={driveKeys.clientId ?? ''} onChange={(e) => { const k = { ...driveKeys, clientId: e.target.value }; setDriveKeys(k); saveDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="….apps.googleusercontent.com" /></label>
+                  <label className="wblb__field">Clé API Google (Picker)<input value={driveKeys.apiKey ?? ''} onChange={(e) => { const k = { ...driveKeys, apiKey: e.target.value }; setDriveKeys(k); saveDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="AIza…" /></label>
+                  <button type="button" className="wblb__primary" disabled={busy === 'drive'} onClick={() => void runDrive()}>{busy === 'drive' ? 'Ouverture…' : 'Ouvrir Google Drive'}</button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -531,4 +559,11 @@ const CSS = `
 .wblb__ico { flex: none; width: 28px; font-size: 20px; text-align: center; }
 .wblb__chev { flex: none; color: #6B7280; font-size: 20px; }
 .wblb__row.is-muted { opacity: 0.55; }
+.wblb__loading { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+.wblb__progress { position: relative; height: 6px; border-radius: 999px; background: #1F2937; overflow: hidden; }
+.wblb__progress span { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; border-radius: 999px; background: linear-gradient(90deg, #4F46E5, #818CF8); animation: wblb-slide 1.1s ease-in-out infinite; }
+@keyframes wblb-slide { 0% { left: -40%; } 100% { left: 100%; } }
+.wblb__actions { display: flex; align-items: center; gap: 12px; }
+.wblb__link { border: 0; background: transparent; color: #A5B4FC; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; padding: 6px 0; }
+.wblb__link:hover { text-decoration: underline; }
 `;
