@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr" data-theme="light" data-density="comfort">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1300" />
+<title>Gestion de classe — refonte UX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="room.css" />
+<link rel="stylesheet" href="sessions.css" />
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Tweaks defaults (persisted) -->
+<script id="tweak-defaults" type="application/json">
+/*EDITMODE-BEGIN*/{
+  "density": "compact",
+  "theme": "light",
+  "accent": "#F97316",
+  "screen": "home"
+}/*EDITMODE-END*/
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="shared.jsx"></script>
+<script type="text/babel" src="dashboard.jsx"></script>
+<script type="text/babel" src="tracking.jsx"></script>
+<script type="text/babel" src="roomplan.jsx"></script>
+<script type="text/babel" src="sessions.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// Read persisted tweak defaults
+const defaults = JSON.parse(
+  document.getElementById('tweak-defaults').textContent
+    .replace(/\/\*EDITMODE-(BEGIN|END)\*\//g, '').trim()
+);
+
+function App() {
+  const [screen, setScreen] = useState(() => localStorage.getItem('gc-screen') || defaults.screen || 'home');
+  const [density, setDensity] = useState(defaults.density || 'comfort');
+  const [theme, setTheme] = useState(defaults.theme || 'light');
+  const [accent, setAccent] = useState(defaults.accent || '#F97316');
+  const [showTweaks, setShowTweaks] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-density', density);
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.setProperty('--accent', accent);
+  }, [density, theme, accent]);
+
+  useEffect(() => { localStorage.setItem('gc-screen', screen); }, [screen]);
+
+  // Tweaks host protocol
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (!e.data) return;
+      if (e.data.type === '__activate_edit_mode') setShowTweaks(true);
+      if (e.data.type === '__deactivate_edit_mode') setShowTweaks(false);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const updateTweak = (patch) => {
+    try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: patch }, '*'); } catch {}
+  };
+
+  const navId = screen === 'students' ? 'students' : 'home';
+
+  return (
+    <>
+      <TopNav
+        current={screen}
+        onNavigate={id => {
+          if (id === 'students') setScreen('students');
+          else if (id === 'home') setScreen('home');
+          else if (id === 'sessions') setScreen('sessions');
+          else if (id === 'classes') setScreen('room');
+        }}
+      />
+      {screen === 'home' && <Dashboard onOpenStudents={() => setScreen('students')} onOpenRoom={() => setScreen('room')} onOpenSessions={() => setScreen('sessions')} />}
+      {screen === 'students' && <StudentTracking onBack={() => setScreen('home')} />}
+      {screen === 'room' && <RoomPlan onBack={() => setScreen('home')} />}
+      {screen === 'sessions' && <SessionsScreen onBack={() => setScreen('home')} />}
+
+      {showTweaks && (
+        <div className="tweaks">
+          <h4 className="tweaks__title">Tweaks</h4>
+
+          <div className="tweaks__row">
+            <div className="tweaks__label">Écran</div>
+            <div className="tweaks__opts">
+              <button className={`tweaks__opt ${screen === 'home' ? 'is-on' : ''}`} onClick={() => setScreen('home')}>Accueil</button>
+              <button className={`tweaks__opt ${screen === 'students' ? 'is-on' : ''}`} onClick={() => setScreen('students')}>Suivi</button>
+              <button className={`tweaks__opt ${screen === 'sessions' ? 'is-on' : ''}`} onClick={() => setScreen('sessions')}>Séances</button>
+              <button className={`tweaks__opt ${screen === 'room' ? 'is-on' : ''}`} onClick={() => setScreen('room')}>Salle</button>
+            </div>
+          </div>
+
+          <div className="tweaks__row">
+            <div className="tweaks__label">Densité</div>
+            <div className="tweaks__opts">
+              <button className={`tweaks__opt ${density === 'comfort' ? 'is-on' : ''}`} onClick={() => { setDensity('comfort'); updateTweak({ density: 'comfort' }); }}>Confort</button>
+              <button className={`tweaks__opt ${density === 'compact' ? 'is-on' : ''}`} onClick={() => { setDensity('compact'); updateTweak({ density: 'compact' }); }}>Compact</button>
+            </div>
+          </div>
+
+          <div className="tweaks__row">
+            <div className="tweaks__label">Thème</div>
+            <div className="tweaks__opts">
+              <button className={`tweaks__opt ${theme === 'light' ? 'is-on' : ''}`} onClick={() => { setTheme('light'); updateTweak({ theme: 'light' }); }}>Clair</button>
+              <button className={`tweaks__opt ${theme === 'nocturne' ? 'is-on' : ''}`} onClick={() => { setTheme('nocturne'); updateTweak({ theme: 'nocturne' }); }}>Nocturne</button>
+            </div>
+          </div>
+
+          <div className="tweaks__row">
+            <div className="tweaks__label">Accent</div>
+            <div className="tweaks__swatches">
+              {['#F97316', '#6366F1', '#059669', '#DC2626', '#0EA5E9'].map(c => (
+                <button key={c}
+                  className={`tweaks__sw ${accent === c ? 'is-on' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => { setAccent(c); updateTweak({ accent: c }); }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
