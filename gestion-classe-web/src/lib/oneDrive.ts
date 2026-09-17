@@ -7,7 +7,8 @@
  * Aucune clé n'est inventée : il faut l'« ID d'application (client) » d'une inscription Azure
  * (portal.azure.com › Microsoft Entra ID › Inscriptions d'applications), acceptant les comptes
  * personnels et d'organisation, plateforme « Application monopage », avec pour URI de
- * redirection `ONEDRIVE_REDIRECT_URI` (page vide servie par l'app). `msal-browser` n'est chargé
+ * redirection `ONEDRIVE_REDIRECT_URI` (page `auth-callback.html`, qui exécute le redirect bridge
+ * de MSAL, voir `src/auth-callback.ts`). `msal-browser` n'est chargé
  * qu'au moment d'ouvrir OneDrive ; le jeton est mis en cache dans le navigateur, la reconnexion
  * est silencieuse tant qu'il est valable.
  */
@@ -30,7 +31,7 @@ export function saveOneDriveKeys(keys: OneDriveKeys) {
 const SCOPES = ['Files.Read'];
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 
-/** Page vide servie par l'app, où Microsoft renvoie la fenêtre de connexion. */
+/** Page de retour servie par l'app (redirect bridge MSAL), où Microsoft renvoie la fenêtre de connexion. */
 export const ONEDRIVE_REDIRECT_URI = `${window.location.origin}${import.meta.env.BASE_URL}auth-callback.html`;
 
 let app: { clientId: string; pca: PublicClientApplication } | null = null;

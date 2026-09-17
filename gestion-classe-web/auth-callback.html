@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connexion…</title>
+    <!--
+      Page de retour des connexions OAuth en fenêtre surgissante (OneDrive / Microsoft).
+      Entrée Vite à part (vite.config.ts › rollupOptions.input) : elle ne charge pas l'app,
+      seulement le « redirect bridge » de MSAL qui transmet la réponse au tableau et se ferme.
+    -->
+  </head>
+  <body style="margin: 0; padding: 24px; font: 15px system-ui, sans-serif; color: #6B7280">
+    <p id="status">Connexion en cours, cette fenêtre va se fermer…</p>
+    <script type="module" src="/src/auth-callback.ts"></script>
+  </body>
+</html>

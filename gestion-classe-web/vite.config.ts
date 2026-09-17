@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { IncomingMessage, ServerResponse } from 'http'
+import { fileURLToPath } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -68,4 +69,13 @@ export default defineConfig({
     },
   ],
   base: '/gestion-classe/',
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        // Page de retour OAuth (OneDrive) : servie telle quelle, sans charger l'app
+        authCallback: fileURLToPath(new URL('./auth-callback.html', import.meta.url)),
+      },
+    },
+  },
 })
