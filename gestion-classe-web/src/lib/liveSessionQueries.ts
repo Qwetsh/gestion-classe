@@ -61,10 +61,28 @@ export async function fetchStudentsForClass(classId: string): Promise<StudentInf
   return data || [];
 }
 
+/**
+ * Plan de la séance. Avec un groupe de classe : plan de groupe (class_group_plans) s'il a au
+ * moins une position, sinon repli sur le plan de la classe entière. L'appelant filtre ensuite
+ * les positions par le roster (resolveSessionRoster) : un id hors groupe = place vide.
+ */
 export async function fetchSeatingPlan(
   classId: string,
-  roomId: string
+  roomId: string,
+  groupId?: string | null
 ): Promise<Record<string, string>> {
+  if (groupId) {
+    const { data: groupPlan, error: groupError } = await supabase
+      .from('class_group_plans')
+      .select('positions')
+      .eq('class_id', classId)
+      .eq('room_id', roomId)
+      .eq('group_id', groupId)
+      .maybeSingle();
+    if (groupError) throw groupError;
+    const positions = (groupPlan?.positions as Record<string, string>) || {};
+    if (Object.keys(positions).length > 0) return positions;
+  }
   const { data, error } = await supabase
     .from('class_room_plans')
     .select('positions')
@@ -79,7 +97,8 @@ export async function createSession(
   userId: string,
   classId: string,
   roomId: string,
-  topic?: string
+  topic?: string,
+  groupId?: string | null
 ): Promise<string> {
   const { data, error } = await supabase
     .from('sessions')
@@ -89,6 +108,7 @@ export async function createSession(
       room_id: roomId,
       started_at: new Date().toISOString(),
       ...(topic ? { topic } : {}),
+      ...(groupId ? { group_id: groupId } : {}),
     })
     .select('id')
     .single();

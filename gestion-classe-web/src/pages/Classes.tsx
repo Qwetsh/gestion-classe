@@ -12,6 +12,7 @@ import { ClassChip, Icon } from '../components/design-system';
 import { fetchAcademyConfig, toggleAcademyModule } from '../lib/academyQueries';
 import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib/studentTabsQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
+import { GroupSplitter } from '../components/class-groups/GroupSplitter';
 
 interface Class {
   id: string;
@@ -169,6 +170,7 @@ export function Classes() {
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStudentsPanel, setShowStudentsPanel] = useState(false);
+  const [showGroupSplitter, setShowGroupSplitter] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showRoomDeleteModal, setShowRoomDeleteModal] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
@@ -1656,6 +1658,14 @@ export function Classes() {
                 )}
               </div>
 
+              <button
+                onClick={() => setShowGroupSplitter(true)}
+                className="btn btn--ghost"
+                style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}
+                title="Demi-groupes, latinistes… des groupes durables de cette classe (distincts des groupes de TP)"
+              >
+                👥 Groupes de classe
+              </button>
               <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx,.xls,.csv" className="hidden" />
               <button onClick={() => fileInputRef.current?.click()} className="btn btn--ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
                 Import CSV / Excel
@@ -1667,6 +1677,18 @@ export function Classes() {
           </div>
         )}
       </div>
+
+      {/* Groupes de classe (demi-groupes durables) */}
+      {showGroupSplitter && selectedClass && user && (
+        <GroupSplitter
+          userId={user.id}
+          classId={selectedClass.id}
+          className={selectedClass.name}
+          students={students}
+          rooms={rooms}
+          onClose={() => setShowGroupSplitter(false)}
+        />
+      )}
 
       {/* Students management panel (modal) */}
       {showStudentsPanel && selectedClass && (
