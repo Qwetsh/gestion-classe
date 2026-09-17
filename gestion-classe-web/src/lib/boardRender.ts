@@ -36,6 +36,11 @@ export interface BoardPage {
   image?: PageImage | null;
   /** Rideau de page : la page reste couverte tant qu'on ne la découvre pas. */
   curtain?: boolean;
+  /**
+   * Hauteur de la page en unités logiques quand elle a été allongée (document A4, grande photo,
+   * cours qui déborde). Absente = format 16:9 (562,5). Jamais plus courte que le 16:9.
+   */
+  height?: number;
   /** Objets de la page (texte, et bientôt formes, images…), dans l'ordre d'empilement. */
   objects: BoardObject[];
   /** Ancien champ (v1) : migré dans `objects` au chargement, jamais écrit. */
@@ -121,16 +126,29 @@ export function penWidth(stroke: Stroke, p: number): number {
   return stroke.size * (0.55 + 0.9 * p);
 }
 
-/** Rectangle (unités logiques) où l'image de fond est dessinée : « contain », centrée. */
-export function imageRectUnits(img: PageImage): { x: number; y: number; w: number; h: number } {
+/** Hauteur d'une page en unités logiques (16:9 par défaut, plus si elle a été allongée). */
+export function pageHeight(page: Pick<BoardPage, 'height'>): number {
+  const h = page.height;
+  return typeof h === 'number' && Number.isFinite(h) && h > BOARD_PAGE_H ? h : BOARD_PAGE_H;
+}
+/** Rapport largeur / hauteur d'une page (16/9 par défaut). */
+export const pageRatio = (page: Pick<BoardPage, 'height'>) => BOARD_UNIT / pageHeight(page);
+
+/** Hauteur de page qui laisse `bottom` (unités logiques) visible, avec une marge, sans redescendre sous le 16:9. */
+export function heightToFit(bottom: number, margin = 40): number {
+  return Math.max(BOARD_PAGE_H, Math.ceil(bottom + margin));
+}
+
+/** Rectangle (unités logiques) où l'image de fond est dessinée : « contain », centrée dans la page. */
+export function imageRectUnits(img: PageImage, pageH: number = BOARD_PAGE_H): { x: number; y: number; w: number; h: number } {
   const ratio = img.width / img.height;
   let w = BOARD_UNIT;
   let h = w / ratio;
-  if (h > BOARD_PAGE_H) {
-    h = BOARD_PAGE_H;
+  if (h > pageH) {
+    h = pageH;
     w = h * ratio;
   }
-  return { x: (BOARD_UNIT - w) / 2, y: (BOARD_PAGE_H - h) / 2, w, h };
+  return { x: (BOARD_UNIT - w) / 2, y: (pageH - h) / 2, w, h };
 }
 
 // ---- Chargement des images de fond (URL signées, cache mémoire) ----
@@ -231,7 +249,7 @@ export function drawBackground(
     for (let x = step; x < w; x += step) for (let y = step; y < h; y += step) { ctx.beginPath(); ctx.arc(x, y, 1.4 * scale, 0, Math.PI * 2); ctx.fill(); }
   }
   if (image) {
-    const r = imageRectUnits(image.meta);
+    const r = imageRectUnits(image.meta, h / scale);
     ctx.drawImage(image.el, r.x * scale, r.y * scale, r.w * scale, r.h * scale);
   }
 }
@@ -305,10 +323,11 @@ export function renderStroke(ctx: CanvasRenderingContext2D, s: Stroke, scale: nu
 
 /**
  * Rend une page complète (fond, image importée, traits) dans un canvas de la largeur donnée.
- * La hauteur découle du format 16:9. Charge l'image de fond si nécessaire.
+ * La hauteur découle du format de la page (16:9, ou plus haut si elle a été allongée).
+ * Charge l'image de fond si nécessaire.
  */
 export async function renderPageToCanvas(page: BoardPage, width: number, reveal: RenderRevealOptions = { mode: 'revealed' }): Promise<HTMLCanvasElement> {
-  const height = Math.round(width / BOARD_RATIO);
+  const height = Math.round(width / pageRatio(page));
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -332,8 +351,12 @@ export async function renderPageToCanvas(page: BoardPage, width: number, reveal:
   );
   drawBackground(ctx, page.background, width, height, scale, image);
   if (!reveal.hideInk) for (const s of page.strokes) renderStroke(ctx, s, scale);
-  // Les objets passent au-dessus de l'encre, comme dans l'éditeur (calque DOM au premier plan)
-  for (const o of page.objects ?? []) renderObject(ctx, o, scale, reveal);
+  // Les objets passent au-dessus de l'encre, comme dans l'éditeur (calque DOM au premier plan).
+  // Version élève : ce qu'un bouton doit encore révéler reste invisible ; corrigé : tout est là.
+  for (const o of page.objects ?? []) {
+    if (o.hidden && reveal.mode === 'covered') continue;
+    renderObject(ctx, o, scale, reveal);
+  }
   return canvas;
 }
 

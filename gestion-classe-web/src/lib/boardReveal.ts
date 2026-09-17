@@ -9,6 +9,7 @@
  *   l'export « version élève » ignore ce qui a été révélé.
  */
 import type { BoardPage } from './boardRender';
+import type { BoardObject } from './boardObjects';
 
 export interface RevealCover {
   kind: 'curtain' | 'scratch';
@@ -20,16 +21,30 @@ export interface RevealCover {
   label?: string;
 }
 
+/**
+ * Rideau d'objet tiré à la main : décalage du drap, en fractions de sa largeur et de sa
+ * hauteur (−1 … 1). Le drap reste découpé à l'emprise de l'objet : ce qui dépasse disparaît.
+ */
+export interface CurtainSlide { dx: number; dy: number }
+
+/** Au-delà de cette fraction, un rideau tiré compte comme découvert. */
+export const CURTAIN_OPEN_AT = 0.92;
+
 export interface RevealState {
   /** Fraction découverte du rideau de page (0 = couvert, 1 = tout découvert). */
   pages: Record<string, number>;
-  /** Objet découvert (true) ou masque de grattage en cours (data URL PNG). */
-  objects: Record<string, true | string>;
+  /** Objet découvert (true), masque de grattage en cours (data URL PNG) ou rideau tiré en partie. */
+  objects: Record<string, true | string | CurtainSlide>;
   /** Identifiants des trous révélés, par zone de texte. */
   gaps: Record<string, string[]>;
+  /**
+   * Visibilité décidée en séance par les boutons d'interaction (voir `Interaction` dans
+   * boardObjects) : absent = l'objet suit son réglage `hidden` du document.
+   */
+  shown: Record<string, boolean>;
 }
 
-export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {} };
+export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {} };
 
 const STORAGE_PREFIX = 'classroom-board-reveal:';
 
@@ -42,6 +57,7 @@ export function loadRevealState(sessionId: string): RevealState {
       pages: parsed.pages && typeof parsed.pages === 'object' ? parsed.pages : {},
       objects: parsed.objects && typeof parsed.objects === 'object' ? parsed.objects : {},
       gaps: parsed.gaps && typeof parsed.gaps === 'object' ? parsed.gaps : {},
+      shown: parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {},
     };
   } catch {
     return EMPTY_REVEAL;
@@ -57,6 +73,36 @@ export function saveRevealState(sessionId: string, state: RevealState) {
 }
 
 export const isObjectRevealed = (state: RevealState, objectId: string) => state.objects[objectId] === true;
+/** Décalage du rideau tiré à la main, ou null (rideau en place, découvert, ou ticket à gratter). */
+export function curtainSlide(state: RevealState, objectId: string): CurtainSlide | null {
+  const v = state.objects[objectId];
+  return v && typeof v === 'object' ? v : null;
+}
+/** Un rideau tiré au-delà du seuil compte comme découvert : on ne garde pas un drap presque sorti. */
+export function settleCurtain(slide: CurtainSlide): true | CurtainSlide | null {
+  if (Math.abs(slide.dx) >= CURTAIN_OPEN_AT || Math.abs(slide.dy) >= CURTAIN_OPEN_AT) return true;
+  if (Math.abs(slide.dx) < 0.02 && Math.abs(slide.dy) < 0.02) return null;
+  return slide;
+}
+
+/** Visibilité effective d'un objet : ce que la séance a décidé, sinon son réglage de départ. */
+export const isObjectVisible = (state: RevealState, o: Pick<BoardObject, 'id' | 'hidden'>) => state.shown[o.id] ?? !o.hidden;
+
+/**
+ * Déclenche les interactions d'un bouton : chaque cible est affichée, masquée ou basculée.
+ * Les cibles disparues (objet supprimé) sont ignorées.
+ */
+export function fireInteractions(state: RevealState, trigger: BoardObject, objects: BoardObject[]): RevealState {
+  const byId = new Map(objects.map((o) => [o.id, o]));
+  const shown = { ...state.shown };
+  for (const it of trigger.interactions ?? []) {
+    const target = byId.get(it.targetId);
+    if (!target) continue;
+    const visible = shown[target.id] ?? !target.hidden;
+    shown[target.id] = it.action === 'show' ? true : it.action === 'hide' ? false : !visible;
+  }
+  return { ...state, shown };
+}
 export const pageRevealedFraction = (state: RevealState, pageId: string) => state.pages[pageId] ?? 0;
 export const revealedGaps = (state: RevealState, objectId: string): ReadonlySet<string> => new Set(state.gaps[objectId] ?? []);
 
@@ -64,13 +110,15 @@ export const revealedGaps = (state: RevealState, objectId: string): ReadonlySet<
 export function recoverPage(state: RevealState, page: BoardPage): RevealState {
   const objects = { ...state.objects };
   const gaps = { ...state.gaps };
+  const shown = { ...state.shown };
   for (const o of page.objects ?? []) {
     delete objects[o.id];
     delete gaps[o.id];
+    delete shown[o.id];
   }
   const pages = { ...state.pages };
   delete pages[page.id];
-  return { pages, objects, gaps };
+  return { pages, objects, gaps, shown };
 }
 
 // ---- Trous dans un texte ----

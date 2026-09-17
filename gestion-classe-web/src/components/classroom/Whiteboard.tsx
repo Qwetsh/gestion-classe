@@ -20,7 +20,9 @@ import {
   BOARD_RATIO,
   drawBackground,
   drawPenSegment,
+  heightToFit,
   loadPageImage,
+  pageHeight,
   renderStroke,
   setupStrokeStyle,
   eraseStrokeAt,
@@ -40,6 +42,8 @@ import {
   cloneObjects,
   migrateLegacyTexts,
   objectRect,
+  objectsBottom,
+  type InteractionAction,
   rectContains,
   rectsIntersect,
   reorder,
@@ -57,17 +61,24 @@ import { BoardColorPicker } from './BoardColorPicker';
 import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject } from '../../lib/boardShapes';
 import { recognizeShape, type RecognizedShape } from '../../lib/boardRecognize';
 import {
+  fireInteractions,
   gapIdsIn,
   stripGaps as stripGapsHtml,
   loadRevealState,
   pageRevealedFraction,
   recoverPage,
   saveRevealState,
+  type CurtainSlide,
   type RevealCover,
   type RevealState,
 } from '../../lib/boardReveal';
 import { BoardExportDialog } from './BoardExportDialog';
+import { BoardInteractionsPanel } from './BoardInteractionsPanel';
 import { BoardRadialMenu, type RadialItem } from './BoardRadialMenu';
+import { BoardPalette } from './BoardPalette';
+import { BoardPaletteEditor } from './BoardPaletteEditor';
+import { BoardInputProbe } from './BoardInputProbe';
+import { loadPalette, savePalette, paletteAction, RADIAL_COLOR_CHOICES, type PaletteConfig } from '../../lib/boardRadialPalette';
 import { BoardInstruments } from './BoardInstruments';
 import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
@@ -174,6 +185,13 @@ const REMOTE_RETRY_MS = 15000;
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const newPage = (background: Background = 'blank'): Page => ({ id: uid(), background, strokes: [], objects: [] });
 const NAV_STORAGE_KEY = 'classroom-board-nav';
+/** Écran « compact » (TBI 1280×720, portables) : même requête que dans wb-theme.css et BoardPageNavigator. */
+const COMPACT_MQ = '(max-width: 1366px), (max-height: 800px)';
+const NAV_WIDTH = 232;
+const NAV_WIDTH_COMPACT = 176;
+function isCompactScreen(): boolean {
+  try { return window.matchMedia(COMPACT_MQ).matches; } catch { return false; }
+}
 /** Premier lancement : les trois bulles ne se montrent qu'une fois par poste. */
 const COACH_STORAGE_KEY = 'classroom-board-coach';
 /** Durée du rattrapage après une action destructive (aucune confirmation n'est demandée avant). */
@@ -182,11 +200,9 @@ const AUTO_SHAPES_KEY = 'classroom-board-autoshapes';
 /** Correcteur orthographique : actif par défaut (comme Word), désactivable d'un bouton. */
 const SPELL_KEY = 'classroom-board-spell';
 const TBI_SETTINGS_KEY = 'classroom-board-tbi';
-/** Deux doigts immobiles pendant ce délai : menu radial. */
-const RADIAL_HOLD_MS = 280;
-/** Deux doigts posés et relevés plus vite que ça : annuler (trois doigts : rétablir). */
-const MULTI_TAP_MS = 320;
 const MAX_ZOOM = 4;
+/** Rail de défilement d'une page allongée : hauteur des boutons ▲ ▼ (px). */
+const RAIL_BTN = 48;
 
 type BarSide = 'bottom' | 'left' | 'right';
 /** `floating` : les barres contextuelles suivent l'objet sélectionné, ou restent accrochées à la barre principale. */
@@ -200,16 +216,15 @@ function loadTbi(): TbiSettings {
 interface ViewState { zoom: number; tx: number; ty: number }
 const IDENTITY_VIEW: ViewState = { zoom: 1, tx: 0, ty: 0 };
 
+/** Deux doigts sur la scène : pincer-zoomer, et rien d'autre (les tapes à deux ou trois doigts
+ *  ont été retirées : sur un cadre tactile de collège elles déclenchaient Annuler par erreur). */
 interface TouchGesture {
-  kind: 'pending' | 'pinch' | 'three' | 'done';
-  startAt: number;
+  kind: 'pending' | 'pinch';
   ids: number[];
   startPoints: Map<number, { x: number; y: number }>;
   startDist: number;
   startMid: { x: number; y: number };
   startView: ViewState;
-  timer: number | null;
-  moved: boolean;
 }
 /** Stylet immobile en fin de tracé : le trait devient une forme (comme Samsung Notes). */
 const SHAPE_HOLD_MS = 400;
@@ -325,7 +340,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [importing, setImporting] = useState<ImportProgress | null>(null);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [navOpen, setNavOpen] = useState(() => { try { return localStorage.getItem(NAV_STORAGE_KEY) !== '0'; } catch { return true; } });
+  // Navigateur de pages : ouvert par défaut sur un grand écran, fermé sur un écran compact (il
+  // prend 14 % de la largeur en 720p) ; le choix de l'utilisateur, une fois fait, est conservé.
+  const [navOpen, setNavOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem(NAV_STORAGE_KEY);
+      return stored === null ? !isCompactScreen() : stored !== '0';
+    } catch { return true; }
+  });
+  const [compact, setCompact] = useState(isCompactScreen);
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_MQ);
+    const onChange = () => setCompact(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const navWidth = compact ? NAV_WIDTH_COMPACT : NAV_WIDTH;
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>({ stroke: COLORS[0], strokeWidth: 4, fill: null, dashed: false });
@@ -345,6 +375,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Objet visé par le choix d'une image de ticket à gratter. */
   const coverTargetIds = useRef<string[]>([]);
   const curtainDrag = useRef<{ pointerId: number } | null>(null);
+  /** Panneau d'interactions ouvert pour cet objet (le « bouton »). */
+  const [interactionsFor, setInteractionsFor] = useState<string | null>(null);
+  /** Choix d'une cible d'interaction en cours : on attend un tap sur un objet de la page. */
+  const [picking, setPicking] = useState(false);
+  /** Taille visible de la scène (px) : une page plus haute qu'elle se lit en défilant. */
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const scrollDrag = useRef<{ pointerId: number; startY: number; startTy: number } | null>(null);
   const [insertOpen, setInsertOpen] = useState(false);
   const insertBtnRef = useRef<HTMLButtonElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -356,7 +393,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [sizeOpen, setSizeOpen] = useState(false);
   const [view, setView] = useState<ViewState>(IDENTITY_VIEW);
   const viewRef = useRef<ViewState>(IDENTITY_VIEW);
-  const [radial, setRadial] = useState<{ x: number; y: number } | null>(null);
+  /** Menu radial ouvert autour de la pastille ; `pointerId` = la pression qui l'a ouvert (menu à marquage). */
+  const [radial, setRadial] = useState<{ x: number; y: number; submenu?: 'color'; bounds?: { left: number; top: number; right: number; bottom: number } } | null>(null);
+  const [palette, setPalette] = useState<PaletteConfig>(() => loadPalette(loadTbi().hand));
+  const [paletteEditor, setPaletteEditor] = useState(false);
+  /** Diagnostic du pointeur (croix sous la pointe, infos d'écran) : Réglages › Test du stylet. */
+  const [probeOpen, setProbeOpen] = useState(false);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const instrumentsRef = useRef<Instrument[]>([]);
   const [spotlight, setSpotlight] = useState(false);
@@ -387,6 +429,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     ul: false, ol: false, align: 'left', sub: false, sup: false,
   });
   const [stageBox, setStageBox] = useState<StageBox>({ left: 0, top: 0, width: 0, height: 0 });
+  /** devicePixelRatio avec lequel les calques ont été dimensionnés (voir `resize`). */
+  const dprRef = useRef(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
   const [textScale, setTextScale] = useState(1);
   const [textSize, setTextSize] = useState(DEFAULT_TEXT_SIZE);
   const [textFont, setTextFont] = useState('sans');
@@ -490,6 +534,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     tbiRef.current = tbi;
     try { localStorage.setItem(TBI_SETTINGS_KEY, JSON.stringify(tbi)); } catch { /* stockage indisponible */ }
   }, [tbi]);
+  useEffect(() => { savePalette(palette); }, [palette]);
   useEffect(() => { viewRef.current = view; }, [view]);
   useEffect(() => { instrumentsRef.current = instruments; }, [instruments]);
 
@@ -529,7 +574,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const canvas = mainRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = dprRef.current;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     const p = pagesRef.current[pageIndexRef.current];
@@ -541,7 +586,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const canvas = bgRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = dprRef.current;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const idx = pageIndexRef.current;
     const p = pagesRef.current[idx];
@@ -567,12 +612,19 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    // Le ratio est figé ici : chaque tracé réutilise celui avec lequel les calques ont été
+    // dimensionnés. Le relire à chaque dessin décalait l'encre quand la fenêtre passait sur un
+    // écran à mise à l'échelle différente (portable 125-150 % → vidéoprojecteur 100 %).
     const dpr = window.devicePixelRatio || 1;
-    // Page 16:9 « letterbox » dans l'écran : l'encre et les fonds importés coïncident partout
+    dprRef.current = dpr;
+    // Page 16:9 « letterbox » dans l'écran : l'encre et les fonds importés coïncident partout.
+    // Une page allongée garde la même largeur (même échelle d'une page à l'autre) et déborde en
+    // bas : elle se lit en défilant (molette, deux doigts, rail au bord).
+    const pageH = pageHeight(pagesRef.current[pageIndexRef.current] ?? {});
     const w = Math.floor(Math.min(rect.width, rect.height * BOARD_RATIO));
-    const h = Math.floor(w / BOARD_RATIO);
+    const h = Math.floor((w * pageH) / UNIT);
     const left = Math.floor((rect.width - w) / 2);
-    const top = Math.floor((rect.height - h) / 2);
+    const top = h <= rect.height ? Math.floor((rect.height - h) / 2) : 0;
     for (const ref of [bgRef, mainRef, liveRef]) {
       const c = ref.current;
       if (!c) continue;
@@ -585,6 +637,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     }
     scaleRef.current = w / UNIT;
     setStageBox((prev) => (prev.left === left && prev.top === top && prev.width === w && prev.height === h ? prev : { left, top, width: w, height: h }));
+    setStageSize((prev) => (prev.width === rect.width && prev.height === rect.height ? prev : { width: rect.width, height: rect.height }));
+    // Le défilement reste dans la page (elle a pu être raccourcie, ou l'écran agrandi)
+    const overflow = Math.max(0, h - rect.height);
+    setView((v) => (v.zoom > 1 || v.ty >= -overflow ? v : { zoom: 1, tx: 0, ty: -overflow }));
     setTextScale(w / UNIT);
     redrawBackground();
     redrawMain();
@@ -597,12 +653,45 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     return () => ro.disconnect();
   }, [resize]);
 
+  // Changement de mise à l'échelle (fenêtre déplacée vers un autre écran, zoom du navigateur)
+  // sans changement de taille CSS : on redimensionne quand même les calques.
+  useEffect(() => {
+    let mq: MediaQueryList | null = null;
+    const onChange = () => { resize(); listen(); };
+    const listen = () => {
+      mq?.removeEventListener('change', onChange);
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      mq.addEventListener('change', onChange);
+    };
+    listen();
+    return () => mq?.removeEventListener('change', onChange);
+  }, [resize]);
+
   // Changement de page ou de fond : tout redessiner
   useEffect(() => {
     redrawBackground();
     redrawMain();
     syncHistoryCounters(page.id);
   }, [pageIndex, page.id, page.background, redrawBackground, redrawMain, syncHistoryCounters]);
+
+  // Hauteur de page (allongée, ajustée, ou page suivante d'un autre format) : recadrer les calques
+  const pageH = pageHeight(page);
+  useEffect(() => { resize(); }, [pageH, resize]);
+  // Nouvelle page : on repart du haut
+  useEffect(() => { setView((v) => (v.zoom > 1 ? v : IDENTITY_VIEW)); }, [pageIndex]);
+
+  /** Débordement vertical de la page à 100 % (px) : 0 quand elle tient dans la scène. */
+  const pageOverflow = useCallback(() => {
+    const el = containerRef.current, c = liveRef.current;
+    return el && c ? Math.max(0, c.clientHeight - el.clientHeight) : 0;
+  }, []);
+
+  /** Fait défiler la page (px, positif = vers le bas), à 100 % seulement. */
+  const scrollBy = useCallback((dy: number) => {
+    const overflow = pageOverflow();
+    setView((v) => (v.zoom > 1 ? v : { zoom: 1, tx: 0, ty: Math.max(-overflow, Math.min(0, v.ty - dy)) }));
+  }, [pageOverflow]);
+
 
   // -- Persistance --
   // Local (navigateur) : immédiat, sert de cache et de secours hors ligne.
@@ -695,6 +784,32 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const updatePage = useCallback((pageId: string, fn: (p: Page) => Page) => {
     setPages((prev) => prev.map((p) => (p.id === pageId ? fn(p) : p)));
   }, []);
+
+  const setPageHeight = useCallback((pageId: string, h: number) => {
+    updatePage(pageId, (pg) => {
+      const next = { ...pg };
+      if (h > BOARD_PAGE_H) next.height = Math.round(h); else delete next.height;
+      return next;
+    });
+  }, [updatePage]);
+
+  /** Allonge la page courante (un demi-écran par défaut) et fait voir le bas ajouté. */
+  const extendPage = useCallback((delta = BOARD_PAGE_H / 2) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    setPageHeight(p.id, pageHeight(p) + delta);
+    window.setTimeout(() => { const overflow = pageOverflow(); setView((v) => (v.zoom > 1 ? v : { zoom: 1, tx: 0, ty: -overflow })); }, 60);
+  }, [setPageHeight, pageOverflow]);
+
+  /** Ramène la hauteur de la page à son contenu (objets, encre, image de fond), sans descendre sous le 16:9. */
+  const fitPageHeight = useCallback(() => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const ink = strokesBounds(p.strokes);
+    const bottom = Math.max(objectsBottom(p.objects ?? []), ink ? ink.y + ink.h : 0);
+    const imageMin = p.image ? (UNIT * p.image.height) / Math.max(1, p.image.width) : 0;
+    setPageHeight(p.id, Math.max(heightToFit(bottom), Math.ceil(imageMin)));
+  }, [setPageHeight]);
 
   const pushOp = useCallback((pageId: string, op: HistoryOp) => {
     const h = getHistory(pageId);
@@ -824,7 +939,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
     if (before) pushOp(p.id, { type: 'objects', before, after: next });
-    updatePage(p.id, (pg) => ({ ...pg, objects: next }));
+    updatePage(p.id, (pg) => {
+      // Un objet posé ou tiré sous le bas de la page l'allonge : la page ne raccourcit jamais seule
+      const bottom = objectsBottom(next);
+      const h = pageHeight(pg);
+      return bottom > h - 8 ? { ...pg, objects: next, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next };
+    });
   }, [pushOp, updatePage]);
 
   /** Objets sélectionnés de la page courante, non verrouillés sauf demande. */
@@ -936,7 +1056,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setSelectedStrokeIds(new Set());
   }, [pageIndex]);
   useEffect(() => {
-    if (!OBJECT_TOOLS.includes(tool)) { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); }
+    if (!OBJECT_TOOLS.includes(tool)) { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setPicking(false); }
     else setEditingId(null);
     if (tool !== 'laser') { laserStrokes.current = []; }
   }, [tool]);
@@ -945,13 +1065,17 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const insertImage = useCallback((img: { path: string; width: number; height: number }, at?: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return null;
-    const maxW = UNIT * 0.5, maxH = BOARD_PAGE_H * 0.7;
-    const k = Math.min(1, maxW / img.width, maxH / img.height, 0.6);
+    // Taille « normale » : jusqu'à 70 % de la largeur de page, sans réduire un document (A4,
+    // grande photo) pour le faire tenir dans l'écran — la page s'allonge s'il le faut
+    // (voir handleObjectsChange), deux écrans au plus.
+    const pageH = pageHeight(p);
+    const maxW = UNIT * 0.7, maxH = BOARD_PAGE_H * 2;
+    const k = Math.min(1, maxW / img.width, maxH / img.height);
     const w = Math.round(img.width * k), h = Math.round(img.height * k);
-    const cx = at?.x ?? UNIT / 2, cy = at?.y ?? BOARD_PAGE_H / 2;
+    const cx = at?.x ?? UNIT / 2, cy = at?.y ?? Math.min(pageH, BOARD_PAGE_H) / 2;
     const obj: ImageObject = {
       id: uid(), type: 'image', path: img.path, naturalWidth: img.width, naturalHeight: img.height,
-      x: Math.round(Math.max(0, Math.min(UNIT - w, cx - w / 2))), y: Math.round(Math.max(0, Math.min(BOARD_PAGE_H - h, cy - h / 2))), w, h,
+      x: Math.round(Math.max(0, Math.min(UNIT - w, cx - w / 2))), y: Math.round(Math.max(0, Math.min(pageH - h, cy - h / 2))), w, h,
     };
     handleObjectsChange([...(p.objects ?? []), obj], p.objects ?? []);
     setSelectedIds(new Set([obj.id]));
@@ -1076,7 +1200,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const boxes = [...objects.map(objectRect), strokesBounds(strokes)].filter((b): b is { x: number; y: number; w: number; h: number } => !!b);
     const pad = 12;
     const x0 = Math.max(0, Math.min(...boxes.map((b) => b.x)) - pad), y0 = Math.max(0, Math.min(...boxes.map((b) => b.y)) - pad);
-    const x1 = Math.min(UNIT, Math.max(...boxes.map((b) => b.x + b.w)) + pad), y1 = Math.min(BOARD_PAGE_H, Math.max(...boxes.map((b) => b.y + b.h)) + pad);
+    const x1 = Math.min(UNIT, Math.max(...boxes.map((b) => b.x + b.w)) + pad), y1 = Math.min(pageHeight(p), Math.max(...boxes.map((b) => b.y + b.h)) + pad);
     const width = 1920, scale = width / UNIT;
     const full = await renderPageToCanvas({ ...p, background: 'blank', image: null, strokes, objects }, width);
     const out = document.createElement('canvas');
@@ -1115,10 +1239,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (edit) setEditingId(obj.id);
   }, [handleObjectsChange]);
 
-  const centered = (w: number, h: number, at?: { x: number; y: number }) => ({
-    x: Math.round(Math.max(0, Math.min(UNIT - w, (at?.x ?? UNIT / 2) - w / 2))),
-    y: Math.round(Math.max(0, Math.min(BOARD_PAGE_H - h, (at?.y ?? BOARD_PAGE_H / 2) - h / 2))),
-  });
+  const centered = (w: number, h: number, at?: { x: number; y: number }) => {
+    const pageH = pageHeight(pagesRef.current[pageIndexRef.current] ?? {});
+    return {
+      x: Math.round(Math.max(0, Math.min(UNIT - w, (at?.x ?? UNIT / 2) - w / 2))),
+      y: Math.round(Math.max(0, Math.min(pageH - h, (at?.y ?? Math.min(pageH, BOARD_PAGE_H) / 2) - h / 2))),
+    };
+  };
 
   const insertTable = useCallback((rows = 3, cols = 3, cells?: string[][], at?: { x: number; y: number }) => {
     const w = Math.min(720, 120 * cols + 120);
@@ -1252,6 +1379,55 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     handleObjectsChange((p.objects ?? []).map((t) => (t.id === id && t.type === 'web' ? { ...t, interactive: !t.interactive } : t)), p.objects ?? []);
   }, [handleObjectsChange]);
 
+  // -- Boutons d'interaction (afficher / masquer d'autres objets) --
+  /** Modifie un objet de la page courante, avec un pas d'annulation. */
+  const patchObject = useCallback((id: string, fn: (o: BoardObject) => BoardObject) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    handleObjectsChange((p.objects ?? []).map((o) => (o.id === id ? fn(o) : o)), p.objects ?? []);
+  }, [handleObjectsChange]);
+
+  /** Un bouton a été touché en classe : ses cibles s'affichent, se masquent ou basculent. */
+  const fireObject = useCallback((id: string) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const trigger = (p?.objects ?? []).find((o) => o.id === id);
+    if (!p || !trigger) return;
+    setReveal((r) => fireInteractions(r, trigger, p.objects ?? []));
+  }, []);
+
+  /** Bascule « caché au départ » ; la séance repart de ce réglage pour l'objet. */
+  const toggleHidden = useCallback((id: string) => {
+    patchObject(id, (o) => { const n = { ...o }; if (n.hidden) delete n.hidden; else n.hidden = true; return n; });
+    setReveal((r) => { const shown = { ...r.shown }; delete shown[id]; return { ...r, shown }; });
+  }, [patchObject]);
+
+  /** Cible choisie sur la page : par défaut le bouton la bascule, et elle démarre cachée (réponse à révéler). */
+  const onTargetPicked = useCallback((targetId: string) => {
+    const triggerId = interactionsFor;
+    setPicking(false);
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p || !triggerId || triggerId === targetId) return;
+    handleObjectsChange((p.objects ?? []).map((o) => {
+      if (o.id === triggerId) return { ...o, interactions: [...(o.interactions ?? []).filter((it) => it.targetId !== targetId), { targetId, action: 'toggle' as InteractionAction }] };
+      if (o.id === targetId && !o.hidden) return { ...o, hidden: true };
+      return o;
+    }), p.objects ?? []);
+    setReveal((r) => { const shown = { ...r.shown }; delete shown[targetId]; return { ...r, shown }; });
+  }, [interactionsFor, handleObjectsChange]);
+
+  const setInteractionAction = useCallback((triggerId: string, index: number, action: InteractionAction) => {
+    patchObject(triggerId, (o) => ({ ...o, interactions: (o.interactions ?? []).map((it, i) => (i === index ? { ...it, action } : it)) }));
+  }, [patchObject]);
+
+  const removeInteraction = useCallback((triggerId: string, index: number) => {
+    patchObject(triggerId, (o) => {
+      const rest = (o.interactions ?? []).filter((_, i) => i !== index);
+      const n = { ...o };
+      if (rest.length > 0) n.interactions = rest; else delete n.interactions;
+      return n;
+    });
+  }, [patchObject]);
+
   const patchTable = useCallback((id: string, fn: (t: TableObject) => TableObject) => {
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
@@ -1356,7 +1532,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const ctx = live?.getContext('2d');
     if (!live || !ctx) return;
     const now = Date.now();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = dprRef.current;
     const sc = scaleRef.current;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
@@ -1382,7 +1558,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   // -- Révélation : rideaux, tickets, trous --
-  const revealObject = useCallback((id: string, value: true | string | null) => {
+  const revealObject = useCallback((id: string, value: true | string | CurtainSlide | null) => {
     setReveal((r) => {
       const objects = { ...r.objects };
       if (value === null) delete objects[id]; else objects[id] = value;
@@ -1417,7 +1593,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   const recoverAll = useCallback(() => {
-    setReveal({ pages: {}, objects: {}, gaps: {} });
+    setReveal({ pages: {}, objects: {}, gaps: {}, shown: {} });
   }, []);
 
   /** Pose (ou retire) un cache sur les objets sélectionnés, avec un pas d'annulation. */
@@ -1532,9 +1708,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { separator: true, label: '' },
       ...(target.cover
         ? [
-            ...(reveal.objects[target.id] === true
+            ...(reveal.objects[target.id] !== undefined
               ? [{ label: 'Recouvrir', onSelect: () => revealObject(target.id, null) }]
-              : [{ label: 'Découvrir', onSelect: () => revealObject(target.id, true) }]),
+              : []),
+            ...(reveal.objects[target.id] !== true
+              ? [{ label: 'Découvrir', onSelect: () => revealObject(target.id, true) }]
+              : []),
             { label: 'Retirer le cache', onSelect: () => setCoverOnSelected(null) },
           ]
         : [
@@ -1542,6 +1721,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             { label: 'Ticket à gratter (uni)', onSelect: () => setCoverOnSelected({ kind: 'scratch', color: '#9CA3AF' }) },
             { label: 'Ticket à gratter (image…)', onSelect: pickCoverImage },
           ]),
+      ...(!many ? [
+        { separator: true, label: '' },
+        { label: `Interactions du bouton…${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, onSelect: () => setInteractionsFor(target.id) },
+        { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
+        ...((target.interactions?.length ?? 0) > 0 ? [{ label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) }] : []),
+      ] : []),
       ...(target.type === 'text' && gapIdsIn(target.html).length > 0
         ? [{ label: 'Révéler tous les trous', onSelect: () => revealAllGaps(target.id) }]
         : []),
@@ -1570,7 +1755,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -1586,6 +1771,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: p.curtain ? 'Retirer le rideau de page' : 'Rideau sur la page', onSelect: togglePageCurtain },
       { label: 'Tout recouvrir (cette page)', onSelect: recoverCurrentPage },
       { label: 'Tout recouvrir (tout le tableau)', onSelect: recoverAll },
+      { separator: true, label: '' },
+      { label: 'Allonger la page (+ ½ écran)', onSelect: () => extendPage() },
+      { label: 'Ajuster la hauteur de la page au contenu', disabled: !p.height, onSelect: fitPageHeight },
       { label: 'Règle', onSelect: () => addInstrument('ruler') },
       { label: 'Équerre', onSelect: () => addInstrument('setsquare') },
       { label: 'Rapporteur', onSelect: () => addInstrument('protractor') },
@@ -1601,7 +1789,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: 'Effacer la page', danger: true, disabled: p.strokes.length === 0 && (p.objects ?? []).length === 0, onSelect: clearPage },
     ];
     setMenu({ x, y, items });
-  }, [pasteFromClipboard, createTextBox, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument]);
+  }, [pasteFromClipboard, createTextBox, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight]);
 
   const openInkMenu = useCallback((x: number, y: number) => {
     const count = selectedStrokeIdsRef.current.size;
@@ -1647,7 +1835,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const live = liveRef.current;
     const ctx = live?.getContext('2d');
     if (!live || !ctx) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = dprRef.current;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
   }, []);
@@ -1676,16 +1864,17 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const px = clientX - rect.left, py = clientY - rect.top;
     let tx = px - ((px - v.tx) * z) / v.zoom;
     let ty = py - ((py - v.ty) * z) / v.zoom;
-    if (z === 1) { tx = 0; ty = 0; }
+    // À 100 %, seul le défilement vertical d'une page allongée subsiste
+    if (z === 1) { tx = 0; ty = Math.max(-pageOverflow(), Math.min(0, ty)); }
     setView({ zoom: z, tx, ty });
-  }, []);
+  }, [pageOverflow]);
 
   /** Cercle de gomme sur le calque temporaire (suit le stylet / la souris). */
   const drawEraserCursor = useCallback((x: number, y: number) => {
     const live = liveRef.current;
     const ctx = live?.getContext('2d');
     if (!live || !ctx) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = dprRef.current;
     const scale = scaleRef.current;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
@@ -1832,7 +2021,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       const live = liveRef.current;
       const ctx = live?.getContext('2d');
       if (!live || !ctx) return;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = dprRef.current;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
       const preview = draftToShape(draft, shapeKindRef.current, shapeStyleRef.current);
@@ -1856,7 +2045,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       const live = liveRef.current;
       const ctx = live?.getContext('2d');
       if (!live || !ctx) return;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = dprRef.current;
       const sc = scaleRef.current;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
@@ -1872,10 +2061,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       return;
     }
     const native = e.nativeEvent as PointerEvent;
-    const samples: { clientX: number; clientY: number; pressure: number }[] =
-      typeof native.getCoalescedEvents === 'function' && native.getCoalescedEvents().length > 0
-        ? native.getCoalescedEvents()
-        : [native];
+    // Échantillons groupés du stylet (plusieurs positions par événement, trait plus lisse).
+    // Garde-fou : le dernier échantillon doit coïncider avec l'événement lui-même (c'est la
+    // règle de la spécification). Chrome et Firefox les livrent parfois dans un autre repère
+    // (zoom du navigateur ≠ 100 %, écran mis à l'échelle) : le premier point du trait est juste,
+    // puis l'encre s'éloigne du stylet vers la droite et le bas. Dans ce cas, on ignore le groupe.
+    const grouped = typeof native.getCoalescedEvents === 'function' ? native.getCoalescedEvents() : [];
+    const lastSample = grouped[grouped.length - 1];
+    const groupedOk = !!lastSample && Math.abs(lastSample.clientX - native.clientX) <= 1.5 && Math.abs(lastSample.clientY - native.clientY) <= 1.5;
+    const samples: { clientX: number; clientY: number; pressure: number }[] = groupedOk ? grouped : [native];
 
     if (eraserMode.current) {
       for (const s of samples) {
@@ -1889,7 +2083,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const ctx = liveRef.current?.getContext('2d');
     if (!stroke || !ctx) return;
     const scale = scaleRef.current;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = dprRef.current;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     for (const s of samples) {
@@ -1990,7 +2184,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const live = liveRef.current;
     const lctx = live?.getContext('2d');
     if (live && lctx) {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = dprRef.current;
       lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       lctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
     }
@@ -2037,7 +2231,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const step = e.shiftKey ? 10 : 1;
         nudgeSelected(e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0, e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0);
       }
-      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setSpotlight(false); setDisplayMode(false); }
+      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setPaletteEditor(false); setSpotlight(false); setDisplayMode(false); setPicking(false); setInteractionsFor(null); }
+      else if (!ctrl && !hasSelection && !e.altKey && (e.key === 'PageDown' || e.key === 'PageUp' || e.key === 'End' || e.key === 'Home')) {
+        const el = containerRef.current;
+        if (el && pageOverflow() > 0) { e.preventDefault(); scrollBy(e.key === 'PageDown' ? el.clientHeight * 0.8 : e.key === 'PageUp' ? -el.clientHeight * 0.8 : e.key === 'End' ? 1e6 : -1e6); }
+      }
       else if (ctrl && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomAt(1.2, window.innerWidth / 2, window.innerHeight / 2); }
       else if (ctrl && e.key === '-') { e.preventDefault(); zoomAt(1 / 1.2, window.innerWidth / 2, window.innerHeight / 2); }
       else if (ctrl && e.key === '0') { e.preventDefault(); setView(IDENTITY_VIEW); }
@@ -2056,36 +2254,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt]);
+  }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy]);
 
-  // -- Gestes TBI : deux doigts = pincer-zoomer / menu radial (immobiles) / tap = annuler ;
-  //    trois doigts = tap rétablir, balayage = changer de page --
+  // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
     if (e.pointerType !== 'touch' || !tbiRef.current.gestures) return;
+    if ((e.target as HTMLElement | null)?.closest?.('.wbpal, .wbr')) return; // la pastille et le menu gèrent leur contact
     touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pts = touchPoints.current;
     if (pts.size === 2) {
       cancelCanvasInput();
       const [a, b] = Array.from(pts.values());
-      const g: TouchGesture = {
-        kind: 'pending', startAt: Date.now(), ids: Array.from(pts.keys()), startPoints: new Map(pts),
+      gesture.current = {
+        kind: 'pending', ids: Array.from(pts.keys()), startPoints: new Map(pts),
         startDist: Math.hypot(b.x - a.x, b.y - a.y), startMid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-        startView: viewRef.current, timer: null, moved: false,
+        startView: viewRef.current,
       };
-      g.timer = window.setTimeout(() => {
-        if (gesture.current === g && g.kind === 'pending' && !g.moved) {
-          g.kind = 'done';
-          setRadial({ x: g.startMid.x, y: g.startMid.y });
-        }
-      }, RADIAL_HOLD_MS);
-      gesture.current = g;
-    } else if (pts.size === 3 && gesture.current) {
-      const g = gesture.current;
-      if (g.timer) { window.clearTimeout(g.timer); g.timer = null; }
-      g.kind = 'three';
-      g.startAt = Date.now();
-      g.startPoints = new Map(pts);
-      g.moved = false;
     }
   }, [cancelCanvasInput]);
 
@@ -2097,11 +2281,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const g = gesture.current;
     if (!g) return;
     const start = g.startPoints.get(e.pointerId);
-    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) g.moved = true;
-    if (g.kind === 'pending' && g.moved) {
-      g.kind = 'pinch';
-      if (g.timer) { window.clearTimeout(g.timer); g.timer = null; }
-    }
+    // Tolérance large : un cadre infrarouge fait trembler le doigt de plusieurs pixels
+    if (g.kind === 'pending' && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 24) g.kind = 'pinch';
     if (g.kind === 'pinch' && pts.size >= 2) {
       const [a, b] = g.ids.map((id) => pts.get(id)).filter((p): p is { x: number; y: number } => !!p);
       if (!a || !b) return;
@@ -2117,59 +2298,103 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       const mx = mid.x - rect.left, my = mid.y - rect.top;
       let tx = mx - ((mx0 - v0.tx) * z) / v0.zoom;
       let ty = my - ((my0 - v0.ty) * z) / v0.zoom;
-      if (z === 1) { tx = 0; ty = 0; }
+      // À 100 %, deux doigts qui glissent font défiler une page allongée
+      if (z === 1) { tx = 0; ty = Math.max(-pageOverflow(), Math.min(0, ty)); }
       setView({ zoom: z, tx, ty });
     }
-  }, []);
+  }, [pageOverflow]);
 
   const onStagePointerUp = useCallback((e: React.PointerEvent) => {
     if (e.pointerType !== 'touch') return;
     const pts = touchPoints.current;
     if (!pts.has(e.pointerId)) return;
-    const g = gesture.current;
     pts.delete(e.pointerId);
-    if (!g) return;
-    if (pts.size === 0) {
-      gesture.current = null;
-      if (g.timer) window.clearTimeout(g.timer);
-      const quick = Date.now() - g.startAt < MULTI_TAP_MS && !g.moved;
-      if (g.kind === 'pending' && quick) applyUndo();
-      else if (g.kind === 'three') {
-        if (quick) applyRedo();
-        else {
-          // Balayage horizontal à trois doigts : page suivante / précédente
-          const dxs = Array.from(g.startPoints.entries()).map(([id, p0]) => (touchPoints.current.get(id)?.x ?? e.clientX) - p0.x);
-          const dx = dxs.reduce((a, b) => a + b, 0) / Math.max(1, dxs.length);
-          if (Math.abs(dx) > 80) setPageIndex((i) => Math.max(0, Math.min(pagesRef.current.length - 1, i + (dx < 0 ? 1 : -1))));
-        }
-      }
-    }
-  }, [applyUndo, applyRedo]);
+    if (pts.size === 0) gesture.current = null;
+  }, []);
 
   // Ctrl + molette : zoom à la souris ; Échap ferme projecteur et menu radial
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+      if (e.ctrlKey) {
+        e.preventDefault();
+        zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+        return;
+      }
+      // Molette seule : fait défiler une page allongée (à 100 %)
+      if (viewRef.current.zoom === 1 && pageOverflow() > 0) {
+        e.preventDefault();
+        scrollBy(e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * el.clientHeight : e.deltaY);
+      }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt]);
+  }, [zoomAt, scrollBy, pageOverflow]);
 
 
-  const radialItems: RadialItem[] = [
-    { id: 'pen', label: 'Stylo', icon: '✏️', active: tool === 'pen', onSelect: () => setTool('pen') },
-    { id: 'hl', label: 'Surligneur', icon: '🖍️', active: tool === 'highlighter', onSelect: () => setTool('highlighter') },
-    { id: 'eraser', label: 'Gomme', icon: '🧽', active: tool === 'eraser', onSelect: () => setTool('eraser') },
-    { id: 'select', label: 'Sélection', icon: '⬚', active: tool === 'select', onSelect: () => setTool('select') },
-    { id: 'next', label: 'Page +', icon: '⏭', disabled: pageIndex >= pages.length - 1, onSelect: () => setPageIndex((i) => Math.min(pages.length - 1, i + 1)) },
-    { id: 'undo', label: 'Annuler', icon: '↶', disabled: historyLen === 0, onSelect: applyUndo },
-    { id: 'redo', label: 'Rétablir', icon: '↷', disabled: redoLen === 0, onSelect: applyRedo },
-    { id: 'prev', label: 'Page −', icon: '⏮', disabled: pageIndex === 0, onSelect: () => setPageIndex((i) => Math.max(0, i - 1)) },
-  ];
+  /**
+   * Les actions que la palette peut contenir, branchées sur les gestes du tableau. Les libellés et
+   * icônes viennent du catalogue (`lib/boardPalette.ts`) ; ici seulement l'état et l'effet.
+   */
+  const enterDisplayMode = () => { setDisplayMode(true); setTool('select'); void document.documentElement.requestFullscreen?.().catch(() => undefined); };
+  const pickColor = (c: string) => { setColor(c); if (tool === 'eraser' || tool === 'highlighter') setTool('pen'); };
+  const paletteBindings: Record<string, Partial<RadialItem> & { onSelect: () => void }> = {
+    pen: { active: tool === 'pen', onSelect: () => setTool('pen') },
+    highlighter: { active: tool === 'highlighter', onSelect: () => setTool('highlighter') },
+    eraser: { active: tool === 'eraser', onSelect: () => setTool('eraser') },
+    select: { active: tool === 'select', onSelect: () => setTool('select') },
+    text: { active: tool === 'text', onSelect: () => setTool('text') },
+    shape: { active: tool === 'shape', onSelect: () => setTool('shape') },
+    laser: { active: tool === 'laser', onSelect: () => setTool('laser') },
+    color: { swatch: color, keepOpen: true, onSelect: () => setRadial((r) => (r ? { ...r, submenu: 'color' } : r)) },
+    'color-0': { swatch: COLORS[0], active: color === COLORS[0], onSelect: () => pickColor(COLORS[0]) },
+    'color-1': { swatch: COLORS[1], active: color === COLORS[1], onSelect: () => pickColor(COLORS[1]) },
+    'color-2': { swatch: COLORS[2], active: color === COLORS[2], onSelect: () => pickColor(COLORS[2]) },
+    'color-3': { swatch: COLORS[3], active: color === COLORS[3], onSelect: () => pickColor(COLORS[3]) },
+    'size-cycle': { label: `Trait ${sizeKey}`, onSelect: () => setSizeKey((k) => (k === 'S' ? 'M' : k === 'M' ? 'L' : 'S')) },
+    undo: { disabled: historyLen === 0, onSelect: applyUndo },
+    redo: { disabled: redoLen === 0, onSelect: applyRedo },
+    'page-next': { disabled: pageIndex >= pages.length - 1, onSelect: () => setPageIndex((i) => Math.min(pages.length - 1, i + 1)) },
+    'page-prev': { disabled: pageIndex === 0, onSelect: () => setPageIndex((i) => Math.max(0, i - 1)) },
+    'page-new': { onSelect: addPage },
+    'page-nav': { active: navOpen, onSelect: () => setNavOpen((v) => !v) },
+    'page-clear': { disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
+    'zoom-in': { onSelect: () => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2) },
+    'zoom-reset': { disabled: view.zoom === 1, onSelect: () => setView(IDENTITY_VIEW) },
+    spotlight: { onSelect: () => setSpotlight(true) },
+    ruler: { onSelect: () => addInstrument('ruler') },
+    setsquare: { onSelect: () => addInstrument('setsquare') },
+    protractor: { onSelect: () => addInstrument('protractor') },
+    keyboard: { active: keyboardOpen, onSelect: () => setKeyboardOpen((v) => !v) },
+    library: { onSelect: () => setLibraryOpen(true) },
+    search: { onSelect: () => setSearchOpen(true) },
+    pick: { disabled: !classroom, onSelect: () => setPickOpen(true) },
+    display: { onSelect: enterDisplayMode },
+  };
+  const radialItems: RadialItem[] = radial?.submenu === 'color'
+    ? RADIAL_COLOR_CHOICES.map((c) => ({ id: `col-${c.hex}`, label: c.label, icon: '', swatch: c.hex, active: color === c.hex, onSelect: () => pickColor(c.hex) }))
+    : palette.slots.map((id, i) => {
+      const def = paletteAction(id);
+      const b = paletteBindings[id];
+      if (!def || !b) return { id: `empty-${i}`, label: '', icon: '', disabled: true, onSelect: () => undefined };
+      return { id, label: def.label, icon: def.icon, ...b };
+    });
+  /** Zone du menu radial : la scène, amputée de la barre d'outils du côté où elle se trouve. */
+  const radialBounds = () => {
+    const stage = containerRef.current?.getBoundingClientRect();
+    if (!stage) return undefined;
+    const b = { left: stage.left, top: stage.top, right: stage.right, bottom: stage.bottom };
+    const bar = rootRef.current?.querySelector('.wb__bar')?.getBoundingClientRect();
+    if (bar && bar.width > 0) {
+      if (tbi.bar === 'bottom') b.bottom = Math.min(b.bottom, bar.top);
+      else if (tbi.bar === 'left') b.left = Math.max(b.left, bar.right);
+      else b.right = Math.min(b.right, bar.left);
+    }
+    return b;
+  };
+  const TOOL_ICONS: Record<Tool, string> = { pen: '✏️', highlighter: '🖍️', eraser: '🧽', select: '⬚', text: 'T', shape: '◯', laser: '🔴' };
+  const paletteRing = tool === 'highlighter' ? HIGHLIGHT_COLOR : tool === 'laser' ? '#EF4444' : tool === 'eraser' || tool === 'select' ? null : color;
 
   // Collage : une image du presse-papiers devient un objet image, du texte une zone de texte ;
   // sinon les objets copiés dans le tableau (presse-papiers interne).
@@ -2225,6 +2450,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   const pageCount = pages.length;
+  /** Objet-bouton dont le panneau d'interactions est ouvert (null s'il a disparu de la page). */
+  const interactionTrigger = interactionsFor ? pageObjects.find((o) => o.id === interactionsFor) ?? null : null;
+  useEffect(() => {
+    if (interactionsFor && !interactionTrigger) { setInteractionsFor(null); setPicking(false); }
+  }, [interactionsFor, interactionTrigger]);
   const selectedTexts = pageObjects.filter((o): o is TextObject => o.type === 'text' && (o.id === editingId || selectedIds.has(o.id)));
   /** Zone de texte « active » pour la barre : celle en saisie, sinon la seule sélectionnée. */
   const selectedBox = (editingId ? selectedTexts.find((o) => o.id === editingId) : selectedTexts.length === 1 ? selectedTexts[0] : null) ?? null;
@@ -2286,14 +2516,16 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen(true) },
         { id: 'ses-search', label: 'Rechercher (Ctrl+K)', icon: '🔎', onSelect: () => setSearchOpen(true) },
         ...(classroom ? [{ id: 'ses-pick', label: 'Tirage au sort', icon: '🎯', onSelect: () => setPickOpen(true) }] : []),
-        { id: 'ses-radial', label: 'Menu radial', icon: '◎', onSelect: () => setRadial({ x: window.innerWidth / 2, y: window.innerHeight / 2 }) },
-        { id: 'ses-display', label: 'Mode affichage', icon: '🖥', onSelect: () => { setDisplayMode(true); setTool('select'); void document.documentElement.requestFullscreen?.().catch(() => undefined); } },
+        { id: 'ses-display', label: 'Mode affichage', icon: '🖥', onSelect: enterDisplayMode },
       ],
     },
     {
       title: 'Réglages',
       items: [
-        { id: 'set-gestures', label: `Gestes à deux doigts ${tbi.gestures ? 'activés' : 'désactivés'}`, icon: '✌️', active: tbi.gestures, onSelect: () => setTbi((t) => ({ ...t, gestures: !t.gestures })) },
+        { id: 'set-palette', label: 'Personnaliser la palette…', icon: '◎', onSelect: () => setPaletteEditor(true) },
+        { id: 'set-probe', label: 'Test du stylet (diagnostic)', icon: '🎯', active: probeOpen, onSelect: () => setProbeOpen((v) => !v) },
+        { id: 'set-palette-show', label: palette.hidden ? 'Afficher la pastille' : 'Masquer la pastille', icon: '◉', active: !palette.hidden, onSelect: () => setPalette((p) => ({ ...p, hidden: !p.hidden })) },
+        { id: 'set-gestures', label: `Pincer pour zoomer ${tbi.gestures ? 'activé' : 'désactivé'}`, icon: '✌️', active: tbi.gestures, onSelect: () => setTbi((t) => ({ ...t, gestures: !t.gestures })) },
         ...(['bottom', 'left', 'right'] as BarSide[]).map((side) => ({
           id: `set-bar-${side}`,
           label: `Barre en ${side === 'bottom' ? 'bas' : side === 'left' ? 'à gauche' : 'à droite'}`,
@@ -2365,7 +2597,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       <div
         className={`wb__stage ${view.zoom > 1 ? 'is-zoomed' : ''}`}
         ref={containerRef}
-        style={{ marginRight: navOpen && !displayMode ? 232 : 0 }}
+        style={{ marginRight: navOpen && !displayMode ? navWidth : 0 }}
         onPointerDownCapture={onStagePointerDown}
         onPointerMoveCapture={onStagePointerMove}
         onPointerUpCapture={onStagePointerUp}
@@ -2373,7 +2605,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       >
       <div
         className="wb__view"
-        style={{ transform: view.zoom === 1 ? undefined : `translate(${view.tx}px, ${view.ty}px) scale(${view.zoom})` }}
+        style={{ transform: view.zoom === 1 && view.ty === 0 ? undefined : `translate(${view.tx}px, ${view.ty}px) scale(${view.zoom})` }}
         onPointerDownCapture={coachOpen ? dismissCoach : undefined}
       >
         <canvas ref={bgRef} className="wb__layer" />
@@ -2415,13 +2647,34 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
           spellCheck={spellCheck && !displayMode}
           onSpellStatus={setSpellStatus}
+          play={displayMode || !OBJECT_TOOLS.includes(tool)}
+          onFire={fireObject}
+          pickTarget={picking && interactionsFor ? onTargetPicked : null}
+          pickSourceId={interactionsFor}
         />
+        {!displayMode && (
+          <button
+            type="button"
+            className="wb__extend"
+            style={{ left: stageBox.left + stageBox.width - 12, top: stageBox.top + stageBox.height - 12 }}
+            title="Allonger la page d'un demi-écran (la page se lit ensuite en défilant)"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => extendPage()}
+          >
+            ⤓ Allonger la page
+          </button>
+        )}
         {page.curtain && pageRevealedFraction(reveal, page.id) < 1 && (() => {
           const f = pageRevealedFraction(reveal, page.id);
+          // Boutons du rideau : dans la partie visible de l'écran, même sur une page allongée
+          const curtainTop = stageBox.top + stageBox.height * f;
+          const curtainH = stageBox.height * (1 - f);
+          const visibleBottom = view.zoom > 1 ? curtainTop + curtainH : stageSize.height - view.ty;
+          const actionsTop = Math.max(24, Math.min(curtainH - 70, visibleBottom - curtainTop - 70));
           return (
             <div
               className="wb__curtain"
-              style={{ left: stageBox.left, top: stageBox.top + stageBox.height * f, width: stageBox.width, height: stageBox.height * (1 - f) }}
+              style={{ left: stageBox.left, top: curtainTop, width: stageBox.width, height: curtainH }}
               onPointerDown={(e) => e.stopPropagation()}
             >
               <div
@@ -2440,7 +2693,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                 }}
                 onPointerUp={(e) => { curtainDrag.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ } }}
               />
-              <div className="wb__curtain-actions">
+              <div className="wb__curtain-actions" style={{ top: actionsTop, bottom: 'auto' }}>
                 <button type="button" onClick={() => setPageReveal(page.id, 1)}>Tout découvrir</button>
                 {f > 0 && <button type="button" onClick={() => setPageReveal(page.id, 0)}>Recouvrir</button>}
               </div>
@@ -2507,10 +2760,69 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         {page.strokes.length === 0 && pageObjects.length === 0 && !displayMode && (
           <div className="wb__empty" aria-hidden>
             <p>Écrivez.</p>
-            <p>Deux doigts pour les outils.</p>
+            <p>Les outils sont dans la pastille.</p>
           </div>
         )}
       </div>
+        {view.zoom === 1 && stageSize.height > 0 && stageBox.height > stageSize.height + 1 && (() => {
+          // Rail de défilement pensé pour le doigt : gros boutons, pouce large, tape sur la piste
+          const overflow = stageBox.height - stageSize.height;
+          const trackH = Math.max(40, stageSize.height - RAIL_BTN * 2 - 16);
+          const thumbH = Math.max(56, Math.min(trackH, (stageSize.height / stageBox.height) * trackH));
+          const range = Math.max(1, trackH - thumbH);
+          const pos = (-view.ty / overflow) * range;
+          const step = stageSize.height * 0.8;
+          return (
+            <div className="wb__scroll" onPointerDown={(e) => e.stopPropagation()}>
+              <button type="button" className="wb__scroll-btn" disabled={view.ty >= 0} title="Remonter (Page précédente)" onClick={() => scrollBy(-step)}>▲</button>
+              <div
+                className="wb__scroll-track"
+                style={{ height: trackH }}
+                onPointerDown={(e) => {
+                  if ((e.target as HTMLElement).classList.contains('wb__scroll-thumb')) return;
+                  const r = e.currentTarget.getBoundingClientRect();
+                  scrollBy(e.clientY - r.top < pos ? -step : step);
+                }}
+              >
+                <div
+                  className="wb__scroll-thumb"
+                  style={{ top: pos, height: thumbH }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation(); e.preventDefault();
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                    scrollDrag.current = { pointerId: e.pointerId, startY: e.clientY, startTy: view.ty };
+                  }}
+                  onPointerMove={(e) => {
+                    const d = scrollDrag.current;
+                    if (!d || d.pointerId !== e.pointerId) return;
+                    const ty = d.startTy - ((e.clientY - d.startY) / range) * overflow;
+                    setView({ zoom: 1, tx: 0, ty: Math.max(-overflow, Math.min(0, ty)) });
+                  }}
+                  onPointerUp={(e) => { scrollDrag.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ } }}
+                  onPointerCancel={() => { scrollDrag.current = null; }}
+                />
+              </div>
+              <button type="button" className="wb__scroll-btn" disabled={view.ty <= -overflow + 0.5} title="Descendre (Page suivante)" onClick={() => scrollBy(step)}>▼</button>
+            </div>
+          );
+        })()}
+        {picking && (
+          <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
+            <span>Touchez l'objet que ce bouton doit afficher ou masquer</span>
+            <button type="button" onClick={() => setPicking(false)}>Annuler</button>
+          </div>
+        )}
+        {!displayMode && !palette.hidden && (
+          <BoardPalette
+            x={palette.x}
+            y={palette.y}
+            onMove={(x, y) => setPalette((p) => ({ ...p, x, y }))}
+            onPress={(cx, cy) => { if (coachOpen) dismissCoach(); setRadial({ x: cx, y: cy, bounds: radialBounds() }); }}
+            open={radial !== null}
+            icon={TOOL_ICONS[tool]}
+            ring={paletteRing}
+          />
+        )}
         {view.zoom > 1 && (
           <div className="wb__zoom" onPointerDown={(e) => e.stopPropagation()}>
             <span>{Math.round(view.zoom * 100)} %</span>
@@ -2544,18 +2856,52 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         {/* Premier lancement : les trois gestes vitaux, ensemble, sans séquence ni « suivant ». */}
         {coachOpen && !displayMode && (
           <div className="wb__coach" aria-hidden>
-            <div className="wb__coach-bubble wb__coach-bubble--radial">Deux doigts sur la page : les outils viennent sous la main.</div>
+            {!palette.hidden && (
+              <div
+                className="wb__coach-bubble wb__coach-bubble--radial"
+                style={{ left: `clamp(170px, ${palette.x * 100}%, calc(100% - 170px))`, top: `calc(${palette.y * 100}% - 116px)` }}
+              >
+                La pastille : tapez pour les outils, glissez pour la déplacer.
+              </div>
+            )}
             <div className="wb__coach-bubble wb__coach-bubble--pages">Le rail de droite tient toutes les pages de la séance.</div>
             <div className="wb__coach-bubble wb__coach-bubble--hand">Réglages : mettre la barre du côté de votre main.</div>
           </div>
         )}
       </div>
-      {radial && <BoardRadialMenu x={radial.x} y={radial.y} items={radialItems} onClose={() => setRadial(null)} />}
+      {radial && (
+        <BoardRadialMenu
+          x={radial.x}
+          y={radial.y}
+          bounds={radial.bounds}
+          items={radialItems}
+          onClose={() => setRadial(null)}
+          onDragCenter={(cx, cy) => {
+            // Le disque central glisse : la pastille et le menu suivent (position en fraction de la scène)
+            const stage = containerRef.current?.getBoundingClientRect();
+            if (!stage) return;
+            const fx = Math.max(0.04, Math.min(0.96, (cx - stage.left) / Math.max(1, stage.width)));
+            const fy = Math.max(0.04, Math.min(0.96, (cy - stage.top) / Math.max(1, stage.height)));
+            setPalette((p) => ({ ...p, x: fx, y: fy }));
+            setRadial((r) => (r ? { ...r, x: cx, y: cy } : r));
+          }}
+        />
+      )}
+      {paletteEditor && (
+        <BoardPaletteEditor
+          slots={palette.slots}
+          onChange={(slots) => setPalette((p) => ({ ...p, slots }))}
+          hidden={palette.hidden}
+          onToggleHidden={() => setPalette((p) => ({ ...p, hidden: !p.hidden }))}
+          onClose={() => setPaletteEditor(false)}
+        />
+      )}
       {displayMode && (
         <button type="button" className="wb__display-exit" onClick={() => { setDisplayMode(false); if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined); }} title="Quitter le mode affichage (Échap)">
           Quitter l'affichage
         </button>
       )}
+      {probeOpen && <BoardInputProbe onClose={() => setProbeOpen(false)} />}
       {spotlight && <BoardSpotlight onClose={() => setSpotlight(false)} />}
       {keyboardOpen && <BoardKeyboard onClose={() => setKeyboardOpen(false)} />}
       {pickOpen && classroom && (
@@ -2627,6 +2973,20 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         />
       )}
       {menu && <BoardContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={closeMenu} />}
+      {!displayMode && interactionTrigger && (
+        <BoardInteractionsPanel
+          trigger={interactionTrigger}
+          objects={pageObjects}
+          picking={picking}
+          onPick={() => { if (!OBJECT_TOOLS.includes(tool)) setTool('select'); setPicking(true); }}
+          onCancelPick={() => setPicking(false)}
+          onSetAction={(i, a) => setInteractionAction(interactionTrigger.id, i, a)}
+          onRemove={(i) => removeInteraction(interactionTrigger.id, i)}
+          onToggleHidden={toggleHidden}
+          onTest={() => fireObject(interactionTrigger.id)}
+          onClose={() => { setInteractionsFor(null); setPicking(false); }}
+        />
+      )}
       {exportOpen && <BoardExportDialog pages={pages} name="Tableau" currentIndex={pageIndex} onClose={() => setExportOpen(false)} />}
       <input
         ref={coverInputRef}
@@ -2719,6 +3079,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             onPatchTable={patchTable}
             onToggleInteractive={onToggleInteractive}
             onEdit={(id) => setEditingId(id)}
+            onInteractions={(id) => setInteractionsFor(id)}
           />
         </BoardFloatingToolbar>
       )}
@@ -2739,13 +3100,17 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       {!displayMode && (() => {
         const side = tbi.bar === 'right' ? 'left' : 'right';
         return (
-          <div className={`wb__pagerail wb__pagerail--${side}`} style={side === 'right' && navOpen ? { right: 252 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
+          <div className={`wb__pagerail wb__pagerail--${side}`} style={side === 'right' && navOpen ? { right: navWidth + 20 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
             <button className="wb__btn" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0} title="Page précédente">
               <svg viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" /></svg>
             </button>
             <span className="wb__pages">{pageIndex + 1}/{pageCount}</span>
             <button className="wb__btn" onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))} disabled={pageIndex >= pageCount - 1} title="Page suivante">
               <svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" /></svg>
+            </button>
+            {/* Nouvelle page toujours à portée, même navigateur fermé (il l'est par défaut en 720p) */}
+            <button className="wb__btn wb__btn--add" onClick={addPage} title="Nouvelle page (Ctrl+Entrée)">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
             </button>
             <button className={`wb__btn ${navOpen ? 'is-on' : ''}`} onClick={() => setNavOpen((v) => !v)} title="Navigateur de pages (N)">
               <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM14 5v14M16 9h2M16 12h2M16 15h2" /></svg>
@@ -2759,7 +3124,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         // Jamais du même côté que la barre, sinon les deux se recouvrent dans le coin.
         const side = tbi.bar === 'left' ? 'right' : tbi.bar === 'right' ? 'left' : tbi.hand === 'left' ? 'right' : 'left';
         return (
-          <div className={`wb__history wb__history--${side} wb__history--bar-${tbi.bar}`} style={side === 'right' && navOpen ? { right: 252 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
+          <div className={`wb__history wb__history--${side} wb__history--bar-${tbi.bar}`} style={side === 'right' && navOpen ? { right: navWidth + 20 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
             <button className="wb__btn" onClick={applyUndo} disabled={historyLen === 0} title="Annuler (Ctrl+Z)">
               <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
             </button>
@@ -2770,7 +3135,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         );
       })()}
 
-      <div hidden={displayMode} className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -116 : 0 } : { right: tbi.bar === 'right' && navOpen ? 242 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
+      <div hidden={displayMode} className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -navWidth / 2 : 0 } : { right: tbi.bar === 'right' && navOpen ? navWidth + 10 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
         <div className="wb__group">
           <button className={`wb__btn ${tool === 'select' ? 'is-on' : ''}`} onClick={() => setTool('select')} title="Sélection (V)">
             <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z" /></svg>
@@ -2927,6 +3292,19 @@ const CSS = `
 .wb__curtain-edge { position: absolute; left: 0; right: 0; top: -14px; height: 28px; cursor: ns-resize; touch-action: none; }
 .wb__curtain-edge::after { content: ''; position: absolute; left: 50%; top: 10px; width: 80px; height: 8px; margin-left: -40px; border-radius: 4px; background: #6366F1; }
 .wb__curtain-actions { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 10px; }
+/* Page allongée : rail de défilement au bord droit de la scène (doigt, stylet, souris) */
+.wb__scroll { position: absolute; right: 6px; top: 0; bottom: 0; z-index: 6; width: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; touch-action: none; }
+.wb__scroll-btn { width: 44px; height: 48px; border: 0; border-radius: 12px; background: rgba(17,24,39,0.85); color: #F9FAFB; font: 700 16px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+.wb__scroll-btn:disabled { opacity: 0.3; cursor: default; }
+.wb__scroll-track { position: relative; width: 22px; border-radius: 11px; background: rgba(17,24,39,0.55); cursor: pointer; }
+.wb__scroll-thumb { position: absolute; left: 0; width: 22px; border-radius: 11px; background: #6366F1; box-shadow: 0 1px 6px rgba(0,0,0,0.4); cursor: grab; touch-action: none; }
+.wb__scroll-thumb:active { cursor: grabbing; background: #818CF8; }
+/* Poignée d'allongement : coin bas-droit de la page, discrète tant qu'on ne la vise pas */
+.wb__extend { position: absolute; z-index: 4; transform: translate(-100%, -100%); height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(17,24,39,0.6); color: #F9FAFB; font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0.55; }
+.wb__extend:hover { opacity: 1; background: #4F46E5; }
+/* Choix d'une cible d'interaction : bandeau en haut de la scène */
+.wb__pickbanner { position: absolute; left: 50%; top: 14px; z-index: 7; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 12px; background: #312E81; color: #E0E7FF; font: 600 14px/1.2 Inter, system-ui, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.wb__pickbanner button { height: 34px; padding: 0 12px; border: 1px solid #6366F1; border-radius: 8px; background: transparent; color: #E0E7FF; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wb__curtain-actions button { height: 46px; padding: 0 22px; border: 0; border-radius: 12px; background: #4F46E5; color: #FFFFFF; font: 600 16px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wb__curtain-actions button + button { background: #374151; }
 .wb__inksel { position: absolute; z-index: 2; border: 1.5px dashed #4F46E5; border-radius: 6px; cursor: move; touch-action: none; }

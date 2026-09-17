@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { fetchBoardPages } from '../../lib/boardQueries';
-import { renderPageToCanvas, BOARD_RATIO, type BoardPage } from '../../lib/boardRender';
+import { renderPageToCanvas, pageRatio, type BoardPage } from '../../lib/boardRender';
 import { BoardExportDialog } from './BoardExportDialog';
 
 interface BoardPagesGalleryProps {
@@ -15,13 +15,13 @@ interface BoardPagesGalleryProps {
   onOpenEditor?: () => void;
 }
 
-// Les pages sont dessinées sur un écran 16:9 ; on garde ce ratio à la relecture.
+// Les pages sont dessinées sur un écran 16:9 (ou allongées) ; on garde leur format à la relecture.
 const THUMB_W = 480;
 const FULL_W = 1920;
 
 function PageCanvas({ page, width, className }: { page: BoardPage; width: number; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const height = Math.round(width / BOARD_RATIO);
+  const height = Math.round(width / pageRatio(page));
   useEffect(() => {
     let cancelled = false;
     renderPageToCanvas(page, width).then((rendered) => {

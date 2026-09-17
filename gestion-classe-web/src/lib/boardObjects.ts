@@ -29,7 +29,21 @@ export interface BoardObjectBase {
   opacity?: number;
   /** Rideau ou ticket à gratter posé sur l'objet (voir boardReveal). */
   cover?: RevealCover;
+  /** Caché au départ : n'apparaît qu'une fois affiché par un bouton d'interaction. */
+  hidden?: boolean;
+  /** L'objet est un bouton : toucher déclenche ces interactions sur d'autres objets de la page. */
+  interactions?: Interaction[];
 }
+
+/** Ce qu'un bouton fait à un objet cible quand on le touche (façon Genially). */
+export type InteractionAction = 'show' | 'hide' | 'toggle';
+export interface Interaction { targetId: string; action: InteractionAction }
+
+export const INTERACTION_LABELS: Record<InteractionAction, string> = {
+  show: 'Afficher',
+  hide: 'Masquer',
+  toggle: 'Afficher / masquer',
+};
 
 /** Zone de texte : la hauteur découle du contenu. */
 export interface TextObject extends BoardObjectBase, TextBox {
@@ -87,9 +101,40 @@ export function objectAt(objects: BoardObject[], x: number, y: number): BoardObj
   return null;
 }
 
-/** Copie d'objets avec de nouveaux identifiants, décalée (pour dupliquer / coller). */
+/**
+ * Copie d'objets avec de nouveaux identifiants, décalée (pour dupliquer / coller).
+ * Un bouton copié avec ses cibles garde ses interactions vers les copies ; vers un objet resté
+ * hors de la copie, l'interaction est conservée telle quelle (même page) — elle sera ignorée si
+ * la cible n'existe pas sur la page d'arrivée.
+ */
 export function cloneObjects(objects: BoardObject[], dx = 24, dy = 24): BoardObject[] {
-  return objects.map((o) => ({ ...o, id: objectId(), x: o.x + dx, y: o.y + dy }));
+  const ids = new Map(objects.map((o) => [o.id, objectId()]));
+  return objects.map((o) => ({
+    ...o,
+    id: ids.get(o.id) ?? objectId(),
+    x: o.x + dx,
+    y: o.y + dy,
+    ...(o.interactions ? { interactions: o.interactions.map((it) => ({ ...it, targetId: ids.get(it.targetId) ?? it.targetId })) } : {}),
+  }));
+}
+
+/** Bas de l'objet le plus bas (unités logiques), 0 sans objet. */
+export function objectsBottom(objects: BoardObject[]): number {
+  let bottom = 0;
+  for (const o of objects) { const r = objectRect(o); if (r.y + r.h > bottom) bottom = r.y + r.h; }
+  return bottom;
+}
+
+/** Nom court d'un objet, pour désigner une cible d'interaction : « Texte “Réponse…” », « Image ». */
+export function objectShortLabel(o: BoardObject): string {
+  const generic = objectTypeLabel([o]);
+  const kind = generic !== 'Objet' ? generic : o.type === 'text' ? 'Texte' : o.type === 'shape' ? 'Forme' : o.type === 'library' ? 'Dessin' : 'Objet';
+  if (o.type === 'text' || o.type === 'table') {
+    const html = o.type === 'text' ? o.html : o.cells.flat().join(' ');
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (text) return `${kind} « ${text.length > 24 ? `${text.slice(0, 24)}…` : text} »`;
+  }
+  return kind;
 }
 
 /** Déplace les objets sélectionnés d'un cran vers l'avant ou l'arrière dans l'empilement. */

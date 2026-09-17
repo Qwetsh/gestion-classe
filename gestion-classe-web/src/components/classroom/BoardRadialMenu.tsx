@@ -1,17 +1,23 @@
 /**
- * Menu radial du tableau blanc : s'ouvre sous les deux doigts posés sur le TBI (ou par le
- * menu). Huit quartiers autour d'un disque central ; on tape un quartier, ou on glisse un
- * doigt dessus et on relâche. Taper le centre ou ailleurs ferme le menu.
- * Même géométrie que le menu radial élève de la PWA (`WebRadialMenu`), en version générique.
+ * Menu radial du tableau blanc : s'ouvre autour de la pastille flottante (`BoardPalette`).
+ * Huit quartiers autour d'un disque central ; on tape un quartier, ou on appuie puis on glisse
+ * dessus et on relâche. Taper le centre ou ailleurs ferme le menu ; glisser le disque central
+ * déplace la pastille (et le menu avec elle). Même géométrie que le menu radial élève de la PWA (`WebRadialMenu`),
+ * mise à l'échelle de l'écran : un TBI en 1280×720 a un menu plus compact qu'un écran 4K.
  */
 import { useEffect, useRef, useState } from 'react';
+import { radialArc } from '../../lib/boardRadialPalette';
 
 export interface RadialItem {
   id: string;
   label: string;
   icon: string;
+  /** Un disque de cette couleur remplace l'icône (quartiers « couleur »). */
+  swatch?: string;
   active?: boolean;
   disabled?: boolean;
+  /** L'action remplace le contenu du menu (sous-menu) : on ne ferme pas. */
+  keepOpen?: boolean;
   onSelect: () => void;
 }
 
@@ -20,27 +26,37 @@ interface Props {
   y: number;
   items: RadialItem[];
   onClose: () => void;
+  /** Le disque central est glissé : nouvelle position (écran) demandée pour la pastille et le menu. */
+  onDragCenter?: (clientX: number, clientY: number) => void;
+  /** Zone où le menu doit tenir en entier (la scène, moins la barre d'outils) ; défaut : la fenêtre. */
+  bounds?: { left: number; top: number; right: number; bottom: number };
 }
 
-const INNER = 58;
-const OUTER = 214;
-const LABEL_R = 148;
+/** Géométrie de référence (écran ≥ 1080 px de haut), réduite jusqu'à ×0,68 sur les petits écrans. */
+const BASE = { inner: 58, outer: 214, label: 148 };
 const GAP = (2 * Math.PI) / 180;
 
-function arc(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number): string {
-  const p = (r: number, a: number) => `${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
-  const large = a1 - a0 > Math.PI ? 1 : 0;
-  return `M ${p(r1, a0)} A ${r1} ${r1} 0 ${large} 1 ${p(r1, a1)} L ${p(r0, a1)} A ${r0} ${r0} 0 ${large} 0 ${p(r0, a0)} Z`;
+function radialScale(): number {
+  const dim = Math.min(window.innerWidth, window.innerHeight);
+  return Math.max(0.68, Math.min(1, dim / 1080));
 }
 
-export function BoardRadialMenu({ x, y, items, onClose }: Props) {
+
+export function BoardRadialMenu({ x, y, items, onClose, onDragCenter, bounds }: Props) {
   const [hot, setHot] = useState<number | null>(null);
   const ref = useRef<SVGSVGElement>(null);
+  /** Appui parti du disque central : devient un déplacement au-delà de 12 px. */
+  const centerPress = useRef<{ id: number; x0: number; y0: number; moved: boolean } | null>(null);
+  const s = radialScale();
+  const INNER = Math.round(BASE.inner * s);
+  const OUTER = Math.round(BASE.outer * s);
+  const LABEL_R = Math.round(BASE.label * s);
   const n = Math.max(1, items.length);
   const step = (2 * Math.PI) / n;
-  // Le menu reste dans l'écran
-  const cx = Math.max(OUTER + 8, Math.min(window.innerWidth - OUTER - 8, x));
-  const cy = Math.max(OUTER + 8, Math.min(window.innerHeight - OUTER - 8, y));
+  // Le menu reste entier dans sa zone (au pire, il s'écarte un peu de la pastille)
+  const b = bounds ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  const cx = Math.max(b.left + OUTER + 8, Math.min(b.right - OUTER - 8, x));
+  const cy = Math.max(b.top + OUTER + 8, Math.min(b.bottom - OUTER - 8, y));
 
   const indexAt = (px: number, py: number): number | null => {
     const dx = px - cx, dy = py - cy;
@@ -51,6 +67,15 @@ export function BoardRadialMenu({ x, y, items, onClose }: Props) {
     return Math.floor(((a + step / 2) % (2 * Math.PI)) / step);
   };
 
+  const pick = (i: number | null) => {
+    if (i === null) { onClose(); return; }
+    const it = items[i];
+    if (!it || it.disabled) return;
+    it.onSelect();
+    if (!it.keepOpen) onClose();
+    else setHot(null);
+  };
+
   useEffect(() => {
     const onDown = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -58,14 +83,7 @@ export function BoardRadialMenu({ x, y, items, onClose }: Props) {
     return () => { window.clearTimeout(t); window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
-  const pick = (i: number | null) => {
-    if (i === null) { onClose(); return; }
-    const it = items[i];
-    if (!it || it.disabled) return;
-    it.onSelect();
-    onClose();
-  };
-
+  const c = OUTER + 10;
   return (
     <svg
       ref={ref}
@@ -73,27 +91,51 @@ export function BoardRadialMenu({ x, y, items, onClose }: Props) {
       width={OUTER * 2 + 20}
       height={OUTER * 2 + 20}
       style={{ left: cx - OUTER - 10, top: cy - OUTER - 10 }}
-      onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setHot(indexAt(e.clientX, e.clientY)); try { (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); } catch { /* synthétique */ } }}
-      onPointerMove={(e) => { if (e.buttons) setHot(indexAt(e.clientX, e.clientY)); }}
-      onPointerUp={(e) => { e.stopPropagation(); pick(indexAt(e.clientX, e.clientY)); }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        try { (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); } catch { /* synthétique */ }
+        if (onDragCenter && Math.hypot(e.clientX - cx, e.clientY - cy) < INNER) centerPress.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false };
+        setHot(indexAt(e.clientX, e.clientY));
+      }}
+      onPointerMove={(e) => {
+        const cp = centerPress.current;
+        if (cp && e.pointerId === cp.id) {
+          if (!cp.moved && Math.hypot(e.clientX - cp.x0, e.clientY - cp.y0) <= 12) return;
+          cp.moved = true;
+          onDragCenter?.(e.clientX, e.clientY);
+          return;
+        }
+        if (e.buttons) setHot(indexAt(e.clientX, e.clientY));
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        const cp = centerPress.current;
+        centerPress.current = null;
+        if (cp && cp.moved) return; // fin du déplacement : le menu reste ouvert, au nouvel endroit
+        pick(indexAt(e.clientX, e.clientY));
+      }}
+      onPointerCancel={() => { centerPress.current = null; }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {items.map((it, i) => {
         const a0 = -Math.PI / 2 + i * step - step / 2 + GAP / 2;
         const a1 = a0 + step - GAP;
         const am = (a0 + a1) / 2;
-        const lx = OUTER + 10 + LABEL_R * Math.cos(am), ly = OUTER + 10 + LABEL_R * Math.sin(am);
+        const lx = c + LABEL_R * Math.cos(am), ly = c + LABEL_R * Math.sin(am);
         const on = hot === i;
         return (
-          <g key={it.id} className={`wbr__seg ${on ? 'is-hot' : ''} ${it.active ? 'is-active' : ''} ${it.disabled ? 'is-disabled' : ''}`}>
-            <path d={arc(OUTER + 10, OUTER + 10, INNER, OUTER, a0, a1)} />
-            <text x={lx} y={ly - 16} textAnchor="middle" className="wbr__icon">{it.icon}</text>
-            <text x={lx} y={ly + 24} textAnchor="middle" className="wbr__label">{it.label}</text>
+          <g key={`${it.id}-${i}`} className={`wbr__seg ${on ? 'is-hot' : ''} ${it.active ? 'is-active' : ''} ${it.disabled ? 'is-disabled' : ''}`}>
+            <path d={radialArc(c, c, INNER, OUTER, a0, a1)} />
+            {it.swatch
+              ? <circle cx={lx} cy={ly - 16 * s} r={13 * s} fill={it.swatch} stroke="#FFFFFF" strokeWidth={2.5} pointerEvents="none" />
+              : <text x={lx} y={ly - 16 * s} textAnchor="middle" className="wbr__icon" style={{ fontSize: 30 * s }}>{it.icon}</text>}
+            <text x={lx} y={ly + 24 * s} textAnchor="middle" className="wbr__label" style={{ fontSize: 17 * s }}>{it.label}</text>
           </g>
         );
       })}
-      <circle cx={OUTER + 10} cy={OUTER + 10} r={INNER - 6} className="wbr__center" />
-      <text x={OUTER + 10} y={OUTER + 16} textAnchor="middle" className="wbr__x">✕</text>
+      <circle cx={c} cy={c} r={INNER - 6} className={`wbr__center ${onDragCenter ? 'is-grab' : ''}`} />
+      <text x={c} y={c + 8 * s} textAnchor="middle" className="wbr__x" style={{ fontSize: 24 * s }}>✕</text>
       <style>{CSS}</style>
     </svg>
   );
@@ -108,5 +150,6 @@ const CSS = `
 .wbr__icon { font-size: 26px; fill: #F9FAFB; pointer-events: none; }
 .wbr__label { font: 600 12px/1 Inter, system-ui, sans-serif; fill: #E5E7EB; pointer-events: none; }
 .wbr__center { fill: #FFFFFF; }
+.wbr__center.is-grab { cursor: grab; }
 .wbr__x { font: 700 18px/1 Inter, system-ui, sans-serif; fill: #374151; pointer-events: none; }
 `;

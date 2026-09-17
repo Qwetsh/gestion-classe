@@ -25,13 +25,15 @@ interface Props {
   onPatchTable: (id: string, fn: (t: TableObject) => TableObject) => void;
   onToggleInteractive: (id: string) => void;
   onEdit: (id: string) => void;
+  /** Ouvre le panneau des interactions (l'objet devient un bouton qui affiche / masque d'autres objets). */
+  onInteractions: (id: string) => void;
 }
 
 const hold = (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); };
 
 export function BoardObjectToolbar({
   objects, tableCell, onDuplicate, onDelete, onToggleLock, onReorder, onCover,
-  onImageBackground, onImageReplace, onPatchTable, onToggleInteractive, onEdit,
+  onImageBackground, onImageReplace, onPatchTable, onToggleInteractive, onEdit, onInteractions,
 }: Props) {
   const one = objects.length === 1 ? objects[0] : null;
   const locked = objects.every((o) => o.locked === true);
@@ -83,6 +85,9 @@ export function BoardObjectToolbar({
           ? <button type="button" className="wb__btn wb__txt is-on" title="Retirer le cache" onPointerDown={hold} onClick={() => onCover(null)}>◫</button>
           : <button type="button" className="wb__btn wb__txt" title="Poser un rideau (à découvrir en classe)" onPointerDown={hold} onClick={() => onCover({ kind: 'curtain', color: '#4B5563', label: '?' })}>◫</button>}
         <button type="button" className={`wb__btn wb__txt ${locked ? 'is-on' : ''}`} title={locked ? 'Déverrouiller (Ctrl+Maj+K)' : 'Verrouiller (Ctrl+Maj+K)'} onPointerDown={hold} onClick={onToggleLock}>{locked ? '🔒' : '🔓'}</button>
+        {one && (
+          <button type="button" className={`wb__btn wb__txt ${(one.interactions?.length ?? 0) > 0 ? 'is-on' : ''}`} title="Interactions : ce bouton affiche / masque d'autres objets" onPointerDown={hold} onClick={() => onInteractions(one.id)}>⚡</button>
+        )}
       </div>
       <div className="wb__group">
         <button type="button" className="wb__btn wb__txt wb__btn--danger" title="Supprimer (Suppr)" disabled={locked} onPointerDown={hold} onClick={onDelete}>✕</button>

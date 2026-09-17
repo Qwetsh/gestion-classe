@@ -4,7 +4,7 @@
  * les images sont réduites puis envoyées dans le bucket privé board-assets.
  */
 import { supabase } from './supabase';
-import { BOARD_BUCKET, type BoardPage, type PageImage } from './boardRender';
+import { BOARD_BUCKET, BOARD_PAGE_H, BOARD_UNIT, type BoardPage, type PageImage } from './boardRender';
 
 const MAX_RENDER_WIDTH = 1800;
 const JPEG_QUALITY = 0.86;
@@ -56,7 +56,12 @@ async function pageFromCanvas(userId: string, sessionId: string, canvas: HTMLCan
   const blob = await canvasToJpeg(canvas);
   const path = await uploadPageImage(userId, sessionId, id, blob);
   const image: PageImage = { path, width: canvas.width, height: canvas.height };
-  return { id, background: 'blank', strokes: [], objects: [], image };
+  // Un document plus haut que l'écran (A4 portrait) prend toute la largeur : la page s'allonge
+  // et se lit en défilant, au lieu d'être réduite au centre d'un écran 16:9.
+  const wanted = Math.ceil((BOARD_UNIT * canvas.height) / Math.max(1, canvas.width));
+  const page: BoardPage = { id, background: 'blank', strokes: [], objects: [], image };
+  if (wanted > BOARD_PAGE_H) page.height = wanted;
+  return page;
 }
 
 async function renderPdfPages(file: File, userId: string, sessionId: string, onProgress: (p: ImportProgress) => void): Promise<BoardPage[]> {

@@ -50,10 +50,15 @@ function HandwritingPad({ onText, onProgress }: { onText: (t: string) => void; o
   const [busy, setBusy] = useState(false);
 
   const local = (e: React.PointerEvent) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  // Les points sont en pixels CSS : le calque doit avoir exactement la taille affichée (× ratio
+  // d'écran), sinon l'encre est étirée — avec un calque fixe de 560 px affiché sur 900 px, le trait
+  // partait juste à gauche et s'éloignait du stylet vers la droite (retour de Thomas, TBI 720p).
   const draw = () => {
     const c = ref.current, ctx = c?.getContext('2d');
     if (!c || !ctx) return;
-    ctx.clearRect(0, 0, c.width, c.height);
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, c.width / dpr, c.height / dpr);
     ctx.strokeStyle = '#111827'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const s of [...strokes.current, ...(current.current ? [current.current] : [])]) {
       ctx.beginPath();
@@ -62,6 +67,21 @@ function HandwritingPad({ onText, onProgress }: { onText: (t: string) => void; o
     }
   };
   const clear = () => { strokes.current = []; current.current = null; draw(); };
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const fit = () => {
+      const r = c.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+      if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+      draw();
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(c);
+    return () => ro.disconnect();
+  }, []);
   const recognize = async () => {
     if (strokes.current.length === 0) return;
     setBusy(true);
@@ -82,8 +102,6 @@ function HandwritingPad({ onText, onProgress }: { onText: (t: string) => void; o
     <div className="wbsr__pad">
       <canvas
         ref={ref}
-        width={560}
-        height={140}
         onPointerDown={(e) => { e.preventDefault(); try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* synthétique */ } const p = local(e); current.current = { id: String(Date.now()), tool: 'pen', color: '#000', size: 4, points: [{ ...p, p: 0.5 }] }; draw(); }}
         onPointerMove={(e) => { if (!current.current || !(e.buttons & 1)) return; current.current.points.push({ ...local(e), p: 0.5 }); draw(); }}
         onPointerUp={() => { if (current.current) { strokes.current.push(current.current); current.current = null; draw(); } }}

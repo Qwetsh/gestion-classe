@@ -29,7 +29,7 @@ import {
 } from '../../lib/boardText';
 import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
 import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
-import { isObjectRevealed, revealedGaps, stripGaps, wrapSelectionAsGap, type RevealState } from '../../lib/boardReveal';
+import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type RevealState } from '../../lib/boardReveal';
 import { loadPageImage, objectBounds } from '../../lib/boardRender';
 import { BoardScratchCover } from './BoardScratchCover';
 import { TableView } from './objects/TableView';
@@ -107,8 +107,19 @@ interface Props {
   onContextMenu: (x: number, y: number, id: string) => void;
   /** État de révélation de la séance (rideaux, tickets, trous). */
   reveal: RevealState;
-  onRevealObject: (id: string, value: true | string | null) => void;
+  onRevealObject: (id: string, value: true | string | CurtainSlide | null) => void;
   onRevealGap: (objectId: string, gapId: string) => void;
+  /**
+   * Mode « lecture » (outil d'écriture, ou mode affichage) : les objets cachés n'existent pas
+   * et toucher un bouton déclenche ses interactions. Sinon (édition), les objets cachés
+   * apparaissent en fantôme et les boutons se sélectionnent comme les autres.
+   */
+  play: boolean;
+  /** Un bouton a été touché : déclencher ses interactions. */
+  onFire: (id: string) => void;
+  /** Choix d'une cible d'interaction : tout objet touché (sauf `pickSourceId`) est renvoyé ici. */
+  pickTarget?: ((id: string) => void) | null;
+  pickSourceId?: string | null;
   /** Cellule de tableau qui a le focus (pour le menu contextuel lignes/colonnes). */
   onTableCell?: (objectId: string, r: number, c: number) => void;
   onEquationCommit: (id: string, latex: string, raster: Blob | null, ratio: number) => void;
@@ -193,11 +204,15 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
     reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onToggleInteractive, students,
-    spellCheck = false, onSpellStatus,
+    spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
   },
   ref
 ) {
   const editorsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  /** Rideau d'objet en train d'être tiré : le drap suit le doigt, borné à l'emprise de l'objet. */
+  const curtainDragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; start: CurtainSlide; w: number; h: number; moved: boolean; slide: CurtainSlide } | null>(null);
+  /** Bouton d'interaction pressé : il se déclenche au relâchement si le doigt n'a pas bougé. */
+  const tapRef = useRef<{ id: string; pointerId: number; x: number; y: number } | null>(null);
   const spellRef = useRef<SpellApi>(null);
   const objectsRef = useRef(objects);
   useEffect(() => { objectsRef.current = objects; }, [objects]);
@@ -234,7 +249,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         g.classList.toggle('is-hidden', !editing && !shown.has(id));
       }
     }
-  }, [objects, reveal, editingId]);
+    // `play` : un objet caché (re)monte quand on passe en édition, son éditeur doit être rempli
+  }, [objects, reveal, editingId, play]);
 
   /** Émet un nouvel état d'objets ; `objectsRef` suit tout de suite, sans attendre le rendu. */
   const emit = useCallback((next: BoardObject[], before: BoardObject[] | null) => {
@@ -774,15 +790,20 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   return (
     <div className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
       {objects.map((o) => {
+        const visible = isObjectVisible(reveal, o);
+        // En lecture, un objet caché n'est pas là du tout (ni cliquable, ni dessiné)
+        if (!visible && play) return null;
         const rect = objectRect(o);
         const isEditing = editingId === o.id;
         const isSelected = selectedIds.has(o.id);
         const showHandles = active && single?.id === o.id && !o.locked;
+        const isTrigger = (o.interactions?.length ?? 0) > 0;
+        const pickable = pickTarget !== null && o.id !== pickSourceId;
         return (
           <div
             key={o.id}
             data-obj={o.id}
-            className={`wbo__frame wbo__frame--${o.type} ${active ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${isEditing ? 'is-editing' : ''} ${o.locked ? 'is-locked' : ''}`}
+            className={`wbo__frame wbo__frame--${o.type} ${active ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${isEditing ? 'is-editing' : ''} ${o.locked ? 'is-locked' : ''} ${!visible ? 'is-ghost' : ''} ${isTrigger ? 'is-trigger' : ''} ${play && isTrigger ? 'is-playable' : ''} ${pickable ? 'is-pick' : ''} ${pickTarget && o.id === pickSourceId ? 'is-pick-source' : ''}`}
             style={{
               left: o.x * scale,
               top: o.y * scale,
@@ -791,12 +812,35 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               opacity: o.opacity ?? 1,
             }}
             onPointerDown={(e) => {
+              // Choix d'une cible d'interaction : l'objet touché est la cible, rien d'autre ne bouge
+              if (pickTarget) {
+                e.stopPropagation(); e.preventDefault();
+                if (pickable) pickTarget(o.id);
+                return;
+              }
+              // Bouton en lecture : se déclenche au relâchement (tape sans déplacement)
+              if (play && isTrigger) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                e.stopPropagation(); e.preventDefault();
+                tapRef.current = { id: o.id, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+                try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
+                return;
+              }
               // En saisie, le contenu appartient à l'éditeur (curseur, sélection de texte)
               if (isEditing && (e.target as HTMLElement).closest('.wbo__editor')) { e.stopPropagation(); return; }
               startPress(e, o, 'move');
             }}
             onPointerMove={movePress}
-            onPointerUp={endPress}
+            onPointerUp={(e) => {
+              const tap = tapRef.current;
+              if (tap && tap.pointerId === e.pointerId) {
+                tapRef.current = null;
+                try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
+                if (tap.id === o.id && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 12) onFire(o.id);
+                return;
+              }
+              endPress(e);
+            }}
             onPointerCancel={(e) => { const p = pressRef.current; clearPress(e); if (p?.moved) emit(objectsRef.current, p.before); }}
             onDoubleClick={(e) => {
               if (!active || !EDITABLE_TYPES.has(o.type) || o.locked || isEditing) return;
@@ -961,19 +1005,71 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   </div>
                 );
               }
+              // Rideau : un drap qu'on tire à la main dans n'importe quel sens (ou qu'on tape pour
+              // tout découvrir). En édition, seule la tirette tire : le reste sélectionne et déplace.
+              const slide = curtainSlide(reveal, o.id) ?? { dx: 0, dy: 0 };
+              const w = Math.max(1, b.w * scale), h = Math.max(1, b.h * scale);
+              const tx = slide.dx * w, ty = slide.dy * h;
+              const visX0 = Math.max(0, tx), visX1 = Math.min(w, w + tx), visY1 = Math.min(h, h + ty);
+              const gripLeft = (visX0 + visX1) / 2, gripTop = visY1;
+              const beginDrag = (e: React.PointerEvent) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                e.stopPropagation(); e.preventDefault();
+                try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
+                curtainDragRef.current = { id: o.id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, start: slide, w, h, moved: false, slide };
+              };
+              const moveDrag = (e: React.PointerEvent) => {
+                const d = curtainDragRef.current;
+                if (!d || d.id !== o.id || d.pointerId !== e.pointerId) return;
+                const dxPx = e.clientX - d.startX, dyPx = e.clientY - d.startY;
+                if (!d.moved && Math.hypot(dxPx, dyPx) < 6) return;
+                d.moved = true;
+                d.slide = { dx: Math.max(-1, Math.min(1, d.start.dx + dxPx / d.w)), dy: Math.max(-1, Math.min(1, d.start.dy + dyPx / d.h)) };
+                onRevealObject(o.id, d.slide);
+              };
+              const endDrag = (e: React.PointerEvent, tapReveals: boolean) => {
+                const d = curtainDragRef.current;
+                if (!d || d.id !== o.id || d.pointerId !== e.pointerId) return;
+                curtainDragRef.current = null;
+                try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
+                if (d.moved) onRevealObject(o.id, settleCurtain(d.slide));
+                else if (tapReveals) onRevealObject(o.id, true);
+              };
               return (
                 <div
-                  className="wbo__cover wbo__cover--curtain"
-                  style={{ ...style, background: cover.color }}
-                  onPointerDown={(e) => { if (!active) e.stopPropagation(); }}
-                  onClick={(e) => { if (!active) { e.stopPropagation(); onRevealObject(o.id, true); } }}
+                  className={`wbo__cover wbo__cover--curtain ${active ? 'is-editing' : ''}`}
+                  style={style}
                   onDoubleClick={(e) => { e.stopPropagation(); onRevealObject(o.id, true); }}
-                  title={active ? 'Double-clic pour découvrir' : 'Découvrir'}
                 >
-                  <span>{cover.label ?? '?'}</span>
+                  <div
+                    className="wbo__curtain-sheet"
+                    style={{
+                      background: cover.color,
+                      transform: tx || ty ? `translate(${tx}px, ${ty}px)` : undefined,
+                      clipPath: tx || ty ? `inset(${Math.max(0, -ty)}px ${Math.max(0, tx)}px ${Math.max(0, ty)}px ${Math.max(0, -tx)}px)` : undefined,
+                    }}
+                    title={active ? 'Tirette : glisser pour découvrir · double-clic : tout découvrir' : 'Glisser pour tirer le rideau · toucher : tout découvrir'}
+                    onPointerDown={(e) => { if (!active) beginDrag(e); }}
+                    onPointerMove={moveDrag}
+                    onPointerUp={(e) => endDrag(e, true)}
+                    onPointerCancel={(e) => endDrag(e, false)}
+                  >
+                    <span>{cover.label ?? '?'}</span>
+                  </div>
+                  <div
+                    className="wbo__curtain-grip"
+                    style={{ left: gripLeft, top: gripTop }}
+                    title="Tirer le rideau"
+                    onPointerDown={beginDrag}
+                    onPointerMove={moveDrag}
+                    onPointerUp={(e) => endDrag(e, false)}
+                    onPointerCancel={(e) => endDrag(e, false)}
+                  />
                 </div>
               );
             })()}
+            {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡</span>}
+            {!play && !visible && <span className="wbo__badge wbo__badge--ghost" title="Caché au départ : un bouton l'affichera">caché</span>}
             {active && isSelected && (
               // Bordure de préhension : déplace toujours, même pendant la saisie
               <div className="wbo__grab" onPointerDown={(e) => startPress(e, o, 'move')} />
@@ -1070,7 +1166,30 @@ const CSS = `
 .wbo__editor [data-gap].is-hidden * { color: transparent !important; background: transparent !important; text-decoration: none !important; }
 .wbo__editor [data-gap].is-hidden { border-bottom-color: #374151; }
 .wbo__cover { position: absolute; z-index: 2; pointer-events: auto; overflow: hidden; border-radius: 4px; }
-.wbo__cover--curtain { display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; cursor: pointer; user-select: none; }
+.wbo__cover--curtain { overflow: visible; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; user-select: none; }
+.wbo__curtain-sheet { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: grab; touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+.wbo__cover--curtain.is-editing .wbo__curtain-sheet { cursor: default; }
+/* Tirette : la poignée du rideau, posée sur le bord bas de ce qui reste du drap. Elle tire le
+   rideau dans tous les modes, y compris en édition où le drap lui-même sélectionne l'objet. */
+.wbo__curtain-grip { position: absolute; width: 96px; height: 30px; margin-left: -48px; margin-top: -15px; cursor: grab; touch-action: none; z-index: 1; }
+.wbo__curtain-grip::after { content: ''; position: absolute; left: 50%; top: 50%; width: 64px; height: 10px; margin-left: -32px; margin-top: -5px; border-radius: 5px; background: #6366F1; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.wbo__curtain-grip:hover::after { background: #818CF8; }
+/* Objet caché au départ (édition) : fantôme repérable, toujours sélectionnable */
+.wbo__frame.is-ghost { opacity: 0.4 !important; }
+.wbo__frame.is-ghost::before { content: ''; position: absolute; inset: -3px; border: 2px dashed #9CA3AF; border-radius: 6px; pointer-events: none; }
+.wbo__badge { position: absolute; left: -6px; top: -14px; z-index: 3; padding: 2px 6px; border-radius: 999px; background: #111827; color: #F9FAFB; font: 600 11px/1.2 Inter, system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
+.wbo__badge--trigger { background: #4F46E5; }
+.wbo__badge--ghost { left: auto; right: -6px; background: #6B7280; }
+/* Bouton en lecture : cliquable même sous l'outil d'écriture, et rien ne le déplace */
+.wbo__frame.is-playable { pointer-events: auto; cursor: pointer; }
+.wbo__frame.is-playable * { pointer-events: none !important; }
+/* Choix d'une cible : tous les objets deviennent cliquables, la source est grisée */
+.wbo__frame.is-pick { pointer-events: auto; cursor: crosshair; }
+.wbo__frame.is-pick * { pointer-events: none !important; }
+.wbo__frame.is-pick::after { content: ''; position: absolute; inset: -4px; border: 2px dashed #6366F1; border-radius: 8px; pointer-events: none; animation: wbo-pick 1.2s ease-in-out infinite; }
+.wbo__frame.is-pick:hover::after { border-style: solid; background: rgba(99,102,241,0.12); }
+.wbo__frame.is-pick-source { opacity: 0.45 !important; pointer-events: none; }
+@keyframes wbo-pick { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 .wbo__scratch { display: block; touch-action: none; cursor: crosshair; }
 /* Anneau de 12 px autour de l'objet, et rien au centre : le clip-path vaut aussi pour le test de
    pointage, donc un clic à l'intérieur atteint le texte (curseur, double-clic, sélection) au lieu

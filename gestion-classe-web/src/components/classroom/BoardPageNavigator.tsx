@@ -4,7 +4,7 @@
  * après la dernière modification ; réordonnancement par glisser-déposer ou flèches.
  */
 import { useEffect, useRef, useState } from 'react';
-import { BOARD_RATIO, renderPageToCanvas, type BoardPage } from '../../lib/boardRender';
+import { pageRatio, renderPageToCanvas, type BoardPage } from '../../lib/boardRender';
 
 const THUMB_W = 200;
 const RENDER_DELAY_MS = 250;
@@ -59,7 +59,7 @@ function Thumb({ page, active, index, onSelect, onContextMenu, onDragStart, onDr
       onPointerMove={() => { if (longPress.current) window.clearTimeout(longPress.current); }}
       title={`Page ${index + 1}`}
     >
-      <div className="wbn__img" style={{ aspectRatio: `${BOARD_RATIO}` }}>
+      <div className="wbn__img" style={{ aspectRatio: `${pageRatio(page)}` }}>
         {url ? <img src={url} alt="" draggable={false} /> : null}
         {page.strokes.length === 0 && (page.objects ?? []).length === 0 && !page.image && <span className="wbn__empty">vide</span>}
       </div>
@@ -133,4 +133,12 @@ const CSS = `
 .wbn__btn:hover { background: #374151; }
 .wbn__btn:disabled { opacity: 0.35; cursor: default; }
 .wbn__btn--add { background: #4F46E5; color: #FFFFFF; font-size: 20px; }
+/* Écran compact (≤ 1366 px ou ≤ 800 px de haut) : même largeur que NAV_WIDTH_COMPACT dans Whiteboard.tsx */
+@media (max-width: 1366px), (max-height: 800px) {
+  .wbn { width: 176px; }
+  .wbn__head { padding: 10px 12px 6px; }
+  .wbn__list { padding: 4px 10px 10px; gap: 8px; }
+  .wbn__foot { padding: 8px 10px 10px; }
+  .wbn__btn { height: 36px; }
+}
 `;

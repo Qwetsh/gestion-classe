@@ -34,17 +34,6 @@
   --wb-danger: #DC2626;
   --wb-danger-soft: #FCA5A5;
 
-  /* Densité du chrome. Valeurs « confort TBI » par défaut ; les paliers plus bas sont
-     définis par les media queries en fin de section B. Une cible de 60 px est juste devant
-     un tableau interactif, absurde sur un portable — et elle y déclenche un défilement
-     horizontal de la barre, qui cache des boutons derrière un geste qu'on ne devine pas. */
-  --wb-btn: 60px;
-  --wb-btn-sm: 52px;
-  --wb-ico: 28px;
-  --wb-swatch: 44px;
-  --wb-bar-gap: 14px;
-  --wb-bar-pad: 10px;
-
   --wb-r-page: 3px;
   --wb-r-btn: 14px;
   --wb-r-bar: 22px;
@@ -77,33 +66,16 @@
   --wb-font-num: 'Space Grotesk', 'IBM Plex Mono', ui-monospace, monospace;
 }
 
-/* Polices embarquées dans public/fonts/ — aucun appel CDN (le réseau du collège les filtre).
-   Adaptation par rapport au handoff : les deux familles ne sont distribuées qu'en sous-ensembles
-   (latin / latin-ext), pas en fichier unique. Le français tient entièrement dans « latin » ;
-   latin-ext ne se télécharge que si un nom d'élève sort du répertoire (noms polonais, turcs…). */
+/* Polices embarquées — poser les .woff2 dans public/fonts/ (aucun appel CDN). */
 @font-face {
   font-family: 'Atkinson Hyperlegible Next';
-  src: url('/fonts/AtkinsonHyperlegibleNext-Variable-latin.woff2') format('woff2-variations');
+  src: url('/fonts/AtkinsonHyperlegibleNext-Variable.woff2') format('woff2-variations');
   font-weight: 200 800; font-display: swap;
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Atkinson Hyperlegible Next';
-  src: url('/fonts/AtkinsonHyperlegibleNext-Variable-latin-ext.woff2') format('woff2-variations');
-  font-weight: 200 800; font-display: swap;
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Space Grotesk';
-  src: url('/fonts/SpaceGrotesk-Variable-latin.woff2') format('woff2-variations');
-  font-weight: 300 700; font-display: swap;
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Space Grotesk';
-  src: url('/fonts/SpaceGrotesk-Variable-latin-ext.woff2') format('woff2-variations');
-  font-weight: 300 700; font-display: swap;
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('/fonts/SpaceGrotesk-Variable.woff2') format('woff2-variations');
+  font-weight: 400 700; font-display: swap;
 }
 
 /* ───────── A · Plateau ───────── */
@@ -127,15 +99,11 @@
 /* ───────── B · Barre ───────── */
 
 .wb .wb__bar {
-  gap: var(--wb-bar-gap); padding: var(--wb-bar-pad); border-radius: var(--wb-r-bar);
+  gap: 14px; padding: 10px; border-radius: var(--wb-r-bar);
   background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
   box-shadow: var(--wb-e2);
   transition: opacity var(--wb-t-fast) ease-out;
 }
-/* La barre ne porte plus qu'une douzaine de commandes (les autres sont dans « Plus ⋯ », le
-   rail des pages et la paire Annuler/Rétablir) : elle tient sur une seule ligne. Le retour à
-   la ligne d'avant en faisait un pavé de deux rangées — c'est ce qui la rendait intimidante. */
-.wb .wb__bar--bottom { flex-wrap: nowrap; justify-content: center; overflow-x: auto; }
 /* La barre se retire pendant le tracé (poser .is-drawing sur .wb pendant le geste). */
 .wb.is-drawing .wb__bar { opacity: .4; }
 
@@ -145,60 +113,22 @@
 .wb .wb__bar--left { left: 24px; }
 .wb .wb__bar--right { right: 24px; }
 
-/* ── Paliers de densité ──
-   1600 px et plus : grands écrans 4K/QHD, cibles de 60 px.
-   1367-1599 px : cibles de 52 px.
-   1366 px et moins, OU 800 px de haut et moins (vidéoprojecteur interactif en 1280×720) :
-   « compact », cibles de 44 px (le plancher du handoff), marges resserrées, panneau des pages
-   étroit. Un écran tactile haut (≥ 801 px) garde un plancher de 48 px ; en 720p, 44 px suffisent
-   sur un TBI de 2 m (1 px ≈ 1,5 mm). Même requête côté TSX : `COMPACT_MQ` dans Whiteboard.tsx. */
-@media (max-width: 1599px) {
-  .wb { --wb-btn: 52px; --wb-btn-sm: 46px; --wb-ico: 24px; --wb-swatch: 38px; --wb-bar-gap: 12px; --wb-bar-pad: 8px; --wb-r-btn: 13px; --wb-r-bar: 20px; }
-}
-@media (max-width: 1366px), (max-height: 800px) {
-  .wb { --wb-btn: 44px; --wb-btn-sm: 40px; --wb-ico: 21px; --wb-swatch: 32px; --wb-bar-gap: 8px; --wb-bar-pad: 5px; --wb-r-btn: 12px; --wb-r-bar: 16px; }
-  .wb .wb__bar--bottom { bottom: 10px; }
-  .wb .wb__bar--bottom.wb__bar--hand-right { right: 10px; }
-  .wb .wb__bar--bottom.wb__bar--hand-left { left: 10px; }
-  .wb .wb__bar--left { left: 10px; }
-  .wb .wb__bar--right { right: 10px; }
-  .wb .wb__pagerail, .wb .wb__history { padding: 4px; }
-  .wb .wb__zoom button { height: 32px; font-size: 14px; }
-  .wb .wb__empty p { font-size: 30px; }
-  .wb .wb__empty p + p { font-size: 22px; }
-  .wbm.wbm .wbm { min-width: 280px; }
-  .wbm.wbm .wbm .wbm__item { min-height: 40px; padding: 6px 12px; }
-}
-@media (max-width: 899px) {
-  .wb { --wb-btn: 40px; --wb-btn-sm: 36px; --wb-ico: 19px; --wb-swatch: 28px; --wb-bar-gap: 8px; --wb-bar-pad: 5px; --wb-r-btn: 11px; --wb-r-bar: 16px; }
-}
-@media (max-width: 1366px) and (min-height: 801px) and (pointer: coarse) {
-  .wb { --wb-btn: 48px; --wb-btn-sm: 44px; --wb-ico: 23px; --wb-swatch: 34px; }
-}
-
-/* Sous 900 px, la barre centrée occupe presque toute la largeur : la paire Annuler/Rétablir
-   ne tient plus à côté d'elle et viendrait se poser dessus. Elle passe au-dessus. */
-@media (max-width: 899px) {
-  .wb .wb__history--bar-bottom { bottom: calc(24px + var(--wb-btn) + 2 * var(--wb-bar-pad) + 10px); }
-}
-
-/* Les grappes sont séparées par du vide (gap de la barre), plus par des filets : un trait de
-   plus par grappe, c'est cinq objets graphiques pour zéro information. */
-.wb .wb__group { gap: 4px; padding: 0; }
+.wb .wb__group { gap: 6px; padding: 0 8px; border-right-color: var(--wb-chrome-line); }
+.wb .wb__bar--left .wb__group, .wb .wb__bar--right .wb__group { border-bottom-color: var(--wb-chrome-line); }
 
 /* Cible 60 px ; l'outil actif s'inverse en blanc — seul élément blanc du chrome. */
 .wb .wb__btn {
-  width: var(--wb-btn); height: var(--wb-btn); border-radius: var(--wb-r-btn);
+  width: 60px; height: 60px; border-radius: var(--wb-r-btn);
   background: transparent; color: var(--wb-on-chrome);
   font: 600 22px/1 var(--wb-font-ui);
   transition: background var(--wb-t-fast) ease-out, color var(--wb-t-fast) ease-out;
 }
-.wb .wb__btn svg { width: var(--wb-ico); height: var(--wb-ico); }
+.wb .wb__btn svg { width: 28px; height: 28px; }
 .wb .wb__btn:hover { background: var(--wb-chrome-hover); color: #FFFFFF; }
 .wb .wb__btn.is-on { background: #FFFFFF; color: #14181F; }
 .wb .wb__btn:disabled { opacity: .3; }
 /* Grappe « séance » : plus petite, atténuée (poser .wb__group--session sur le dernier groupe). */
-.wb .wb__group--session .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); color: var(--wb-on-chrome-dim); }
+.wb .wb__group--session .wb__btn { width: 52px; height: 52px; border-radius: 13px; color: var(--wb-on-chrome-dim); }
 
 .wb .wb__select {
   height: 52px; padding: 0 14px; border-radius: 13px; border: 0;
@@ -207,7 +137,7 @@
 }
 .wb .wb__select--size { font-family: var(--wb-font-num); }
 
-.wb .wb__swatch { width: var(--wb-swatch); height: var(--wb-swatch); margin: 0 2px; border: 0; }
+.wb .wb__swatch { width: 44px; height: 44px; margin: 0 2px; border: 0; }
 .wb .wb__swatch.is-on { box-shadow: 0 0 0 3px var(--wb-chrome), 0 0 0 6px #FFFFFF; }
 .wb .wb__swatch--hl { border-radius: 12px; height: 34px; }
 
@@ -247,7 +177,7 @@
   background: var(--wb-chrome); color: var(--wb-on-chrome);
   box-shadow: var(--wb-e3); font: 500 20px/1.2 var(--wb-font-ui);
 }
-.wbm.wbm .wbm .wbm__item { min-height: 44px; padding: 8px 14px; border-radius: 12px; }
+.wbm.wbm .wbm__item { min-height: 44px; padding: 8px 14px; border-radius: 12px; }
 .wbm.wbm .wbm__item:hover, .wbm.wbm .wbm__item:focus-visible { background: var(--wb-chrome-hover); color: #FFFFFF; }
 .wbm.wbm .wbm__item.is-danger { color: var(--wb-danger-soft); }
 .wbm.wbm .wbm__item kbd { font: 500 15px/1 var(--wb-font-num); color: var(--wb-on-chrome-mute); }
@@ -310,16 +240,7 @@
 /* ───────── D · Instruments et widgets ───────── */
 
 .wbi__panel.wbi__panel { padding: 10px; border-radius: 20px; background: var(--wb-chrome); box-shadow: var(--wb-e3); gap: 6px; }
-/* Colonnes en minmax(0, …) : en `1fr` la grille prend la largeur du plus long libellé et les
-   tuiles de droite sortent du panneau — visibles, mais hors de sa boîte, donc hors d'atteinte. */
-.wbi__panel.wbi__panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* Réglages sur une colonne, comme le bloc d'origine le prévoit (sa règle y est écrasée par la
-   suivante, de même spécificité). */
-/* Hauteur libre et texte qui passe à la ligne : au TBI on ne tronque pas un libellé à 19 px. */
-.wbi__panel.wbi__panel .wbi__item {
-  min-width: 0; height: auto; min-height: 52px; padding: 8px 14px; border-radius: 12px;
-  color: var(--wb-on-chrome); font: 500 19px/1.2 var(--wb-font-ui); white-space: normal;
-}
+.wbi__panel.wbi__panel .wbi__item { height: 52px; padding: 0 14px; border-radius: 12px; color: var(--wb-on-chrome); font: 500 19px/1.2 var(--wb-font-ui); }
 .wbi__panel.wbi__panel .wbi__item:hover { background: var(--wb-chrome-hover); }
 .wbi__panel.wbi__panel .wbi__item.is-on { background: #FFFFFF; color: #14181F; }
 .wbi__panel.wbi__panel .wbi__item span { width: 26px; font-size: 20px; }
@@ -416,24 +337,6 @@
 .wb .wb__import-bar i { background: var(--wb-accent); }
 .wb .wb__display-exit { right: 24px; bottom: 24px; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); font: 600 17px/1 var(--wb-font-ui); }
 
-/* Seconde rangée de la barre de texte, dépliée par « … ». Ancrée du côté où la barre est posée,
-   jamais au-dessus de la zone d'écriture courante. */
-/* Position fixe et non absolue : la barre défile en `overflow-x: auto`, elle rognerait
-   une rangée posée au-dessus d'elle. Les valeurs suivent la hauteur de barre (82 px) + 24 px. */
-.wb .wb__row2 {
-  position: fixed; z-index: 13; display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-radius: var(--wb-r-bar);
-  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
-  box-shadow: var(--wb-e2);
-}
-.wb .wb__bar--bottom .wb__row2 { left: 50%; transform: translateX(-50%); bottom: 116px; }
-.wb .wb__bar--bottom.wb__bar--hand-left .wb__row2 { left: 24px; transform: none; }
-.wb .wb__bar--bottom.wb__bar--hand-right .wb__row2 { left: auto; right: 24px; transform: none; }
-.wb .wb__bar--left .wb__row2 { left: 116px; bottom: 24px; flex-direction: column; }
-.wb .wb__bar--right .wb__row2 { right: 116px; bottom: 24px; flex-direction: column; }
-/* Texte à trous : une action pédagogique, pas une mise en forme. */
-.wb .wb__row2-gap { color: var(--wb-accent); }
-
 /* ───────── F · Finitions ───────── */
 
 /* Focus clairement visible sur chrome comme sur papier */
@@ -442,92 +345,9 @@
   outline: 3px solid var(--wb-accent, #F97316); outline-offset: 3px; border-radius: 12px;
 }
 
-/* Recherche sans résultat : le terme cherché, et une seule sortie. */
-.wbsr.wbsr .wbsr__results[hidden] { display: none; }
-.wbsr.wbsr .wbsr__skel { height: 132px; }
-.wbsr.wbsr .wbsr__empty {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
-  padding: 32px 16px; text-align: center;
-}
-.wbsr.wbsr .wbsr__empty p { margin: 0; font: 600 26px/1.3 var(--wb-font-ui); color: var(--wb-on-chrome); }
-.wbsr.wbsr .wbsr__empty button {
-  height: 60px; padding: 0 28px; border: 0; border-radius: var(--wb-r-btn);
-  background: var(--wb-accent); color: #14181F; cursor: pointer;
-  font: 700 19px/1 var(--wb-font-ui);
-}
-
 /* Squelettes de chargement (poser .wb-skel sur les blocs en attente) */
 .wb-skel { background: #1B212B; border-radius: 14px; animation: wb-skel 1.4s ease-in-out infinite alternate; }
 @keyframes wb-skel { from { opacity: .55; } to { opacity: 1; } }
-
-/* État vide de la page : deux lignes, rien d'autre. Elles s'effacent au premier trait. */
-.wb .wb__empty {
-  position: absolute; inset: 0; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  pointer-events: none; text-align: center;
-}
-.wb .wb__empty p { margin: 0; font: 600 40px/1.2 var(--wb-font-ui); color: var(--wb-grid-major); }
-.wb .wb__empty p + p { font-size: 30px; font-weight: 500; }
-
-/* Niveau 1 — état persistant. Pastille + mot : jamais la couleur seule. */
-/* Ancrée en haut et non « au bord bas » comme au lot F : la barre de ce tableau occupe
-   trois rangées, le bas de l'écran ne peut plus rien recevoir. */
-.wb .wb__offline {
-  position: absolute; left: 50%; top: 20px; transform: translateX(-50%); z-index: 6;
-  display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 20px;
-  border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
-  box-shadow: var(--wb-e2); font: 600 17px/1 var(--wb-font-ui); color: var(--wb-on-chrome);
-}
-.wb .wb__offline i { width: 10px; height: 10px; border-radius: 50%; background: var(--wb-accent); }
-
-/* Niveau 2 — un geste est attendu. En haut à droite : loin de la main, loin de l'encre. */
-.wb .wb__savefail {
-  position: absolute; right: 16px; top: 16px; z-index: 7;
-  display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 16px 0 20px;
-  border-radius: var(--wb-r-btn); background: var(--wb-chrome);
-  border: 1px solid var(--wb-danger); box-shadow: var(--wb-e2);
-  font: 600 19px/1 var(--wb-font-ui); color: var(--wb-on-chrome);
-}
-.wb .wb__savefail button {
-  height: 44px; padding: 0 18px; border: 0; border-radius: 12px;
-  background: var(--wb-accent); color: #14181F; cursor: pointer;
-  font: 700 17px/1 var(--wb-font-ui);
-}
-
-/* Le rattrapage de 8 s qui remplace toute confirmation. */
-/* Juste sous la pilule hors ligne : deux positions fixes, rien ne saute quand l'une apparaît. */
-.wb .wb__undobar {
-  position: absolute; left: 50%; top: 76px; transform: translateX(-50%); z-index: 7;
-  display: flex; align-items: center; gap: 20px; height: 60px; padding: 0 12px 0 24px;
-  border-radius: 999px; background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
-  box-shadow: var(--wb-e2); font: 600 19px/1 var(--wb-font-ui); color: var(--wb-on-chrome);
-}
-.wb .wb__undobar button {
-  height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
-  background: var(--wb-accent); color: #14181F; cursor: pointer;
-  font: 700 17px/1 var(--wb-font-ui);
-}
-
-/* Premier lancement : trois bulles ancrées, montrées ensemble, congédiées ensemble. */
-.wb .wb__coach { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
-.wb .wb__coach-bubble {
-  position: absolute; max-width: 320px; padding: 14px 18px;
-  border-radius: var(--wb-r-btn); background: var(--wb-chrome);
-  border: 1px solid var(--wb-chrome-line); box-shadow: var(--wb-e2);
-  font: 600 19px/1.35 var(--wb-font-ui); color: var(--wb-on-chrome);
-}
-.wb .wb__coach-bubble::after {
-  content: ''; position: absolute; width: 12px; height: 12px;
-  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line);
-  border-width: 0 1px 1px 0; transform: rotate(45deg);
-}
-/* Décalée du centre : l'état vide de la page y est écrit. */
-.wb .wb__coach-bubble--radial { left: 50%; top: 28%; transform: translateX(-50%); }
-.wb .wb__coach-bubble--radial::after { left: calc(50% - 6px); bottom: -7px; }
-.wb .wb__coach-bubble--pages { right: 24px; top: 96px; }
-.wb .wb__coach-bubble--pages::after { right: 28px; top: -7px; border-width: 1px 0 0 1px; }
-.wb .wb__coach-bubble--hand { left: 50%; bottom: 96px; transform: translateX(-50%); }
-.wb .wb__coach-bubble--hand::after { left: calc(50% - 6px); bottom: -7px; }
 
 @media (prefers-reduced-motion: reduce) {
   .wb *, .wbm *, .wbr *, .wbn *, .wbx *, .wblb *, .wbsr *, .wbp *, .wbk *, .wbw * {
@@ -535,67 +355,3 @@
   }
   .wb-skel { animation: none; }
 }
-
-/* ───────── B bis · Îlots flottants (rail des pages, Annuler/Rétablir) ─────────
-   Même matière que la barre, mais plus discrets : ce ne sont pas des outils de dessin. */
-.wb .wb__pagerail,
-.wb .wb__history {
-  gap: 4px; padding: 8px; border-radius: var(--wb-r-bar);
-  background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); box-shadow: var(--wb-e2);
-}
-.wb .wb__pagerail .wb__btn,
-.wb .wb__history .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); color: var(--wb-on-chrome-dim); }
-/* « + » du rail : orange = action (deuxième accent du handoff), comme le bouton du navigateur. */
-.wb .wb__pagerail .wb__btn--add { background: var(--wb-accent); color: #140A02; }
-.wb .wb__pagerail .wb__btn--add:hover { background: #FB923C; color: #140A02; }
-.wb .wb__pages { color: var(--wb-on-chrome-dim); font: 600 13px/1 var(--wb-font-num); }
-
-/* Panneaux ancrés : épaisseur du trait, menu « Plus ⋯ » */
-.wbpop.wb__sizepop, .wbpop.wbm { background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); border-radius: var(--wb-r-bar); box-shadow: var(--wb-e2); }
-.wbpop.wb__sizepop .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); color: var(--wb-on-chrome); }
-.wbpop.wb__sizepop .wb__btn.is-on { background: #FFFFFF; color: #14181F; }
-.wbm .wbm__title { color: var(--wb-on-chrome-dim); }
-.wbm__item { color: var(--wb-on-chrome); font-family: var(--wb-font-ui); }
-.wbm .wbm__item:hover:not(:disabled) { background: var(--wb-chrome-hover); }
-.wbm .wbm__item.is-on { background: #FFFFFF; color: #14181F; }
-.wbm .wbm__section + .wbm__section { border-top-color: var(--wb-chrome-line); }
-
-/* ───────── B ter · Barre contextuelle flottante ─────────
-   Matière différente de la barre principale (fond creusé + liseré accent) : ce qu'elle porte
-   agit sur l'objet désigné par la flèche, pas sur le tableau. Cibles un cran plus petites —
-   c'est une barre de mise en forme, pas une barre d'outils qu'on vise au stylet à 2 m. */
-.wb .wbft {
-  gap: var(--wb-bar-gap); padding: var(--wb-bar-pad); border-radius: var(--wb-r-bar);
-  background: var(--wb-chrome-sunk); border-color: var(--wb-select); box-shadow: var(--wb-e3);
-}
-.wb .wbft__label { color: var(--wb-on-chrome-dim); font-family: var(--wb-font-ui); }
-.wb .wbft__arrow { background: var(--wb-chrome-sunk); border-color: var(--wb-select); }
-/* Pastille repliée (un tap rouvre) et bouton « réduire » en fin de barre, atténué : action rare. */
-.wb .wbft--collapsed { min-height: var(--wb-btn-sm); border-radius: var(--wb-r-btn); gap: 6px; font-family: var(--wb-font-ui); }
-.wb .wbft--collapsed:hover { background: var(--wb-chrome-hover); color: var(--wb-on-chrome); }
-.wb .wbft--collapsed .wbft__label { padding: 0 2px 0 6px; }
-.wb .wbft .wbft__collapse { color: var(--wb-on-chrome-mute); }
-.wb .wbft .wbft__collapse:hover { color: var(--wb-on-chrome); }
-.wb .wbft .wb__btn { width: var(--wb-btn-sm); height: var(--wb-btn-sm); }
-.wb .wbft .wb__btn svg { width: calc(var(--wb-ico) - 4px); height: calc(var(--wb-ico) - 4px); }
-.wb .wbft .wb__swatch { width: calc(var(--wb-swatch) - 8px); height: calc(var(--wb-swatch) - 8px); }
-.wb .wbft .wb__swatch--hl { height: calc(var(--wb-swatch) - 14px); }
-.wb .wbft .wb__select { height: var(--wb-btn-sm); padding: 0 10px; font-size: 15px; }
-.wb .wbft .wb__txt { width: var(--wb-btn-sm); font-size: 17px; }
-/* Correcteur : « abc » souligné en ondulé, compteur de fautes, point orange si le service est muet. */
-.wb .wb__spell { position: relative; }
-.wb .wb__spell-abc { text-decoration: underline wavy #DC2626; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-.wb .wb__spell:not(.is-on) .wb__spell-abc { text-decoration-color: currentColor; opacity: .55; }
-.wb .wb__spell-count {
-  position: absolute; right: -4px; top: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
-  background: #DC2626; color: #FFFFFF; font: 700 12px/20px var(--wb-font-num); text-align: center;
-}
-.wb .wb__spell.is-warn::after {
-  content: ''; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--wb-accent);
-}
-.wb .wb__spell.is-busy .wb__spell-abc { animation: wb-spell-busy 1s ease-in-out infinite; }
-@keyframes wb-spell-busy { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
-.wb .wb__btn--danger { color: #FCA5A5; }
-.wb .wb__btn--danger:hover:not(:disabled) { background: #7F1D1D; color: #FFFFFF; }
-/* La seconde rangée (« … ») était ancrée sur la barre du bas : elle suit désormais l'objet. */
-.wb .wbft .wb__row2 { position: absolute; left: 50%; right: auto; bottom: calc(100% + 8px); transform: translateX(-50%); flex-direction: row; }

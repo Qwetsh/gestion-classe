@@ -3,7 +3,7 @@
  * avec ou sans l'encre, une ou deux pages par feuille.
  */
 import { useEffect, useState } from 'react';
-import { BOARD_RATIO, renderPageToCanvas, type BoardPage } from '../../lib/boardRender';
+import { pageRatio, renderPageToCanvas, type BoardPage } from '../../lib/boardRender';
 import { exportBoardPdf } from '../../lib/boardExport';
 
 interface Props {
@@ -20,7 +20,7 @@ function Thumb({ page, mode }: { page: BoardPage; mode: 'covered' | 'revealed' }
     renderPageToCanvas(page, 320, { mode }).then((c) => { if (!cancelled) setUrl(c.toDataURL('image/jpeg', 0.7)); }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [page, mode]);
-  return <div className="wbx__thumb" style={{ aspectRatio: `${BOARD_RATIO}` }}>{url && <img src={url} alt="" />}</div>;
+  return <div className="wbx__thumb" style={{ aspectRatio: `${pageRatio(page)}` }}>{url && <img src={url} alt="" />}</div>;
 }
 
 export function BoardExportDialog({ pages, name, currentIndex, onClose }: Props) {
