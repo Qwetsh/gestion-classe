@@ -1,5 +1,5 @@
 /**
- * Clés et réglages d'intégrations (YouTube, Unsplash, base Notion, Google Drive) : gardés dans
+ * Clés et réglages d'intégrations (YouTube, Unsplash, base Notion, Google Drive, OneDrive) : gardés dans
  * le navigateur pour un accès immédiat, et copiés dans le compte (`user_api_keys`) pour suivre
  * l'enseignant sur tous ses appareils. Au démarrage du tableau, le compte alimente le navigateur ;
  * à chaque enregistrement, le navigateur alimente le compte.
@@ -11,6 +11,7 @@ const SYNCED: { storage: string; field: string; json: boolean }[] = [
   { storage: 'classroom-board-api-keys', field: 'search', json: true },
   { storage: 'classroom-board-notion-db', field: 'notionDb', json: false },
   { storage: 'classroom-board-drive-keys', field: 'drive', json: true },
+  { storage: 'classroom-board-onedrive-keys', field: 'onedrive', json: true },
 ];
 
 let owner: string | null = null;

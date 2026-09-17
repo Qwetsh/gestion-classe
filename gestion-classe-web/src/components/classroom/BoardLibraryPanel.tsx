@@ -1,6 +1,6 @@
 /**
  * Panneau « Ressources » : bibliothèque d'objets (par module de matière), annales de Brevet,
- * base Notion, Google Drive. Un tap insère dans la page.
+ * base Notion, OneDrive, Google Drive. Un tap insère dans la page.
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -27,6 +27,21 @@ import {
   type NotionEntry,
   type NotionPageBody,
 } from '../../lib/boardSources';
+import {
+  ONEDRIVE_REDIRECT_URI,
+  OneDriveExpiredError,
+  connectOneDrive,
+  disconnectOneDrive,
+  downloadOneDriveFile,
+  formatOneDriveSize,
+  listOneDrive,
+  loadOneDriveKeys,
+  saveOneDriveKeys,
+  searchOneDrive,
+  type OneDriveItem,
+  type OneDriveKeys,
+  type OneDriveSession,
+} from '../../lib/oneDrive';
 import { MissingKeyError } from '../../lib/boardSearch';
 import type { Matiere } from '../../lib/brevets';
 
@@ -40,6 +55,16 @@ interface Props {
 }
 
 type Tab = 'library' | 'brevet' | 'notion' | 'drive';
+
+/** OneDrive ouvert : session, fil d'Ariane (dossiers parcourus) et contenu affiché. */
+interface OneDriveView { session: OneDriveSession; path: OneDriveItem[]; items: OneDriveItem[]; searching: boolean }
+
+const ONEDRIVE_ICON: Record<string, string> = { pdf: '📕', docx: '📝', doc: '📝', odt: '📝', pptx: '📊', ppt: '📊', odp: '📊', xlsx: '📈', xls: '📈', ods: '📈', gcboard: '🖍' };
+function oneDriveIcon(item: OneDriveItem): string {
+  if (item.isFolder) return '📁';
+  if ((item.mime ?? '').startsWith('image/')) return '🖼';
+  return ONEDRIVE_ICON[(item.name.split('.').pop() ?? '').toLowerCase()] ?? '📄';
+}
 
 export function LibraryIcon({ item, size = 44, color = '#111827' }: { item: LibraryItem; size?: number; color?: string }) {
   return (
@@ -74,6 +99,9 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
   /** Corps des pages ouvertes (aperçu des images), par entrée. */
   const [notionBodies, setNotionBodies] = useState<Record<string, NotionPageBody | 'loading'>>({});
   const [driveKeys, setDriveKeys] = useState<DriveKeys>(() => loadDriveKeys());
+  const [oneDriveKeys, setOneDriveKeys] = useState<OneDriveKeys>(() => loadOneDriveKeys());
+  const [oneDrive, setOneDrive] = useState<OneDriveView | null>(null);
+  const [oneDriveQuery, setOneDriveQuery] = useState('');
 
   useEffect(() => { saveEnabledModules(modules); }, [modules]);
   useEffect(() => { setNotice(null); }, [tab]);
@@ -155,6 +183,78 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
     } catch (err) {
       setNotice(err instanceof MissingKeyError ? err.hint : `Drive : ${err instanceof Error ? err.message : 'erreur'}`);
     } finally { setBusy(null); }
+  };
+
+  /** Erreur OneDrive : message lisible ; une session expirée referme la vue pour se reconnecter. */
+  const oneDriveFail = (err: unknown) => {
+    if (err instanceof OneDriveExpiredError) setOneDrive(null);
+    const cancelled = err instanceof Error && /user_cancelled|interaction_in_progress/.test(err.message);
+    if (!cancelled) setNotice(err instanceof MissingKeyError ? err.hint : `OneDrive : ${err instanceof Error ? err.message : 'erreur'}`);
+  };
+
+  /** Connexion (silencieuse si possible, sinon fenêtre Microsoft) puis racine du OneDrive. */
+  const openOneDrive = async (interactive: boolean) => {
+    setBusy('onedrive');
+    setNotice(null);
+    try {
+      const session = await connectOneDrive(oneDriveKeys, interactive);
+      if (!session) return;
+      const items = await listOneDrive(session.token, null);
+      setOneDrive({ session, path: [], items, searching: false });
+    } catch (err) { oneDriveFail(err); }
+    finally { setBusy(null); }
+  };
+
+  // Reconnexion silencieuse dès l'ouverture de l'onglet si un compte est déjà connu
+  useEffect(() => {
+    if (tab === 'drive' && !oneDrive && oneDriveKeys.clientId && busy === null) void openOneDrive(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  /** Ouvre un dossier (`depth` = position dans le fil d'Ariane, -1 pour la racine). */
+  const oneDriveGo = async (folder: OneDriveItem | null, depth: number) => {
+    if (!oneDrive) return;
+    setBusy('onedrive');
+    setNotice(null);
+    setOneDriveQuery('');
+    try {
+      const path = folder ? [...oneDrive.path.slice(0, depth), folder] : oneDrive.path.slice(0, depth + 1);
+      const target = path[path.length - 1] ?? null;
+      const items = await listOneDrive(oneDrive.session.token, target?.id ?? null);
+      setOneDrive({ ...oneDrive, path, items, searching: false });
+    } catch (err) { oneDriveFail(err); }
+    finally { setBusy(null); }
+  };
+
+  const oneDriveSearch = async () => {
+    if (!oneDrive) return;
+    const q = oneDriveQuery.trim();
+    if (!q) { await oneDriveGo(null, oneDrive.path.length - 1); return; }
+    setBusy('onedrive');
+    setNotice(null);
+    try {
+      const items = await searchOneDrive(oneDrive.session.token, q);
+      setOneDrive({ ...oneDrive, items, searching: true });
+      if (items.length === 0) setNotice('Aucun résultat dans OneDrive.');
+    } catch (err) { oneDriveFail(err); }
+    finally { setBusy(null); }
+  };
+
+  const insertOneDrive = async (item: OneDriveItem) => {
+    if (!oneDrive || !item.importable) return;
+    setBusy(item.id);
+    setNotice(null);
+    try {
+      const file = await downloadOneDriveFile(oneDrive.session.token, item);
+      await onInsertFiles([file]);
+      onClose();
+    } catch (err) { oneDriveFail(err); }
+    finally { setBusy(null); }
+  };
+
+  const oneDriveDisconnect = async () => {
+    setOneDrive(null);
+    try { await disconnectOneDrive(oneDriveKeys); } catch { /* cache déjà vide */ }
   };
 
   return (
@@ -275,11 +375,61 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
 
           {tab === 'drive' && (
             <div className="wblb__list">
+              <h3>OneDrive</h3>
+              {!oneDrive && (
+                <>
+                  <p className="wblb__empty">Parcourir son OneDrive (personnel ou établissement) et insérer un PDF, une image ou un tableau ; les documents Word, PowerPoint et Excel sont convertis en PDF (une page du tableau par page).</p>
+                  <label className="wblb__field">ID d'application (client) Azure<input value={oneDriveKeys.clientId ?? ''} onChange={(e) => { const k = { ...oneDriveKeys, clientId: e.target.value }; setOneDriveKeys(k); saveOneDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
+                  <button type="button" className="wblb__primary" disabled={busy === 'onedrive'} onClick={() => void openOneDrive(true)}>{busy === 'onedrive' ? 'Connexion…' : 'Ouvrir OneDrive'}</button>
+                  <p className="wblb__empty">Inscription gratuite sur portal.azure.com › Microsoft Entra ID › Inscriptions d'applications : comptes « organisation et personnels », plateforme « Application monopage », URI de redirection <code className="wblb__code">{ONEDRIVE_REDIRECT_URI}</code>.</p>
+                </>
+              )}
+              {oneDrive && (
+                <>
+                  <div className="wblb__crumbs">
+                    <button type="button" disabled={busy === 'onedrive'} onClick={() => void oneDriveGo(null, -1)}>☁️ OneDrive</button>
+                    {oneDrive.path.map((f, i) => (
+                      <span key={f.id}>› <button type="button" disabled={busy === 'onedrive'} onClick={() => void oneDriveGo(null, i)}>{f.name}</button></span>
+                    ))}
+                    {oneDrive.searching && <span>› <em>Résultats de recherche</em></span>}
+                    <span className="wblb__spacer" />
+                    <small>{oneDrive.session.account}</small>
+                    <button type="button" onClick={() => void oneDriveDisconnect()} title="Oublier ce compte sur cet appareil">Déconnecter</button>
+                  </div>
+                  <div className="wblb__odsearch">
+                    <input value={oneDriveQuery} placeholder="Chercher dans tout le OneDrive" onChange={(e) => setOneDriveQuery(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') void oneDriveSearch(); if (e.key === 'Escape') onClose(); }} />
+                    <button type="button" disabled={busy === 'onedrive'} onClick={() => void oneDriveSearch()}>{busy === 'onedrive' ? '…' : 'Chercher'}</button>
+                  </div>
+                  {oneDrive.items.map((item) => item.isFolder ? (
+                    <button key={item.id} type="button" className="wblb__row wblb__folder" disabled={busy === 'onedrive'} onClick={() => void oneDriveGo(item, oneDrive.path.length)}>
+                      <span className="wblb__ico">📁</span>
+                      <div>
+                        <b>{item.name}</b>
+                        <small>{item.childCount} élément{item.childCount > 1 ? 's' : ''}</small>
+                      </div>
+                      <span className="wblb__chev">›</span>
+                    </button>
+                  ) : (
+                    <div key={item.id} className={`wblb__row ${item.importable ? '' : 'is-muted'}`}>
+                      <span className="wblb__ico">{oneDriveIcon(item)}</span>
+                      <div>
+                        <b>{item.name}</b>
+                        <small>{formatOneDriveSize(item.size)}{item.modified ? ` · ${new Date(item.modified).toLocaleDateString('fr-FR')}` : ''}{item.importable ? '' : ' · type non pris en charge'}</small>
+                      </div>
+                      {item.importable && (
+                        <button type="button" disabled={busy !== null} onClick={() => void insertOneDrive(item)}>{busy === item.id ? 'Chargement…' : item.importable === 'convert' ? 'Convertir en PDF et insérer' : 'Insérer'}</button>
+                      )}
+                    </div>
+                  ))}
+                  {oneDrive.items.length === 0 && busy !== 'onedrive' && <p className="wblb__empty">{oneDrive.searching ? 'Aucun résultat.' : 'Dossier vide.'}</p>}
+                </>
+              )}
+
+              <h3>Google Drive</h3>
               <p className="wblb__empty">Choisir un document, une image ou un PDF dans Google Drive ; les Google Docs / Slides sont convertis en PDF (une page du tableau par page).</p>
               <label className="wblb__field">Client ID OAuth Google<input value={driveKeys.clientId ?? ''} onChange={(e) => { const k = { ...driveKeys, clientId: e.target.value }; setDriveKeys(k); saveDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="….apps.googleusercontent.com" /></label>
               <label className="wblb__field">Clé API Google (Picker)<input value={driveKeys.apiKey ?? ''} onChange={(e) => { const k = { ...driveKeys, apiKey: e.target.value }; setDriveKeys(k); saveDriveKeys(k); }} onKeyDown={(e) => e.stopPropagation()} placeholder="AIza…" /></label>
               <button type="button" className="wblb__primary" disabled={busy === 'drive'} onClick={() => void runDrive()}>{busy === 'drive' ? 'Ouverture…' : 'Ouvrir Google Drive'}</button>
-              <p className="wblb__empty">OneDrive : à venir (Microsoft Graph). En attendant, glisser-déposer le fichier depuis l'explorateur.</p>
             </div>
           )}
         </div>
@@ -336,4 +486,20 @@ const CSS = `
 .wblb__field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #9CA3AF; }
 .wblb__field input { height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #374151; background: #1F2937; color: #F9FAFB; font: 500 13px/1 "IBM Plex Mono", ui-monospace, monospace; }
 .wblb__primary { align-self: flex-start; height: 44px; padding: 0 18px; }
+.wblb__code { font: 500 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; color: #E5E7EB; word-break: break-all; user-select: all; }
+.wblb__crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 13px; color: #9CA3AF; }
+.wblb__crumbs button { padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: #A5B4FC; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+.wblb__crumbs button:hover { background: #1F2937; }
+.wblb__crumbs button:disabled { opacity: 0.5; cursor: default; }
+.wblb__crumbs small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.wblb__spacer { flex: 1; }
+.wblb__odsearch { display: flex; gap: 8px; }
+.wblb__odsearch input { flex: 1; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #374151; background: #1F2937; color: #F9FAFB; font: 500 14px/1 Inter, system-ui, sans-serif; }
+.wblb__odsearch button { height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: #374151; color: #E5E7EB; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+.wblb__folder { width: 100%; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.wblb__folder:hover { outline: 2px solid #6366F1; }
+.wblb__folder:disabled { cursor: default; }
+.wblb__ico { flex: none; width: 28px; font-size: 20px; text-align: center; }
+.wblb__chev { flex: none; color: #6B7280; font-size: 20px; }
+.wblb__row.is-muted { opacity: 0.55; }
 `;

@@ -1,6 +1,6 @@
 /**
  * Sources externes du panneau « Ressources » : base Notion (via l'Edge Function
- * notion-proxy), Google Drive (Picker), annales de Brevet (bucket public).
+ * notion-proxy), Google Drive (Picker), annales de Brevet (bucket public). OneDrive : voir `oneDrive.ts`.
  * Aucune clé n'est inventée : chaque source explique ce qu'il lui manque.
  */
 import { supabase } from './supabase';
