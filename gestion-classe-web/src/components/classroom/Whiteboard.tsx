@@ -100,7 +100,7 @@ import { recognizeHandwriting } from '../../lib/boardHandwriting';
 import { pullKeys, setKeysOwner } from '../../lib/userKeys';
 import { newInstrument, snapToInstruments, type Instrument, type InstrumentKind } from '../../lib/boardInstruments';
 import { fetchBoardPages, upsertBoardPages } from '../../lib/boardQueries';
-import { importFilesToPages, isImportableFile, isImageFile, uploadBoardImage, uploadCoverImage, type ImportProgress } from '../../lib/boardImport';
+import { fullWidthPageHeight, importFilesToPages, isImportableFile, isImageFile, uploadBoardImage, uploadCoverImage, type ImportLayout, type ImportProgress } from '../../lib/boardImport';
 import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName, GCBOARD_EXTENSION } from '../../lib/boardFile';
 import { renderPageToCanvas } from '../../lib/boardRender';
 import { objectTypeLabel, type ImageObject } from '../../lib/boardObjects';
@@ -205,9 +205,12 @@ const MAX_ZOOM = 4;
 const RAIL_BTN = 48;
 
 type BarSide = 'bottom' | 'left' | 'right';
-/** `floating` : les barres contextuelles suivent l'objet sélectionné, ou restent accrochées à la barre principale. */
-interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar' }
-const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object' };
+/**
+ * `floating` : les barres contextuelles suivent l'objet sélectionné, ou restent accrochées à la barre principale.
+ * `documents` : PDF et images importés en pleine largeur (la page s'allonge) ou réduits pour tenir dans la page.
+ */
+interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar'; documents: ImportLayout }
+const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object', documents: 'full' };
 
 function loadTbi(): TbiSettings {
   try { return { ...DEFAULT_TBI, ...(JSON.parse(localStorage.getItem(TBI_SETTINGS_KEY) || '{}') as Partial<TbiSettings>) }; } catch { return DEFAULT_TBI; }
@@ -801,6 +804,18 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     window.setTimeout(() => { const overflow = pageOverflow(); setView((v) => (v.zoom > 1 ? v : { zoom: 1, tx: 0, ty: -overflow })); }, 60);
   }, [setPageHeight, pageOverflow]);
 
+  /**
+   * Bascule la présentation du document de fond de la page courante : pleine largeur (page
+   * allongée) ou réduit pour tenir dans l'écran 16:9. L'encre et les objets déjà posés gardent
+   * leurs coordonnées : à faire de préférence avant d'annoter.
+   */
+  const setDocumentLayout = useCallback((layout: ImportLayout) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p?.image) return;
+    setPageHeight(p.id, layout === 'full' ? fullWidthPageHeight(p.image) : BOARD_PAGE_H);
+    setView((v) => (v.zoom > 1 ? v : { zoom: 1, tx: 0, ty: 0 }));
+  }, [setPageHeight]);
+
   /** Ramène la hauteur de la page à son contenu (objets, encre, image de fond), sans descendre sous le 16:9. */
   const fitPageHeight = useCallback(() => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -1065,11 +1080,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const insertImage = useCallback((img: { path: string; width: number; height: number }, at?: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return null;
-    // Taille « normale » : jusqu'à 70 % de la largeur de page, sans réduire un document (A4,
-    // grande photo) pour le faire tenir dans l'écran — la page s'allonge s'il le faut
-    // (voir handleObjectsChange), deux écrans au plus.
+    // Taille « normale » : jusqu'à 70 % de la largeur de page. En pleine largeur, un document (A4,
+    // grande photo) n'est pas réduit pour tenir dans l'écran — la page s'allonge s'il le faut
+    // (voir handleObjectsChange), deux écrans au plus. En « tenir dans la page », il est réduit
+    // pour rester entièrement visible sur l'écran 16:9.
     const pageH = pageHeight(p);
-    const maxW = UNIT * 0.7, maxH = BOARD_PAGE_H * 2;
+    const maxW = UNIT * 0.7, maxH = tbiRef.current.documents === 'fit' ? BOARD_PAGE_H * 0.9 : BOARD_PAGE_H * 2;
     const k = Math.min(1, maxW / img.width, maxH / img.height);
     const w = Math.round(img.width * k), h = Math.round(img.height * k);
     const cx = at?.x ?? UNIT / 2, cy = at?.y ?? Math.min(pageH, BOARD_PAGE_H) / 2;
@@ -1121,7 +1137,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const { pages: got } = await importGcboard(f, userId, sessionId, (label) => setImporting({ done: 0, total: 1, label }));
         inserted = [...inserted, ...got];
       }
-      if (pdfs.length > 0) inserted = [...inserted, ...(await importFilesToPages(pdfs, userId, sessionId, setImporting))];
+      if (pdfs.length > 0) inserted = [...inserted, ...(await importFilesToPages(pdfs, userId, sessionId, setImporting, tbiRef.current.documents))];
       if (inserted.length === 0) return;
       const atIndex = pageIndexRef.current;
       setPages((prev) => [...prev.slice(0, atIndex + 1), ...inserted, ...prev.slice(atIndex + 1)]);
@@ -1774,6 +1790,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { separator: true, label: '' },
       { label: 'Allonger la page (+ ½ écran)', onSelect: () => extendPage() },
       { label: 'Ajuster la hauteur de la page au contenu', disabled: !p.height, onSelect: fitPageHeight },
+      ...(p.image ? [
+        p.image && fullWidthPageHeight(p.image) > BOARD_PAGE_H && !p.height
+          ? { label: 'Document : afficher en pleine largeur (page allongée)', onSelect: () => setDocumentLayout('full') }
+          : { label: 'Document : réduire pour tenir dans la page', disabled: !p.height, onSelect: () => setDocumentLayout('fit') },
+      ] : []),
       { label: 'Règle', onSelect: () => addInstrument('ruler') },
       { label: 'Équerre', onSelect: () => addInstrument('setsquare') },
       { label: 'Rapporteur', onSelect: () => addInstrument('protractor') },
@@ -1789,7 +1810,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: 'Effacer la page', danger: true, disabled: p.strokes.length === 0 && (p.objects ?? []).length === 0, onSelect: clearPage },
     ];
     setMenu({ x, y, items });
-  }, [pasteFromClipboard, createTextBox, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight]);
+  }, [pasteFromClipboard, createTextBox, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
 
   const openInkMenu = useCallback((x: number, y: number) => {
     const count = selectedStrokeIdsRef.current.size;
@@ -2526,6 +2547,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { id: 'set-probe', label: 'Test du stylet (diagnostic)', icon: '🎯', active: probeOpen, onSelect: () => setProbeOpen((v) => !v) },
         { id: 'set-palette-show', label: palette.hidden ? 'Afficher la pastille' : 'Masquer la pastille', icon: '◉', active: !palette.hidden, onSelect: () => setPalette((p) => ({ ...p, hidden: !p.hidden })) },
         { id: 'set-gestures', label: `Pincer pour zoomer ${tbi.gestures ? 'activé' : 'désactivé'}`, icon: '✌️', active: tbi.gestures, onSelect: () => setTbi((t) => ({ ...t, gestures: !t.gestures })) },
+        { id: 'set-doc-full', label: 'Documents importés en pleine largeur (page allongée)', icon: '⬍', active: tbi.documents === 'full', onSelect: () => setTbi((t) => ({ ...t, documents: 'full' })) },
+        { id: 'set-doc-fit', label: 'Documents importés réduits pour tenir dans la page', icon: '⊡', active: tbi.documents === 'fit', onSelect: () => setTbi((t) => ({ ...t, documents: 'fit' })) },
         ...(['bottom', 'left', 'right'] as BarSide[]).map((side) => ({
           id: `set-bar-${side}`,
           label: `Barre en ${side === 'bottom' ? 'bas' : side === 'left' ? 'à gauche' : 'à droite'}`,

@@ -51,20 +51,29 @@ async function uploadPageImage(userId: string, sessionId: string, pageId: string
   return path;
 }
 
-async function pageFromCanvas(userId: string, sessionId: string, canvas: HTMLCanvasElement): Promise<BoardPage> {
+/**
+ * Présentation d'un document importé en page : `full` = pleine largeur, la page s'allonge et se
+ * lit en défilant (A4 portrait très lisible) ; `fit` = réduit pour tenir dans l'écran 16:9.
+ */
+export type ImportLayout = 'full' | 'fit';
+
+/** Hauteur de page (unités) qu'il faut pour afficher l'image en pleine largeur. */
+export const fullWidthPageHeight = (img: Pick<PageImage, 'width' | 'height'>) => Math.ceil((BOARD_UNIT * img.height) / Math.max(1, img.width));
+
+async function pageFromCanvas(userId: string, sessionId: string, canvas: HTMLCanvasElement, layout: ImportLayout): Promise<BoardPage> {
   const id = uid();
   const blob = await canvasToJpeg(canvas);
   const path = await uploadPageImage(userId, sessionId, id, blob);
   const image: PageImage = { path, width: canvas.width, height: canvas.height };
-  // Un document plus haut que l'écran (A4 portrait) prend toute la largeur : la page s'allonge
-  // et se lit en défilant, au lieu d'être réduite au centre d'un écran 16:9.
-  const wanted = Math.ceil((BOARD_UNIT * canvas.height) / Math.max(1, canvas.width));
   const page: BoardPage = { id, background: 'blank', strokes: [], objects: [], image };
-  if (wanted > BOARD_PAGE_H) page.height = wanted;
+  // Pleine largeur : un document plus haut que l'écran (A4 portrait) allonge la page au lieu
+  // d'être réduit au centre d'un écran 16:9. « Tenir dans la page » : hauteur 16:9, image « contain ».
+  const wanted = fullWidthPageHeight(image);
+  if (layout === 'full' && wanted > BOARD_PAGE_H) page.height = wanted;
   return page;
 }
 
-async function renderPdfPages(file: File, userId: string, sessionId: string, onProgress: (p: ImportProgress) => void): Promise<BoardPage[]> {
+async function renderPdfPages(file: File, userId: string, sessionId: string, onProgress: (p: ImportProgress) => void, layout: ImportLayout): Promise<BoardPage[]> {
   const pdfjs = await getPdfjs();
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
@@ -85,7 +94,7 @@ async function renderPdfPages(file: File, userId: string, sessionId: string, onP
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       // pdfjs-dist v5 : le type RenderParameters exige un cast (voir mémoire projet)
       await page.render({ canvasContext: ctx, viewport } as never).promise;
-      pages.push(await pageFromCanvas(userId, sessionId, canvas));
+      pages.push(await pageFromCanvas(userId, sessionId, canvas, layout));
     }
   } finally {
     await doc.destroy();
@@ -93,7 +102,7 @@ async function renderPdfPages(file: File, userId: string, sessionId: string, onP
   return pages;
 }
 
-async function renderImage(file: File, userId: string, sessionId: string): Promise<BoardPage> {
+async function renderImage(file: File, userId: string, sessionId: string, layout: ImportLayout = 'full'): Promise<BoardPage> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -111,7 +120,7 @@ async function renderImage(file: File, userId: string, sessionId: string): Promi
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return pageFromCanvas(userId, sessionId, canvas);
+    return pageFromCanvas(userId, sessionId, canvas, layout);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -126,15 +135,16 @@ export async function importFilesToPages(
   files: File[],
   userId: string,
   sessionId: string,
-  onProgress: (p: ImportProgress) => void
+  onProgress: (p: ImportProgress) => void,
+  layout: ImportLayout = 'full'
 ): Promise<BoardPage[]> {
   const pages: BoardPage[] = [];
   for (const file of files) {
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
-      pages.push(...(await renderPdfPages(file, userId, sessionId, onProgress)));
+      pages.push(...(await renderPdfPages(file, userId, sessionId, onProgress, layout)));
     } else if (file.type.startsWith('image/')) {
       onProgress({ done: 0, total: 1, label: file.name });
-      pages.push(await renderImage(file, userId, sessionId));
+      pages.push(await renderImage(file, userId, sessionId, layout));
     }
   }
   return pages;
