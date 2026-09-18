@@ -56,6 +56,7 @@ import type { SpellStatus } from './BoardSpellChecker';
 import { BoardTextToolbar } from './BoardTextToolbar';
 import { BoardContextMenu, type MenuItem } from './BoardContextMenu';
 import { BoardPageNavigator } from './BoardPageNavigator';
+import { BoardPageRail } from './BoardPageRail';
 import { BoardShapeToolbar, type ShapeStyle } from './BoardShapeToolbar';
 import { BoardColorPicker } from './BoardColorPicker';
 import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject } from '../../lib/boardShapes';
@@ -3119,28 +3120,20 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
 
       {/* Pages : rail vertical au bord, du côté du navigateur de vignettes — ce n'est pas
-          un outil de dessin, ça n'a rien à faire au milieu des outils. */}
-      {!displayMode && (() => {
-        const side = tbi.bar === 'right' ? 'left' : 'right';
-        return (
-          <div className={`wb__pagerail wb__pagerail--${side}`} style={side === 'right' && navOpen ? { right: navWidth + 20 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
-            <button className="wb__btn" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0} title="Page précédente">
-              <svg viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" /></svg>
-            </button>
-            <span className="wb__pages">{pageIndex + 1}/{pageCount}</span>
-            <button className="wb__btn" onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))} disabled={pageIndex >= pageCount - 1} title="Page suivante">
-              <svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" /></svg>
-            </button>
-            {/* Nouvelle page toujours à portée, même navigateur fermé (il l'est par défaut en 720p) */}
-            <button className="wb__btn wb__btn--add" onClick={addPage} title="Nouvelle page (Ctrl+Entrée)">
-              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
-            </button>
-            <button className={`wb__btn ${navOpen ? 'is-on' : ''}`} onClick={() => setNavOpen((v) => !v)} title="Navigateur de pages (N)">
-              <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM14 5v14M16 9h2M16 12h2M16 15h2" /></svg>
-            </button>
-          </div>
-        );
-      })()}
+          un outil de dessin, ça n'a rien à faire au milieu des outils. Déplaçable par sa poignée. */}
+      {!displayMode && (
+        <BoardPageRail
+          side={tbi.bar === 'right' ? 'left' : 'right'}
+          navOpen={navOpen}
+          navWidth={navWidth}
+          pageIndex={pageIndex}
+          pageCount={pageCount}
+          onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}
+          onNext={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+          onAdd={addPage}
+          onToggleNav={() => setNavOpen((v) => !v)}
+        />
+      )}
 
       {/* Annuler / Rétablir : hors de la barre, dans le coin opposé à la main qui écrit */}
       {!displayMode && (() => {
@@ -3365,6 +3358,18 @@ const CSS = `
 }
 .wb__pagerail--left { left: 10px; }
 .wb__pagerail--right { right: 10px; }
+.wb__pagerail.is-floating { z-index: 13; }
+.wb__pagerail.is-drag { box-shadow: 0 0 0 2px #6366F1, 0 16px 40px rgba(0,0,0,0.45); }
+/* Poignée de déplacement du rail : deux colonnes de points, comme une barre d'outils amovible */
+.wb__grip {
+  width: 100%; height: 18px; margin: -2px 0 2px; border-radius: 6px; cursor: grab; touch-action: none;
+  color: #9CA3AF; opacity: 0.8;
+  background-image: radial-gradient(circle, currentColor 1.4px, transparent 1.8px);
+  background-size: 6px 6px; background-position: center; background-repeat: repeat;
+  background-clip: content-box; padding: 3px 9px; box-sizing: border-box;
+}
+.wb__grip:hover { opacity: 1; background-color: rgba(255,255,255,0.06); }
+.wb__pagerail.is-drag .wb__grip { cursor: grabbing; color: #A5B4FC; opacity: 1; }
 .wb__history--right { right: 10px; }
 /* Panneau des trois épaisseurs, ouvert depuis le bouton unique de la barre */
 .wb__sizepop { display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
