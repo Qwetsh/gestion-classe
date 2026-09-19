@@ -79,7 +79,7 @@ import { BoardRadialMenu, type RadialItem } from './BoardRadialMenu';
 import { BoardPalette } from './BoardPalette';
 import { BoardPaletteEditor } from './BoardPaletteEditor';
 import { BoardInputProbe } from './BoardInputProbe';
-import { loadPalette, savePalette, paletteAction, RADIAL_COLOR_CHOICES, type PaletteConfig } from '../../lib/boardRadialPalette';
+import { loadPalette, savePalette, paletteAction, INSERT_ACTIONS, RADIAL_COLOR_CHOICES, type InsertKind, type PaletteConfig } from '../../lib/boardRadialPalette';
 import { BoardInstruments } from './BoardInstruments';
 import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
@@ -106,7 +106,6 @@ import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName
 import { renderPageToCanvas } from '../../lib/boardRender';
 import { objectTypeLabel, type ImageObject } from '../../lib/boardObjects';
 import {
-  WIDGET_LABELS,
   emptyTable,
   insertTableCol,
   insertTableRow,
@@ -1302,9 +1301,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [addObject, color]);
 
   const insertWidget = useCallback((widget: WidgetKind) => {
+    // Hauteurs : contenu + la bande de préhension de 1 em en haut du widget (voir WidgetView)
     const sizes: Record<WidgetKind, [number, number]> = {
-      timer: [320, 170], dice: [260, 180], wheel: [340, 180], noise: [360, 230], calc: [280, 360],
-      meter: [420, 170], groups: [560, 300], clock: [340, 170], traffic: [120, 260], qr: [220, 240],
+      timer: [320, 186], dice: [260, 196], wheel: [340, 196], noise: [360, 246], calc: [280, 376],
+      meter: [420, 186], groups: [560, 316], clock: [340, 186], traffic: [120, 276], qr: [220, 256],
     };
     const [w, h] = sizes[widget];
     const config: WidgetObject['config'] = widget === 'timer' ? { seconds: 300 }
@@ -1369,6 +1369,41 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       window.alert(`Micro indisponible : ${err instanceof Error ? err.message : 'accès refusé'}`);
     }
   }, [insertAudio]);
+
+  /**
+   * Geste d'insertion pour un élément du catalogue (`INSERT_ACTIONS`). `at` (unités de page)
+   * place l'objet au point cliqué quand l'entrée le permet, sinon au centre de la vue.
+   */
+  const runInsert = useCallback((kind: InsertKind, at?: { x: number; y: number }) => {
+    switch (kind) {
+      case 'image': dropPoint.current = at ?? null; imageInputRef.current?.click(); return;
+      case 'table': insertTable(3, 3, undefined, at); return;
+      case 'video': { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u, at); return; }
+      case 'web': { const u = window.prompt('Adresse du site'); if (u) insertWeb(u); return; }
+      case 'link': { const u = window.prompt('Adresse du lien'); if (u) insertFromUrl(u, at); return; }
+      case 'audio': audioInputRef.current?.click(); return;
+      case 'record': void toggleRecording(); return;
+      case 'sticky': insertSticky(); return;
+      case 'equation': insertEquation(); return;
+      default: insertWidget(kind);
+    }
+  }, [insertTable, insertFromUrl, insertWeb, toggleRecording, insertSticky, insertEquation, insertWidget]);
+
+  /**
+   * Tout ce qu'on peut insérer : une seule liste pour le bouton « Insérer » de la barre, le
+   * sous-menu du clic droit et les quartiers de la palette radiale.
+   */
+  const insertEntries = useCallback((at?: { x: number; y: number }): { id: InsertKind; label: string; icon: string; run: () => void }[] =>
+    INSERT_ACTIONS.map((a) => ({
+      id: a.id,
+      label: a.id === 'record' && recording ? 'Arrêter l\'enregistrement' : a.label,
+      icon: a.id === 'record' && recording ? '⏹' : a.icon,
+      run: () => runInsert(a.id, at),
+    })), [recording, runInsert]);
+
+  /** Sous-menu « Insérer » (clic droit, palette radiale) : la même liste, en entrées de menu. */
+  const insertMenuItems = useCallback((at?: { x: number; y: number }): MenuItem[] =>
+    insertEntries(at).map((e) => ({ label: `${e.icon}\u2002${e.label}`, onSelect: e.run })), [insertEntries]);
 
   const onEquationCommit = useCallback(async (id: string, latex: string, raster: Blob | null, ratio: number) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -1715,15 +1750,41 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: 'Coller', shortcut: 'Ctrl+V', disabled: !clipboardHasObjects(), onSelect: pasteFromClipboard },
       { label: 'Dupliquer', shortcut: 'Ctrl+D', onSelect: duplicateSelected },
       { separator: true, label: '' },
+      // Actions propres au type d'objet, au premier niveau : ce sont les plus fréquentes
       ...(target.type === 'text' && !many && !locked
         ? [{ label: 'Modifier le texte', shortcut: 'Double-clic', onSelect: () => setEditingId(id) }]
         : []),
-      { label: 'Mettre au premier plan', shortcut: 'Ctrl+Maj+]', onSelect: () => reorderSelected('front') },
-      { label: 'Avancer', shortcut: 'Ctrl+]', onSelect: () => reorderSelected('forward') },
-      { label: 'Reculer', shortcut: 'Ctrl+[', onSelect: () => reorderSelected('backward') },
-      { label: "Mettre à l'arrière-plan", shortcut: 'Ctrl+Maj+[', onSelect: () => reorderSelected('back') },
-      { separator: true, label: '' },
-      ...(target.cover
+      ...(target.type === 'text' && gapIdsIn(target.html).length > 0
+        ? [{ label: 'Révéler tous les trous', onSelect: () => revealAllGaps(target.id) }]
+        : []),
+      ...(target.type === 'equation' && !many && !locked ? [{ label: "Modifier l'équation", shortcut: 'Double-clic', onSelect: () => setEditingId(id) }] : []),
+      ...(target.type === 'web' && !many ? [{ label: target.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site', onSelect: () => onToggleInteractive(target.id) }] : []),
+      ...(target.type === 'image' && !many ? [{ label: 'Image', children: [
+        { label: "Remplacer l'image…", onSelect: () => replaceImageInputRef.current?.click() },
+        { label: 'Mettre en fond de page', onSelect: sendImageToBackground },
+      ] }] : []),
+      ...(target.type === 'table' && !many ? (() => {
+        const cell = tableCellRef.current?.id === target.id ? tableCellRef.current : { r: 0, c: 0 };
+        return [{ label: 'Tableau', children: [
+          { label: 'Ligne au-dessus', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r)) },
+          { label: 'Ligne en dessous', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r + 1)) },
+          { label: 'Colonne avant', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c)) },
+          { label: 'Colonne après', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c + 1)) },
+          { separator: true, label: '' },
+          { label: 'Supprimer la ligne', disabled: target.rows <= 1, onSelect: () => patchTable(target.id, (t) => removeTableRow(t, cell.r)) },
+          { label: 'Supprimer la colonne', disabled: target.cols <= 1, onSelect: () => patchTable(target.id, (t) => removeTableCol(t, cell.c)) },
+          { separator: true, label: '' },
+          { label: target.header ? 'Sans ligne d\'en-tête' : 'Première ligne en en-tête', onSelect: () => patchTable(target.id, (t) => ({ ...t, header: !t.header })) },
+        ] }];
+      })() : []),
+      // Familles d'actions en sous-menus (survol ou toucher) pour garder le menu court
+      { label: 'Ordre', children: [
+        { label: 'Mettre au premier plan', shortcut: 'Ctrl+Maj+]', onSelect: () => reorderSelected('front') },
+        { label: 'Avancer', shortcut: 'Ctrl+]', onSelect: () => reorderSelected('forward') },
+        { label: 'Reculer', shortcut: 'Ctrl+[', onSelect: () => reorderSelected('backward') },
+        { label: "Mettre à l'arrière-plan", shortcut: 'Ctrl+Maj+[', onSelect: () => reorderSelected('back') },
+      ] },
+      { label: target.cover ? 'Cache' : 'Poser un cache', children: target.cover
         ? [
             ...(reveal.objects[target.id] !== undefined
               ? [{ label: 'Recouvrir', onSelect: () => revealObject(target.id, null) }]
@@ -1731,41 +1792,20 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             ...(reveal.objects[target.id] !== true
               ? [{ label: 'Découvrir', onSelect: () => revealObject(target.id, true) }]
               : []),
+            { separator: true, label: '' },
             { label: 'Retirer le cache', onSelect: () => setCoverOnSelected(null) },
           ]
         : [
-            { label: 'Poser un rideau', onSelect: () => setCoverOnSelected({ kind: 'curtain', color: '#4B5563', label: '?' }) },
+            { label: 'Rideau', onSelect: () => setCoverOnSelected({ kind: 'curtain', color: '#4B5563', label: '?' }) },
             { label: 'Ticket à gratter (uni)', onSelect: () => setCoverOnSelected({ kind: 'scratch', color: '#9CA3AF' }) },
             { label: 'Ticket à gratter (image…)', onSelect: pickCoverImage },
-          ]),
-      ...(!many ? [
-        { separator: true, label: '' },
-        { label: `Interactions du bouton…${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, onSelect: () => setInteractionsFor(target.id) },
-        { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
+          ] },
+      ...(!many ? [{ label: `Bouton et interactions${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, children: [
+        { label: 'Interactions du bouton…', onSelect: () => setInteractionsFor(target.id) },
         ...((target.interactions?.length ?? 0) > 0 ? [{ label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) }] : []),
-      ] : []),
-      ...(target.type === 'text' && gapIdsIn(target.html).length > 0
-        ? [{ label: 'Révéler tous les trous', onSelect: () => revealAllGaps(target.id) }]
-        : []),
-      ...(target.type === 'image' && !many ? [
-        { label: "Remplacer l'image…", onSelect: () => replaceImageInputRef.current?.click() },
-        { label: 'Mettre en fond de page', onSelect: sendImageToBackground },
-      ] : []),
-      ...(target.type === 'equation' && !many && !locked ? [{ label: "Modifier l'équation", shortcut: 'Double-clic', onSelect: () => setEditingId(id) }] : []),
-      ...(target.type === 'web' && !many ? [{ label: target.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site', onSelect: () => onToggleInteractive(target.id) }] : []),
-      ...(target.type === 'table' && !many ? (() => {
-        const cell = tableCellRef.current?.id === target.id ? tableCellRef.current : { r: 0, c: 0 };
-        return [
-          { separator: true, label: '' },
-          { label: 'Ligne au-dessus', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r)) },
-          { label: 'Ligne en dessous', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r + 1)) },
-          { label: 'Colonne avant', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c)) },
-          { label: 'Colonne après', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c + 1)) },
-          { label: 'Supprimer la ligne', disabled: target.rows <= 1, onSelect: () => patchTable(target.id, (t) => removeTableRow(t, cell.r)) },
-          { label: 'Supprimer la colonne', disabled: target.cols <= 1, onSelect: () => patchTable(target.id, (t) => removeTableCol(t, cell.c)) },
-          { label: target.header ? 'Sans ligne d\'en-tête' : 'Première ligne en en-tête', onSelect: () => patchTable(target.id, (t) => ({ ...t, header: !t.header })) },
-        ];
-      })() : []),
+        { separator: true, label: '' },
+        { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
+      ] }] : []),
       { label: many ? 'Exporter la sélection en image' : 'Exporter en image (PNG)', onSelect: () => void exportSelectionImage() },
       { separator: true, label: '' },
       { label: locked ? 'Déverrouiller' : 'Verrouiller', shortcut: 'Ctrl+Maj+K', onSelect: toggleLockSelected },
@@ -1780,38 +1820,49 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const items: MenuItem[] = [
       { label: 'Coller', shortcut: 'Ctrl+V', disabled: !clipboardHasObjects(), onSelect: pasteFromClipboard },
       { label: 'Nouvelle zone de texte ici', shortcut: 'T', onSelect: () => { setTool('text'); createTextBox(unit.x, unit.y); } },
-      { label: 'Insérer une image…', onSelect: () => { dropPoint.current = unit; imageInputRef.current?.click(); } },
+      { label: 'Insérer ici', children: insertMenuItems(unit) },
       { label: 'Tout sélectionner', shortcut: 'Ctrl+A', disabled: (p.objects ?? []).length === 0, onSelect: selectAll },
       { separator: true, label: '' },
-      ...BACKGROUNDS.map((b) => ({ label: `Fond : ${b.label}`, onSelect: () => setBackground(b.id) })),
-      { separator: true, label: '' },
-      { label: p.curtain ? 'Retirer le rideau de page' : 'Rideau sur la page', onSelect: togglePageCurtain },
-      { label: 'Tout recouvrir (cette page)', onSelect: recoverCurrentPage },
-      { label: 'Tout recouvrir (tout le tableau)', onSelect: recoverAll },
-      { separator: true, label: '' },
-      { label: 'Allonger la page (+ ½ écran)', onSelect: () => extendPage() },
-      { label: 'Ajuster la hauteur de la page au contenu', disabled: !p.height, onSelect: fitPageHeight },
-      ...(p.image ? [
-        p.image && fullWidthPageHeight(p.image) > BOARD_PAGE_H && !p.height
-          ? { label: 'Document : afficher en pleine largeur (page allongée)', onSelect: () => setDocumentLayout('full') }
-          : { label: 'Document : réduire pour tenir dans la page', disabled: !p.height, onSelect: () => setDocumentLayout('fit') },
-      ] : []),
-      { label: 'Règle', onSelect: () => addInstrument('ruler') },
-      { label: 'Équerre', onSelect: () => addInstrument('setsquare') },
-      { label: 'Rapporteur', onSelect: () => addInstrument('protractor') },
-      { label: 'Projecteur', onSelect: () => setSpotlight(true) },
-      { separator: true, label: '' },
-      { label: 'Exporter en PDF…', onSelect: () => setExportOpen(true) },
-      { label: 'Exporter la page en image (PNG)', onSelect: () => void exportPageImage() },
-      { label: `Enregistrer le tableau (${GCBOARD_EXTENSION})`, onSelect: () => void saveGcboard() },
-      { label: 'Ouvrir un tableau, un PDF, une image…', onSelect: () => fileInputRef.current?.click() },
-      { separator: true, label: '' },
-      { label: 'Nouvelle page', shortcut: 'Ctrl+Entrée', onSelect: addPage },
-      { label: 'Dupliquer la page', onSelect: () => duplicatePage(pageIndexRef.current) },
-      { label: 'Effacer la page', danger: true, disabled: p.strokes.length === 0 && (p.objects ?? []).length === 0, onSelect: clearPage },
+      // Les familles d'actions sont rangées en sous-menus (survol ou toucher) pour garder le
+      // menu court sur le TBI.
+      { label: 'Changer de fond', children: BACKGROUNDS.map((b) => ({ label: b.label, checked: p.background === b.id, onSelect: () => setBackground(b.id) })) },
+      { label: 'Rideau et caches', children: [
+        { label: p.curtain ? 'Retirer le rideau de page' : 'Rideau sur la page', onSelect: togglePageCurtain },
+        { separator: true, label: '' },
+        { label: 'Tout recouvrir (cette page)', onSelect: recoverCurrentPage },
+        { label: 'Tout recouvrir (tout le tableau)', onSelect: recoverAll },
+      ] },
+      { label: 'Instruments', children: [
+        { label: 'Règle', onSelect: () => addInstrument('ruler') },
+        { label: 'Équerre', onSelect: () => addInstrument('setsquare') },
+        { label: 'Rapporteur', onSelect: () => addInstrument('protractor') },
+        { separator: true, label: '' },
+        { label: 'Projecteur', onSelect: () => setSpotlight(true) },
+      ] },
+      { label: 'Page', children: [
+        { label: 'Nouvelle page', shortcut: 'Ctrl+Entrée', onSelect: addPage },
+        { label: 'Dupliquer la page', onSelect: () => duplicatePage(pageIndexRef.current) },
+        { separator: true, label: '' },
+        { label: 'Allonger la page (+ ½ écran)', onSelect: () => extendPage() },
+        { label: 'Ajuster la hauteur au contenu', disabled: !p.height, onSelect: fitPageHeight },
+        ...(p.image ? [
+          p.image && fullWidthPageHeight(p.image) > BOARD_PAGE_H && !p.height
+            ? { label: 'Document : afficher en pleine largeur (page allongée)', onSelect: () => setDocumentLayout('full') }
+            : { label: 'Document : réduire pour tenir dans la page', disabled: !p.height, onSelect: () => setDocumentLayout('fit') },
+        ] : []),
+        { separator: true, label: '' },
+        { label: 'Effacer la page', danger: true, disabled: p.strokes.length === 0 && (p.objects ?? []).length === 0, onSelect: clearPage },
+      ] },
+      { label: 'Fichier et export', children: [
+        { label: 'Ouvrir un tableau, un PDF, une image…', onSelect: () => fileInputRef.current?.click() },
+        { label: `Enregistrer le tableau (${GCBOARD_EXTENSION})`, onSelect: () => void saveGcboard() },
+        { separator: true, label: '' },
+        { label: 'Exporter en PDF…', onSelect: () => setExportOpen(true) },
+        { label: 'Exporter la page en image (PNG)', onSelect: () => void exportPageImage() },
+      ] },
     ];
     setMenu({ x, y, items });
-  }, [pasteFromClipboard, createTextBox, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
+  }, [pasteFromClipboard, createTextBox, insertMenuItems, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
 
   const openInkMenu = useCallback((x: number, y: number) => {
     const count = selectedStrokeIdsRef.current.size;
@@ -2389,6 +2440,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setsquare: { onSelect: () => addInstrument('setsquare') },
     protractor: { onSelect: () => addInstrument('protractor') },
     keyboard: { active: keyboardOpen, onSelect: () => setKeyboardOpen((v) => !v) },
+    insert: { onSelect: () => { if (radial) setMenu({ x: radial.x, y: radial.y, items: insertMenuItems() }); else setInsertOpen(true); } },
+    // Un quartier par élément insérable (`insert-calc`, `insert-timer`…)
+    ...Object.fromEntries(insertEntries().map((e) => [`insert-${e.id}`, { active: e.id === 'record' && recording, onSelect: e.run }])),
     library: { onSelect: () => setLibraryOpen(true) },
     search: { onSelect: () => setSearchOpen(true) },
     pick: { disabled: !classroom, onSelect: () => setPickOpen(true) },
@@ -3228,18 +3282,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             </button>
             {insertOpen && (
               <BoardPopover anchorRef={insertBtnRef} onClose={() => setInsertOpen(false)} className="wbi__panel" width={420}>
-                {[
-                  { label: 'Image', icon: '🖼', run: () => { dropPoint.current = null; imageInputRef.current?.click(); } },
-                  { label: 'Tableau 3 × 3', icon: '▦', run: () => insertTable(3, 3) },
-                  { label: 'Vidéo (YouTube…)', icon: '▶', run: () => { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u); } },
-                  { label: 'Site web', icon: '🌐', run: () => { const u = window.prompt('Adresse du site'); if (u) insertWeb(u); } },
-                  { label: 'Lien', icon: '🔗', run: () => { const u = window.prompt('Adresse du lien'); if (u) insertFromUrl(u); } },
-                  { label: 'Son (fichier)', icon: '🔊', run: () => audioInputRef.current?.click() },
-                  { label: recording ? 'Arrêter l\'enregistrement' : 'Enregistrer au micro', icon: recording ? '⏹' : '🎙', run: () => void toggleRecording() },
-                  { label: 'Post-it', icon: '🗒', run: () => insertSticky() },
-                  { label: 'Équation (LaTeX)', icon: '∑', run: insertEquation },
-                  ...(['timer', 'clock', 'meter', 'noise', 'traffic', 'dice', 'wheel', 'groups', 'qr', 'calc'] as WidgetKind[]).map((k) => ({ label: WIDGET_LABELS[k], icon: { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮', meter: '🎚', groups: '👥', clock: '🕒', traffic: '🚦', qr: '▦' }[k], run: () => insertWidget(k) })),
-                ].map((it) => (
+                {insertEntries().map((it) => (
                   <button key={it.label} type="button" className="wbi__item" onClick={() => { it.run(); setInsertOpen(false); }}>
                     <span>{it.icon}</span>{it.label}
                   </button>

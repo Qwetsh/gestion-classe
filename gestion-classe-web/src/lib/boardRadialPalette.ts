@@ -6,10 +6,35 @@
  * manipule que des identifiants.
  */
 
+import { WIDGET_LABELS, type WidgetKind } from './boardMedia';
+
 export const PALETTE_STORAGE_KEY = 'classroom-board-radial';
 export const PALETTE_SLOTS = 8;
 
-export type PaletteGroup = 'Outils' | 'Couleur et trait' | 'Historique' | 'Pages' | 'Instruments' | 'Séance';
+export type PaletteGroup = 'Outils' | 'Couleur et trait' | 'Historique' | 'Pages' | 'Instruments' | 'Insertion' | 'Séance';
+
+/** Ce qu'on peut insérer sur la page : médias, objets et widgets. */
+export type InsertKind = 'image' | 'table' | 'video' | 'web' | 'link' | 'audio' | 'record' | 'sticky' | 'equation' | WidgetKind;
+export const INSERT_WIDGETS: WidgetKind[] = ['timer', 'clock', 'meter', 'noise', 'traffic', 'dice', 'wheel', 'groups', 'qr', 'calc'];
+const WIDGET_ICONS: Record<WidgetKind, string> = { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮', meter: '🎚', groups: '👥', clock: '🕒', traffic: '🚦', qr: '▦' };
+
+/**
+ * Catalogue d'insertion : une seule liste pour le bouton « Insérer » de la barre, le sous-menu
+ * du clic droit et les quartiers de la palette (`insert-<id>`). Les gestes restent dans
+ * `Whiteboard.tsx`, qui associe chaque identifiant à l'action correspondante.
+ */
+export const INSERT_ACTIONS: { id: InsertKind; label: string; icon: string }[] = [
+  { id: 'image', label: 'Image', icon: '🖼' },
+  { id: 'table', label: 'Tableau 3 × 3', icon: '▦' },
+  { id: 'video', label: 'Vidéo (YouTube…)', icon: '▶' },
+  { id: 'web', label: 'Site web', icon: '🌐' },
+  { id: 'link', label: 'Lien', icon: '🔗' },
+  { id: 'audio', label: 'Son (fichier)', icon: '🔊' },
+  { id: 'record', label: 'Enregistrer au micro', icon: '🎙' },
+  { id: 'sticky', label: 'Post-it', icon: '🗒' },
+  { id: 'equation', label: 'Équation (LaTeX)', icon: '∑' },
+  ...INSERT_WIDGETS.map((k) => ({ id: k, label: WIDGET_LABELS[k], icon: WIDGET_ICONS[k] })),
+];
 
 export interface PaletteActionDef {
   id: string;
@@ -49,6 +74,9 @@ export const PALETTE_CATALOG: PaletteActionDef[] = [
   { id: 'setsquare', label: 'Équerre', icon: '📐', group: 'Instruments' },
   { id: 'protractor', label: 'Rapporteur', icon: '🧭', group: 'Instruments' },
   { id: 'keyboard', label: 'Clavier', icon: '⌨', group: 'Instruments' },
+  { id: 'insert', label: 'Insérer…', icon: '🧩', group: 'Insertion' },
+  // Un quartier par élément insérable, pour poser d'un geste la calculatrice ou le minuteur
+  ...INSERT_ACTIONS.map((a): PaletteActionDef => ({ id: `insert-${a.id}`, label: a.label, icon: a.icon, group: 'Insertion' })),
   { id: 'library', label: 'Ressources', icon: '📚', group: 'Séance' },
   { id: 'search', label: 'Rechercher', icon: '🔎', group: 'Séance' },
   { id: 'pick', label: 'Tirage au sort', icon: '🎯', group: 'Séance' },
@@ -56,7 +84,7 @@ export const PALETTE_CATALOG: PaletteActionDef[] = [
   { id: 'none', label: '— vide —', icon: '', group: 'Séance', optional: true },
 ];
 
-export const PALETTE_GROUPS: PaletteGroup[] = ['Outils', 'Couleur et trait', 'Historique', 'Pages', 'Instruments', 'Séance'];
+export const PALETTE_GROUPS: PaletteGroup[] = ['Outils', 'Couleur et trait', 'Historique', 'Pages', 'Instruments', 'Insertion', 'Séance'];
 
 /** Huit quartiers par défaut : outils d'écriture, retour arrière, couleur, navigation. */
 export const DEFAULT_PALETTE_SLOTS: string[] = ['pen', 'highlighter', 'eraser', 'select', 'undo', 'color', 'page-next', 'laser'];

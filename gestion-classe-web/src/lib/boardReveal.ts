@@ -22,8 +22,10 @@ export interface RevealCover {
 }
 
 /**
- * Rideau d'objet tiré à la main : décalage du drap, en fractions de sa largeur et de sa
- * hauteur (−1 … 1). Le drap reste découpé à l'emprise de l'objet : ce qui dépasse disparaît.
+ * Rideau d'objet tiré à la main : décalage vertical du drap, en fraction de sa hauteur
+ * (−1 … 1), comme un store qu'on remonte ou qu'on descend. Le drap reste découpé à l'emprise
+ * de l'objet : ce qui dépasse disparaît. `dx` est conservé pour les états déjà enregistrés
+ * (le rideau se tirait autrefois dans tous les sens) mais vaut toujours 0 désormais.
  */
 export interface CurtainSlide { dx: number; dy: number }
 

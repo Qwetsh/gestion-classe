@@ -175,7 +175,15 @@ function QrWidget({ o, onConfig }: Props) {
   );
 }
 
-const hold = (e: React.PointerEvent) => e.stopPropagation();
+/**
+ * Un appui sur un bouton du widget lui appartient (le tableau ne doit ni sélectionner ni
+ * déplacer l'objet) ; un appui sur le fond du widget remonte au calque, qui sélectionne et
+ * déplace. Avant, tout le widget retenait le pointeur : la calculatrice, le feu tricolore ou
+ * le QR code ne pouvaient plus être bougés une fois posés.
+ */
+const hold = (e: React.PointerEvent) => {
+  if ((e.target as HTMLElement).closest('button, input, select, textarea, a, [contenteditable]')) e.stopPropagation();
+};
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 function TimerWidget({ o, onConfig }: Props) {
@@ -352,6 +360,8 @@ export function WidgetView(props: Props) {
   const { o, scale } = props;
   return (
     <div className={`wbw wbw--${o.widget}`} style={{ width: o.w * scale, height: o.h * scale, fontSize: Math.max(11, 14 * scale) }}>
+      {/* Poignée : bande pointillée en haut, toujours libre pour saisir et déplacer le widget */}
+      <div className="wbw__grip" title="Glisser pour déplacer" />
       {o.widget === 'timer' && <TimerWidget {...props} />}
       {o.widget === 'dice' && <DiceWidget {...props} />}
       {o.widget === 'wheel' && <WheelWidget {...props} />}
@@ -368,7 +378,9 @@ export function WidgetView(props: Props) {
 }
 
 const CSS = `
-.wbw { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5em; padding: 0.6em; border-radius: 12px; background: #312E81; color: #F9FAFB; font-family: Inter, system-ui, sans-serif; overflow: hidden; user-select: none; box-sizing: border-box; }
+.wbw { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5em; padding: 1em 0.6em 0.6em; border-radius: 12px; background: #312E81; color: #F9FAFB; font-family: Inter, system-ui, sans-serif; overflow: hidden; user-select: none; box-sizing: border-box; cursor: move; }
+.wbw__grip { position: absolute; left: 0; right: 0; top: 0; height: 1em; cursor: move; background-image: radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1.5px); background-size: 6px 6px; background-position: center 0.3em; background-repeat: repeat-x; }
+.wbw button { cursor: pointer; }
 .wbw__time { font: 700 3.4em/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.04em; }
 .wbw__time.is-urgent { color: #FCA5A5; }
 .wbw__big { font: 700 3.6em/1 Inter, system-ui, sans-serif; }
@@ -378,7 +390,7 @@ const CSS = `
 .wbw button:hover { background: rgba(255,255,255,0.24); }
 .wbw button.is-on { background: #FFFFFF; color: #312E81; }
 .wbw button:disabled { opacity: 0.45; cursor: default; }
-.wbw--noise { background: #111827; padding: 0.4em; }
+.wbw--noise { background: #111827; padding: 1em 0.4em 0.4em; }
 .wbw__noise { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4em; width: 100%; height: 100%; }
 .wbw__noise button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2em; height: auto; background: rgba(255,255,255,0.08); border: 3px solid transparent; }
 .wbw__noise button span { font-size: 1.8em; }

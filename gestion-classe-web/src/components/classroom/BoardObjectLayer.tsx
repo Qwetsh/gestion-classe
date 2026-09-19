@@ -209,8 +209,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   ref
 ) {
   const editorsRef = useRef<Map<string, HTMLDivElement>>(new Map());
-  /** Rideau d'objet en train d'être tiré : le drap suit le doigt, borné à l'emprise de l'objet. */
-  const curtainDragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; start: CurtainSlide; w: number; h: number; moved: boolean; slide: CurtainSlide } | null>(null);
+  /** Rideau d'objet en train d'être tiré : le drap suit le doigt verticalement, borné à l'emprise de l'objet. */
+  const curtainDragRef = useRef<{ id: string; pointerId: number; startY: number; start: CurtainSlide; h: number; moved: boolean; slide: CurtainSlide } | null>(null);
   /** Bouton d'interaction pressé : il se déclenche au relâchement si le doigt n'a pas bougé. */
   const tapRef = useRef<{ id: string; pointerId: number; x: number; y: number } | null>(null);
   const spellRef = useRef<SpellApi>(null);
@@ -1005,26 +1005,27 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   </div>
                 );
               }
-              // Rideau : un drap qu'on tire à la main dans n'importe quel sens (ou qu'on tape pour
-              // tout découvrir). En édition, seule la tirette tire : le reste sélectionne et déplace.
-              const slide = curtainSlide(reveal, o.id) ?? { dx: 0, dy: 0 };
+              // Rideau : un drap qu'on tire à la main vers le haut ou vers le bas, comme un store (ou
+              // qu'on tape pour tout découvrir). Le décalage horizontal est ignoré, y compris s'il
+              // vient d'un état enregistré avant le verrouillage de l'axe. En édition, seule la
+              // tirette tire : le reste sélectionne et déplace.
+              const slide: CurtainSlide = { dx: 0, dy: curtainSlide(reveal, o.id)?.dy ?? 0 };
               const w = Math.max(1, b.w * scale), h = Math.max(1, b.h * scale);
-              const tx = slide.dx * w, ty = slide.dy * h;
-              const visX0 = Math.max(0, tx), visX1 = Math.min(w, w + tx), visY1 = Math.min(h, h + ty);
-              const gripLeft = (visX0 + visX1) / 2, gripTop = visY1;
+              const ty = slide.dy * h;
+              const gripLeft = w / 2, gripTop = Math.min(h, h + ty);
               const beginDrag = (e: React.PointerEvent) => {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.stopPropagation(); e.preventDefault();
                 try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
-                curtainDragRef.current = { id: o.id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, start: slide, w, h, moved: false, slide };
+                curtainDragRef.current = { id: o.id, pointerId: e.pointerId, startY: e.clientY, start: slide, h, moved: false, slide };
               };
               const moveDrag = (e: React.PointerEvent) => {
                 const d = curtainDragRef.current;
                 if (!d || d.id !== o.id || d.pointerId !== e.pointerId) return;
-                const dxPx = e.clientX - d.startX, dyPx = e.clientY - d.startY;
-                if (!d.moved && Math.hypot(dxPx, dyPx) < 6) return;
+                const dyPx = e.clientY - d.startY;
+                if (!d.moved && Math.abs(dyPx) < 6) return;
                 d.moved = true;
-                d.slide = { dx: Math.max(-1, Math.min(1, d.start.dx + dxPx / d.w)), dy: Math.max(-1, Math.min(1, d.start.dy + dyPx / d.h)) };
+                d.slide = { dx: 0, dy: Math.max(-1, Math.min(1, d.start.dy + dyPx / d.h)) };
                 onRevealObject(o.id, d.slide);
               };
               const endDrag = (e: React.PointerEvent, tapReveals: boolean) => {
@@ -1045,10 +1046,10 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                     className="wbo__curtain-sheet"
                     style={{
                       background: cover.color,
-                      transform: tx || ty ? `translate(${tx}px, ${ty}px)` : undefined,
-                      clipPath: tx || ty ? `inset(${Math.max(0, -ty)}px ${Math.max(0, tx)}px ${Math.max(0, ty)}px ${Math.max(0, -tx)}px)` : undefined,
+                      transform: ty ? `translateY(${ty}px)` : undefined,
+                      clipPath: ty ? `inset(${Math.max(0, -ty)}px 0 ${Math.max(0, ty)}px 0)` : undefined,
                     }}
-                    title={active ? 'Tirette : glisser pour découvrir · double-clic : tout découvrir' : 'Glisser pour tirer le rideau · toucher : tout découvrir'}
+                    title={active ? 'Tirette : glisser vers le haut ou le bas pour découvrir · double-clic : tout découvrir' : 'Glisser vers le haut ou le bas pour tirer le rideau · toucher : tout découvrir'}
                     onPointerDown={(e) => { if (!active) beginDrag(e); }}
                     onPointerMove={moveDrag}
                     onPointerUp={(e) => endDrag(e, true)}
@@ -1059,7 +1060,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   <div
                     className="wbo__curtain-grip"
                     style={{ left: gripLeft, top: gripTop }}
-                    title="Tirer le rideau"
+                    title="Tirer le rideau vers le haut ou le bas"
                     onPointerDown={beginDrag}
                     onPointerMove={moveDrag}
                     onPointerUp={(e) => endDrag(e, false)}
@@ -1167,11 +1168,11 @@ const CSS = `
 .wbo__editor [data-gap].is-hidden { border-bottom-color: #374151; }
 .wbo__cover { position: absolute; z-index: 2; pointer-events: auto; overflow: hidden; border-radius: 4px; }
 .wbo__cover--curtain { overflow: visible; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; user-select: none; }
-.wbo__curtain-sheet { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: grab; touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+.wbo__curtain-sheet { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: ns-resize; touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
 .wbo__cover--curtain.is-editing .wbo__curtain-sheet { cursor: default; }
 /* Tirette : la poignée du rideau, posée sur le bord bas de ce qui reste du drap. Elle tire le
-   rideau dans tous les modes, y compris en édition où le drap lui-même sélectionne l'objet. */
-.wbo__curtain-grip { position: absolute; width: 96px; height: 30px; margin-left: -48px; margin-top: -15px; cursor: grab; touch-action: none; z-index: 1; }
+   rideau (haut/bas) dans tous les modes, y compris en édition où le drap lui-même sélectionne l'objet. */
+.wbo__curtain-grip { position: absolute; width: 96px; height: 30px; margin-left: -48px; margin-top: -15px; cursor: ns-resize; touch-action: none; z-index: 1; }
 .wbo__curtain-grip::after { content: ''; position: absolute; left: 50%; top: 50%; width: 64px; height: 10px; margin-left: -32px; margin-top: -5px; border-radius: 5px; background: #6366F1; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
 .wbo__curtain-grip:hover::after { background: #818CF8; }
 /* Objet caché au départ (édition) : fantôme repérable, toujours sélectionnable */
