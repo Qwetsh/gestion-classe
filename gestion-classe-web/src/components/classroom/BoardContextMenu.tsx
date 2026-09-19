@@ -220,15 +220,15 @@ const firstButton = (list: HTMLElement | null) => list?.querySelector<HTMLButton
 const CSS = `
 .wbm-root { display: contents; }
 .wbm {
-  position: fixed; z-index: 20; min-width: 240px; max-height: calc(100vh - 16px); overflow-y: auto;
-  padding: 6px; border-radius: 14px; background: #111827; color: #F3F4F6;
+  position: fixed; z-index: 20; min-width: var(--wb-menu-w, 240px); max-height: calc(100vh - 16px); overflow-y: auto;
+  padding: var(--wb-panel-pad, 6px); border-radius: 14px; background: #111827; color: #F3F4F6;
   box-shadow: 0 16px 48px rgba(0,0,0,0.45); font: 500 15px/1.2 Inter, system-ui, sans-serif;
   user-select: none; outline: none;
 }
 .wbm--sub { z-index: 21; }
 .wbm__item {
   display: flex; align-items: center; gap: 12px; width: 100%;
-  min-height: 44px; padding: 8px 14px; border: 0; border-radius: 9px; background: transparent;
+  min-height: var(--wb-menu-h, 44px); padding: var(--wb-menu-pad, 8px 14px); border: 0; border-radius: 9px; background: transparent;
   color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
 .wbm__item:hover, .wbm__item:focus-visible, .wbm__item.is-open { background: #1F2937; outline: none; }

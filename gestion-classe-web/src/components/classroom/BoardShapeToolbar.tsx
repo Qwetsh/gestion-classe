@@ -121,7 +121,7 @@ const CSS = `
   padding: 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
   border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45);
 }
-.wbs__cell { display: flex; align-items: center; justify-content: center; height: 50px; border: 0; border-radius: 10px; background: #1F2937; color: #E5E7EB; cursor: pointer; }
+.wbs__cell { display: flex; align-items: center; justify-content: center; height: var(--wb-cell, 50px); border: 0; border-radius: 10px; background: #1F2937; color: #E5E7EB; cursor: pointer; }
 .wbs__cell:hover { background: #374151; }
 .wbs__cell.is-on { background: #4F46E5; color: #FFFFFF; }
 .wbs__label { color: #9CA3AF; font: 500 12px/1 Inter, system-ui, sans-serif; margin-right: 4px; }

@@ -209,8 +209,14 @@ type BarSide = 'bottom' | 'left' | 'right';
  * `floating` : les barres contextuelles suivent l'objet sélectionné, ou restent accrochées à la barre principale.
  * `documents` : PDF et images importés en pleine largeur (la page s'allonge) ou réduits pour tenir dans la page.
  */
-interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar'; documents: ImportLayout }
-const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object', documents: 'full' };
+/**
+ * Densité du chrome (barres, menus, panneaux). `auto` suit la taille d'écran (wb-theme.css :
+ * confort, normal, compact, serré en 720p) ; les autres valeurs la forcent, par appareil.
+ */
+type Density = 'auto' | 'comfort' | 'normal' | 'tight';
+const DENSITY_LABELS: Record<Density, string> = { auto: "Densité automatique (selon l'écran)", comfort: 'Densité confort (TBI)', normal: 'Densité normale', tight: 'Densité serrée (portable, 720p)' };
+interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar'; documents: ImportLayout; density: Density }
+const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object', documents: 'full', density: 'auto' };
 
 function loadTbi(): TbiSettings {
   try { return { ...DEFAULT_TBI, ...(JSON.parse(localStorage.getItem(TBI_SETTINGS_KEY) || '{}') as Partial<TbiSettings>) }; } catch { return DEFAULT_TBI; }
@@ -538,6 +544,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     try { localStorage.setItem(TBI_SETTINGS_KEY, JSON.stringify(tbi)); } catch { /* stockage indisponible */ }
   }, [tbi]);
   useEffect(() => { savePalette(palette); }, [palette]);
+  // Densité forcée : posée sur <html> pour atteindre aussi les panneaux portalés sur body (wbpop)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (tbi.density === 'auto') delete root.dataset.wbDensity; else root.dataset.wbDensity = tbi.density;
+    return () => { delete root.dataset.wbDensity; };
+  }, [tbi.density]);
   useEffect(() => { viewRef.current = view; }, [view]);
   useEffect(() => { instrumentsRef.current = instruments; }, [instruments]);
 
@@ -2602,6 +2614,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { id: 'set-probe', label: 'Test du stylet (diagnostic)', icon: '🎯', active: probeOpen, onSelect: () => setProbeOpen((v) => !v) },
         { id: 'set-palette-show', label: palette.hidden ? 'Afficher la pastille' : 'Masquer la pastille', icon: '◉', active: !palette.hidden, onSelect: () => setPalette((p) => ({ ...p, hidden: !p.hidden })) },
         { id: 'set-gestures', label: `Pincer pour zoomer ${tbi.gestures ? 'activé' : 'désactivé'}`, icon: '✌️', active: tbi.gestures, onSelect: () => setTbi((t) => ({ ...t, gestures: !t.gestures })) },
+        ...(['auto', 'comfort', 'normal', 'tight'] as Density[]).map((d) => ({
+          id: `set-density-${d}`, label: DENSITY_LABELS[d], icon: d === 'tight' ? '▪' : d === 'comfort' ? '⬛' : '◼', active: tbi.density === d,
+          onSelect: () => setTbi((t) => ({ ...t, density: d })),
+        })),
         { id: 'set-doc-full', label: 'Documents importés en pleine largeur (page allongée)', icon: '⬍', active: tbi.documents === 'full', onSelect: () => setTbi((t) => ({ ...t, documents: 'full' })) },
         { id: 'set-doc-fit', label: 'Documents importés réduits pour tenir dans la page', icon: '⊡', active: tbi.documents === 'fit', onSelect: () => setTbi((t) => ({ ...t, documents: 'fit' })) },
         ...(['bottom', 'left', 'right'] as BarSide[]).map((side) => ({
