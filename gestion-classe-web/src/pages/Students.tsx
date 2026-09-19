@@ -14,6 +14,8 @@ import QRCode from 'qrcode';
 import { generateStudentQrCardsPdf } from '../lib/generateStudentQrCards';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
+import { AccommodationBadges } from '../components/AccommodationBadges';
+import { ACCOMMODATION_DEFS, type AccommodationKey, type StudentAccommodations } from '../lib/accommodations';
 
 // Seuil de malus a partir duquel un eleve est signale dans le filtre "A suivre"
 const MALUS_ALERT_THRESHOLD = 5;
@@ -27,6 +29,9 @@ interface Student {
   gender: 'M' | 'F';
   student_code?: string;
   is_witness: boolean;
+  has_pap: boolean;
+  has_ppre: boolean;
+  has_pai: boolean;
 }
 
 interface Event {
@@ -361,6 +366,9 @@ export function Students() {
           gender,
           student_code,
           is_witness,
+          has_pap,
+          has_ppre,
+          has_pai,
           classes (name)
         `)
         .eq('user_id', user.id)
@@ -566,6 +574,9 @@ export function Students() {
           gender: (student.gender as 'M' | 'F') || 'M',
           student_code: (student as any).student_code || undefined,
           is_witness: (student as any).is_witness ?? false,
+          has_pap: !!(student as StudentAccommodations).has_pap,
+          has_ppre: !!(student as StudentAccommodations).has_ppre,
+          has_pai: !!(student as StudentAccommodations).has_pai,
         },
         participations,
         manualParticipations: manualParticipationsCount,
@@ -1489,6 +1500,37 @@ export function Students() {
     }
   };
 
+  /** Bascule un dispositif PAP / PPRE / PAI (indicateur seul, aucun détail stocké). */
+  const toggleAccommodation = async (key: AccommodationKey) => {
+    if (!selectedStudentForDetail) return;
+
+    const newValue = !selectedStudentForDetail.student[key];
+    const studentId = selectedStudentForDetail.student.id;
+
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ [key]: newValue })
+        .eq('id', studentId);
+
+      if (error) throw error;
+
+      setSelectedStudentForDetail({
+        ...selectedStudentForDetail,
+        student: { ...selectedStudentForDetail.student, [key]: newValue },
+      });
+
+      setStudentGrades(prev => prev.map(sg =>
+        sg.student.id === studentId
+          ? { ...sg, student: { ...sg.student, [key]: newValue } }
+          : sg
+      ));
+    } catch (error) {
+      console.error('Failed to update accommodation flag:', error);
+      toast('Erreur lors de la mise a jour.');
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
       day: 'numeric',
@@ -1972,6 +2014,7 @@ export function Students() {
                               <div className="scard__name">
                                 {sg.student.pseudo}
                                 {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ marginLeft: 6, fontSize: 11 }}>👁️</span>}
+                                <AccommodationBadges student={sg.student} bg="var(--indigo-soft)" fg="var(--indigo)" style={{ marginLeft: 6, verticalAlign: 'middle' }} />
                               </div>
                               <div className="scard__meta">
                                 {totalSessions}/25 sessions
@@ -2027,6 +2070,7 @@ export function Students() {
                             <span style={{ width: 7, height: 7, borderRadius: '50%', background: eng.color, flexShrink: 0 }} title={`Connexion espace élève : ${eng.label}`} />
                             {sg.student.pseudo}
                             {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ fontSize: 11 }}>👁️</span>}
+                            <AccommodationBadges student={sg.student} bg="var(--indigo-soft)" fg="var(--indigo)" />
                           </div>
                         </div>
                         <div className="srow__mark" style={{ color: sg.grade < 8 ? 'var(--neg)' : sg.grade >= 12 ? 'var(--pos)' : 'var(--text)' }}>{sg.grade.toFixed(1)}</div>
@@ -2430,6 +2474,24 @@ export function Students() {
                   >
                     {selectedStudentForDetail.student.is_witness ? '👁️ Témoin' : 'Témoin ?'}
                   </button>
+                  {/* Dispositifs d'accompagnement : on note seulement si l'élève en a un, jamais le contenu */}
+                  {ACCOMMODATION_DEFS.map(def => {
+                    const active = selectedStudentForDetail.student[def.key];
+                    return (
+                      <button
+                        key={def.key}
+                        onClick={() => toggleAccommodation(def.key)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? 'bg-[var(--indigo-soft)] text-[var(--indigo)] hover:opacity-80'
+                            : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
+                        }`}
+                        title={`${def.title} — cliquer pour ${active ? 'retirer' : 'indiquer'} (aucun détail n'est enregistré)`}
+                      >
+                        {active ? `✓ ${def.label}` : def.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={() => setShowStudentDetailModal(false)}

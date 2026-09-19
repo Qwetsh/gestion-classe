@@ -1,6 +1,8 @@
 import { memo, useMemo, useRef, useCallback } from 'react';
 import type { ActiveSortie } from '../../contexts/LiveSessionContext';
 import { DB } from './directionB';
+import { AccommodationBadges } from '../AccommodationBadges';
+import type { StudentAccommodations } from '../../lib/accommodations';
 
 export interface StudentCounts {
   participation: number;
@@ -15,6 +17,8 @@ interface StudentCellProps {
   pseudo: string;
   counts: StudentCounts;
   activeSortie: ActiveSortie | null;
+  /** Dispositifs PAP / PPRE / PAI (badge discret en haut à droite). */
+  accommodations?: StudentAccommodations | null;
   /** Declenche sur pointerdown : ouvre le menu radial (press-slide possible). */
   onPress: (rect: DOMRect) => void;
   onDoubleTap?: () => void;
@@ -27,6 +31,7 @@ export const StudentCell = memo(function StudentCell({
   pseudo,
   counts,
   activeSortie,
+  accommodations,
   onPress,
   onDoubleTap,
   onSortieReturn,
@@ -90,6 +95,15 @@ export const StudentCell = memo(function StudentCell({
       }}
       onPointerDown={handlePointerDown}
     >
+      {/* Dispositifs d'accompagnement (PAP / PPRE / PAI) */}
+      <AccommodationBadges
+        student={accommodations}
+        size="xs"
+        bg={DB.primarySoft}
+        fg={DB.primary}
+        style={{ position: 'absolute', top: 2, right: 2, pointerEvents: 'none' }}
+      />
+
       {/* Prenom */}
       <span
         className="leading-tight truncate max-w-full"

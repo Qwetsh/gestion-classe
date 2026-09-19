@@ -13,6 +13,7 @@ import { fetchAcademyConfig, toggleAcademyModule } from '../lib/academyQueries';
 import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib/studentTabsQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import { GroupSplitter } from '../components/class-groups/GroupSplitter';
+import { AccommodationBadges } from '../components/AccommodationBadges';
 
 interface Class {
   id: string;
@@ -25,6 +26,9 @@ interface Student {
   id: string;
   pseudo: string;
   created_at: string;
+  has_pap?: boolean;
+  has_ppre?: boolean;
+  has_pai?: boolean;
 }
 
 interface StudentGradeData {
@@ -363,7 +367,7 @@ export function Classes() {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('id, pseudo, created_at')
+        .select('id, pseudo, created_at, has_pap, has_ppre, has_pai')
         .eq('class_id', classId)
         .order('pseudo');
 
@@ -1523,6 +1527,7 @@ export function Classes() {
                                         <span style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
                                           {student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase()}
                                         </span>
+                                        <AccommodationBadges student={student} size="xs" bg="var(--indigo-soft)" fg="var(--indigo)" style={{ marginLeft: 'auto', marginRight: gradeData ? 4 : 0 }} />
                                         {gradeData && (
                                           <span style={{ fontSize: 10, fontWeight: 700, color: gradeData.trend === 'up' ? 'var(--pos)' : gradeData.trend === 'down' ? 'var(--neg)' : 'var(--text-dim)' }}>
                                             {gradeData.trend === 'up' ? '↗' : gradeData.trend === 'down' ? '↘' : '→'}
@@ -1615,6 +1620,7 @@ export function Classes() {
                             <span style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
                               {student.pseudo.substring(0, 2).toUpperCase()}
                             </span>
+                            <AccommodationBadges student={student} size="xs" bg="var(--indigo-soft)" fg="var(--indigo)" />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 11.5, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '1px 0' }}>
                             {student.pseudo}

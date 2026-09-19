@@ -1,5 +1,7 @@
 import { useLiveSession } from '../../contexts/LiveSessionContext';
 import { buildCellToGroup, tableColor } from '../../lib/seatingLayouts';
+import { AccommodationBadges } from '../AccommodationBadges';
+import { DB } from './directionB';
 
 export function SeatingPlanPreview() {
   const { selectedClass, selectedRoom, students, positions, loading, error, startSession, goBack, cancelFlow } = useLiveSession();
@@ -70,7 +72,7 @@ export function SeatingPlanPreview() {
                   return (
                     <div
                       key={key}
-                      className="h-12 rounded-lg flex items-center justify-center text-xs px-1 text-center border"
+                      className="relative h-12 rounded-lg flex items-center justify-center text-xs px-1 text-center border"
                       style={{
                         backgroundColor: palette.bg,
                         borderColor: palette.border,
@@ -80,6 +82,7 @@ export function SeatingPlanPreview() {
                       }}
                     >
                       {student ? truncate(student.pseudo, 8) : ''}
+                      {student && <AccommodationBadges student={student} size="xs" bg={DB.primarySoft} fg={DB.primary} style={{ position: 'absolute', top: 2, right: 2 }} />}
                     </div>
                   );
                 }
@@ -87,7 +90,7 @@ export function SeatingPlanPreview() {
                 return (
                   <div
                     key={key}
-                    className={`h-12 rounded-lg flex items-center justify-center text-xs font-medium px-1 text-center ${
+                    className={`relative h-12 rounded-lg flex items-center justify-center text-xs font-medium px-1 text-center ${
                       student
                         ? 'bg-[var(--indigo-soft)] text-[var(--indigo)]'
                         : 'bg-[var(--surface-3)] text-[var(--text-dim)]'
@@ -95,6 +98,7 @@ export function SeatingPlanPreview() {
                     style={{ boxShadow: student ? 'var(--shadow-xs)' : undefined }}
                   >
                     {student ? truncate(student.pseudo, 8) : ''}
+                    {student && <AccommodationBadges student={student} size="xs" bg="#fff" fg={DB.primary} style={{ position: 'absolute', top: 2, right: 2 }} />}
                   </div>
                 );
               })}

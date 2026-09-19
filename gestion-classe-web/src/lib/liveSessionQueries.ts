@@ -19,6 +19,10 @@ export interface StudentInfo {
   id: string;
   pseudo: string;
   gender: string;
+  /** Dispositifs d'accompagnement (indicateurs seuls, voir lib/accommodations.ts). */
+  has_pap?: boolean;
+  has_ppre?: boolean;
+  has_pai?: boolean;
 }
 
 export interface SessionEvent {
@@ -54,7 +58,7 @@ export async function fetchRoomsForUser(userId: string): Promise<RoomInfo[]> {
 export async function fetchStudentsForClass(classId: string): Promise<StudentInfo[]> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, pseudo, gender')
+    .select('id, pseudo, gender, has_pap, has_ppre, has_pai')
     .eq('class_id', classId)
     .order('pseudo');
   if (error) throw error;

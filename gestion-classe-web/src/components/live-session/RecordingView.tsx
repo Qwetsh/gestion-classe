@@ -367,6 +367,7 @@ export function RecordingView() {
                 pseudo={student.pseudo}
                 counts={countsByStudent.get(student.id) || { participation: 0, malus: 0, absence: 0, sortie: 0, remarque: 0 }}
                 activeSortie={getStudentWithSortie(student.id)}
+                accommodations={student}
                 onPress={(rect) => handleStudentPress(student.id, student.pseudo, rect)}
                 onDoubleTap={() => handleAbsenceCancel(student.id)}
                 onSortieReturn={() => handleSortieReturn(student.id)}
