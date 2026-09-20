@@ -15,10 +15,12 @@ interface Props {
   /** Page du fichier sur le site du cloud. */
   webUrl?: string | null;
   cloudLabel?: string;
+  /** « Ouvrir dans un nouveau tableau » (PDF et images) : crée un tableau préparé à partir du document. */
+  onOpenInBoard?: (file: File) => void;
   onClose: () => void;
 }
 
-export function CloudFileViewer({ opened, title, subtitle, webUrl, cloudLabel, onClose }: Props) {
+export function CloudFileViewer({ opened, title, subtitle, webUrl, cloudLabel, onOpenInBoard, onClose }: Props) {
   const file = 'file' in opened ? opened.file : null;
   const blobUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   useEffect(() => () => { if (blobUrl) URL.revokeObjectURL(blobUrl); }, [blobUrl]);
@@ -55,6 +57,9 @@ export function CloudFileViewer({ opened, title, subtitle, webUrl, cloudLabel, o
             </small>
           </div>
           <div className="cfv__actions">
+            {onOpenInBoard && file && (opened.kind === 'pdf' || opened.kind === 'image') && (
+              <button type="button" className="cfv__btn is-primary" onClick={() => onOpenInBoard(file)} title="Nouveau tableau préparé avec ce document en pages">🖍 Ouvrir dans un nouveau tableau</button>
+            )}
             {link && <a href={link} target="_blank" rel="noreferrer" className="cfv__btn is-primary">Nouvel onglet ↗</a>}
             {webUrl && <a href={webUrl} target="_blank" rel="noreferrer" className="cfv__btn">Ouvrir dans {cloudLabel ?? 'le cloud'} ↗</a>}
             {blobUrl && file && <a href={blobUrl} download={file.name} className="cfv__btn">Télécharger</a>}

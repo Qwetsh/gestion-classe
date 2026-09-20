@@ -10,6 +10,7 @@
  */
 import { supabase } from './supabase';
 import { fetchBoardPages, upsertBoardPages } from './boardQueries';
+import { importFilesToPages, type ImportProgress } from './boardImport';
 import type { BoardPage } from './boardRender';
 
 export interface Board {
@@ -136,6 +137,26 @@ export async function createBoardFromPages(userId: string, meta: BoardMeta, page
   const copies = clonePages(pages);
   await upsertBoardPages(userId, { boardId: board.id }, copies.map((page, position) => ({ page, position })));
   return board;
+}
+
+/**
+ * Nouveau tableau nommé dont les pages viennent d'un document (PDF : une page du tableau par page,
+ * image : une page). Titre = nom du fichier. Les images de page sont rangées sous `board:<id>`,
+ * l'identifiant de stockage de l'onglet du tableau (voir `boardTab` dans boardTabs.ts).
+ * Si l'import échoue, le tableau vide est supprimé.
+ */
+export async function createBoardFromFile(userId: string, file: File, onProgress: (p: ImportProgress) => void): Promise<Board> {
+  const title = file.name.replace(/\.[^.]+$/, '').trim() || 'Document';
+  const board = await createBoard(userId, { title, level: null, chapter: null });
+  try {
+    const pages = await importFilesToPages([file], userId, `board:${board.id}`, onProgress);
+    if (pages.length === 0) throw new Error('Aucune page importable dans ce fichier (PDF ou image attendu)');
+    await upsertBoardPages(userId, { boardId: board.id }, pages.map((page, position) => ({ page, position })));
+    return board;
+  } catch (err) {
+    await deleteBoard(board.id).catch(() => { /* le tableau vide restera dans la liste */ });
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

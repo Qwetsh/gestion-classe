@@ -7,7 +7,9 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { Layout } from '../components/Layout';
 import { CloudFileViewer } from '../components/clouds/CloudFileViewer';
+import { Whiteboard } from '../components/classroom/Whiteboard';
 import { useAuth } from '../hooks/useAuth';
+import { createBoardFromFile, type Board } from '../lib/boardsQueries';
 import {
   CLOUD_PROVIDERS,
   cloudIcon,
@@ -58,6 +60,8 @@ export function Clouds() {
   const [opening, setOpening] = useState<{ id: string; step: string } | null>(null);
   const [linkInput, setLinkInput] = useState('');
   const [dragging, setDragging] = useState(false);
+  /** Tableau préparé créé depuis un document, ouvert plein écran. */
+  const [board, setBoard] = useState<Board | null>(null);
   const attempted = useRef<Set<CloudId>>(new Set());
 
   const provider = cloudProvider(providerId);
@@ -187,6 +191,31 @@ export function Clouds() {
     finally { setOpening(null); }
   };
 
+  /** Nouveau tableau préparé (titre = nom du document) avec le PDF ou l'image en pages, puis ouverture plein écran. */
+  const openInBoard = async (file: File) => {
+    if (!user) return;
+    setViewer(null);
+    setNotice(null);
+    setOpening({ id: 'board', step: 'Création du tableau…' });
+    try {
+      const created = await createBoardFromFile(user.id, file, (p) => setOpening({ id: 'board', step: `${p.label}${p.total > 1 ? ` (${p.done + 1}/${p.total})` : ''}` }));
+      setBoard(created);
+    } catch (err) { setNotice(`Tableau impossible à créer : ${err instanceof Error ? err.message : 'erreur'}`); }
+    finally { setOpening(null); }
+  };
+
+  /** Depuis une ligne de fichier : télécharge (et convertit si besoin) puis ouvre dans un nouveau tableau. */
+  const openItemInBoard = async (item: CloudItem) => {
+    if (!view) return;
+    setOpening({ id: item.id, step: 'Ouverture…' });
+    setNotice(null);
+    let opened: OpenedFile;
+    try { opened = await openCloudItem(provider, view.session, item, (step) => setOpening({ id: item.id, step })); }
+    catch (err) { fail(provider, err); setOpening(null); return; }
+    if (opened.kind !== 'pdf' && opened.kind !== 'image') { setOpening(null); setNotice('Seuls les PDF, documents convertis en PDF et images peuvent devenir des pages de tableau.'); return; }
+    await openInBoard(opened.file);
+  };
+
   const openLink = () => {
     const raw = linkInput.trim();
     if (!raw) return;
@@ -310,6 +339,9 @@ export function Clouds() {
                       </button>
                       {!item.isFolder && (
                         <span className="clouds__side">
+                          {(item.kind === 'pdf' || item.kind === 'image' || (item.kind === 'office' && (item.serverPdf || /\.docx$/i.test(item.name)))) && (
+                            <button type="button" disabled={!!opening} onClick={() => void openItemInBoard(item)} title="Ouvrir dans un nouveau tableau">🖍</button>
+                          )}
                           <button type="button" disabled={!!opening} onClick={() => void download(item)} title="Télécharger">⬇</button>
                           {item.webUrl && <a href={item.webUrl} target="_blank" rel="noreferrer" title={`Ouvrir dans ${provider.label}`}>↗</a>}
                         </span>
@@ -324,10 +356,11 @@ export function Clouds() {
         </div>
 
         <p className="clouds__foot">Astuce : glisser un fichier de l'ordinateur sur cette page pour l'ouvrir ici (PDF, Word, image, vidéo, page HTML, raccourci Internet).</p>
-        {opening?.id === 'local' && <div className="clouds__notice">{opening.step}</div>}
+        {(opening?.id === 'local' || opening?.id === 'board') && <div className="clouds__notice">{opening.step}</div>}
       </div>
 
-      {viewer && <CloudFileViewer opened={viewer.opened} title={viewer.title} subtitle={viewer.subtitle} webUrl={viewer.webUrl} cloudLabel={viewer.cloudLabel} onClose={() => setViewer(null)} />}
+      {viewer && <CloudFileViewer opened={viewer.opened} title={viewer.title} subtitle={viewer.subtitle} webUrl={viewer.webUrl} cloudLabel={viewer.cloudLabel} onOpenInBoard={user ? (f) => void openInBoard(f) : undefined} onClose={() => setViewer(null)} />}
+      {board && user && <Whiteboard sessionId={`board:${board.id}`} boardId={board.id} userId={user.id} title={board.title} onClose={() => setBoard(null)} />}
       <style>{CSS}</style>
     </Layout>
   );
