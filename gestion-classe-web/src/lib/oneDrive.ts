@@ -99,6 +99,8 @@ export interface OneDriveItem {
   childCount: number;
   mime: string | null;
   modified: string;
+  /** Page du fichier sur onedrive.live.com / SharePoint (ouverture dans l'application d'origine). */
+  webUrl: string | null;
   /** direct : PDF, image ou tableau ; convert : document Office converti en PDF ; null : non importable. */
   importable: OneDriveImport;
 }
@@ -121,6 +123,7 @@ interface GraphItem {
   folder?: { childCount?: number };
   file?: { mimeType?: string };
   lastModifiedDateTime?: string;
+  webUrl?: string;
   '@microsoft.graph.downloadUrl'?: string;
 }
 
@@ -140,14 +143,14 @@ export class OneDriveExpiredError extends Error {
   constructor() { super('Session Microsoft expirée : ouvrir OneDrive à nouveau.'); this.name = 'OneDriveExpiredError'; }
 }
 
-const SELECT = '$select=id,name,size,folder,file,lastModifiedDateTime';
+const SELECT = '$select=id,name,size,folder,file,lastModifiedDateTime,webUrl';
 
 function toItems(values: GraphItem[]): OneDriveItem[] {
   return values
     .map((v) => {
       const mime = v.file?.mimeType ?? null;
       const isFolder = !!v.folder;
-      return { id: v.id, name: v.name, size: v.size ?? 0, isFolder, childCount: v.folder?.childCount ?? 0, mime, modified: v.lastModifiedDateTime ?? '', importable: isFolder ? null : importKind(v.name, mime) };
+      return { id: v.id, name: v.name, size: v.size ?? 0, isFolder, childCount: v.folder?.childCount ?? 0, mime, modified: v.lastModifiedDateTime ?? '', webUrl: v.webUrl ?? null, importable: isFolder ? null : importKind(v.name, mime) };
     })
     .sort((a, b) => Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
 }
@@ -167,18 +170,20 @@ export async function searchOneDrive(token: string, query: string, folderId: str
   return toItems(data.value);
 }
 
-/**
- * Télécharge un fichier prêt pour l'import : tel quel (PDF, image, tableau) ou converti en PDF
- * (documents Office). Le téléchargement lui-même se fait sur une URL pré-autorisée, sans jeton.
- */
-export async function downloadOneDriveFile(token: string, item: OneDriveItem): Promise<File> {
-  if (item.importable === 'convert') {
-    const res = await fetch(`${GRAPH}/me/drive/items/${encodeURIComponent(item.id)}/content?format=pdf`, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.status === 401) throw new OneDriveExpiredError();
-    if (!res.ok) throw new Error(`Conversion en PDF impossible (${res.status})`);
-    const blob = await res.blob();
-    return new File([blob], `${item.name.replace(/\.[^.]+$/, '')}.pdf`, { type: 'application/pdf' });
-  }
+/** Extensions que Graph sait convertir en PDF côté serveur. */
+export const isOneDriveConvertible = (name: string) => CONVERTIBLE.has((name.split('.').pop() ?? '').toLowerCase());
+
+/** Document Office converti en PDF par Graph (Word, PowerPoint, Excel, OpenDocument, RTF…). */
+export async function convertOneDriveToPdf(token: string, item: Pick<OneDriveItem, 'id' | 'name'>): Promise<File> {
+  const res = await fetch(`${GRAPH}/me/drive/items/${encodeURIComponent(item.id)}/content?format=pdf`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) throw new OneDriveExpiredError();
+  if (!res.ok) throw new Error(`Conversion en PDF impossible (${res.status})`);
+  const blob = await res.blob();
+  return new File([blob], `${item.name.replace(/\.[^.]+$/, '')}.pdf`, { type: 'application/pdf' });
+}
+
+/** Fichier tel quel (téléchargé sur une URL pré-autorisée, sans jeton). */
+export async function fetchOneDriveRaw(token: string, item: Pick<OneDriveItem, 'id' | 'name' | 'mime'>): Promise<File> {
   const meta = await graph<GraphItem>(token, `/me/drive/items/${encodeURIComponent(item.id)}?select=id,name,file,@microsoft.graph.downloadUrl`);
   const url = meta['@microsoft.graph.downloadUrl'];
   if (!url) throw new Error('Lien de téléchargement absent');
@@ -188,6 +193,14 @@ export async function downloadOneDriveFile(token: string, item: OneDriveItem): P
   const ext = (item.name.split('.').pop() ?? '').toLowerCase();
   const type = item.mime || (ext === 'pdf' ? 'application/pdf' : blob.type);
   return new File([blob], item.name, { type });
+}
+
+/**
+ * Télécharge un fichier prêt pour l'import : tel quel (PDF, image, tableau) ou converti en PDF
+ * (documents Office).
+ */
+export function downloadOneDriveFile(token: string, item: OneDriveItem): Promise<File> {
+  return item.importable === 'convert' ? convertOneDriveToPdf(token, item) : fetchOneDriveRaw(token, item);
 }
 
 export function formatOneDriveSize(bytes: number): string {

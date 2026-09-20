@@ -22,6 +22,7 @@ import { Classroom } from './pages/Classroom';
 import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
 import { Brevets } from './pages/Brevets';
+import { Clouds } from './pages/Clouds';
 import { Evaluations } from './pages/Evaluations';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
@@ -107,6 +108,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Brevets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/clouds"
+          element={
+            <ProtectedRoute>
+              <Clouds />
             </ProtectedRoute>
           }
         />

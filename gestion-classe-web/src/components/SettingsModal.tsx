@@ -36,6 +36,7 @@ const TAB_OPTIONS: { key: keyof HiddenTabs; label: string }[] = [
   { key: 'academy', label: 'Academie' },
   { key: 'tp-templates', label: 'Mes TP' },
   { key: 'brevets', label: 'Annales' },
+  { key: 'clouds', label: 'Mes clouds' },
   { key: 'tools', label: 'Outils' },
   { key: 'pronote', label: 'Pronote' },
 ];

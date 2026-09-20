@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback, type CSSProperties } from 'react';
 import jsPDF from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, PageBreak, HeadingLevel } from 'docx';
+import { getPdfjs } from '../lib/pdfjs';
+import { docxToPdf, isDocx } from '../lib/docConvert';
 
 // ─── Types ──────────────────────────────────────────────────
 
-type ConversionMode = 'convert' | 'resize' | 'pdf' | 'effects' | 'pdfToWord';
+type ConversionMode = 'convert' | 'resize' | 'pdf' | 'effects' | 'pdfToWord' | 'wordToPdf';
 type ImageFormat = 'png' | 'jpeg' | 'webp';
 type ImageEffect = 'none' | 'grayscale' | 'sepia' | 'invert' | 'blur' | 'sharpen';
 type CropPreset = 'free' | '1:1' | '4:3' | '16:9' | '3:4' | '9:16';
@@ -210,21 +212,6 @@ async function processImage(
 
 // ─── PDF to Word helpers ────────────────────────────────────
 
-let pdfjsReady: Promise<typeof import('pdfjs-dist')> | null = null;
-
-function getPdfjs() {
-  if (!pdfjsReady) {
-    pdfjsReady = import('pdfjs-dist').then(lib => {
-      lib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url,
-      ).toString();
-      return lib;
-    });
-  }
-  return pdfjsReady;
-}
-
 async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string[]> {
   const pdfjsLib = await getPdfjs();
   const doc = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
@@ -316,10 +303,13 @@ export default function FileConverter() {
   const [pdfMargin, setPdfMargin] = useState(10);
   const [pdfFit, setPdfFit] = useState<'fit' | 'fill' | 'stretch'>('fit');
 
-  // PDF to Word
+  // PDF to Word / Word to PDF (un seul document à la fois)
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [pdfFile, setPdfFile] = useState<{ name: string; size: number; buffer: ArrayBuffer } | null>(null);
+  const [pdfFile, setPdfFile] = useState<{ name: string; size: number; buffer: ArrayBuffer; file: File } | null>(null);
   const [pdfDragOver, setPdfDragOver] = useState(false);
+  const [convertStep, setConvertStep] = useState('');
+  const isDocMode = mode === 'pdfToWord' || mode === 'wordToPdf';
+  const acceptsDoc = useCallback((file: File) => (mode === 'wordToPdf' ? isDocx(file.name) : file.type === 'application/pdf'), [mode]);
 
   // ─── File handling ──────────
 
@@ -461,22 +451,22 @@ export default function FileConverter() {
 
   const loadPdfFile = useCallback(async (file: File) => {
     const buffer = await file.arrayBuffer();
-    setPdfFile({ name: file.name, size: file.size, buffer });
+    setPdfFile({ name: file.name, size: file.size, buffer, file });
     setResults([]);
   }, []);
 
   const handlePdfInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') loadPdfFile(file);
+    if (file && acceptsDoc(file)) loadPdfFile(file);
     e.target.value = '';
-  }, [loadPdfFile]);
+  }, [loadPdfFile, acceptsDoc]);
 
   const handlePdfDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setPdfDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type === 'application/pdf') loadPdfFile(file);
-  }, [loadPdfFile]);
+    if (file && acceptsDoc(file)) loadPdfFile(file);
+  }, [loadPdfFile, acceptsDoc]);
 
   const convertPdfToWord = useCallback(async () => {
     if (!pdfFile) return;
@@ -500,6 +490,24 @@ export default function FileConverter() {
       alert('Erreur lors de la conversion en Word');
     } finally {
       setIsConverting(false);
+    }
+  }, [pdfFile]);
+
+  // ─── Word to PDF (mammoth + jsPDF, voir lib/docConvert) ──────────
+
+  const convertWordToPdf = useCallback(async () => {
+    if (!pdfFile) return;
+    setIsConverting(true);
+    setResults([]);
+    try {
+      const pdf = await docxToPdf(pdfFile.file, setConvertStep);
+      setResults([{ name: pdf.name, url: URL.createObjectURL(pdf), size: pdf.size, width: 0, height: 0 }]);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la conversion en PDF');
+    } finally {
+      setIsConverting(false);
+      setConvertStep('');
     }
   }, [pdfFile]);
 
@@ -539,10 +547,11 @@ export default function FileConverter() {
           ['effects', 'Effets'],
           ['pdf', 'Images \u2192 PDF'],
           ['pdfToWord', 'PDF \u2192 Word'],
+          ['wordToPdf', 'Word \u2192 PDF'],
         ] as [ConversionMode, string][]).map(([m, label]) => (
           <button
             key={m}
-            onClick={() => { setMode(m); setResults([]); }}
+            onClick={() => { setMode(m); setResults([]); setPdfFile(null); }}
             style={{ ...styles.modeBtn, ...(mode === m ? styles.modeBtnActive : {}) }}
           >
             {label}
@@ -551,7 +560,7 @@ export default function FileConverter() {
       </div>
 
       {/* Drop zone */}
-      {mode === 'pdfToWord' ? (
+      {isDocMode ? (
         <>
           <div
             onDragOver={e => { e.preventDefault(); setPdfDragOver(true); }}
@@ -566,13 +575,13 @@ export default function FileConverter() {
           >
             <div style={{ fontSize: 32, color: '#9CA3AF' }}>+</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>
-              Glisser un fichier PDF ici ou cliquer pour parcourir
+              {mode === 'wordToPdf' ? 'Glisser un fichier Word ici ou cliquer pour parcourir' : 'Glisser un fichier PDF ici ou cliquer pour parcourir'}
             </div>
-            <div style={{ fontSize: 12, color: '#9CA3AF' }}>PDF uniquement</div>
+            <div style={{ fontSize: 12, color: '#9CA3AF' }}>{mode === 'wordToPdf' ? '.docx uniquement (conversion dans le navigateur, sans envoi)' : 'PDF uniquement'}</div>
             <input
               ref={pdfInputRef}
               type="file"
-              accept="application/pdf"
+              accept={mode === 'wordToPdf' ? '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf'}
               style={{ display: 'none' }}
               onChange={handlePdfInput}
             />
@@ -589,11 +598,11 @@ export default function FileConverter() {
               </div>
 
               <button
-                onClick={convertPdfToWord}
+                onClick={mode === 'wordToPdf' ? convertWordToPdf : convertPdfToWord}
                 disabled={isConverting}
                 style={{ ...styles.actionBtn, opacity: isConverting ? 0.6 : 1 }}
               >
-                {isConverting ? 'Conversion en cours...' : 'Convertir en Word (.docx)'}
+                {isConverting ? (convertStep || 'Conversion en cours...') : mode === 'wordToPdf' ? 'Convertir en PDF' : 'Convertir en Word (.docx)'}
               </button>
             </div>
           )}
@@ -629,7 +638,7 @@ export default function FileConverter() {
       )}
 
       {/* File list */}
-      {files.length > 0 && mode !== 'pdfToWord' && (
+      {files.length > 0 && !isDocMode && (
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <span style={styles.sectionLabel}>
@@ -655,7 +664,7 @@ export default function FileConverter() {
       )}
 
       {/* Options */}
-      {files.length > 0 && mode !== 'pdfToWord' && (
+      {files.length > 0 && !isDocMode && (
         <div style={styles.section}>
           {/* Format + Quality (all modes except pdf) */}
           {mode !== 'pdf' && (

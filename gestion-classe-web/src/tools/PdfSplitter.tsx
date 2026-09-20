@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type CSSProperties } from 'react';
 import { PDFDocument } from 'pdf-lib';
+import { getPdfjs } from '../lib/pdfjs';
 
 type Mode = 'split' | 'remove' | 'extract';
 
@@ -12,21 +13,6 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
-
-let pdfjsReady: Promise<typeof import('pdfjs-dist')> | null = null;
-
-function getPdfjs() {
-  if (!pdfjsReady) {
-    pdfjsReady = import('pdfjs-dist').then(lib => {
-      lib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url,
-      ).toString();
-      return lib;
-    });
-  }
-  return pdfjsReady;
 }
 
 async function renderPageThumbnail(pdfBytes: ArrayBuffer, pageIndex: number): Promise<string> {
