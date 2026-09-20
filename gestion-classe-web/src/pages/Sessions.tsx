@@ -12,6 +12,7 @@ interface Session {
   class_id: string;
   class_name: string;
   topic: string | null;
+  notes: string | null;
   started_at: string;
   ended_at: string | null;
   room_id?: string;
@@ -134,7 +135,7 @@ export function Sessions() {
 
       let query = supabase
         .from('sessions')
-        .select(`id, class_id, topic, started_at, ended_at, classes (name)`)
+        .select(`id, class_id, topic, notes, started_at, ended_at, classes (name)`)
         .eq('user_id', user.id)
         .order('started_at', { ascending: false });
 
@@ -162,6 +163,7 @@ export function Sessions() {
             class_id: session.class_id,
             class_name: (session.classes as any)?.name || 'Classe inconnue',
             topic: session.topic,
+            notes: session.notes,
             started_at: session.started_at,
             ended_at: session.ended_at,
             events_count: Number(counts?.events_count || 0),
@@ -593,7 +595,10 @@ export function Sessions() {
                           <ClassChip label={getClassLabel(session.class_name)} color={color} size={28} />
                           {/* Main */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{session.class_name}</div>
+                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {session.class_name}
+                              {session.notes && <span title="Cette séance a une note" style={{ color: 'var(--text-dim)', display: 'inline-flex' }}><Icon name="note" size={13} /></span>}
+                            </div>
                             {session.topic && <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.topic}</div>}
                           </div>
                           {/* Events count */}
@@ -698,7 +703,10 @@ export function Sessions() {
                             }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <ClassChip label={getClassLabel(session.class_name)} color={color} size={18} />
-                                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(session.started_at)}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                  {session.notes && <span title="Cette séance a une note" style={{ display: 'inline-flex' }}><Icon name="note" size={11} /></span>}
+                                  {formatTime(session.started_at)}
+                                </span>
                               </div>
                               {session.topic && <div style={{ fontWeight: 500, fontSize: 11, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.topic}</div>}
                               {height > 45 && session.events_count > 0 && (
@@ -847,6 +855,15 @@ export function Sessions() {
                 <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontStyle: 'italic', fontSize: 22, letterSpacing: '-0.01em', marginTop: 12 }}>
                   {selectedSession.topic}
                 </h2>
+              )}
+              {/* Notes générales de la séance (saisies depuis le mobile) */}
+              {selectedSession.notes && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 6 }}>Notes de séance</div>
+                  <p style={{ margin: 0, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-3)', fontSize: 13, lineHeight: 1.45, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                    {selectedSession.notes}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -1022,7 +1039,7 @@ export function Sessions() {
                 <Icon name="trash" size={16} />
               </button>
               <Link to={`/sessions/${selectedSession.id}`} className="btn btn--ghost" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none' }}>
-                Exporter
+                Détail / Export
               </Link>
               <button
                 onClick={() => {
