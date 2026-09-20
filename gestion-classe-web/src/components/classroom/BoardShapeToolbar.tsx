@@ -24,6 +24,8 @@ interface Props {
   /** Change le type de flèche des lignes sélectionnées. */
   onLineKind: (kind: 'line' | 'arrow' | 'double-arrow') => void;
   onDelete: () => void;
+  /** Mode liaison : la forme devient un bouton qui affiche / masque d'autres objets. */
+  onInteractions?: (id: string) => void;
 }
 
 /** Icône d'une forme : la forme elle-même, dessinée petit. */
@@ -43,7 +45,7 @@ export function ShapeIcon({ kind, size = 26 }: { kind: ShapeKind; size?: number 
   );
 }
 
-export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete }: Props) {
+export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete, onInteractions }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -107,6 +109,9 @@ export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLi
       )}
 
       <div className="wb__group">
+        {onInteractions && selected.length === 1 && (
+          <button className={`wb__btn wb__txt ${(selected[0].interactions?.length ?? 0) > 0 ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => onInteractions(selected[0].id)} title="Bouton : relier à un objet à afficher / masquer">⚡</button>
+        )}
         <button className="wb__btn" disabled={selected.length === 0} onPointerDown={hold} onClick={onDelete} title="Supprimer (Suppr)">
           <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
         </button>

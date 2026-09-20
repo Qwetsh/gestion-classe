@@ -31,7 +31,7 @@ import {
 } from '../../lib/boardText';
 import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
 import { defaultShapeText, shapeTextBox } from '../../lib/boardShapes';
-import { BoardConnectorLayer } from './BoardConnectorLayer';
+import { BoardConnectorLayer, type GhostLink } from './BoardConnectorLayer';
 import { objectUnderPoint, type FixedSide } from '../../lib/boardConnectors';
 
 /** Fin d'un geste depuis un bouton de connexion (↑ → ↓ ←) d'une forme. */
@@ -131,6 +131,8 @@ interface Props {
   /** Choix d'une cible d'interaction : tout objet touché (sauf `pickSourceId`) est renvoyé ici. */
   pickTarget?: ((id: string) => void) | null;
   pickSourceId?: string | null;
+  /** Flèches éphémères : liaison en cours et interactions du bouton sélectionné. */
+  links?: GhostLink[];
   /** Cellule de tableau qui a le focus (pour le menu contextuel lignes/colonnes). */
   onTableCell?: (objectId: string, r: number, c: number) => void;
   onEquationCommit: (id: string, latex: string, raster: Blob | null, ratio: number) => void;
@@ -227,7 +229,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students, links,
     spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
   },
   ref
@@ -1292,6 +1294,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
       })}
       <BoardConnectorLayer
         objects={objects}
+        ghosts={links}
         scale={scale}
         width={stage.width}
         height={stage.height}
@@ -1353,6 +1356,10 @@ const CSS = `
 .wbo__connector-handle--mid { fill: #FFFFFF; stroke: #9CA3AF; }
 .wbo__connector-handles.is-dragging .wbo__connector-handle { pointer-events: none; }
 .wbo__connector-label { pointer-events: none; }
+.wbo__ghostlink-line { stroke: #6366F1; stroke-width: 3px; stroke-dasharray: 8 6; stroke-linecap: round; }
+.wbo__ghostlink-head { fill: #6366F1; stroke: #6366F1; stroke-width: 2; stroke-linejoin: round; }
+.wbo__ghostlink-tag { fill: #4F46E5; }
+.wbo__connectors.is-active .wbo__ghostlink.is-tappable .wbo__connector-hit { pointer-events: stroke; cursor: pointer; }
 /* Le tableau est en user-select: none (rien ne se surligne en manipulant les outils) ; la zone en
    saisie doit redevenir un vrai champ texte : clic = curseur, double-clic = mot, triple = paragraphe,
    glisser = sélection. Sans cette règle, Chrome ignore la souris dans un contentEditable non sélectionnable. */

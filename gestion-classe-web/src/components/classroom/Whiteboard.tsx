@@ -22,18 +22,7 @@ function sanitizePastedHtml(html: string): string {
   const cleaned = sanitizeBoardHtml(doc.body.innerHTML);
   return cleaned.trim() || '<div><br></div>';
 }
-import {
-  cloneObjects,
-  migrateLegacyTexts,
-  objectRect,
-  objectsBottom,
-  type InteractionAction,
-  rectContains,
-  rectsIntersect,
-  reorder,
-  type BoardObject,
-  type TextObject,
-} from '../../lib/boardObjects';
+import { cloneObjects, migrateLegacyTexts, objectRect, objectsBottom, rectContains, rectsIntersect, reorder, type BoardObject, type TextObject, INTERACTION_LABELS, objectShortLabel } from '../../lib/boardObjects';
 import { copyObjects, hasObjects as clipboardHasObjects, pasteObjects } from '../../lib/boardClipboard';
 import { BoardObjectLayer, type BoardTextApi, type ConnectDrop, type FormatState, type StageBox } from './BoardObjectLayer';
 import { BoardConnectorToolbar } from './BoardConnectorToolbar';
@@ -60,7 +49,8 @@ import {
   type RevealState,
 } from '../../lib/boardReveal';
 import { BoardExportDialog } from './BoardExportDialog';
-import { BoardInteractionsPanel } from './BoardInteractionsPanel';
+import { BoardInteractionBubble, type InteractionDraft } from './BoardInteractionBubble';
+import type { GhostLink } from './BoardConnectorLayer';
 import { BoardRadialMenu, type RadialItem } from './BoardRadialMenu';
 import { BoardPalette } from './BoardPalette';
 import { BoardPaletteEditor } from './BoardPaletteEditor';
@@ -381,6 +371,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const curtainDrag = useRef<{ pointerId: number } | null>(null);
   /** Panneau d'interactions ouvert pour cet objet (le « bouton »). */
   const [interactionsFor, setInteractionsFor] = useState<string | null>(null);
+  /** Mode liaison : point du pointeur (unités de page) que suit la flèche partant du bouton. */
+  const [linkPointer, setLinkPointer] = useState<{ x: number; y: number } | null>(null);
+  /** Bulle d'interaction ouverte sur une cible (nouvelle liaison ou interaction existante). */
+  const [bubble, setBubble] = useState<{ triggerId: string; targetId: string; index: number | null; anchor: { left: number; top: number; right: number; bottom: number }; draft: InteractionDraft } | null>(null);
   /** Choix d'une cible d'interaction en cours : on attend un tap sur un objet de la page. */
   const [picking, setPicking] = useState(false);
   /** Taille visible de la scène (px) : une page plus haute qu'elle se lit en défilant. */
@@ -1538,23 +1532,54 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setReveal((r) => { const shown = { ...r.shown }; delete shown[id]; return { ...r, shown }; });
   }, [patchObject]);
 
-  /** Cible choisie sur la page : par défaut le bouton la bascule, et elle démarre cachée (réponse à révéler). */
+  /** Ouvre la bulle d'une interaction (nouvelle ou existante) à côté de sa cible. */
+  const openBubble = useCallback((triggerId: string, targetId: string, anchor?: { left: number; top: number; right: number; bottom: number }) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const trigger = p?.objects?.find((o) => o.id === triggerId);
+    const target = p?.objects?.find((o) => o.id === targetId);
+    if (!trigger || !target) return;
+    const index = (trigger.interactions ?? []).findIndex((it) => it.targetId === targetId);
+    const existing = index >= 0 ? trigger.interactions![index] : null;
+    const rect = anchor ?? document.querySelector(`[data-obj="${targetId}"]`)?.getBoundingClientRect() ?? { left: window.innerWidth / 2, top: window.innerHeight / 2, right: window.innerWidth / 2, bottom: window.innerHeight / 2 };
+    // Nouvelle interaction : par défaut le bouton bascule la cible, qui démarre cachée (réponse à révéler)
+    setBubble({ triggerId, targetId, index: index >= 0 ? index : null, anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }, draft: { action: existing?.action ?? 'toggle', hidden: existing ? target.hidden === true : true } });
+  }, []);
+
+  /** Mode liaison : une flèche part du bouton et suit le pointeur jusqu'au tap sur la cible. */
+  const startLinking = useCallback((triggerId: string) => {
+    setBubble(null);
+    setInteractionsFor(triggerId);
+    setSelectedIds(new Set([triggerId]));
+    setEditingId(null);
+    if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
+    setPicking(true);
+  }, []);
+  const cancelLinking = useCallback(() => { setPicking(false); setLinkPointer(null); }, []);
+
+  /** Cible touchée en mode liaison : la flèche s'y pose et la bulle s'ouvre. */
   const onTargetPicked = useCallback((targetId: string) => {
     const triggerId = interactionsFor;
     setPicking(false);
+    setLinkPointer(null);
+    if (!triggerId || triggerId === targetId) return;
+    openBubble(triggerId, targetId);
+  }, [interactionsFor, openBubble]);
+
+  /** Valider la bulle : l'interaction est écrite (ou remplacée) et la cible prend son état de départ. */
+  const confirmBubble = useCallback(() => {
+    const b = bubble;
+    if (!b) return;
+    setBubble(null);
     const p = pagesRef.current[pageIndexRef.current];
-    if (!p || !triggerId || triggerId === targetId) return;
+    if (!p) return;
     handleObjectsChange((p.objects ?? []).map((o) => {
-      if (o.id === triggerId) return { ...o, interactions: [...(o.interactions ?? []).filter((it) => it.targetId !== targetId), { targetId, action: 'toggle' as InteractionAction }] };
-      if (o.id === targetId && !o.hidden) return { ...o, hidden: true };
+      if (o.id === b.triggerId) return { ...o, interactions: [...(o.interactions ?? []).filter((it) => it.targetId !== b.targetId), { targetId: b.targetId, action: b.draft.action }] };
+      if (o.id === b.targetId) { const n = { ...o }; if (b.draft.hidden) n.hidden = true; else delete n.hidden; return n; }
       return o;
     }), p.objects ?? []);
-    setReveal((r) => { const shown = { ...r.shown }; delete shown[targetId]; return { ...r, shown }; });
-  }, [interactionsFor, handleObjectsChange]);
+    setReveal((r) => { const shown = { ...r.shown }; delete shown[b.targetId]; return { ...r, shown }; });
+  }, [bubble, handleObjectsChange]);
 
-  const setInteractionAction = useCallback((triggerId: string, index: number, action: InteractionAction) => {
-    patchObject(triggerId, (o) => ({ ...o, interactions: (o.interactions ?? []).map((it, i) => (i === index ? { ...it, action } : it)) }));
-  }, [patchObject]);
 
   const removeInteraction = useCallback((triggerId: string, index: number) => {
     patchObject(triggerId, (o) => {
@@ -1923,8 +1948,16 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             { label: 'Ticket à gratter (image…)', onSelect: pickCoverImage },
           ] },
       ...(!many ? [{ label: `Bouton et interactions${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, children: [
-        { label: 'Interactions du bouton…', onSelect: () => setInteractionsFor(target.id) },
-        ...((target.interactions?.length ?? 0) > 0 ? [{ label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) }] : []),
+        { label: 'Relier à un objet à afficher / masquer…', onSelect: () => startLinking(target.id) },
+        ...((target.interactions?.length ?? 0) > 0 ? [
+          { label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) },
+          { separator: true, label: '' },
+          // Une entrée par cible : ouvre sa bulle (action, état de départ, suppression)
+          ...(target.interactions ?? []).map((it) => {
+            const t = (pagesRef.current[pageIndexRef.current]?.objects ?? []).find((o) => o.id === it.targetId);
+            return { label: `${INTERACTION_LABELS[it.action]} · ${t ? objectShortLabel(t) : 'objet supprimé'}`, disabled: !t, onSelect: () => { setSelectedIds(new Set([target.id])); openBubble(target.id, it.targetId); } };
+          }),
+        ] : []),
         { separator: true, label: '' },
         { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
       ] }] : []),
@@ -1934,7 +1967,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -2024,6 +2057,21 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const k = scaleRef.current * viewRef.current.zoom;
     return { x: (e.clientX - rect.left) / k, y: (e.clientY - rect.top) / k };
   }, []);
+
+  // Mode liaison : la flèche suit la souris (au doigt, elle apparaît au contact) ; un appui hors
+  // de tout objet annule ; Échap aussi (raccourci global plus bas)
+  useEffect(() => {
+    if (!picking) return;
+    const onMove = (e: PointerEvent) => setLinkPointer(toUnit(e));
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('[data-obj], .wb__pickbanner, .wbm, .wbpop')) return;
+      cancelLinking();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerdown', onDown, true);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerdown', onDown, true); };
+  }, [picking, toUnit, cancelLinking]);
 
   /** Résultat d'un widget (calculatrice, dé, roue, groupes, minuteur) posé sur la page en zone de texte. */
   const placeWidgetResult = useCallback((id: string, text: string, client: { x: number; y: number } | null) => {
@@ -2460,7 +2508,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const step = e.shiftKey ? 10 : 1;
         nudgeSelected(e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0, e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0);
       }
-      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setPaletteEditor(false); setSpotlight(false); setDisplayMode(false); setPicking(false); setInteractionsFor(null); }
+      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setPaletteEditor(false); setSpotlight(false); setDisplayMode(false); setPicking(false); setLinkPointer(null); setBubble(null); setInteractionsFor(null); }
       else if (!ctrl && !hasSelection && !e.altKey && (e.key === 'PageDown' || e.key === 'PageUp' || e.key === 'End' || e.key === 'Home')) {
         const el = containerRef.current;
         if (el && pageOverflow() > 0) { e.preventDefault(); scrollBy(e.key === 'PageDown' ? el.clientHeight * 0.8 : e.key === 'PageUp' ? -el.clientHeight * 0.8 : e.key === 'End' ? 1e6 : -1e6); }
@@ -2685,8 +2733,21 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Objet-bouton dont le panneau d'interactions est ouvert (null s'il a disparu de la page). */
   const interactionTrigger = interactionsFor ? pageObjects.find((o) => o.id === interactionsFor) ?? null : null;
   useEffect(() => {
-    if (interactionsFor && !interactionTrigger) { setInteractionsFor(null); setPicking(false); }
+    if (interactionsFor && !interactionTrigger) { setInteractionsFor(null); setPicking(false); setLinkPointer(null); setBubble(null); }
   }, [interactionsFor, interactionTrigger]);
+  // Flèches d'interaction : visibles seulement quand le bouton est sélectionné seul (édition) ;
+  // en mode liaison, la flèche du bouton au pointeur s'y ajoute
+  const selectedTrigger = !displayMode && OBJECT_TOOLS.includes(tool) && selectedIds.size === 1 ? pageObjects.find((o) => selectedIds.has(o.id) && (o.interactions?.length ?? 0) > 0) ?? null : null;
+  const ghostLinks: GhostLink[] = [
+    ...(selectedTrigger ? (selectedTrigger.interactions ?? []).flatMap((it) => (pageObjects.some((o) => o.id === it.targetId) ? [{
+      key: `link:${selectedTrigger.id}:${it.targetId}`,
+      from: { objectId: selectedTrigger.id, side: 'auto' as const },
+      to: { objectId: it.targetId, side: 'auto' as const },
+      label: INTERACTION_LABELS[it.action],
+      onTap: (anchor: { left: number; top: number; right: number; bottom: number }) => openBubble(selectedTrigger.id, it.targetId, anchor),
+    }] : [])) : []),
+    ...(picking && interactionsFor && linkPointer ? [{ key: 'linking', from: { objectId: interactionsFor, side: 'auto' as const }, to: linkPointer }] : []),
+  ];
   const selectedTexts = pageObjects.filter((o): o is TextObject => o.type === 'text' && (o.id === editingId || selectedIds.has(o.id)));
   /** Zone de texte « active » pour la barre : celle en saisie, sinon la seule sélectionnée. */
   const selectedBox = (editingId ? selectedTexts.find((o) => o.id === editingId) : selectedTexts.length === 1 ? selectedTexts[0] : null) ?? null;
@@ -2894,7 +2955,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           play={displayMode || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
-          pickSourceId={interactionsFor}
+          pickSourceId={picking ? interactionsFor : null}
+          links={ghostLinks}
         />
         {!displayMode && (
           <button
@@ -3052,8 +3114,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         })()}
         {picking && (
           <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
-            <span>Touchez l'objet que ce bouton doit afficher ou masquer</span>
-            <button type="button" onClick={() => setPicking(false)}>Annuler</button>
+            <span>⚡ Touchez l'objet que ce bouton doit afficher ou masquer</span>
+            <button type="button" onClick={cancelLinking}>Annuler</button>
           </div>
         )}
         {!displayMode && !palette.hidden && (
@@ -3217,20 +3279,23 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         />
       )}
       {menu && <BoardContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={closeMenu} />}
-      {!displayMode && interactionTrigger && (
-        <BoardInteractionsPanel
-          trigger={interactionTrigger}
-          objects={pageObjects}
-          picking={picking}
-          onPick={() => { if (!OBJECT_TOOLS.includes(tool)) setTool('select'); setPicking(true); }}
-          onCancelPick={() => setPicking(false)}
-          onSetAction={(i, a) => setInteractionAction(interactionTrigger.id, i, a)}
-          onRemove={(i) => removeInteraction(interactionTrigger.id, i)}
-          onToggleHidden={toggleHidden}
-          onTest={() => fireObject(interactionTrigger.id)}
-          onClose={() => { setInteractionsFor(null); setPicking(false); }}
-        />
-      )}
+      {!displayMode && bubble && (() => {
+        const target = pageObjects.find((o) => o.id === bubble.targetId);
+        if (!target) return null;
+        return (
+          <BoardInteractionBubble
+            anchor={bubble.anchor}
+            targetLabel={objectShortLabel(target)}
+            draft={bubble.draft}
+            existing={bubble.index !== null}
+            onChange={(draft) => setBubble((b) => (b ? { ...b, draft } : b))}
+            onConfirm={confirmBubble}
+            onRemove={() => { if (bubble.index !== null) removeInteraction(bubble.triggerId, bubble.index); setBubble(null); }}
+            onTest={() => { confirmBubble(); window.setTimeout(() => fireObject(bubble.triggerId), 0); }}
+            onCancel={() => setBubble(null)}
+          />
+        );
+      })()}
       {exportOpen && <BoardExportDialog pages={pages} name="Tableau" currentIndex={pageIndex} onClose={() => setExportOpen(false)} />}
       <input
         ref={coverInputRef}
@@ -3271,6 +3336,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                 else patchSelectedTexts((o) => ({ ...o, color: c }));
               }}
               onDelete={deleteSelected}
+              onInteractions={startLinking}
               spell={spellCheck}
               spellStatus={spellStatus}
               onToggleSpell={() => setSpellCheck((v) => !v)}
@@ -3304,6 +3370,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               }}
               onLineKind={(k) => patchSelectedShapes((o) => (isLineKind(o.kind) ? { ...o, kind: k } : o))}
               onDelete={deleteSelected}
+              onInteractions={startLinking}
             />
         </BoardFloatingToolbar>
       )}
@@ -3328,7 +3395,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             onPatchTable={patchTable}
             onToggleInteractive={onToggleInteractive}
             onEdit={(id) => setEditingId(id)}
-            onInteractions={(id) => setInteractionsFor(id)}
+            onInteractions={startLinking}
           />
         </BoardFloatingToolbar>
       )}

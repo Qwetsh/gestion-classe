@@ -52,6 +52,8 @@ interface ToolbarProps {
   highlights: string[];
   color: string;
   onDelete: () => void;
+  /** Mode liaison : la zone devient un bouton qui affiche / masque d'autres objets. */
+  onInteractions?: (id: string) => void;
   /** Correcteur (LanguageTool) : actif, état de la dernière analyse, bascule. */
   spell: boolean;
   spellStatus: SpellStatus;
@@ -64,7 +66,7 @@ interface ToolbarProps {
 }
 
 export function BoardTextToolbar({
-  api, format, box, editing, fontId, size, onFontChange, onSizeChange, onColor, colors, highlights, color, onDelete,
+  api, format, box, editing, fontId, size, onFontChange, onSizeChange, onColor, colors, highlights, color, onDelete, onInteractions,
   spell, spellStatus, onToggleSpell, gapCount, onGap, onRevealGaps, onRemoveGaps,
 }: ToolbarProps) {
   const spellTitle = !spell
@@ -204,6 +206,9 @@ export function BoardTextToolbar({
       </div>
 
       <div className="wb__group">
+        {onInteractions && box && (
+          <button className={`wb__btn wb__txt ${((box as { interactions?: unknown[] }).interactions?.length ?? 0) > 0 ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => onInteractions(box.id)} title="Bouton : relier à un objet à afficher / masquer">⚡</button>
+        )}
         <button className="wb__btn" disabled={!box} onPointerDown={hold} onClick={onDelete} title="Supprimer la zone de texte (Suppr)">
           <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
         </button>
