@@ -130,6 +130,8 @@ interface Props {
   play: boolean;
   /** Un bouton a été touché : déclencher ses interactions. */
   onFire: (id: string) => void;
+  /** Extracteur de mots : un mot de la zone `id` a été touché ; `rect` est sa boîte à l'écran, en unités. */
+  onExtractWord?: (id: string, word: string, rect: { x: number; y: number; w: number; h: number }) => void;
   /** Choix d'une cible d'interaction : tout objet touché (sauf `pickSourceId`) est renvoyé ici. */
   pickTarget?: ((id: string) => void) | null;
   pickSourceId?: string | null;
@@ -234,7 +236,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
     reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students, links, snapGrid,
-    spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
+    spellCheck = false, onSpellStatus, play, onFire, onExtractWord, pickTarget = null, pickSourceId = null,
   },
   ref
 ) {
@@ -864,6 +866,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     forceRender((v) => v + 1);
   }, [scale, emit, editingId, onEdit, reveal, snapGrid]);
 
+  // Extracteur de mots : défini plus bas (il a besoin de clientToUnit), appelé via cette ref
+  const extractRef = useRef<((o: TextObject, clientX: number, clientY: number) => void) | null>(null);
+
   const endPress = useCallback((e: React.PointerEvent) => {
     const p = pressRef.current;
     if (!p || e.pointerId !== p.pointerId) return;
@@ -878,11 +883,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     if (!o || !EDITABLE_TYPES.has(o.type) || o.locked) return;
     // Clic sans déplacement : curseur si la zone était déjà sélectionnée, ou au doigt / stylet
     if (editingId === p.id) return;
+    // Extracteur de mots : le tap duplique le mot touché au lieu d'ouvrir la saisie (double-clic pour écrire)
+    if (o.type === 'text' && o.wordExtractor && onExtractWord && !isFolded(o)) { extractRef.current?.(o, e.clientX, e.clientY); return; }
     if (p.wasSelected || p.pointerType !== 'mouse') beginEdit(p.id, e.clientX, e.clientY);
     // Le pointeur est capturé par le cadre : le clic n'atteint pas l'éditeur, on regarde ici
     // si un mot souligné par le correcteur était sous le doigt.
     if (o.type === 'text') spellRef.current?.handleClick(o.id, e.clientX, e.clientY);
-  }, [clearPress, emit, editingId, beginEdit]);
+  }, [clearPress, emit, editingId, beginEdit, onExtractWord]);
 
   const removeObject = useCallback((id: string) => {
     onEdit(null);
@@ -900,6 +907,49 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     const k = (r.width / stage.width) * scale;
     return { x: (clientX - r.left) / k, y: (clientY - r.top) / k };
   }, [stage.width, scale]);
+
+  // Extracteur de mots : retrouve le mot sous le point touché dans le rendu DOM de la zone,
+  // puis remonte son texte et sa boîte (en unités de page) au tableau, qui crée la copie.
+  const extractWordAt = useCallback((o: TextObject, clientX: number, clientY: number) => {
+    if (!onExtractWord) return;
+    const editor = editorsRef.current.get(o.id);
+    if (!editor) return;
+    // Position du caret sous le point : API standard, ou l'ancienne API WebKit
+    type CaretDoc = Document & {
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    const doc = document as CaretDoc;
+    let node: Node | null = null;
+    let offset = 0;
+    if (doc.caretPositionFromPoint) {
+      const pos = doc.caretPositionFromPoint(clientX, clientY);
+      if (pos) { node = pos.offsetNode; offset = pos.offset; }
+    } else if (doc.caretRangeFromPoint) {
+      const rg = doc.caretRangeFromPoint(clientX, clientY);
+      if (rg) { node = rg.startContainer; offset = rg.startOffset; }
+    }
+    if (!node || node.nodeType !== Node.TEXT_NODE || !editor.contains(node)) return;
+    // Un trou de texte à trous se révèle au clic, il ne s'extrait pas
+    if ((node.parentElement as HTMLElement | null)?.closest('[data-gap]')) return;
+    const text = node.textContent ?? '';
+    const isWordChar = (ch: string) => /[\p{L}\p{N}'’-]/u.test(ch);
+    let start = offset;
+    let end = offset;
+    while (start > 0 && isWordChar(text[start - 1])) start--;
+    while (end < text.length && isWordChar(text[end])) end++;
+    if (start === end) return;
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    const r = range.getBoundingClientRect();
+    // Le caret se pose au bord du mot voisin quand on touche un espace : on exige d'être sur le mot
+    if (clientX < r.left - 2 || clientX > r.right + 2 || clientY < r.top - 2 || clientY > r.bottom + 2) return;
+    const tl = clientToUnit(r.left, r.top);
+    const br = clientToUnit(r.right, r.bottom);
+    onExtractWord(o.id, text.slice(start, end), { x: tl.x, y: tl.y, w: br.x - tl.x, h: br.y - tl.y });
+  }, [onExtractWord, clientToUnit]);
+  extractRef.current = extractWordAt;
 
   // Geste de connexion (bouton ↑ → ↓ ← d'une forme) : fantôme de la copie qui suit le pointeur
   const connectRef = useRef<{ id: string; side: FixedSide; pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
@@ -946,12 +996,14 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         const isSelected = selectedIds.has(o.id);
         const showHandles = active && single?.id === o.id && !o.locked;
         const isTrigger = (o.interactions?.length ?? 0) > 0;
+        // Extracteur de mots : en lecture, la zone reste touchable (tap = dupliquer le mot)
+        const isExtractor = o.type === 'text' && !!o.wordExtractor && !!onExtractWord && !isFolded(o);
         const pickable = pickTarget !== null && o.id !== pickSourceId;
         return (
           <div
             key={o.id}
             data-obj={o.id}
-            className={`wbo__frame wbo__frame--${o.type} ${active ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${isEditing ? 'is-editing' : ''} ${o.locked ? 'is-locked' : ''} ${!visible ? 'is-ghost' : ''} ${isTrigger ? 'is-trigger' : ''} ${play && isTrigger ? 'is-playable' : ''} ${pickable ? 'is-pick' : ''} ${pickTarget && o.id === pickSourceId ? 'is-pick-source' : ''}`}
+            className={`wbo__frame wbo__frame--${o.type} ${active ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${isEditing ? 'is-editing' : ''} ${o.locked ? 'is-locked' : ''} ${!visible ? 'is-ghost' : ''} ${isTrigger ? 'is-trigger' : ''} ${play && isTrigger ? 'is-playable' : ''} ${play && isExtractor && !isTrigger ? 'is-extractor' : ''} ${pickable ? 'is-pick' : ''} ${pickTarget && o.id === pickSourceId ? 'is-pick-source' : ''}`}
             style={{
               left: o.x * scale,
               top: o.y * scale,
@@ -968,8 +1020,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 if (pickable) pickTarget(o.id);
                 return;
               }
-              // Bouton en lecture : se déclenche au relâchement (tape sans déplacement)
-              if (play && isTrigger) {
+              // Bouton en lecture (ou extracteur de mots) : se déclenche au relâchement (tape sans déplacement)
+              if (play && (isTrigger || isExtractor)) {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.stopPropagation(); e.preventDefault();
                 tapRef.current = { id: o.id, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
@@ -986,7 +1038,10 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               if (tap && tap.pointerId === e.pointerId) {
                 tapRef.current = null;
                 try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
-                if (tap.id === o.id && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 12) onFire(o.id);
+                if (tap.id === o.id && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 12) {
+                  if (isTrigger) onFire(o.id);
+                  else if (o.type === 'text') extractRef.current?.(o, e.clientX, e.clientY);
+                }
                 return;
               }
               endPress(e);
@@ -1501,6 +1556,9 @@ const CSS = `
 /* Bouton en lecture : cliquable même sous l'outil d'écriture, et rien ne le déplace */
 .wbo__frame.is-playable { pointer-events: auto; cursor: pointer; }
 .wbo__frame.is-playable * { pointer-events: none !important; }
+/* Extracteur de mots en lecture : touchable, mais les enfants gardent le hit-test (caret sous le doigt) */
+.wbo__frame.is-extractor { pointer-events: auto; cursor: pointer; }
+.wbo__frame.is-extractor .wbo__editor { cursor: pointer; user-select: none; }
 /* Choix d'une cible : tous les objets deviennent cliquables, la source est grisée */
 .wbo__frame.is-pick { pointer-events: auto; cursor: crosshair; }
 .wbo__frame.is-pick * { pointer-events: none !important; }

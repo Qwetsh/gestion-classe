@@ -35,6 +35,12 @@ export interface TextBox {
    * état de séance (`RevealState.unfolded`), pas une modification de ce champ.
    */
   collapsed?: boolean;
+  /**
+   * Extracteur de mots : en classe, toucher un mot de la zone le duplique dans une zone de texte
+   * à part (même police, taille et couleur), posée sur le mot et sélectionnée, prête à déplacer.
+   * La saisie dans la zone source reste possible au double-clic.
+   */
+  wordExtractor?: boolean;
 }
 
 /** Marge intérieure d'une zone à fond coloré, en unités. */

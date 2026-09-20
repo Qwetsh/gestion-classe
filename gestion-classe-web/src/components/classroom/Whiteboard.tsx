@@ -1566,6 +1566,39 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setReveal((r) => fireInteractions(r, trigger, p.objects ?? []));
   }, []);
 
+  // Extracteur de mots : option d'une zone de texte (menu contextuel)
+  const toggleWordExtractor = useCallback((id: string) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const before = p.objects ?? [];
+    handleObjectsChange(before.map((o) => (o.id === id && o.type === 'text' ? { ...o, wordExtractor: !o.wordExtractor } : o)), before);
+  }, [handleObjectsChange]);
+
+  // Un mot d'une zone « extracteur » a été touché : copie du mot dans une zone à part, posée
+  // exactement sur lui (même police, taille, couleur) et sélectionnée, prête à être déplacée.
+  const extractWord = useCallback((sourceId: string, word: string, rect: { x: number; y: number; w: number; h: number }) => {
+    if (displayMode) return;
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const src = (p.objects ?? []).find((o) => o.id === sourceId);
+    if (!src || src.type !== 'text') return;
+    const escaped = word.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // La boîte du mot est celle de sa ligne de police, plus courte que l'interligne de la zone :
+    // on remonte d'un demi-écart pour que la copie se superpose exactement au mot
+    const box: TextObject = {
+      id: uid(),
+      type: 'text',
+      x: Math.round(rect.x),
+      y: Math.round(rect.y - Math.max(0, src.size * LINE_HEIGHT - rect.h) / 2),
+      w: Math.max(24, Math.round(rect.w + src.size * 0.6)),
+      size: src.size,
+      font: src.font,
+      color: src.color,
+      html: `<div>${escaped}</div>`,
+    };
+    addObject(box);
+  }, [addObject, displayMode]);
+
   /** Bascule « caché au départ » ; la séance repart de ce réglage pour l'objet. */
   const toggleHidden = useCallback((id: string) => {
     patchObject(id, (o) => { const n = { ...o }; if (n.hidden) delete n.hidden; else n.hidden = true; return n; });
@@ -2002,6 +2035,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { separator: true, label: '' },
         { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
       ] }] : []),
+      ...(!many && target.type === 'text' ? [{ label: 'Extracteur de mots (toucher un mot le duplique)', checked: !!target.wordExtractor, onSelect: () => toggleWordExtractor(target.id) }] : []),
       { label: many ? 'Exporter la sélection en image' : 'Exporter en image (PNG)', onSelect: () => void exportSelectionImage() },
       { separator: true, label: '' },
       ...(many ? [{ label: `Grouper (${count})`, shortcut: 'Ctrl+G', onSelect: groupSelected }] : []),
@@ -2010,7 +2044,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected, toggleWordExtractor]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -3024,6 +3058,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onSpellStatus={setSpellStatus}
           play={displayMode || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
+          onExtractWord={extractWord}
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
           pickSourceId={picking ? interactionsFor : null}
           links={ghostLinks}
@@ -3427,6 +3462,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               kind={shapeKind}
               style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
               selected={selectedShapes}
+              interactionTarget={selectedShapes.length + selectedLibrary.length === 1 ? (selectedShapes[0] ?? selectedLibrary[0]) : null}
+              canDelete={selectedShapes.length + selectedLibrary.length > 0}
               onKind={(k) => {
                 setShapeKind(k);
                 if (selectedShapes.length > 0) patchSelectedShapes((o) => ({ ...o, kind: k, h: isLineKind(k) ? o.h : Math.max(o.h, MIN_SHAPE_H), points: undefined }));
