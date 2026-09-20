@@ -299,6 +299,27 @@ mémoire, projection) et il n'est pas nécessaire aux autres.
 Chaque lot se termine par : `npx tsc -b`, ESLint, un test sur le brouillon en 720p (fenêtre
 1280 × 720) et un export PDF d'une page contenant les nouveaux objets.
 
+## 8 bis. Livraison (nuit du 20 au 21/09/2026)
+
+Tous les lots sont codés sur la branche `feat/tableau-formes-connecteurs`, un commit par lot,
+`npx tsc -b`, ESLint, Vitest (36 tests) et `vite build` au vert, chaque lot vérifié dans le
+navigateur sur le brouillon. Ce qui diffère du plan ou reste à faire :
+
+- **Lot F, projection** : sur l'écran `/classe`, le tableau est écrit directement sur le TBI ;
+  ce qui est affiché est l'onglet actif. Il n'y a donc pas de commande `board` à ajouter au
+  protocole : seul l'onglet actif reçoit les commandes du téléphone (photo, caméra), le clavier
+  et le collage. « Envoyer la page vers un autre onglet » n'est pas fait (copier-coller entre
+  onglets marche déjà).
+- **Lot D** : tracé « coudé » reporté comme prévu ; les têtes de flèche ne se dessinent pas
+  au-delà du bord de la forme.
+- **Lot C** : rotation des formes seulement (pas des images ni des textes).
+- **Lot B** : résultat de calculatrice = « 21 » ; avec Maj, l'expression complète n'est pas
+  faite (le glisser pose toujours la valeur seule).
+- **Lot 0** : le brouillon qui gagnait des pages fantômes n'a pas été reproduit pendant la nuit
+  (aucune page n'est apparue en cinq heures de tests) ; à surveiller.
+- **Non fait** : navigation clavier dans le menu radial, `dx` de `CurtainSlide` toujours dans le
+  modèle, tableau blanc mobile (aucun de ces lots ne touche l'application Expo).
+
 ## 9. Décisions prises le 20/09/2026
 
 1. **Encre attachée** : supprimer la forme supprime ses traits (Annuler les rend). Étendu aux
