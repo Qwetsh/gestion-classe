@@ -29,7 +29,8 @@ import {
   sanitizeBoardHtml,
   textBoxTitle,
 } from '../../lib/boardText';
-import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
+import { expandGroups, objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
+import { snapMove, unionRect } from '../../lib/boardSnap';
 import { defaultShapeText, shapeTextBox } from '../../lib/boardShapes';
 import { BoardConnectorLayer, type GhostLink } from './BoardConnectorLayer';
 import { objectUnderPoint, type FixedSide } from '../../lib/boardConnectors';
@@ -133,6 +134,8 @@ interface Props {
   pickSourceId?: string | null;
   /** Flèches éphémères : liaison en cours et interactions du bouton sélectionné. */
   links?: GhostLink[];
+  /** Pas de la grille du fond (unités), pour l'accroche pendant le déplacement ; absent = pas de grille. */
+  snapGrid?: number;
   /** Cellule de tableau qui a le focus (pour le menu contextuel lignes/colonnes). */
   onTableCell?: (objectId: string, r: number, c: number) => void;
   onEquationCommit: (id: string, latex: string, raster: Blob | null, ratio: number) => void;
@@ -229,7 +232,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students, links,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students, links, snapGrid,
     spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
   },
   ref
@@ -247,6 +250,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   /** Objets tels qu'ils étaient à l'entrée en édition (pour un seul pas d'annulation). */
   const editStartRef = useRef<BoardObject[] | null>(null);
   const pressRef = useRef<Press | null>(null);
+  /** Guides d'alignement affichés pendant un déplacement (unités). */
+  const [guides, setGuides] = useState<{ vertical: number[]; horizontal: number[] } | null>(null);
   const [, forceRender] = useState(0);
 
   /** URL signée des images (objets image, couvertures de tickets), par chemin. */
@@ -712,6 +717,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     } else if (!wasSelected) {
       ids = new Set([o.id]);
     }
+    // Un membre de groupe entraîne tout son groupe
+    ids = expandGroups(objectsRef.current, ids);
     if (editingId && editingId !== o.id) onEdit(null);
     onSelect(ids);
     selectedRef.current = ids;
@@ -760,6 +767,24 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
       }
     }
     if (p.start.size === 0) return;
+    if (p.mode === 'move') {
+      // Aimantation : la boîte de la sélection s'aligne sur les objets voisins et la grille,
+      // sauf Alt enfoncé (déplacement libre)
+      const rawDx = dxPx / scale, rawDy = dyPx / scale;
+      const movedRects = [...p.start.values()].map((s) => objectRect({ ...s, x: s.x + rawDx, y: s.y + rawDy } as BoardObject));
+      const box = unionRect(movedRects);
+      let sdx = rawDx, sdy = rawDy;
+      if (box && !e.altKey) {
+        const others = objectsRef.current.filter((o) => !p.start.has(o.id) && o.type !== 'connector' && isObjectVisible(reveal, o)).map(objectRect);
+        // Seuil de 10 px écran : assez large pour le doigt sur TBI, assez étroit pour rester volontaire
+        const snap = snapMove(box, others, 10 / scale, snapGrid);
+        sdx += snap.dx; sdy += snap.dy;
+        setGuides(snap.vertical.length || snap.horizontal.length ? { vertical: snap.vertical, horizontal: snap.horizontal } : null);
+      } else setGuides(null);
+      emit(objectsRef.current.map((o) => { const s = p.start.get(o.id); return s ? { ...o, x: Math.round(s.x + sdx), y: Math.round(s.y + sdy) } : o; }), null);
+      forceRender((v) => v + 1);
+      return;
+    }
     if (p.mode === 'rotate') {
       const r = p.rotate;
       if (!r) return;
@@ -834,12 +859,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     });
     emit(next, null);
     forceRender((v) => v + 1);
-  }, [scale, emit, editingId, onEdit]);
+  }, [scale, emit, editingId, onEdit, reveal, snapGrid]);
 
   const endPress = useCallback((e: React.PointerEvent) => {
     const p = pressRef.current;
     if (!p || e.pointerId !== p.pointerId) return;
     clearPress(e);
+    setGuides(null);
     if (p.moved) {
       if (p.start.size > 0) emit(objectsRef.current, p.before);
       return;
@@ -1306,6 +1332,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         onContextMenu={onContextMenu}
         clientToUnit={clientToUnit}
       />
+      {guides && guides.vertical.map((x) => <div key={`v${x}`} className="wbo__guide wbo__guide--v" style={{ left: x * scale }} />)}
+      {guides && guides.horizontal.map((y) => <div key={`h${y}`} className="wbo__guide wbo__guide--h" style={{ top: y * scale }} />)}
       {connectGhost && (
         <div
           className={`wbo__ghost ${connectGhost.target ? 'is-target' : ''}`}
@@ -1345,6 +1373,9 @@ const CSS = `
 .wbo__connect--e { right: -44px; top: 50%; margin-top: -15px; }
 .wbo__connect--w { left: -44px; top: 50%; margin-top: -15px; }
 .wbo__ghost { position: absolute; z-index: 4; border: 2px dashed #6366F1; border-radius: 8px; background: rgba(99,102,241,0.08); pointer-events: none; }
+.wbo__guide { position: absolute; z-index: 5; pointer-events: none; background: #EC4899; }
+.wbo__guide--v { top: -2000px; bottom: -2000px; width: 1px; }
+.wbo__guide--h { left: -2000px; right: -2000px; height: 1px; }
 .wbo__ghost.is-target { border-style: solid; background: rgba(99,102,241,0.18); }
 /* Calque des connecteurs : inerte sauf sur ses tracés de pointage et ses poignées */
 .wbo__connectors { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }

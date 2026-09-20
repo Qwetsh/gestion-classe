@@ -34,6 +34,17 @@ export interface BoardObjectBase {
   hidden?: boolean;
   /** L'objet est un bouton : toucher déclenche ces interactions sur d'autres objets de la page. */
   interactions?: Interaction[];
+  /** Groupe (Ctrl+G) : sélectionner un membre sélectionne tout le groupe, qui se déplace d'un bloc. */
+  groupId?: string;
+}
+
+/** Identifiants des objets à sélectionner avec ceux-ci : leurs groupes entiers. */
+export function expandGroups(objects: readonly BoardObject[], ids: Iterable<string>): Set<string> {
+  const out = new Set(ids);
+  const groups = new Set<string>();
+  for (const o of objects) if (out.has(o.id) && o.groupId) groups.add(o.groupId);
+  if (groups.size > 0) for (const o of objects) if (o.groupId && groups.has(o.groupId)) out.add(o.id);
+  return out;
 }
 
 /** Ce qu'un bouton fait à un objet cible quand on le touche (façon Genially). */
@@ -115,12 +126,16 @@ export function objectAt(objects: BoardObject[], x: number, y: number): BoardObj
  */
 export function cloneObjects(objects: BoardObject[], dx = 24, dy = 24): BoardObject[] {
   const ids = new Map(objects.map((o) => [o.id, objectId()]));
+  // Un groupe copié devient un nouveau groupe (mêmes membres, nouvel identifiant)
+  const groups = new Map<string, string>();
+  for (const o of objects) if (o.groupId && !groups.has(o.groupId)) groups.set(o.groupId, objectId());
   return objects.map((o) => {
     const copy: BoardObject = {
       ...o,
       id: ids.get(o.id) ?? objectId(),
       x: o.x + dx,
       y: o.y + dy,
+      ...(o.groupId ? { groupId: groups.get(o.groupId) } : {}),
       ...(o.interactions ? { interactions: o.interactions.map((it) => ({ ...it, targetId: ids.get(it.targetId) ?? it.targetId })) } : {}),
     };
     // Une flèche copiée avec ses objets suit les copies ; vers un objet resté hors de la copie,

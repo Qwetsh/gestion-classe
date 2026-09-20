@@ -22,7 +22,7 @@ function sanitizePastedHtml(html: string): string {
   const cleaned = sanitizeBoardHtml(doc.body.innerHTML);
   return cleaned.trim() || '<div><br></div>';
 }
-import { cloneObjects, migrateLegacyTexts, objectRect, objectsBottom, rectContains, rectsIntersect, reorder, type BoardObject, type TextObject, INTERACTION_LABELS, objectShortLabel } from '../../lib/boardObjects';
+import { cloneObjects, migrateLegacyTexts, objectRect, objectsBottom, rectContains, rectsIntersect, reorder, type BoardObject, type TextObject, INTERACTION_LABELS, objectShortLabel, expandGroups } from '../../lib/boardObjects';
 import { copyObjects, hasObjects as clipboardHasObjects, pasteObjects } from '../../lib/boardClipboard';
 import { BoardObjectLayer, type BoardTextApi, type ConnectDrop, type FormatState, type StageBox } from './BoardObjectLayer';
 import { BoardConnectorToolbar } from './BoardConnectorToolbar';
@@ -1077,6 +1077,24 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     handleObjectsChange((p.objects ?? []).filter((o) => !ids.has(o.id)), p.objects ?? []);
   }, [handleObjectsChange, selectedObjects]);
 
+  /** Grouper la sélection (Ctrl+G) : un seul bloc à sélectionner et déplacer. */
+  const groupSelected = useCallback(() => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const ids = selectedIdsRef.current;
+    if (!p || ids.size < 2) return;
+    const gid = uid();
+    handleObjectsChange((p.objects ?? []).map((o) => (ids.has(o.id) ? { ...o, groupId: gid } : o)), p.objects ?? []);
+  }, [handleObjectsChange]);
+  /** Dégrouper (Ctrl+Maj+G) : les membres redeviennent indépendants, la sélection reste. */
+  const ungroupSelected = useCallback(() => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const ids = selectedIdsRef.current;
+    if (!p || ids.size === 0) return;
+    const groups = new Set((p.objects ?? []).filter((o) => ids.has(o.id) && o.groupId).map((o) => o.groupId as string));
+    if (groups.size === 0) return;
+    handleObjectsChange((p.objects ?? []).map((o) => { if (!o.groupId || !groups.has(o.groupId)) return o; const { groupId: _g, ...rest } = o; void _g; return rest as BoardObject; }), p.objects ?? []);
+  }, [handleObjectsChange]);
+
   const duplicateSelected = useCallback(() => {
     const p = pagesRef.current[pageIndexRef.current];
     const src = selectedObjects(true);
@@ -1963,11 +1981,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       ] }] : []),
       { label: many ? 'Exporter la sélection en image' : 'Exporter en image (PNG)', onSelect: () => void exportSelectionImage() },
       { separator: true, label: '' },
+      ...(many ? [{ label: `Grouper (${count})`, shortcut: 'Ctrl+G', onSelect: groupSelected }] : []),
+      ...(target.groupId ? [{ label: 'Dégrouper', shortcut: 'Ctrl+Maj+G', onSelect: ungroupSelected }] : []),
       { label: locked ? 'Déverrouiller' : 'Verrouiller', shortcut: 'Ctrl+Maj+K', onSelect: toggleLockSelected },
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -2428,8 +2448,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         w: Math.abs(marquee.x1 - marquee.x0), h: Math.abs(marquee.y1 - marquee.y0),
       };
       if (rect.w < 3 && rect.h < 3) return; // simple clic sur le fond : déjà désélectionné
-      const hit = (p?.objects ?? []).filter((o) => rectsIntersect(objectRect(o), rect)).map((o) => o.id);
-      setSelectedIds((prev) => (marquee.additive ? new Set([...prev, ...hit]) : new Set(hit)));
+      const hit = expandGroups(p?.objects ?? [], (p?.objects ?? []).filter((o) => rectsIntersect(objectRect(o), rect)).map((o) => o.id));
+      setSelectedIds((prev) => (marquee.additive ? new Set([...prev, ...hit]) : hit));
       // L'encre aussi : un trait est pris s'il passe dans le rectangle
       const inkHit = (p?.strokes ?? []).filter((st) => st.points.some((pt) => rectContains(rect, pt.x, pt.y))).map((st) => st.id);
       setSelectedStrokeIds((prev) => (marquee.additive ? new Set([...prev, ...inkHit]) : new Set(inkHit)));
@@ -2493,6 +2513,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       else if (ctrl && k === 'z') { e.preventDefault(); if (e.shiftKey) applyRedo(); else applyUndo(); }
       else if (ctrl && k === 'y') { e.preventDefault(); applyRedo(); }
       else if (ctrl && k === 'a' && OBJECT_TOOLS.includes(toolRef.current)) { e.preventDefault(); selectAll(); }
+      else if (ctrl && !e.shiftKey && k === 'g' && hasSelection) { e.preventDefault(); groupSelected(); }
+      else if (ctrl && e.shiftKey && k === 'g' && hasSelection) { e.preventDefault(); ungroupSelected(); }
       else if (ctrl && !e.shiftKey && k === 'k') { e.preventDefault(); setSearchOpen(true); }
       else if (ctrl && k === 'c' && hasSelection) { e.preventDefault(); copySelected(); }
       else if (ctrl && k === 'x' && hasSelection) { e.preventDefault(); cutSelected(); }
@@ -2531,7 +2553,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy]);
+  }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
 
   // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -2957,6 +2979,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
           pickSourceId={picking ? interactionsFor : null}
           links={ghostLinks}
+          snapGrid={page.background === 'grid' || page.background === 'dots' || page.background === 'graph' ? 25 : undefined}
         />
         {!displayMode && (
           <button
