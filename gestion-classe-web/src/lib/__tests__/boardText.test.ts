@@ -10,8 +10,8 @@ describe('post-it replié', () => {
     expect(isFolded(box)).toBe(false);
   });
 
-  it('a une pastille d’une ligne, bornée en largeur', () => {
-    expect(foldedRect(box)).toEqual({ x: 10, y: 20, w: 216, h: 38 });
+  it('se replie en petit dossier, borné en largeur', () => {
+    expect(foldedRect(box)).toEqual({ x: 10, y: 20, w: 144, h: 77 });
     expect(foldedRect({ ...box, w: 120 }).w).toBe(120);
     expect(textBoxRect({ ...box, collapsed: true })).toEqual(foldedRect(box));
   });

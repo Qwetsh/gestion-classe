@@ -3,7 +3,8 @@
  * pointillé, libellé, suppression. Se pose sur l'objet dans `BoardFloatingToolbar`, comme les
  * autres barres. Tout agit tout de suite sur les connecteurs sélectionnés.
  */
-import { CONNECTOR_COLORS, CONNECTOR_WIDTHS, type ConnectorObject, type ConnectorRoute } from '../../lib/boardConnectors';
+import { CONNECTOR_WIDTHS, type ConnectorObject, type ConnectorRoute } from '../../lib/boardConnectors';
+import { SWATCHES, SWATCH_HINT, customizeSwatch, useSwatches } from '../../lib/boardSwatches';
 
 interface Props {
   connectors: ConnectorObject[];
@@ -14,6 +15,7 @@ interface Props {
 const hold = (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); };
 
 export function BoardConnectorToolbar({ connectors, onPatch, onDelete }: Props) {
+  const CONNECTOR_COLORS = useSwatches(SWATCHES.connectors);
   const one = connectors[0];
   if (!one) return null;
   const heads = one.heads.start && one.heads.end ? 'both' : one.heads.end ? 'end' : one.heads.start ? 'start' : 'none';
@@ -36,8 +38,8 @@ export function BoardConnectorToolbar({ connectors, onPatch, onDelete }: Props) 
         <button type="button" className={`wb__btn wb__txt ${heads === 'both' ? 'is-on' : ''}`} title="Flèche aux deux bouts" onPointerDown={hold} onClick={() => setHeads('both')}>↔</button>
       </div>
       <div className="wb__group">
-        {CONNECTOR_COLORS.map((col) => (
-          <button key={col} type="button" className={`wb__btn wb__swatch ${one.stroke === col ? 'is-on' : ''}`} title="Couleur" style={{ background: col }} onPointerDown={hold} onClick={() => onPatch((c) => ({ ...c, stroke: col }))} />
+        {CONNECTOR_COLORS.map((col, i) => (
+          <button key={i} type="button" className={`wb__btn wb__swatch ${one.stroke === col ? 'is-on' : ''}`} title={`Couleur — ${SWATCH_HINT}`} style={{ background: col }} onPointerDown={hold} onClick={() => onPatch((c) => ({ ...c, stroke: col }))} onContextMenu={customizeSwatch(SWATCHES.connectors, i, (hex) => onPatch((c) => ({ ...c, stroke: hex })))} />
         ))}
       </div>
       <div className="wb__group">

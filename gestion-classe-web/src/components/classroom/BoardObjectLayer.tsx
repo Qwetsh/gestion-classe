@@ -26,6 +26,7 @@ import {
   fontCss,
   isEmptyBoardHtml,
   isFolded,
+  foldedTab,
   sanitizeBoardHtml,
   textBoxTitle,
 } from '../../lib/boardText';
@@ -241,6 +242,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   /** Rideau d'objet en train d'être tiré : le drap suit le doigt verticalement, borné à l'emprise de l'objet. */
   const curtainDragRef = useRef<{ id: string; pointerId: number; startY: number; start: CurtainSlide; h: number; moved: boolean; slide: CurtainSlide } | null>(null);
   /** Bouton d'interaction pressé : il se déclenche au relâchement si le doigt n'a pas bougé. */
+  /** Instant du dernier repli : le clic sur « – » ne doit pas être relu comme un double-clic sur le dossier. */
+  const lastFoldRef = useRef(0);
   const tapRef = useRef<{ id: string; pointerId: number; x: number; y: number } | null>(null);
   const spellRef = useRef<SpellApi>(null);
   const objectsRef = useRef(objects);
@@ -992,6 +995,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             onDoubleClick={(e) => {
               const shapeText = o.type === 'shape' && !isLineKind(o.kind);
               if (!active || (!EDITABLE_TYPES.has(o.type) && !shapeText) || o.locked || isEditing) return;
+              // Un post-it replié ne s'édite pas : le dossier gère lui-même son dépliage
+              if (o.type === 'text' && isFolded(o)) return;
               e.stopPropagation();
               beginEdit(o.id, e.clientX, e.clientY);
             }}
@@ -1118,20 +1123,45 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 </div>
               );
             })()}
-            {o.type === 'text' && isFolded(o) && (
-              // Post-it replié : une pastille, qu'un tap déplie (pour la séance en classe, pour
-              // de bon en édition au double-clic)
-              <div
-                className="wbo__folded"
-                style={{ background: o.background, width: rect.w * scale, height: rect.h * scale, color: o.color, fontFamily: fontCss(o.font), fontSize: o.size * 0.7 * scale }}
-                title={play ? 'Toucher pour déplier' : 'Double-clic : déplier'}
-                onClick={(e) => { if (play) { e.stopPropagation(); onUnfoldInSession(o.id); } }}
-                onDoubleClick={(e) => { e.stopPropagation(); if (!play) onFoldText(o.id, false); }}
-              >
-                <span className="wbo__folded-title">{textBoxTitle(o.html) || 'Post-it'}</span>
-                <span className="wbo__folded-plus" aria-hidden>+</span>
-              </div>
-            )}
+            {o.type === 'text' && isFolded(o) && (() => {
+              // Post-it replié : un petit dossier. En classe, un tap le déplie pour la séance ;
+              // en édition, le « + » (ou un double-clic) le déplie pour de bon.
+              const t = foldedTab(o);
+              return (
+                <div
+                  className="wbo__folded"
+                  style={{
+                    width: rect.w * scale, height: rect.h * scale, color: o.color, fontFamily: fontCss(o.font), fontSize: o.size * 0.7 * scale,
+                    ['--wbo-fold-bg' as string]: o.background, ['--wbo-fold-tab-h' as string]: `${t.tabH * scale}px`,
+                    ['--wbo-fold-tab-w' as string]: `${t.tabW * scale}px`, ['--wbo-fold-r' as string]: `${t.radius * scale}px`,
+                  }}
+                  title={play ? 'Toucher pour déplier' : 'Post-it replié'}
+                  onClick={(e) => { if (play) { e.stopPropagation(); onUnfoldInSession(o.id); } }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    // Le clic sur « – » qui vient de replier ne doit pas être relu comme un double-clic ici
+                    if (!play && Date.now() - lastFoldRef.current > 600) onFoldText(o.id, false);
+                  }}
+                >
+                  <span className="wbo__folded-tab" aria-hidden />
+                  <span className="wbo__folded-body">
+                    <span className="wbo__folded-title">{textBoxTitle(o.html) || 'Post-it'}</span>
+                  </span>
+                  {play ? (
+                    <span className="wbo__folded-plus" aria-hidden>+</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wbo__folded-plus wbo__folded-plus--btn"
+                      title="Déplier le post-it"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); onFoldText(o.id, false); }}
+                    >+</button>
+                  )}
+                </div>
+              );
+            })()}
             {o.type === 'text' && !isFolded(o) && (
               <div
                 className="wbo__editor"
@@ -1266,10 +1296,11 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               <button
                 type="button"
                 className={`wbo__fold ${isSelected ? 'is-visible' : ''}`}
-                style={{ width: 22 * Math.max(0.7, Math.min(1.4, scale)), height: 22 * Math.max(0.7, Math.min(1.4, scale)) }}
+                style={{ width: 26 * Math.max(0.7, Math.min(1.4, scale)), height: 26 * Math.max(0.7, Math.min(1.4, scale)) }}
                 title="Replier le post-it"
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onFoldText(o.id, true); }}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); lastFoldRef.current = Date.now(); onFoldText(o.id, true); }}
               >–</button>
             )}
             {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡</span>}
@@ -1442,10 +1473,15 @@ const CSS = `
 .wbo__editor [data-gap].is-hidden { border-bottom-color: #374151; }
 .wbo__cover { position: absolute; z-index: 2; pointer-events: auto; overflow: hidden; border-radius: 4px; }
 /* Post-it replié : pastille, cliquable même en lecture (le cadre lui-même ne capte rien) */
-.wbo__folded { display: flex; align-items: center; gap: 0.6em; box-sizing: border-box; padding: 0 0.9em; border-radius: 999px; box-shadow: 0 3px 10px rgba(0,0,0,0.18); font-weight: 700; line-height: 1; pointer-events: auto; cursor: pointer; user-select: none; overflow: hidden; }
-.wbo__folded-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wbo__folded-plus { flex: none; opacity: 0.7; }
-.wbo__fold { position: absolute; right: 2px; top: 2px; z-index: 3; padding: 0; border: 0; border-radius: 999px; background: rgba(17,24,39,0.55); color: #FFFFFF; font: 700 14px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0.35; }
+.wbo__folded { position: relative; display: block; box-sizing: border-box; font-weight: 700; line-height: 1.15; pointer-events: auto; cursor: pointer; user-select: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.18)); }
+.wbo__folded-tab { position: absolute; left: 0; top: 0; width: var(--wbo-fold-tab-w); height: calc(var(--wbo-fold-tab-h) + var(--wbo-fold-r)); border-radius: var(--wbo-fold-r) var(--wbo-fold-r) 0 0; background: var(--wbo-fold-bg); }
+.wbo__folded-tab::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: rgba(0,0,0,0.14); }
+.wbo__folded-body { position: absolute; left: 0; right: 0; top: var(--wbo-fold-tab-h); bottom: 0; display: flex; align-items: center; justify-content: center; padding: 0.3em 0.5em 0.9em; border-radius: var(--wbo-fold-r); background: var(--wbo-fold-bg); overflow: hidden; }
+.wbo__folded-title { max-width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.wbo__folded-plus { position: absolute; right: 0.35em; bottom: 0.15em; opacity: 0.7; font-size: 0.9em; line-height: 1; }
+.wbo__folded-plus--btn { padding: 0.1em 0.3em; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 0.9em; cursor: pointer; }
+.wbo__folded-plus--btn:hover { opacity: 1; background: rgba(0,0,0,0.12); }
+.wbo__fold { position: absolute; right: 2px; top: 2px; z-index: 3; padding: 0; border: 0; border-radius: 999px; background: rgba(17,24,39,0.55); color: #FFFFFF; font: 700 15px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0.55; }
 .wbo__fold.is-visible, .wbo__frame:hover .wbo__fold { opacity: 1; }
 .wbo__fold:hover { background: #111827; }
 .wbo__cover--curtain { overflow: visible; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; user-select: none; }

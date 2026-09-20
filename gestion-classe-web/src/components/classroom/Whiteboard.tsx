@@ -55,7 +55,8 @@ import { BoardRadialMenu, type RadialItem } from './BoardRadialMenu';
 import { BoardPalette } from './BoardPalette';
 import { BoardPaletteEditor } from './BoardPaletteEditor';
 import { BoardInputProbe } from './BoardInputProbe';
-import { loadPalette, savePalette, paletteAction, INSERT_ACTIONS, RADIAL_COLOR_CHOICES, type InsertKind, type PaletteConfig } from '../../lib/boardRadialPalette';
+import { loadPalette, savePalette, paletteAction, INSERT_ACTIONS, type InsertKind, type PaletteConfig } from '../../lib/boardRadialPalette';
+import { SWATCHES, openColorWheel, pickSwatchColor, swatchLabel, useSwatches } from '../../lib/boardSwatches';
 import { BoardInstruments } from './BoardInstruments';
 import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
@@ -157,10 +158,8 @@ export interface WhiteboardProps {
 const START_PROMPT_PREFIX = 'classroom-board-start:';
 
 const UNIT = BOARD_UNIT;
-const COLORS = ['#111827', '#1D4ED8', '#DC2626', '#059669'];
+const COLORS = SWATCHES.quick.defaults;
 const HIGHLIGHT_COLOR = '#FDE047';
-/** Couleurs de surlignage proposées pour le texte. */
-const TEXT_HIGHLIGHTS = ['#FDE047', '#BBF7D0', '#BFDBFE'];
 const SIZES: Record<SizeKey, number> = { S: 2.2, M: 4, L: 7.5 };
 const HIGHLIGHT_SIZE = 22;
 /** Rayons de gomme (unités logiques, largeur de page = 1000). */
@@ -339,7 +338,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [pages, setPages] = useState<Page[]>(() => loadLocal(sessionId).pages);
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<Tool>('pen');
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState<string>(COLORS[0]);
+  // Nuanciers personnalisables (clic droit sur une pastille), mémorisés entre les séances
+  const quickColors = useSwatches(SWATCHES.quick);
+  const radialColors = useSwatches(SWATCHES.radial);
+  const bgColors = useSwatches(SWATCHES.background);
   const [sizeKey, setSizeKey] = useState<SizeKey>('M');
   const [eraserKey, setEraserKey] = useState<SizeKey>('M');
   const [historyLen, setHistoryLen] = useState(0);
@@ -609,7 +612,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const p = pagesRef.current[idx];
     const w = canvas.width / dpr;
     const h = canvas.height / dpr;
-    drawBackground(ctx, p?.background ?? 'blank', w, h, scaleRef.current, null);
+    drawBackground(ctx, p?.background ?? 'blank', w, h, scaleRef.current, null, p?.color);
     const meta = p?.image;
     if (!meta) return;
     // Image importée (PDF, photo) : dessinée dès qu'elle est chargée, si la page n'a pas changé entre-temps
@@ -620,7 +623,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const cx = c?.getContext('2d');
         if (!c || !cx) return;
         cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drawBackground(cx, p.background, c.width / dpr, c.height / dpr, scaleRef.current, { el, meta });
+        drawBackground(cx, p.background, c.width / dpr, c.height / dpr, scaleRef.current, { el, meta }, p.color);
       })
       .catch((err) => console.warn('[Whiteboard] image de fond :', err));
   }, []);
@@ -689,7 +692,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     redrawBackground();
     redrawMain();
     syncHistoryCounters(page.id);
-  }, [pageIndex, page.id, page.background, redrawBackground, redrawMain, syncHistoryCounters]);
+  }, [pageIndex, page.id, page.background, page.color, redrawBackground, redrawMain, syncHistoryCounters]);
 
   // Hauteur de page (allongée, ajustée, ou page suivante d'un autre format) : recadrer les calques
   const pageH = pageHeight(page);
@@ -907,6 +910,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const setBackground = useCallback((bg: Background) => {
     const p = pagesRef.current[pageIndexRef.current];
     if (p) updatePage(p.id, (pg) => ({ ...pg, background: bg }));
+  }, [updatePage]);
+
+  /** Couleur de fond de la page, sous le motif ; blanc = champ absent. */
+  const setBackgroundColor = useCallback((c: string | null) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (p) updatePage(p.id, (pg) => ({ ...pg, color: c && c.toUpperCase() !== '#FFFFFF' ? c : undefined }));
   }, [updatePage]);
 
   const addPage = useCallback(() => {
@@ -2015,6 +2024,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       // Les familles d'actions sont rangées en sous-menus (survol ou toucher) pour garder le
       // menu court sur le TBI.
       { label: 'Changer de fond', children: BACKGROUNDS.map((b) => ({ label: b.label, checked: p.background === b.id, onSelect: () => setBackground(b.id) })) },
+      // Clic droit sur une couleur : la roue remplace cette pastille (mémorisé) et l'applique
+      { label: 'Couleur du fond', children: [
+        ...bgColors.map((c, i) => ({
+          label: swatchLabel(SWATCHES.background, i, bgColors), swatch: c, checked: (p.color ?? '#FFFFFF').toUpperCase() === c.toUpperCase(),
+          onSelect: () => setBackgroundColor(c), onContextMenu: () => pickSwatchColor(SWATCHES.background, i, setBackgroundColor),
+        })),
+        { separator: true, label: '' },
+        { label: 'Autre couleur…', onSelect: () => openColorWheel(p.color ?? '#FFFFFF', setBackgroundColor) },
+      ] },
       { label: 'Rideau et caches', children: [
         { label: p.curtain ? 'Retirer le rideau de page' : 'Rideau sur la page', onSelect: togglePageCurtain },
         { separator: true, label: '' },
@@ -2051,7 +2069,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       ] },
     ];
     setMenu({ x, y, items });
-  }, [pasteFromClipboard, createTextBox, insertMenuItems, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
+  }, [pasteFromClipboard, createTextBox, insertMenuItems, selectAll, setBackground, setBackgroundColor, bgColors, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
 
   const openInkMenu = useCallback((x: number, y: number) => {
     const count = selectedStrokeIdsRef.current.size;
@@ -2662,10 +2680,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     shape: { active: tool === 'shape', onSelect: () => setTool('shape') },
     laser: { active: tool === 'laser', onSelect: () => setTool('laser') },
     color: { swatch: color, keepOpen: true, onSelect: () => setRadial((r) => (r ? { ...r, submenu: 'color' } : r)) },
-    'color-0': { swatch: COLORS[0], active: color === COLORS[0], onSelect: () => pickColor(COLORS[0]) },
-    'color-1': { swatch: COLORS[1], active: color === COLORS[1], onSelect: () => pickColor(COLORS[1]) },
-    'color-2': { swatch: COLORS[2], active: color === COLORS[2], onSelect: () => pickColor(COLORS[2]) },
-    'color-3': { swatch: COLORS[3], active: color === COLORS[3], onSelect: () => pickColor(COLORS[3]) },
+    ...Object.fromEntries([0, 1, 2, 3].map((i) => [`color-${i}`, {
+      swatch: quickColors[i], active: color === quickColors[i], onSelect: () => pickColor(quickColors[i]),
+      onContextMenu: () => pickSwatchColor(SWATCHES.quick, i, pickColor),
+    }])),
     'size-cycle': { label: `Trait ${sizeKey}`, onSelect: () => setSizeKey((k) => (k === 'S' ? 'M' : k === 'M' ? 'L' : 'S')) },
     undo: { disabled: historyLen === 0, onSelect: applyUndo },
     redo: { disabled: redoLen === 0, onSelect: applyRedo },
@@ -2690,7 +2708,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     display: { onSelect: enterDisplayMode },
   };
   const radialItems: RadialItem[] = radial?.submenu === 'color'
-    ? RADIAL_COLOR_CHOICES.map((c) => ({ id: `col-${c.hex}`, label: c.label, icon: '', swatch: c.hex, active: color === c.hex, onSelect: () => pickColor(c.hex) }))
+    ? radialColors.map((hex, i) => ({
+      id: `col-${i}`, label: swatchLabel(SWATCHES.radial, i, radialColors), icon: '', swatch: hex, active: color === hex, onSelect: () => pickColor(hex),
+      onContextMenu: () => pickSwatchColor(SWATCHES.radial, i, pickColor),
+    }))
     : palette.slots.map((id, i) => {
       const def = paletteAction(id);
       const b = paletteBindings[id];
@@ -2789,7 +2810,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const selectedTexts = pageObjects.filter((o): o is TextObject => o.type === 'text' && (o.id === editingId || selectedIds.has(o.id)));
   /** Zone de texte « active » pour la barre : celle en saisie, sinon la seule sélectionnée. */
   const selectedBox = (editingId ? selectedTexts.find((o) => o.id === editingId) : selectedTexts.length === 1 ? selectedTexts[0] : null) ?? null;
-  const showTextToolbar = tool === 'text' || (tool === 'select' && selectedTexts.length > 0);
+  // La barre « Texte » n'apparaît qu'en saisie (après un double-clic) : une zone simplement
+  // sélectionnée ou déplacée n'a pas de barre posée dessus. Avec l'outil Texte et rien de
+  // sélectionné, elle sert de réglage par défaut des prochaines zones.
+  const showTextToolbar = editingId !== null || (tool === 'text' && selectedTexts.length === 0);
   const selectedShapes = pageObjects.filter((o): o is ShapeObject => o.type === 'shape' && selectedIds.has(o.id));
   const selectedLibrary = pageObjects.filter((o): o is LibraryObject => o.type === 'library' && selectedIds.has(o.id));
   const showShapeToolbar = !showTextToolbar && (tool === 'shape' || (tool === 'select' && (selectedShapes.length > 0 || selectedLibrary.length > 0)));
@@ -2816,6 +2840,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       items: [
         { id: 'page-new', label: 'Nouvelle page', icon: '＋', onSelect: addPage },
         ...BACKGROUNDS.map((b) => ({ id: `bg-${b.id}`, label: `Fond : ${b.label}`, icon: '▦', active: page.background === b.id, onSelect: () => setBackground(b.id) })),
+        ...bgColors.map((c, i) => ({
+          id: `bgc-${i}`, label: `Fond ${swatchLabel(SWATCHES.background, i, bgColors).toLowerCase()}`, icon: '', swatch: c,
+          active: (page.color ?? '#FFFFFF').toUpperCase() === c.toUpperCase(), onSelect: () => setBackgroundColor(c),
+          onContextMenu: () => pickSwatchColor(SWATCHES.background, i, setBackgroundColor),
+        })),
+        { id: 'bgc-other', label: 'Fond : autre couleur…', icon: '🎨', onSelect: () => openColorWheel(page.color ?? '#FFFFFF', setBackgroundColor) },
         { id: 'page-cover', label: 'Tout recouvrir', icon: '▥', onSelect: recoverCurrentPage },
         { id: 'page-clear', label: 'Effacer la page', icon: '🗑', disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
       ],
@@ -3165,6 +3195,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             y={palette.y}
             onMove={(x, y) => setPalette((p) => ({ ...p, x, y }))}
             onPress={(cx, cy) => { if (coachOpen) dismissCoach(); setRadial({ x: cx, y: cy, bounds: radialBounds() }); }}
+            onSettings={() => { if (coachOpen) dismissCoach(); setRadial(null); setMenu(null); setPaletteEditor(true); }}
             open={radial !== null}
             icon={TOOL_ICONS[tool]}
             ring={paletteRing}
@@ -3360,8 +3391,6 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               fontId={selectedBox?.font ?? textFont}
               size={selectedBox?.size ?? textSize}
               color={color}
-              colors={COLORS}
-              highlights={TEXT_HIGHLIGHTS}
               onFontChange={(id) => {
                 setTextFont(id);
                 if (editingId) textApiRef.current?.applyFontFamily(id);

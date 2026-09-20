@@ -1,10 +1,12 @@
 /**
  * Sélecteur de couleur du tableau blanc : pastilles rapides dans la barre, puis un panneau
  * avec la palette complète, les couleurs récentes et une couleur libre (roue du navigateur).
- * Partagé par le stylo, le texte et les formes.
+ * Partagé par le stylo, le texte et les formes. Un clic droit sur une pastille (rapide ou de la
+ * palette) la remplace par une couleur choisie à la roue, mémorisée pour la suite.
  */
 import { useRef, useState } from 'react';
-import { BOARD_PALETTE, QUICK_COLORS, loadRecentColors, pushRecentColor } from '../../lib/boardPalette';
+import { loadRecentColors, pushRecentColor } from '../../lib/boardPalette';
+import { SWATCHES, SWATCH_HINT, customizeSwatch, openColorWheel, useSwatches } from '../../lib/boardSwatches';
 import { BoardPopover } from './BoardPopover';
 
 interface Props {
@@ -24,6 +26,8 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
   const [recent, setRecent] = useState<string[]>(() => loadRecentColors());
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const QUICK_COLORS = useSwatches(SWATCHES.quick);
+  const BOARD_PALETTE = useSwatches(SWATCHES.palette);
   const hold = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
 
   const pick = (c: string) => {
@@ -42,12 +46,13 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
           style={{ background: value === 'none' ? undefined : value }}
           onPointerDown={hold}
           onClick={() => setOpen((v) => !v)}
-          title={title}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openColorWheel(value === 'none' ? '#111827' : value, pick, { x: e.clientX, y: e.clientY }); }}
+          title={`${title} — ${SWATCH_HINT}`}
         />
       ) : (
       <>
-      {QUICK_COLORS.map((c) => (
-        <button key={c} className={`wb__swatch ${isOn(c) ? 'is-on' : ''}`} style={{ background: c }} onPointerDown={hold} onClick={() => pick(c)} title={title} />
+      {QUICK_COLORS.map((c, i) => (
+        <button key={i} className={`wb__swatch ${isOn(c) ? 'is-on' : ''}`} style={{ background: c }} onPointerDown={hold} onClick={() => pick(c)} onContextMenu={customizeSwatch(SWATCHES.quick, i, pick)} title={`${title} — ${SWATCH_HINT}`} />
       ))}
       <button
         ref={btnRef}
@@ -69,8 +74,8 @@ export function BoardColorPicker({ value, onChange, allowNone, title = 'Couleur'
             {allowNone && (
               <button className={`wbc__cell wbc__cell--none ${value === 'none' ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => { pick('none'); setOpen(false); }} title="Aucune" />
             )}
-            {BOARD_PALETTE.map((c) => (
-              <button key={c} className={`wbc__cell ${isOn(c) ? 'is-on' : ''}`} style={{ background: c }} onPointerDown={hold} onClick={() => { pick(c); setOpen(false); }} title={c} />
+            {BOARD_PALETTE.map((c, i) => (
+              <button key={i} className={`wbc__cell ${isOn(c) ? 'is-on' : ''}`} style={{ background: c }} onPointerDown={hold} onClick={() => { pick(c); setOpen(false); }} onContextMenu={customizeSwatch(SWATCHES.palette, i, pick)} title={`${c} — ${SWATCH_HINT}`} />
             ))}
           </div>
           {recent.length > 0 && (

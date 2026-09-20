@@ -30,9 +30,9 @@ export interface TextBox {
   /** Fond coloré (post-it) : la zone est alors rembourrée d'une demi-taille de police. */
   background?: string;
   /**
-   * Post-it replié : une pastille de la couleur du fond avec la première ligne du texte. Ne
-   * vaut que pour une zone à fond coloré. L'état déplié en classe est un état de séance
-   * (`RevealState.unfolded`), pas une modification de ce champ.
+   * Post-it replié : un petit dossier de la couleur du fond, avec la première ligne du texte
+   * comme étiquette. Ne vaut que pour une zone à fond coloré. L'état déplié en classe est un
+   * état de séance (`RevealState.unfolded`), pas une modification de ce champ.
    */
   collapsed?: boolean;
 }
@@ -42,9 +42,17 @@ export const textBoxPadding = (box: TextBox) => (box.background ? box.size * 0.5
 
 /** Post-it replié : fond coloré et `collapsed`. */
 export const isFolded = (box: TextBox) => !!(box.background && box.collapsed);
-/** Pastille du post-it replié : une ligne de texte, au plus 9 tailles de police de large. */
+/**
+ * Dossier du post-it replié : 6 tailles de police de large (moins si la zone est plus étroite),
+ * 3,2 de haut, posé au coin haut-gauche de la zone.
+ */
 export function foldedRect(box: TextBox): { x: number; y: number; w: number; h: number } {
-  return { x: box.x, y: box.y, w: Math.min(box.w, box.size * 9), h: Math.round(box.size * 1.6) };
+  return { x: box.x, y: box.y, w: Math.min(box.w, Math.round(box.size * 6)), h: Math.round(box.size * 3.2) };
+}
+/** Géométrie du dossier replié (en unités) : hauteur et largeur de l'onglet, rayon des coins. */
+export function foldedTab(box: TextBox): { tabH: number; tabW: number; radius: number } {
+  const r = foldedRect(box);
+  return { tabH: Math.round(box.size * 0.75), tabW: Math.round(r.w * 0.42), radius: Math.round(box.size * 0.35) };
 }
 /** Première ligne non vide d'une zone, en texte brut (titre de la pastille repliée). */
 export function textBoxTitle(html: string): string {
@@ -450,29 +458,49 @@ export function textBoxRect(box: TextBox): { x: number; y: number; w: number; h:
   return { x: box.x, y: box.y, w: box.w, h: Math.max(box.size * LINE_HEIGHT + textBoxPadding(box) * 2, textBoxHeight(box)) };
 }
 
-/** Post-it replié : pastille arrondie, titre en gras et « + » à droite (même dessin que le DOM). */
+/** Post-it replié : petit dossier (onglet en haut à gauche, corps arrondi), étiquette en gras et « + » (même dessin que le DOM). */
 function renderFoldedBox(ctx: CanvasRenderingContext2D, box: TextBox, scale: number) {
   const r = foldedRect(box);
-  const x = r.x * scale, y = r.y * scale, w = r.w * scale, h = r.h * scale, rad = h / 2;
+  const t = foldedTab(box);
+  const x = r.x * scale, y = r.y * scale, w = r.w * scale, h = r.h * scale;
+  const tabH = t.tabH * scale, tabW = t.tabW * scale, rad = t.radius * scale;
+  const bg = box.background ?? '#FDE68A';
   ctx.save();
-  ctx.fillStyle = box.background ?? '#FDE68A';
+  // Onglet : légèrement assombri pour se détacher du corps
   ctx.beginPath();
-  ctx.moveTo(x + rad, y); ctx.lineTo(x + w - rad, y); ctx.arc(x + w - rad, y + rad, rad, -Math.PI / 2, Math.PI / 2);
-  ctx.lineTo(x + rad, y + h); ctx.arc(x + rad, y + rad, rad, Math.PI / 2, (3 * Math.PI) / 2); ctx.closePath();
+  ctx.moveTo(x, y + tabH + rad);
+  ctx.lineTo(x, y + rad); ctx.arcTo(x, y, x + rad, y, rad);
+  ctx.lineTo(x + tabW - rad, y); ctx.arcTo(x + tabW, y, x + tabW, y + rad, rad);
+  ctx.lineTo(x + tabW, y + tabH + rad); ctx.closePath();
+  ctx.fillStyle = bg;
   ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.fill();
+  // Corps
+  const by = y + tabH, bh = h - tabH;
+  ctx.beginPath();
+  ctx.moveTo(x + rad, by); ctx.lineTo(x + w - rad, by); ctx.arcTo(x + w, by, x + w, by + rad, rad);
+  ctx.lineTo(x + w, by + bh - rad); ctx.arcTo(x + w, by + bh, x + w - rad, by + bh, rad);
+  ctx.lineTo(x + rad, by + bh); ctx.arcTo(x, by + bh, x, by + bh - rad, rad);
+  ctx.lineTo(x, by + rad); ctx.arcTo(x, by, x + rad, by, rad); ctx.closePath();
+  ctx.fillStyle = bg;
+  ctx.fill();
+  // Étiquette centrée dans le corps
   const size = box.size * 0.7 * scale;
   ctx.font = `700 ${size}px ${fontCss(box.font)}`;
   ctx.fillStyle = box.color;
   ctx.textBaseline = 'middle';
-  const plus = '+';
-  const plusW = ctx.measureText(plus).width;
-  const pad = size * 0.6;
-  const avail = w - pad * 3 - plusW;
+  ctx.textAlign = 'center';
+  const pad = size * 0.5;
+  const avail = w - pad * 2;
   let title = textBoxTitle(box.html) || 'Post-it';
   while (title.length > 1 && ctx.measureText(title).width > avail) title = title.slice(0, -2) + '…';
-  ctx.fillText(title, x + pad, y + h / 2);
+  ctx.fillText(title, x + w / 2, by + bh / 2 - size * 0.15);
+  // « + » discret en bas à droite
+  ctx.textAlign = 'right';
   ctx.globalAlpha = 0.7;
-  ctx.fillText(plus, x + w - pad - plusW, y + h / 2);
+  ctx.font = `700 ${size * 0.9}px ${fontCss(box.font)}`;
+  ctx.fillText('+', x + w - pad * 0.7, by + bh - size * 0.55);
   ctx.restore();
 }
 

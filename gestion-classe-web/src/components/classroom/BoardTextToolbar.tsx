@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { BOARD_FONTS, TEXT_SIZES, type TextBox } from '../../lib/boardText';
+import { SWATCHES, SWATCH_HINT, customizeSwatch, useSwatches } from '../../lib/boardSwatches';
 import type { BoardTextApi, FormatState } from './BoardObjectLayer';
 import type { SpellStatus } from './BoardSpellChecker';
 
@@ -48,8 +49,6 @@ interface ToolbarProps {
   onFontChange: (fontId: string) => void;
   onSizeChange: (size: number) => void;
   onColor: (color: string) => void;
-  colors: string[];
-  highlights: string[];
   color: string;
   onDelete: () => void;
   /** Mode liaison : la zone devient un bouton qui affiche / masque d'autres objets. */
@@ -66,9 +65,12 @@ interface ToolbarProps {
 }
 
 export function BoardTextToolbar({
-  api, format, box, editing, fontId, size, onFontChange, onSizeChange, onColor, colors, highlights, color, onDelete, onInteractions,
+  api, format, box, editing, fontId, size, onFontChange, onSizeChange, onColor, color, onDelete, onInteractions,
   spell, spellStatus, onToggleSpell, gapCount, onGap, onRevealGaps, onRemoveGaps,
 }: ToolbarProps) {
+  // Nuanciers personnalisables (clic droit sur une pastille), partagés et mémorisés
+  const colors = useSwatches(SWATCHES.text);
+  const highlights = useSwatches(SWATCHES.highlights);
   const spellTitle = !spell
     ? 'Correcteur orthographique et grammatical : désactivé (LanguageTool, réseau nécessaire)'
     : spellStatus.error
@@ -120,25 +122,27 @@ export function BoardTextToolbar({
       </div>
 
       <div className="wb__group">
-        {colors.map((c) => (
+        {colors.map((c, i) => (
           <button
-            key={c}
+            key={i}
             className={`wb__swatch ${!box && color === c ? 'is-on' : ''}`}
             style={{ background: c }}
             onPointerDown={hold}
             onClick={() => onColor(c)}
-            title="Couleur du texte (sans sélection : toute la zone)"
+            onContextMenu={customizeSwatch(SWATCHES.text, i, onColor)}
+            title={`Couleur du texte (sans sélection : toute la zone) — ${SWATCH_HINT}`}
           />
         ))}
-        {highlights.map((c) => (
+        {highlights.map((c, i) => (
           <button
-            key={c}
+            key={i}
             className="wb__swatch wb__swatch--hl"
             style={{ background: c }}
             disabled={disabled}
             onPointerDown={hold}
             onClick={() => api.current?.applyHighlight(c)}
-            title="Surligner la sélection"
+            onContextMenu={customizeSwatch(SWATCHES.highlights, i, (hex) => { if (!disabled) api.current?.applyHighlight(hex); })}
+            title={`Surligner la sélection — ${SWATCH_HINT}`}
           />
         ))}
         <button className="wb__btn wb__txt" disabled={disabled} onPointerDown={hold} onClick={call((a) => a.applyHighlight(null))} title="Retirer le surlignage">⌫</button>

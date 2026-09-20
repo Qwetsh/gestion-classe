@@ -21,6 +21,10 @@ export interface MenuItem {
   /** Sous-menu : l'entrée l'ouvre au survol ou au toucher, `onSelect` est alors ignoré. */
   children?: MenuItem[];
   onSelect?: () => void;
+  /** Pastille de couleur affichée à gauche du libellé (choix de couleur). */
+  swatch?: string;
+  /** Clic droit sur l'entrée (ex. personnaliser une pastille) ; le menu reste ouvert. */
+  onContextMenu?: () => void;
 }
 
 interface Props {
@@ -184,8 +188,10 @@ function MenuList({ items, left, top, depth, anchor, autoFocus, onBack, onClose 
                 it.onSelect?.();
                 onClose();
               }}
+              onContextMenu={it.onContextMenu ? (e) => { e.preventDefault(); e.stopPropagation(); it.onContextMenu?.(); } : undefined}
             >
               {it.checked !== undefined && <span className="wbm__check" aria-hidden>{it.checked ? '✓' : ''}</span>}
+              {it.swatch && <span className="wbm__swatch" style={{ background: it.swatch }} aria-hidden />}
               <span className="wbm__label">{it.label}</span>
               {it.shortcut && <kbd>{it.shortcut}</kbd>}
               {hasSub && <span className="wbm__arrow" aria-hidden>▸</span>}
@@ -237,6 +243,7 @@ const CSS = `
 .wbm__item.is-danger { color: #FCA5A5; }
 .wbm__label { flex: 1; }
 .wbm__check { width: 16px; flex: none; color: #A5B4FC; font-weight: 700; }
+.wbm__swatch { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid #4B5563; }
 .wbm__arrow { flex: none; margin-left: 6px; color: #9CA3AF; }
 .wbm__item kbd { font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; color: #9CA3AF; }
 .wbm__sep { height: 1px; margin: 6px 8px; background: #374151; }
