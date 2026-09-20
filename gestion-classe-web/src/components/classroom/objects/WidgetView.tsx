@@ -7,11 +7,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { NOISE_LEVELS, TRAFFIC_LEVELS, makeGroups, type WidgetObject } from '../../../lib/boardMedia';
+import type { ObjectCommand } from '../../../lib/boardReveal';
 
 interface Props {
   o: WidgetObject;
   scale: number;
   onConfig: (patch: WidgetObject['config']) => void;
+  /**
+   * Commande d'un bouton d'interaction (lancer, arrêter, tirer, remise à zéro) : chaque widget
+   * y répond dans un effet sur `command.at`, sans rien écrire dans `config`.
+   */
+  command?: ObjectCommand;
   /** Élèves présents de la séance (groupes aléatoires) ; absent hors mode classe. */
   students?: string[];
   /**
@@ -76,7 +82,7 @@ function DragResult({ text, onPlace, className, children }: { text: string | nul
 }
 
 /** Sonomètre : niveau mesuré au micro, alerte au-dessus du seuil (comme ClassroomScreen). */
-function MeterWidget({ o, onConfig }: Props) {
+function MeterWidget({ o, onConfig, command }: Props) {
   const threshold = o.config.threshold ?? 60;
   const [level, setLevel] = useState(0);
   const [status, setStatus] = useState<'off' | 'on' | 'denied'>('off');
@@ -131,6 +137,14 @@ function MeterWidget({ o, onConfig }: Props) {
 
   useEffect(() => () => stop(), [stop]);
   useEffect(() => { over.current = 0; }, [threshold]);
+  useEffect(() => {
+    if (!command) return;
+    const c = command.command;
+    if (c === 'start') void start();
+    else if (c === 'stop' || c === 'reset') stop();
+    else if (c === 'startToggle') { if (status === 'on') stop(); else void start(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.at]);
 
   const color = level > threshold ? '#DC2626' : level > threshold * 0.7 ? '#F59E0B' : '#10B981';
   return (
@@ -152,11 +166,16 @@ function MeterWidget({ o, onConfig }: Props) {
   );
 }
 
-function GroupsWidget({ o, onConfig, students, onPlace }: Props) {
+function GroupsWidget({ o, onConfig, students, onPlace, command }: Props) {
   const names = students && students.length > 0 ? students : (o.config.entries ?? []);
   const size = o.config.groupSize ?? 4;
   const groups = o.config.groups ?? [];
   const draw = () => { if (names.length > 0) onConfig({ groups: makeGroups(names, size) }); };
+  // Le tirage écrit les groupes dans le document (comme le bouton du widget) : c'est le résultat qu'on garde
+  useEffect(() => {
+    if (command?.command === 'roll') draw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.at]);
   const edit = () => {
     const text = window.prompt('Un prénom par ligne (ou séparés par des virgules)', (o.config.entries ?? []).join('\n'));
     if (text === null) return;
@@ -247,12 +266,21 @@ const hold = (e: React.PointerEvent) => {
 };
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-function TimerWidget({ o, onConfig, onPlace }: Props) {
+function TimerWidget({ o, onConfig, onPlace, command }: Props) {
   const total = o.config.seconds ?? 300;
   const [left, setLeft] = useState(total);
   const [running, setRunning] = useState(false);
   const endAt = useRef<number | null>(null);
   useEffect(() => { if (!running) setLeft(total); }, [total, running]);
+  useEffect(() => {
+    if (!command) return;
+    const c = command.command;
+    if (c === 'start') setRunning(true);
+    else if (c === 'stop') setRunning(false);
+    else if (c === 'startToggle') setRunning((v) => !v);
+    else if (c === 'reset') { setRunning(false); setLeft(total); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.at]);
   useEffect(() => {
     if (!running) return;
     endAt.current = Date.now() + left * 1000;
@@ -291,7 +319,7 @@ function TimerWidget({ o, onConfig, onPlace }: Props) {
   );
 }
 
-function DiceWidget({ o, onConfig, onPlace }: Props) {
+function DiceWidget({ o, onConfig, onPlace, command }: Props) {
   const faces = o.config.faces ?? 6;
   const [value, setValue] = useState<number | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -304,6 +332,11 @@ function DiceWidget({ o, onConfig, onPlace }: Props) {
       if (++n >= 12) { window.clearInterval(t); setRolling(false); }
     }, 70);
   };
+  useEffect(() => {
+    if (command?.command === 'roll') roll();
+    else if (command?.command === 'reset') setValue(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.at]);
   return (
     <>
       <DragResult text={value !== null && !rolling ? String(value) : null} onPlace={onPlace} className="wbw__big">{value ?? '?'}</DragResult>
@@ -318,7 +351,7 @@ function DiceWidget({ o, onConfig, onPlace }: Props) {
   );
 }
 
-function WheelWidget({ o, onConfig, onPlace }: Props) {
+function WheelWidget({ o, onConfig, onPlace, command }: Props) {
   const entries = o.config.entries ?? ['A', 'B', 'C'];
   const [pick, setPick] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
@@ -335,6 +368,11 @@ function WheelWidget({ o, onConfig, onPlace }: Props) {
     };
     step();
   };
+  useEffect(() => {
+    if (command?.command === 'roll') spin();
+    else if (command?.command === 'reset') setPick(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.at]);
   const edit = () => {
     const text = window.prompt('Une entrée par ligne (ou séparées par des virgules)', entries.join('\n'));
     if (text === null) return;

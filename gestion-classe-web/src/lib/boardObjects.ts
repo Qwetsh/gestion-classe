@@ -47,15 +47,103 @@ export function expandGroups(objects: readonly BoardObject[], ids: Iterable<stri
   return out;
 }
 
-/** Ce qu'un bouton fait à un objet cible quand on le touche (façon Genially). */
-export type InteractionAction = 'show' | 'hide' | 'toggle';
-export interface Interaction { targetId: string; action: InteractionAction }
+/**
+ * Ce qu'un bouton fait quand on le touche (façon Genially). Un bouton porte une **séquence**
+ * d'interactions, jouée dans l'ordre : les actions d'état (visibilité, caches, post-its)
+ * modifient l'état de séance, les autres (pages, médias, widgets, remise à zéro) sont des
+ * effets exécutés ensuite par le tableau (voir `fireInteractions` dans boardReveal).
+ */
+export type InteractionAction =
+  | 'show' | 'hide' | 'toggle'          // visibilité de la cible
+  | 'reveal' | 'cover'                  // cache de la cible : découvrir / recouvrir
+  | 'unfold' | 'fold'                   // post-it de la cible : déplier / replier (séance)
+  | 'goto' | 'next' | 'prev'            // pages ; goto : params.pageId
+  | 'play' | 'pause' | 'playToggle'     // son de la cible (objet audio)
+  | 'start' | 'stop' | 'startToggle'    // minuteur, sonomètre (widget cible)
+  | 'roll'                              // dé, roue, tirage de groupes (widget cible)
+  | 'reset';                            // page courante : tout remettre à couvert, arrêter les widgets
+
+export interface Interaction {
+  action: InteractionAction;
+  /** Objet visé ; absent pour les actions sans cible (goto, next, prev, reset). */
+  targetId?: string;
+  /** Page visée par `goto`, par identifiant (les index bougent quand on réordonne les pages). */
+  params?: { pageId?: string };
+  /** Ne se joue qu'une fois par séance (mémorisé dans `RevealState.fired`). */
+  once?: boolean;
+}
 
 export const INTERACTION_LABELS: Record<InteractionAction, string> = {
   show: 'Afficher',
   hide: 'Masquer',
   toggle: 'Afficher / masquer',
+  reveal: 'Découvrir',
+  cover: 'Recouvrir',
+  unfold: 'Déplier',
+  fold: 'Replier',
+  goto: 'Aller à la page',
+  next: 'Page suivante',
+  prev: 'Page précédente',
+  play: 'Lire',
+  pause: 'Mettre en pause',
+  playToggle: 'Lire / pause',
+  start: 'Lancer',
+  stop: 'Arrêter',
+  startToggle: 'Lancer / arrêter',
+  roll: 'Tirer',
+  reset: 'Réinitialiser la page',
 };
+
+/** Familles d'actions, telles que la bulle les présente (une ligne d'icônes, puis les actions). */
+export type InteractionFamily = 'visibility' | 'cover' | 'note' | 'page' | 'media' | 'tool';
+export const INTERACTION_FAMILIES: Record<InteractionFamily, { label: string; icon: string; actions: readonly InteractionAction[] }> = {
+  visibility: { label: 'Visibilité', icon: '👁', actions: ['show', 'hide', 'toggle'] },
+  cover: { label: 'Cache', icon: '🎭', actions: ['reveal', 'cover'] },
+  note: { label: 'Post-it', icon: '📌', actions: ['unfold', 'fold'] },
+  page: { label: 'Page', icon: '📄', actions: ['next', 'prev', 'goto', 'reset'] },
+  media: { label: 'Son', icon: '🔊', actions: ['play', 'pause', 'playToggle'] },
+  tool: { label: 'Outil', icon: '⏱', actions: ['start', 'stop', 'startToggle', 'roll'] },
+};
+export function interactionFamily(action: InteractionAction): InteractionFamily {
+  for (const [family, def] of Object.entries(INTERACTION_FAMILIES) as [InteractionFamily, { actions: readonly InteractionAction[] }][]) {
+    if (def.actions.includes(action)) return family;
+  }
+  return 'visibility';
+}
+
+/** Actions qui ne visent aucun objet. */
+export const TARGETLESS_ACTIONS: readonly InteractionAction[] = ['goto', 'next', 'prev', 'reset'];
+export const needsTarget = (action: InteractionAction) => !TARGETLESS_ACTIONS.includes(action);
+
+/**
+ * Actions qu'un bouton peut avoir sur une cible donnée (`null` = sans cible). C'est la bulle qui
+ * s'en sert pour ne proposer que ce qui a un sens : un cache pour un objet couvert, déplier /
+ * replier pour un post-it, lancer / arrêter pour un minuteur…
+ */
+export function actionsFor(target: BoardObject | null): InteractionAction[] {
+  if (!target) return [...TARGETLESS_ACTIONS];
+  const out: InteractionAction[] = ['show', 'hide', 'toggle'];
+  if (target.cover) out.push('reveal', 'cover');
+  if (target.type === 'text' && target.background) out.push('unfold', 'fold');
+  if (target.type === 'audio') out.push('play', 'pause', 'playToggle');
+  if (target.type === 'widget') {
+    if (target.widget === 'timer' || target.widget === 'meter') out.push('start', 'stop', 'startToggle');
+    if (target.widget === 'dice' || target.widget === 'wheel' || target.widget === 'groups') out.push('roll');
+  }
+  return out;
+}
+
+/** Libellé complet d'une interaction : « Afficher · Texte “Réponse” », « Aller à la page 3 ». */
+export function describeInteraction(it: Interaction, objects: readonly BoardObject[], pageIds: readonly string[]): string {
+  const base = INTERACTION_LABELS[it.action];
+  if (it.action === 'goto') {
+    const idx = it.params?.pageId ? pageIds.indexOf(it.params.pageId) : -1;
+    return idx >= 0 ? `${base} ${idx + 1}` : `${base} (page supprimée)`;
+  }
+  if (!needsTarget(it.action)) return base;
+  const target = it.targetId ? objects.find((o) => o.id === it.targetId) : undefined;
+  return `${base} · ${target ? objectShortLabel(target) : 'objet supprimé'}`;
+}
 
 /** Zone de texte : la hauteur découle du contenu. */
 export interface TextObject extends BoardObjectBase, TextBox {
@@ -136,7 +224,7 @@ export function cloneObjects(objects: BoardObject[], dx = 24, dy = 24): BoardObj
       x: o.x + dx,
       y: o.y + dy,
       ...(o.groupId ? { groupId: groups.get(o.groupId) } : {}),
-      ...(o.interactions ? { interactions: o.interactions.map((it) => ({ ...it, targetId: ids.get(it.targetId) ?? it.targetId })) } : {}),
+      ...(o.interactions ? { interactions: o.interactions.map((it) => (it.targetId ? { ...it, targetId: ids.get(it.targetId) ?? it.targetId } : it)) } : {}),
     };
     // Une flèche copiée avec ses objets suit les copies ; vers un objet resté hors de la copie,
     // elle reste attachée à l'original (même page)

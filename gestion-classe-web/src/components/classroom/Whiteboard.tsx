@@ -22,7 +22,7 @@ function sanitizePastedHtml(html: string): string {
   const cleaned = sanitizeBoardHtml(doc.body.innerHTML);
   return cleaned.trim() || '<div><br></div>';
 }
-import { cloneObjects, migrateLegacyTexts, objectRect, objectsBottom, rectContains, rectsIntersect, reorder, type BoardObject, type TextObject, INTERACTION_LABELS, objectShortLabel, expandGroups } from '../../lib/boardObjects';
+import { cloneObjects, migrateLegacyTexts, objectRect, objectsBottom, rectContains, rectsIntersect, reorder, type BoardObject, type TextObject, type Interaction, INTERACTION_LABELS, objectShortLabel, expandGroups, actionsFor, describeInteraction, needsTarget } from '../../lib/boardObjects';
 import { copyObjects, hasObjects as clipboardHasObjects, pasteObjects } from '../../lib/boardClipboard';
 import { BoardObjectLayer, type BoardTextApi, type ConnectDrop, type FormatState, type StageBox } from './BoardObjectLayer';
 import { BoardConnectorToolbar } from './BoardConnectorToolbar';
@@ -44,7 +44,9 @@ import {
   pageRevealedFraction,
   recoverPage,
   saveRevealState,
+  emptyReveal,
   type CurtainSlide,
+  type ObjectCommand,
   type RevealCover,
   type RevealState,
 } from '../../lib/boardReveal';
@@ -171,6 +173,22 @@ const REMOTE_SAVE_MS = 1500;
 const REMOTE_RETRY_MS = 15000;
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+/** Bulle d'interaction ouverte : le bouton, sa cible (ou null), l'étape éditée, l'ancre écran, le brouillon. */
+interface BubbleState { triggerId: string; targetId: string | null; index: number | null; anchor: { left: number; top: number; right: number; bottom: number }; draft: InteractionDraft }
+/** L'étape décrite par la bulle, telle qu'elle sera écrite. */
+const draftInteraction = (b: BubbleState): Interaction => ({
+  action: b.draft.action,
+  ...(b.targetId && needsTarget(b.draft.action) ? { targetId: b.targetId } : {}),
+  ...(b.draft.action === 'goto' && b.draft.pageId ? { params: { pageId: b.draft.pageId } } : {}),
+  ...(b.draft.once ? { once: true } : {}),
+});
+/** Séquence du bouton avec l'étape de la bulle appliquée (remplacée ou ajoutée). */
+const sequenceWithDraft = (b: BubbleState, seq: Interaction[]): Interaction[] => {
+  const it = draftInteraction(b);
+  if (b.index !== null && b.index < seq.length) return seq.map((x, i) => (i === b.index ? it : x));
+  return [...seq, it];
+};
 const newPage = (background: Background = 'blank'): Page => ({ id: uid(), background, strokes: [], objects: [] });
 const escapeHtml = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
 /** Contexte hors écran pour tester la contenance d'un point dans une forme (isPointInPath). */
@@ -376,6 +394,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<ReadonlySet<string>>(() => new Set());
   /** Ce qui a été découvert pendant la séance (hors document). */
   const [reveal, setReveal] = useState<RevealState>(() => loadRevealState(sessionId));
+  /** Miroir de `reveal` pour les gestionnaires (un bouton lit l'état courant sans re-création). */
+  const revealRef = useRef(reveal);
+  useEffect(() => { revealRef.current = reveal; }, [reveal]);
+  /** Commandes envoyées aux widgets et aux sons par les boutons : état éphémère, jamais persisté. */
+  const [commands, setCommands] = useState<Record<string, ObjectCommand>>({});
+  const commandSeq = useRef(0);
   const [exportOpen, setExportOpen] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -390,7 +414,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Mode liaison : point du pointeur (unités de page) que suit la flèche partant du bouton. */
   const [linkPointer, setLinkPointer] = useState<{ x: number; y: number } | null>(null);
   /** Bulle d'interaction ouverte sur une cible (nouvelle liaison ou interaction existante). */
-  const [bubble, setBubble] = useState<{ triggerId: string; targetId: string; index: number | null; anchor: { left: number; top: number; right: number; bottom: number }; draft: InteractionDraft } | null>(null);
+  const [bubble, setBubble] = useState<BubbleState | null>(null);
   /** Choix d'une cible d'interaction en cours : on attend un tap sur un objet de la page. */
   const [picking, setPicking] = useState(false);
   /** Taille visible de la scène (px) : une page plus haute qu'elle se lit en défilant. */
@@ -1558,13 +1582,47 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     handleObjectsChange((p.objects ?? []).map((o) => (o.id === id ? fn(o) : o)), p.objects ?? []);
   }, [handleObjectsChange]);
 
-  /** Un bouton a été touché en classe : ses cibles s'affichent, se masquent ou basculent. */
-  const fireObject = useCallback((id: string) => {
-    const p = pagesRef.current[pageIndexRef.current];
-    const trigger = (p?.objects ?? []).find((o) => o.id === id);
-    if (!p || !trigger) return;
-    setReveal((r) => fireInteractions(r, trigger, p.objects ?? []));
+  /** Navigation unique : index borné aux pages existantes. */
+  const goToPage = useCallback((i: number) => {
+    setPageIndex(Math.max(0, Math.min(pagesRef.current.length - 1, i)));
   }, []);
+
+  /**
+   * Un bouton a été touché en classe : sa séquence se joue. L'état de séance d'abord (visibilité,
+   * caches, post-its), puis les effets : commandes aux widgets et aux sons, remise à zéro de la
+   * page, navigation en dernier. `draft` joue une séquence de remplacement sans rien écrire
+   * (bouton Tester) ; `skipPages` ignore alors les changements de page.
+   */
+  const fireObject = useCallback((id: string, opts?: { draft?: Interaction[]; skipPages?: boolean }) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const found = (p?.objects ?? []).find((o) => o.id === id);
+    if (!p || !found) return;
+    const trigger = opts?.draft ? { ...found, interactions: opts.draft } : found;
+    const objects = p.objects ?? [];
+    const { state, effects } = fireInteractions(revealRef.current, trigger, objects);
+    let next = state;
+    const cmds: Record<string, ObjectCommand> = {};
+    let pageTarget: number | null = null;
+    for (const ef of effects) {
+      if (ef.kind === 'reset') {
+        next = recoverPage(next, p);
+        for (const o of objects) if (o.type === 'widget' || o.type === 'audio') cmds[o.id] = { command: 'reset', at: ++commandSeq.current };
+      } else if (ef.kind === 'command') {
+        cmds[ef.targetId] = { command: ef.command, at: ++commandSeq.current };
+      } else if (opts?.skipPages) {
+        continue;
+      } else if (ef.kind === 'page') {
+        const idx = pagesRef.current.findIndex((pg) => pg.id === ef.pageId);
+        if (idx >= 0) pageTarget = idx;
+      } else {
+        pageTarget = (pageTarget ?? pageIndexRef.current) + ef.delta;
+      }
+    }
+    if (opts?.draft) revealRef.current = next; // Tester enchaîné : l'état suit sans attendre le rendu
+    setReveal(next);
+    if (Object.keys(cmds).length > 0) setCommands((c) => ({ ...c, ...cmds }));
+    if (pageTarget !== null) goToPage(pageTarget);
+  }, [goToPage]);
 
   // Extracteur de mots : option d'une zone de texte (menu contextuel)
   const toggleWordExtractor = useCallback((id: string) => {
@@ -1605,17 +1663,30 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setReveal((r) => { const shown = { ...r.shown }; delete shown[id]; return { ...r, shown }; });
   }, [patchObject]);
 
-  /** Ouvre la bulle d'une interaction (nouvelle ou existante) à côté de sa cible. */
-  const openBubble = useCallback((triggerId: string, targetId: string, anchor?: { left: number; top: number; right: number; bottom: number }) => {
+  /**
+   * Ouvre la bulle d'une interaction à côté de sa cible (ou du bouton, sans cible). `at` désigne
+   * une étape existante de la séquence ; sinon, avec une cible, l'étape déjà liée à cette cible
+   * est reprise, et à défaut une nouvelle étape est ajoutée.
+   */
+  const openBubble = useCallback((triggerId: string, targetId: string | null, anchor?: { left: number; top: number; right: number; bottom: number }, at?: number | null) => {
     const p = pagesRef.current[pageIndexRef.current];
     const trigger = p?.objects?.find((o) => o.id === triggerId);
-    const target = p?.objects?.find((o) => o.id === targetId);
-    if (!trigger || !target) return;
-    const index = (trigger.interactions ?? []).findIndex((it) => it.targetId === targetId);
-    const existing = index >= 0 ? trigger.interactions![index] : null;
-    const rect = anchor ?? document.querySelector(`[data-obj="${targetId}"]`)?.getBoundingClientRect() ?? { left: window.innerWidth / 2, top: window.innerHeight / 2, right: window.innerWidth / 2, bottom: window.innerHeight / 2 };
-    // Nouvelle interaction : par défaut le bouton bascule la cible, qui démarre cachée (réponse à révéler)
-    setBubble({ triggerId, targetId, index: index >= 0 ? index : null, anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }, draft: { action: existing?.action ?? 'toggle', hidden: existing ? target.hidden === true : true } });
+    const target = targetId ? p?.objects?.find((o) => o.id === targetId) : null;
+    if (!trigger || (targetId && !target)) return;
+    const seq = trigger.interactions ?? [];
+    const index = at !== undefined && at !== null && at < seq.length ? at : targetId ? seq.findIndex((it) => it.targetId === targetId) : -1;
+    const existing = index >= 0 ? seq[index] : null;
+    const anchorId = targetId ?? triggerId;
+    const rect = anchor ?? document.querySelector(`[data-obj="${anchorId}"]`)?.getBoundingClientRect() ?? { left: window.innerWidth / 2, top: window.innerHeight / 2, right: window.innerWidth / 2, bottom: window.innerHeight / 2 };
+    // Nouvelle interaction : par défaut le bouton bascule la cible, qui démarre cachée (réponse à
+    // révéler) ; sans cible, page suivante
+    const allowed = actionsFor(target ?? null);
+    const action = existing && allowed.includes(existing.action) ? existing.action : target ? 'toggle' : 'next';
+    setBubble({
+      triggerId, targetId: existing?.targetId ?? targetId, index: index >= 0 ? index : null,
+      anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      draft: { action, hidden: existing ? target?.hidden === true : !!target, pageId: existing?.params?.pageId ?? p?.id, once: existing?.once === true },
+    });
   }, []);
 
   /** Mode liaison : une flèche part du bouton et suit le pointeur jusqu'au tap sur la cible. */
@@ -1638,20 +1709,43 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     openBubble(triggerId, targetId);
   }, [interactionsFor, openBubble]);
 
-  /** Valider la bulle : l'interaction est écrite (ou remplacée) et la cible prend son état de départ. */
+  /** Valider la bulle : l'étape est écrite (ou remplacée) et la cible prend son état de départ. */
   const confirmBubble = useCallback(() => {
     const b = bubble;
     if (!b) return;
     setBubble(null);
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
+    const visibility = b.draft.action === 'show' || b.draft.action === 'hide' || b.draft.action === 'toggle';
     handleObjectsChange((p.objects ?? []).map((o) => {
-      if (o.id === b.triggerId) return { ...o, interactions: [...(o.interactions ?? []).filter((it) => it.targetId !== b.targetId), { targetId: b.targetId, action: b.draft.action }] };
-      if (o.id === b.targetId) { const n = { ...o }; if (b.draft.hidden) n.hidden = true; else delete n.hidden; return n; }
+      if (o.id === b.triggerId) return { ...o, interactions: sequenceWithDraft(b, o.interactions ?? []) };
+      if (b.targetId && o.id === b.targetId && visibility) { const n = { ...o }; if (b.draft.hidden) n.hidden = true; else delete n.hidden; return n; }
       return o;
     }), p.objects ?? []);
-    setReveal((r) => { const shown = { ...r.shown }; delete shown[b.targetId]; return { ...r, shown }; });
+    if (b.targetId && visibility) setReveal((r) => { const shown = { ...r.shown }; delete shown[b.targetId!]; return { ...r, shown }; });
   }, [bubble, handleObjectsChange]);
+
+  /** Tester : joue la séquence avec le brouillon, sans écrire ni changer de page. */
+  const testBubble = useCallback(() => {
+    const b = bubble;
+    if (!b) return;
+    const p = pagesRef.current[pageIndexRef.current];
+    const trigger = p?.objects?.find((o) => o.id === b.triggerId);
+    if (!trigger) return;
+    fireObject(b.triggerId, { draft: sequenceWithDraft(b, trigger.interactions ?? []), skipPages: true });
+  }, [bubble, fireObject]);
+
+  /** Déplace une étape de la séquence d'un cran. */
+  const moveInteraction = useCallback((triggerId: string, index: number, delta: -1 | 1) => {
+    patchObject(triggerId, (o) => {
+      const seq = [...(o.interactions ?? [])];
+      const j = index + delta;
+      if (index < 0 || index >= seq.length || j < 0 || j >= seq.length) return o;
+      [seq[index], seq[j]] = [seq[j], seq[index]];
+      return { ...o, interactions: seq };
+    });
+    setBubble((bb) => (bb && bb.triggerId === triggerId && bb.index === index ? { ...bb, index: index + delta } : bb));
+  }, [patchObject]);
 
 
   const removeInteraction = useCallback((triggerId: string, index: number) => {
@@ -1828,7 +1922,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   const recoverAll = useCallback(() => {
-    setReveal({ pages: {}, objects: {}, gaps: {}, shown: {} });
+    setReveal(emptyReveal());
   }, []);
 
   /** Pose (ou retire) un cache sur les objets sélectionnés, avec un pas d'annulation. */
@@ -2022,14 +2116,17 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             { label: 'Ticket à gratter (image…)', onSelect: pickCoverImage },
           ] },
       ...(!many ? [{ label: `Bouton et interactions${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, children: [
-        { label: 'Relier à un objet à afficher / masquer…', onSelect: () => startLinking(target.id) },
+        { label: 'Relier à un objet (afficher, masquer, découvrir, lancer…)…', onSelect: () => startLinking(target.id) },
+        { label: 'Action sans cible (page, remise à zéro)…', onSelect: () => { setSelectedIds(new Set([target.id])); openBubble(target.id, null); } },
         ...((target.interactions?.length ?? 0) > 0 ? [
           { label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) },
           { separator: true, label: '' },
-          // Une entrée par cible : ouvre sa bulle (action, état de départ, suppression)
-          ...(target.interactions ?? []).map((it) => {
-            const t = (pagesRef.current[pageIndexRef.current]?.objects ?? []).find((o) => o.id === it.targetId);
-            return { label: `${INTERACTION_LABELS[it.action]} · ${t ? objectShortLabel(t) : 'objet supprimé'}`, disabled: !t, onSelect: () => { setSelectedIds(new Set([target.id])); openBubble(target.id, it.targetId); } };
+          // Une entrée par étape de la séquence : ouvre sa bulle (action, options, suppression)
+          ...(target.interactions ?? []).map((it, index) => {
+            const objs = pagesRef.current[pageIndexRef.current]?.objects ?? [];
+            const t = it.targetId ? objs.find((o) => o.id === it.targetId) : null;
+            const gone = needsTarget(it.action) && !t;
+            return { label: `${index + 1}. ${describeInteraction(it, objs, pagesRef.current.map((pg) => pg.id))}`, disabled: gone, onSelect: () => { setSelectedIds(new Set([target.id])); openBubble(target.id, it.targetId ?? null, undefined, index); } };
           }),
         ] : []),
         { separator: true, label: '' },
@@ -2613,14 +2710,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         else if (k === 'f') setTool('shape');
         else if (k === 'l') setTool('laser');
         else if (k === 'n') setNavOpen((v) => !v);
-        else if (k === 'pageup') setPageIndex((i) => Math.max(0, i - 1));
-        else if (k === 'pagedown') setPageIndex((i) => Math.min(pagesRef.current.length - 1, i + 1));
+        else if (k === 'pageup') goToPage(pageIndexRef.current - 1);
+        else if (k === 'pagedown') goToPage(pageIndexRef.current + 1);
       }
     };
     if (!active) return; // onglet masqué : le clavier va à l'onglet actif
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
+  }, [active, goToPage, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
 
   // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -2721,8 +2818,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     'size-cycle': { label: `Trait ${sizeKey}`, onSelect: () => setSizeKey((k) => (k === 'S' ? 'M' : k === 'M' ? 'L' : 'S')) },
     undo: { disabled: historyLen === 0, onSelect: applyUndo },
     redo: { disabled: redoLen === 0, onSelect: applyRedo },
-    'page-next': { disabled: pageIndex >= pages.length - 1, onSelect: () => setPageIndex((i) => Math.min(pages.length - 1, i + 1)) },
-    'page-prev': { disabled: pageIndex === 0, onSelect: () => setPageIndex((i) => Math.max(0, i - 1)) },
+    'page-next': { disabled: pageIndex >= pages.length - 1, onSelect: () => goToPage(pageIndex + 1) },
+    'page-prev': { disabled: pageIndex === 0, onSelect: () => goToPage(pageIndex - 1) },
     'page-new': { onSelect: addPage },
     'page-nav': { active: navOpen, onSelect: () => setNavOpen((v) => !v) },
     'page-clear': { disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
@@ -2832,12 +2929,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   // en mode liaison, la flèche du bouton au pointeur s'y ajoute
   const selectedTrigger = !displayMode && OBJECT_TOOLS.includes(tool) && selectedIds.size === 1 ? pageObjects.find((o) => selectedIds.has(o.id) && (o.interactions?.length ?? 0) > 0) ?? null : null;
   const ghostLinks: GhostLink[] = [
-    ...(selectedTrigger ? (selectedTrigger.interactions ?? []).flatMap((it) => (pageObjects.some((o) => o.id === it.targetId) ? [{
-      key: `link:${selectedTrigger.id}:${it.targetId}`,
+    ...(selectedTrigger ? (selectedTrigger.interactions ?? []).flatMap((it, index) => (it.targetId && pageObjects.some((o) => o.id === it.targetId) ? [{
+      key: `link:${selectedTrigger.id}:${index}`,
       from: { objectId: selectedTrigger.id, side: 'auto' as const },
       to: { objectId: it.targetId, side: 'auto' as const },
       label: INTERACTION_LABELS[it.action],
-      onTap: (anchor: { left: number; top: number; right: number; bottom: number }) => openBubble(selectedTrigger.id, it.targetId, anchor),
+      onTap: (anchor: { left: number; top: number; right: number; bottom: number }) => openBubble(selectedTrigger.id, it.targetId!, anchor, index),
     }] : [])) : []),
     ...(picking && interactionsFor && linkPointer ? [{ key: 'linking', from: { objectId: interactionsFor, side: 'auto' as const }, to: linkPointer }] : []),
   ];
@@ -3058,6 +3155,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onSpellStatus={setSpellStatus}
           play={displayMode || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
+          commands={commands}
           onExtractWord={extractWord}
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
           pickSourceId={picking ? interactionsFor : null}
@@ -3220,7 +3318,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         })()}
         {picking && (
           <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
-            <span>⚡ Touchez l'objet que ce bouton doit afficher ou masquer</span>
+            <span>⚡ Touchez l'objet sur lequel ce bouton agit</span>
+            <button type="button" onClick={() => { const id = interactionsFor; cancelLinking(); if (id) openBubble(id, null); }} title="Page suivante, précédente, aller à une page, réinitialiser la page">Sans cible…</button>
             <button type="button" onClick={cancelLinking}>Annuler</button>
           </div>
         )}
@@ -3380,7 +3479,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         <BoardPageNavigator
           pages={pages}
           pageIndex={pageIndex}
-          onSelect={setPageIndex}
+          onSelect={goToPage}
           onReorder={movePage}
           onContextMenu={openPageMenu}
           onAddPage={addPage}
@@ -3388,19 +3487,28 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
       {menu && <BoardContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={closeMenu} />}
       {!displayMode && bubble && (() => {
-        const target = pageObjects.find((o) => o.id === bubble.targetId);
-        if (!target) return null;
+        const trigger = pageObjects.find((o) => o.id === bubble.triggerId);
+        const target = bubble.targetId ? pageObjects.find((o) => o.id === bubble.targetId) : null;
+        if (!trigger || (bubble.targetId && !target)) return null;
         return (
           <BoardInteractionBubble
             anchor={bubble.anchor}
-            targetLabel={objectShortLabel(target)}
+            targetLabel={target ? objectShortLabel(target) : null}
+            actions={actionsFor(target ?? null)}
             draft={bubble.draft}
             existing={bubble.index !== null}
+            sequence={trigger.interactions ?? []}
+            editingIndex={bubble.index}
+            objects={pageObjects}
+            pageIds={pages.map((pg) => pg.id)}
             onChange={(draft) => setBubble((b) => (b ? { ...b, draft } : b))}
             onConfirm={confirmBubble}
             onRemove={() => { if (bubble.index !== null) removeInteraction(bubble.triggerId, bubble.index); setBubble(null); }}
-            onTest={() => { confirmBubble(); window.setTimeout(() => fireObject(bubble.triggerId), 0); }}
+            onTest={testBubble}
             onCancel={() => setBubble(null)}
+            onSelectStep={(i) => { const it = (trigger.interactions ?? [])[i]; if (it) openBubble(trigger.id, it.targetId ?? null, bubble.anchor, i); }}
+            onMoveStep={(i, delta) => moveInteraction(trigger.id, i, delta)}
+            onRemoveStep={(i) => { removeInteraction(trigger.id, i); if (bubble.index === i) setBubble(null); else if (bubble.index !== null && bubble.index > i) setBubble((b) => (b ? { ...b, index: b.index! - 1 } : b)); }}
           />
         );
       })()}
@@ -3528,8 +3636,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           navWidth={navWidth}
           pageIndex={pageIndex}
           pageCount={pageCount}
-          onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}
-          onNext={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+          onPrev={() => goToPage(pageIndex - 1)}
+          onNext={() => goToPage(pageIndex + 1)}
           onAdd={addPage}
           onToggleNav={() => setNavOpen((v) => !v)}
         />

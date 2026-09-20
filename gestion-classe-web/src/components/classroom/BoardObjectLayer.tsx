@@ -42,7 +42,7 @@ export type ConnectDrop =
   | { kind: 'object'; targetId: string }
   | { kind: 'point'; x: number; y: number };
 import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
-import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type RevealState } from '../../lib/boardReveal';
+import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type ObjectCommand, type RevealState } from '../../lib/boardReveal';
 import { loadPageImage, objectBounds } from '../../lib/boardRender';
 import { BoardScratchCover } from './BoardScratchCover';
 import { TableView } from './objects/TableView';
@@ -130,6 +130,8 @@ interface Props {
   play: boolean;
   /** Un bouton a été touché : déclencher ses interactions. */
   onFire: (id: string) => void;
+  /** Commandes en attente pour les widgets et les sons (lancer, tirer, lire…), par objet. */
+  commands?: Record<string, ObjectCommand>;
   /** Extracteur de mots : un mot de la zone `id` a été touché ; `rect` est sa boîte à l'écran, en unités. */
   onExtractWord?: (id: string, word: string, rect: { x: number; y: number; w: number; h: number }) => void;
   /** Choix d'une cible d'interaction : tout objet touché (sauf `pickSourceId`) est renvoyé ici. */
@@ -236,7 +238,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
     reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students, links, snapGrid,
-    spellCheck = false, onSpellStatus, play, onFire, onExtractWord, pickTarget = null, pickSourceId = null,
+    spellCheck = false, onSpellStatus, play, onFire, commands, onExtractWord, pickTarget = null, pickSourceId = null,
   },
   ref
 ) {
@@ -949,7 +951,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     const br = clientToUnit(r.right, r.bottom);
     onExtractWord(o.id, text.slice(start, end), { x: tl.x, y: tl.y, w: br.x - tl.x, h: br.y - tl.y });
   }, [onExtractWord, clientToUnit]);
-  extractRef.current = extractWordAt;
+  useEffect(() => { extractRef.current = extractWordAt; }, [extractWordAt]);
 
   // Geste de connexion (bouton ↑ → ↓ ← d'une forme) : fantôme de la copie qui suit le pointeur
   const connectRef = useRef<{ id: string; side: FixedSide; pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
@@ -1084,9 +1086,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             {(o.type === 'video' || o.type === 'web') && (
               <EmbedView o={o} scale={scale} active={active} onToggleInteractive={() => onToggleInteractive(o.id)} />
             )}
-            {o.type === 'audio' && <AudioView o={o} scale={scale} />}
+            {o.type === 'audio' && <AudioView o={o} scale={scale} command={commands?.[o.id]} />}
             {o.type === 'link' && <LinkView o={o} scale={scale} active={active} />}
-            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} onPlace={(text, client) => onWidgetPlace(o.id, text, client)} />}
+            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} command={commands?.[o.id]} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} onPlace={(text, client) => onWidgetPlace(o.id, text, client)} />}
             {o.type === 'equation' && (
               <EquationView
                 o={o}
@@ -1358,7 +1360,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 onClick={(e) => { e.stopPropagation(); lastFoldRef.current = Date.now(); onFoldText(o.id, true); }}
               >–</button>
             )}
-            {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡</span>}
+            {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡{(o.interactions?.length ?? 0) > 1 ? ` ${o.interactions!.length}` : ''}</span>}
             {!play && !visible && <span className="wbo__badge wbo__badge--ghost" title="Caché au départ : un bouton l'affichera">caché</span>}
             {active && isSelected && (
               // Bordure de préhension : déplace toujours, même pendant la saisie
