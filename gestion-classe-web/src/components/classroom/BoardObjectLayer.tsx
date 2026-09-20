@@ -30,6 +30,7 @@ import {
   textBoxTitle,
 } from '../../lib/boardText';
 import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
+import { defaultShapeText, shapeTextBox } from '../../lib/boardShapes';
 import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
 import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type RevealState } from '../../lib/boardReveal';
 import { loadPageImage, objectBounds } from '../../lib/boardRender';
@@ -154,8 +155,10 @@ interface Press {
   /** L'objet était-il déjà sélectionné avant cet appui ? (clic = placer le curseur) */
   wasSelected: boolean;
   moved: boolean;
-  mode: 'move' | 'resize';
+  mode: 'move' | 'resize' | 'rotate';
   handle?: Handle;
+  /** Rotation : centre du cadre à l'écran, angle et rotation de départ. */
+  rotate?: { cx: number; cy: number; a0: number; r0: number };
   before: BoardObject[];
   /** Géométrie de départ des objets entraînés. */
   start: Map<string, BoardObject>;
@@ -246,6 +249,12 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   // Les trous non révélés reçoivent la classe is-hidden (pas en saisie : on voit tout).
   useEffect(() => {
     for (const o of objects) {
+      if (o.type === 'shape') {
+        const el = editorsRef.current.get(o.id);
+        const html = o.text?.html ?? defaultShapeText(o).html;
+        if (el && document.activeElement !== el && el.innerHTML !== html) el.innerHTML = html;
+        continue;
+      }
       if (o.type !== 'text') continue;
       const el = editorsRef.current.get(o.id);
       if (!el) continue;
@@ -296,6 +305,14 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     const html = sanitizeBoardHtml(el.innerHTML);
     const before = commit ? editStartRef.current : null;
     if (commit) editStartRef.current = null;
+    const shape = objectsRef.current.find((t) => t.id === id);
+    if (shape?.type === 'shape') {
+      // Texte dans une forme : vide à la sortie = pas de texte du tout
+      if (commit && isEmptyBoardHtml(html)) { patch(id, (o) => { const { text: _t, ...rest } = o as typeof shape; void _t; return rest as BoardObject; }, before); return; }
+      if (shape.text?.html === html && !commit) return;
+      patch(id, (o) => (o.type === 'shape' ? { ...o, text: { ...(o.text ?? defaultShapeText(o)), html } } : o), before);
+      return;
+    }
     const current = textById(id);
     if (!current || current.type !== 'text') return;
     if (commit && isEmptyBoardHtml(html)) {
@@ -667,7 +684,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     pressRef.current = null;
   }, []);
 
-  const startPress = useCallback((e: React.PointerEvent, o: BoardObject, mode: 'move' | 'resize', handle?: Handle) => {
+  const startPress = useCallback((e: React.PointerEvent, o: BoardObject, mode: 'move' | 'resize' | 'rotate', handle?: Handle) => {
     if (!active) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.stopPropagation();
@@ -692,6 +709,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
       startX: e.clientX, startY: e.clientY, wasSelected, moved: false, mode, handle,
       before: objectsRef.current, start, timer: null,
     };
+    if (mode === 'rotate') {
+      const frame = (e.currentTarget as HTMLElement).closest<HTMLElement>('.wbo__frame')?.getBoundingClientRect();
+      if (frame) {
+        const cx = frame.left + frame.width / 2, cy = frame.top + frame.height / 2;
+        press.rotate = { cx, cy, a0: Math.atan2(e.clientY - cy, e.clientX - cx), r0: o.type === 'shape' ? o.rotation ?? 0 : 0 };
+      }
+    }
     // Appui long (doigt, stylet) = menu contextuel
     if (e.pointerType !== 'mouse' && mode === 'move') {
       const { clientX, clientY } = e;
@@ -721,6 +745,17 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
       }
     }
     if (p.start.size === 0) return;
+    if (p.mode === 'rotate') {
+      const r = p.rotate;
+      if (!r) return;
+      const a = Math.atan2(e.clientY - r.cy, e.clientX - r.cx);
+      let rot = r.r0 + ((a - r.a0) * 180) / Math.PI;
+      if (e.shiftKey) rot = Math.round(rot / 15) * 15;
+      rot = ((Math.round(rot) % 360) + 360) % 360;
+      emit(objectsRef.current.map((o) => (p.start.has(o.id) && o.type === 'shape' ? { ...o, rotation: rot || undefined } : o)), null);
+      forceRender((v) => v + 1);
+      return;
+    }
     const dx = dxPx / scale;
     const dy = dyPx / scale;
     const next = objectsRef.current.map((o) => {
@@ -745,8 +780,14 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         return { ...o, x, w };
       }
       if ('h' in o && 'h' in s && typeof o.h === 'number' && typeof s.h === 'number') {
-        let w = horizontal ? (left ? s.w - dx : s.w + dx) : s.w;
-        let hh = vertical ? (top ? s.h - dy : s.h + dy) : s.h;
+        // Forme tournée : le glissement est lu dans le repère de la forme, et le côté opposé à
+        // la poignée reste en place sur la page (sinon la forme dérive en grandissant)
+        const rot = s.type === 'shape' && s.rotation ? s.rotation : 0;
+        const ang = (rot * Math.PI) / 180;
+        const ldx = rot ? dx * Math.cos(-ang) - dy * Math.sin(-ang) : dx;
+        const ldy = rot ? dx * Math.sin(-ang) + dy * Math.cos(-ang) : dy;
+        let w = horizontal ? (left ? s.w - ldx : s.w + ldx) : s.w;
+        let hh = vertical ? (top ? s.h - ldy : s.h + ldy) : s.h;
         // Proportions conservées : Maj sur une forme, toujours sur une image ou une équation par les coins
         const keepRatio = h.length === 2 && s.w > 0 && s.h > 0 && (e.shiftKey || o.type === 'image' || o.type === 'equation' || o.type === 'library');
         if (keepRatio) {
@@ -758,6 +799,18 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         const minH = line ? 0 : MIN_SHAPE_SIZE;
         w = Math.max(line ? 0 : MIN_SHAPE_SIZE, Math.round(w));
         hh = Math.max(minH, Math.round(hh));
+        if (rot) {
+          // Point d'ancrage : milieu du côté (ou coin) opposé à la poignée, exprimé depuis le centre
+          const ax = left ? 1 : h.includes('e') ? -1 : 0;
+          const ay = top ? 1 : h.includes('s') ? -1 : 0;
+          const cos = Math.cos(ang), sin = Math.sin(ang);
+          const c0x = s.x + s.w / 2, c0y = s.y + s.h / 2;
+          const px = c0x + (ax * s.w / 2) * cos - (ay * s.h / 2) * sin;
+          const py = c0y + (ax * s.w / 2) * sin + (ay * s.h / 2) * cos;
+          const c1x = px - ((ax * w / 2) * cos - (ay * hh / 2) * sin);
+          const c1y = py - ((ax * w / 2) * sin + (ay * hh / 2) * cos);
+          return { ...o, x: Math.round(c1x - w / 2), y: Math.round(c1y - hh / 2), w, h: hh } as BoardObject;
+        }
         const x = left ? Math.round(s.x + (s.w - w)) : s.x;
         const y = top ? Math.round(s.y + (s.h - hh)) : s.y;
         return { ...o, x, y, w, h: hh } as BoardObject;
@@ -820,6 +873,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               width: o.w * scale,
               minHeight: (o.type === 'shape' || o.type === 'image' || o.type === 'library' ? o.h : rect.h) * scale,
               opacity: o.opacity ?? 1,
+              // Forme tournée : tout le cadre tourne (poignées, contour, texte), autour de son centre
+              transform: o.type === 'shape' && o.rotation ? `rotate(${o.rotation}deg)` : undefined,
             }}
             onPointerDown={(e) => {
               // Choix d'une cible d'interaction : l'objet touché est la cible, rien d'autre ne bouge
@@ -853,7 +908,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             }}
             onPointerCancel={(e) => { const p = pressRef.current; clearPress(e); if (p?.moved) emit(objectsRef.current, p.before); }}
             onDoubleClick={(e) => {
-              if (!active || !EDITABLE_TYPES.has(o.type) || o.locked || isEditing) return;
+              const shapeText = o.type === 'shape' && !isLineKind(o.kind);
+              if (!active || (!EDITABLE_TYPES.has(o.type) && !shapeText) || o.locked || isEditing) return;
               e.stopPropagation();
               beginEdit(o.id, e.clientX, e.clientY);
             }}
@@ -932,7 +988,6 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 height={Math.max(1, o.h * scale)}
                 viewBox={`0 0 ${Math.max(1, o.w)} ${Math.max(1, o.h)}`}
                 preserveAspectRatio="none"
-                style={{ transform: o.rotation ? `rotate(${o.rotation}deg)` : undefined }}
               >
                 <path
                   d={shapePath(o)}
@@ -950,6 +1005,37 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 ))}
               </svg>
             )}
+            {o.type === 'shape' && !isLineKind(o.kind) && (o.text || isEditing) && (() => {
+              // Texte dans la forme : même éditeur que les zones de texte, centré dans la boîte
+              // intérieure, tourné avec la forme (l'origine de rotation reste le centre de la forme)
+              const t = o.text ?? defaultShapeText(o);
+              const b = shapeTextBox(o);
+              const ox = (b.x - o.x) * scale, oy = (b.y - o.y) * scale;
+              return (
+                <div
+                  className="wbo__shape-textbox"
+                  style={{ left: ox, top: oy, width: b.w * scale, height: b.h * scale }}
+                >
+                  <div
+                    className="wbo__editor wbo__editor--shape"
+                    ref={(el) => { if (el) editorsRef.current.set(o.id, el); else editorsRef.current.delete(o.id); }}
+                    contentEditable={isEditing}
+                    suppressContentEditableWarning
+                    spellCheck={false}
+                    style={{ fontFamily: fontCss(t.font), fontSize: t.size * scale, lineHeight: LINE_HEIGHT, color: t.color, ['--wbo-indent' as string]: `${INDENT_EM}em` }}
+                    onInput={() => syncFromDom(o.id, false)}
+                    onBlur={() => { if (isEditing) syncFromDom(o.id, true); }}
+                    onKeyUp={refreshFormat}
+                    onMouseUp={refreshFormat}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Escape') { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); onEdit(null); return; }
+                      if (handleShortcut(e)) e.preventDefault();
+                    }}
+                  />
+                </div>
+              );
+            })()}
             {o.type === 'text' && isFolded(o) && (
               // Post-it replié : une pastille, qu'un tap déplie (pour la séance en classe, pour
               // de bon en édition au double-clic)
@@ -1111,6 +1197,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               <div className="wbo__grab" onPointerDown={(e) => startPress(e, o, 'move')} />
             )}
             {o.locked && isSelected && <span className="wbo__lock" title="Objet verrouillé">🔒</span>}
+            {showHandles && o.type === 'shape' && (
+              <div className="wbo__rotate" title="Tourner (Maj : par pas de 15°)" onPointerDown={(e) => startPress(e, o, 'rotate')}>↻</div>
+            )}
             {showHandles && (
               <>
                 {(WIDTH_ONLY_TYPES.has(o.type) ? TEXT_HANDLES : SHAPE_HANDLES).map((h) => (
@@ -1154,6 +1243,12 @@ const CSS = `
 .wbo__frame { position: absolute; pointer-events: none; touch-action: none; }
 .wbo__frame.is-active { pointer-events: auto; }
 .wbo__editor { outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: #4F46E5; cursor: default; }
+/* Texte dans une forme : boîte intérieure centrée ; l'éditeur ne capte le pointeur qu'en saisie */
+.wbo__shape-textbox { position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; }
+.wbo__editor--shape { width: 100%; max-height: 100%; text-align: center; pointer-events: none; }
+.wbo__frame.is-editing .wbo__editor--shape { pointer-events: auto; cursor: text; }
+.wbo__rotate { position: absolute; left: 50%; bottom: -44px; z-index: 1; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: -15px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #9CA3AF; color: #374151; font: 600 15px/1 Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; touch-action: none; user-select: none; }
+.wbo__rotate:active { cursor: grabbing; }
 /* Le tableau est en user-select: none (rien ne se surligne en manipulant les outils) ; la zone en
    saisie doit redevenir un vrai champ texte : clic = curseur, double-clic = mot, triple = paragraphe,
    glisser = sélection. Sans cette règle, Chrome ignore la souris dans un contentEditable non sélectionnable. */
@@ -1163,6 +1258,8 @@ const CSS = `
 .wbo__frame.is-selected .wbo__editor,
 .wbo__frame.is-editing .wbo__editor { box-shadow: 0 0 0 1.5px #6366F1; }
 .wbo__frame.is-locked.is-selected .wbo__editor { box-shadow: 0 0 0 1.5px #9CA3AF; }
+/* Le texte d'une forme n'a pas de liseré propre : c'est la forme qui montre la sélection */
+.wbo__frame.is-selected .wbo__editor--shape, .wbo__frame.is-editing .wbo__editor--shape, .wbo__frame.is-active:hover .wbo__editor--shape, .wbo__frame.is-locked.is-selected .wbo__editor--shape { box-shadow: none; outline: none; }
 .wbo__editor p, .wbo__editor div { margin: 0; }
 .wbo__editor ul, .wbo__editor ol { margin: 0; padding-left: 1.4em; }
 /* Alinéa (Tab) : un paragraphe ordinaire n'est en retrait que sur sa première ligne, comme dans

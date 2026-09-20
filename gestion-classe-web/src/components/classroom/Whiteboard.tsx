@@ -13,23 +13,7 @@
  * Aucune dépendance externe.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  BACKGROUNDS,
-  BOARD_UNIT,
-  BOARD_PAGE_H,
-  BOARD_RATIO,
-  drawBackground,
-  drawPenSegment,
-  heightToFit,
-  loadPageImage,
-  pageHeight,
-  renderStroke,
-  setupStrokeStyle,
-  eraseStrokeAt,
-  type Background,
-  type BoardPage,
-  type Stroke,
-} from '../../lib/boardRender';
+import { BACKGROUNDS, BOARD_UNIT, BOARD_PAGE_H, BOARD_RATIO, drawBackground, drawPenSegment, heightToFit, loadPageImage, pageHeight, renderStroke, setupStrokeStyle, eraseStrokeAt, type Background, type BoardPage, type Stroke, followAttachedInk } from '../../lib/boardRender';
 import { DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WIDTH, LINE_HEIGHT, MIN_TEXT_WIDTH, sanitizeBoardHtml } from '../../lib/boardText';
 
 /** HTML collé depuis Word ou le web : on ne garde que le corps, nettoyé au sous-ensemble du tableau. */
@@ -59,7 +43,7 @@ import { BoardPageNavigator } from './BoardPageNavigator';
 import { BoardPageRail } from './BoardPageRail';
 import { BoardShapeToolbar, type ShapeStyle } from './BoardShapeToolbar';
 import { BoardColorPicker } from './BoardColorPicker';
-import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject } from '../../lib/boardShapes';
+import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject, pointsInsideShape } from '../../lib/boardShapes';
 import { recognizeShape, type RecognizedShape } from '../../lib/boardRecognize';
 import {
   fireInteractions,
@@ -138,6 +122,8 @@ type HistoryOp =
   | { type: 'clear'; strokes: Stroke[] }
   | { type: 'replace'; removed: Stroke[]; added: Stroke[] }
   | { type: 'objects'; before: BoardObject[]; after: BoardObject[] }
+  /** Objets et encre attachée changés d'un même geste (forme déplacée avec ses traits, supprimée avec eux). */
+  | { type: 'objects+strokes'; before: BoardObject[]; after: BoardObject[]; strokesBefore: Stroke[]; strokesAfter: Stroke[] }
   /** Trait converti en forme (formes intelligentes) : annuler rend l'encre. */
   | { type: 'convert'; stroke: Stroke; object: BoardObject }
   /** Encre manuscrite convertie en zone de texte : annuler rend les traits. */
@@ -185,6 +171,12 @@ const REMOTE_RETRY_MS = 15000;
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const newPage = (background: Background = 'blank'): Page => ({ id: uid(), background, strokes: [], objects: [] });
 const escapeHtml = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
+/** Contexte hors écran pour tester la contenance d'un point dans une forme (isPointInPath). */
+let hitCanvasCtx: CanvasRenderingContext2D | null | undefined;
+function hitCtx(): CanvasRenderingContext2D | null {
+  if (hitCanvasCtx === undefined) hitCanvasCtx = document.createElement('canvas').getContext('2d');
+  return hitCanvasCtx;
+}
 const NAV_STORAGE_KEY = 'classroom-board-nav';
 /** Écran « compact » (TBI 1280×720, portables) : même requête que dans wb-theme.css et BoardPageNavigator. */
 const COMPACT_MQ = '(max-width: 1366px), (max-height: 800px)';
@@ -855,6 +847,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!op) return;
     h.redo.push(op);
     if (op.type === 'objects') updatePage(p.id, (pg) => ({ ...pg, objects: op.before }));
+    else if (op.type === 'objects+strokes') updatePage(p.id, (pg) => ({ ...pg, objects: op.before, strokes: op.strokesBefore }));
     else if (op.type === 'convert') updatePage(p.id, (pg) => ({ ...pg, objects: (pg.objects ?? []).filter((o) => o.id !== op.object.id), strokes: [...pg.strokes, op.stroke] }));
     else if (op.type === 'convertInk') updatePage(p.id, (pg) => ({ ...pg, objects: (pg.objects ?? []).filter((o) => o.id !== op.object.id), strokes: [...pg.strokes, ...op.strokes] }));
     else if (op.type === 'add') updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.filter((s) => s.id !== op.stroke.id) }));
@@ -873,6 +866,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!op) return;
     h.undo.push(op);
     if (op.type === 'objects') updatePage(p.id, (pg) => ({ ...pg, objects: op.after }));
+    else if (op.type === 'objects+strokes') updatePage(p.id, (pg) => ({ ...pg, objects: op.after, strokes: op.strokesAfter }));
     else if (op.type === 'convert') updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.filter((s) => s.id !== op.stroke.id), objects: [...(pg.objects ?? []), op.object] }));
     else if (op.type === 'convertInk') { const ids = new Set(op.strokes.map((st) => st.id)); updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.filter((s) => !ids.has(s.id)), objects: [...(pg.objects ?? []), op.object] })); }
     else if (op.type === 'add') updatePage(p.id, (pg) => ({ ...pg, strokes: [...pg.strokes, op.stroke] }));
@@ -963,16 +957,46 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   // -- Objets de la page (texte aujourd'hui ; formes, images… ensuite) --
   const pageObjects = page.objects ?? [];
 
+  /** Encre attachée avant le geste en cours (glisser d'une forme), pour une seule étape d'annulation. */
+  const dragInkRef = useRef<Stroke[] | null>(null);
   const handleObjectsChange = useCallback((next: BoardObject[], before: BoardObject[] | null) => {
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
-    if (before) pushOp(p.id, { type: 'objects', before, after: next });
+    // L'encre attachée suit les formes (déplacement, taille, rotation) et part avec elles
+    const strokesNow = p.strokes;
+    const strokesNext = followAttachedInk(p.objects ?? [], next, strokesNow);
+    if (before === null) {
+      if (strokesNext !== strokesNow && dragInkRef.current === null) dragInkRef.current = strokesNow;
+    } else {
+      const strokesBefore = dragInkRef.current ?? strokesNow;
+      dragInkRef.current = null;
+      if (strokesNext !== strokesNow || strokesBefore !== strokesNow) pushOp(p.id, { type: 'objects+strokes', before, after: next, strokesBefore, strokesAfter: strokesNext });
+      else pushOp(p.id, { type: 'objects', before, after: next });
+    }
     updatePage(p.id, (pg) => {
+      const strokes = strokesNext === strokesNow ? pg.strokes : strokesNext;
       // Un objet posé ou tiré sous le bas de la page l'allonge : la page ne raccourcit jamais seule
       const bottom = objectsBottom(next);
       const h = pageHeight(pg);
-      return bottom > h - 8 ? { ...pg, objects: next, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next };
+      return bottom > h - 8 ? { ...pg, objects: next, strokes, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next, strokes };
     });
+  }, [pushOp, updatePage]);
+
+  /** Attache (ou détache) à une forme l'encre qu'elle contient. */
+  const setInkAttachment = useCallback((shapeId: string, attach: boolean) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const shape = p?.objects?.find((o) => o.id === shapeId);
+    if (!p || !shape || shape.type !== 'shape') return;
+    const removed: Stroke[] = [];
+    const added: Stroke[] = [];
+    for (const st of p.strokes) {
+      if (attach && !st.parentId && pointsInsideShape(st.points, shape, hitCtx(), 4)) { removed.push(st); added.push({ ...st, parentId: shapeId }); }
+      else if (!attach && st.parentId === shapeId) { removed.push(st); const { parentId: _p, ...rest } = st; void _p; added.push(rest); }
+    }
+    if (removed.length === 0) return;
+    pushOp(p.id, { type: 'replace', removed, added });
+    const byId = new Map(added.map((st) => [st.id, st]));
+    updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.map((st) => byId.get(st.id) ?? st) }));
   }, [pushOp, updatePage]);
 
   /** Objets sélectionnés de la page courante, non verrouillés sauf demande. */
@@ -1790,6 +1814,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           { label: target.header ? 'Sans ligne d\'en-tête' : 'Première ligne en en-tête', onSelect: () => patchTable(target.id, (t) => ({ ...t, header: !t.header })) },
         ] }];
       })() : []),
+      ...(target.type === 'shape' && !many && !isLineKind(target.kind) ? (() => {
+        const attached = pagesRef.current[pageIndexRef.current]?.strokes.some((st) => st.parentId === target.id) ?? false;
+        return [
+          { label: 'Écrire dans la forme', shortcut: 'Double-clic', disabled: locked, onSelect: () => setEditingId(id) },
+          attached
+            ? { label: 'Détacher l’encre de la forme', onSelect: () => setInkAttachment(target.id, false) }
+            : { label: 'Attacher l’encre contenue', onSelect: () => setInkAttachment(target.id, true) },
+        ];
+      })() : []),
       // Familles d'actions en sous-menus (survol ou toucher) pour garder le menu court
       { label: 'Ordre', children: [
         { label: 'Mettre au premier plan', shortcut: 'Ctrl+Maj+]', onSelect: () => reorderSelected('front') },
@@ -1825,7 +1858,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -2311,8 +2344,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       const rec = recognizeShape(stroke.points);
       if (rec && convertStroke(stroke, rec)) return;
     }
-    pushOp(p.id, { type: 'add', stroke });
-    updatePage(p.id, (pg) => ({ ...pg, strokes: [...pg.strokes, stroke] }));
+    // Trait entièrement dans une forme fermée : il lui est attaché (la forme la plus haute qui le contient)
+    const parent = [...(p.objects ?? [])].reverse().find((o) => o.type === 'shape' && !isLineKind(o.kind) && pointsInsideShape(stroke.points, o, hitCtx(), 4));
+    const placed: Stroke = parent ? { ...stroke, parentId: parent.id } : stroke;
+    pushOp(p.id, { type: 'add', stroke: placed });
+    updatePage(p.id, (pg) => ({ ...pg, strokes: [...pg.strokes, placed] }));
   }, [pushOp, updatePage, clearLive, drawEraserCursor, toUnit, convertStroke, addShape]);
 
   // Changement d'outil : on efface le cercle de gomme éventuel

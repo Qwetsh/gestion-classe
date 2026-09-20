@@ -20,6 +20,9 @@ export type ShapeKind =
 
 export interface ShapePoint { x: number; y: number }
 
+/** Texte écrit dans une forme fermée (double-clic), centré dans sa boîte intérieure. */
+export interface ShapeText { html: string; size: number; font: string; color: string }
+
 export interface ShapeObject extends BoardObjectBase {
   type: 'shape';
   kind: ShapeKind;
@@ -35,6 +38,8 @@ export interface ShapeObject extends BoardObjectBase {
   b?: ShapePoint;
   /** Sommets d'un polygone quelconque (kind = 'polygon'), en fraction de la boîte. */
   points?: ShapePoint[];
+  /** Texte dans la forme (jamais sur une ligne ou une flèche). */
+  text?: ShapeText;
 }
 
 export interface ShapeEntry { kind: ShapeKind; label: string }
@@ -181,6 +186,76 @@ export function renderShape(ctx: CanvasRenderingContext2D, s: ShapeObject, scale
   }
   ctx.restore();
 }
+
+// ---- Texte, contenance et suivi (encre attachée, connecteurs) ----
+
+/** Ce qu'il faut d'une forme pour situer ce qui la suit : sa boîte et sa rotation. */
+export interface ShapeBox { x: number; y: number; w: number; h: number; rotation?: number }
+const rad = (deg: number) => (deg * Math.PI) / 180;
+
+/** Texte par défaut d'une forme : centré, lisible sur le remplissage. */
+export function defaultShapeText(s: ShapeObject): ShapeText {
+  return { html: '<div style="text-align:center"><br></div>', size: 24, font: 'sans', color: contrastColor(s.fill) };
+}
+/** Noir ou blanc selon la clarté du fond (forme creuse : noir). */
+export function contrastColor(fill: string | null): string {
+  if (!fill) return '#111827';
+  const m = /^#([0-9a-f]{6})$/i.exec(fill);
+  if (!m) return '#111827';
+  const n = parseInt(m[1], 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? '#111827' : '#FFFFFF';
+}
+
+/** Boîte intérieure pour le texte (avant rotation) : marge plus large quand la forme rentre vers le centre. */
+export function shapeTextBox(s: ShapeBox & { kind: ShapeKind }): { x: number; y: number; w: number; h: number } {
+  const inset = s.kind === 'rect' || s.kind === 'rounded-rect' ? 0.08
+    : s.kind === 'ellipse' || s.kind === 'hexagon' || s.kind === 'pentagon' || s.kind === 'parallelogram' || s.kind === 'trapezoid' ? 0.16
+    : 0.24;
+  const ix = s.w * inset, iy = s.h * inset;
+  return { x: s.x + ix, y: s.y + iy, w: Math.max(1, s.w - 2 * ix), h: Math.max(1, s.h - 2 * iy) };
+}
+
+/** Point de la page → repère local de la forme (0..w, 0..h), rotation comprise. */
+export function toShapeLocal(s: ShapeBox, x: number, y: number): ShapePoint {
+  const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+  const dx = x - cx, dy = y - cy;
+  const a = -rad(s.rotation ?? 0);
+  return { x: dx * Math.cos(a) - dy * Math.sin(a) + s.w / 2, y: dx * Math.sin(a) + dy * Math.cos(a) + s.h / 2 };
+}
+
+/**
+ * La forme contient-elle le point ? Sur le chemin réel (`isPointInPath`) quand un contexte
+ * canvas est fourni, sinon sur la boîte (tests, environnement sans canvas). `tolerance`
+ * (unités) accepte un point juste au bord. Une ligne ou une flèche n'a pas d'intérieur.
+ */
+export function shapeContainsPoint(s: ShapeObject, x: number, y: number, ctx: CanvasRenderingContext2D | null, tolerance = 0): boolean {
+  if (isLineKind(s.kind)) return false;
+  const p = toShapeLocal(s, x, y);
+  const offsets: [number, number][] = tolerance > 0
+    ? [[0, 0], [tolerance, 0], [-tolerance, 0], [0, tolerance], [0, -tolerance]]
+    : [[0, 0]];
+  if (!ctx) return offsets.some(([ox, oy]) => p.x + ox >= 0 && p.x + ox <= s.w && p.y + oy >= 0 && p.y + oy <= s.h);
+  const path = new Path2D(shapePath(s));
+  return offsets.some(([ox, oy]) => ctx.isPointInPath(path, p.x + ox, p.y + oy));
+}
+
+/** Tous les points sont dans la forme : un trait dessiné dedans lui est attaché. */
+export function pointsInsideShape(points: readonly ShapePoint[], s: ShapeObject, ctx: CanvasRenderingContext2D | null, tolerance = 4): boolean {
+  return points.length > 0 && points.every((pt) => shapeContainsPoint(s, pt.x, pt.y, ctx, tolerance));
+}
+
+/** Un point qui suit une forme d'une boîte à l'autre : translation, échelle et rotation. */
+export function followShape<P extends ShapePoint>(pt: P, from: ShapeBox, to: ShapeBox): P {
+  const local = toShapeLocal(from, pt.x, pt.y);
+  const kx = from.w > 0 ? to.w / from.w : 1, ky = from.h > 0 ? to.h / from.h : 1;
+  const lx = local.x * kx - to.w / 2, ly = local.y * ky - to.h / 2;
+  const a = rad(to.rotation ?? 0);
+  return { ...pt, x: to.x + to.w / 2 + lx * Math.cos(a) - ly * Math.sin(a), y: to.y + to.h / 2 + lx * Math.sin(a) + ly * Math.cos(a) };
+}
+
+export const sameShapeBox = (a: ShapeBox, b: ShapeBox) =>
+  a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && (a.rotation ?? 0) === (b.rotation ?? 0);
 
 /** Boîte d'une forme posée d'un clic, centrée sur le point. */
 export function defaultShapeBox(kind: ShapeKind, cx: number, cy: number): { x: number; y: number; w: number; h: number } {

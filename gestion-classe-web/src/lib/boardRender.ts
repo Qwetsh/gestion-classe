@@ -7,9 +7,9 @@
  * les fonds importés (PDF, image), les vignettes et l'export coïncident exactement.
  */
 import { supabase } from './supabase';
-import { renderTextBox, textBoxRect, type TextBox } from './boardText';
+import { renderTextBox, textBoxHeight, textBoxRect, type TextBox } from './boardText';
 import { objectRect, type BoardObject } from './boardObjects';
-import { renderShape } from './boardShapes';
+import { followShape, isLineKind, renderShape, sameShapeBox, shapeTextBox, type ShapeObject } from './boardShapes';
 import type { RenderRevealOptions } from './boardReveal';
 import { renderMediaObject } from './boardMedia';
 import { renderLibraryObject } from './boardLibrary';
@@ -26,7 +26,57 @@ export const BACKGROUNDS: { id: Background; label: string }[] = [
 ];
 
 export interface Point { x: number; y: number; p: number }
-export interface Stroke { id: string; tool: 'pen' | 'highlighter'; color: string; size: number; points: Point[] }
+export interface Stroke {
+  id: string; tool: 'pen' | 'highlighter'; color: string; size: number; points: Point[];
+  /** Encre attachée : forme qui contenait le trait quand il a été dessiné ; il la suit et disparaît avec elle. */
+  parentId?: string;
+}
+
+/**
+ * Encre attachée : les traits dont `parentId` désigne une forme suivent ses déplacements,
+ * redimensionnements et rotations ; ceux d'une forme supprimée disparaissent avec elle.
+ * Renvoie le même tableau quand rien ne change.
+ */
+export function followAttachedInk(prev: BoardObject[], next: BoardObject[], strokes: Stroke[]): Stroke[] {
+  if (!strokes.some((st) => st.parentId)) return strokes;
+  const before = new Map(prev.map((o) => [o.id, o]));
+  const after = new Map(next.map((o) => [o.id, o]));
+  let changed = false;
+  const out: Stroke[] = [];
+  for (const st of strokes) {
+    if (!st.parentId) { out.push(st); continue; }
+    const a = before.get(st.parentId), b = after.get(st.parentId);
+    if (!b) {
+      // Forme supprimée : son encre part avec elle ; parent inconnu des deux côtés : trait orphelin, gardé
+      if (a) { changed = true; continue; }
+      out.push(st); continue;
+    }
+    if (!a || a.type !== 'shape' || b.type !== 'shape' || sameShapeBox(a, b)) { out.push(st); continue; }
+    changed = true;
+    out.push({ ...st, points: st.points.map((pt) => followShape(pt, a, b)) });
+  }
+  return changed ? out : strokes;
+}
+
+/** Texte d'une forme : centré verticalement dans sa boîte intérieure, tourné avec elle. */
+export function renderShapeText(ctx: CanvasRenderingContext2D, s: ShapeObject, scale: number) {
+  if (!s.text || isLineKind(s.kind)) return;
+  const box = shapeTextBox(s);
+  const tb: TextBox = { id: s.id, x: box.x, y: box.y, w: box.w, size: s.text.size, font: s.text.font, color: s.text.color, html: s.text.html };
+  const h = textBoxHeight(tb);
+  tb.y = box.y + Math.max(0, (box.h - h) / 2);
+  ctx.save();
+  if (s.rotation) {
+    ctx.translate((s.x + s.w / 2) * scale, (s.y + s.h / 2) * scale);
+    ctx.rotate((s.rotation * Math.PI) / 180);
+    ctx.translate(-(s.x + s.w / 2) * scale, -(s.y + s.h / 2) * scale);
+  }
+  ctx.beginPath();
+  ctx.rect(box.x * scale, box.y * scale, box.w * scale, box.h * scale);
+  ctx.clip();
+  renderTextBox(ctx, tb, scale);
+  ctx.restore();
+}
 /** Image de fond (page de PDF ou photo) stockée dans le bucket privé board-assets. */
 export interface PageImage { path: string; width: number; height: number }
 export interface BoardPage {
@@ -61,6 +111,7 @@ export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scal
       break;
     case 'shape':
       renderShape(ctx, o, scale);
+      renderShapeText(ctx, o, scale);
       break;
     case 'image': {
       const img = getLoadedImage(o.path);
