@@ -22,7 +22,8 @@ import {
 } from '../lib/liveSessionQueries';
 import { buildCellToGroup, tableColor } from '../lib/seatingLayouts';
 import type { ClassroomCommand } from '../lib/classroomProtocol';
-import { Whiteboard } from '../components/classroom/Whiteboard';
+import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
+import { sessionTab } from '../lib/boardTabs';
 import { createClassroomBus, type ClassroomBus } from '../lib/classroomBus';
 
 interface ActiveSession {
@@ -504,8 +505,8 @@ export function Classroom() {
           <footer className="classroom__footer">Bureau</footer>
 
           {view === 'board' && (
-            <Whiteboard
-              sessionId={session.id}
+            <BoardWorkspace
+              initial={sessionTab(session.id, className ? `Séance ${className}` : 'Séance')}
               userId={userId ?? ''}
               ticker={tickerText}
               className={className}

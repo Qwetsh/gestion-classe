@@ -12,6 +12,9 @@ import { supabase } from './supabase';
 import { fetchBoardPages, upsertBoardPages } from './boardQueries';
 import type { BoardPage } from './boardRender';
 
+/** Identifiant du brouillon local (tableau libre gardé dans le navigateur). */
+export const FREE_BOARD_ID = 'tableau-libre';
+
 export interface Board {
   id: string;
   title: string;

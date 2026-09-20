@@ -6,7 +6,8 @@ import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 import { sanitizePhotoPath } from '../lib/security';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { BoardPagesGallery } from '../components/classroom/BoardPagesGallery';
-import { Whiteboard } from '../components/classroom/Whiteboard';
+import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
+import { sessionTab } from '../lib/boardTabs';
 import { fetchSessionSourceBoard, type Board } from '../lib/boardsQueries';
 import { useAuth } from '../hooks/useAuth';
 
@@ -668,11 +669,10 @@ export function SessionDetail() {
           onOpenEditor={user ? () => setBoardOpen(true) : undefined}
         />
         {boardOpen && user && (
-          <Whiteboard
-            sessionId={session.id}
+          <BoardWorkspace
+            initial={sessionTab(session.id, `${session.class_name} ${session.started_at.slice(0, 10)}`)}
             userId={user.id}
             className={session.class_name}
-            title={`${session.class_name} ${session.started_at.slice(0, 10)}`}
             onClose={() => setBoardOpen(false)}
           />
         )}

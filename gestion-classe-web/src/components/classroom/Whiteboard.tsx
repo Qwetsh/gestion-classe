@@ -62,7 +62,7 @@ import { BoardSearchPanel } from './BoardSearchPanel';
 import { BoardKeyboard } from './BoardKeyboard';
 import { BoardLibraryPanel } from './BoardLibraryPanel';
 import { BoardLibraryDialog } from './BoardLibraryDialog';
-import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta } from '../../lib/boardsQueries';
+import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta, FREE_BOARD_ID } from '../../lib/boardsQueries';
 import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
@@ -121,7 +121,7 @@ type HistoryOp =
   /** Encre manuscrite convertie en zone de texte : annuler rend les traits. */
   | { type: 'convertInk'; strokes: Stroke[]; object: BoardObject };
 
-interface WhiteboardProps {
+export interface WhiteboardProps {
   sessionId: string;
   userId: string;
   /** Message à afficher en coin (ex. dernier événement reçu du téléphone). */
@@ -139,6 +139,17 @@ interface WhiteboardProps {
   classroom?: { bus: ClassroomBus; students: PickableStudent[] };
   /** Nom de la classe (« 6e A ») : sert à déduire le niveau des tableaux préparés à proposer. */
   className?: string;
+  /**
+   * Onglet actif de l'espace de travail (BoardWorkspace). Masqué (`false`), le tableau reste
+   * monté mais ignore le clavier, le collage et les commandes du téléphone.
+   */
+  active?: boolean;
+  /** Hauteur réservée en haut (barre d'onglets), en px. */
+  topOffset?: number;
+  /** Espace de travail : ouvrir un tableau préparé dans un nouvel onglet. */
+  onOpenInTab?: (board: Board) => void;
+  /** Espace de travail : ouvrir le brouillon local dans un nouvel onglet. */
+  onOpenDraftTab?: () => void;
   onClose: () => void;
 }
 
@@ -318,7 +329,9 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, onClose }: WhiteboardProps) {
+  const activeRef = useRef(active);
+  useEffect(() => { activeRef.current = active; }, [active]);
   /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
   const isSessionBoard = remote && !boardId;
   /** Propriétaire des pages côté serveur. */
@@ -1831,6 +1844,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const bus = classroom?.bus;
     if (!bus) return;
     return bus.subscribe((cmd: ClassroomCommand) => {
+      if (!activeRef.current) return; // onglet masqué : les commandes du téléphone vont à l'onglet actif
       if (cmd.kind === 'photo') {
         insertImage({ path: cmd.path, width: cmd.width, height: cmd.height });
       } else if (cmd.kind === 'camera' && cmd.action === 'offer') {
@@ -2551,9 +2565,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         else if (k === 'pagedown') setPageIndex((i) => Math.min(pagesRef.current.length - 1, i + 1));
       }
     };
+    if (!active) return; // onglet masqué : le clavier va à l'onglet actif
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
+  }, [active, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
 
   // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -2738,9 +2753,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       setSelectedIds(new Set([box.id]));
       if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
     };
+    if (!active) return; // onglet masqué : le collage va à l'onglet actif
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [importFiles, pasteFromClipboard, handleObjectsChange, textSize, textFont, color, insertFromUrl, insertTable]);
+  }, [active, importFiles, pasteFromClipboard, handleObjectsChange, textSize, textFont, color, insertFromUrl, insertTable]);
 
   // Le tableau occupe tout l'ecran : on fige le defilement de la page dessous.
   useEffect(() => {
@@ -2809,7 +2825,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       items: [
         { id: 'file-open', label: `Ouvrir (${GCBOARD_EXTENSION}, PDF, image)`, icon: '📂', disabled: !!importing, onSelect: () => fileInputRef.current?.click() },
         ...(userId ? [
-          { id: 'file-library-open', label: 'Ouvrir un tableau préparé…', icon: '📚', disabled: !!importing, onSelect: () => setLibraryDialog('open') },
+          { id: 'file-library-open', label: onOpenInTab ? 'Tableau préparé : copier ici ou ouvrir dans un onglet…' : 'Ouvrir un tableau préparé…', icon: '📚', disabled: !!importing, onSelect: () => setLibraryDialog('open') },
+          ...(onOpenDraftTab && sessionId !== FREE_BOARD_ID ? [{ id: 'file-draft-tab', label: 'Brouillon dans un onglet', icon: '🖊', onSelect: onOpenDraftTab }] : []),
           { id: 'file-library-save', label: 'Enregistrer dans Mes tableaux…', icon: '🗂', disabled: !!importing, onSelect: () => setLibraryDialog('save') },
         ] : []),
         { id: 'file-save', label: `Enregistrer un fichier ${GCBOARD_EXTENSION}`, icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
@@ -2873,6 +2890,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     <div
       ref={rootRef}
       className={`wb ${dragOver ? 'is-dragover' : ''}`}
+      style={topOffset ? { top: topOffset } : undefined}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); void importFiles(e.dataTransfer.files, toUnit(e)); }}
@@ -3254,6 +3272,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           excludeBoardId={boardId ?? null}
           allowBlank={libraryDialog === 'start'}
           onPick={(b) => void insertPreparedBoard(b)}
+          onPickTab={onOpenInTab ? (b) => { setLibraryDialog(null); onOpenInTab(b); } : undefined}
           onClose={() => setLibraryDialog(null)}
         />
       )}

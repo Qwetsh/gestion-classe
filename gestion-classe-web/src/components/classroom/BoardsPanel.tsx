@@ -19,10 +19,10 @@ import {
   type BoardMeta,
   type BoardUsage,
 } from '../../lib/boardsQueries';
-import { Whiteboard } from './Whiteboard';
+import { BoardWorkspace } from './BoardWorkspace';
+import { boardTab, draftTab } from '../../lib/boardTabs';
 
 /** Clé de stockage local du tableau blanc libre (hors séance). */
-export const FREE_BOARD_ID = 'tableau-libre';
 
 const COLLAPSED_KEY = 'dash-boards-collapsed';
 
@@ -180,10 +180,10 @@ export function BoardsPanel({ userId }: Props) {
         />
       )}
       {open === 'draft' && (
-        <Whiteboard sessionId={FREE_BOARD_ID} userId={userId} remote={false} title="Brouillon" onClose={() => setOpen(null)} />
+        <BoardWorkspace initial={draftTab()} userId={userId} onClose={() => setOpen(null)} />
       )}
       {open && open !== 'draft' && (
-        <Whiteboard sessionId={`board:${open.id}`} boardId={open.id} userId={userId} title={open.title} onClose={() => { setOpen(null); void refresh(); }} />
+        <BoardWorkspace initial={boardTab(open)} userId={userId} onClose={() => { setOpen(null); void refresh(); }} />
       )}
     </div>
   );
