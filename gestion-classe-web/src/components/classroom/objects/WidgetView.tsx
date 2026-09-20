@@ -3,7 +3,8 @@
  * L'état de fonctionnement (compte à rebours, dernier tirage) est local ; seuls les réglages
  * (durée, nombre de faces, entrées de la roue, niveau) sont enregistrés dans l'objet.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { NOISE_LEVELS, TRAFFIC_LEVELS, makeGroups, type WidgetObject } from '../../../lib/boardMedia';
 
@@ -13,6 +14,65 @@ interface Props {
   onConfig: (patch: WidgetObject['config']) => void;
   /** Élèves présents de la séance (groupes aléatoires) ; absent hors mode classe. */
   students?: string[];
+  /**
+   * Poser un résultat sur la page en zone de texte : au point écran (glissé au doigt ou à la
+   * souris) ou sous le widget (`null`, bouton ⤓).
+   */
+  onPlace?: (text: string, client: { x: number; y: number } | null) => void;
+}
+
+/** Nombres au format français (virgule décimale), jusqu'à dix décimales. */
+const fmtNumber = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 10, useGrouping: false });
+
+/** Bouton ⤓ : pose le résultat juste sous le widget (repli sans glisser, stylet capricieux). */
+function PlaceButton({ text, onPlace }: { text: string | null; onPlace?: Props['onPlace'] }) {
+  if (!onPlace || !text) return null;
+  return <button type="button" className="wbw__place" title="Poser sur la page" onClick={() => onPlace(text, null)}>⤓</button>;
+}
+
+/**
+ * Résultat saisissable : glisser depuis la valeur fait suivre une étiquette au pointeur, relâcher
+ * sur la page la pose là. Événements pointeur (pas le drag-and-drop HTML5, muet au doigt sur TBI) ;
+ * l'étiquette est portalée sur body pour ignorer le zoom (transform) de la scène.
+ */
+function DragResult({ text, onPlace, className, children }: { text: string | null; onPlace?: Props['onPlace']; className?: string; children: React.ReactNode }) {
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+  const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  const can = !!onPlace && !!text;
+  return (
+    <>
+      <div
+        className={`${className ?? ''} ${can ? 'wbw__drag' : ''}`}
+        title={can ? 'Glisser pour poser sur la page' : undefined}
+        onPointerDown={(e) => {
+          if (!can) return;
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          e.stopPropagation(); e.preventDefault();
+          drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+          try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d || d.id !== e.pointerId) return;
+          if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) return;
+          d.moved = true;
+          setGhost({ x: e.clientX, y: e.clientY });
+        }}
+        onPointerUp={(e) => {
+          const d = drag.current;
+          if (!d || d.id !== e.pointerId) return;
+          drag.current = null;
+          setGhost(null);
+          try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
+          if (d.moved && text) onPlace?.(text, { x: e.clientX, y: e.clientY });
+        }}
+        onPointerCancel={() => { drag.current = null; setGhost(null); }}
+      >
+        {children}
+      </div>
+      {ghost && text && createPortal(<div className="wbw__ghost" style={{ left: ghost.x, top: ghost.y }}>{text}</div>, document.body)}
+    </>
+  );
 }
 
 /** Sonomètre : niveau mesuré au micro, alerte au-dessus du seuil (comme ClassroomScreen). */
@@ -92,7 +152,7 @@ function MeterWidget({ o, onConfig }: Props) {
   );
 }
 
-function GroupsWidget({ o, onConfig, students }: Props) {
+function GroupsWidget({ o, onConfig, students, onPlace }: Props) {
   const names = students && students.length > 0 ? students : (o.config.entries ?? []);
   const size = o.config.groupSize ?? 4;
   const groups = o.config.groups ?? [];
@@ -112,6 +172,7 @@ function GroupsWidget({ o, onConfig, students }: Props) {
         <button type="button" onClick={() => onConfig({ groupSize: Math.min(10, size + 1) })}>+</button>
         <button type="button" className="is-on" onClick={draw} disabled={names.length === 0}>Former les groupes</button>
         {(!students || students.length === 0) && <button type="button" onClick={edit}>Liste…</button>}
+        <PlaceButton text={groups.length > 0 ? groups.map((g, i) => `Groupe ${i + 1} : ${g.join(', ')}`).join('\n') : null} onPlace={onPlace} />
       </div>
       <div className="wbw__grid">
         {groups.map((g, i) => (
@@ -186,7 +247,7 @@ const hold = (e: React.PointerEvent) => {
 };
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-function TimerWidget({ o, onConfig }: Props) {
+function TimerWidget({ o, onConfig, onPlace }: Props) {
   const total = o.config.seconds ?? 300;
   const [left, setLeft] = useState(total);
   const [running, setRunning] = useState(false);
@@ -216,18 +277,21 @@ function TimerWidget({ o, onConfig }: Props) {
   };
   return (
     <>
-      <div className={`wbw__time ${running && left <= 10 ? 'is-urgent' : ''}`}>{pad2(Math.floor(left / 60))}:{pad2(left % 60)}</div>
+      <DragResult text={`${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`} onPlace={onPlace} className={`wbw__time ${running && left <= 10 ? 'is-urgent' : ''}`}>
+        {pad2(Math.floor(left / 60))}:{pad2(left % 60)}
+      </DragResult>
       <div className="wbw__row" onPointerDown={hold}>
         <button type="button" onClick={() => setRunning((v) => !v)}>{running ? 'Pause' : left === 0 ? 'Relancer' : 'Démarrer'}</button>
         <button type="button" onClick={() => { setRunning(false); setLeft(total); }}>Remise</button>
         <button type="button" onClick={() => onConfig({ seconds: Math.max(30, total - 60) })} disabled={running}>−1 min</button>
         <button type="button" onClick={() => onConfig({ seconds: total + 60 })} disabled={running}>+1 min</button>
+        <PlaceButton text={`${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`} onPlace={onPlace} />
       </div>
     </>
   );
 }
 
-function DiceWidget({ o, onConfig }: Props) {
+function DiceWidget({ o, onConfig, onPlace }: Props) {
   const faces = o.config.faces ?? 6;
   const [value, setValue] = useState<number | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -242,18 +306,19 @@ function DiceWidget({ o, onConfig }: Props) {
   };
   return (
     <>
-      <div className="wbw__big">{value ?? '?'}</div>
+      <DragResult text={value !== null && !rolling ? String(value) : null} onPlace={onPlace} className="wbw__big">{value ?? '?'}</DragResult>
       <div className="wbw__row" onPointerDown={hold}>
         <button type="button" onClick={roll} disabled={rolling}>Lancer</button>
         {[6, 8, 10, 12, 20].map((f) => (
           <button key={f} type="button" className={faces === f ? 'is-on' : ''} onClick={() => { onConfig({ faces: f }); setValue(null); }}>d{f}</button>
         ))}
+        <PlaceButton text={value !== null && !rolling ? String(value) : null} onPlace={onPlace} />
       </div>
     </>
   );
 }
 
-function WheelWidget({ o, onConfig }: Props) {
+function WheelWidget({ o, onConfig, onPlace }: Props) {
   const entries = o.config.entries ?? ['A', 'B', 'C'];
   const [pick, setPick] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
@@ -278,10 +343,11 @@ function WheelWidget({ o, onConfig }: Props) {
   };
   return (
     <>
-      <div className="wbw__big wbw__big--text">{pick ?? '—'}</div>
+      <DragResult text={pick && !spinning ? pick : null} onPlace={onPlace} className="wbw__big wbw__big--text">{pick ?? '—'}</DragResult>
       <div className="wbw__row" onPointerDown={hold}>
         <button type="button" onClick={spin} disabled={spinning}>Tourner</button>
         <button type="button" onClick={edit}>Liste ({entries.length})</button>
+        <PlaceButton text={pick && !spinning ? pick : null} onPlace={onPlace} />
       </div>
     </>
   );
@@ -331,24 +397,37 @@ function evaluate(expr: string): number {
   return v;
 }
 
-function CalcWidget() {
+function CalcWidget({ onPlace }: Props) {
   const [expr, setExpr] = useState('');
-  const [result, setResult] = useState<string | null>(null);
+  // Le résultat est dérivé de l'expression courante (pas d'une fermeture périmée : deux touches
+  // dans le même tour rendaient « Erreur »), affiché seulement après « = ».
+  const [showResult, setShowResult] = useState(false);
+  const result = useMemo(() => {
+    if (!showResult) return null;
+    try { const v = evaluate(expr); return Number.isFinite(v) ? fmtNumber.format(Math.round(v * 1e10) / 1e10) : 'Erreur'; }
+    catch { return 'Erreur'; }
+  }, [expr, showResult]);
   const press = useCallback((k: string) => {
-    if (k === 'C') { setExpr(''); setResult(null); return; }
-    if (k === '⌫') { setExpr((e) => e.slice(0, -1)); return; }
-    if (k === '=') {
-      try { const v = evaluate(expr); setResult(Number.isFinite(v) ? String(Math.round(v * 1e10) / 1e10) : 'Erreur'); }
-      catch { setResult('Erreur'); }
-      return;
-    }
-    setResult(null);
+    if (k === 'C') { setExpr(''); setShowResult(false); return; }
+    if (k === '⌫') { setExpr((e) => e.slice(0, -1)); setShowResult(false); return; }
+    if (k === '=') { setShowResult(true); return; }
+    setShowResult(false);
     setExpr((e) => e + k);
-  }, [expr]);
+  }, []);
   const keys = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '-', '0', ',', '%', '+', '(', ')', '⌫', 'C', '='];
+  const value = result !== null && result !== 'Erreur' ? result : null;
   return (
     <div className="wbw__calc" onPointerDown={hold}>
-      <div className="wbw__screen"><span>{expr || '0'}</span>{result !== null && <b>= {result}</b>}</div>
+      <div className="wbw__screen">
+        <span>{expr || '0'}</span>
+        {result !== null && (
+          <span className="wbw__screen-result">
+            {/* Glisser le résultat le pose sur la page ; Maj enfoncé : avec l'expression */}
+            <DragResult text={value} onPlace={onPlace}><b>= {result}</b></DragResult>
+            <PlaceButton text={value} onPlace={onPlace} />
+          </span>
+        )}
+      </div>
       <div className="wbw__keys">
         {keys.map((k) => <button key={k} type="button" className={k === '=' ? 'is-eq' : ''} onClick={() => press(k)}>{k}</button>)}
       </div>
@@ -366,7 +445,7 @@ export function WidgetView(props: Props) {
       {o.widget === 'dice' && <DiceWidget {...props} />}
       {o.widget === 'wheel' && <WheelWidget {...props} />}
       {o.widget === 'noise' && <NoiseWidget {...props} />}
-      {o.widget === 'calc' && <CalcWidget />}
+      {o.widget === 'calc' && <CalcWidget {...props} />}
       {o.widget === 'meter' && <MeterWidget {...props} />}
       {o.widget === 'groups' && <GroupsWidget {...props} />}
       {o.widget === 'clock' && <ClockWidget {...props} />}
@@ -424,6 +503,12 @@ const CSS = `
 .wbw__calc { display: flex; flex-direction: column; gap: 0.4em; width: 100%; height: 100%; }
 .wbw__screen { display: flex; flex-direction: column; align-items: flex-end; padding: 0.4em 0.6em; border-radius: 0.5em; background: #111827; font: 500 1.3em/1.2 "IBM Plex Mono", ui-monospace, monospace; min-height: 2.6em; word-break: break-all; }
 .wbw__screen b { color: #A5B4FC; }
+.wbw__screen-result { display: flex; align-items: center; gap: 0.4em; }
+.wbw__drag { cursor: grab; touch-action: none; }
+.wbw__drag:active { cursor: grabbing; }
+.wbw__place { width: 2.2em !important; min-width: 0 !important; padding: 0 !important; opacity: 0.8; }
+.wbw__place:hover { opacity: 1; }
+.wbw__ghost { position: fixed; z-index: 200; transform: translate(-50%, -50%); pointer-events: none; padding: 6px 14px; border-radius: 10px; background: #FFFFFF; color: #111827; font: 700 20px/1.2 Inter, system-ui, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.35); white-space: pre; }
 .wbw__keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3em; flex: 1; }
 .wbw__keys button { height: auto; padding: 0; font-size: 1.1em; }
 .wbw__keys button.is-eq { grid-column: span 1; background: #4F46E5; }

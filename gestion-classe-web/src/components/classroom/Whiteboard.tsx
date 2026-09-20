@@ -30,7 +30,7 @@ import {
   type BoardPage,
   type Stroke,
 } from '../../lib/boardRender';
-import { DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WIDTH, MIN_TEXT_WIDTH, sanitizeBoardHtml } from '../../lib/boardText';
+import { DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WIDTH, LINE_HEIGHT, MIN_TEXT_WIDTH, sanitizeBoardHtml } from '../../lib/boardText';
 
 /** HTML collé depuis Word ou le web : on ne garde que le corps, nettoyé au sous-ensemble du tableau. */
 function sanitizePastedHtml(html: string): string {
@@ -184,6 +184,7 @@ const REMOTE_RETRY_MS = 15000;
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const newPage = (background: Background = 'blank'): Page => ({ id: uid(), background, strokes: [], objects: [] });
+const escapeHtml = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
 const NAV_STORAGE_KEY = 'classroom-board-nav';
 /** Écran « compact » (TBI 1280×720, portables) : même requête que dans wb-theme.css et BoardPageNavigator. */
 const COMPACT_MQ = '(max-width: 1366px), (max-height: 800px)';
@@ -1915,6 +1916,37 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     return { x: (e.clientX - rect.left) / k, y: (e.clientY - rect.top) / k };
   }, []);
 
+  /** Résultat d'un widget (calculatrice, dé, roue, groupes, minuteur) posé sur la page en zone de texte. */
+  const placeWidgetResult = useCallback((id: string, text: string, client: { x: number; y: number } | null) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p || !text.trim()) return;
+    const widget = (p.objects ?? []).find((o) => o.id === id);
+    const at = client
+      ? toUnit({ clientX: client.x, clientY: client.y })
+      : widget && 'h' in widget ? { x: widget.x, y: widget.y + (widget as { h: number }).h + 12 } : { x: 80, y: 80 };
+    const lines = text.split('\n');
+    const longest = Math.max(...lines.map((l) => l.length));
+    const w = Math.max(MIN_TEXT_WIDTH, Math.round(longest * textSize * 0.62 + textSize));
+    const html = lines.map((l) => `<div>${escapeHtml(l) || '<br>'}</div>`).join('');
+    // Déposé au doigt : le point visé est le centre de l'étiquette, pas son coin
+    const x = client ? at.x - w / 2 : at.x;
+    const y = client ? at.y - (textSize * LINE_HEIGHT) / 2 : at.y;
+    addObject({ id: uid(), type: 'text', x: Math.max(0, x), y: Math.max(0, y), w, size: textSize, font: textFont, color, html });
+  }, [toUnit, textSize, textFont, color, addObject]);
+
+  /** Post-it : replier ou déplier dans le document. */
+  const foldText = useCallback((id: string, folded: boolean) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const before = p.objects ?? [];
+    handleObjectsChange(before.map((o) => (o.id === id && o.type === 'text' ? { ...o, collapsed: folded } : o)), before);
+  }, [handleObjectsChange]);
+
+  /** Post-it replié touché en classe : déplié pour la séance, le document ne change pas. */
+  const unfoldInSession = useCallback((id: string) => {
+    setReveal((r) => ({ ...r, unfolded: { ...(r.unfolded ?? {}), [id]: true } }));
+  }, []);
+
 
   const clearLive = useCallback(() => {
     const live = liveRef.current;
@@ -2737,6 +2769,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onTableCell={(id, r, c) => { tableCellRef.current = { id, r, c }; }}
           onEquationCommit={(id, latex, raster, ratio) => void onEquationCommit(id, latex, raster, ratio)}
           onWidgetConfig={onWidgetConfig}
+          onWidgetPlace={placeWidgetResult}
+          onFoldText={foldText}
+          onUnfoldInSession={unfoldInSession}
           onToggleInteractive={onToggleInteractive}
           students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
           spellCheck={spellCheck && !displayMode}

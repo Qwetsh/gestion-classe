@@ -44,6 +44,8 @@ export interface RevealState {
    * boardObjects) : absent = l'objet suit son réglage `hidden` du document.
    */
   shown: Record<string, boolean>;
+  /** Post-its repliés dans le document mais dépliés pendant la séance (un tap en classe). */
+  unfolded?: Record<string, true>;
 }
 
 export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {} };
@@ -60,6 +62,7 @@ export function loadRevealState(sessionId: string): RevealState {
       objects: parsed.objects && typeof parsed.objects === 'object' ? parsed.objects : {},
       gaps: parsed.gaps && typeof parsed.gaps === 'object' ? parsed.gaps : {},
       shown: parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {},
+      unfolded: parsed.unfolded && typeof parsed.unfolded === 'object' ? parsed.unfolded : {},
     };
   } catch {
     return EMPTY_REVEAL;
@@ -113,14 +116,16 @@ export function recoverPage(state: RevealState, page: BoardPage): RevealState {
   const objects = { ...state.objects };
   const gaps = { ...state.gaps };
   const shown = { ...state.shown };
+  const unfolded = { ...(state.unfolded ?? {}) };
   for (const o of page.objects ?? []) {
     delete objects[o.id];
     delete gaps[o.id];
     delete shown[o.id];
+    delete unfolded[o.id];
   }
   const pages = { ...state.pages };
   delete pages[page.id];
-  return { pages, objects, gaps, shown };
+  return { pages, objects, gaps, shown, unfolded };
 }
 
 // ---- Trous dans un texte ----

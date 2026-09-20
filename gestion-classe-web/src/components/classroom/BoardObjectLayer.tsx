@@ -25,7 +25,9 @@ import {
   TEXT_SIZES,
   fontCss,
   isEmptyBoardHtml,
+  isFolded,
   sanitizeBoardHtml,
+  textBoxTitle,
 } from '../../lib/boardText';
 import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
 import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
@@ -124,6 +126,12 @@ interface Props {
   onTableCell?: (objectId: string, r: number, c: number) => void;
   onEquationCommit: (id: string, latex: string, raster: Blob | null, ratio: number) => void;
   onWidgetConfig: (id: string, patch: WidgetObject['config']) => void;
+  /** Un widget pose son résultat sur la page (texte), au point écran donné ou sous lui (null). */
+  onWidgetPlace: (id: string, text: string, client: { x: number; y: number } | null) => void;
+  /** Post-it : replier ou déplier dans le document (édition). */
+  onFoldText: (id: string, folded: boolean) => void;
+  /** Post-it replié touché en classe : déplié pour la séance seulement. */
+  onUnfoldInSession: (id: string) => void;
   onToggleInteractive: (id: string) => void;
   /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
   students?: string[];
@@ -203,7 +211,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onToggleInteractive, students,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onToggleInteractive, students,
     spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
   },
   ref
@@ -789,7 +797,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
 
   return (
     <div className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
-      {objects.map((o) => {
+      {objects.map((raw) => {
+        // Post-it déplié pour la séance : rendu comme s'il n'était pas replié
+        const o: BoardObject = raw.type === 'text' && raw.collapsed && reveal.unfolded?.[raw.id] ? { ...raw, collapsed: false } : raw;
         const visible = isObjectVisible(reveal, o);
         // En lecture, un objet caché n'est pas là du tout (ni cliquable, ni dessiné)
         if (!visible && play) return null;
@@ -878,7 +888,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             )}
             {o.type === 'audio' && <AudioView o={o} scale={scale} />}
             {o.type === 'link' && <LinkView o={o} scale={scale} active={active} />}
-            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} />}
+            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} onPlace={(text, client) => onWidgetPlace(o.id, text, client)} />}
             {o.type === 'equation' && (
               <EquationView
                 o={o}
@@ -940,7 +950,21 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 ))}
               </svg>
             )}
-            {o.type === 'text' && (
+            {o.type === 'text' && isFolded(o) && (
+              // Post-it replié : une pastille, qu'un tap déplie (pour la séance en classe, pour
+              // de bon en édition au double-clic)
+              <div
+                className="wbo__folded"
+                style={{ background: o.background, width: rect.w * scale, height: rect.h * scale, color: o.color, fontFamily: fontCss(o.font), fontSize: o.size * 0.7 * scale }}
+                title={play ? 'Toucher pour déplier' : 'Double-clic : déplier'}
+                onClick={(e) => { if (play) { e.stopPropagation(); onUnfoldInSession(o.id); } }}
+                onDoubleClick={(e) => { e.stopPropagation(); if (!play) onFoldText(o.id, false); }}
+              >
+                <span className="wbo__folded-title">{textBoxTitle(o.html) || 'Post-it'}</span>
+                <span className="wbo__folded-plus" aria-hidden>+</span>
+              </div>
+            )}
+            {o.type === 'text' && !isFolded(o) && (
               <div
                 className="wbo__editor"
                 ref={(el) => {
@@ -1069,6 +1093,17 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 </div>
               );
             })()}
+            {active && o.type === 'text' && o.background && !o.collapsed && !isEditing && (
+              // Post-it : bouton de repli, discret tant que l'objet n'est pas sélectionné
+              <button
+                type="button"
+                className={`wbo__fold ${isSelected ? 'is-visible' : ''}`}
+                style={{ width: 22 * Math.max(0.7, Math.min(1.4, scale)), height: 22 * Math.max(0.7, Math.min(1.4, scale)) }}
+                title="Replier le post-it"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onFoldText(o.id, true); }}
+              >–</button>
+            )}
             {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡</span>}
             {!play && !visible && <span className="wbo__badge wbo__badge--ghost" title="Caché au départ : un bouton l'affichera">caché</span>}
             {active && isSelected && (
@@ -1167,6 +1202,13 @@ const CSS = `
 .wbo__editor [data-gap].is-hidden * { color: transparent !important; background: transparent !important; text-decoration: none !important; }
 .wbo__editor [data-gap].is-hidden { border-bottom-color: #374151; }
 .wbo__cover { position: absolute; z-index: 2; pointer-events: auto; overflow: hidden; border-radius: 4px; }
+/* Post-it replié : pastille, cliquable même en lecture (le cadre lui-même ne capte rien) */
+.wbo__folded { display: flex; align-items: center; gap: 0.6em; box-sizing: border-box; padding: 0 0.9em; border-radius: 999px; box-shadow: 0 3px 10px rgba(0,0,0,0.18); font-weight: 700; line-height: 1; pointer-events: auto; cursor: pointer; user-select: none; overflow: hidden; }
+.wbo__folded-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wbo__folded-plus { flex: none; opacity: 0.7; }
+.wbo__fold { position: absolute; right: 2px; top: 2px; z-index: 3; padding: 0; border: 0; border-radius: 999px; background: rgba(17,24,39,0.55); color: #FFFFFF; font: 700 14px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0.35; }
+.wbo__fold.is-visible, .wbo__frame:hover .wbo__fold { opacity: 1; }
+.wbo__fold:hover { background: #111827; }
 .wbo__cover--curtain { overflow: visible; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; user-select: none; }
 .wbo__curtain-sheet { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: ns-resize; touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
 .wbo__cover--curtain.is-editing .wbo__curtain-sheet { cursor: default; }

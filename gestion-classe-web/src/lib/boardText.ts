@@ -29,10 +29,33 @@ export interface TextBox {
   html: string;
   /** Fond coloré (post-it) : la zone est alors rembourrée d'une demi-taille de police. */
   background?: string;
+  /**
+   * Post-it replié : une pastille de la couleur du fond avec la première ligne du texte. Ne
+   * vaut que pour une zone à fond coloré. L'état déplié en classe est un état de séance
+   * (`RevealState.unfolded`), pas une modification de ce champ.
+   */
+  collapsed?: boolean;
 }
 
 /** Marge intérieure d'une zone à fond coloré, en unités. */
 export const textBoxPadding = (box: TextBox) => (box.background ? box.size * 0.5 : 0);
+
+/** Post-it replié : fond coloré et `collapsed`. */
+export const isFolded = (box: TextBox) => !!(box.background && box.collapsed);
+/** Pastille du post-it replié : une ligne de texte, au plus 9 tailles de police de large. */
+export function foldedRect(box: TextBox): { x: number; y: number; w: number; h: number } {
+  return { x: box.x, y: box.y, w: Math.min(box.w, box.size * 9), h: Math.round(box.size * 1.6) };
+}
+/** Première ligne non vide d'une zone, en texte brut (titre de la pastille repliée). */
+export function textBoxTitle(html: string): string {
+  const text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  return text.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
+}
 
 export interface BoardFont {
   id: string;
@@ -423,7 +446,34 @@ function inner(box: TextBox): TextBox {
 
 /** Zone cliquable de la boîte, en unités logiques. */
 export function textBoxRect(box: TextBox): { x: number; y: number; w: number; h: number } {
+  if (isFolded(box)) return foldedRect(box);
   return { x: box.x, y: box.y, w: box.w, h: Math.max(box.size * LINE_HEIGHT + textBoxPadding(box) * 2, textBoxHeight(box)) };
+}
+
+/** Post-it replié : pastille arrondie, titre en gras et « + » à droite (même dessin que le DOM). */
+function renderFoldedBox(ctx: CanvasRenderingContext2D, box: TextBox, scale: number) {
+  const r = foldedRect(box);
+  const x = r.x * scale, y = r.y * scale, w = r.w * scale, h = r.h * scale, rad = h / 2;
+  ctx.save();
+  ctx.fillStyle = box.background ?? '#FDE68A';
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y); ctx.lineTo(x + w - rad, y); ctx.arc(x + w - rad, y + rad, rad, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(x + rad, y + h); ctx.arc(x + rad, y + rad, rad, Math.PI / 2, (3 * Math.PI) / 2); ctx.closePath();
+  ctx.fill();
+  const size = box.size * 0.7 * scale;
+  ctx.font = `700 ${size}px ${fontCss(box.font)}`;
+  ctx.fillStyle = box.color;
+  ctx.textBaseline = 'middle';
+  const plus = '+';
+  const plusW = ctx.measureText(plus).width;
+  const pad = size * 0.6;
+  const avail = w - pad * 3 - plusW;
+  let title = textBoxTitle(box.html) || 'Post-it';
+  while (title.length > 1 && ctx.measureText(title).width > avail) title = title.slice(0, -2) + '…';
+  ctx.fillText(title, x + pad, y + h / 2);
+  ctx.globalAlpha = 0.7;
+  ctx.fillText(plus, x + w - pad - plusW, y + h / 2);
+  ctx.restore();
 }
 
 /**
@@ -431,6 +481,7 @@ export function textBoxRect(box: TextBox): { x: number; y: number; w: number; h:
  * 'all' pour tous les trous (version élève), absent pour tout afficher.
  */
 export function renderTextBox(ctx: CanvasRenderingContext2D, outer: TextBox, scale: number, hiddenGaps?: ReadonlySet<string> | 'all') {
+  if (isFolded(outer)) { renderFoldedBox(ctx, outer, scale); return; }
   if (outer.background) {
     const r = textBoxRect(outer);
     ctx.save();
