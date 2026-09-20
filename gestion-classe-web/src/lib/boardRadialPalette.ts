@@ -79,6 +79,9 @@ export const PALETTE_CATALOG: PaletteActionDef[] = [
   // Un quartier par élément insérable, pour poser d'un geste la calculatrice ou le minuteur
   ...INSERT_ACTIONS.map((a): PaletteActionDef => ({ id: `insert-${a.id}`, label: a.label, icon: a.icon, group: 'Insertion' })),
   { id: 'library', label: 'Ressources', icon: '📚', group: 'Séance' },
+  { id: 'events', label: 'Événements', icon: '⚡', group: 'Séance' },
+  { id: 'events', label: 'Événements', icon: '⚡', group: 'Séance' },
+  { id: 'events', label: 'Événements', icon: '⚡', group: 'Séance' },
   { id: 'search', label: 'Rechercher', icon: '🔎', group: 'Séance' },
   { id: 'pick', label: 'Tirage au sort', icon: '🎯', group: 'Séance' },
   { id: 'display', label: 'Mode affichage', icon: '🖥', group: 'Séance' },

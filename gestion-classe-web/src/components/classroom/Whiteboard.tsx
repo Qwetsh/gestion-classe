@@ -65,7 +65,8 @@ import { BoardInstruments } from './BoardInstruments';
 import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
 import { BoardKeyboard } from './BoardKeyboard';
-import { BoardLibraryPanel } from './BoardLibraryPanel';
+import { BoardLibraryPanel, type LibraryTab } from './BoardLibraryPanel';
+import { pullEvents, saveEvent, setEventsOwner, type EventInsert, type EventPending } from '../../lib/boardEvents';
 import { BoardLibraryDialog } from './BoardLibraryDialog';
 import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta, FREE_BOARD_ID } from '../../lib/boardsQueries';
 import { BoardPopover } from './BoardPopover';
@@ -464,7 +465,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [spotlight, setSpotlight] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Panneau Ressources ouvert, sur cet onglet (faux = fermé). */
+  const [libraryOpen, setLibraryOpen] = useState<false | LibraryTab>(false);
+  /** Action déjà choisie (banque d'événements) pendant le choix de la cible. */
+  const pendingActionRef = useRef<EventPending | null>(null);
   /** Bibliothèque des tableaux préparés : ouvrir un tableau (copie de ses pages) ou enregistrer celui-ci. */
   const [libraryDialog, setLibraryDialog] = useState<'open' | 'start' | 'save' | null>(null);
   /** Mode affichage (écran de classe) : barre et panneaux masqués, widgets manipulables. */
@@ -610,6 +614,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   useEffect(() => {
     setKeysOwner(userId || null);
     void pullKeys();
+    setEventsOwner(userId || null);
+    void pullEvents();
   }, [userId]);
 
   const historyRef = useRef<Record<string, { undo: HistoryOp[]; redo: HistoryOp[] }>>({});
@@ -1797,7 +1803,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
    * une étape existante de la séquence ; sinon, avec une cible, l'étape déjà liée à cette cible
    * est reprise, et à défaut une nouvelle étape est ajoutée.
    */
-  const openBubble = useCallback((triggerId: string, targetId: string | null, anchor?: { left: number; top: number; right: number; bottom: number }, at?: number | null) => {
+  const openBubble = useCallback((triggerId: string, targetId: string | null, anchor?: { left: number; top: number; right: number; bottom: number }, at?: number | null, preset?: EventPending | null) => {
     const p = pagesRef.current[pageIndexRef.current];
     const trigger = p?.objects?.find((o) => o.id === triggerId);
     const target = targetId ? p?.objects?.find((o) => o.id === targetId) : null;
@@ -1811,19 +1817,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     // révéler) ; sans cible, page suivante
     const allowed = actionsFor(target ?? null);
     // Nouvelle étape : basculer la cible si c'est permis, sinon la première action possible (fenêtre : ouvrir ; sans cible : page suivante)
-    const action = existing && allowed.includes(existing.action) ? existing.action : allowed.includes('toggle') ? 'toggle' : (allowed[0] ?? 'next');
+    const action = preset && allowed.includes(preset.action) ? preset.action
+      : existing && allowed.includes(existing.action) ? existing.action : allowed.includes('toggle') ? 'toggle' : (allowed[0] ?? 'next');
+    const params = preset && allowed.includes(preset.action) ? preset.params : existing?.params;
     setBubble({
       triggerId, targetId: existing?.targetId ?? targetId, index: index >= 0 ? index : null,
       anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
       draft: {
-        action, hidden: existing ? target?.hidden === true : !!target, pageId: existing?.params?.pageId ?? p?.id, once: existing?.once === true,
-        x: existing?.params?.x, y: existing?.params?.y, dx: existing?.params?.dx ?? 0, dy: existing?.params?.dy ?? 0,
+        action, hidden: existing ? target?.hidden === true : !!target, pageId: params?.pageId ?? p?.id, once: existing?.once === true,
+        x: params?.x, y: params?.y, dx: params?.dx ?? 0, dy: params?.dy ?? 0,
       },
     });
   }, []);
 
   /** Mode liaison : une flèche part du bouton et suit le pointeur jusqu'au tap sur la cible. */
-  const startLinking = useCallback((triggerId: string) => {
+  const startLinking = useCallback((triggerId: string, pending?: EventPending | null) => {
+    pendingActionRef.current = pending ?? null;
     setBubble(null);
     setInteractionsFor(triggerId);
     setSelectedIds(new Set([triggerId]));
@@ -1831,16 +1840,59 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
     setPicking(true);
   }, []);
-  const cancelLinking = useCallback(() => { setPicking(false); setLinkPointer(null); }, []);
+  const cancelLinking = useCallback(() => { pendingActionRef.current = null; setPicking(false); setLinkPointer(null); }, []);
 
   /** Cible touchée en mode liaison : la flèche s'y pose et la bulle s'ouvre. */
   const onTargetPicked = useCallback((targetId: string) => {
     const triggerId = interactionsFor;
     setPicking(false);
     setLinkPointer(null);
+    const pending = pendingActionRef.current;
+    pendingActionRef.current = null;
     if (!triggerId || triggerId === targetId) return;
-    openBubble(triggerId, targetId);
+    openBubble(triggerId, targetId, undefined, undefined, pending);
   }, [interactionsFor, openBubble]);
+
+  /**
+   * Banque d'événements : pose les objets au centre de la page, sélectionne le bouton porteur ;
+   * si une action attend encore sa cible, enchaîne sur le choix de la cible (action déjà choisie),
+   * ou ouvre la bulle sans cible (page à choisir). Une fenêtre posée s'ouvre en édition.
+   */
+  const insertEvent = useCallback((insert: EventInsert) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p || insert.objects.length === 0) return;
+    const minX = Math.min(...insert.objects.map((o) => o.x)), minY = Math.min(...insert.objects.map((o) => o.y));
+    const maxX = Math.max(...insert.objects.map((o) => objectRect(o).x + objectRect(o).w)), maxY = Math.max(...insert.objects.map((o) => objectRect(o).y + objectRect(o).h));
+    const at = centered(maxX - minX, maxY - minY);
+    const dx = at.x - minX, dy = at.y - minY;
+    const objects = insert.objects.map((o) => ({ ...o, x: o.x + dx, y: o.y + dy }));
+    const before = p.objects ?? [];
+    handleObjectsChange([...before, ...objects], before);
+    setSelectedIds(new Set([insert.triggerId]));
+    setEditingId(null);
+    if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
+    const win = objects.find((o) => o.type === 'window');
+    if (insert.pending) {
+      // L'objet vient d'être posé : le calque doit le rendre avant qu'une bulle s'y ancre
+      window.setTimeout(() => {
+        if (needsTarget(insert.pending!.action)) startLinking(insert.triggerId, insert.pending);
+        else openBubble(insert.triggerId, null, undefined, undefined, insert.pending);
+      }, 0);
+    } else if (win) {
+      setWindowEdit(win.id);
+    }
+  }, [handleObjectsChange, startLinking, openBubble]);
+
+  /** « Enregistrer dans mes événements… » : la sélection, normalisée, sous un nom. */
+  const saveSelectionAsEvent = useCallback(() => {
+    const objects = selectedObjects(true).filter((o) => o.type !== 'connector' || true);
+    if (objects.length === 0) return;
+    const trigger = objects.find((o) => (o.interactions?.length ?? 0) > 0);
+    const suggested = trigger ? objectShortLabel(trigger) : objectShortLabel(objects[0]);
+    const label = window.prompt('Nom de cet événement (il apparaîtra dans Ressources › Événements) :', suggested.replace(/^(Texte|Forme|Zone|Fenêtre|Dessin|Objet) « (.*) »$/, '$2'));
+    if (label === null) return;
+    saveEvent(label, objects);
+  }, [selectedObjects]);
 
   /** Valider la bulle : l'étape est écrite (ou remplacée) et la cible prend son état de départ. */
   const confirmBubble = useCallback(() => {
@@ -2268,6 +2320,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
       ] }] : []),
       ...(!many && target.type === 'text' ? [{ label: 'Extracteur de mots (toucher un mot le duplique)', checked: !!target.wordExtractor, onSelect: () => toggleWordExtractor(target.id) }] : []),
+      { label: 'Enregistrer dans mes événements…', onSelect: saveSelectionAsEvent },
       { label: many ? 'Exporter la sélection en image' : 'Exporter en image (PNG)', onSelect: () => void exportSelectionImage() },
       { separator: true, label: '' },
       ...(many ? [{ label: `Grouper (${count})`, shortcut: 'Ctrl+G', onSelect: groupSelected }] : []),
@@ -2276,7 +2329,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected, toggleWordExtractor, toggleHotspot]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected, toggleWordExtractor, toggleHotspot, saveSelectionAsEvent]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -3020,7 +3073,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     insert: { onSelect: () => { if (radial) setMenu({ x: radial.x, y: radial.y, items: insertMenuItems() }); else setInsertOpen(true); } },
     // Un quartier par élément insérable (`insert-calc`, `insert-timer`…)
     ...Object.fromEntries(insertEntries().map((e) => [`insert-${e.id}`, { active: e.id === 'record' && recording, onSelect: e.run }])),
-    library: { onSelect: () => setLibraryOpen(true) },
+    library: { onSelect: () => setLibraryOpen('library') },
+    events: { onSelect: () => setLibraryOpen('events') },
     search: { onSelect: () => setSearchOpen(true) },
     pick: { disabled: !classroom, onSelect: () => setPickOpen(true) },
     display: { onSelect: enterDisplayMode },
@@ -3110,7 +3164,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Objet-bouton dont le panneau d'interactions est ouvert (null s'il a disparu de la page). */
   const interactionTrigger = interactionsFor ? pageObjects.find((o) => o.id === interactionsFor) ?? null : null;
   useEffect(() => {
-    if (interactionsFor && !interactionTrigger) { setInteractionsFor(null); setPicking(false); setLinkPointer(null); setBubble(null); }
+    if (interactionsFor && !interactionTrigger) { pendingActionRef.current = null; setInteractionsFor(null); setPicking(false); setLinkPointer(null); setBubble(null); }
   }, [interactionsFor, interactionTrigger]);
   // Flèches d'interaction : visibles seulement quand le bouton est sélectionné seul (édition) ;
   // en mode liaison, la flèche du bouton au pointeur s'y ajoute
@@ -3195,7 +3249,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     {
       title: 'Séance',
       items: [
-        { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen(true) },
+        { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen('library') },
+        { id: 'ses-events', label: 'Événements (boutons prêts à poser)', icon: '⚡', onSelect: () => setLibraryOpen('events') },
         { id: 'ses-search', label: 'Rechercher (Ctrl+K)', icon: '🔎', onSelect: () => setSearchOpen(true) },
         ...(classroom ? [{ id: 'ses-pick', label: 'Tirage au sort', icon: '🎯', onSelect: () => setPickOpen(true) }] : []),
         { id: 'ses-display', label: 'Mode affichage', icon: '🖥', onSelect: enterDisplayMode },
@@ -3646,6 +3701,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
       {libraryOpen && (
         <BoardLibraryPanel
+          initialTab={libraryOpen}
+          onInsertEvent={insertEvent}
           onClose={() => setLibraryOpen(false)}
           onInsertItem={insertLibraryItem}
           onInsertFiles={(files) => importFiles(files)}

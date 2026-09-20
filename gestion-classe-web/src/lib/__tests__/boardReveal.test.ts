@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CURTAIN_OPEN_AT, curtainSlide, emptyReveal, fireInteractions, isObjectVisible, recoverPage, settleCurtain, type RevealState } from '../boardReveal';
 import { actionsFor, cloneObjects, describeInteraction, type BoardObject, type Interaction, type TextObject } from '../boardObjects';
 import type { WidgetObject, WindowObject } from '../boardMedia';
+import { EVENT_PRESETS, eventFromSelection, insertFromSaved } from '../boardEvents';
 
 describe('settleCurtain', () => {
   it('compte un rideau presque sorti comme découvert', () => {
@@ -172,5 +173,35 @@ describe('lot B : fenêtre, zoom, déplacements', () => {
     expect(actionsFor(text('t'))).not.toContain('window');
     expect(describeInteraction({ action: 'moveBy', targetId: 't', params: { dx: 50, dy: -25 } }, [text('t', { html: 'Globule' })], [])).toBe('Décaler de (+50, -25) · Texte « Globule »');
     expect(describeInteraction({ action: 'window', targetId: 'w' }, [win], [])).toBe('Ouvrir la fenêtre · Fenêtre « Le noyau »');
+  });
+});
+
+describe('banque d’événements', () => {
+  it('chaque préréglage fourni se construit avec un bouton porteur et des cibles internes cohérentes', () => {
+    for (const preset of EVENT_PRESETS) {
+      const ins = preset.build();
+      const ids = new Set(ins.objects.map((o) => o.id));
+      expect(ids.has(ins.triggerId)).toBe(true);
+      for (const o of ins.objects) for (const it of o.interactions ?? []) if (it.targetId) expect(ids.has(it.targetId)).toBe(true);
+      if (ins.pending) expect(ins.objects.find((o) => o.id === ins.triggerId)?.interactions).toBeUndefined();
+    }
+    expect(EVENT_PRESETS.map((p) => p.build().objects.map((o) => o.id)).flat().length).toBe(new Set(EVENT_PRESETS.map((p) => p.build().objects.map((o) => o.id)).flat()).size);
+  });
+
+  it('normalise une sélection (positions relatives, ids frais, cibles internes remappées)', () => {
+    const answer = text('r', { x: 300, y: 260, hidden: true });
+    const b = button('b', [{ action: 'toggle', targetId: 'r' }, { action: 'reveal', targetId: 'elsewhere' }]);
+    b.x = 200; b.y = 200;
+    const saved = eventFromSelection([b, answer]);
+    expect(saved.map((o) => [o.x, o.y])).toEqual([[0, 0], [100, 60]]);
+    expect(saved[0].id).not.toBe('b');
+    expect(saved[0].interactions?.[0].targetId).toBe(saved[1].id);
+    expect(saved[0].interactions?.[1].targetId).toBe('elsewhere');
+    // À l'insertion : l'action vers l'extérieur redevient « à relier »
+    const ins = insertFromSaved({ id: 'e', label: 'x', objects: saved, createdAt: '' });
+    expect(ins.triggerId).toBe(ins.objects[0].id);
+    expect(ins.pending).toEqual({ action: 'reveal' });
+    expect(ins.objects[0].interactions).toHaveLength(1);
+    expect(ins.objects[0].interactions?.[0].targetId).toBe(ins.objects[1].id);
   });
 });
