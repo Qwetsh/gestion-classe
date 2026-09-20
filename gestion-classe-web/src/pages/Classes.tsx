@@ -168,6 +168,40 @@ export function Classes() {
   // Student grades for visual display
   const [studentGrades, setStudentGrades] = useState<Map<string, StudentGradeData>>(new Map());
   const [showGrades] = useState(true);
+  // Option « Couleur de table » : teinte le bureau selon la note de comportement (persistée par navigateur)
+  const [deskColorByGrade, setDeskColorByGrade] = useState<boolean>(() => {
+    try { return localStorage.getItem('gc_plan_desk_color') === '1'; } catch { return false; }
+  });
+  const toggleDeskColor = () => {
+    setDeskColorByGrade((v) => {
+      try { localStorage.setItem('gc_plan_desk_color', v ? '0' : '1'); } catch { /* stockage indisponible */ }
+      return !v;
+    });
+  };
+  // Option « Malus » : affiche le nombre de malus du trimestre sur chaque pastille (persistée par navigateur)
+  const [showMalus, setShowMalus] = useState<boolean>(() => {
+    try { return localStorage.getItem('gc_plan_show_malus') === '1'; } catch { return false; }
+  });
+  const toggleShowMalus = () => {
+    setShowMalus((v) => {
+      try { localStorage.setItem('gc_plan_show_malus', v ? '0' : '1'); } catch { /* stockage indisponible */ }
+      return !v;
+    });
+  };
+  // Petit badge « −N » (rouge si au moins un malus, discret sinon)
+  const MalusBadge = ({ count }: { count: number }) => (
+    <span
+      title={`${count} malus ce trimestre`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 999,
+        fontSize: 9.5, fontWeight: 700, lineHeight: 1.3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        background: count > 0 ? 'var(--neg-soft)' : 'var(--surface-3)',
+        color: count > 0 ? 'var(--neg)' : 'var(--text-dim)',
+      }}
+    >
+      −{count}
+    </span>
+  );
 
   // Modal states
   const [showClassModal, setShowClassModal] = useState(false);
@@ -1223,6 +1257,22 @@ export function Classes() {
           >
             {linkMode ? 'Liaison : ON' : 'Lier les tables'}
           </button>
+          <button
+            onClick={toggleDeskColor}
+            className={`btn ${deskColorByGrade ? 'btn--accent' : 'btn--ghost'}`}
+            style={{ fontSize: 13 }}
+            title="Colorer chaque table selon la note de comportement de l'élève (vert ≥ 16, bleu ≥ 12, orange ≥ 8, rouge < 8)"
+          >
+            {deskColorByGrade ? 'Couleur de table : ON' : 'Couleur de table'}
+          </button>
+          <button
+            onClick={toggleShowMalus}
+            className={`btn ${showMalus ? 'btn--accent' : 'btn--ghost'}`}
+            style={{ fontSize: 13 }}
+            title="Afficher le nombre de malus (bavardages) du trimestre sur chaque élève"
+          >
+            {showMalus ? 'Malus : ON' : 'Malus'}
+          </button>
           <button className="btn btn--ghost" style={{ fontSize: 13 }} onClick={() => window.print()}>
             Imprimer le plan
           </button>
@@ -1520,7 +1570,10 @@ export function Classes() {
                                   </div>
                                 )}
                                 {student && (
-                                  <div className="student-pill" style={{ position: 'absolute', top: 6, left: 5, right: 5, bottom: 4, zIndex: 2 }}>
+                                  <div className="student-pill" style={{
+                                    position: 'absolute', top: 6, left: 5, right: 5, bottom: 4, zIndex: 2,
+                                    ...(deskColorByGrade && gradeData ? { background: `color-mix(in srgb, ${barColor} 28%, #fff)` } : {}),
+                                  }}>
                                     <div className="student-pill__bar" style={{ background: barColor }} />
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1543,6 +1596,7 @@ export function Classes() {
                                             {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
                                           </span>
                                         )}
+                                        {gradeData && showMalus && <MalusBadge count={gradeData.malus} />}
                                         {gradeData && <MiniSpark history={gradeData.sparkHistory} />}
                                       </div>
                                     </div>
@@ -1626,8 +1680,11 @@ export function Classes() {
                             {student.pseudo}
                           </div>
                           {gradeData && showGrades && (
-                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                              {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                                {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                              </span>
+                              {showMalus && <MalusBadge count={gradeData.malus} />}
                             </span>
                           )}
                         </div>
