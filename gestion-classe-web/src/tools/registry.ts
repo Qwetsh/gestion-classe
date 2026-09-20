@@ -101,7 +101,7 @@ export const tools: Tool[] = [
   {
     id: 'fileconverter',
     name: 'Convertisseur de fichiers',
-    description: 'Convertir images (PNG, JPG, WebP), assembler en PDF, ou convertir PDF en Word',
+    description: 'Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF',
     icon: '🔄',
     component: lazy(() => import('./FileConverter')),
     tags: ['convertir', 'image', 'png', 'jpg', 'webp', 'pdf', 'word', 'docx', 'redimensionner', 'compresser', 'fichier'],

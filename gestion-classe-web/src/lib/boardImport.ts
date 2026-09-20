@@ -5,22 +5,12 @@
  */
 import { supabase } from './supabase';
 import { BOARD_BUCKET, BOARD_PAGE_H, BOARD_UNIT, type BoardPage, type PageImage } from './boardRender';
+import { getPdfjs } from './pdfjs';
 
 const MAX_RENDER_WIDTH = 1800;
 const JPEG_QUALITY = 0.86;
 
 export interface ImportProgress { done: number; total: number; label: string }
-
-let pdfjsReady: Promise<typeof import('pdfjs-dist')> | null = null;
-function getPdfjs() {
-  if (!pdfjsReady) {
-    pdfjsReady = import('pdfjs-dist').then((lib) => {
-      lib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-      return lib;
-    });
-  }
-  return pdfjsReady;
-}
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 

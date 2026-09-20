@@ -1,6 +1,6 @@
 /**
  * Sources externes du panneau « Ressources » : base Notion (via l'Edge Function
- * notion-proxy), Google Drive (Picker), annales de Brevet (bucket public). OneDrive : voir `oneDrive.ts`.
+ * notion-proxy), annales de Brevet (bucket public). Google Drive : voir `googleDrive.ts` ; OneDrive : `oneDrive.ts`.
  * Aucune clé n'est inventée : chaque source explique ce qu'il lui manque.
  */
 import { supabase } from './supabase';
@@ -68,92 +68,9 @@ export async function fetchNotionPage(pageId: string): Promise<NotionPageBody> {
   return { text: data?.text ?? '', images: data?.images ?? [] };
 }
 
-// ---- Google Drive (Picker) ----
-
-export interface DriveKeys { clientId?: string; apiKey?: string }
-const DRIVE_KEY = 'classroom-board-drive-keys';
-
-export function loadDriveKeys(): DriveKeys {
-  try { return JSON.parse(localStorage.getItem(DRIVE_KEY) || '{}') as DriveKeys; } catch { return {}; }
-}
-
-export function saveDriveKeys(keys: DriveKeys) {
-  try { localStorage.setItem(DRIVE_KEY, JSON.stringify(keys)); } catch { /* stockage indisponible */ }
-  void pushKeys();
-}
-
-export interface DriveFile { id: string; name: string; mimeType: string }
-
-interface PickerBuilderT {
-  addView(v: unknown): PickerBuilderT;
-  setOAuthToken(t: string): PickerBuilderT;
-  setDeveloperKey(k: string): PickerBuilderT;
-  setCallback(cb: (d: { action: string; docs?: DriveFile[] }) => void): PickerBuilderT;
-  setLocale(l: string): PickerBuilderT;
-  build(): { setVisible(v: boolean): void };
-}
-
-interface GoogleGlobal {
-  accounts?: { oauth2: { initTokenClient(cfg: { client_id: string; scope: string; callback: (r: { access_token?: string; error?: string }) => void }): { requestAccessToken(): void } } };
-  picker?: {
-    PickerBuilder: new () => PickerBuilderT;
-    ViewId: { DOCS: unknown; DOCS_IMAGES: unknown };
-    Action: { PICKED: string };
-  };
-}
-
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error(`Script indisponible : ${src}`));
-    document.head.appendChild(s);
-  });
-}
-
-/**
- * Ouvre le sélecteur Google Drive et renvoie le fichier choisi téléchargé (Blob) avec son nom.
- * Demande l'accès « drive.readonly » via OAuth (client id) ; le Picker a besoin d'une clé API.
- */
-export async function pickFromGoogleDrive(keys: DriveKeys): Promise<{ file: DriveFile; blob: Blob } | null> {
-  if (!keys.clientId || !keys.apiKey) throw new MissingKeyError('Google Drive', 'Client ID OAuth et clé API Google (console Google Cloud, API Picker + Drive activées) à renseigner.');
-  await loadScript('https://accounts.google.com/gsi/client');
-  await loadScript('https://apis.google.com/js/api.js');
-  const g = (window as unknown as { google?: GoogleGlobal; gapi?: { load(n: string, cb: () => void): void } });
-  if (!g.google?.accounts || !g.gapi) throw new Error('Bibliothèques Google indisponibles');
-  await new Promise<void>((resolve) => g.gapi!.load('picker', resolve));
-  const token = await new Promise<string>((resolve, reject) => {
-    const client = g.google!.accounts!.oauth2.initTokenClient({
-      client_id: keys.clientId!,
-      scope: 'https://www.googleapis.com/auth/drive.readonly',
-      callback: (r) => (r.access_token ? resolve(r.access_token) : reject(new Error(r.error ?? 'Accès refusé'))),
-    });
-    client.requestAccessToken();
-  });
-  const picked = await new Promise<DriveFile | null>((resolve) => {
-    const picker = g.google!.picker!;
-    new picker.PickerBuilder()
-      .addView(picker.ViewId.DOCS)
-      .setOAuthToken(token)
-      .setDeveloperKey(keys.apiKey!)
-      .setLocale('fr')
-      .setCallback((d) => { if (d.action === picker.Action.PICKED) resolve(d.docs?.[0] ?? null); else if (d.action === 'cancel') resolve(null); })
-      .build()
-      .setVisible(true);
-  });
-  if (!picked) return null;
-  const isGoogleDoc = picked.mimeType.startsWith('application/vnd.google-apps');
-  const url = isGoogleDoc
-    ? `https://www.googleapis.com/drive/v3/files/${picked.id}/export?mimeType=application/pdf`
-    : `https://www.googleapis.com/drive/v3/files/${picked.id}?alt=media`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error(`Téléchargement impossible (${res.status})`);
-  const blob = await res.blob();
-  return { file: isGoogleDoc ? { ...picked, name: `${picked.name}.pdf`, mimeType: 'application/pdf' } : picked, blob };
-}
+// ---- Google Drive ----
+// Déplacé dans `googleDrive.ts` (jeton, Picker, navigation par l'API) ; ré-exporté pour le panneau « Ressources ».
+export { loadDriveKeys, saveDriveKeys, pickFromGoogleDrive, type DriveKeys, type DriveFile } from './googleDrive';
 
 // ---- Annales de Brevet ----
 

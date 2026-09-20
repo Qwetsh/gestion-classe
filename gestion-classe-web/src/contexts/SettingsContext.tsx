@@ -29,6 +29,7 @@ export interface HiddenTabs {
   academy: boolean;
   'tp-templates': boolean;
   brevets: boolean;
+  clouds: boolean;
   tools: boolean;
   pronote: boolean;
 }
@@ -59,6 +60,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     academy: false,
     'tp-templates': false,
     brevets: false,
+    clouds: false,
     tools: false,
     pronote: false,
   },
