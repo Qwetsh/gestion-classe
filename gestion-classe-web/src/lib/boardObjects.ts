@@ -61,14 +61,20 @@ export type InteractionAction =
   | 'play' | 'pause' | 'playToggle'     // son de la cible (objet audio)
   | 'start' | 'stop' | 'startToggle'    // minuteur, sonomètre (widget cible)
   | 'roll'                              // dé, roue, tirage de groupes (widget cible)
-  | 'reset';                            // page courante : tout remettre à couvert, arrêter les widgets
+  | 'reset'                             // page courante : tout remettre à couvert, arrêter les widgets
+  | 'window'                            // ouvre la fenêtre cible en modale
+  | 'zoomTo'                            // la vue cadre la cible (animé) ; tap hors = retour
+  | 'moveTo' | 'moveBy' | 'moveBack';   // la cible se déplace (état de séance, animé)
 
 export interface Interaction {
   action: InteractionAction;
   /** Objet visé ; absent pour les actions sans cible (goto, next, prev, reset). */
   targetId?: string;
-  /** Page visée par `goto`, par identifiant (les index bougent quand on réordonne les pages). */
-  params?: { pageId?: string };
+  /**
+   * Paramètres selon l'action : `pageId` (goto, par identifiant : les index bougent quand on
+   * réordonne les pages), `x`/`y` (moveTo : coin haut-gauche visé, unités), `dx`/`dy` (moveBy).
+   */
+  params?: { pageId?: string; x?: number; y?: number; dx?: number; dy?: number };
   /** Ne se joue qu'une fois par séance (mémorisé dans `RevealState.fired`). */
   once?: boolean;
 }
@@ -92,14 +98,22 @@ export const INTERACTION_LABELS: Record<InteractionAction, string> = {
   startToggle: 'Lancer / arrêter',
   roll: 'Tirer',
   reset: 'Réinitialiser la page',
+  window: 'Ouvrir la fenêtre',
+  zoomTo: 'Zoomer sur',
+  moveTo: 'Déplacer vers',
+  moveBy: 'Décaler de',
+  moveBack: 'Remettre en place',
 };
 
 /** Familles d'actions, telles que la bulle les présente (une ligne d'icônes, puis les actions). */
-export type InteractionFamily = 'visibility' | 'cover' | 'note' | 'page' | 'media' | 'tool';
+export type InteractionFamily = 'visibility' | 'cover' | 'note' | 'content' | 'view' | 'motion' | 'page' | 'media' | 'tool';
 export const INTERACTION_FAMILIES: Record<InteractionFamily, { label: string; icon: string; actions: readonly InteractionAction[] }> = {
   visibility: { label: 'Visibilité', icon: '👁', actions: ['show', 'hide', 'toggle'] },
   cover: { label: 'Cache', icon: '🎭', actions: ['reveal', 'cover'] },
   note: { label: 'Post-it', icon: '📌', actions: ['unfold', 'fold'] },
+  content: { label: 'Fenêtre', icon: '🗔', actions: ['window'] },
+  view: { label: 'Vue', icon: '🔍', actions: ['zoomTo'] },
+  motion: { label: 'Déplacer', icon: '↗', actions: ['moveTo', 'moveBy', 'moveBack'] },
   page: { label: 'Page', icon: '📄', actions: ['next', 'prev', 'goto', 'reset'] },
   media: { label: 'Son', icon: '🔊', actions: ['play', 'pause', 'playToggle'] },
   tool: { label: 'Outil', icon: '⏱', actions: ['start', 'stop', 'startToggle', 'roll'] },
@@ -122,8 +136,11 @@ export const needsTarget = (action: InteractionAction) => !TARGETLESS_ACTIONS.in
  */
 export function actionsFor(target: BoardObject | null): InteractionAction[] {
   if (!target) return [...TARGETLESS_ACTIONS];
+  // Une fenêtre ne fait qu'une chose : s'ouvrir
+  if (target.type === 'window') return ['window'];
   const out: InteractionAction[] = ['show', 'hide', 'toggle'];
   if (target.cover) out.push('reveal', 'cover');
+  if (target.type !== 'connector') out.push('zoomTo', 'moveTo', 'moveBy', 'moveBack');
   if (target.type === 'text' && target.background) out.push('unfold', 'fold');
   if (target.type === 'audio') out.push('play', 'pause', 'playToggle');
   if (target.type === 'widget') {
@@ -142,7 +159,10 @@ export function describeInteraction(it: Interaction, objects: readonly BoardObje
   }
   if (!needsTarget(it.action)) return base;
   const target = it.targetId ? objects.find((o) => o.id === it.targetId) : undefined;
-  return `${base} · ${target ? objectShortLabel(target) : 'objet supprimé'}`;
+  const name = target ? objectShortLabel(target) : 'objet supprimé';
+  if (it.action === 'moveTo') return `${base} (${Math.round(it.params?.x ?? 0)}, ${Math.round(it.params?.y ?? 0)}) · ${name}`;
+  if (it.action === 'moveBy') { const s = (n: number) => (n >= 0 ? `+${Math.round(n)}` : `${Math.round(n)}`); return `${base} (${s(it.params?.dx ?? 0)}, ${s(it.params?.dy ?? 0)}) · ${name}`; }
+  return `${base} · ${name}`;
 }
 
 /** Zone de texte : la hauteur découle du contenu. */
@@ -242,7 +262,8 @@ export function objectsBottom(objects: BoardObject[]): number {
 /** Nom court d'un objet, pour désigner une cible d'interaction : « Texte “Réponse…” », « Image ». */
 export function objectShortLabel(o: BoardObject): string {
   const generic = objectTypeLabel([o]);
-  const kind = generic !== 'Objet' ? generic : o.type === 'text' ? 'Texte' : o.type === 'shape' ? 'Forme' : o.type === 'library' ? 'Dessin' : o.type === 'connector' ? 'Flèche' : 'Objet';
+  const kind = generic !== 'Objet' ? generic : o.type === 'text' ? 'Texte' : o.type === 'shape' ? (o.hotspot ? 'Zone' : 'Forme') : o.type === 'library' ? 'Dessin' : o.type === 'connector' ? 'Flèche' : 'Objet';
+  if (o.type === 'window') return o.title.trim() ? `Fenêtre « ${o.title.length > 24 ? `${o.title.slice(0, 24)}…` : o.title} »` : 'Fenêtre';
   if (o.type === 'text' || o.type === 'table') {
     const html = o.type === 'text' ? o.html : o.cells.flat().join(' ');
     const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
@@ -292,6 +313,7 @@ export function objectTypeLabel(objects: BoardObject[]): string {
     case 'web': return 'Site';
     case 'audio': return 'Son';
     case 'link': return 'Lien';
+    case 'window': return 'Fenêtre';
     case 'widget': return 'Widget';
     case 'equation': return 'Équation';
     case 'connector': return 'Flèche';

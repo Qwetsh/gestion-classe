@@ -117,6 +117,8 @@ export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scal
       renderConnector(ctx, o, objects, scale);
       break;
     case 'shape':
+      // Une zone cliquable est invisible partout sauf dans l'éditeur (calque DOM)
+      if (o.hotspot) break;
       renderShape(ctx, o, scale);
       renderShapeText(ctx, o, scale);
       break;

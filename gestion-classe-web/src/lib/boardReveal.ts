@@ -48,11 +48,13 @@ export interface RevealState {
   unfolded: Record<string, true>;
   /** Interactions « une seule fois » déjà jouées, clé `boutonId:index`. */
   fired: Record<string, true>;
+  /** Objets déplacés par un bouton : décalage par rapport à leur position dans le document. */
+  moved: Record<string, { dx: number; dy: number }>;
 }
 
-export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {} };
+export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {} };
 /** État de séance vierge (nouvel objet à chaque appel, pour un `setState`). */
-export const emptyReveal = (): RevealState => ({ pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {} });
+export const emptyReveal = (): RevealState => ({ pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {} });
 
 const STORAGE_PREFIX = 'classroom-board-reveal:';
 
@@ -68,6 +70,7 @@ export function loadRevealState(sessionId: string): RevealState {
       shown: parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {},
       unfolded: parsed.unfolded && typeof parsed.unfolded === 'object' ? parsed.unfolded : {},
       fired: parsed.fired && typeof parsed.fired === 'object' ? parsed.fired : {},
+      moved: parsed.moved && typeof parsed.moved === 'object' ? parsed.moved : {},
     };
   } catch {
     return EMPTY_REVEAL;
@@ -111,7 +114,9 @@ export type InteractionEffect =
   | { kind: 'page'; pageId: string }
   | { kind: 'pageDelta'; delta: -1 | 1 }
   | { kind: 'command'; targetId: string; command: Exclude<CommandName, 'reset'> }
-  | { kind: 'reset' };
+  | { kind: 'reset' }
+  | { kind: 'window'; targetId: string }
+  | { kind: 'zoom'; targetId: string };
 
 /**
  * Déclenche la séquence d'un bouton. Fonction pure : l'état de séance revient modifié (visibilité,
@@ -126,6 +131,7 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
   const covers = { ...state.objects };
   const unfolded = { ...state.unfolded };
   const fired = { ...state.fired };
+  const moved = { ...state.moved };
   const effects: InteractionEffect[] = [];
   (trigger.interactions ?? []).forEach((it: Interaction, index) => {
     const key = `${trigger.id}:${index}`;
@@ -155,13 +161,36 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
       case 'next': effects.push({ kind: 'pageDelta', delta: 1 }); break;
       case 'prev': effects.push({ kind: 'pageDelta', delta: -1 }); break;
       case 'reset': effects.push({ kind: 'reset' }); break;
+      case 'window':
+        if (!target || target.type !== 'window') return;
+        effects.push({ kind: 'window', targetId: target.id });
+        break;
+      case 'zoomTo':
+        if (!target) return;
+        effects.push({ kind: 'zoom', targetId: target.id });
+        break;
+      case 'moveTo': {
+        if (!target || it.params?.x === undefined || it.params?.y === undefined) return;
+        moved[target.id] = { dx: it.params.x - target.x, dy: it.params.y - target.y };
+        break;
+      }
+      case 'moveBy': {
+        if (!target) return;
+        const prev = moved[target.id] ?? { dx: 0, dy: 0 };
+        moved[target.id] = { dx: prev.dx + (it.params?.dx ?? 0), dy: prev.dy + (it.params?.dy ?? 0) };
+        break;
+      }
+      case 'moveBack':
+        if (!target) return;
+        delete moved[target.id];
+        break;
       default:
         if (!target) return;
         effects.push({ kind: 'command', targetId: target.id, command: it.action });
     }
     if (it.once) fired[key] = true;
   });
-  return { state: { ...state, shown, objects: covers, unfolded, fired }, effects };
+  return { state: { ...state, shown, objects: covers, unfolded, fired, moved }, effects };
 }
 export const pageRevealedFraction = (state: RevealState, pageId: string) => state.pages[pageId] ?? 0;
 export const revealedGaps = (state: RevealState, objectId: string): ReadonlySet<string> => new Set(state.gaps[objectId] ?? []);
@@ -173,18 +202,20 @@ export function recoverPage(state: RevealState, page: BoardPage): RevealState {
   const shown = { ...state.shown };
   const unfolded = { ...state.unfolded };
   const fired = { ...state.fired };
+  const moved = { ...state.moved };
   const ids = new Set((page.objects ?? []).map((o) => o.id));
   for (const id of ids) {
     delete objects[id];
     delete gaps[id];
     delete shown[id];
     delete unfolded[id];
+    delete moved[id];
   }
   // Les « une seule fois » des boutons de la page rejouent
   for (const key of Object.keys(fired)) if (ids.has(key.slice(0, key.lastIndexOf(':')))) delete fired[key];
   const pages = { ...state.pages };
   delete pages[page.id];
-  return { pages, objects, gaps, shown, unfolded, fired };
+  return { pages, objects, gaps, shown, unfolded, fired, moved };
 }
 
 // ---- Trous dans un texte ----

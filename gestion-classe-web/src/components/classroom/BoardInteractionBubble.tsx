@@ -18,6 +18,11 @@ export interface InteractionDraft {
   hidden: boolean;
   /** Page visée (action « aller à la page »). */
   pageId?: string;
+  /** Destination (moveTo, coin haut-gauche) et décalage (moveBy), en unités. */
+  x?: number;
+  y?: number;
+  dx?: number;
+  dy?: number;
   /** Ne se joue qu'une fois par séance. */
   once: boolean;
 }
@@ -46,6 +51,8 @@ interface Props {
   onSelectStep: (index: number) => void;
   onMoveStep: (index: number, delta: -1 | 1) => void;
   onRemoveStep: (index: number) => void;
+  /** Déplacer vers : choisir la destination en touchant la page. */
+  onPickPoint?: () => void;
 }
 
 const ICONS: Record<InteractionAction, string> = {
@@ -55,6 +62,7 @@ const ICONS: Record<InteractionAction, string> = {
   goto: '🔢', next: '→', prev: '←', reset: '↺',
   play: '▶', pause: '⏸', playToggle: '⏯',
   start: '▶', stop: '⏹', startToggle: '⏯', roll: '🎲',
+  window: '🗔', zoomTo: '🔍', moveTo: '📍', moveBy: '↔', moveBack: '↩',
 };
 /** Libellés courts pour tenir sur une pastille (le libellé long reste dans les menus). */
 const SHORT: Record<InteractionAction, string> = {
@@ -64,15 +72,18 @@ const SHORT: Record<InteractionAction, string> = {
   goto: 'Page…', next: 'Suivante', prev: 'Précédente', reset: 'Réinitialiser',
   play: 'Lire', pause: 'Pause', playToggle: 'Lire / pause',
   start: 'Lancer', stop: 'Arrêter', startToggle: 'Lancer / arrêter', roll: 'Tirer',
+  window: 'Ouvrir', zoomTo: 'Zoomer', moveTo: 'Vers un point', moveBy: 'D’un cran', moveBack: 'Remettre',
 };
 const VISIBILITY: readonly InteractionAction[] = ['show', 'hide', 'toggle'];
-const FAMILY_ORDER: readonly InteractionFamily[] = ['visibility', 'cover', 'note', 'page', 'media', 'tool'];
+const FAMILY_ORDER: readonly InteractionFamily[] = ['visibility', 'cover', 'note', 'content', 'view', 'motion', 'page', 'media', 'tool'];
+const STEPS = [25, 50, 100];
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 
 export function BoardInteractionBubble({
   anchor, targetLabel, actions, draft, existing, sequence, editingIndex, objects, pageIds,
-  onChange, onConfirm, onRemove, onTest, onCancel, onSelectStep, onMoveStep, onRemoveStep,
+  onChange, onConfirm, onRemove, onTest, onCancel, onSelectStep, onMoveStep, onRemoveStep, onPickPoint,
 }: Props) {
+  const [step, setStep] = useState(50);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
@@ -142,6 +153,28 @@ export function BoardInteractionBubble({
         </div>
       )}
 
+      {draft.action === 'moveTo' && (
+        <div className="wbib__row">
+          <button type="button" className="wbib__btn" onClick={onPickPoint} title="Touchez ensuite l'endroit de la page où la cible doit aller">📍 Choisir la destination…</button>
+          <span className="wbib__hint">{draft.x !== undefined && draft.y !== undefined ? `(${Math.round(draft.x)}, ${Math.round(draft.y)})` : 'aucune destination'}</span>
+        </div>
+      )}
+      {draft.action === 'moveBy' && (
+        <div className="wbib__row">
+          <div className="wbib__arrows" role="group" aria-label="Décalage">
+            <button type="button" onClick={() => onChange({ ...draft, dy: (draft.dy ?? 0) - step })} title="Vers le haut">↑</button>
+            <button type="button" onClick={() => onChange({ ...draft, dx: (draft.dx ?? 0) - step })} title="Vers la gauche">←</button>
+            <button type="button" onClick={() => onChange({ ...draft, dx: 0, dy: 0 })} title="Remettre à zéro">·</button>
+            <button type="button" onClick={() => onChange({ ...draft, dx: (draft.dx ?? 0) + step })} title="Vers la droite">→</button>
+            <button type="button" onClick={() => onChange({ ...draft, dy: (draft.dy ?? 0) + step })} title="Vers le bas">↓</button>
+          </div>
+          <div className="wbib__steps-pick" role="radiogroup" aria-label="Pas">
+            {STEPS.map((s) => <button key={s} type="button" role="radio" aria-checked={step === s} className={`wbib__page ${step === s ? 'is-on' : ''}`} onClick={() => setStep(s)}>{s}</button>)}
+          </div>
+          <span className="wbib__hint">({(draft.dx ?? 0) >= 0 ? '+' : ''}{Math.round(draft.dx ?? 0)}, {(draft.dy ?? 0) >= 0 ? '+' : ''}{Math.round(draft.dy ?? 0)})</span>
+        </div>
+      )}
+
       {VISIBILITY.includes(draft.action) && targetLabel && (
         <label className="wbib__check">
           <input type="checkbox" checked={draft.hidden} onChange={(e) => onChange({ ...draft, hidden: e.target.checked })} />
@@ -198,6 +231,12 @@ const CSS = `
 .wbib__pages { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .wbib__page { min-width: 36px; min-height: 36px; border: 1px solid #374151; border-radius: 8px; background: #1F2937; color: #E5E7EB; font: 700 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wbib__page.is-on { background: #4F46E5; border-color: #6366F1; color: #FFFFFF; }
+.wbib__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.wbib__hint { color: #9CA3AF; font: 500 12px/1.2 Inter, system-ui, sans-serif; }
+.wbib__arrows { display: grid; grid-template-columns: repeat(5, 34px); gap: 2px; }
+.wbib__arrows button { height: 34px; border: 1px solid #374151; border-radius: 8px; background: #1F2937; color: #E5E7EB; font: 700 15px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+.wbib__arrows button:hover { background: #374151; }
+.wbib__steps-pick { display: flex; gap: 4px; }
 .wbib__check { display: flex; align-items: center; gap: 8px; min-height: 30px; color: #D1D5DB; cursor: pointer; }
 .wbib__check input { width: 18px; height: 18px; accent-color: #6366F1; }
 .wbib__seq { margin-top: 8px; padding-top: 8px; border-top: 1px solid #374151; }

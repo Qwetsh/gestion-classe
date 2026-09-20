@@ -14,7 +14,7 @@ export const PALETTE_SLOTS = 8;
 export type PaletteGroup = 'Outils' | 'Couleur et trait' | 'Historique' | 'Pages' | 'Instruments' | 'Insertion' | 'Séance';
 
 /** Ce qu'on peut insérer sur la page : médias, objets et widgets. */
-export type InsertKind = 'image' | 'table' | 'video' | 'web' | 'link' | 'audio' | 'record' | 'sticky' | 'equation' | WidgetKind;
+export type InsertKind = 'image' | 'table' | 'video' | 'web' | 'link' | 'audio' | 'record' | 'sticky' | 'equation' | 'window' | WidgetKind;
 export const INSERT_WIDGETS: WidgetKind[] = ['timer', 'clock', 'meter', 'noise', 'traffic', 'dice', 'wheel', 'groups', 'qr', 'calc'];
 const WIDGET_ICONS: Record<WidgetKind, string> = { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮', meter: '🎚', groups: '👥', clock: '🕒', traffic: '🚦', qr: '▦' };
 
@@ -33,6 +33,7 @@ export const INSERT_ACTIONS: { id: InsertKind; label: string; icon: string }[] =
   { id: 'record', label: 'Enregistrer au micro', icon: '🎙' },
   { id: 'sticky', label: 'Post-it', icon: '🗒' },
   { id: 'equation', label: 'Équation (LaTeX)', icon: '∑' },
+  { id: 'window', label: 'Fenêtre (contenu ouvert par un bouton)', icon: '🗔' },
   ...INSERT_WIDGETS.map((k) => ({ id: k, label: WIDGET_LABELS[k], icon: WIDGET_ICONS[k] })),
 ];
 

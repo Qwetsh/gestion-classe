@@ -31,14 +31,29 @@ interface BoardJson {
 
 export const isGcboardFile = (f: File) => f.name.toLowerCase().endsWith(GCBOARD_EXTENSION);
 
+/** Chemins d'images (bucket) qu'un objet référence : image, couverture, équation, fenêtre. */
+export function objectAssetPaths(o: BoardObject): string[] {
+  const paths: string[] = [];
+  if (o.type === 'image') paths.push(o.path);
+  if ((o.type === 'equation' || o.type === 'window') && o.imagePath) paths.push(o.imagePath);
+  if (o.cover?.imagePath) paths.push(o.cover.imagePath);
+  return paths;
+}
+
+/** Objet avec ses chemins d'images remplacés selon `m`. */
+export function remapObjectAssets(o: BoardObject, m: (p: string) => string): BoardObject {
+  let next: BoardObject = o.type === 'image' ? { ...o, path: m(o.path) }
+    : (o.type === 'equation' || o.type === 'window') && o.imagePath ? { ...o, imagePath: m(o.imagePath) }
+    : { ...o };
+  if (next.cover?.imagePath) next = { ...next, cover: { ...next.cover, imagePath: m(next.cover.imagePath) } };
+  return next;
+}
+
 /** Tous les chemins d'images référencés par une page. */
 function imagePaths(page: BoardPage): string[] {
   const paths: string[] = [];
   if (page.image?.path) paths.push(page.image.path);
-  for (const o of page.objects ?? []) {
-    if (o.type === 'image') paths.push(o.path);
-    if (o.cover?.imagePath) paths.push(o.cover.imagePath);
-  }
+  for (const o of page.objects ?? []) paths.push(...objectAssetPaths(o));
   return paths;
 }
 
@@ -48,11 +63,7 @@ function remapPaths(page: BoardPage, map: Map<string, string>): BoardPage {
   return {
     ...page,
     image: page.image ? { ...page.image, path: m(page.image.path) } : page.image,
-    objects: (page.objects ?? []).map((o): BoardObject => {
-      const next: BoardObject = o.type === 'image' ? { ...o, path: m(o.path) } : { ...o };
-      if (next.cover?.imagePath) next.cover = { ...next.cover, imagePath: m(next.cover.imagePath) };
-      return next;
-    }),
+    objects: (page.objects ?? []).map((o) => remapObjectAssets(o, m)),
   };
 }
 

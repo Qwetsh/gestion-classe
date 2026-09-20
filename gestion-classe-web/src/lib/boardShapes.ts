@@ -40,9 +40,21 @@ export interface ShapeObject extends BoardObjectBase {
   points?: ShapePoint[];
   /** Texte dans la forme (jamais sur une ligne ou une flèche). */
   text?: ShapeText;
+  /**
+   * Zone cliquable : invisible en lecture (ni contour ni fond, jamais au canvas), pointillé fin en
+   * édition. Posée sur un schéma, elle sert de bouton d'interaction.
+   */
+  hotspot?: boolean;
 }
 
 export interface ShapeEntry { kind: ShapeKind; label: string }
+/** Zones cliquables du catalogue : boîte étirée (rectangle, ovale) ou contour tracé au doigt. */
+export interface ZoneEntry { kind: ShapeKind; label: string; free?: boolean }
+export const ZONE_CATALOG: ZoneEntry[] = [
+  { kind: 'rect', label: 'Zone cliquable' },
+  { kind: 'ellipse', label: 'Zone ovale' },
+  { kind: 'polygon', label: 'Zone libre (tracer le contour)', free: true },
+];
 
 /** Formes proposées dans la palette (le polygone libre vient de la reconnaissance). */
 export const SHAPE_CATALOG: ShapeEntry[] = [
@@ -256,6 +268,49 @@ export function followShape<P extends ShapePoint>(pt: P, from: ShapeBox, to: Sha
 
 export const sameShapeBox = (a: ShapeBox, b: ShapeBox) =>
   a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && (a.rotation ?? 0) === (b.rotation ?? 0);
+
+/**
+ * Contour tracé au doigt → polygone : simplification de Douglas-Peucker à `tolerance` (fraction de
+ * la diagonale du tracé), au plus `maxPoints` sommets, points en fraction de la boîte. Sans
+ * reconnaissance : le contour garde sa forme. `null` si le tracé est trop petit.
+ */
+export function contourToPolygon(raw: readonly ShapePoint[], tolerance = 0.015, maxPoints = 64): { x: number; y: number; w: number; h: number; points: ShapePoint[] } | null {
+  if (raw.length < 3) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of raw) { if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y; }
+  const w = maxX - minX, h = maxY - minY;
+  if (w < MIN_SHAPE_SIZE || h < MIN_SHAPE_SIZE) return null;
+  const eps = Math.hypot(w, h) * tolerance;
+  const dist = (p: ShapePoint, a: ShapePoint, b: ShapePoint) => {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  };
+  const rdp = (pts: readonly ShapePoint[]): ShapePoint[] => {
+    if (pts.length < 3) return [...pts];
+    let idx = 0, max = 0;
+    for (let i = 1; i < pts.length - 1; i++) { const d = dist(pts[i], pts[0], pts[pts.length - 1]); if (d > max) { max = d; idx = i; } }
+    if (max <= eps) return [pts[0], pts[pts.length - 1]];
+    const left = rdp(pts.slice(0, idx + 1)), right = rdp(pts.slice(idx));
+    return [...left.slice(0, -1), ...right];
+  };
+  // Le contour est fermé : on simplifie deux moitiés pour ne pas perdre le point le plus éloigné du départ
+  let far = 0, farD = 0;
+  for (let i = 1; i < raw.length; i++) { const d = Math.hypot(raw[i].x - raw[0].x, raw[i].y - raw[0].y); if (d > farD) { farD = d; far = i; } }
+  const half1 = rdp(raw.slice(0, far + 1)), half2 = rdp([...raw.slice(far), raw[0]]);
+  let pts = [...half1.slice(0, -1), ...half2.slice(0, -1)];
+  // Trop de sommets : on retire les moins saillants jusqu'au plafond
+  while (pts.length > maxPoints) {
+    let worst = 0, worstD = Infinity;
+    for (let i = 0; i < pts.length; i++) { const d = dist(pts[i], pts[(i + pts.length - 1) % pts.length], pts[(i + 1) % pts.length]); if (d < worstD) { worstD = d; worst = i; } }
+    pts.splice(worst, 1);
+  }
+  if (pts.length < 3) return null;
+  pts = pts.map((p) => ({ x: Math.round(((p.x - minX) / w) * 1000) / 1000, y: Math.round(((p.y - minY) / h) * 1000) / 1000 }));
+  return { x: Math.round(minX), y: Math.round(minY), w: Math.round(w), h: Math.round(h), points: pts };
+}
 
 /** Boîte d'une forme posée d'un clic, centrée sur le point. */
 export function defaultShapeBox(kind: ShapeKind, cx: number, cy: number): { x: number; y: number; w: number; h: number } {

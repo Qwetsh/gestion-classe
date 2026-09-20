@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CURTAIN_OPEN_AT, curtainSlide, emptyReveal, fireInteractions, isObjectVisible, recoverPage, settleCurtain, type RevealState } from '../boardReveal';
 import { actionsFor, cloneObjects, describeInteraction, type BoardObject, type Interaction, type TextObject } from '../boardObjects';
-import type { WidgetObject } from '../boardMedia';
+import type { WidgetObject, WindowObject } from '../boardMedia';
 
 describe('settleCurtain', () => {
   it('compte un rideau presque sorti comme découvert', () => {
@@ -111,7 +111,8 @@ describe('fireInteractions', () => {
 describe('actionsFor', () => {
   it('propose les actions selon la cible', () => {
     expect(actionsFor(null)).toEqual(['goto', 'next', 'prev', 'reset']);
-    expect(actionsFor(text('t'))).toEqual(['show', 'hide', 'toggle']);
+    expect(actionsFor(text('t')).slice(0, 3)).toEqual(['show', 'hide', 'toggle']);
+    expect(actionsFor(text('t'))).not.toContain('reveal');
     expect(actionsFor(text('c', { cover: { kind: 'scratch', color: '#999' } }))).toContain('reveal');
     expect(actionsFor(text('n', { background: '#FDE047' }))).toContain('fold');
     expect(actionsFor(widget('w', 'timer'))).toContain('startToggle');
@@ -138,5 +139,38 @@ describe('describeInteraction / cloneObjects', () => {
     expect(its[0].targetId).toBe(q2.id);
     expect(its[1]).toEqual({ action: 'next' });
     expect(its[2].targetId).toBe('elsewhere');
+  });
+});
+
+describe('lot B : fenêtre, zoom, déplacements', () => {
+  const win: WindowObject = { id: 'w', type: 'window', x: 0, y: 0, w: 220, h: 56, title: 'Le noyau', html: '<div>…</div>' };
+
+  it('ouvre une fenêtre et zoome par effets, sans toucher l’état', () => {
+    const t = text('t');
+    const b = button('b', [{ action: 'window', targetId: 'w' }, { action: 'zoomTo', targetId: 't' }, { action: 'window', targetId: 't' }]);
+    const { state, effects } = fireInteractions(emptyReveal(), b, [win, t, b]);
+    expect(effects).toEqual([{ kind: 'window', targetId: 'w' }, { kind: 'zoom', targetId: 't' }]);
+    expect(state).toEqual(emptyReveal());
+  });
+
+  it('déplace une cible vers un point, la décale, la remet en place', () => {
+    const t = text('t', { x: 100, y: 50 });
+    const to = button('a', [{ action: 'moveTo', targetId: 't', params: { x: 400, y: 300 } }]);
+    const s1 = fireInteractions(emptyReveal(), to, [t, to]).state;
+    expect(s1.moved.t).toEqual({ dx: 300, dy: 250 });
+    const by = button('c', [{ action: 'moveBy', targetId: 't', params: { dx: -50, dy: 25 } }]);
+    const s2 = fireInteractions(s1, by, [t, by]).state;
+    expect(s2.moved.t).toEqual({ dx: 250, dy: 275 });
+    const back = button('d', [{ action: 'moveBack', targetId: 't' }]);
+    expect(fireInteractions(s2, back, [t, back]).state.moved.t).toBeUndefined();
+    expect(recoverPage(s2, { id: 'p', objects: [t], strokes: [] } as never).moved).toEqual({});
+  });
+
+  it('propose la fenêtre seulement sur une fenêtre, le zoom et le déplacement sur le reste', () => {
+    expect(actionsFor(win)).toEqual(['window']);
+    expect(actionsFor(text('t'))).toEqual(expect.arrayContaining(['zoomTo', 'moveTo', 'moveBy', 'moveBack']));
+    expect(actionsFor(text('t'))).not.toContain('window');
+    expect(describeInteraction({ action: 'moveBy', targetId: 't', params: { dx: 50, dy: -25 } }, [text('t', { html: 'Globule' })], [])).toBe('Décaler de (+50, -25) · Texte « Globule »');
+    expect(describeInteraction({ action: 'window', targetId: 'w' }, [win], [])).toBe('Ouvrir la fenêtre · Fenêtre « Le noyau »');
   });
 });

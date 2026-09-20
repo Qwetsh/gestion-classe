@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contrastColor, followShape, pointsInsideShape, shapeContainsPoint, shapeTextBox, toShapeLocal, type ShapeObject } from '../boardShapes';
+import { contrastColor, followShape, pointsInsideShape, shapeContainsPoint, shapeTextBox, toShapeLocal, type ShapeObject, contourToPolygon } from '../boardShapes';
 import { followAttachedInk, type Stroke } from '../boardRender';
 
 const rect: ShapeObject = { id: 's1', type: 'shape', kind: 'rect', x: 100, y: 100, w: 200, h: 100, stroke: '#111827', strokeWidth: 4, fill: '#DC2626' };
@@ -81,5 +81,29 @@ describe('texte dans la forme', () => {
     expect(contrastColor('#DC2626')).toBe('#FFFFFF');
     expect(contrastColor('#FDE68A')).toBe('#111827');
     expect(contrastColor(null)).toBe('#111827');
+  });
+});
+
+describe('contour libre → polygone', () => {
+  it('simplifie un contour bruité en gardant sa boîte et ses sommets utiles', () => {
+    // Un carré de 200 tracé avec 25 points par côté, légèrement bruité
+    const raw: { x: number; y: number }[] = [];
+    const side = (x0: number, y0: number, x1: number, y1: number) => { for (let i = 0; i < 25; i++) raw.push({ x: x0 + ((x1 - x0) * i) / 25 + (i % 2) * 0.6, y: y0 + ((y1 - y0) * i) / 25 + (i % 3) * 0.4 }); };
+    side(100, 100, 300, 100); side(300, 100, 300, 300); side(300, 300, 100, 300); side(100, 300, 100, 100);
+    const poly = contourToPolygon(raw);
+    expect(poly).not.toBeNull();
+    expect(poly!.x).toBe(100); expect(poly!.y).toBe(100);
+    expect(poly!.w).toBeGreaterThanOrEqual(199); expect(poly!.h).toBeGreaterThanOrEqual(199);
+    expect(poly!.points.length).toBeGreaterThanOrEqual(4);
+    expect(poly!.points.length).toBeLessThanOrEqual(12);
+    for (const p of poly!.points) { expect(p.x).toBeGreaterThanOrEqual(0); expect(p.x).toBeLessThanOrEqual(1); }
+  });
+
+  it('refuse un tracé trop petit et plafonne le nombre de sommets', () => {
+    expect(contourToPolygon([{ x: 0, y: 0 }, { x: 2, y: 1 }, { x: 1, y: 2 }])).toBeNull();
+    const circle = Array.from({ length: 400 }, (_, i) => ({ x: 200 + 100 * Math.cos((i / 400) * 2 * Math.PI), y: 200 + 100 * Math.sin((i / 400) * 2 * Math.PI) }));
+    const poly = contourToPolygon(circle, 0.0001, 20);
+    expect(poly!.points.length).toBeLessThanOrEqual(20);
+    expect(poly!.points.length).toBeGreaterThanOrEqual(8);
   });
 });

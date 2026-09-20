@@ -34,7 +34,9 @@ import { BoardPageNavigator } from './BoardPageNavigator';
 import { BoardPageRail } from './BoardPageRail';
 import { BoardShapeToolbar, type ShapeStyle } from './BoardShapeToolbar';
 import { BoardColorPicker } from './BoardColorPicker';
-import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject, pointsInsideShape } from '../../lib/boardShapes';
+import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject, pointsInsideShape, contourToPolygon, type ZoneEntry } from '../../lib/boardShapes';
+import { BoardWindowDialog } from './BoardWindowDialog';
+import { WINDOW_CARD, type WindowObject } from '../../lib/boardMedia';
 import { recognizeShape, type RecognizedShape } from '../../lib/boardRecognize';
 import {
   fireInteractions,
@@ -181,6 +183,8 @@ const draftInteraction = (b: BubbleState): Interaction => ({
   action: b.draft.action,
   ...(b.targetId && needsTarget(b.draft.action) ? { targetId: b.targetId } : {}),
   ...(b.draft.action === 'goto' && b.draft.pageId ? { params: { pageId: b.draft.pageId } } : {}),
+  ...(b.draft.action === 'moveTo' && b.draft.x !== undefined && b.draft.y !== undefined ? { params: { x: Math.round(b.draft.x), y: Math.round(b.draft.y) } } : {}),
+  ...(b.draft.action === 'moveBy' ? { params: { dx: Math.round(b.draft.dx ?? 0), dy: Math.round(b.draft.dy ?? 0) } } : {}),
   ...(b.draft.once ? { once: true } : {}),
 });
 /** Séquence du bouton avec l'étape de la bulle appliquée (remplacée ou ajoutée). */
@@ -386,6 +390,24 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const navWidth = compact ? NAV_WIDTH_COMPACT : NAV_WIDTH;
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
+  /** Zone cliquable choisie dans le catalogue des formes (rectangle, ovale, contour tracé). */
+  const [shapeZone, setShapeZone] = useState<ZoneEntry | null>(null);
+  const shapeZoneRef = useRef<ZoneEntry | null>(null);
+  useEffect(() => { shapeZoneRef.current = shapeZone; }, [shapeZone]);
+  /** Contour d'une zone libre en cours de tracé (unités). */
+  const zoneTrace = useRef<{ x: number; y: number }[] | null>(null);
+  /** Fenêtre ouverte en classe par un bouton, et fenêtre en cours d'édition. */
+  const [openWindow, setOpenWindow] = useState<string | null>(null);
+  const [windowEdit, setWindowEdit] = useState<string | null>(null);
+  const windowImageInputRef = useRef<HTMLInputElement>(null);
+  /** Déplacer vers : on attend un tap sur la page pour fixer la destination. */
+  const [pickingPoint, setPickingPoint] = useState(false);
+  /** Zoom sur un objet : vue à retrouver au tap hors bouton, et animation en cours. */
+  const zoomReturn = useRef<ViewState | null>(null);
+  const [zoomedByButton, setZoomedByButton] = useState(false);
+  const viewAnim = useRef<number | null>(null);
+  /** L'élément `.wb__view` : l'animation de vue écrit sa transformation directement (un rendu React coûte ~200 ms). */
+  const viewElRef = useRef<HTMLDivElement>(null);
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>({ stroke: COLORS[0], strokeWidth: 4, fill: null, dashed: false });
   const [autoShapes, setAutoShapes] = useState(() => { try { return localStorage.getItem(AUTO_SHAPES_KEY) === '1'; } catch { return false; } });
   const [spellCheck, setSpellCheck] = useState(() => { try { return localStorage.getItem(SPELL_KEY) !== '0'; } catch { return true; } });
@@ -1513,6 +1535,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     }
   }, [insertAudio]);
 
+  /** Fenêtre : insertion (puis éditeur), écriture du contenu, image. */
+  const insertWindow = useCallback((at?: { x: number; y: number }) => {
+    const obj: WindowObject = { id: uid(), type: 'window', ...centered(WINDOW_CARD.w, WINDOW_CARD.h, at), w: WINDOW_CARD.w, h: WINDOW_CARD.h, title: 'Fenêtre', html: '<div><br></div>' };
+    addObject(obj);
+    setWindowEdit(obj.id);
+  }, [addObject]);
+
   /**
    * Geste d'insertion pour un élément du catalogue (`INSERT_ACTIONS`). `at` (unités de page)
    * place l'objet au point cliqué quand l'entrée le permet, sinon au centre de la vue.
@@ -1528,9 +1557,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       case 'record': void toggleRecording(); return;
       case 'sticky': insertSticky(); return;
       case 'equation': insertEquation(); return;
+      case 'window': insertWindow(at); return;
       default: insertWidget(kind);
     }
-  }, [insertTable, insertFromUrl, insertWeb, toggleRecording, insertSticky, insertEquation, insertWidget]);
+  }, [insertTable, insertFromUrl, insertWeb, toggleRecording, insertSticky, insertEquation, insertWidget, insertWindow]);
 
   /**
    * Tout ce qu'on peut insérer : une seule liste pour le bouton « Insérer » de la barre, le
@@ -1582,6 +1612,83 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     handleObjectsChange((p.objects ?? []).map((o) => (o.id === id ? fn(o) : o)), p.objects ?? []);
   }, [handleObjectsChange]);
 
+  const cancelViewAnim = useCallback(() => {
+    if (viewAnim.current !== null) { cancelAnimationFrame(viewAnim.current); viewAnim.current = null; }
+  }, []);
+  /**
+   * Vue animée vers `target` (ease-out). Les images intermédiaires sont écrites directement sur
+   * l'élément (pas de rendu React, trop lent pour 60 images / s) ; l'état n'est posé qu'à la fin.
+   * Tout appui sur l'écran interrompt l'animation en sautant à la vue visée.
+   */
+  const animateView = useCallback((target: ViewState, ms = 300) => {
+    cancelViewAnim();
+    const from = viewRef.current;
+    const el = viewElRef.current;
+    // Couche composée le temps de l'animation seulement : au repos, le canvas reste net
+    const finish = () => { viewAnim.current = null; if (el) el.style.willChange = ''; viewRef.current = target; setView(target); };
+    if (!el) { finish(); return; }
+    el.style.willChange = 'transform';
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dur = reduced ? 120 : ms;
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur);
+      if (k >= 1) { finish(); return; }
+      const e = 1 - Math.pow(1 - k, 3);
+      const zoom = from.zoom + (target.zoom - from.zoom) * e, tx = from.tx + (target.tx - from.tx) * e, ty = from.ty + (target.ty - from.ty) * e;
+      el.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom})`;
+      viewAnim.current = requestAnimationFrame(step);
+    };
+    viewAnim.current = requestAnimationFrame(step);
+    const onDown = () => { if (viewAnim.current !== null) { cancelViewAnim(); finish(); } };
+    window.addEventListener('pointerdown', onDown, { capture: true, once: true });
+  }, [cancelViewAnim]);
+  /** Action « zoomer sur » : la vue cadre l'objet (10 % de marge), la vue d'avant est mémorisée. */
+  const zoomToObject = useCallback((id: string) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const o = p?.objects?.find((x) => x.id === id);
+    const el = containerRef.current;
+    const live = liveRef.current;
+    if (!o || !el || !live) return;
+    const cw = el.clientWidth, ch = el.clientHeight;
+    const k = scaleRef.current;
+    const left = parseFloat(live.style.left) || 0, top = parseFloat(live.style.top) || 0;
+    const r = objectRect(o);
+    const mv = revealRef.current.moved[id];
+    const sx = left + (r.x + (mv?.dx ?? 0)) * k, sy = top + (r.y + (mv?.dy ?? 0)) * k, sw = Math.max(1, r.w * k), sh = Math.max(1, r.h * k);
+    // Jamais exactement 1 : à 100 % la vue force tx = 0 et le cadrage horizontal serait perdu
+    const z = Math.max(1.05, Math.min(MAX_ZOOM, Math.min(cw / (sw * 1.2), ch / (sh * 1.2))));
+    const tx = cw / 2 - (sx + sw / 2) * z, ty = ch / 2 - (sy + sh / 2) * z;
+    if (!zoomReturn.current) { zoomReturn.current = viewRef.current; setZoomedByButton(true); }
+    animateView({ zoom: z, tx, ty });
+  }, [animateView]);
+  /** Retour à la vue d'avant le zoom d'un bouton (tap hors bouton, Ctrl+0, « Vue entière »). */
+  const returnFromZoom = useCallback(() => {
+    const back = zoomReturn.current;
+    zoomReturn.current = null;
+    setZoomedByButton(false);
+    if (back) animateView(back);
+  }, [animateView]);
+  // La vue revenue à 100 % par un autre chemin : plus rien à retrouver
+  useEffect(() => { if (view.zoom === 1 && viewAnim.current === null && zoomReturn.current) { zoomReturn.current = null; setZoomedByButton(false); } }, [view.zoom]);
+  // En lecture, un tap (sans déplacement) hors de tout bouton et de toute commande ramène la vue
+  useEffect(() => {
+    if (!zoomedByButton) return;
+    let down: { x: number; y: number; t: number } | null = null;
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; };
+    const onUp = (e: PointerEvent) => {
+      const d = down; down = null;
+      if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12 || performance.now() - d.t > 400) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('[data-obj].is-playable, [data-obj].is-extractor, button, .wbib, .wbm, .wbpal, .wbr, .wbx, .wbft, .wb__bar, .wbrail, [role="dialog"]')) return;
+      if (!(displayMode || !OBJECT_TOOLS.includes(toolRef.current))) return;
+      returnFromZoom();
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('pointerup', onUp, true);
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('pointerup', onUp, true); };
+  }, [zoomedByButton, displayMode, returnFromZoom]);
+
   /** Navigation unique : index borné aux pages existantes. */
   const goToPage = useCallback((i: number) => {
     setPageIndex(Math.max(0, Math.min(pagesRef.current.length - 1, i)));
@@ -1609,6 +1716,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         for (const o of objects) if (o.type === 'widget' || o.type === 'audio') cmds[o.id] = { command: 'reset', at: ++commandSeq.current };
       } else if (ef.kind === 'command') {
         cmds[ef.targetId] = { command: ef.command, at: ++commandSeq.current };
+      } else if (ef.kind === 'window') {
+        setOpenWindow(ef.targetId);
+      } else if (ef.kind === 'zoom') {
+        zoomToObject(ef.targetId);
       } else if (opts?.skipPages) {
         continue;
       } else if (ef.kind === 'page') {
@@ -1622,7 +1733,25 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setReveal(next);
     if (Object.keys(cmds).length > 0) setCommands((c) => ({ ...c, ...cmds }));
     if (pageTarget !== null) goToPage(pageTarget);
-  }, [goToPage]);
+  }, [goToPage, zoomToObject]);
+
+  const patchWindow = useCallback((id: string, fn: (w: WindowObject) => WindowObject) => {
+    patchObject(id, (o) => (o.type === 'window' ? fn(o) : o));
+  }, [patchObject]);
+  const onWindowImageChosen = useCallback(async (file: File) => {
+    const id = windowEdit;
+    if (!id) return;
+    try {
+      const img = await uploadCoverImage(file, userId, sessionId);
+      patchWindow(id, (w) => ({ ...w, imagePath: img.path, imageW: img.width, imageH: img.height }));
+    } catch (err) {
+      window.alert(`Image impossible à utiliser : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+    }
+  }, [windowEdit, patchWindow, sessionId, userId]);
+  /** Zone cliquable : bascule d'une forme (menu contextuel). */
+  const toggleHotspot = useCallback((id: string) => {
+    patchObject(id, (o) => { if (o.type !== 'shape') return o; const n = { ...o }; if (n.hotspot) delete n.hotspot; else { n.hotspot = true; n.fill = null; } return n; });
+  }, [patchObject]);
 
   // Extracteur de mots : option d'une zone de texte (menu contextuel)
   const toggleWordExtractor = useCallback((id: string) => {
@@ -1681,11 +1810,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     // Nouvelle interaction : par défaut le bouton bascule la cible, qui démarre cachée (réponse à
     // révéler) ; sans cible, page suivante
     const allowed = actionsFor(target ?? null);
-    const action = existing && allowed.includes(existing.action) ? existing.action : target ? 'toggle' : 'next';
+    // Nouvelle étape : basculer la cible si c'est permis, sinon la première action possible (fenêtre : ouvrir ; sans cible : page suivante)
+    const action = existing && allowed.includes(existing.action) ? existing.action : allowed.includes('toggle') ? 'toggle' : (allowed[0] ?? 'next');
     setBubble({
       triggerId, targetId: existing?.targetId ?? targetId, index: index >= 0 ? index : null,
       anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
-      draft: { action, hidden: existing ? target?.hidden === true : !!target, pageId: existing?.params?.pageId ?? p?.id, once: existing?.once === true },
+      draft: {
+        action, hidden: existing ? target?.hidden === true : !!target, pageId: existing?.params?.pageId ?? p?.id, once: existing?.once === true,
+        x: existing?.params?.x, y: existing?.params?.y, dx: existing?.params?.dx ?? 0, dy: existing?.params?.dy ?? 0,
+      },
     });
   }, []);
 
@@ -2083,9 +2216,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           { label: target.header ? 'Sans ligne d\'en-tête' : 'Première ligne en en-tête', onSelect: () => patchTable(target.id, (t) => ({ ...t, header: !t.header })) },
         ] }];
       })() : []),
+      ...(target.type === 'window' && !many ? [{ label: 'Modifier la fenêtre', shortcut: 'Double-clic', disabled: locked, onSelect: () => setWindowEdit(id) }] : []),
       ...(target.type === 'shape' && !many && !isLineKind(target.kind) ? (() => {
         const attached = pagesRef.current[pageIndexRef.current]?.strokes.some((st) => st.parentId === target.id) ?? false;
         return [
+          { label: 'Zone cliquable (invisible en lecture)', checked: !!target.hotspot, onSelect: () => toggleHotspot(target.id) },
           { label: 'Écrire dans la forme', shortcut: 'Double-clic', disabled: locked, onSelect: () => setEditingId(id) },
           attached
             ? { label: 'Détacher l’encre de la forme', onSelect: () => setInkAttachment(target.id, false) }
@@ -2141,7 +2276,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected, toggleWordExtractor]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected, toggleWordExtractor, toggleHotspot]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -2241,6 +2376,27 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     return { x: (e.clientX - rect.left) / k, y: (e.clientY - rect.top) / k };
   }, []);
 
+  // Déplacer vers : le prochain tap sur la page fixe la destination (la cible y sera centrée)
+  useEffect(() => {
+    if (!pickingPoint) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('.wbib, .wb__pickbanner, .wbm, .wbpop')) return;
+      e.preventDefault(); e.stopPropagation();
+      const u = toUnit(e);
+      setBubble((b) => {
+        if (!b) return b;
+        const p = pagesRef.current[pageIndexRef.current];
+        const target = b.targetId ? p?.objects?.find((o) => o.id === b.targetId) : null;
+        const r = target ? objectRect(target) : { w: 0, h: 0 };
+        return { ...b, draft: { ...b.draft, x: Math.round(u.x - r.w / 2), y: Math.round(u.y - r.h / 2) } };
+      });
+      setPickingPoint(false);
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
+  }, [pickingPoint, toUnit]);
+
   // Mode liaison : la flèche suit la souris (au doigt, elle apparaît au contact) ; un appui hors
   // de tout objet annule ; Échap aussi (raccourci global plus bas)
   useEffect(() => {
@@ -2326,6 +2482,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setView({ zoom: z, tx, ty });
   }, [pageOverflow]);
 
+
   /** Cercle de gomme sur le calque temporaire (suit le stylet / la souris). */
   const drawEraserCursor = useCallback((x: number, y: number) => {
     const live = liveRef.current;
@@ -2382,12 +2539,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       return;
     }
 
-    // Outil forme : on étire la forme depuis le point d'appui (clic simple = taille par défaut)
+    // Outil forme : on étire la forme depuis le point d'appui (clic simple = taille par défaut) ;
+    // zone libre : le doigt trace le contour
     if (toolRef.current === 'shape') {
       e.preventDefault();
       activePointer.current = e.pointerId;
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
       const { x, y } = toUnit(e);
+      if (shapeZoneRef.current?.free) { zoneTrace.current = [{ x, y }]; return; }
       shapeDraft.current = { x0: x, y0: y, x1: x, y1: y, shift: e.shiftKey };
       return;
     }
@@ -2469,6 +2628,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     }
     if (e.pointerId !== activePointer.current) return;
     e.preventDefault();
+    const trace = zoneTrace.current;
+    if (trace) {
+      trace.push(toUnit(e));
+      const live = liveRef.current;
+      const ctx = live?.getContext('2d');
+      if (!live || !ctx) return;
+      const dpr = dprRef.current, k = scaleRef.current;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
+      ctx.beginPath();
+      trace.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x * k, pt.y * k) : ctx.lineTo(pt.x * k, pt.y * k)));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(99,102,241,0.12)'; ctx.fill();
+      ctx.setLineDash([6, 4]); ctx.strokeStyle = '#6366F1'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+      return;
+    }
     const draft = shapeDraft.current;
     if (draft) {
       const { x, y } = toUnit(e);
@@ -2586,13 +2761,25 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
     const p = pagesRef.current[pageIndexRef.current];
     if (holdTimer.current) { window.clearTimeout(holdTimer.current); holdTimer.current = null; }
+    const trace = zoneTrace.current;
+    if (trace) {
+      zoneTrace.current = null;
+      clearLive();
+      const poly = contourToPolygon(trace);
+      if (poly) {
+        const obj = addShape(poly, 'polygon', { points: poly.points, hotspot: true, fill: null, dashed: true });
+        if (obj) { setTool('select'); setSelectedIds(new Set([obj.id])); }
+      }
+      return;
+    }
     const draft = shapeDraft.current;
     if (draft) {
       shapeDraft.current = null;
       clearLive();
       const shape = draftToShape(draft, shapeKindRef.current, shapeStyleRef.current)
         ?? { ...defaultShapeBox(shapeKindRef.current, draft.x0, draft.y0), kind: shapeKindRef.current, a: { x: 0, y: 0 }, b: { x: 1, y: 0 } };
-      const obj = addShape(shape, shape.kind, { a: shape.a, b: shape.b });
+      const zone = shapeZoneRef.current;
+      const obj = addShape(shape, shape.kind, zone ? { hotspot: true, fill: null, dashed: true } : { a: shape.a, b: shape.b });
       if (obj) { setTool('select'); setSelectedIds(new Set([obj.id])); }
       return;
     }
@@ -2700,7 +2887,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       }
       else if (ctrl && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomAt(1.2, window.innerWidth / 2, window.innerHeight / 2); }
       else if (ctrl && e.key === '-') { e.preventDefault(); zoomAt(1 / 1.2, window.innerWidth / 2, window.innerHeight / 2); }
-      else if (ctrl && e.key === '0') { e.preventDefault(); setView(IDENTITY_VIEW); }
+      else if (ctrl && e.key === '0') { e.preventDefault(); if (zoomReturn.current) returnFromZoom(); else setView(IDENTITY_VIEW); }
       else if (!ctrl && !e.altKey) {
         if (k === 'p') setTool('pen');
         else if (k === 's') setTool('highlighter');
@@ -2717,7 +2904,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!active) return; // onglet masqué : le clavier va à l'onglet actif
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, goToPage, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
+  }, [active, goToPage, returnFromZoom, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
 
   // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -2824,7 +3011,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     'page-nav': { active: navOpen, onSelect: () => setNavOpen((v) => !v) },
     'page-clear': { disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
     'zoom-in': { onSelect: () => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2) },
-    'zoom-reset': { disabled: view.zoom === 1, onSelect: () => setView(IDENTITY_VIEW) },
+    'zoom-reset': { disabled: view.zoom === 1, onSelect: () => (zoomReturn.current ? returnFromZoom() : setView(IDENTITY_VIEW)) },
     spotlight: { onSelect: () => setSpotlight(true) },
     ruler: { onSelect: () => addInstrument('ruler') },
     setsquare: { onSelect: () => addInstrument('setsquare') },
@@ -3106,6 +3293,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         onPointerCancelCapture={onStagePointerUp}
       >
       <div
+        ref={viewElRef}
         className="wb__view"
         style={{ transform: view.zoom === 1 && view.ty === 0 ? undefined : `translate(${view.tx}px, ${view.ty}px) scale(${view.zoom})` }}
         onPointerDownCapture={coachOpen ? dismissCoach : undefined}
@@ -3155,6 +3343,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onSpellStatus={setSpellStatus}
           play={displayMode || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
+          onEditWindow={(id) => setWindowEdit(id)}
           commands={commands}
           onExtractWord={extractWord}
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
@@ -3316,6 +3505,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             </div>
           );
         })()}
+        {pickingPoint && (
+          <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
+            <span>📍 Touchez l'endroit de la page où la cible doit aller</span>
+            <button type="button" onClick={() => setPickingPoint(false)}>Annuler</button>
+          </div>
+        )}
         {picking && (
           <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
             <span>⚡ Touchez l'objet sur lequel ce bouton agit</span>
@@ -3507,12 +3702,37 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             onTest={testBubble}
             onCancel={() => setBubble(null)}
             onSelectStep={(i) => { const it = (trigger.interactions ?? [])[i]; if (it) openBubble(trigger.id, it.targetId ?? null, bubble.anchor, i); }}
+            onPickPoint={() => setPickingPoint(true)}
             onMoveStep={(i, delta) => moveInteraction(trigger.id, i, delta)}
             onRemoveStep={(i) => { removeInteraction(trigger.id, i); if (bubble.index === i) setBubble(null); else if (bubble.index !== null && bubble.index > i) setBubble((b) => (b ? { ...b, index: b.index! - 1 } : b)); }}
           />
         );
       })()}
       {exportOpen && <BoardExportDialog pages={pages} name="Tableau" currentIndex={pageIndex} onClose={() => setExportOpen(false)} />}
+      {openWindow && (() => {
+        const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === openWindow);
+        return w ? <BoardWindowDialog window={w} mode="view" onClose={() => setOpenWindow(null)} /> : null;
+      })()}
+      {!displayMode && windowEdit && (() => {
+        const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === windowEdit);
+        return w ? (
+          <BoardWindowDialog
+            window={w}
+            mode="edit"
+            onClose={() => setWindowEdit(null)}
+            onSave={({ title, html }) => { patchWindow(w.id, (x) => ({ ...x, title, html })); setWindowEdit(null); }}
+            onPickImage={() => windowImageInputRef.current?.click()}
+            onRemoveImage={() => patchWindow(w.id, (x) => { const n = { ...x }; delete n.imagePath; delete n.imageW; delete n.imageH; return n; })}
+          />
+        ) : null;
+      })()}
+      <input
+        ref={windowImageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void onWindowImageChosen(f); e.target.value = ''; }}
+      />
       <input
         ref={coverInputRef}
         type="file"
@@ -3570,6 +3790,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               kind={shapeKind}
               style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
               selected={selectedShapes}
+              zone={shapeZone}
+              onZone={setShapeZone}
               interactionTarget={selectedShapes.length + selectedLibrary.length === 1 ? (selectedShapes[0] ?? selectedLibrary[0]) : null}
               canDelete={selectedShapes.length + selectedLibrary.length > 0}
               onKind={(k) => {

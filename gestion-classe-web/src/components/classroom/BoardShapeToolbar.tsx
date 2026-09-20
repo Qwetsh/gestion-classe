@@ -3,7 +3,7 @@
  * flèches. Agit sur les réglages par défaut (outil forme) ou sur les formes sélectionnées.
  */
 import { useRef, useState } from 'react';
-import { SHAPE_CATALOG, SHAPE_STROKE_WIDTHS, isLineKind, shapePath, arrowHeadPaths, type ShapeKind, type ShapeObject } from '../../lib/boardShapes';
+import { SHAPE_CATALOG, ZONE_CATALOG, SHAPE_STROKE_WIDTHS, isLineKind, shapePath, arrowHeadPaths, type ShapeKind, type ShapeObject, type ZoneEntry } from '../../lib/boardShapes';
 import { BoardColorPicker } from './BoardColorPicker';
 import { BoardPopover } from './BoardPopover';
 
@@ -33,6 +33,9 @@ interface Props {
   interactionTarget?: { id: string; interactions?: readonly unknown[] } | null;
   /** Force l'état du bouton Supprimer (par défaut : au moins une forme sélectionnée). */
   canDelete?: boolean;
+  /** Zone cliquable choisie dans le catalogue (`null` = forme ordinaire). */
+  zone?: ZoneEntry | null;
+  onZone?: (zone: ZoneEntry | null) => void;
 }
 
 /** Icône d'une forme : la forme elle-même, dessinée petit. */
@@ -52,7 +55,7 @@ export function ShapeIcon({ kind, size = 26 }: { kind: ShapeKind; size?: number 
   );
 }
 
-export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete, onInteractions, interactionTarget, canDelete }: Props) {
+export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete, onInteractions, interactionTarget, canDelete, zone = null, onZone }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -74,14 +77,30 @@ export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLi
             {SHAPE_CATALOG.map((s) => (
               <button
                 key={s.kind}
-                className={`wbs__cell ${(current?.kind ?? kind) === s.kind ? 'is-on' : ''}`}
+                className={`wbs__cell ${!zone && (current?.kind ?? kind) === s.kind ? 'is-on' : ''}`}
                 onPointerDown={hold}
-                onClick={() => { onKind(s.kind); setOpen(false); }}
+                onClick={() => { onZone?.(null); onKind(s.kind); setOpen(false); }}
                 title={s.label}
               >
                 <ShapeIcon kind={s.kind} size={30} />
               </button>
             ))}
+            {onZone && (
+              <>
+                <div className="wbs__zones-title">Zones cliquables (invisibles en lecture)</div>
+                {ZONE_CATALOG.map((z) => (
+                  <button
+                    key={`zone-${z.kind}-${z.free ? 'free' : 'box'}`}
+                    className={`wbs__cell wbs__cell--zone ${zone && zone.kind === z.kind && !!zone.free === !!z.free ? 'is-on' : ''}`}
+                    onPointerDown={hold}
+                    onClick={() => { onZone(z); onKind(z.kind); setOpen(false); }}
+                    title={z.label}
+                  >
+                    {z.free ? <span className="wbs__zone-free">✎</span> : <ShapeIcon kind={z.kind} size={30} />}
+                  </button>
+                ))}
+              </>
+            )}
           </BoardPopover>
         )}
         {(lineSelected || (selected.length === 0 && isLineKind(kind))) && (
@@ -138,5 +157,8 @@ const CSS = `
 .wbs__cell { display: flex; align-items: center; justify-content: center; height: var(--wb-cell, 50px); border: 0; border-radius: 10px; background: #1F2937; color: #E5E7EB; cursor: pointer; }
 .wbs__cell:hover { background: #374151; }
 .wbs__cell.is-on { background: #4F46E5; color: #FFFFFF; }
+.wbs__zones-title { grid-column: 1 / -1; margin-top: 6px; color: #9CA3AF; font: 600 11px/1.2 Inter, system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; }
+.wbs__cell--zone svg path { stroke-dasharray: 4 3; }
+.wbs__zone-free { font-size: 22px; line-height: 1; }
 .wbs__label { color: #9CA3AF; font: 500 12px/1 Inter, system-ui, sans-serif; margin-right: 4px; }
 `;

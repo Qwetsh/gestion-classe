@@ -41,7 +41,7 @@ export type ConnectDrop =
   | { kind: 'tap' }
   | { kind: 'object'; targetId: string }
   | { kind: 'point'; x: number; y: number };
-import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
+import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath, shapeContainsPoint } from '../../lib/boardShapes';
 import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type ObjectCommand, type RevealState } from '../../lib/boardReveal';
 import { loadPageImage, objectBounds } from '../../lib/boardRender';
 import { BoardScratchCover } from './BoardScratchCover';
@@ -157,6 +157,8 @@ interface Props {
    */
   onConnectFrom: (shapeId: string, side: FixedSide, drop: ConnectDrop) => void;
   onToggleInteractive: (id: string) => void;
+  /** Fenêtre : ouvrir son éditeur (double-clic sur la carte). */
+  onEditWindow?: (id: string) => void;
   /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
   students?: string[];
   /** Correcteur orthographique et grammatical (soulignements + propositions) sur les zones de texte. */
@@ -237,7 +239,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students, links, snapGrid,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, onEditWindow, students, links, snapGrid,
     spellCheck = false, onSpellStatus, play, onFire, commands, onExtractWord, pickTarget = null, pickSourceId = null,
   },
   ref
@@ -260,6 +262,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   /** Guides d'alignement affichés pendant un déplacement (unités). */
   const [guides, setGuides] = useState<{ vertical: number[]; horizontal: number[] } | null>(null);
   const [, forceRender] = useState(0);
+
+  /** Contexte 2D hors écran pour tester si un tap tombe dans le tracé d'une zone (ovale, contour). */
+  const hitCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const hitCtx = () => {
+    if (!hitCtxRef.current) { try { hitCtxRef.current = document.createElement('canvas').getContext('2d'); } catch { hitCtxRef.current = null; } }
+    return hitCtxRef.current;
+  };
 
   /** URL signée des images (objets image, couvertures de tickets), par chemin. */
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
@@ -991,8 +1000,11 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         // Post-it déplié pour la séance : rendu comme s'il n'était pas replié
         const o: BoardObject = raw.type === 'text' && raw.collapsed && reveal.unfolded?.[raw.id] ? { ...raw, collapsed: false } : raw;
         const visible = isObjectVisible(reveal, o);
-        // En lecture, un objet caché n'est pas là du tout (ni cliquable, ni dessiné)
-        if (!visible && play) return null;
+        // En lecture, un objet caché n'est pas là du tout (ni cliquable, ni dessiné) ; une fenêtre
+        // n'existe sur la page qu'en édition (en classe, un bouton l'ouvre)
+        if ((!visible || o.type === 'window') && play) return null;
+        // Déplacé par un bouton en séance : translation (animée en lecture), le document ne bouge pas
+        const mv = reveal.moved?.[o.id];
         const rect = objectRect(o);
         const isEditing = editingId === o.id;
         const isSelected = selectedIds.has(o.id);
@@ -1013,7 +1025,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               minHeight: (o.type === 'shape' || o.type === 'image' || o.type === 'library' ? o.h : rect.h) * scale,
               opacity: o.opacity ?? 1,
               // Forme tournée : tout le cadre tourne (poignées, contour, texte), autour de son centre
-              transform: o.type === 'shape' && o.rotation ? `rotate(${o.rotation}deg)` : undefined,
+              transform: [mv ? `translate(${mv.dx * scale}px, ${mv.dy * scale}px)` : '', o.type === 'shape' && o.rotation ? `rotate(${o.rotation}deg)` : ''].filter(Boolean).join(' ') || undefined,
+              transition: play && mv ? 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)' : undefined,
             }}
             onPointerDown={(e) => {
               // Choix d'une cible d'interaction : l'objet touché est la cible, rien d'autre ne bouge
@@ -1041,6 +1054,12 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 tapRef.current = null;
                 try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
                 if (tap.id === o.id && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 12) {
+                  // Zone ovale ou libre : le tap doit tomber dans le tracé, pas seulement dans la boîte
+                  if (o.type === 'shape' && o.hotspot && o.kind !== 'rect' && o.kind !== 'rounded-rect') {
+                    const u = clientToUnit(e.clientX, e.clientY);
+                    const shifted = mv ? { ...o, x: o.x + mv.dx, y: o.y + mv.dy } : o;
+                    if (!shapeContainsPoint(shifted, u.x, u.y, hitCtx(), 4)) return;
+                  }
                   if (isTrigger) onFire(o.id);
                   else if (o.type === 'text') extractRef.current?.(o, e.clientX, e.clientY);
                 }
@@ -1050,6 +1069,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             }}
             onPointerCancel={(e) => { const p = pressRef.current; clearPress(e); if (p?.moved) emit(objectsRef.current, p.before); }}
             onDoubleClick={(e) => {
+              if (o.type === 'window') { if (active && !o.locked) { e.stopPropagation(); onEditWindow?.(o.id); } return; }
               const shapeText = o.type === 'shape' && !isLineKind(o.kind);
               if (!active || (!EDITABLE_TYPES.has(o.type) && !shapeText) || o.locked || isEditing) return;
               // Un post-it replié ne s'édite pas : le dossier gère lui-même son dépliage
@@ -1088,6 +1108,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             )}
             {o.type === 'audio' && <AudioView o={o} scale={scale} command={commands?.[o.id]} />}
             {o.type === 'link' && <LinkView o={o} scale={scale} active={active} />}
+            {o.type === 'window' && (
+              <div className="wbo__window" style={{ width: o.w * scale, height: o.h * scale, fontSize: Math.max(11, 16 * scale) }} title="Fenêtre : double-clic pour modifier ; un bouton l'ouvre en classe">
+                <span className="wbo__window-icon" aria-hidden>🗔</span>
+                <span className="wbo__window-title">{o.title || 'Fenêtre'}</span>
+                {o.imagePath && <span className="wbo__window-img" aria-hidden>🖼</span>}
+              </div>
+            )}
             {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} command={commands?.[o.id]} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} onPlace={(text, client) => onWidgetPlace(o.id, text, client)} />}
             {o.type === 'equation' && (
               <EquationView
@@ -1133,6 +1160,12 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 viewBox={`0 0 ${Math.max(1, o.w)} ${Math.max(1, o.h)}`}
                 preserveAspectRatio="none"
               >
+                {o.hotspot ? (
+                  // Zone cliquable : pointillé fin et voile léger en édition, rien en lecture
+                  !play && (
+                    <path d={shapePath(o)} fill="rgba(99,102,241,0.10)" stroke="#6366F1" strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray="6 4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 1.5 }} />
+                  )
+                ) : (
                 <path
                   d={shapePath(o)}
                   fill={o.fill && !isLineKind(o.kind) ? o.fill : 'none'}
@@ -1144,7 +1177,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   vectorEffect="non-scaling-stroke"
                   style={{ strokeWidth: o.strokeWidth * scale }}
                 />
-                {arrowHeadPaths(o).map((d, i) => (
+                )}
+                {!o.hotspot && arrowHeadPaths(o).map((d, i) => (
                   <path key={i} d={d} fill={o.stroke} stroke={o.stroke} strokeWidth={o.strokeWidth} strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ strokeWidth: o.strokeWidth * scale }} />
                 ))}
               </svg>
@@ -1361,6 +1395,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               >–</button>
             )}
             {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡{(o.interactions?.length ?? 0) > 1 ? ` ${o.interactions!.length}` : ''}</span>}
+            {!play && o.type === 'shape' && o.hotspot && !isTrigger && <span className="wbo__badge wbo__badge--zone" title="Zone cliquable sans action : reliez-la (⚡)">zone</span>}
+            {!play && o.type === 'window' && <span className="wbo__badge wbo__badge--ghost" title="Fenêtre : invisible en classe, ouverte par un bouton">fenêtre</span>}
             {!play && !visible && <span className="wbo__badge wbo__badge--ghost" title="Caché au départ : un bouton l'affichera">caché</span>}
             {active && isSelected && (
               // Bordure de préhension : déplace toujours, même pendant la saisie
@@ -1555,6 +1591,11 @@ const CSS = `
 .wbo__badge { position: absolute; left: -6px; top: -14px; z-index: 3; padding: 2px 6px; border-radius: 999px; background: #111827; color: #F9FAFB; font: 600 11px/1.2 Inter, system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
 .wbo__badge--trigger { background: #4F46E5; }
 .wbo__badge--ghost { left: auto; right: -6px; background: #6B7280; }
+.wbo__badge--zone { background: #6366F1; opacity: 0.85; }
+/* Carte d'une fenêtre (édition seulement) */
+.wbo__window { display: flex; align-items: center; gap: 0.5em; box-sizing: border-box; padding: 0 0.8em; border-radius: 12px; border: 1.5px dashed #6366F1; background: #EEF2FF; color: #3730A3; font-weight: 600; font-family: Inter, system-ui, sans-serif; overflow: hidden; white-space: nowrap; user-select: none; }
+.wbo__window-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wbo__window-icon, .wbo__window-img { flex: none; }
 /* Bouton en lecture : cliquable même sous l'outil d'écriture, et rien ne le déplace */
 .wbo__frame.is-playable { pointer-events: auto; cursor: pointer; }
 .wbo__frame.is-playable * { pointer-events: none !important; }

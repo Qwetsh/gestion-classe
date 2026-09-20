@@ -89,7 +89,25 @@ export interface EquationObject extends BoardObjectBase {
   imagePath?: string;
 }
 
-export type MediaObject = TableObject | VideoObject | WebObject | AudioObject | LinkObject | WidgetObject | EquationObject;
+/**
+ * Fenêtre : contenu (titre, texte riche, image) ouvert en modale par-dessus la page par une action
+ * de bouton. Sur la page, une carte « 🗔 Titre » en édition seulement ; rien en lecture, rien au
+ * canvas (vignettes, export).
+ */
+export interface WindowObject extends BoardObjectBase {
+  type: 'window';
+  h: number;
+  title: string;
+  /** HTML restreint (voir sanitizeBoardHtml). */
+  html: string;
+  imagePath?: string;
+  imageW?: number;
+  imageH?: number;
+}
+/** Taille de la carte d'une fenêtre sur la page, en unités. */
+export const WINDOW_CARD = { w: 220, h: 56 };
+
+export type MediaObject = TableObject | VideoObject | WebObject | AudioObject | LinkObject | WidgetObject | EquationObject | WindowObject;
 
 export const WIDGET_LABELS: Record<WidgetKind, string> = {
   timer: 'Minuteur',
@@ -347,6 +365,9 @@ export function renderMediaObject(ctx: CanvasRenderingContext2D, o: MediaObject,
       break;
     case 'audio':
       labelBox(ctx, o, o.h, scale, '#1F2937', `🔊  ${o.label ?? 'Son'}`);
+      break;
+    case 'window':
+      // Jamais dessinée : la fenêtre n'existe sur la page qu'en édition (calque DOM)
       break;
     case 'link': {
       const h = o.size * 1.9;
