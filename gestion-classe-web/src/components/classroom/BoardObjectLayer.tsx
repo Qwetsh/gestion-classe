@@ -31,6 +31,14 @@ import {
 } from '../../lib/boardText';
 import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
 import { defaultShapeText, shapeTextBox } from '../../lib/boardShapes';
+import { BoardConnectorLayer } from './BoardConnectorLayer';
+import { objectUnderPoint, type FixedSide } from '../../lib/boardConnectors';
+
+/** Fin d'un geste depuis un bouton de connexion (↑ → ↓ ←) d'une forme. */
+export type ConnectDrop =
+  | { kind: 'tap' }
+  | { kind: 'object'; targetId: string }
+  | { kind: 'point'; x: number; y: number };
 import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
 import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type RevealState } from '../../lib/boardReveal';
 import { loadPageImage, objectBounds } from '../../lib/boardRender';
@@ -133,6 +141,11 @@ interface Props {
   onFoldText: (id: string, folded: boolean) => void;
   /** Post-it replié touché en classe : déplié pour la séance seulement. */
   onUnfoldInSession: (id: string) => void;
+  /**
+   * Bouton de connexion d'une forme (↑ → ↓ ←) : tap = copie reliée dans cette direction,
+   * glisser = copie reliée au point lâché, ou flèche seule vers l'objet lâché dessus.
+   */
+  onConnectFrom: (shapeId: string, side: FixedSide, drop: ConnectDrop) => void;
   onToggleInteractive: (id: string) => void;
   /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
   students?: string[];
@@ -214,7 +227,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onToggleInteractive, students,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, students,
     spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
   },
   ref
@@ -848,9 +861,50 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
 
   const single = selectedIds.size === 1 ? objects.find((o) => selectedIds.has(o.id)) ?? null : null;
 
+  // Point écran → unités de page : le calque vit dans la vue zoomée, son rectangle écran le dit
+  const layerRef = useRef<HTMLDivElement>(null);
+  const clientToUnit = useCallback((clientX: number, clientY: number) => {
+    const r = layerRef.current?.getBoundingClientRect();
+    if (!r || stage.width <= 0) return { x: 0, y: 0 };
+    const k = (r.width / stage.width) * scale;
+    return { x: (clientX - r.left) / k, y: (clientY - r.top) / k };
+  }, [stage.width, scale]);
+
+  // Geste de connexion (bouton ↑ → ↓ ← d'une forme) : fantôme de la copie qui suit le pointeur
+  const connectRef = useRef<{ id: string; side: FixedSide; pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
+  const [connectGhost, setConnectGhost] = useState<{ id: string; x: number; y: number; w: number; h: number; target: string | null } | null>(null);
+  const startConnect = (e: React.PointerEvent, o: BoardObject, side: FixedSide) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.stopPropagation(); e.preventDefault();
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
+    connectRef.current = { id: o.id, side, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false };
+  };
+  const moveConnect = (e: React.PointerEvent, o: BoardObject) => {
+    const d = connectRef.current;
+    if (!d || d.pointerId !== e.pointerId || o.type !== 'shape') return;
+    if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < DRAG_THRESHOLD_PX) return;
+    d.moved = true;
+    const u = clientToUnit(e.clientX, e.clientY);
+    const target = objectUnderPoint(e.clientX, e.clientY, objectsRef.current, o.id);
+    setConnectGhost({ id: o.id, x: u.x - o.w / 2, y: u.y - o.h / 2, w: o.w, h: o.h, target: target?.id ?? null });
+  };
+  const endConnect = (e: React.PointerEvent, o: BoardObject) => {
+    const d = connectRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    connectRef.current = null;
+    setConnectGhost(null);
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
+    if (!d.moved) { onConnectFrom(o.id, d.side, { kind: 'tap' }); return; }
+    const target = objectUnderPoint(e.clientX, e.clientY, objectsRef.current, o.id);
+    if (target) onConnectFrom(o.id, d.side, { kind: 'object', targetId: target.id });
+    else { const u = clientToUnit(e.clientX, e.clientY); onConnectFrom(o.id, d.side, { kind: 'point', x: Math.round(u.x), y: Math.round(u.y) }); }
+  };
+
   return (
-    <div className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
+    <div ref={layerRef} className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
       {objects.map((raw) => {
+        // Les connecteurs n'ont pas de cadre : ils sont dessinés par le calque SVG plus bas
+        if (raw.type === 'connector') return null;
         // Post-it déplié pour la séance : rendu comme s'il n'était pas replié
         const o: BoardObject = raw.type === 'text' && raw.collapsed && reveal.unfolded?.[raw.id] ? { ...raw, collapsed: false } : raw;
         const visible = isObjectVisible(reveal, o);
@@ -1200,6 +1254,18 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             {showHandles && o.type === 'shape' && (
               <div className="wbo__rotate" title="Tourner (Maj : par pas de 15°)" onPointerDown={(e) => startPress(e, o, 'rotate')}>↻</div>
             )}
+            {showHandles && o.type === 'shape' && !isLineKind(o.kind) && (['n', 'e', 's', 'w'] as FixedSide[]).map((side) => (
+              // Boutons de connexion : tap = copie reliée dans cette direction, glisser = où l'on veut
+              <div
+                key={side}
+                className={`wbo__connect wbo__connect--${side}`}
+                title="Toucher : nouvelle forme reliée · glisser : la poser où vous voulez, ou sur un objet à relier"
+                onPointerDown={(e) => startConnect(e, o, side)}
+                onPointerMove={(e) => moveConnect(e, o)}
+                onPointerUp={(e) => endConnect(e, o)}
+                onPointerCancel={() => { connectRef.current = null; setConnectGhost(null); }}
+              >{side === 'n' ? '↑' : side === 'e' ? '→' : side === 's' ? '↓' : '←'}</div>
+            ))}
             {showHandles && (
               <>
                 {(WIDTH_ONLY_TYPES.has(o.type) ? TEXT_HANDLES : SHAPE_HANDLES).map((h) => (
@@ -1224,6 +1290,25 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
           </div>
         );
       })}
+      <BoardConnectorLayer
+        objects={objects}
+        scale={scale}
+        width={stage.width}
+        height={stage.height}
+        active={active}
+        play={play}
+        selectedIds={selectedIds}
+        onSelect={(ids) => { onSelect(ids); selectedRef.current = ids; if (editingId) onEdit(null); }}
+        onChange={emit}
+        onContextMenu={onContextMenu}
+        clientToUnit={clientToUnit}
+      />
+      {connectGhost && (
+        <div
+          className={`wbo__ghost ${connectGhost.target ? 'is-target' : ''}`}
+          style={{ left: connectGhost.x * scale, top: connectGhost.y * scale, width: connectGhost.w * scale, height: connectGhost.h * scale }}
+        />
+      )}
       <style>{CSS}</style>
       <BoardSpellChecker
         ref={spellRef}
@@ -1249,6 +1334,25 @@ const CSS = `
 .wbo__frame.is-editing .wbo__editor--shape { pointer-events: auto; cursor: text; }
 .wbo__rotate { position: absolute; left: 50%; bottom: -44px; z-index: 1; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: -15px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #9CA3AF; color: #374151; font: 600 15px/1 Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; touch-action: none; user-select: none; }
 .wbo__rotate:active { cursor: grabbing; }
+/* Boutons de connexion, hors de la boîte, à 24 px du bord ; taille tactile réglée par le thème */
+.wbo__connect { position: absolute; z-index: 1; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #9CA3AF; color: #374151; font: 700 15px/1 Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; touch-action: none; user-select: none; }
+.wbo__connect:hover { background: #EEF2FF; border-color: #6366F1; color: #4F46E5; }
+.wbo__connect--n { left: 50%; top: -44px; margin-left: -15px; }
+.wbo__connect--s { left: 50%; bottom: -84px; margin-left: -15px; }
+.wbo__connect--e { right: -44px; top: 50%; margin-top: -15px; }
+.wbo__connect--w { left: -44px; top: 50%; margin-top: -15px; }
+.wbo__ghost { position: absolute; z-index: 4; border: 2px dashed #6366F1; border-radius: 8px; background: rgba(99,102,241,0.08); pointer-events: none; }
+.wbo__ghost.is-target { border-style: solid; background: rgba(99,102,241,0.18); }
+/* Calque des connecteurs : inerte sauf sur ses tracés de pointage et ses poignées */
+.wbo__connectors { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.wbo__connector-hit { pointer-events: none; }
+.wbo__connectors.is-active .wbo__connector-hit { pointer-events: stroke; cursor: pointer; }
+.wbo__connector-halo { stroke: rgba(99,102,241,0.35); stroke-width: 10px; }
+.wbo__connector-handle { fill: #FFFFFF; stroke: #6366F1; stroke-width: 2px; pointer-events: all; cursor: grab; }
+.wbo__connector-handle.is-attached { fill: #6366F1; }
+.wbo__connector-handle--mid { fill: #FFFFFF; stroke: #9CA3AF; }
+.wbo__connector-handles.is-dragging .wbo__connector-handle { pointer-events: none; }
+.wbo__connector-label { pointer-events: none; }
 /* Le tableau est en user-select: none (rien ne se surligne en manipulant les outils) ; la zone en
    saisie doit redevenir un vrai champ texte : clic = curseur, double-clic = mot, triple = paragraphe,
    glisser = sélection. Sans cette règle, Chrome ignore la souris dans un contentEditable non sélectionnable. */

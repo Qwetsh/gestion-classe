@@ -35,7 +35,9 @@ import {
   type TextObject,
 } from '../../lib/boardObjects';
 import { copyObjects, hasObjects as clipboardHasObjects, pasteObjects } from '../../lib/boardClipboard';
-import { BoardObjectLayer, type BoardTextApi, type FormatState, type StageBox } from './BoardObjectLayer';
+import { BoardObjectLayer, type BoardTextApi, type ConnectDrop, type FormatState, type StageBox } from './BoardObjectLayer';
+import { BoardConnectorToolbar } from './BoardConnectorToolbar';
+import { dropOrphanConnectors, newConnector, refreshConnectors, sideDir, type ConnectorObject, type FixedSide } from '../../lib/boardConnectors';
 import type { SpellStatus } from './BoardSpellChecker';
 import { BoardTextToolbar } from './BoardTextToolbar';
 import { BoardContextMenu, type MenuItem } from './BoardContextMenu';
@@ -959,9 +961,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
   /** Encre attachée avant le geste en cours (glisser d'une forme), pour une seule étape d'annulation. */
   const dragInkRef = useRef<Stroke[] | null>(null);
-  const handleObjectsChange = useCallback((next: BoardObject[], before: BoardObject[] | null) => {
+  const handleObjectsChange = useCallback((nextIn: BoardObject[], before: BoardObject[] | null) => {
+    let next = nextIn;
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
+    // Les flèches d'un objet supprimé partent avec lui ; les boîtes des flèches suivent leurs objets
+    next = refreshConnectors(dropOrphanConnectors(p.objects ?? [], next));
     // L'encre attachée suit les formes (déplacement, taille, rotation) et part avec elles
     const strokesNow = p.strokes;
     const strokesNext = followAttachedInk(p.objects ?? [], next, strokesNow);
@@ -981,6 +986,49 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       return bottom > h - 8 ? { ...pg, objects: next, strokes, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next, strokes };
     });
   }, [pushOp, updatePage]);
+
+  /**
+   * Bouton de connexion d'une forme : nouvelle forme reliée (tap : à distance fixe dans la
+   * direction ; glisser : au point lâché) ou flèche seule vers l'objet lâché dessus. Une seule
+   * étape d'annulation pour la copie et sa flèche.
+   */
+  const connectFrom = useCallback((shapeId: string, side: FixedSide, drop: ConnectDrop) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const src = p?.objects?.find((o) => o.id === shapeId);
+    if (!p || !src || src.type !== 'shape') return;
+    const prev = p.objects ?? [];
+    const added: BoardObject[] = [];
+    let targetId: string;
+    if (drop.kind === 'object') targetId = drop.targetId;
+    else {
+      const copyId = uid();
+      let x: number, y: number;
+      if (drop.kind === 'point') { x = drop.x - src.w / 2; y = drop.y - src.h / 2; }
+      else {
+        // Tap : dans la direction du bouton, à une distance qui laisse la place à la flèche
+        const d = sideDir(src, side);
+        const gap = 90;
+        const cx = src.x + src.w / 2 + d.x * (src.w / 2 + gap + src.w / 2);
+        const cy = src.y + src.h / 2 + d.y * (src.h / 2 + gap + src.h / 2);
+        x = cx - src.w / 2; y = cy - src.h / 2;
+      }
+      const { text: _t, interactions: _i, cover: _c, ...rest } = src;
+      void _t; void _i; void _c;
+      added.push({ ...rest, id: copyId, x: Math.round(Math.max(0, x)), y: Math.round(Math.max(0, y)) });
+      targetId = copyId;
+    }
+    added.push(newConnector(uid(), { objectId: shapeId, side: drop.kind === 'tap' ? side : 'auto' }, { objectId: targetId, side: 'auto' }, { stroke: '#6B7280' }));
+    handleObjectsChange([...prev, ...added], prev);
+    setSelectedIds(new Set([targetId]));
+  }, [handleObjectsChange]);
+
+  /** Modifie les connecteurs sélectionnés (barre contextuelle). */
+  const patchSelectedConnectors = useCallback((fn: (c: ConnectorObject) => ConnectorObject) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const before = p.objects ?? [];
+    handleObjectsChange(before.map((o) => (o.type === 'connector' && selectedIdsRef.current.has(o.id) ? fn(o) : o)), before);
+  }, [handleObjectsChange]);
 
   /** Attache (ou détache) à une forme l'encre qu'elle contient. */
   const setInkAttachment = useCallback((shapeId: string, attach: boolean) => {
@@ -1781,6 +1829,34 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const count = selectedIdsRef.current.size;
     const many = count > 1;
     const locked = target.locked === true;
+    if (target.type === 'connector') {
+      const c = target;
+      const items: MenuItem[] = [
+        { label: many ? `Couper (${count} objets)` : 'Couper', shortcut: 'Ctrl+X', onSelect: cutSelected },
+        { label: 'Copier', shortcut: 'Ctrl+C', onSelect: copySelected },
+        { label: 'Dupliquer', shortcut: 'Ctrl+D', onSelect: duplicateSelected },
+        { separator: true, label: '' },
+        { label: 'Tracé', children: [
+          { label: 'Courbe', checked: c.route === 'curve', onSelect: () => patchSelectedConnectors((k) => ({ ...k, route: 'curve' })) },
+          { label: 'Droite', checked: c.route === 'straight', onSelect: () => patchSelectedConnectors((k) => ({ ...k, route: 'straight', bend: undefined })) },
+          { separator: true, label: '' },
+          { label: 'Redresser (enlever le cintrage)', disabled: !c.bend, onSelect: () => patchSelectedConnectors((k) => ({ ...k, bend: undefined })) },
+        ] },
+        { label: 'Flèches', children: [
+          { label: 'Aucune', checked: !c.heads.start && !c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: false, end: false } })) },
+          { label: 'À la fin', checked: !c.heads.start && c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: false, end: true } })) },
+          { label: 'Au début', checked: c.heads.start && !c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: true, end: false } })) },
+          { label: 'Aux deux bouts', checked: c.heads.start && c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: true, end: true } })) },
+          { separator: true, label: '' },
+          { label: 'Inverser le sens', onSelect: () => patchSelectedConnectors((k) => ({ ...k, from: k.to, to: k.from })) },
+        ] },
+        { label: c.label ? 'Modifier le texte de la flèche…' : 'Texte sur la flèche…', onSelect: () => { const t = window.prompt('Texte sur la flèche (vide : aucun)', c.label ?? ''); if (t !== null) patchSelectedConnectors((k) => ({ ...k, label: t.trim() || undefined })); } },
+        { separator: true, label: '' },
+        { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, onSelect: deleteSelected },
+      ];
+      setMenu({ x, y, items });
+      return;
+    }
     const items: MenuItem[] = [
       { label: many ? `Couper (${count} objets)` : 'Couper', shortcut: 'Ctrl+X', disabled: locked, onSelect: cutSelected },
       { label: 'Copier', shortcut: 'Ctrl+C', onSelect: copySelected },
@@ -1858,7 +1934,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -2619,8 +2695,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const selectedLibrary = pageObjects.filter((o): o is LibraryObject => o.type === 'library' && selectedIds.has(o.id));
   const showShapeToolbar = !showTextToolbar && (tool === 'shape' || (tool === 'select' && (selectedShapes.length > 0 || selectedLibrary.length > 0)));
   // Les autres objets (image, tableau, widget, médias) partagent une barre commune, posée sur l'objet.
-  const selectedOthers = pageObjects.filter((o) => selectedIds.has(o.id) && o.type !== 'text' && o.type !== 'shape' && o.type !== 'library');
-  const showObjectToolbar = !showTextToolbar && !showShapeToolbar && tool === 'select' && selectedOthers.length > 0;
+  const selectedConnectors = pageObjects.filter((o): o is ConnectorObject => o.type === 'connector' && selectedIds.has(o.id));
+  const showConnectorToolbar = !showTextToolbar && !showShapeToolbar && tool === 'select' && selectedConnectors.length > 0;
+  const selectedOthers = pageObjects.filter((o) => selectedIds.has(o.id) && o.type !== 'text' && o.type !== 'shape' && o.type !== 'library' && o.type !== 'connector');
+  const showObjectToolbar = !showTextToolbar && !showShapeToolbar && !showConnectorToolbar && tool === 'select' && selectedOthers.length > 0;
   const inkSelection = selectedStrokeIds.size > 0 ? strokesBounds(page.strokes.filter((st) => selectedStrokeIds.has(st.id))) : null;
   /** Applique un réglage de zone (police, taille, couleur) à toutes les zones de texte sélectionnées. */
   const patchSelectedTexts = (fn: (o: TextObject) => TextObject) => {
@@ -2808,6 +2886,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onWidgetPlace={placeWidgetResult}
           onFoldText={foldText}
           onUnfoldInSession={unfoldInSession}
+          onConnectFrom={connectFrom}
           onToggleInteractive={onToggleInteractive}
           students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
           spellCheck={spellCheck && !displayMode}
@@ -3229,6 +3308,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         </BoardFloatingToolbar>
       )}
 
+      {!displayMode && showConnectorToolbar && (
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedConnectors[0].id} label={selectedConnectors.length > 1 ? `Flèches (${selectedConnectors.length})` : 'Flèche'}>
+          <BoardConnectorToolbar connectors={selectedConnectors} onPatch={patchSelectedConnectors} onDelete={deleteSelected} />
+        </BoardFloatingToolbar>
+      )}
       {!displayMode && showObjectToolbar && (
         <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
           <BoardObjectToolbar

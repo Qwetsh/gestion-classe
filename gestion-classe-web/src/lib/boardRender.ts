@@ -13,6 +13,7 @@ import { followShape, isLineKind, renderShape, sameShapeBox, shapeTextBox, type 
 import type { RenderRevealOptions } from './boardReveal';
 import { renderMediaObject } from './boardMedia';
 import { renderLibraryObject } from './boardLibrary';
+import { renderConnector } from './boardConnectors';
 
 export type Background = 'blank' | 'grid' | 'lines' | 'seyes' | 'graph' | 'axes' | 'dots';
 export const BACKGROUNDS: { id: Background; label: string }[] = [
@@ -101,13 +102,17 @@ export interface BoardPage {
  * Rendu canvas d'un objet, par type (partagé par l'export, les vignettes, la relecture).
  * `reveal` : version élève ('covered' : caches dessinés, trous masqués) ou corrigé ('revealed').
  */
-export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scale: number, reveal: RenderRevealOptions = { mode: 'revealed' }) {
+export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scale: number, reveal: RenderRevealOptions = { mode: 'revealed' }, objects: readonly BoardObject[] = []) {
   ctx.save();
   if (o.opacity !== undefined) ctx.globalAlpha = o.opacity;
   const covered = reveal.mode === 'covered';
   switch (o.type) {
     case 'text':
       renderTextBox(ctx, o, scale, covered ? 'all' : undefined);
+      break;
+    case 'connector':
+      // Les extrémités se résolvent sur les objets de la page (géométrie dérivée)
+      renderConnector(ctx, o, objects, scale);
       break;
     case 'shape':
       renderShape(ctx, o, scale);
@@ -161,7 +166,7 @@ export function renderCover(ctx: CanvasRenderingContext2D, o: BoardObject, scale
 
 /** Emprise dessinée d'un objet (sans marge de saisie). */
 export function objectBounds(o: BoardObject): { x: number; y: number; w: number; h: number } {
-  if (o.type === 'shape' || o.type === 'image' || o.type === 'library') return { x: o.x, y: o.y, w: Math.max(o.w, 1), h: Math.max(o.h, 1) };
+  if (o.type === 'shape' || o.type === 'image' || o.type === 'library' || o.type === 'connector') return { x: o.x, y: o.y, w: Math.max(o.w, 1), h: Math.max(o.h, 1) };
   if (o.type === 'text') return textBoxRect(o);
   return objectRect(o);
 }
@@ -406,7 +411,7 @@ export async function renderPageToCanvas(page: BoardPage, width: number, reveal:
   // Version élève : ce qu'un bouton doit encore révéler reste invisible ; corrigé : tout est là.
   for (const o of page.objects ?? []) {
     if (o.hidden && reveal.mode === 'covered') continue;
-    renderObject(ctx, o, scale, reveal);
+    renderObject(ctx, o, scale, reveal, page.objects ?? []);
   }
   return canvas;
 }

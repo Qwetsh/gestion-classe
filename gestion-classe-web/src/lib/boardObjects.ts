@@ -14,6 +14,7 @@ import type { ShapeObject } from './boardShapes';
 import type { RevealCover } from './boardReveal';
 import { mediaRect, type MediaObject } from './boardMedia';
 import type { LibraryObject } from './boardLibrary';
+import { remapConnectorEnds, type ConnectorObject } from './boardConnectors';
 
 export interface BoardObjectBase {
   id: string;
@@ -60,7 +61,7 @@ export interface ImageObject extends BoardObjectBase {
   naturalHeight: number;
 }
 
-export type BoardObject = TextObject | ShapeObject | ImageObject | LibraryObject | MediaObject;
+export type BoardObject = TextObject | ShapeObject | ImageObject | LibraryObject | MediaObject | ConnectorObject;
 
 export interface Rect { x: number; y: number; w: number; h: number }
 
@@ -80,6 +81,10 @@ export function objectRect(o: BoardObject): Rect {
     case 'image':
     case 'library':
       return { x: o.x, y: o.y, w: o.w, h: o.h };
+    case 'connector':
+      // Boîte englobante dérivée (voir refreshConnectors) : sert au lasso, pas au clic (le
+      // calque des connecteurs pointe sur le tracé lui-même)
+      return { x: o.x, y: o.y, w: Math.max(o.w, 1), h: Math.max(o.h, 1) };
     default:
       return mediaRect(o);
   }
@@ -96,6 +101,7 @@ export function rectContains(r: Rect, x: number, y: number): boolean {
 /** Objet le plus haut dans l'empilement sous le point (x, y). */
 export function objectAt(objects: BoardObject[], x: number, y: number): BoardObject | null {
   for (let i = objects.length - 1; i >= 0; i--) {
+    if (objects[i].type === 'connector') continue;
     if (rectContains(objectRect(objects[i]), x, y)) return objects[i];
   }
   return null;
@@ -109,13 +115,18 @@ export function objectAt(objects: BoardObject[], x: number, y: number): BoardObj
  */
 export function cloneObjects(objects: BoardObject[], dx = 24, dy = 24): BoardObject[] {
   const ids = new Map(objects.map((o) => [o.id, objectId()]));
-  return objects.map((o) => ({
-    ...o,
-    id: ids.get(o.id) ?? objectId(),
-    x: o.x + dx,
-    y: o.y + dy,
-    ...(o.interactions ? { interactions: o.interactions.map((it) => ({ ...it, targetId: ids.get(it.targetId) ?? it.targetId })) } : {}),
-  }));
+  return objects.map((o) => {
+    const copy: BoardObject = {
+      ...o,
+      id: ids.get(o.id) ?? objectId(),
+      x: o.x + dx,
+      y: o.y + dy,
+      ...(o.interactions ? { interactions: o.interactions.map((it) => ({ ...it, targetId: ids.get(it.targetId) ?? it.targetId })) } : {}),
+    };
+    // Une flèche copiée avec ses objets suit les copies ; vers un objet resté hors de la copie,
+    // elle reste attachée à l'original (même page)
+    return copy.type === 'connector' ? remapConnectorEnds(copy, ids) : copy;
+  });
 }
 
 /** Bas de l'objet le plus bas (unités logiques), 0 sans objet. */
@@ -128,7 +139,7 @@ export function objectsBottom(objects: BoardObject[]): number {
 /** Nom court d'un objet, pour désigner une cible d'interaction : « Texte “Réponse…” », « Image ». */
 export function objectShortLabel(o: BoardObject): string {
   const generic = objectTypeLabel([o]);
-  const kind = generic !== 'Objet' ? generic : o.type === 'text' ? 'Texte' : o.type === 'shape' ? 'Forme' : o.type === 'library' ? 'Dessin' : 'Objet';
+  const kind = generic !== 'Objet' ? generic : o.type === 'text' ? 'Texte' : o.type === 'shape' ? 'Forme' : o.type === 'library' ? 'Dessin' : o.type === 'connector' ? 'Flèche' : 'Objet';
   if (o.type === 'text' || o.type === 'table') {
     const html = o.type === 'text' ? o.html : o.cells.flat().join(' ');
     const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
@@ -180,6 +191,7 @@ export function objectTypeLabel(objects: BoardObject[]): string {
     case 'link': return 'Lien';
     case 'widget': return 'Widget';
     case 'equation': return 'Équation';
+    case 'connector': return 'Flèche';
     default: return 'Objet';
   }
 }
