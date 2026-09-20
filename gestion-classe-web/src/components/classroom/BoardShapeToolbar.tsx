@@ -26,6 +26,13 @@ interface Props {
   onDelete: () => void;
   /** Mode liaison : la forme devient un bouton qui affiche / masque d'autres objets. */
   onInteractions?: (id: string) => void;
+  /**
+   * Objet à relier via ⚡ quand la sélection n'est pas une forme (ex : objet de bibliothèque).
+   * `undefined` = règle par défaut (une seule forme sélectionnée) ; `null` = pas de cible.
+   */
+  interactionTarget?: { id: string; interactions?: readonly unknown[] } | null;
+  /** Force l'état du bouton Supprimer (par défaut : au moins une forme sélectionnée). */
+  canDelete?: boolean;
 }
 
 /** Icône d'une forme : la forme elle-même, dessinée petit. */
@@ -45,12 +52,14 @@ export function ShapeIcon({ kind, size = 26 }: { kind: ShapeKind; size?: number 
   );
 }
 
-export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete, onInteractions }: Props) {
+export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLineKind, onDelete, onInteractions, interactionTarget, canDelete }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const hold = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
   const current = selected[0] ?? null;
+  // Cible du bouton ⚡ : explicite si fournie (objet de bibliothèque…), sinon la forme unique sélectionnée.
+  const linkTarget = interactionTarget !== undefined ? interactionTarget : (selected.length === 1 ? selected[0] : null);
   const lineSelected = selected.length > 0 && selected.every((s) => isLineKind(s.kind));
   const widthKey = (Object.keys(SHAPE_STROKE_WIDTHS) as ('S' | 'M' | 'L')[]).find((k) => SHAPE_STROKE_WIDTHS[k] === style.strokeWidth);
 
@@ -109,10 +118,10 @@ export function BoardShapeToolbar({ kind, style, selected, onKind, onStyle, onLi
       )}
 
       <div className="wb__group">
-        {onInteractions && selected.length === 1 && (
-          <button className={`wb__btn wb__txt ${(selected[0].interactions?.length ?? 0) > 0 ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => onInteractions(selected[0].id)} title="Bouton : relier à un objet à afficher / masquer">⚡</button>
+        {onInteractions && linkTarget && (
+          <button className={`wb__btn wb__txt ${(linkTarget.interactions?.length ?? 0) > 0 ? 'is-on' : ''}`} onPointerDown={hold} onClick={() => onInteractions(linkTarget.id)} title="Bouton : relier à un objet à afficher / masquer">⚡</button>
         )}
-        <button className="wb__btn" disabled={selected.length === 0} onPointerDown={hold} onClick={onDelete} title="Supprimer (Suppr)">
+        <button className="wb__btn" disabled={!(canDelete ?? selected.length > 0)} onPointerDown={hold} onClick={onDelete} title="Supprimer (Suppr)">
           <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
         </button>
       </div>
