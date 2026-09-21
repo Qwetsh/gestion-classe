@@ -323,7 +323,7 @@ depuis le téléphone.
 | 3 | Mode aperçu en édition | **Oui**, mais ça s'inscrit dans un vrai travail à mener sur la frontière **mode édition / mode en classe** : quels gestes, quels outils, quel affichage dans chacun. À traiter comme un chantier UX à part, avant ou avec le lot B. |
 | + | Onglet Événements | Retenu tel quel **pour l'instant** ; l'UI sera retravaillée plus tard, cet onglet compris. |
 
-Plan détaillé du lot A : `PLAN_actions_lot_A.md` (20/09/2026). Reste ensuite le cadrage du
+Plans et bilans : `PLAN_actions_lot_A.md` (lot A, 20/09/2026), `PLAN_actions_lot_B.md` (lot B, 20/09/2026), `PLAN_actions_lot_C.md` (lot C, 21/09/2026). Reste ensuite le cadrage du
 chantier « édition / en classe » qui conditionne le lot B et le mode aperçu.
 
 ## Sources consultées

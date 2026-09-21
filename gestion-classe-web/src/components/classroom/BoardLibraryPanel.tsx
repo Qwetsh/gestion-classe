@@ -389,81 +389,7 @@ export function BoardLibraryPanel({ onInsertItem, onInsertEvent, initialTab = 'l
             );
           })()}
 
-          {tab === 'events' && (() => {
-            const presets = filterPresets(query);
-            const q = query.trim().toLowerCase();
-            const mine = q ? savedEvents.filter((e) => e.label.toLowerCase().includes(q)) : savedEvents;
-            return (
-              <>
-                <p className="wblb__lead">Un élément déjà muni de son action : posez-le, puis touchez sa cible s'il en faut une. Pour enregistrer les vôtres : clic droit sur une sélection › « Enregistrer dans mes événements… ».</p>
-                <section>
-                  <h3>Fournis</h3>
-                  <div className="wblb__grid">
-                    {presets.map((p) => (
-                      <button key={p.id} type="button" className="wblb__item wblb__item--event" onClick={() => { onInsertEvent(p.build()); onClose(); }} title={p.hint}>
-                        <span className="wblb__event-icon" aria-hidden>{p.icon}</span>
-                        <span>{p.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {presets.length === 0 && <p className="wblb__empty">Aucun préréglage pour cette recherche.</p>}
-                </section>
-                <section>
-                  <h3>Les miens</h3>
-                  {mine.length === 0 && <p className="wblb__empty">{savedEvents.length === 0 ? 'Rien encore : sélectionnez un bouton et ses cibles sur un tableau, puis « Enregistrer dans mes événements… ».' : 'Aucun événement pour cette recherche.'}</p>}
-                  <div className="wblb__grid">
-                    {mine.map((e) => (
-                      <div key={e.id} className="wblb__item wblb__item--event wblb__item--mine" role="button" tabIndex={0} title={`${e.objects.length} objet${e.objects.length > 1 ? 's' : ''}`}
-                        onClick={() => { onInsertEvent(insertFromSaved(e)); onClose(); }}
-                        onKeyDown={(ev) => { if (ev.key === 'Enter') { onInsertEvent(insertFromSaved(e)); onClose(); } }}>
-                        <span className="wblb__event-icon" aria-hidden>⭐</span>
-                        <span>{e.label}</span>
-                        <button type="button" className="wblb__event-del" title="Retirer de mes événements" onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`Retirer « ${e.label} » de mes événements ?`)) { deleteEvent(e.id); setSavedEvents(loadSavedEvents()); } }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </>
-            );
-          })()}
 
-          {tab === 'events' && (() => {
-            const presets = filterPresets(query);
-            const q = query.trim().toLowerCase();
-            const mine = q ? savedEvents.filter((e) => e.label.toLowerCase().includes(q)) : savedEvents;
-            return (
-              <>
-                <p className="wblb__lead">Un élément déjà muni de son action : posez-le, puis touchez sa cible s'il en faut une. Pour enregistrer les vôtres : clic droit sur une sélection › « Enregistrer dans mes événements… ».</p>
-                <section>
-                  <h3>Fournis</h3>
-                  <div className="wblb__grid">
-                    {presets.map((p) => (
-                      <button key={p.id} type="button" className="wblb__item wblb__item--event" onClick={() => { onInsertEvent(p.build()); onClose(); }} title={p.hint}>
-                        <span className="wblb__event-icon" aria-hidden>{p.icon}</span>
-                        <span>{p.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {presets.length === 0 && <p className="wblb__empty">Aucun préréglage pour cette recherche.</p>}
-                </section>
-                <section>
-                  <h3>Les miens</h3>
-                  {mine.length === 0 && <p className="wblb__empty">{savedEvents.length === 0 ? 'Rien encore : sélectionnez un bouton et ses cibles sur un tableau, puis « Enregistrer dans mes événements… ».' : 'Aucun événement pour cette recherche.'}</p>}
-                  <div className="wblb__grid">
-                    {mine.map((e) => (
-                      <div key={e.id} className="wblb__item wblb__item--event wblb__item--mine" role="button" tabIndex={0} title={`${e.objects.length} objet${e.objects.length > 1 ? 's' : ''}`}
-                        onClick={() => { onInsertEvent(insertFromSaved(e)); onClose(); }}
-                        onKeyDown={(ev) => { if (ev.key === 'Enter') { onInsertEvent(insertFromSaved(e)); onClose(); } }}>
-                        <span className="wblb__event-icon" aria-hidden>⭐</span>
-                        <span>{e.label}</span>
-                        <button type="button" className="wblb__event-del" title="Retirer de mes événements" onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`Retirer « ${e.label} » de mes événements ?`)) { deleteEvent(e.id); setSavedEvents(loadSavedEvents()); } }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </>
-            );
-          })()}
 
           {tab === 'brevet' && (
             <div className="wblb__list">
@@ -641,20 +567,6 @@ const CSS = `
 .wblb__item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border: 0; border-radius: 12px; background: #FFFFFF; color: #111827; font: 500 12px/1.2 Inter, system-ui, sans-serif; cursor: pointer; }
 .wblb__item:hover { outline: 3px solid #6366F1; }
 .wblb__item span { text-align: center; }
-.wblb__lead { margin: 4px 0 8px; color: #9CA3AF; font-size: 13px; line-height: 1.4; }
-.wblb__item--event { position: relative; min-height: 96px; justify-content: center; }
-.wblb__event-icon { font-size: 30px; line-height: 1; }
-.wblb__item--mine { background: #EEF2FF; }
-.wblb__event-del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: #6B7280; font: 700 13px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0; }
-.wblb__item--mine:hover .wblb__event-del, .wblb__event-del:focus { opacity: 1; }
-.wblb__event-del:hover { background: #FEE2E2; color: #B91C1C; }
-.wblb__lead { margin: 4px 0 8px; color: #9CA3AF; font-size: 13px; line-height: 1.4; }
-.wblb__item--event { position: relative; min-height: 96px; justify-content: center; }
-.wblb__event-icon { font-size: 30px; line-height: 1; }
-.wblb__item--mine { background: #EEF2FF; }
-.wblb__event-del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: #6B7280; font: 700 13px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0; }
-.wblb__item--mine:hover .wblb__event-del, .wblb__event-del:focus { opacity: 1; }
-.wblb__event-del:hover { background: #FEE2E2; color: #B91C1C; }
 .wblb__lead { margin: 4px 0 8px; color: #9CA3AF; font-size: 13px; line-height: 1.4; }
 .wblb__item--event { position: relative; min-height: 96px; justify-content: center; }
 .wblb__event-icon { font-size: 30px; line-height: 1; }
