@@ -7,8 +7,9 @@ import { useSettings } from '../contexts/SettingsContext';
 import { ClassChip } from '../components/design-system';
 import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
 import { GroupSessionLauncher } from '../components/live-session/GroupSessionLauncher';
-import { Whiteboard } from '../components/classroom/Whiteboard';
-import { BoardsPanel, FREE_BOARD_ID } from '../components/classroom/BoardsPanel';
+import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
+import { draftTab } from '../lib/boardTabs';
+import { BoardsPanel } from '../components/classroom/BoardsPanel';
 import { pronoteFetcher } from '../lib/pronoteFetcher';
 import type { TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
 
@@ -1128,13 +1129,7 @@ export function Dashboard() {
         </div>
       </div>
       {boardOpen && (
-        <Whiteboard
-          sessionId={FREE_BOARD_ID}
-          userId={user?.id ?? ''}
-          remote={false}
-          title="Brouillon"
-          onClose={() => setBoardOpen(false)}
-        />
+        <BoardWorkspace initial={draftTab()} userId={user?.id ?? ''} onClose={() => setBoardOpen(false)} />
       )}
     </Layout>
   );

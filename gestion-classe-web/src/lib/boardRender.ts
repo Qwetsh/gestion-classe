@@ -7,12 +7,13 @@
  * les fonds importés (PDF, image), les vignettes et l'export coïncident exactement.
  */
 import { supabase } from './supabase';
-import { renderTextBox, textBoxRect, type TextBox } from './boardText';
+import { renderTextBox, textBoxHeight, textBoxRect, type TextBox } from './boardText';
 import { objectRect, type BoardObject } from './boardObjects';
-import { renderShape } from './boardShapes';
+import { followShape, isLineKind, renderShape, sameShapeBox, shapeTextBox, type ShapeObject } from './boardShapes';
 import type { RenderRevealOptions } from './boardReveal';
 import { renderMediaObject } from './boardMedia';
 import { renderLibraryObject } from './boardLibrary';
+import { renderConnector } from './boardConnectors';
 
 export type Background = 'blank' | 'grid' | 'lines' | 'seyes' | 'graph' | 'axes' | 'dots';
 export const BACKGROUNDS: { id: Background; label: string }[] = [
@@ -26,12 +27,64 @@ export const BACKGROUNDS: { id: Background; label: string }[] = [
 ];
 
 export interface Point { x: number; y: number; p: number }
-export interface Stroke { id: string; tool: 'pen' | 'highlighter'; color: string; size: number; points: Point[] }
+export interface Stroke {
+  id: string; tool: 'pen' | 'highlighter'; color: string; size: number; points: Point[];
+  /** Encre attachée : forme qui contenait le trait quand il a été dessiné ; il la suit et disparaît avec elle. */
+  parentId?: string;
+}
+
+/**
+ * Encre attachée : les traits dont `parentId` désigne une forme suivent ses déplacements,
+ * redimensionnements et rotations ; ceux d'une forme supprimée disparaissent avec elle.
+ * Renvoie le même tableau quand rien ne change.
+ */
+export function followAttachedInk(prev: BoardObject[], next: BoardObject[], strokes: Stroke[]): Stroke[] {
+  if (!strokes.some((st) => st.parentId)) return strokes;
+  const before = new Map(prev.map((o) => [o.id, o]));
+  const after = new Map(next.map((o) => [o.id, o]));
+  let changed = false;
+  const out: Stroke[] = [];
+  for (const st of strokes) {
+    if (!st.parentId) { out.push(st); continue; }
+    const a = before.get(st.parentId), b = after.get(st.parentId);
+    if (!b) {
+      // Forme supprimée : son encre part avec elle ; parent inconnu des deux côtés : trait orphelin, gardé
+      if (a) { changed = true; continue; }
+      out.push(st); continue;
+    }
+    if (!a || a.type !== 'shape' || b.type !== 'shape' || sameShapeBox(a, b)) { out.push(st); continue; }
+    changed = true;
+    out.push({ ...st, points: st.points.map((pt) => followShape(pt, a, b)) });
+  }
+  return changed ? out : strokes;
+}
+
+/** Texte d'une forme : centré verticalement dans sa boîte intérieure, tourné avec elle. */
+export function renderShapeText(ctx: CanvasRenderingContext2D, s: ShapeObject, scale: number) {
+  if (!s.text || isLineKind(s.kind)) return;
+  const box = shapeTextBox(s);
+  const tb: TextBox = { id: s.id, x: box.x, y: box.y, w: box.w, size: s.text.size, font: s.text.font, color: s.text.color, html: s.text.html };
+  const h = textBoxHeight(tb);
+  tb.y = box.y + Math.max(0, (box.h - h) / 2);
+  ctx.save();
+  if (s.rotation) {
+    ctx.translate((s.x + s.w / 2) * scale, (s.y + s.h / 2) * scale);
+    ctx.rotate((s.rotation * Math.PI) / 180);
+    ctx.translate(-(s.x + s.w / 2) * scale, -(s.y + s.h / 2) * scale);
+  }
+  ctx.beginPath();
+  ctx.rect(box.x * scale, box.y * scale, box.w * scale, box.h * scale);
+  ctx.clip();
+  renderTextBox(ctx, tb, scale);
+  ctx.restore();
+}
 /** Image de fond (page de PDF ou photo) stockée dans le bucket privé board-assets. */
 export interface PageImage { path: string; width: number; height: number }
 export interface BoardPage {
   id: string;
   background: Background;
+  /** Couleur de fond de la page (#rrggbb) sous le motif ; absente = blanc. */
+  color?: string | null;
   strokes: Stroke[];
   image?: PageImage | null;
   /** Rideau de page : la page reste couverte tant qu'on ne la découvre pas. */
@@ -51,7 +104,7 @@ export interface BoardPage {
  * Rendu canvas d'un objet, par type (partagé par l'export, les vignettes, la relecture).
  * `reveal` : version élève ('covered' : caches dessinés, trous masqués) ou corrigé ('revealed').
  */
-export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scale: number, reveal: RenderRevealOptions = { mode: 'revealed' }) {
+export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scale: number, reveal: RenderRevealOptions = { mode: 'revealed' }, objects: readonly BoardObject[] = []) {
   ctx.save();
   if (o.opacity !== undefined) ctx.globalAlpha = o.opacity;
   const covered = reveal.mode === 'covered';
@@ -59,8 +112,15 @@ export function renderObject(ctx: CanvasRenderingContext2D, o: BoardObject, scal
     case 'text':
       renderTextBox(ctx, o, scale, covered ? 'all' : undefined);
       break;
+    case 'connector':
+      // Les extrémités se résolvent sur les objets de la page (géométrie dérivée)
+      renderConnector(ctx, o, objects, scale);
+      break;
     case 'shape':
+      // Une zone cliquable est invisible partout sauf dans l'éditeur (calque DOM)
+      if (o.hotspot) break;
       renderShape(ctx, o, scale);
+      renderShapeText(ctx, o, scale);
       break;
     case 'image': {
       const img = getLoadedImage(o.path);
@@ -110,7 +170,7 @@ export function renderCover(ctx: CanvasRenderingContext2D, o: BoardObject, scale
 
 /** Emprise dessinée d'un objet (sans marge de saisie). */
 export function objectBounds(o: BoardObject): { x: number; y: number; w: number; h: number } {
-  if (o.type === 'shape' || o.type === 'image' || o.type === 'library') return { x: o.x, y: o.y, w: Math.max(o.w, 1), h: Math.max(o.h, 1) };
+  if (o.type === 'shape' || o.type === 'image' || o.type === 'library' || o.type === 'connector') return { x: o.x, y: o.y, w: Math.max(o.w, 1), h: Math.max(o.h, 1) };
   if (o.type === 'text') return textBoxRect(o);
   return objectRect(o);
 }
@@ -185,32 +245,54 @@ export function loadPageImage(path: string): Promise<HTMLImageElement> {
 
 // ---- Rendu ----
 
+/** Couleurs du motif de fond (quadrillage, lignes, Seyès…) sur fond clair. */
+const LIGHT_PATTERN = {
+  gridMajor: '#CBD5E1', gridMinor: '#E5E7EB', lines: '#D1D5DB',
+  seyesSmall: '#DCE7F5', seyesBig: '#9DB7DC', margin: '#E88A8A',
+  graph1: '#8FB3D9', graph2: '#BBD3EA', graph3: '#E1ECF6', axes: '#374151', dots: '#C7CDD8',
+};
+/** Le même motif sur fond sombre (ardoise, noir…). */
+const DARK_PATTERN = {
+  gridMajor: 'rgba(255,255,255,0.28)', gridMinor: 'rgba(255,255,255,0.13)', lines: 'rgba(255,255,255,0.22)',
+  seyesSmall: 'rgba(147,197,253,0.18)', seyesBig: 'rgba(147,197,253,0.42)', margin: 'rgba(252,165,165,0.7)',
+  graph1: 'rgba(147,197,253,0.5)', graph2: 'rgba(147,197,253,0.3)', graph3: 'rgba(147,197,253,0.14)', axes: '#E5E7EB', dots: 'rgba(255,255,255,0.35)',
+};
+/** Vrai si la couleur (#rrggbb) est sombre : luminance relative sous 0,45. */
+export function isDarkColor(hex: string | null | undefined): boolean {
+  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return false;
+  const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.45;
+}
+
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
   bg: Background,
   w: number,
   h: number,
   scale: number,
-  image?: { el: HTMLImageElement; meta: PageImage } | null
+  image?: { el: HTMLImageElement; meta: PageImage } | null,
+  color?: string | null
 ) {
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = color ?? '#FFFFFF';
   ctx.fillRect(0, 0, w, h);
+  // Sur un fond sombre, les lignes du motif passent en clair
+  const P = isDarkColor(color) ? DARK_PATTERN : LIGHT_PATTERN;
   if (bg === 'grid') {
     ctx.lineWidth = 1;
     const step = 25 * scale;
     for (let x = step; x < w; x += step) {
-      ctx.strokeStyle = Math.round(x / step) % 4 === 0 ? '#CBD5E1' : '#E5E7EB';
+      ctx.strokeStyle = Math.round(x / step) % 4 === 0 ? P.gridMajor : P.gridMinor;
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     }
     for (let y = step; y < h; y += step) {
-      ctx.strokeStyle = Math.round(y / step) % 4 === 0 ? '#CBD5E1' : '#E5E7EB';
+      ctx.strokeStyle = Math.round(y / step) % 4 === 0 ? P.gridMajor : P.gridMinor;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
   } else if (bg === 'lines') {
     ctx.lineWidth = 1;
     const step = 40 * scale;
-    ctx.strokeStyle = '#D1D5DB';
+    ctx.strokeStyle = P.lines;
     for (let y = step; y < h; y += step) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
@@ -219,33 +301,33 @@ export function drawBackground(
     const big = 32 * scale, small = big / 4;
     ctx.lineWidth = 1;
     for (let y = big; y < h; y += big) {
-      for (let k = 1; k < 4; k++) { ctx.strokeStyle = '#DCE7F5'; ctx.beginPath(); ctx.moveTo(0, y - big + k * small); ctx.lineTo(w, y - big + k * small); ctx.stroke(); }
-      ctx.strokeStyle = '#9DB7DC'; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      for (let k = 1; k < 4; k++) { ctx.strokeStyle = P.seyesSmall; ctx.beginPath(); ctx.moveTo(0, y - big + k * small); ctx.lineTo(w, y - big + k * small); ctx.stroke(); }
+      ctx.strokeStyle = P.seyesBig; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
-    for (let x = big; x < w; x += big) { ctx.strokeStyle = '#9DB7DC'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-    ctx.strokeStyle = '#E88A8A'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(big * 3, 0); ctx.lineTo(big * 3, h); ctx.stroke();
+    for (let x = big; x < w; x += big) { ctx.strokeStyle = P.seyesBig; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    ctx.strokeStyle = P.margin; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(big * 3, 0); ctx.lineTo(big * 3, h); ctx.stroke();
   } else if (bg === 'graph') {
     const mm = 4 * scale;
-    for (let x = mm; x < w; x += mm) { const n = Math.round(x / mm); ctx.strokeStyle = n % 10 === 0 ? '#8FB3D9' : n % 5 === 0 ? '#BBD3EA' : '#E1ECF6'; ctx.lineWidth = n % 10 === 0 ? 1.2 : 0.8; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-    for (let y = mm; y < h; y += mm) { const n = Math.round(y / mm); ctx.strokeStyle = n % 10 === 0 ? '#8FB3D9' : n % 5 === 0 ? '#BBD3EA' : '#E1ECF6'; ctx.lineWidth = n % 10 === 0 ? 1.2 : 0.8; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    for (let x = mm; x < w; x += mm) { const n = Math.round(x / mm); ctx.strokeStyle = n % 10 === 0 ? P.graph1 : n % 5 === 0 ? P.graph2 : P.graph3; ctx.lineWidth = n % 10 === 0 ? 1.2 : 0.8; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = mm; y < h; y += mm) { const n = Math.round(y / mm); ctx.strokeStyle = n % 10 === 0 ? P.graph1 : n % 5 === 0 ? P.graph2 : P.graph3; ctx.lineWidth = n % 10 === 0 ? 1.2 : 0.8; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
   } else if (bg === 'axes') {
     const step = 25 * scale;
     ctx.lineWidth = 1;
-    ctx.strokeStyle = '#E5E7EB';
+    ctx.strokeStyle = P.gridMinor;
     for (let x = step; x < w; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
     for (let y = step; y < h; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
     const ox = Math.round(w / 2 / step) * step, oy = Math.round(h / 2 / step) * step;
-    ctx.strokeStyle = '#374151'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = P.axes; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(w, oy); ctx.moveTo(ox, 0); ctx.lineTo(ox, h); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(w - 10 * scale, oy - 6 * scale); ctx.lineTo(w, oy); ctx.lineTo(w - 10 * scale, oy + 6 * scale); ctx.moveTo(ox - 6 * scale, 10 * scale); ctx.lineTo(ox, 0); ctx.lineTo(ox + 6 * scale, 10 * scale); ctx.stroke();
-    ctx.fillStyle = '#374151';
+    ctx.fillStyle = P.axes;
     for (let x = ox + step, i = 1; x < w - 12 * scale; x += step, i++) { ctx.beginPath(); ctx.moveTo(x, oy - 4 * scale); ctx.lineTo(x, oy + 4 * scale); ctx.stroke(); }
     for (let x = ox - step; x > 0; x -= step) { ctx.beginPath(); ctx.moveTo(x, oy - 4 * scale); ctx.lineTo(x, oy + 4 * scale); ctx.stroke(); }
     for (let y = oy + step; y < h; y += step) { ctx.beginPath(); ctx.moveTo(ox - 4 * scale, y); ctx.lineTo(ox + 4 * scale, y); ctx.stroke(); }
     for (let y = oy - step; y > 12 * scale; y -= step) { ctx.beginPath(); ctx.moveTo(ox - 4 * scale, y); ctx.lineTo(ox + 4 * scale, y); ctx.stroke(); }
   } else if (bg === 'dots') {
     const step = 25 * scale;
-    ctx.fillStyle = '#C7CDD8';
+    ctx.fillStyle = P.dots;
     for (let x = step; x < w; x += step) for (let y = step; y < h; y += step) { ctx.beginPath(); ctx.arc(x, y, 1.4 * scale, 0, Math.PI * 2); ctx.fill(); }
   }
   if (image) {
@@ -349,13 +431,13 @@ export async function renderPageToCanvas(page: BoardPage, width: number, reveal:
       .filter((p): p is string => !!p)
       .map((path) => loadPageImage(path).catch((err) => console.warn('[boardRender] image :', err)))
   );
-  drawBackground(ctx, page.background, width, height, scale, image);
+  drawBackground(ctx, page.background, width, height, scale, image, page.color);
   if (!reveal.hideInk) for (const s of page.strokes) renderStroke(ctx, s, scale);
   // Les objets passent au-dessus de l'encre, comme dans l'éditeur (calque DOM au premier plan).
   // Version élève : ce qu'un bouton doit encore révéler reste invisible ; corrigé : tout est là.
   for (const o of page.objects ?? []) {
     if (o.hidden && reveal.mode === 'covered') continue;
-    renderObject(ctx, o, scale, reveal);
+    renderObject(ctx, o, scale, reveal, page.objects ?? []);
   }
   return canvas;
 }

@@ -9,7 +9,7 @@
  *   l'export « version élève » ignore ce qui a été révélé.
  */
 import type { BoardPage } from './boardRender';
-import type { BoardObject } from './boardObjects';
+import type { BoardObject, Interaction } from './boardObjects';
 
 export interface RevealCover {
   kind: 'curtain' | 'scratch';
@@ -22,8 +22,10 @@ export interface RevealCover {
 }
 
 /**
- * Rideau d'objet tiré à la main : décalage du drap, en fractions de sa largeur et de sa
- * hauteur (−1 … 1). Le drap reste découpé à l'emprise de l'objet : ce qui dépasse disparaît.
+ * Rideau d'objet tiré à la main : décalage vertical du drap, en fraction de sa hauteur
+ * (−1 … 1), comme un store qu'on remonte ou qu'on descend. Le drap reste découpé à l'emprise
+ * de l'objet : ce qui dépasse disparaît. `dx` est conservé pour les états déjà enregistrés
+ * (le rideau se tirait autrefois dans tous les sens) mais vaut toujours 0 désormais.
  */
 export interface CurtainSlide { dx: number; dy: number }
 
@@ -42,9 +44,17 @@ export interface RevealState {
    * boardObjects) : absent = l'objet suit son réglage `hidden` du document.
    */
   shown: Record<string, boolean>;
+  /** Post-its repliés dans le document mais dépliés pendant la séance (un tap en classe). */
+  unfolded: Record<string, true>;
+  /** Interactions « une seule fois » déjà jouées, clé `boutonId:index`. */
+  fired: Record<string, true>;
+  /** Objets déplacés par un bouton : décalage par rapport à leur position dans le document. */
+  moved: Record<string, { dx: number; dy: number }>;
 }
 
-export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {} };
+export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {} };
+/** État de séance vierge (nouvel objet à chaque appel, pour un `setState`). */
+export const emptyReveal = (): RevealState => ({ pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {} });
 
 const STORAGE_PREFIX = 'classroom-board-reveal:';
 
@@ -58,6 +68,9 @@ export function loadRevealState(sessionId: string): RevealState {
       objects: parsed.objects && typeof parsed.objects === 'object' ? parsed.objects : {},
       gaps: parsed.gaps && typeof parsed.gaps === 'object' ? parsed.gaps : {},
       shown: parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {},
+      unfolded: parsed.unfolded && typeof parsed.unfolded === 'object' ? parsed.unfolded : {},
+      fired: parsed.fired && typeof parsed.fired === 'object' ? parsed.fired : {},
+      moved: parsed.moved && typeof parsed.moved === 'object' ? parsed.moved : {},
     };
   } catch {
     return EMPTY_REVEAL;
@@ -88,20 +101,96 @@ export function settleCurtain(slide: CurtainSlide): true | CurtainSlide | null {
 /** Visibilité effective d'un objet : ce que la séance a décidé, sinon son réglage de départ. */
 export const isObjectVisible = (state: RevealState, o: Pick<BoardObject, 'id' | 'hidden'>) => state.shown[o.id] ?? !o.hidden;
 
+/** Commande envoyée à un widget ou à un son (`reset` : remise à zéro de la page). */
+export type CommandName = 'play' | 'pause' | 'playToggle' | 'start' | 'stop' | 'startToggle' | 'roll' | 'reset';
 /**
- * Déclenche les interactions d'un bouton : chaque cible est affichée, masquée ou basculée.
- * Les cibles disparues (objet supprimé) sont ignorées.
+ * Commande en attente pour un objet, état éphémère du tableau (jamais persisté : un rechargement
+ * ne doit pas relancer un minuteur). `at` change à chaque envoi pour rejouer la même commande.
  */
-export function fireInteractions(state: RevealState, trigger: BoardObject, objects: BoardObject[]): RevealState {
+export interface ObjectCommand { command: CommandName; at: number }
+
+/** Ce qu'un bouton demande au tableau, en plus de l'état : navigation, commande, remise à zéro. */
+export type InteractionEffect =
+  | { kind: 'page'; pageId: string }
+  | { kind: 'pageDelta'; delta: -1 | 1 }
+  | { kind: 'command'; targetId: string; command: Exclude<CommandName, 'reset'> }
+  | { kind: 'reset' }
+  | { kind: 'window'; targetId: string }
+  | { kind: 'zoom'; targetId: string };
+
+/**
+ * Déclenche la séquence d'un bouton. Fonction pure : l'état de séance revient modifié (visibilité,
+ * caches, post-its, « une seule fois »), et les actions qui ne sont pas de l'état (pages, médias,
+ * widgets, remise à zéro) reviennent en liste d'effets, à exécuter **après** l'état, dans l'ordre.
+ * Les cibles disparues (objet supprimé) sont ignorées. Un bouton ne déclenche jamais un autre
+ * bouton : pas de boucle possible.
+ */
+export function fireInteractions(state: RevealState, trigger: BoardObject, objects: BoardObject[]): { state: RevealState; effects: InteractionEffect[] } {
   const byId = new Map(objects.map((o) => [o.id, o]));
   const shown = { ...state.shown };
-  for (const it of trigger.interactions ?? []) {
-    const target = byId.get(it.targetId);
-    if (!target) continue;
-    const visible = shown[target.id] ?? !target.hidden;
-    shown[target.id] = it.action === 'show' ? true : it.action === 'hide' ? false : !visible;
-  }
-  return { ...state, shown };
+  const covers = { ...state.objects };
+  const unfolded = { ...state.unfolded };
+  const fired = { ...state.fired };
+  const moved = { ...state.moved };
+  const effects: InteractionEffect[] = [];
+  (trigger.interactions ?? []).forEach((it: Interaction, index) => {
+    const key = `${trigger.id}:${index}`;
+    if (it.once && fired[key]) return;
+    const target = it.targetId ? byId.get(it.targetId) : undefined;
+    switch (it.action) {
+      case 'show': case 'hide': case 'toggle': {
+        if (!target) return;
+        const visible = shown[target.id] ?? !target.hidden;
+        shown[target.id] = it.action === 'show' ? true : it.action === 'hide' ? false : !visible;
+        break;
+      }
+      case 'reveal': case 'cover': {
+        if (!target) return;
+        if (it.action === 'reveal') covers[target.id] = true; else delete covers[target.id];
+        break;
+      }
+      case 'unfold': case 'fold': {
+        if (!target) return;
+        if (it.action === 'unfold') unfolded[target.id] = true; else delete unfolded[target.id];
+        break;
+      }
+      case 'goto':
+        if (!it.params?.pageId) return;
+        effects.push({ kind: 'page', pageId: it.params.pageId });
+        break;
+      case 'next': effects.push({ kind: 'pageDelta', delta: 1 }); break;
+      case 'prev': effects.push({ kind: 'pageDelta', delta: -1 }); break;
+      case 'reset': effects.push({ kind: 'reset' }); break;
+      case 'window':
+        if (!target || target.type !== 'window') return;
+        effects.push({ kind: 'window', targetId: target.id });
+        break;
+      case 'zoomTo':
+        if (!target) return;
+        effects.push({ kind: 'zoom', targetId: target.id });
+        break;
+      case 'moveTo': {
+        if (!target || it.params?.x === undefined || it.params?.y === undefined) return;
+        moved[target.id] = { dx: it.params.x - target.x, dy: it.params.y - target.y };
+        break;
+      }
+      case 'moveBy': {
+        if (!target) return;
+        const prev = moved[target.id] ?? { dx: 0, dy: 0 };
+        moved[target.id] = { dx: prev.dx + (it.params?.dx ?? 0), dy: prev.dy + (it.params?.dy ?? 0) };
+        break;
+      }
+      case 'moveBack':
+        if (!target) return;
+        delete moved[target.id];
+        break;
+      default:
+        if (!target) return;
+        effects.push({ kind: 'command', targetId: target.id, command: it.action });
+    }
+    if (it.once) fired[key] = true;
+  });
+  return { state: { ...state, shown, objects: covers, unfolded, fired, moved }, effects };
 }
 export const pageRevealedFraction = (state: RevealState, pageId: string) => state.pages[pageId] ?? 0;
 export const revealedGaps = (state: RevealState, objectId: string): ReadonlySet<string> => new Set(state.gaps[objectId] ?? []);
@@ -111,14 +200,22 @@ export function recoverPage(state: RevealState, page: BoardPage): RevealState {
   const objects = { ...state.objects };
   const gaps = { ...state.gaps };
   const shown = { ...state.shown };
-  for (const o of page.objects ?? []) {
-    delete objects[o.id];
-    delete gaps[o.id];
-    delete shown[o.id];
+  const unfolded = { ...state.unfolded };
+  const fired = { ...state.fired };
+  const moved = { ...state.moved };
+  const ids = new Set((page.objects ?? []).map((o) => o.id));
+  for (const id of ids) {
+    delete objects[id];
+    delete gaps[id];
+    delete shown[id];
+    delete unfolded[id];
+    delete moved[id];
   }
+  // Les « une seule fois » des boutons de la page rejouent
+  for (const key of Object.keys(fired)) if (ids.has(key.slice(0, key.lastIndexOf(':')))) delete fired[key];
   const pages = { ...state.pages };
   delete pages[page.id];
-  return { pages, objects, gaps, shown };
+  return { pages, objects, gaps, shown, unfolded, fired, moved };
 }
 
 // ---- Trous dans un texte ----

@@ -223,6 +223,10 @@
 .wbo__frame.is-selected .wbo__image,
 .wbo__frame.is-selected .wbo__lib,
 .wbo__frame.is-selected .wbo__shape { box-shadow: none; outline: 3px solid var(--wb-select, #4F46E5); outline-offset: 6px; }
+/* Forme sélectionnée : contour fin violet, collé à la boîte (les poignées rondes sont dessus) */
+.wbo__frame.is-selected .wbo__shape { outline: 1.5px solid #A21CAF; outline-offset: 0; }
+.wbo__frame.is-selected .wbo__editor--shape, .wbo__frame.is-editing .wbo__editor--shape,
+.wbo__frame.is-active:hover .wbo__editor--shape { outline: none; box-shadow: none; }
 .wbo__frame.is-locked.is-selected .wbo__editor,
 .wbo__frame.is-locked.is-selected .wbo__shape { outline-color: #93A0B4; }
 .wbo__frame.is-active:hover .wbo__editor,
@@ -238,6 +242,20 @@
 .wbo__handle.wbo__handle::before { content: ''; position: absolute; inset: -13px; }
 .wbo__handle--w.wbo__handle--w, .wbo__handle--e.wbo__handle--e { height: 18px; margin-top: -9px; border-radius: 3px; }
 .wbo__handle--n.wbo__handle--n, .wbo__handle--s.wbo__handle--s { width: 18px; margin-left: -9px; border-radius: 3px; }
+/* Formes : angles ronds blancs à bord gris, milieux de côté en pilule (façon tableau de schémas) */
+.wbo__frame--shape .wbo__handle.wbo__handle { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #9CA3AF; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+.wbo__frame--shape .wbo__handle--nw.wbo__handle--nw, .wbo__frame--shape .wbo__handle--ne.wbo__handle--ne,
+.wbo__frame--shape .wbo__handle--sw.wbo__handle--sw, .wbo__frame--shape .wbo__handle--se.wbo__handle--se { margin: 0; }
+.wbo__frame--shape .wbo__handle--nw.wbo__handle--nw { left: -7px; top: -7px; }
+.wbo__frame--shape .wbo__handle--ne.wbo__handle--ne { right: -7px; top: -7px; }
+.wbo__frame--shape .wbo__handle--sw.wbo__handle--sw { left: -7px; bottom: -7px; }
+.wbo__frame--shape .wbo__handle--se.wbo__handle--se { right: -7px; bottom: -7px; }
+.wbo__frame--shape .wbo__handle--w.wbo__handle--w, .wbo__frame--shape .wbo__handle--e.wbo__handle--e { width: 8px; height: 22px; margin-top: -11px; border-radius: 4px; }
+.wbo__frame--shape .wbo__handle--w.wbo__handle--w { left: -4px; }
+.wbo__frame--shape .wbo__handle--e.wbo__handle--e { right: -4px; }
+.wbo__frame--shape .wbo__handle--n.wbo__handle--n, .wbo__frame--shape .wbo__handle--s.wbo__handle--s { width: 22px; height: 8px; margin-left: -11px; border-radius: 4px; }
+.wbo__frame--shape .wbo__handle--n.wbo__handle--n { top: -4px; }
+.wbo__frame--shape .wbo__handle--s.wbo__handle--s { bottom: -4px; }
 .wbo__lock { right: -10px; top: -18px; font-size: 18px; }
 
 /* ───────── B · Menu contextuel ───────── */
@@ -599,3 +617,63 @@
 .wb .wb__btn--danger:hover:not(:disabled) { background: #7F1D1D; color: #FFFFFF; }
 /* La seconde rangée (« … ») était ancrée sur la barre du bas : elle suit désormais l'objet. */
 .wb .wbft .wb__row2 { position: absolute; left: 50%; right: auto; bottom: calc(100% + 8px); transform: translateX(-50%); flex-direction: row; }
+
+/* ───────── G · Densité (lot A du plan formes/connecteurs) ─────────
+   Quatre paliers : confort (TBI, grand écran), normal, compact (≤ 1366 px), serré (≤ 800 px de
+   haut, donc le vidéoprojecteur interactif en 1280×720). Les jetons sont posés sur `.wb` ET sur
+   `.wbpop` (panneaux portalés sur body, hors de `.wb`). Le réglage « Densité » du tableau force
+   un palier via `html[data-wb-density]`, quelle que soit la taille d'écran. */
+.wb, .wbpop { --wb-menu-h: 44px; --wb-menu-pad: 8px 14px; --wb-menu-w: 240px; --wb-panel-pad: 8px; --wb-cell: 48px; }
+.wbpop { --wb-btn: 60px; --wb-btn-sm: 52px; --wb-ico: 28px; --wb-swatch: 44px; --wb-bar-gap: 14px; --wb-bar-pad: 10px; --wb-r-btn: 14px; --wb-r-bar: 22px; }
+@media (max-width: 1599px) {
+  .wb, .wbpop { --wb-menu-h: 42px; --wb-menu-pad: 7px 12px; --wb-menu-w: 230px; --wb-panel-pad: 7px; --wb-cell: 44px; }
+  .wbpop { --wb-btn: 52px; --wb-btn-sm: 46px; --wb-ico: 24px; --wb-swatch: 38px; --wb-bar-gap: 12px; --wb-bar-pad: 8px; --wb-r-btn: 13px; --wb-r-bar: 20px; }
+}
+@media (max-width: 1366px) {
+  .wb, .wbpop { --wb-menu-h: 40px; --wb-menu-pad: 6px 12px; --wb-menu-w: 220px; --wb-panel-pad: 6px; --wb-cell: 40px; }
+  .wbpop { --wb-btn: 44px; --wb-btn-sm: 40px; --wb-ico: 21px; --wb-swatch: 32px; --wb-bar-gap: 8px; --wb-bar-pad: 5px; --wb-r-btn: 12px; --wb-r-bar: 16px; }
+}
+/* Serré : 720p. Cibles de 40 px, 4 px entre les boutons, 3 px de marge de barre. */
+@media (max-height: 800px) {
+  .wb, .wbpop { --wb-btn: 40px; --wb-btn-sm: 36px; --wb-ico: 20px; --wb-swatch: 30px; --wb-bar-gap: 4px; --wb-bar-pad: 3px; --wb-r-btn: 10px; --wb-r-bar: 14px;
+    --wb-menu-h: 36px; --wb-menu-pad: 4px 10px; --wb-menu-w: 200px; --wb-panel-pad: 4px; --wb-cell: 36px; }
+  .wb .wb__bar--bottom { bottom: 6px; }
+  .wb .wb__bar--left { left: 6px; }
+  .wb .wb__bar--right { right: 6px; }
+}
+html[data-wb-density="comfort"] .wb, html[data-wb-density="comfort"] .wbpop {
+  --wb-btn: 60px; --wb-btn-sm: 52px; --wb-ico: 28px; --wb-swatch: 44px; --wb-bar-gap: 14px; --wb-bar-pad: 10px; --wb-r-btn: 14px; --wb-r-bar: 22px;
+  --wb-menu-h: 44px; --wb-menu-pad: 8px 14px; --wb-menu-w: 240px; --wb-panel-pad: 8px; --wb-cell: 48px;
+}
+html[data-wb-density="normal"] .wb, html[data-wb-density="normal"] .wbpop {
+  --wb-btn: 48px; --wb-btn-sm: 42px; --wb-ico: 22px; --wb-swatch: 34px; --wb-bar-gap: 8px; --wb-bar-pad: 5px; --wb-r-btn: 12px; --wb-r-bar: 16px;
+  --wb-menu-h: 40px; --wb-menu-pad: 6px 12px; --wb-menu-w: 220px; --wb-panel-pad: 6px; --wb-cell: 40px;
+}
+html[data-wb-density="tight"] .wb, html[data-wb-density="tight"] .wbpop {
+  --wb-btn: 40px; --wb-btn-sm: 36px; --wb-ico: 20px; --wb-swatch: 30px; --wb-bar-gap: 4px; --wb-bar-pad: 3px; --wb-r-btn: 10px; --wb-r-bar: 14px;
+  --wb-menu-h: 36px; --wb-menu-pad: 4px 10px; --wb-menu-w: 200px; --wb-panel-pad: 4px; --wb-cell: 36px;
+}
+html[data-wb-density="tight"] .wb .wb__bar--bottom { bottom: 6px; }
+html[data-wb-density="tight"] .wb .wb__bar--left { left: 6px; }
+html[data-wb-density="tight"] .wb .wb__bar--right { right: 6px; }
+/* Les menus et panneaux suivent les jetons (leurs blocs d'origine posent des px fixes). */
+.wbm.wbm { min-width: var(--wb-menu-w); padding: var(--wb-panel-pad); font-size: calc(var(--wb-menu-h) * 0.42); }
+.wbm.wbm .wbm__item { min-height: var(--wb-menu-h); padding: var(--wb-menu-pad); }
+.wbm.wbm .wbm__sep { margin: calc(var(--wb-panel-pad) / 2) 8px; }
+.wbpop .wbm .wbm__item { height: var(--wb-menu-h); min-height: 0; padding: 0 10px; font-size: 13px; }
+.wbpop .wbm .wbm__grid { gap: calc(var(--wb-panel-pad) / 2); }
+.wbi__panel.wbi__panel { padding: var(--wb-panel-pad); gap: calc(var(--wb-panel-pad) / 2); }
+.wbi__panel.wbi__panel .wbi__item { min-height: var(--wb-menu-h); padding: 4px 10px; font-size: calc(var(--wb-menu-h) * 0.4); }
+.wbs__panel.wbs__panel { padding: var(--wb-panel-pad); gap: calc(var(--wb-panel-pad) / 2); }
+.wb .wbft { padding: calc(var(--wb-bar-pad) + 1px); gap: var(--wb-bar-gap); }
+
+/* Boutons de connexion et de rotation des formes : taille tactile selon la densité (32 → 40 px) */
+.wbo__connect.wbo__connect, .wbo__rotate.wbo__rotate { width: calc(var(--wb-btn-sm, 40px) - 6px); height: calc(var(--wb-btn-sm, 40px) - 6px); }
+.wbo__connect--n.wbo__connect--n, .wbo__connect--s.wbo__connect--s { margin-left: calc((var(--wb-btn-sm, 40px) - 6px) / -2); }
+.wbo__connect--e.wbo__connect--e, .wbo__connect--w.wbo__connect--w { margin-top: calc((var(--wb-btn-sm, 40px) - 6px) / -2); }
+.wbo__rotate.wbo__rotate { margin-left: calc((var(--wb-btn-sm, 40px) - 6px) / -2); }
+.wbo__connect--n.wbo__connect--n { top: calc(-14px - (var(--wb-btn-sm, 40px) - 6px)); }
+.wbo__connect--s.wbo__connect--s { bottom: calc(-14px - (var(--wb-btn-sm, 40px) - 6px)); }
+.wbo__rotate.wbo__rotate { bottom: calc(-22px - 2 * (var(--wb-btn-sm, 40px) - 6px)); }
+.wbo__connect--e.wbo__connect--e { right: calc(-14px - (var(--wb-btn-sm, 40px) - 6px)); }
+.wbo__connect--w.wbo__connect--w { left: calc(-14px - (var(--wb-btn-sm, 40px) - 6px)); }

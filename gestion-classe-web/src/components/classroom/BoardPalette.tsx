@@ -5,6 +5,7 @@
  * Deux gestes, un seul contact, aucun chronomètre :
  *  - tape (appui puis relâchement sans bouger) : le menu s'ouvre ;
  *  - appui puis glissé : la pastille suit le doigt, sa position est mémorisée au relâchement.
+ * Au clic droit (souris ou stylet avec bouton), la personnalisation du menu s'ouvre directement.
  * Fonctionne en émulation souris (TBI mono-contact), au stylet et au doigt.
  */
 import { useRef, useState } from 'react';
@@ -16,6 +17,8 @@ interface Props {
   onMove: (x: number, y: number) => void;
   /** Ouvre le menu autour du centre de la pastille. */
   onPress: (clientX: number, clientY: number) => void;
+  /** Clic droit : ouvre le paramétrage du menu (éditeur de palette). */
+  onSettings?: () => void;
   open: boolean;
   icon: string;
   /** Couleur de l'anneau : couleur du stylo, jaune du surligneur… `null` = pas d'anneau. */
@@ -27,7 +30,7 @@ interface Props {
 const MOVE_PX = 14;
 const MARGIN = 0.04;
 
-export function BoardPalette({ x, y, onMove, onPress, open, icon, ring, title }: Props) {
+export function BoardPalette({ x, y, onMove, onPress, onSettings, open, icon, ring, title }: Props) {
   const ref = useRef<HTMLButtonElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ id: number; x0: number; y0: number; dragging: boolean } | null>(null);
@@ -51,11 +54,11 @@ export function BoardPalette({ x, y, onMove, onPress, open, icon, ring, title }:
       type="button"
       className={`wbpal ${open ? 'is-open' : ''} ${drag ? 'is-drag' : ''}`}
       style={{ left: `${px * 100}%`, top: `${py * 100}%`, ['--wbpal-ring' as string]: ring ?? 'transparent' }}
-      title={title ?? 'Outils (taper) — glisser pour déplacer'}
+      title={title ?? 'Outils (taper) — glisser pour déplacer — clic droit : personnaliser'}
       aria-label="Palette d'outils"
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onSettings?.(); }}
       onPointerDown={(e) => {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.button !== 0) { e.stopPropagation(); return; }
         e.stopPropagation();
         e.preventDefault();
         if (press.current) return;

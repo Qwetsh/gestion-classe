@@ -25,11 +25,24 @@ import {
   TEXT_SIZES,
   fontCss,
   isEmptyBoardHtml,
+  isFolded,
+  foldedTab,
   sanitizeBoardHtml,
+  textBoxTitle,
 } from '../../lib/boardText';
-import { objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
-import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath } from '../../lib/boardShapes';
-import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type RevealState } from '../../lib/boardReveal';
+import { expandGroups, objectRect, type BoardObject, type TextObject } from '../../lib/boardObjects';
+import { snapMove, unionRect } from '../../lib/boardSnap';
+import { defaultShapeText, shapeTextBox } from '../../lib/boardShapes';
+import { BoardConnectorLayer, type GhostLink } from './BoardConnectorLayer';
+import { objectUnderPoint, type FixedSide } from '../../lib/boardConnectors';
+
+/** Fin d'un geste depuis un bouton de connexion (↑ → ↓ ←) d'une forme. */
+export type ConnectDrop =
+  | { kind: 'tap' }
+  | { kind: 'object'; targetId: string }
+  | { kind: 'point'; x: number; y: number };
+import { MIN_SHAPE_SIZE, arrowHeadPaths, dashPattern, isLineKind, shapePath, shapeContainsPoint } from '../../lib/boardShapes';
+import { curtainSlide, isObjectRevealed, isObjectVisible, revealedGaps, settleCurtain, stripGaps, wrapSelectionAsGap, type CurtainSlide, type ObjectCommand, type RevealState } from '../../lib/boardReveal';
 import { loadPageImage, objectBounds } from '../../lib/boardRender';
 import { BoardScratchCover } from './BoardScratchCover';
 import { TableView } from './objects/TableView';
@@ -117,14 +130,35 @@ interface Props {
   play: boolean;
   /** Un bouton a été touché : déclencher ses interactions. */
   onFire: (id: string) => void;
+  /** Commandes en attente pour les widgets et les sons (lancer, tirer, lire…), par objet. */
+  commands?: Record<string, ObjectCommand>;
+  /** Extracteur de mots : un mot de la zone `id` a été touché ; `rect` est sa boîte à l'écran, en unités. */
+  onExtractWord?: (id: string, word: string, rect: { x: number; y: number; w: number; h: number }) => void;
   /** Choix d'une cible d'interaction : tout objet touché (sauf `pickSourceId`) est renvoyé ici. */
   pickTarget?: ((id: string) => void) | null;
   pickSourceId?: string | null;
+  /** Flèches éphémères : liaison en cours et interactions du bouton sélectionné. */
+  links?: GhostLink[];
+  /** Pas de la grille du fond (unités), pour l'accroche pendant le déplacement ; absent = pas de grille. */
+  snapGrid?: number;
   /** Cellule de tableau qui a le focus (pour le menu contextuel lignes/colonnes). */
   onTableCell?: (objectId: string, r: number, c: number) => void;
   onEquationCommit: (id: string, latex: string, raster: Blob | null, ratio: number) => void;
   onWidgetConfig: (id: string, patch: WidgetObject['config']) => void;
+  /** Un widget pose son résultat sur la page (texte), au point écran donné ou sous lui (null). */
+  onWidgetPlace: (id: string, text: string, client: { x: number; y: number } | null) => void;
+  /** Post-it : replier ou déplier dans le document (édition). */
+  onFoldText: (id: string, folded: boolean) => void;
+  /** Post-it replié touché en classe : déplié pour la séance seulement. */
+  onUnfoldInSession: (id: string) => void;
+  /**
+   * Bouton de connexion d'une forme (↑ → ↓ ←) : tap = copie reliée dans cette direction,
+   * glisser = copie reliée au point lâché, ou flèche seule vers l'objet lâché dessus.
+   */
+  onConnectFrom: (shapeId: string, side: FixedSide, drop: ConnectDrop) => void;
   onToggleInteractive: (id: string) => void;
+  /** Fenêtre : ouvrir son éditeur (double-clic sur la carte). */
+  onEditWindow?: (id: string) => void;
   /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
   students?: string[];
   /** Correcteur orthographique et grammatical (soulignements + propositions) sur les zones de texte. */
@@ -146,8 +180,10 @@ interface Press {
   /** L'objet était-il déjà sélectionné avant cet appui ? (clic = placer le curseur) */
   wasSelected: boolean;
   moved: boolean;
-  mode: 'move' | 'resize';
+  mode: 'move' | 'resize' | 'rotate';
   handle?: Handle;
+  /** Rotation : centre du cadre à l'écran, angle et rotation de départ. */
+  rotate?: { cx: number; cy: number; a0: number; r0: number };
   before: BoardObject[];
   /** Géométrie de départ des objets entraînés. */
   start: Map<string, BoardObject>;
@@ -203,15 +239,17 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onToggleInteractive, students,
-    spellCheck = false, onSpellStatus, play, onFire, pickTarget = null, pickSourceId = null,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, onEditWindow, students, links, snapGrid,
+    spellCheck = false, onSpellStatus, play, onFire, commands, onExtractWord, pickTarget = null, pickSourceId = null,
   },
   ref
 ) {
   const editorsRef = useRef<Map<string, HTMLDivElement>>(new Map());
-  /** Rideau d'objet en train d'être tiré : le drap suit le doigt, borné à l'emprise de l'objet. */
-  const curtainDragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; start: CurtainSlide; w: number; h: number; moved: boolean; slide: CurtainSlide } | null>(null);
+  /** Rideau d'objet en train d'être tiré : le drap suit le doigt verticalement, borné à l'emprise de l'objet. */
+  const curtainDragRef = useRef<{ id: string; pointerId: number; startY: number; start: CurtainSlide; h: number; moved: boolean; slide: CurtainSlide } | null>(null);
   /** Bouton d'interaction pressé : il se déclenche au relâchement si le doigt n'a pas bougé. */
+  /** Instant du dernier repli : le clic sur « – » ne doit pas être relu comme un double-clic sur le dossier. */
+  const lastFoldRef = useRef(0);
   const tapRef = useRef<{ id: string; pointerId: number; x: number; y: number } | null>(null);
   const spellRef = useRef<SpellApi>(null);
   const objectsRef = useRef(objects);
@@ -221,7 +259,16 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   /** Objets tels qu'ils étaient à l'entrée en édition (pour un seul pas d'annulation). */
   const editStartRef = useRef<BoardObject[] | null>(null);
   const pressRef = useRef<Press | null>(null);
+  /** Guides d'alignement affichés pendant un déplacement (unités). */
+  const [guides, setGuides] = useState<{ vertical: number[]; horizontal: number[] } | null>(null);
   const [, forceRender] = useState(0);
+
+  /** Contexte 2D hors écran pour tester si un tap tombe dans le tracé d'une zone (ovale, contour). */
+  const hitCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const hitCtx = () => {
+    if (!hitCtxRef.current) { try { hitCtxRef.current = document.createElement('canvas').getContext('2d'); } catch { hitCtxRef.current = null; } }
+    return hitCtxRef.current;
+  };
 
   /** URL signée des images (objets image, couvertures de tickets), par chemin. */
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
@@ -238,6 +285,12 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   // Les trous non révélés reçoivent la classe is-hidden (pas en saisie : on voit tout).
   useEffect(() => {
     for (const o of objects) {
+      if (o.type === 'shape') {
+        const el = editorsRef.current.get(o.id);
+        const html = o.text?.html ?? defaultShapeText(o).html;
+        if (el && document.activeElement !== el && el.innerHTML !== html) el.innerHTML = html;
+        continue;
+      }
       if (o.type !== 'text') continue;
       const el = editorsRef.current.get(o.id);
       if (!el) continue;
@@ -288,6 +341,14 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     const html = sanitizeBoardHtml(el.innerHTML);
     const before = commit ? editStartRef.current : null;
     if (commit) editStartRef.current = null;
+    const shape = objectsRef.current.find((t) => t.id === id);
+    if (shape?.type === 'shape') {
+      // Texte dans une forme : vide à la sortie = pas de texte du tout
+      if (commit && isEmptyBoardHtml(html)) { patch(id, (o) => { const { text: _t, ...rest } = o as typeof shape; void _t; return rest as BoardObject; }, before); return; }
+      if (shape.text?.html === html && !commit) return;
+      patch(id, (o) => (o.type === 'shape' ? { ...o, text: { ...(o.text ?? defaultShapeText(o)), html } } : o), before);
+      return;
+    }
     const current = textById(id);
     if (!current || current.type !== 'text') return;
     if (commit && isEmptyBoardHtml(html)) {
@@ -659,7 +720,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     pressRef.current = null;
   }, []);
 
-  const startPress = useCallback((e: React.PointerEvent, o: BoardObject, mode: 'move' | 'resize', handle?: Handle) => {
+  const startPress = useCallback((e: React.PointerEvent, o: BoardObject, mode: 'move' | 'resize' | 'rotate', handle?: Handle) => {
     if (!active) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.stopPropagation();
@@ -672,6 +733,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     } else if (!wasSelected) {
       ids = new Set([o.id]);
     }
+    // Un membre de groupe entraîne tout son groupe
+    ids = expandGroups(objectsRef.current, ids);
     if (editingId && editingId !== o.id) onEdit(null);
     onSelect(ids);
     selectedRef.current = ids;
@@ -684,6 +747,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
       startX: e.clientX, startY: e.clientY, wasSelected, moved: false, mode, handle,
       before: objectsRef.current, start, timer: null,
     };
+    if (mode === 'rotate') {
+      const frame = (e.currentTarget as HTMLElement).closest<HTMLElement>('.wbo__frame')?.getBoundingClientRect();
+      if (frame) {
+        const cx = frame.left + frame.width / 2, cy = frame.top + frame.height / 2;
+        press.rotate = { cx, cy, a0: Math.atan2(e.clientY - cy, e.clientX - cx), r0: o.type === 'shape' ? o.rotation ?? 0 : 0 };
+      }
+    }
     // Appui long (doigt, stylet) = menu contextuel
     if (e.pointerType !== 'mouse' && mode === 'move') {
       const { clientX, clientY } = e;
@@ -713,6 +783,35 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
       }
     }
     if (p.start.size === 0) return;
+    if (p.mode === 'move') {
+      // Aimantation : la boîte de la sélection s'aligne sur les objets voisins et la grille,
+      // sauf Alt enfoncé (déplacement libre)
+      const rawDx = dxPx / scale, rawDy = dyPx / scale;
+      const movedRects = [...p.start.values()].map((s) => objectRect({ ...s, x: s.x + rawDx, y: s.y + rawDy } as BoardObject));
+      const box = unionRect(movedRects);
+      let sdx = rawDx, sdy = rawDy;
+      if (box && !e.altKey) {
+        const others = objectsRef.current.filter((o) => !p.start.has(o.id) && o.type !== 'connector' && isObjectVisible(reveal, o)).map(objectRect);
+        // Seuil de 10 px écran : assez large pour le doigt sur TBI, assez étroit pour rester volontaire
+        const snap = snapMove(box, others, 10 / scale, snapGrid);
+        sdx += snap.dx; sdy += snap.dy;
+        setGuides(snap.vertical.length || snap.horizontal.length ? { vertical: snap.vertical, horizontal: snap.horizontal } : null);
+      } else setGuides(null);
+      emit(objectsRef.current.map((o) => { const s = p.start.get(o.id); return s ? { ...o, x: Math.round(s.x + sdx), y: Math.round(s.y + sdy) } : o; }), null);
+      forceRender((v) => v + 1);
+      return;
+    }
+    if (p.mode === 'rotate') {
+      const r = p.rotate;
+      if (!r) return;
+      const a = Math.atan2(e.clientY - r.cy, e.clientX - r.cx);
+      let rot = r.r0 + ((a - r.a0) * 180) / Math.PI;
+      if (e.shiftKey) rot = Math.round(rot / 15) * 15;
+      rot = ((Math.round(rot) % 360) + 360) % 360;
+      emit(objectsRef.current.map((o) => (p.start.has(o.id) && o.type === 'shape' ? { ...o, rotation: rot || undefined } : o)), null);
+      forceRender((v) => v + 1);
+      return;
+    }
     const dx = dxPx / scale;
     const dy = dyPx / scale;
     const next = objectsRef.current.map((o) => {
@@ -737,8 +836,14 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         return { ...o, x, w };
       }
       if ('h' in o && 'h' in s && typeof o.h === 'number' && typeof s.h === 'number') {
-        let w = horizontal ? (left ? s.w - dx : s.w + dx) : s.w;
-        let hh = vertical ? (top ? s.h - dy : s.h + dy) : s.h;
+        // Forme tournée : le glissement est lu dans le repère de la forme, et le côté opposé à
+        // la poignée reste en place sur la page (sinon la forme dérive en grandissant)
+        const rot = s.type === 'shape' && s.rotation ? s.rotation : 0;
+        const ang = (rot * Math.PI) / 180;
+        const ldx = rot ? dx * Math.cos(-ang) - dy * Math.sin(-ang) : dx;
+        const ldy = rot ? dx * Math.sin(-ang) + dy * Math.cos(-ang) : dy;
+        let w = horizontal ? (left ? s.w - ldx : s.w + ldx) : s.w;
+        let hh = vertical ? (top ? s.h - ldy : s.h + ldy) : s.h;
         // Proportions conservées : Maj sur une forme, toujours sur une image ou une équation par les coins
         const keepRatio = h.length === 2 && s.w > 0 && s.h > 0 && (e.shiftKey || o.type === 'image' || o.type === 'equation' || o.type === 'library');
         if (keepRatio) {
@@ -750,6 +855,18 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         const minH = line ? 0 : MIN_SHAPE_SIZE;
         w = Math.max(line ? 0 : MIN_SHAPE_SIZE, Math.round(w));
         hh = Math.max(minH, Math.round(hh));
+        if (rot) {
+          // Point d'ancrage : milieu du côté (ou coin) opposé à la poignée, exprimé depuis le centre
+          const ax = left ? 1 : h.includes('e') ? -1 : 0;
+          const ay = top ? 1 : h.includes('s') ? -1 : 0;
+          const cos = Math.cos(ang), sin = Math.sin(ang);
+          const c0x = s.x + s.w / 2, c0y = s.y + s.h / 2;
+          const px = c0x + (ax * s.w / 2) * cos - (ay * s.h / 2) * sin;
+          const py = c0y + (ax * s.w / 2) * sin + (ay * s.h / 2) * cos;
+          const c1x = px - ((ax * w / 2) * cos - (ay * hh / 2) * sin);
+          const c1y = py - ((ax * w / 2) * sin + (ay * hh / 2) * cos);
+          return { ...o, x: Math.round(c1x - w / 2), y: Math.round(c1y - hh / 2), w, h: hh } as BoardObject;
+        }
         const x = left ? Math.round(s.x + (s.w - w)) : s.x;
         const y = top ? Math.round(s.y + (s.h - hh)) : s.y;
         return { ...o, x, y, w, h: hh } as BoardObject;
@@ -758,12 +875,16 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     });
     emit(next, null);
     forceRender((v) => v + 1);
-  }, [scale, emit, editingId, onEdit]);
+  }, [scale, emit, editingId, onEdit, reveal, snapGrid]);
+
+  // Extracteur de mots : défini plus bas (il a besoin de clientToUnit), appelé via cette ref
+  const extractRef = useRef<((o: TextObject, clientX: number, clientY: number) => void) | null>(null);
 
   const endPress = useCallback((e: React.PointerEvent) => {
     const p = pressRef.current;
     if (!p || e.pointerId !== p.pointerId) return;
     clearPress(e);
+    setGuides(null);
     if (p.moved) {
       if (p.start.size > 0) emit(objectsRef.current, p.before);
       return;
@@ -773,11 +894,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     if (!o || !EDITABLE_TYPES.has(o.type) || o.locked) return;
     // Clic sans déplacement : curseur si la zone était déjà sélectionnée, ou au doigt / stylet
     if (editingId === p.id) return;
+    // Extracteur de mots : le tap duplique le mot touché au lieu d'ouvrir la saisie (double-clic pour écrire)
+    if (o.type === 'text' && o.wordExtractor && onExtractWord && !isFolded(o)) { extractRef.current?.(o, e.clientX, e.clientY); return; }
     if (p.wasSelected || p.pointerType !== 'mouse') beginEdit(p.id, e.clientX, e.clientY);
     // Le pointeur est capturé par le cadre : le clic n'atteint pas l'éditeur, on regarde ici
     // si un mot souligné par le correcteur était sous le doigt.
     if (o.type === 'text') spellRef.current?.handleClick(o.id, e.clientX, e.clientY);
-  }, [clearPress, emit, editingId, beginEdit]);
+  }, [clearPress, emit, editingId, beginEdit, onExtractWord]);
 
   const removeObject = useCallback((id: string) => {
     onEdit(null);
@@ -787,29 +910,123 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
 
   const single = selectedIds.size === 1 ? objects.find((o) => selectedIds.has(o.id)) ?? null : null;
 
+  // Point écran → unités de page : le calque vit dans la vue zoomée, son rectangle écran le dit
+  const layerRef = useRef<HTMLDivElement>(null);
+  const clientToUnit = useCallback((clientX: number, clientY: number) => {
+    const r = layerRef.current?.getBoundingClientRect();
+    if (!r || stage.width <= 0) return { x: 0, y: 0 };
+    const k = (r.width / stage.width) * scale;
+    return { x: (clientX - r.left) / k, y: (clientY - r.top) / k };
+  }, [stage.width, scale]);
+
+  // Extracteur de mots : retrouve le mot sous le point touché dans le rendu DOM de la zone,
+  // puis remonte son texte et sa boîte (en unités de page) au tableau, qui crée la copie.
+  const extractWordAt = useCallback((o: TextObject, clientX: number, clientY: number) => {
+    if (!onExtractWord) return;
+    const editor = editorsRef.current.get(o.id);
+    if (!editor) return;
+    // Position du caret sous le point : API standard, ou l'ancienne API WebKit
+    type CaretDoc = Document & {
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    const doc = document as CaretDoc;
+    let node: Node | null = null;
+    let offset = 0;
+    if (doc.caretPositionFromPoint) {
+      const pos = doc.caretPositionFromPoint(clientX, clientY);
+      if (pos) { node = pos.offsetNode; offset = pos.offset; }
+    } else if (doc.caretRangeFromPoint) {
+      const rg = doc.caretRangeFromPoint(clientX, clientY);
+      if (rg) { node = rg.startContainer; offset = rg.startOffset; }
+    }
+    if (!node || node.nodeType !== Node.TEXT_NODE || !editor.contains(node)) return;
+    // Un trou de texte à trous se révèle au clic, il ne s'extrait pas
+    if ((node.parentElement as HTMLElement | null)?.closest('[data-gap]')) return;
+    const text = node.textContent ?? '';
+    const isWordChar = (ch: string) => /[\p{L}\p{N}'’-]/u.test(ch);
+    let start = offset;
+    let end = offset;
+    while (start > 0 && isWordChar(text[start - 1])) start--;
+    while (end < text.length && isWordChar(text[end])) end++;
+    if (start === end) return;
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    const r = range.getBoundingClientRect();
+    // Le caret se pose au bord du mot voisin quand on touche un espace : on exige d'être sur le mot
+    if (clientX < r.left - 2 || clientX > r.right + 2 || clientY < r.top - 2 || clientY > r.bottom + 2) return;
+    const tl = clientToUnit(r.left, r.top);
+    const br = clientToUnit(r.right, r.bottom);
+    onExtractWord(o.id, text.slice(start, end), { x: tl.x, y: tl.y, w: br.x - tl.x, h: br.y - tl.y });
+  }, [onExtractWord, clientToUnit]);
+  useEffect(() => { extractRef.current = extractWordAt; }, [extractWordAt]);
+
+  // Geste de connexion (bouton ↑ → ↓ ← d'une forme) : fantôme de la copie qui suit le pointeur
+  const connectRef = useRef<{ id: string; side: FixedSide; pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
+  const [connectGhost, setConnectGhost] = useState<{ id: string; x: number; y: number; w: number; h: number; target: string | null } | null>(null);
+  const startConnect = (e: React.PointerEvent, o: BoardObject, side: FixedSide) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.stopPropagation(); e.preventDefault();
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
+    connectRef.current = { id: o.id, side, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false };
+  };
+  const moveConnect = (e: React.PointerEvent, o: BoardObject) => {
+    const d = connectRef.current;
+    if (!d || d.pointerId !== e.pointerId || o.type !== 'shape') return;
+    if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < DRAG_THRESHOLD_PX) return;
+    d.moved = true;
+    const u = clientToUnit(e.clientX, e.clientY);
+    const target = objectUnderPoint(e.clientX, e.clientY, objectsRef.current, o.id);
+    setConnectGhost({ id: o.id, x: u.x - o.w / 2, y: u.y - o.h / 2, w: o.w, h: o.h, target: target?.id ?? null });
+  };
+  const endConnect = (e: React.PointerEvent, o: BoardObject) => {
+    const d = connectRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    connectRef.current = null;
+    setConnectGhost(null);
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
+    if (!d.moved) { onConnectFrom(o.id, d.side, { kind: 'tap' }); return; }
+    const target = objectUnderPoint(e.clientX, e.clientY, objectsRef.current, o.id);
+    if (target) onConnectFrom(o.id, d.side, { kind: 'object', targetId: target.id });
+    else { const u = clientToUnit(e.clientX, e.clientY); onConnectFrom(o.id, d.side, { kind: 'point', x: Math.round(u.x), y: Math.round(u.y) }); }
+  };
+
   return (
-    <div className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
-      {objects.map((o) => {
+    <div ref={layerRef} className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
+      {objects.map((raw) => {
+        // Les connecteurs n'ont pas de cadre : ils sont dessinés par le calque SVG plus bas
+        if (raw.type === 'connector') return null;
+        // Post-it déplié pour la séance : rendu comme s'il n'était pas replié
+        const o: BoardObject = raw.type === 'text' && raw.collapsed && reveal.unfolded?.[raw.id] ? { ...raw, collapsed: false } : raw;
         const visible = isObjectVisible(reveal, o);
-        // En lecture, un objet caché n'est pas là du tout (ni cliquable, ni dessiné)
-        if (!visible && play) return null;
+        // En lecture, un objet caché n'est pas là du tout (ni cliquable, ni dessiné) ; une fenêtre
+        // n'existe sur la page qu'en édition (en classe, un bouton l'ouvre)
+        if ((!visible || o.type === 'window') && play) return null;
+        // Déplacé par un bouton en séance : translation (animée en lecture), le document ne bouge pas
+        const mv = reveal.moved?.[o.id];
         const rect = objectRect(o);
         const isEditing = editingId === o.id;
         const isSelected = selectedIds.has(o.id);
         const showHandles = active && single?.id === o.id && !o.locked;
         const isTrigger = (o.interactions?.length ?? 0) > 0;
+        // Extracteur de mots : en lecture, la zone reste touchable (tap = dupliquer le mot)
+        const isExtractor = o.type === 'text' && !!o.wordExtractor && !!onExtractWord && !isFolded(o);
         const pickable = pickTarget !== null && o.id !== pickSourceId;
         return (
           <div
             key={o.id}
             data-obj={o.id}
-            className={`wbo__frame wbo__frame--${o.type} ${active ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${isEditing ? 'is-editing' : ''} ${o.locked ? 'is-locked' : ''} ${!visible ? 'is-ghost' : ''} ${isTrigger ? 'is-trigger' : ''} ${play && isTrigger ? 'is-playable' : ''} ${pickable ? 'is-pick' : ''} ${pickTarget && o.id === pickSourceId ? 'is-pick-source' : ''}`}
+            className={`wbo__frame wbo__frame--${o.type} ${active ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${isEditing ? 'is-editing' : ''} ${o.locked ? 'is-locked' : ''} ${!visible ? 'is-ghost' : ''} ${isTrigger ? 'is-trigger' : ''} ${play && isTrigger ? 'is-playable' : ''} ${play && isExtractor && !isTrigger ? 'is-extractor' : ''} ${pickable ? 'is-pick' : ''} ${pickTarget && o.id === pickSourceId ? 'is-pick-source' : ''}`}
             style={{
               left: o.x * scale,
               top: o.y * scale,
               width: o.w * scale,
               minHeight: (o.type === 'shape' || o.type === 'image' || o.type === 'library' ? o.h : rect.h) * scale,
               opacity: o.opacity ?? 1,
+              // Forme tournée : tout le cadre tourne (poignées, contour, texte), autour de son centre
+              transform: [mv ? `translate(${mv.dx * scale}px, ${mv.dy * scale}px)` : '', o.type === 'shape' && o.rotation ? `rotate(${o.rotation}deg)` : ''].filter(Boolean).join(' ') || undefined,
+              transition: play && mv ? 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)' : undefined,
             }}
             onPointerDown={(e) => {
               // Choix d'une cible d'interaction : l'objet touché est la cible, rien d'autre ne bouge
@@ -818,8 +1035,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 if (pickable) pickTarget(o.id);
                 return;
               }
-              // Bouton en lecture : se déclenche au relâchement (tape sans déplacement)
-              if (play && isTrigger) {
+              // Bouton en lecture (ou extracteur de mots) : se déclenche au relâchement (tape sans déplacement)
+              if (play && (isTrigger || isExtractor)) {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.stopPropagation(); e.preventDefault();
                 tapRef.current = { id: o.id, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
@@ -836,14 +1053,27 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               if (tap && tap.pointerId === e.pointerId) {
                 tapRef.current = null;
                 try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
-                if (tap.id === o.id && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 12) onFire(o.id);
+                if (tap.id === o.id && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 12) {
+                  // Zone ovale ou libre : le tap doit tomber dans le tracé, pas seulement dans la boîte
+                  if (o.type === 'shape' && o.hotspot && o.kind !== 'rect' && o.kind !== 'rounded-rect') {
+                    const u = clientToUnit(e.clientX, e.clientY);
+                    const shifted = mv ? { ...o, x: o.x + mv.dx, y: o.y + mv.dy } : o;
+                    if (!shapeContainsPoint(shifted, u.x, u.y, hitCtx(), 4)) return;
+                  }
+                  if (isTrigger) onFire(o.id);
+                  else if (o.type === 'text') extractRef.current?.(o, e.clientX, e.clientY);
+                }
                 return;
               }
               endPress(e);
             }}
             onPointerCancel={(e) => { const p = pressRef.current; clearPress(e); if (p?.moved) emit(objectsRef.current, p.before); }}
             onDoubleClick={(e) => {
-              if (!active || !EDITABLE_TYPES.has(o.type) || o.locked || isEditing) return;
+              if (o.type === 'window') { if (active && !o.locked) { e.stopPropagation(); onEditWindow?.(o.id); } return; }
+              const shapeText = o.type === 'shape' && !isLineKind(o.kind);
+              if (!active || (!EDITABLE_TYPES.has(o.type) && !shapeText) || o.locked || isEditing) return;
+              // Un post-it replié ne s'édite pas : le dossier gère lui-même son dépliage
+              if (o.type === 'text' && isFolded(o)) return;
               e.stopPropagation();
               beginEdit(o.id, e.clientX, e.clientY);
             }}
@@ -876,9 +1106,16 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             {(o.type === 'video' || o.type === 'web') && (
               <EmbedView o={o} scale={scale} active={active} onToggleInteractive={() => onToggleInteractive(o.id)} />
             )}
-            {o.type === 'audio' && <AudioView o={o} scale={scale} />}
+            {o.type === 'audio' && <AudioView o={o} scale={scale} command={commands?.[o.id]} />}
             {o.type === 'link' && <LinkView o={o} scale={scale} active={active} />}
-            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} />}
+            {o.type === 'window' && (
+              <div className="wbo__window" style={{ width: o.w * scale, height: o.h * scale, fontSize: Math.max(11, 16 * scale) }} title="Fenêtre : double-clic pour modifier ; un bouton l'ouvre en classe">
+                <span className="wbo__window-icon" aria-hidden>🗔</span>
+                <span className="wbo__window-title">{o.title || 'Fenêtre'}</span>
+                {o.imagePath && <span className="wbo__window-img" aria-hidden>🖼</span>}
+              </div>
+            )}
+            {o.type === 'widget' && <WidgetView o={o} scale={scale} students={students} command={commands?.[o.id]} onConfig={(patchCfg) => onWidgetConfig(o.id, patchCfg)} onPlace={(text, client) => onWidgetPlace(o.id, text, client)} />}
             {o.type === 'equation' && (
               <EquationView
                 o={o}
@@ -922,8 +1159,13 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 height={Math.max(1, o.h * scale)}
                 viewBox={`0 0 ${Math.max(1, o.w)} ${Math.max(1, o.h)}`}
                 preserveAspectRatio="none"
-                style={{ transform: o.rotation ? `rotate(${o.rotation}deg)` : undefined }}
               >
+                {o.hotspot ? (
+                  // Zone cliquable : pointillé fin et voile léger en édition, rien en lecture
+                  !play && (
+                    <path d={shapePath(o)} fill="rgba(99,102,241,0.10)" stroke="#6366F1" strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray="6 4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 1.5 }} />
+                  )
+                ) : (
                 <path
                   d={shapePath(o)}
                   fill={o.fill && !isLineKind(o.kind) ? o.fill : 'none'}
@@ -935,12 +1177,83 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   vectorEffect="non-scaling-stroke"
                   style={{ strokeWidth: o.strokeWidth * scale }}
                 />
-                {arrowHeadPaths(o).map((d, i) => (
+                )}
+                {!o.hotspot && arrowHeadPaths(o).map((d, i) => (
                   <path key={i} d={d} fill={o.stroke} stroke={o.stroke} strokeWidth={o.strokeWidth} strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ strokeWidth: o.strokeWidth * scale }} />
                 ))}
               </svg>
             )}
-            {o.type === 'text' && (
+            {o.type === 'shape' && !isLineKind(o.kind) && (o.text || isEditing) && (() => {
+              // Texte dans la forme : même éditeur que les zones de texte, centré dans la boîte
+              // intérieure, tourné avec la forme (l'origine de rotation reste le centre de la forme)
+              const t = o.text ?? defaultShapeText(o);
+              const b = shapeTextBox(o);
+              const ox = (b.x - o.x) * scale, oy = (b.y - o.y) * scale;
+              return (
+                <div
+                  className="wbo__shape-textbox"
+                  style={{ left: ox, top: oy, width: b.w * scale, height: b.h * scale }}
+                >
+                  <div
+                    className="wbo__editor wbo__editor--shape"
+                    ref={(el) => { if (el) editorsRef.current.set(o.id, el); else editorsRef.current.delete(o.id); }}
+                    contentEditable={isEditing}
+                    suppressContentEditableWarning
+                    spellCheck={false}
+                    style={{ fontFamily: fontCss(t.font), fontSize: t.size * scale, lineHeight: LINE_HEIGHT, color: t.color, ['--wbo-indent' as string]: `${INDENT_EM}em` }}
+                    onInput={() => syncFromDom(o.id, false)}
+                    onBlur={() => { if (isEditing) syncFromDom(o.id, true); }}
+                    onKeyUp={refreshFormat}
+                    onMouseUp={refreshFormat}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Escape') { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); onEdit(null); return; }
+                      if (handleShortcut(e)) e.preventDefault();
+                    }}
+                  />
+                </div>
+              );
+            })()}
+            {o.type === 'text' && isFolded(o) && (() => {
+              // Post-it replié : un petit dossier. En classe, un tap le déplie pour la séance ;
+              // en édition, le « + » (ou un double-clic) le déplie pour de bon.
+              const t = foldedTab(o);
+              return (
+                <div
+                  className="wbo__folded"
+                  style={{
+                    width: rect.w * scale, height: rect.h * scale, color: o.color, fontFamily: fontCss(o.font), fontSize: o.size * 0.7 * scale,
+                    ['--wbo-fold-bg' as string]: o.background, ['--wbo-fold-tab-h' as string]: `${t.tabH * scale}px`,
+                    ['--wbo-fold-tab-w' as string]: `${t.tabW * scale}px`, ['--wbo-fold-r' as string]: `${t.radius * scale}px`,
+                  }}
+                  title={play ? 'Toucher pour déplier' : 'Post-it replié'}
+                  onClick={(e) => { if (play) { e.stopPropagation(); onUnfoldInSession(o.id); } }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    // Le clic sur « – » qui vient de replier ne doit pas être relu comme un double-clic ici
+                    if (!play && Date.now() - lastFoldRef.current > 600) onFoldText(o.id, false);
+                  }}
+                >
+                  <span className="wbo__folded-tab" aria-hidden />
+                  <span className="wbo__folded-body">
+                    <span className="wbo__folded-title">{textBoxTitle(o.html) || 'Post-it'}</span>
+                  </span>
+                  {play ? (
+                    <span className="wbo__folded-plus" aria-hidden>+</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wbo__folded-plus wbo__folded-plus--btn"
+                      title="Déplier le post-it"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); onFoldText(o.id, false); }}
+                    >+</button>
+                  )}
+                </div>
+              );
+            })()}
+            {o.type === 'text' && !isFolded(o) && (
               <div
                 className="wbo__editor"
                 ref={(el) => {
@@ -1005,26 +1318,27 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   </div>
                 );
               }
-              // Rideau : un drap qu'on tire à la main dans n'importe quel sens (ou qu'on tape pour
-              // tout découvrir). En édition, seule la tirette tire : le reste sélectionne et déplace.
-              const slide = curtainSlide(reveal, o.id) ?? { dx: 0, dy: 0 };
+              // Rideau : un drap qu'on tire à la main vers le haut ou vers le bas, comme un store (ou
+              // qu'on tape pour tout découvrir). Le décalage horizontal est ignoré, y compris s'il
+              // vient d'un état enregistré avant le verrouillage de l'axe. En édition, seule la
+              // tirette tire : le reste sélectionne et déplace.
+              const slide: CurtainSlide = { dx: 0, dy: curtainSlide(reveal, o.id)?.dy ?? 0 };
               const w = Math.max(1, b.w * scale), h = Math.max(1, b.h * scale);
-              const tx = slide.dx * w, ty = slide.dy * h;
-              const visX0 = Math.max(0, tx), visX1 = Math.min(w, w + tx), visY1 = Math.min(h, h + ty);
-              const gripLeft = (visX0 + visX1) / 2, gripTop = visY1;
+              const ty = slide.dy * h;
+              const gripLeft = w / 2, gripTop = Math.min(h, h + ty);
               const beginDrag = (e: React.PointerEvent) => {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.stopPropagation(); e.preventDefault();
                 try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
-                curtainDragRef.current = { id: o.id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, start: slide, w, h, moved: false, slide };
+                curtainDragRef.current = { id: o.id, pointerId: e.pointerId, startY: e.clientY, start: slide, h, moved: false, slide };
               };
               const moveDrag = (e: React.PointerEvent) => {
                 const d = curtainDragRef.current;
                 if (!d || d.id !== o.id || d.pointerId !== e.pointerId) return;
-                const dxPx = e.clientX - d.startX, dyPx = e.clientY - d.startY;
-                if (!d.moved && Math.hypot(dxPx, dyPx) < 6) return;
+                const dyPx = e.clientY - d.startY;
+                if (!d.moved && Math.abs(dyPx) < 6) return;
                 d.moved = true;
-                d.slide = { dx: Math.max(-1, Math.min(1, d.start.dx + dxPx / d.w)), dy: Math.max(-1, Math.min(1, d.start.dy + dyPx / d.h)) };
+                d.slide = { dx: 0, dy: Math.max(-1, Math.min(1, d.start.dy + dyPx / d.h)) };
                 onRevealObject(o.id, d.slide);
               };
               const endDrag = (e: React.PointerEvent, tapReveals: boolean) => {
@@ -1045,10 +1359,10 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                     className="wbo__curtain-sheet"
                     style={{
                       background: cover.color,
-                      transform: tx || ty ? `translate(${tx}px, ${ty}px)` : undefined,
-                      clipPath: tx || ty ? `inset(${Math.max(0, -ty)}px ${Math.max(0, tx)}px ${Math.max(0, ty)}px ${Math.max(0, -tx)}px)` : undefined,
+                      transform: ty ? `translateY(${ty}px)` : undefined,
+                      clipPath: ty ? `inset(${Math.max(0, -ty)}px 0 ${Math.max(0, ty)}px 0)` : undefined,
                     }}
-                    title={active ? 'Tirette : glisser pour découvrir · double-clic : tout découvrir' : 'Glisser pour tirer le rideau · toucher : tout découvrir'}
+                    title={active ? 'Tirette : glisser vers le haut ou le bas pour découvrir · double-clic : tout découvrir' : 'Glisser vers le haut ou le bas pour tirer le rideau · toucher : tout découvrir'}
                     onPointerDown={(e) => { if (!active) beginDrag(e); }}
                     onPointerMove={moveDrag}
                     onPointerUp={(e) => endDrag(e, true)}
@@ -1059,7 +1373,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                   <div
                     className="wbo__curtain-grip"
                     style={{ left: gripLeft, top: gripTop }}
-                    title="Tirer le rideau"
+                    title="Tirer le rideau vers le haut ou le bas"
                     onPointerDown={beginDrag}
                     onPointerMove={moveDrag}
                     onPointerUp={(e) => endDrag(e, false)}
@@ -1068,13 +1382,42 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 </div>
               );
             })()}
-            {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡</span>}
+            {active && o.type === 'text' && o.background && !o.collapsed && !isEditing && (
+              // Post-it : bouton de repli, discret tant que l'objet n'est pas sélectionné
+              <button
+                type="button"
+                className={`wbo__fold ${isSelected ? 'is-visible' : ''}`}
+                style={{ width: 26 * Math.max(0.7, Math.min(1.4, scale)), height: 26 * Math.max(0.7, Math.min(1.4, scale)) }}
+                title="Replier le post-it"
+                onPointerDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); lastFoldRef.current = Date.now(); onFoldText(o.id, true); }}
+              >–</button>
+            )}
+            {!play && isTrigger && <span className="wbo__badge wbo__badge--trigger" title="Bouton : déclenche des interactions">⚡{(o.interactions?.length ?? 0) > 1 ? ` ${o.interactions!.length}` : ''}</span>}
+            {!play && o.type === 'shape' && o.hotspot && !isTrigger && <span className="wbo__badge wbo__badge--zone" title="Zone cliquable sans action : reliez-la (⚡)">zone</span>}
+            {!play && o.type === 'window' && <span className="wbo__badge wbo__badge--ghost" title="Fenêtre : invisible en classe, ouverte par un bouton">fenêtre</span>}
             {!play && !visible && <span className="wbo__badge wbo__badge--ghost" title="Caché au départ : un bouton l'affichera">caché</span>}
             {active && isSelected && (
               // Bordure de préhension : déplace toujours, même pendant la saisie
               <div className="wbo__grab" onPointerDown={(e) => startPress(e, o, 'move')} />
             )}
             {o.locked && isSelected && <span className="wbo__lock" title="Objet verrouillé">🔒</span>}
+            {showHandles && o.type === 'shape' && (
+              <div className="wbo__rotate" title="Tourner (Maj : par pas de 15°)" onPointerDown={(e) => startPress(e, o, 'rotate')}>↻</div>
+            )}
+            {showHandles && o.type === 'shape' && !isLineKind(o.kind) && (['n', 'e', 's', 'w'] as FixedSide[]).map((side) => (
+              // Boutons de connexion : tap = copie reliée dans cette direction, glisser = où l'on veut
+              <div
+                key={side}
+                className={`wbo__connect wbo__connect--${side}`}
+                title="Toucher : nouvelle forme reliée · glisser : la poser où vous voulez, ou sur un objet à relier"
+                onPointerDown={(e) => startConnect(e, o, side)}
+                onPointerMove={(e) => moveConnect(e, o)}
+                onPointerUp={(e) => endConnect(e, o)}
+                onPointerCancel={() => { connectRef.current = null; setConnectGhost(null); }}
+              >{side === 'n' ? '↑' : side === 'e' ? '→' : side === 's' ? '↓' : '←'}</div>
+            ))}
             {showHandles && (
               <>
                 {(WIDTH_ONLY_TYPES.has(o.type) ? TEXT_HANDLES : SHAPE_HANDLES).map((h) => (
@@ -1099,6 +1442,28 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
           </div>
         );
       })}
+      <BoardConnectorLayer
+        objects={objects}
+        ghosts={links}
+        scale={scale}
+        width={stage.width}
+        height={stage.height}
+        active={active}
+        play={play}
+        selectedIds={selectedIds}
+        onSelect={(ids) => { onSelect(ids); selectedRef.current = ids; if (editingId) onEdit(null); }}
+        onChange={emit}
+        onContextMenu={onContextMenu}
+        clientToUnit={clientToUnit}
+      />
+      {guides && guides.vertical.map((x) => <div key={`v${x}`} className="wbo__guide wbo__guide--v" style={{ left: x * scale }} />)}
+      {guides && guides.horizontal.map((y) => <div key={`h${y}`} className="wbo__guide wbo__guide--h" style={{ top: y * scale }} />)}
+      {connectGhost && (
+        <div
+          className={`wbo__ghost ${connectGhost.target ? 'is-target' : ''}`}
+          style={{ left: connectGhost.x * scale, top: connectGhost.y * scale, width: connectGhost.w * scale, height: connectGhost.h * scale }}
+        />
+      )}
       <style>{CSS}</style>
       <BoardSpellChecker
         ref={spellRef}
@@ -1118,6 +1483,38 @@ const CSS = `
 .wbo__frame { position: absolute; pointer-events: none; touch-action: none; }
 .wbo__frame.is-active { pointer-events: auto; }
 .wbo__editor { outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: #4F46E5; cursor: default; }
+/* Texte dans une forme : boîte intérieure centrée ; l'éditeur ne capte le pointeur qu'en saisie */
+.wbo__shape-textbox { position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; }
+.wbo__editor--shape { width: 100%; max-height: 100%; text-align: center; pointer-events: none; }
+.wbo__frame.is-editing .wbo__editor--shape { pointer-events: auto; cursor: text; }
+.wbo__rotate { position: absolute; left: 50%; bottom: -44px; z-index: 1; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: -15px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #9CA3AF; color: #374151; font: 600 15px/1 Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; touch-action: none; user-select: none; }
+.wbo__rotate:active { cursor: grabbing; }
+/* Boutons de connexion, hors de la boîte, à 24 px du bord ; taille tactile réglée par le thème */
+.wbo__connect { position: absolute; z-index: 1; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #9CA3AF; color: #374151; font: 700 15px/1 Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; touch-action: none; user-select: none; }
+.wbo__connect:hover { background: #EEF2FF; border-color: #6366F1; color: #4F46E5; }
+.wbo__connect--n { left: 50%; top: -44px; margin-left: -15px; }
+.wbo__connect--s { left: 50%; bottom: -84px; margin-left: -15px; }
+.wbo__connect--e { right: -44px; top: 50%; margin-top: -15px; }
+.wbo__connect--w { left: -44px; top: 50%; margin-top: -15px; }
+.wbo__ghost { position: absolute; z-index: 4; border: 2px dashed #6366F1; border-radius: 8px; background: rgba(99,102,241,0.08); pointer-events: none; }
+.wbo__guide { position: absolute; z-index: 5; pointer-events: none; background: #EC4899; }
+.wbo__guide--v { top: -2000px; bottom: -2000px; width: 1px; }
+.wbo__guide--h { left: -2000px; right: -2000px; height: 1px; }
+.wbo__ghost.is-target { border-style: solid; background: rgba(99,102,241,0.18); }
+/* Calque des connecteurs : inerte sauf sur ses tracés de pointage et ses poignées */
+.wbo__connectors { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.wbo__connector-hit { pointer-events: none; }
+.wbo__connectors.is-active .wbo__connector-hit { pointer-events: stroke; cursor: pointer; }
+.wbo__connector-halo { stroke: rgba(99,102,241,0.35); stroke-width: 10px; }
+.wbo__connector-handle { fill: #FFFFFF; stroke: #6366F1; stroke-width: 2px; pointer-events: all; cursor: grab; }
+.wbo__connector-handle.is-attached { fill: #6366F1; }
+.wbo__connector-handle--mid { fill: #FFFFFF; stroke: #9CA3AF; }
+.wbo__connector-handles.is-dragging .wbo__connector-handle { pointer-events: none; }
+.wbo__connector-label { pointer-events: none; }
+.wbo__ghostlink-line { stroke: #6366F1; stroke-width: 3px; stroke-dasharray: 8 6; stroke-linecap: round; }
+.wbo__ghostlink-head { fill: #6366F1; stroke: #6366F1; stroke-width: 2; stroke-linejoin: round; }
+.wbo__ghostlink-tag { fill: #4F46E5; }
+.wbo__connectors.is-active .wbo__ghostlink.is-tappable .wbo__connector-hit { pointer-events: stroke; cursor: pointer; }
 /* Le tableau est en user-select: none (rien ne se surligne en manipulant les outils) ; la zone en
    saisie doit redevenir un vrai champ texte : clic = curseur, double-clic = mot, triple = paragraphe,
    glisser = sélection. Sans cette règle, Chrome ignore la souris dans un contentEditable non sélectionnable. */
@@ -1127,6 +1524,8 @@ const CSS = `
 .wbo__frame.is-selected .wbo__editor,
 .wbo__frame.is-editing .wbo__editor { box-shadow: 0 0 0 1.5px #6366F1; }
 .wbo__frame.is-locked.is-selected .wbo__editor { box-shadow: 0 0 0 1.5px #9CA3AF; }
+/* Le texte d'une forme n'a pas de liseré propre : c'est la forme qui montre la sélection */
+.wbo__frame.is-selected .wbo__editor--shape, .wbo__frame.is-editing .wbo__editor--shape, .wbo__frame.is-active:hover .wbo__editor--shape, .wbo__frame.is-locked.is-selected .wbo__editor--shape { box-shadow: none; outline: none; }
 .wbo__editor p, .wbo__editor div { margin: 0; }
 .wbo__editor ul, .wbo__editor ol { margin: 0; padding-left: 1.4em; }
 /* Alinéa (Tab) : un paragraphe ordinaire n'est en retrait que sur sa première ligne, comme dans
@@ -1166,12 +1565,24 @@ const CSS = `
 .wbo__editor [data-gap].is-hidden * { color: transparent !important; background: transparent !important; text-decoration: none !important; }
 .wbo__editor [data-gap].is-hidden { border-bottom-color: #374151; }
 .wbo__cover { position: absolute; z-index: 2; pointer-events: auto; overflow: hidden; border-radius: 4px; }
+/* Post-it replié : pastille, cliquable même en lecture (le cadre lui-même ne capte rien) */
+.wbo__folded { position: relative; display: block; box-sizing: border-box; font-weight: 700; line-height: 1.15; pointer-events: auto; cursor: pointer; user-select: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.18)); }
+.wbo__folded-tab { position: absolute; left: 0; top: 0; width: var(--wbo-fold-tab-w); height: calc(var(--wbo-fold-tab-h) + var(--wbo-fold-r)); border-radius: var(--wbo-fold-r) var(--wbo-fold-r) 0 0; background: var(--wbo-fold-bg); }
+.wbo__folded-tab::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: rgba(0,0,0,0.14); }
+.wbo__folded-body { position: absolute; left: 0; right: 0; top: var(--wbo-fold-tab-h); bottom: 0; display: flex; align-items: center; justify-content: center; padding: 0.3em 0.5em 0.9em; border-radius: var(--wbo-fold-r); background: var(--wbo-fold-bg); overflow: hidden; }
+.wbo__folded-title { max-width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.wbo__folded-plus { position: absolute; right: 0.35em; bottom: 0.15em; opacity: 0.7; font-size: 0.9em; line-height: 1; }
+.wbo__folded-plus--btn { padding: 0.1em 0.3em; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 0.9em; cursor: pointer; }
+.wbo__folded-plus--btn:hover { opacity: 1; background: rgba(0,0,0,0.12); }
+.wbo__fold { position: absolute; right: 2px; top: 2px; z-index: 3; padding: 0; border: 0; border-radius: 999px; background: rgba(17,24,39,0.55); color: #FFFFFF; font: 700 15px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0.55; }
+.wbo__fold.is-visible, .wbo__frame:hover .wbo__fold { opacity: 1; }
+.wbo__fold:hover { background: #111827; }
 .wbo__cover--curtain { overflow: visible; color: rgba(255,255,255,0.92); font: 600 clamp(14px, 2vw, 28px)/1 Inter, system-ui, sans-serif; user-select: none; }
-.wbo__curtain-sheet { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: grab; touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+.wbo__curtain-sheet { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: ns-resize; touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
 .wbo__cover--curtain.is-editing .wbo__curtain-sheet { cursor: default; }
 /* Tirette : la poignée du rideau, posée sur le bord bas de ce qui reste du drap. Elle tire le
-   rideau dans tous les modes, y compris en édition où le drap lui-même sélectionne l'objet. */
-.wbo__curtain-grip { position: absolute; width: 96px; height: 30px; margin-left: -48px; margin-top: -15px; cursor: grab; touch-action: none; z-index: 1; }
+   rideau (haut/bas) dans tous les modes, y compris en édition où le drap lui-même sélectionne l'objet. */
+.wbo__curtain-grip { position: absolute; width: 96px; height: 30px; margin-left: -48px; margin-top: -15px; cursor: ns-resize; touch-action: none; z-index: 1; }
 .wbo__curtain-grip::after { content: ''; position: absolute; left: 50%; top: 50%; width: 64px; height: 10px; margin-left: -32px; margin-top: -5px; border-radius: 5px; background: #6366F1; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
 .wbo__curtain-grip:hover::after { background: #818CF8; }
 /* Objet caché au départ (édition) : fantôme repérable, toujours sélectionnable */
@@ -1180,9 +1591,17 @@ const CSS = `
 .wbo__badge { position: absolute; left: -6px; top: -14px; z-index: 3; padding: 2px 6px; border-radius: 999px; background: #111827; color: #F9FAFB; font: 600 11px/1.2 Inter, system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
 .wbo__badge--trigger { background: #4F46E5; }
 .wbo__badge--ghost { left: auto; right: -6px; background: #6B7280; }
+.wbo__badge--zone { background: #6366F1; opacity: 0.85; }
+/* Carte d'une fenêtre (édition seulement) */
+.wbo__window { display: flex; align-items: center; gap: 0.5em; box-sizing: border-box; padding: 0 0.8em; border-radius: 12px; border: 1.5px dashed #6366F1; background: #EEF2FF; color: #3730A3; font-weight: 600; font-family: Inter, system-ui, sans-serif; overflow: hidden; white-space: nowrap; user-select: none; }
+.wbo__window-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wbo__window-icon, .wbo__window-img { flex: none; }
 /* Bouton en lecture : cliquable même sous l'outil d'écriture, et rien ne le déplace */
 .wbo__frame.is-playable { pointer-events: auto; cursor: pointer; }
 .wbo__frame.is-playable * { pointer-events: none !important; }
+/* Extracteur de mots en lecture : touchable, mais les enfants gardent le hit-test (caret sous le doigt) */
+.wbo__frame.is-extractor { pointer-events: auto; cursor: pointer; }
+.wbo__frame.is-extractor .wbo__editor { cursor: pointer; user-select: none; }
 /* Choix d'une cible : tous les objets deviennent cliquables, la source est grisée */
 .wbo__frame.is-pick { pointer-events: auto; cursor: crosshair; }
 .wbo__frame.is-pick * { pointer-events: none !important; }

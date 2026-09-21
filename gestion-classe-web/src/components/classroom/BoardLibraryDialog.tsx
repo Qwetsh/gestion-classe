@@ -31,6 +31,8 @@ type Props =
       /** Affiché en début de séance : le bouton « Tableau vierge » ferme sans rien copier. */
       allowBlank?: boolean;
       onPick: (board: Board) => void;
+      /** Proposé : ouvrir le tableau dans un nouvel onglet, sans toucher au tableau courant. */
+      onPickTab?: (board: Board) => void;
       onClose: () => void;
     }
   | {
@@ -62,7 +64,7 @@ export function BoardLibraryDialog(props: Props) {
 
 // ---------------------------------------------------------------------------------------------
 
-function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, onClose }: Extract<Props, { mode: 'open' }>) {
+function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, onPickTab, onClose }: Extract<Props, { mode: 'open' }>) {
   const [boards, setBoards] = useState<Board[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -140,14 +142,19 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
                 {chapter && <h4>{chapter}</h4>}
                 <div className="wblb__list">
                   {list.map((b) => (
-                    <button key={b.id} type="button" className="wblb__row wblb__row--pick" disabled={busy !== null} onClick={() => pick(b)}>
-                      <span className="wblb__icon">📋</span>
-                      <div>
-                        <span>{b.title}</span>
-                        <small>modifié le {fmtDate(b.updated_at)}</small>
-                      </div>
-                      <span className="wblb__go">{busy === b.id ? '…' : 'Ouvrir'}</span>
-                    </button>
+                    <div key={b.id} className="wblb__rowwrap">
+                      <button type="button" className="wblb__row wblb__row--pick" disabled={busy !== null} onClick={() => pick(b)}>
+                        <span className="wblb__icon">📋</span>
+                        <div>
+                          <span>{b.title}</span>
+                          <small>modifié le {fmtDate(b.updated_at)}</small>
+                        </div>
+                        <span className="wblb__go">{busy === b.id ? '…' : onPickTab ? 'Copier ici' : 'Ouvrir'}</span>
+                      </button>
+                      {onPickTab && (
+                        <button type="button" className="wblb__tabbtn" disabled={busy !== null} title="Ouvrir dans un nouvel onglet, sans toucher au tableau courant" onClick={() => onPickTab(b)}>↗ Onglet</button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -250,6 +257,11 @@ const CSS = `
 .wblb__chapter h4 { margin: 8px 0 6px; font: 600 13px/1 Inter, system-ui, sans-serif; color: #C7D2FE; }
 .wblb__row--pick { width: 100%; min-height: 56px; text-align: left; border: 0; color: #F3F4F6; font: inherit; cursor: pointer; }
 .wblb__row--pick:hover { outline: 2px solid #6366F1; }
+.wblb__rowwrap { display: flex; align-items: stretch; gap: 6px; }
+.wblb__rowwrap > .wblb__row { flex: 1; min-width: 0; }
+.wblb__tabbtn { flex: none; padding: 0 12px; border: 1px solid #374151; border-radius: 10px; background: transparent; color: #E5E7EB; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+.wblb__tabbtn:hover:not(:disabled) { background: #1F2937; outline: 2px solid #6366F1; }
+.wblb__tabbtn:disabled { opacity: .6; cursor: default; }
 .wblb__row--pick:disabled { opacity: .6; cursor: default; }
 .wblb__row--pick > div > span { font-weight: 600; font-size: 16px; }
 .wblb__icon { font-size: 22px; flex: none; }

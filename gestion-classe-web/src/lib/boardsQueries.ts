@@ -13,6 +13,9 @@ import { fetchBoardPages, upsertBoardPages } from './boardQueries';
 import { importFilesToPages, type ImportProgress } from './boardImport';
 import type { BoardPage } from './boardRender';
 
+/** Identifiant du brouillon local (tableau libre gardé dans le navigateur). */
+export const FREE_BOARD_ID = 'tableau-libre';
+
 export interface Board {
   id: string;
   title: string;

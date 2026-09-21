@@ -13,24 +13,8 @@
  * Aucune dépendance externe.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  BACKGROUNDS,
-  BOARD_UNIT,
-  BOARD_PAGE_H,
-  BOARD_RATIO,
-  drawBackground,
-  drawPenSegment,
-  heightToFit,
-  loadPageImage,
-  pageHeight,
-  renderStroke,
-  setupStrokeStyle,
-  eraseStrokeAt,
-  type Background,
-  type BoardPage,
-  type Stroke,
-} from '../../lib/boardRender';
-import { DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WIDTH, MIN_TEXT_WIDTH, sanitizeBoardHtml } from '../../lib/boardText';
+import { BACKGROUNDS, BOARD_UNIT, BOARD_PAGE_H, BOARD_RATIO, drawBackground, drawPenSegment, heightToFit, loadPageImage, pageHeight, renderStroke, setupStrokeStyle, eraseStrokeAt, type Background, type BoardPage, type Stroke, followAttachedInk } from '../../lib/boardRender';
+import { DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WIDTH, LINE_HEIGHT, MIN_TEXT_WIDTH, sanitizeBoardHtml } from '../../lib/boardText';
 
 /** HTML collé depuis Word ou le web : on ne garde que le corps, nettoyé au sous-ensemble du tableau. */
 function sanitizePastedHtml(html: string): string {
@@ -38,20 +22,11 @@ function sanitizePastedHtml(html: string): string {
   const cleaned = sanitizeBoardHtml(doc.body.innerHTML);
   return cleaned.trim() || '<div><br></div>';
 }
-import {
-  cloneObjects,
-  migrateLegacyTexts,
-  objectRect,
-  objectsBottom,
-  type InteractionAction,
-  rectContains,
-  rectsIntersect,
-  reorder,
-  type BoardObject,
-  type TextObject,
-} from '../../lib/boardObjects';
+import { cloneObjects, migrateLegacyTexts, objectRect, objectsBottom, rectContains, rectsIntersect, reorder, type BoardObject, type TextObject, type Interaction, INTERACTION_LABELS, objectShortLabel, expandGroups, actionsFor, describeInteraction, needsTarget } from '../../lib/boardObjects';
 import { copyObjects, hasObjects as clipboardHasObjects, pasteObjects } from '../../lib/boardClipboard';
-import { BoardObjectLayer, type BoardTextApi, type FormatState, type StageBox } from './BoardObjectLayer';
+import { BoardObjectLayer, type BoardTextApi, type ConnectDrop, type FormatState, type StageBox } from './BoardObjectLayer';
+import { BoardConnectorToolbar } from './BoardConnectorToolbar';
+import { dropOrphanConnectors, newConnector, refreshConnectors, sideDir, type ConnectorObject, type FixedSide } from '../../lib/boardConnectors';
 import type { SpellStatus } from './BoardSpellChecker';
 import { BoardTextToolbar } from './BoardTextToolbar';
 import { BoardContextMenu, type MenuItem } from './BoardContextMenu';
@@ -59,7 +34,9 @@ import { BoardPageNavigator } from './BoardPageNavigator';
 import { BoardPageRail } from './BoardPageRail';
 import { BoardShapeToolbar, type ShapeStyle } from './BoardShapeToolbar';
 import { BoardColorPicker } from './BoardColorPicker';
-import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject } from '../../lib/boardShapes';
+import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject, pointsInsideShape, contourToPolygon, type ZoneEntry } from '../../lib/boardShapes';
+import { BoardWindowDialog } from './BoardWindowDialog';
+import { WINDOW_CARD, type WindowObject } from '../../lib/boardMedia';
 import { recognizeShape, type RecognizedShape } from '../../lib/boardRecognize';
 import {
   fireInteractions,
@@ -69,24 +46,29 @@ import {
   pageRevealedFraction,
   recoverPage,
   saveRevealState,
+  emptyReveal,
   type CurtainSlide,
+  type ObjectCommand,
   type RevealCover,
   type RevealState,
 } from '../../lib/boardReveal';
 import { BoardExportDialog } from './BoardExportDialog';
-import { BoardInteractionsPanel } from './BoardInteractionsPanel';
+import { BoardInteractionBubble, type InteractionDraft } from './BoardInteractionBubble';
+import type { GhostLink } from './BoardConnectorLayer';
 import { BoardRadialMenu, type RadialItem } from './BoardRadialMenu';
 import { BoardPalette } from './BoardPalette';
 import { BoardPaletteEditor } from './BoardPaletteEditor';
 import { BoardInputProbe } from './BoardInputProbe';
-import { loadPalette, savePalette, paletteAction, RADIAL_COLOR_CHOICES, type PaletteConfig } from '../../lib/boardRadialPalette';
+import { loadPalette, savePalette, paletteAction, INSERT_ACTIONS, type InsertKind, type PaletteConfig } from '../../lib/boardRadialPalette';
+import { SWATCHES, openColorWheel, pickSwatchColor, swatchLabel, useSwatches } from '../../lib/boardSwatches';
 import { BoardInstruments } from './BoardInstruments';
 import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
 import { BoardKeyboard } from './BoardKeyboard';
-import { BoardLibraryPanel } from './BoardLibraryPanel';
+import { BoardLibraryPanel, type LibraryTab } from './BoardLibraryPanel';
+import { pullEvents, saveEvent, setEventsOwner, type EventInsert, type EventPending } from '../../lib/boardEvents';
 import { BoardLibraryDialog } from './BoardLibraryDialog';
-import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta } from '../../lib/boardsQueries';
+import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta, FREE_BOARD_ID } from '../../lib/boardsQueries';
 import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
@@ -106,7 +88,6 @@ import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName
 import { renderPageToCanvas } from '../../lib/boardRender';
 import { objectTypeLabel, type ImageObject } from '../../lib/boardObjects';
 import {
-  WIDGET_LABELS,
   emptyTable,
   insertTableCol,
   insertTableRow,
@@ -139,12 +120,14 @@ type HistoryOp =
   | { type: 'clear'; strokes: Stroke[] }
   | { type: 'replace'; removed: Stroke[]; added: Stroke[] }
   | { type: 'objects'; before: BoardObject[]; after: BoardObject[] }
+  /** Objets et encre attachée changés d'un même geste (forme déplacée avec ses traits, supprimée avec eux). */
+  | { type: 'objects+strokes'; before: BoardObject[]; after: BoardObject[]; strokesBefore: Stroke[]; strokesAfter: Stroke[] }
   /** Trait converti en forme (formes intelligentes) : annuler rend l'encre. */
   | { type: 'convert'; stroke: Stroke; object: BoardObject }
   /** Encre manuscrite convertie en zone de texte : annuler rend les traits. */
   | { type: 'convertInk'; strokes: Stroke[]; object: BoardObject };
 
-interface WhiteboardProps {
+export interface WhiteboardProps {
   sessionId: string;
   userId: string;
   /** Message à afficher en coin (ex. dernier événement reçu du téléphone). */
@@ -162,6 +145,17 @@ interface WhiteboardProps {
   classroom?: { bus: ClassroomBus; students: PickableStudent[] };
   /** Nom de la classe (« 6e A ») : sert à déduire le niveau des tableaux préparés à proposer. */
   className?: string;
+  /**
+   * Onglet actif de l'espace de travail (BoardWorkspace). Masqué (`false`), le tableau reste
+   * monté mais ignore le clavier, le collage et les commandes du téléphone.
+   */
+  active?: boolean;
+  /** Hauteur réservée en haut (barre d'onglets), en px. */
+  topOffset?: number;
+  /** Espace de travail : ouvrir un tableau préparé dans un nouvel onglet. */
+  onOpenInTab?: (board: Board) => void;
+  /** Espace de travail : ouvrir le brouillon local dans un nouvel onglet. */
+  onOpenDraftTab?: () => void;
   onClose: () => void;
 }
 
@@ -169,10 +163,8 @@ interface WhiteboardProps {
 const START_PROMPT_PREFIX = 'classroom-board-start:';
 
 const UNIT = BOARD_UNIT;
-const COLORS = ['#111827', '#1D4ED8', '#DC2626', '#059669'];
+const COLORS = SWATCHES.quick.defaults;
 const HIGHLIGHT_COLOR = '#FDE047';
-/** Couleurs de surlignage proposées pour le texte. */
-const TEXT_HIGHLIGHTS = ['#FDE047', '#BBF7D0', '#BFDBFE'];
 const SIZES: Record<SizeKey, number> = { S: 2.2, M: 4, L: 7.5 };
 const HIGHLIGHT_SIZE = 22;
 /** Rayons de gomme (unités logiques, largeur de page = 1000). */
@@ -184,7 +176,32 @@ const REMOTE_SAVE_MS = 1500;
 const REMOTE_RETRY_MS = 15000;
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+/** Bulle d'interaction ouverte : le bouton, sa cible (ou null), l'étape éditée, l'ancre écran, le brouillon. */
+interface BubbleState { triggerId: string; targetId: string | null; index: number | null; anchor: { left: number; top: number; right: number; bottom: number }; draft: InteractionDraft }
+/** L'étape décrite par la bulle, telle qu'elle sera écrite. */
+const draftInteraction = (b: BubbleState): Interaction => ({
+  action: b.draft.action,
+  ...(b.targetId && needsTarget(b.draft.action) ? { targetId: b.targetId } : {}),
+  ...(b.draft.action === 'goto' && b.draft.pageId ? { params: { pageId: b.draft.pageId } } : {}),
+  ...(b.draft.action === 'moveTo' && b.draft.x !== undefined && b.draft.y !== undefined ? { params: { x: Math.round(b.draft.x), y: Math.round(b.draft.y) } } : {}),
+  ...(b.draft.action === 'moveBy' ? { params: { dx: Math.round(b.draft.dx ?? 0), dy: Math.round(b.draft.dy ?? 0) } } : {}),
+  ...(b.draft.once ? { once: true } : {}),
+});
+/** Séquence du bouton avec l'étape de la bulle appliquée (remplacée ou ajoutée). */
+const sequenceWithDraft = (b: BubbleState, seq: Interaction[]): Interaction[] => {
+  const it = draftInteraction(b);
+  if (b.index !== null && b.index < seq.length) return seq.map((x, i) => (i === b.index ? it : x));
+  return [...seq, it];
+};
 const newPage = (background: Background = 'blank'): Page => ({ id: uid(), background, strokes: [], objects: [] });
+const escapeHtml = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
+/** Contexte hors écran pour tester la contenance d'un point dans une forme (isPointInPath). */
+let hitCanvasCtx: CanvasRenderingContext2D | null | undefined;
+function hitCtx(): CanvasRenderingContext2D | null {
+  if (hitCanvasCtx === undefined) hitCanvasCtx = document.createElement('canvas').getContext('2d');
+  return hitCanvasCtx;
+}
 const NAV_STORAGE_KEY = 'classroom-board-nav';
 /** Écran « compact » (TBI 1280×720, portables) : même requête que dans wb-theme.css et BoardPageNavigator. */
 const COMPACT_MQ = '(max-width: 1366px), (max-height: 800px)';
@@ -210,8 +227,14 @@ type BarSide = 'bottom' | 'left' | 'right';
  * `floating` : les barres contextuelles suivent l'objet sélectionné, ou restent accrochées à la barre principale.
  * `documents` : PDF et images importés en pleine largeur (la page s'allonge) ou réduits pour tenir dans la page.
  */
-interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar'; documents: ImportLayout }
-const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object', documents: 'full' };
+/**
+ * Densité du chrome (barres, menus, panneaux). `auto` suit la taille d'écran (wb-theme.css :
+ * confort, normal, compact, serré en 720p) ; les autres valeurs la forcent, par appareil.
+ */
+type Density = 'auto' | 'comfort' | 'normal' | 'tight';
+const DENSITY_LABELS: Record<Density, string> = { auto: "Densité automatique (selon l'écran)", comfort: 'Densité confort (TBI)', normal: 'Densité normale', tight: 'Densité serrée (portable, 720p)' };
+interface TbiSettings { gestures: boolean; bar: BarSide; hand: 'left' | 'right' | 'center'; floating: 'object' | 'bar'; documents: ImportLayout; density: Density }
+const DEFAULT_TBI: TbiSettings = { gestures: true, bar: 'bottom', hand: 'center', floating: 'object', documents: 'full', density: 'auto' };
 
 function loadTbi(): TbiSettings {
   try { return { ...DEFAULT_TBI, ...(JSON.parse(localStorage.getItem(TBI_SETTINGS_KEY) || '{}') as Partial<TbiSettings>) }; } catch { return DEFAULT_TBI; }
@@ -328,7 +351,9 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, onClose }: WhiteboardProps) {
+  const activeRef = useRef(active);
+  useEffect(() => { activeRef.current = active; }, [active]);
   /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
   const isSessionBoard = remote && !boardId;
   /** Propriétaire des pages côté serveur. */
@@ -336,7 +361,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [pages, setPages] = useState<Page[]>(() => loadLocal(sessionId).pages);
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<Tool>('pen');
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState<string>(COLORS[0]);
+  // Nuanciers personnalisables (clic droit sur une pastille), mémorisés entre les séances
+  const quickColors = useSwatches(SWATCHES.quick);
+  const radialColors = useSwatches(SWATCHES.radial);
+  const bgColors = useSwatches(SWATCHES.background);
   const [sizeKey, setSizeKey] = useState<SizeKey>('M');
   const [eraserKey, setEraserKey] = useState<SizeKey>('M');
   const [historyLen, setHistoryLen] = useState(0);
@@ -362,6 +391,24 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const navWidth = compact ? NAV_WIDTH_COMPACT : NAV_WIDTH;
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
+  /** Zone cliquable choisie dans le catalogue des formes (rectangle, ovale, contour tracé). */
+  const [shapeZone, setShapeZone] = useState<ZoneEntry | null>(null);
+  const shapeZoneRef = useRef<ZoneEntry | null>(null);
+  useEffect(() => { shapeZoneRef.current = shapeZone; }, [shapeZone]);
+  /** Contour d'une zone libre en cours de tracé (unités). */
+  const zoneTrace = useRef<{ x: number; y: number }[] | null>(null);
+  /** Fenêtre ouverte en classe par un bouton, et fenêtre en cours d'édition. */
+  const [openWindow, setOpenWindow] = useState<string | null>(null);
+  const [windowEdit, setWindowEdit] = useState<string | null>(null);
+  const windowImageInputRef = useRef<HTMLInputElement>(null);
+  /** Déplacer vers : on attend un tap sur la page pour fixer la destination. */
+  const [pickingPoint, setPickingPoint] = useState(false);
+  /** Zoom sur un objet : vue à retrouver au tap hors bouton, et animation en cours. */
+  const zoomReturn = useRef<ViewState | null>(null);
+  const [zoomedByButton, setZoomedByButton] = useState(false);
+  const viewAnim = useRef<number | null>(null);
+  /** L'élément `.wb__view` : l'animation de vue écrit sa transformation directement (un rendu React coûte ~200 ms). */
+  const viewElRef = useRef<HTMLDivElement>(null);
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>({ stroke: COLORS[0], strokeWidth: 4, fill: null, dashed: false });
   const [autoShapes, setAutoShapes] = useState(() => { try { return localStorage.getItem(AUTO_SHAPES_KEY) === '1'; } catch { return false; } });
   const [spellCheck, setSpellCheck] = useState(() => { try { return localStorage.getItem(SPELL_KEY) !== '0'; } catch { return true; } });
@@ -370,6 +417,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<ReadonlySet<string>>(() => new Set());
   /** Ce qui a été découvert pendant la séance (hors document). */
   const [reveal, setReveal] = useState<RevealState>(() => loadRevealState(sessionId));
+  /** Miroir de `reveal` pour les gestionnaires (un bouton lit l'état courant sans re-création). */
+  const revealRef = useRef(reveal);
+  useEffect(() => { revealRef.current = reveal; }, [reveal]);
+  /** Commandes envoyées aux widgets et aux sons par les boutons : état éphémère, jamais persisté. */
+  const [commands, setCommands] = useState<Record<string, ObjectCommand>>({});
+  const commandSeq = useRef(0);
   const [exportOpen, setExportOpen] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -381,6 +434,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const curtainDrag = useRef<{ pointerId: number } | null>(null);
   /** Panneau d'interactions ouvert pour cet objet (le « bouton »). */
   const [interactionsFor, setInteractionsFor] = useState<string | null>(null);
+  /** Mode liaison : point du pointeur (unités de page) que suit la flèche partant du bouton. */
+  const [linkPointer, setLinkPointer] = useState<{ x: number; y: number } | null>(null);
+  /** Bulle d'interaction ouverte sur une cible (nouvelle liaison ou interaction existante). */
+  const [bubble, setBubble] = useState<BubbleState | null>(null);
   /** Choix d'une cible d'interaction en cours : on attend un tap sur un objet de la page. */
   const [picking, setPicking] = useState(false);
   /** Taille visible de la scène (px) : une page plus haute qu'elle se lit en défilant. */
@@ -408,7 +465,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [spotlight, setSpotlight] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Panneau Ressources ouvert, sur cet onglet (faux = fermé). */
+  const [libraryOpen, setLibraryOpen] = useState<false | LibraryTab>(false);
+  /** Action déjà choisie (banque d'événements) pendant le choix de la cible. */
+  const pendingActionRef = useRef<EventPending | null>(null);
   /** Bibliothèque des tableaux préparés : ouvrir un tableau (copie de ses pages) ou enregistrer celui-ci. */
   const [libraryDialog, setLibraryDialog] = useState<'open' | 'start' | 'save' | null>(null);
   /** Mode affichage (écran de classe) : barre et panneaux masqués, widgets manipulables. */
@@ -539,6 +599,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     try { localStorage.setItem(TBI_SETTINGS_KEY, JSON.stringify(tbi)); } catch { /* stockage indisponible */ }
   }, [tbi]);
   useEffect(() => { savePalette(palette); }, [palette]);
+  // Densité forcée : posée sur <html> pour atteindre aussi les panneaux portalés sur body (wbpop)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (tbi.density === 'auto') delete root.dataset.wbDensity; else root.dataset.wbDensity = tbi.density;
+    return () => { delete root.dataset.wbDensity; };
+  }, [tbi.density]);
   useEffect(() => { viewRef.current = view; }, [view]);
   useEffect(() => { instrumentsRef.current = instruments; }, [instruments]);
 
@@ -548,6 +614,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   useEffect(() => {
     setKeysOwner(userId || null);
     void pullKeys();
+    setEventsOwner(userId || null);
+    void pullEvents();
   }, [userId]);
 
   const historyRef = useRef<Record<string, { undo: HistoryOp[]; redo: HistoryOp[] }>>({});
@@ -596,7 +664,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const p = pagesRef.current[idx];
     const w = canvas.width / dpr;
     const h = canvas.height / dpr;
-    drawBackground(ctx, p?.background ?? 'blank', w, h, scaleRef.current, null);
+    drawBackground(ctx, p?.background ?? 'blank', w, h, scaleRef.current, null, p?.color);
     const meta = p?.image;
     if (!meta) return;
     // Image importée (PDF, photo) : dessinée dès qu'elle est chargée, si la page n'a pas changé entre-temps
@@ -607,7 +675,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const cx = c?.getContext('2d');
         if (!c || !cx) return;
         cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drawBackground(cx, p.background, c.width / dpr, c.height / dpr, scaleRef.current, { el, meta });
+        drawBackground(cx, p.background, c.width / dpr, c.height / dpr, scaleRef.current, { el, meta }, p.color);
       })
       .catch((err) => console.warn('[Whiteboard] image de fond :', err));
   }, []);
@@ -676,7 +744,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     redrawBackground();
     redrawMain();
     syncHistoryCounters(page.id);
-  }, [pageIndex, page.id, page.background, redrawBackground, redrawMain, syncHistoryCounters]);
+  }, [pageIndex, page.id, page.background, page.color, redrawBackground, redrawMain, syncHistoryCounters]);
 
   // Hauteur de page (allongée, ajustée, ou page suivante d'un autre format) : recadrer les calques
   const pageH = pageHeight(page);
@@ -843,6 +911,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!op) return;
     h.redo.push(op);
     if (op.type === 'objects') updatePage(p.id, (pg) => ({ ...pg, objects: op.before }));
+    else if (op.type === 'objects+strokes') updatePage(p.id, (pg) => ({ ...pg, objects: op.before, strokes: op.strokesBefore }));
     else if (op.type === 'convert') updatePage(p.id, (pg) => ({ ...pg, objects: (pg.objects ?? []).filter((o) => o.id !== op.object.id), strokes: [...pg.strokes, op.stroke] }));
     else if (op.type === 'convertInk') updatePage(p.id, (pg) => ({ ...pg, objects: (pg.objects ?? []).filter((o) => o.id !== op.object.id), strokes: [...pg.strokes, ...op.strokes] }));
     else if (op.type === 'add') updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.filter((s) => s.id !== op.stroke.id) }));
@@ -861,6 +930,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!op) return;
     h.undo.push(op);
     if (op.type === 'objects') updatePage(p.id, (pg) => ({ ...pg, objects: op.after }));
+    else if (op.type === 'objects+strokes') updatePage(p.id, (pg) => ({ ...pg, objects: op.after, strokes: op.strokesAfter }));
     else if (op.type === 'convert') updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.filter((s) => s.id !== op.stroke.id), objects: [...(pg.objects ?? []), op.object] }));
     else if (op.type === 'convertInk') { const ids = new Set(op.strokes.map((st) => st.id)); updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.filter((s) => !ids.has(s.id)), objects: [...(pg.objects ?? []), op.object] })); }
     else if (op.type === 'add') updatePage(p.id, (pg) => ({ ...pg, strokes: [...pg.strokes, op.stroke] }));
@@ -892,6 +962,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const setBackground = useCallback((bg: Background) => {
     const p = pagesRef.current[pageIndexRef.current];
     if (p) updatePage(p.id, (pg) => ({ ...pg, background: bg }));
+  }, [updatePage]);
+
+  /** Couleur de fond de la page, sous le motif ; blanc = champ absent. */
+  const setBackgroundColor = useCallback((c: string | null) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (p) updatePage(p.id, (pg) => ({ ...pg, color: c && c.toUpperCase() !== '#FFFFFF' ? c : undefined }));
   }, [updatePage]);
 
   const addPage = useCallback(() => {
@@ -951,16 +1027,92 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   // -- Objets de la page (texte aujourd'hui ; formes, images… ensuite) --
   const pageObjects = page.objects ?? [];
 
-  const handleObjectsChange = useCallback((next: BoardObject[], before: BoardObject[] | null) => {
+  /** Encre attachée avant le geste en cours (glisser d'une forme), pour une seule étape d'annulation. */
+  const dragInkRef = useRef<Stroke[] | null>(null);
+  const handleObjectsChange = useCallback((nextIn: BoardObject[], before: BoardObject[] | null) => {
+    let next = nextIn;
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
-    if (before) pushOp(p.id, { type: 'objects', before, after: next });
+    // Les flèches d'un objet supprimé partent avec lui ; les boîtes des flèches suivent leurs objets
+    next = refreshConnectors(dropOrphanConnectors(p.objects ?? [], next));
+    // L'encre attachée suit les formes (déplacement, taille, rotation) et part avec elles
+    const strokesNow = p.strokes;
+    const strokesNext = followAttachedInk(p.objects ?? [], next, strokesNow);
+    if (before === null) {
+      if (strokesNext !== strokesNow && dragInkRef.current === null) dragInkRef.current = strokesNow;
+    } else {
+      const strokesBefore = dragInkRef.current ?? strokesNow;
+      dragInkRef.current = null;
+      if (strokesNext !== strokesNow || strokesBefore !== strokesNow) pushOp(p.id, { type: 'objects+strokes', before, after: next, strokesBefore, strokesAfter: strokesNext });
+      else pushOp(p.id, { type: 'objects', before, after: next });
+    }
     updatePage(p.id, (pg) => {
+      const strokes = strokesNext === strokesNow ? pg.strokes : strokesNext;
       // Un objet posé ou tiré sous le bas de la page l'allonge : la page ne raccourcit jamais seule
       const bottom = objectsBottom(next);
       const h = pageHeight(pg);
-      return bottom > h - 8 ? { ...pg, objects: next, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next };
+      return bottom > h - 8 ? { ...pg, objects: next, strokes, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next, strokes };
     });
+  }, [pushOp, updatePage]);
+
+  /**
+   * Bouton de connexion d'une forme : nouvelle forme reliée (tap : à distance fixe dans la
+   * direction ; glisser : au point lâché) ou flèche seule vers l'objet lâché dessus. Une seule
+   * étape d'annulation pour la copie et sa flèche.
+   */
+  const connectFrom = useCallback((shapeId: string, side: FixedSide, drop: ConnectDrop) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const src = p?.objects?.find((o) => o.id === shapeId);
+    if (!p || !src || src.type !== 'shape') return;
+    const prev = p.objects ?? [];
+    const added: BoardObject[] = [];
+    let targetId: string;
+    if (drop.kind === 'object') targetId = drop.targetId;
+    else {
+      const copyId = uid();
+      let x: number, y: number;
+      if (drop.kind === 'point') { x = drop.x - src.w / 2; y = drop.y - src.h / 2; }
+      else {
+        // Tap : dans la direction du bouton, à une distance qui laisse la place à la flèche
+        const d = sideDir(src, side);
+        const gap = 90;
+        const cx = src.x + src.w / 2 + d.x * (src.w / 2 + gap + src.w / 2);
+        const cy = src.y + src.h / 2 + d.y * (src.h / 2 + gap + src.h / 2);
+        x = cx - src.w / 2; y = cy - src.h / 2;
+      }
+      const { text: _t, interactions: _i, cover: _c, ...rest } = src;
+      void _t; void _i; void _c;
+      added.push({ ...rest, id: copyId, x: Math.round(Math.max(0, x)), y: Math.round(Math.max(0, y)) });
+      targetId = copyId;
+    }
+    added.push(newConnector(uid(), { objectId: shapeId, side: drop.kind === 'tap' ? side : 'auto' }, { objectId: targetId, side: 'auto' }, { stroke: '#6B7280' }));
+    handleObjectsChange([...prev, ...added], prev);
+    setSelectedIds(new Set([targetId]));
+  }, [handleObjectsChange]);
+
+  /** Modifie les connecteurs sélectionnés (barre contextuelle). */
+  const patchSelectedConnectors = useCallback((fn: (c: ConnectorObject) => ConnectorObject) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const before = p.objects ?? [];
+    handleObjectsChange(before.map((o) => (o.type === 'connector' && selectedIdsRef.current.has(o.id) ? fn(o) : o)), before);
+  }, [handleObjectsChange]);
+
+  /** Attache (ou détache) à une forme l'encre qu'elle contient. */
+  const setInkAttachment = useCallback((shapeId: string, attach: boolean) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const shape = p?.objects?.find((o) => o.id === shapeId);
+    if (!p || !shape || shape.type !== 'shape') return;
+    const removed: Stroke[] = [];
+    const added: Stroke[] = [];
+    for (const st of p.strokes) {
+      if (attach && !st.parentId && pointsInsideShape(st.points, shape, hitCtx(), 4)) { removed.push(st); added.push({ ...st, parentId: shapeId }); }
+      else if (!attach && st.parentId === shapeId) { removed.push(st); const { parentId: _p, ...rest } = st; void _p; added.push(rest); }
+    }
+    if (removed.length === 0) return;
+    pushOp(p.id, { type: 'replace', removed, added });
+    const byId = new Map(added.map((st) => [st.id, st]));
+    updatePage(p.id, (pg) => ({ ...pg, strokes: pg.strokes.map((st) => byId.get(st.id) ?? st) }));
   }, [pushOp, updatePage]);
 
   /** Objets sélectionnés de la page courante, non verrouillés sauf demande. */
@@ -998,6 +1150,24 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setSelectedIds(new Set());
     handleObjectsChange((p.objects ?? []).filter((o) => !ids.has(o.id)), p.objects ?? []);
   }, [handleObjectsChange, selectedObjects]);
+
+  /** Grouper la sélection (Ctrl+G) : un seul bloc à sélectionner et déplacer. */
+  const groupSelected = useCallback(() => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const ids = selectedIdsRef.current;
+    if (!p || ids.size < 2) return;
+    const gid = uid();
+    handleObjectsChange((p.objects ?? []).map((o) => (ids.has(o.id) ? { ...o, groupId: gid } : o)), p.objects ?? []);
+  }, [handleObjectsChange]);
+  /** Dégrouper (Ctrl+Maj+G) : les membres redeviennent indépendants, la sélection reste. */
+  const ungroupSelected = useCallback(() => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const ids = selectedIdsRef.current;
+    if (!p || ids.size === 0) return;
+    const groups = new Set((p.objects ?? []).filter((o) => ids.has(o.id) && o.groupId).map((o) => o.groupId as string));
+    if (groups.size === 0) return;
+    handleObjectsChange((p.objects ?? []).map((o) => { if (!o.groupId || !groups.has(o.groupId)) return o; const { groupId: _g, ...rest } = o; void _g; return rest as BoardObject; }), p.objects ?? []);
+  }, [handleObjectsChange]);
 
   const duplicateSelected = useCallback(() => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -1302,9 +1472,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [addObject, color]);
 
   const insertWidget = useCallback((widget: WidgetKind) => {
+    // Hauteurs : contenu + la bande de préhension de 1 em en haut du widget (voir WidgetView)
     const sizes: Record<WidgetKind, [number, number]> = {
-      timer: [320, 170], dice: [260, 180], wheel: [340, 180], noise: [360, 230], calc: [280, 360],
-      meter: [420, 170], groups: [560, 300], clock: [340, 170], traffic: [120, 260], qr: [220, 240],
+      timer: [320, 186], dice: [260, 196], wheel: [340, 196], noise: [360, 246], calc: [280, 376],
+      meter: [420, 186], groups: [560, 316], clock: [340, 186], traffic: [120, 276], qr: [220, 256],
     };
     const [w, h] = sizes[widget];
     const config: WidgetObject['config'] = widget === 'timer' ? { seconds: 300 }
@@ -1370,6 +1541,49 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     }
   }, [insertAudio]);
 
+  /** Fenêtre : insertion (puis éditeur), écriture du contenu, image. */
+  const insertWindow = useCallback((at?: { x: number; y: number }) => {
+    const obj: WindowObject = { id: uid(), type: 'window', ...centered(WINDOW_CARD.w, WINDOW_CARD.h, at), w: WINDOW_CARD.w, h: WINDOW_CARD.h, title: 'Fenêtre', html: '<div><br></div>' };
+    addObject(obj);
+    setWindowEdit(obj.id);
+  }, [addObject]);
+
+  /**
+   * Geste d'insertion pour un élément du catalogue (`INSERT_ACTIONS`). `at` (unités de page)
+   * place l'objet au point cliqué quand l'entrée le permet, sinon au centre de la vue.
+   */
+  const runInsert = useCallback((kind: InsertKind, at?: { x: number; y: number }) => {
+    switch (kind) {
+      case 'image': dropPoint.current = at ?? null; imageInputRef.current?.click(); return;
+      case 'table': insertTable(3, 3, undefined, at); return;
+      case 'video': { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u, at); return; }
+      case 'web': { const u = window.prompt('Adresse du site'); if (u) insertWeb(u); return; }
+      case 'link': { const u = window.prompt('Adresse du lien'); if (u) insertFromUrl(u, at); return; }
+      case 'audio': audioInputRef.current?.click(); return;
+      case 'record': void toggleRecording(); return;
+      case 'sticky': insertSticky(); return;
+      case 'equation': insertEquation(); return;
+      case 'window': insertWindow(at); return;
+      default: insertWidget(kind);
+    }
+  }, [insertTable, insertFromUrl, insertWeb, toggleRecording, insertSticky, insertEquation, insertWidget, insertWindow]);
+
+  /**
+   * Tout ce qu'on peut insérer : une seule liste pour le bouton « Insérer » de la barre, le
+   * sous-menu du clic droit et les quartiers de la palette radiale.
+   */
+  const insertEntries = useCallback((at?: { x: number; y: number }): { id: InsertKind; label: string; icon: string; run: () => void }[] =>
+    INSERT_ACTIONS.map((a) => ({
+      id: a.id,
+      label: a.id === 'record' && recording ? 'Arrêter l\'enregistrement' : a.label,
+      icon: a.id === 'record' && recording ? '⏹' : a.icon,
+      run: () => runInsert(a.id, at),
+    })), [recording, runInsert]);
+
+  /** Sous-menu « Insérer » (clic droit, palette radiale) : la même liste, en entrées de menu. */
+  const insertMenuItems = useCallback((at?: { x: number; y: number }): MenuItem[] =>
+    insertEntries(at).map((e) => ({ label: `${e.icon}\u2002${e.label}`, onSelect: e.run })), [insertEntries]);
+
   const onEquationCommit = useCallback(async (id: string, latex: string, raster: Blob | null, ratio: number) => {
     const p = pagesRef.current[pageIndexRef.current];
     const o = (p?.objects ?? []).find((t) => t.id === id);
@@ -1404,13 +1618,179 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     handleObjectsChange((p.objects ?? []).map((o) => (o.id === id ? fn(o) : o)), p.objects ?? []);
   }, [handleObjectsChange]);
 
-  /** Un bouton a été touché en classe : ses cibles s'affichent, se masquent ou basculent. */
-  const fireObject = useCallback((id: string) => {
-    const p = pagesRef.current[pageIndexRef.current];
-    const trigger = (p?.objects ?? []).find((o) => o.id === id);
-    if (!p || !trigger) return;
-    setReveal((r) => fireInteractions(r, trigger, p.objects ?? []));
+  const cancelViewAnim = useCallback(() => {
+    if (viewAnim.current !== null) { cancelAnimationFrame(viewAnim.current); viewAnim.current = null; }
   }, []);
+  /**
+   * Vue animée vers `target` (ease-out). Les images intermédiaires sont écrites directement sur
+   * l'élément (pas de rendu React, trop lent pour 60 images / s) ; l'état n'est posé qu'à la fin.
+   * Tout appui sur l'écran interrompt l'animation en sautant à la vue visée.
+   */
+  const animateView = useCallback((target: ViewState, ms = 300) => {
+    cancelViewAnim();
+    const from = viewRef.current;
+    const el = viewElRef.current;
+    // Couche composée le temps de l'animation seulement : au repos, le canvas reste net
+    const finish = () => { viewAnim.current = null; if (el) el.style.willChange = ''; viewRef.current = target; setView(target); };
+    if (!el) { finish(); return; }
+    el.style.willChange = 'transform';
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dur = reduced ? 120 : ms;
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur);
+      if (k >= 1) { finish(); return; }
+      const e = 1 - Math.pow(1 - k, 3);
+      const zoom = from.zoom + (target.zoom - from.zoom) * e, tx = from.tx + (target.tx - from.tx) * e, ty = from.ty + (target.ty - from.ty) * e;
+      el.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom})`;
+      viewAnim.current = requestAnimationFrame(step);
+    };
+    viewAnim.current = requestAnimationFrame(step);
+    const onDown = () => { if (viewAnim.current !== null) { cancelViewAnim(); finish(); } };
+    window.addEventListener('pointerdown', onDown, { capture: true, once: true });
+  }, [cancelViewAnim]);
+  /** Action « zoomer sur » : la vue cadre l'objet (10 % de marge), la vue d'avant est mémorisée. */
+  const zoomToObject = useCallback((id: string) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const o = p?.objects?.find((x) => x.id === id);
+    const el = containerRef.current;
+    const live = liveRef.current;
+    if (!o || !el || !live) return;
+    const cw = el.clientWidth, ch = el.clientHeight;
+    const k = scaleRef.current;
+    const left = parseFloat(live.style.left) || 0, top = parseFloat(live.style.top) || 0;
+    const r = objectRect(o);
+    const mv = revealRef.current.moved[id];
+    const sx = left + (r.x + (mv?.dx ?? 0)) * k, sy = top + (r.y + (mv?.dy ?? 0)) * k, sw = Math.max(1, r.w * k), sh = Math.max(1, r.h * k);
+    // Jamais exactement 1 : à 100 % la vue force tx = 0 et le cadrage horizontal serait perdu
+    const z = Math.max(1.05, Math.min(MAX_ZOOM, Math.min(cw / (sw * 1.2), ch / (sh * 1.2))));
+    const tx = cw / 2 - (sx + sw / 2) * z, ty = ch / 2 - (sy + sh / 2) * z;
+    if (!zoomReturn.current) { zoomReturn.current = viewRef.current; setZoomedByButton(true); }
+    animateView({ zoom: z, tx, ty });
+  }, [animateView]);
+  /** Retour à la vue d'avant le zoom d'un bouton (tap hors bouton, Ctrl+0, « Vue entière »). */
+  const returnFromZoom = useCallback(() => {
+    const back = zoomReturn.current;
+    zoomReturn.current = null;
+    setZoomedByButton(false);
+    if (back) animateView(back);
+  }, [animateView]);
+  // La vue revenue à 100 % par un autre chemin : plus rien à retrouver
+  useEffect(() => { if (view.zoom === 1 && viewAnim.current === null && zoomReturn.current) { zoomReturn.current = null; setZoomedByButton(false); } }, [view.zoom]);
+  // En lecture, un tap (sans déplacement) hors de tout bouton et de toute commande ramène la vue
+  useEffect(() => {
+    if (!zoomedByButton) return;
+    let down: { x: number; y: number; t: number } | null = null;
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; };
+    const onUp = (e: PointerEvent) => {
+      const d = down; down = null;
+      if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12 || performance.now() - d.t > 400) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('[data-obj].is-playable, [data-obj].is-extractor, button, .wbib, .wbm, .wbpal, .wbr, .wbx, .wbft, .wb__bar, .wbrail, [role="dialog"]')) return;
+      if (!(displayMode || !OBJECT_TOOLS.includes(toolRef.current))) return;
+      returnFromZoom();
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('pointerup', onUp, true);
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('pointerup', onUp, true); };
+  }, [zoomedByButton, displayMode, returnFromZoom]);
+
+  /** Navigation unique : index borné aux pages existantes. */
+  const goToPage = useCallback((i: number) => {
+    setPageIndex(Math.max(0, Math.min(pagesRef.current.length - 1, i)));
+  }, []);
+
+  /**
+   * Un bouton a été touché en classe : sa séquence se joue. L'état de séance d'abord (visibilité,
+   * caches, post-its), puis les effets : commandes aux widgets et aux sons, remise à zéro de la
+   * page, navigation en dernier. `draft` joue une séquence de remplacement sans rien écrire
+   * (bouton Tester) ; `skipPages` ignore alors les changements de page.
+   */
+  const fireObject = useCallback((id: string, opts?: { draft?: Interaction[]; skipPages?: boolean }) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const found = (p?.objects ?? []).find((o) => o.id === id);
+    if (!p || !found) return;
+    const trigger = opts?.draft ? { ...found, interactions: opts.draft } : found;
+    const objects = p.objects ?? [];
+    const { state, effects } = fireInteractions(revealRef.current, trigger, objects);
+    let next = state;
+    const cmds: Record<string, ObjectCommand> = {};
+    let pageTarget: number | null = null;
+    for (const ef of effects) {
+      if (ef.kind === 'reset') {
+        next = recoverPage(next, p);
+        for (const o of objects) if (o.type === 'widget' || o.type === 'audio') cmds[o.id] = { command: 'reset', at: ++commandSeq.current };
+      } else if (ef.kind === 'command') {
+        cmds[ef.targetId] = { command: ef.command, at: ++commandSeq.current };
+      } else if (ef.kind === 'window') {
+        setOpenWindow(ef.targetId);
+      } else if (ef.kind === 'zoom') {
+        zoomToObject(ef.targetId);
+      } else if (opts?.skipPages) {
+        continue;
+      } else if (ef.kind === 'page') {
+        const idx = pagesRef.current.findIndex((pg) => pg.id === ef.pageId);
+        if (idx >= 0) pageTarget = idx;
+      } else {
+        pageTarget = (pageTarget ?? pageIndexRef.current) + ef.delta;
+      }
+    }
+    if (opts?.draft) revealRef.current = next; // Tester enchaîné : l'état suit sans attendre le rendu
+    setReveal(next);
+    if (Object.keys(cmds).length > 0) setCommands((c) => ({ ...c, ...cmds }));
+    if (pageTarget !== null) goToPage(pageTarget);
+  }, [goToPage, zoomToObject]);
+
+  const patchWindow = useCallback((id: string, fn: (w: WindowObject) => WindowObject) => {
+    patchObject(id, (o) => (o.type === 'window' ? fn(o) : o));
+  }, [patchObject]);
+  const onWindowImageChosen = useCallback(async (file: File) => {
+    const id = windowEdit;
+    if (!id) return;
+    try {
+      const img = await uploadCoverImage(file, userId, sessionId);
+      patchWindow(id, (w) => ({ ...w, imagePath: img.path, imageW: img.width, imageH: img.height }));
+    } catch (err) {
+      window.alert(`Image impossible à utiliser : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+    }
+  }, [windowEdit, patchWindow, sessionId, userId]);
+  /** Zone cliquable : bascule d'une forme (menu contextuel). */
+  const toggleHotspot = useCallback((id: string) => {
+    patchObject(id, (o) => { if (o.type !== 'shape') return o; const n = { ...o }; if (n.hotspot) delete n.hotspot; else { n.hotspot = true; n.fill = null; } return n; });
+  }, [patchObject]);
+
+  // Extracteur de mots : option d'une zone de texte (menu contextuel)
+  const toggleWordExtractor = useCallback((id: string) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const before = p.objects ?? [];
+    handleObjectsChange(before.map((o) => (o.id === id && o.type === 'text' ? { ...o, wordExtractor: !o.wordExtractor } : o)), before);
+  }, [handleObjectsChange]);
+
+  // Un mot d'une zone « extracteur » a été touché : copie du mot dans une zone à part, posée
+  // exactement sur lui (même police, taille, couleur) et sélectionnée, prête à être déplacée.
+  const extractWord = useCallback((sourceId: string, word: string, rect: { x: number; y: number; w: number; h: number }) => {
+    if (displayMode) return;
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const src = (p.objects ?? []).find((o) => o.id === sourceId);
+    if (!src || src.type !== 'text') return;
+    const escaped = word.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // La boîte du mot est celle de sa ligne de police, plus courte que l'interligne de la zone :
+    // on remonte d'un demi-écart pour que la copie se superpose exactement au mot
+    const box: TextObject = {
+      id: uid(),
+      type: 'text',
+      x: Math.round(rect.x),
+      y: Math.round(rect.y - Math.max(0, src.size * LINE_HEIGHT - rect.h) / 2),
+      w: Math.max(24, Math.round(rect.w + src.size * 0.6)),
+      size: src.size,
+      font: src.font,
+      color: src.color,
+      html: `<div>${escaped}</div>`,
+    };
+    addObject(box);
+  }, [addObject, displayMode]);
 
   /** Bascule « caché au départ » ; la séance repart de ce réglage pour l'objet. */
   const toggleHidden = useCallback((id: string) => {
@@ -1418,23 +1798,140 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setReveal((r) => { const shown = { ...r.shown }; delete shown[id]; return { ...r, shown }; });
   }, [patchObject]);
 
-  /** Cible choisie sur la page : par défaut le bouton la bascule, et elle démarre cachée (réponse à révéler). */
+  /**
+   * Ouvre la bulle d'une interaction à côté de sa cible (ou du bouton, sans cible). `at` désigne
+   * une étape existante de la séquence ; sinon, avec une cible, l'étape déjà liée à cette cible
+   * est reprise, et à défaut une nouvelle étape est ajoutée.
+   */
+  const openBubble = useCallback((triggerId: string, targetId: string | null, anchor?: { left: number; top: number; right: number; bottom: number }, at?: number | null, preset?: EventPending | null) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    const trigger = p?.objects?.find((o) => o.id === triggerId);
+    const target = targetId ? p?.objects?.find((o) => o.id === targetId) : null;
+    if (!trigger || (targetId && !target)) return;
+    const seq = trigger.interactions ?? [];
+    const index = at !== undefined && at !== null && at < seq.length ? at : targetId ? seq.findIndex((it) => it.targetId === targetId) : -1;
+    const existing = index >= 0 ? seq[index] : null;
+    const anchorId = targetId ?? triggerId;
+    const rect = anchor ?? document.querySelector(`[data-obj="${anchorId}"]`)?.getBoundingClientRect() ?? { left: window.innerWidth / 2, top: window.innerHeight / 2, right: window.innerWidth / 2, bottom: window.innerHeight / 2 };
+    // Nouvelle interaction : par défaut le bouton bascule la cible, qui démarre cachée (réponse à
+    // révéler) ; sans cible, page suivante
+    const allowed = actionsFor(target ?? null);
+    // Nouvelle étape : basculer la cible si c'est permis, sinon la première action possible (fenêtre : ouvrir ; sans cible : page suivante)
+    const action = preset && allowed.includes(preset.action) ? preset.action
+      : existing && allowed.includes(existing.action) ? existing.action : allowed.includes('toggle') ? 'toggle' : (allowed[0] ?? 'next');
+    const params = preset && allowed.includes(preset.action) ? preset.params : existing?.params;
+    setBubble({
+      triggerId, targetId: existing?.targetId ?? targetId, index: index >= 0 ? index : null,
+      anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      draft: {
+        action, hidden: existing ? target?.hidden === true : !!target, pageId: params?.pageId ?? p?.id, once: existing?.once === true,
+        x: params?.x, y: params?.y, dx: params?.dx ?? 0, dy: params?.dy ?? 0,
+      },
+    });
+  }, []);
+
+  /** Mode liaison : une flèche part du bouton et suit le pointeur jusqu'au tap sur la cible. */
+  const startLinking = useCallback((triggerId: string, pending?: EventPending | null) => {
+    pendingActionRef.current = pending ?? null;
+    setBubble(null);
+    setInteractionsFor(triggerId);
+    setSelectedIds(new Set([triggerId]));
+    setEditingId(null);
+    if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
+    setPicking(true);
+  }, []);
+  const cancelLinking = useCallback(() => { pendingActionRef.current = null; setPicking(false); setLinkPointer(null); }, []);
+
+  /** Cible touchée en mode liaison : la flèche s'y pose et la bulle s'ouvre. */
   const onTargetPicked = useCallback((targetId: string) => {
     const triggerId = interactionsFor;
     setPicking(false);
+    setLinkPointer(null);
+    const pending = pendingActionRef.current;
+    pendingActionRef.current = null;
+    if (!triggerId || triggerId === targetId) return;
+    openBubble(triggerId, targetId, undefined, undefined, pending);
+  }, [interactionsFor, openBubble]);
+
+  /**
+   * Banque d'événements : pose les objets au centre de la page, sélectionne le bouton porteur ;
+   * si une action attend encore sa cible, enchaîne sur le choix de la cible (action déjà choisie),
+   * ou ouvre la bulle sans cible (page à choisir). Une fenêtre posée s'ouvre en édition.
+   */
+  const insertEvent = useCallback((insert: EventInsert) => {
     const p = pagesRef.current[pageIndexRef.current];
-    if (!p || !triggerId || triggerId === targetId) return;
+    if (!p || insert.objects.length === 0) return;
+    const minX = Math.min(...insert.objects.map((o) => o.x)), minY = Math.min(...insert.objects.map((o) => o.y));
+    const maxX = Math.max(...insert.objects.map((o) => objectRect(o).x + objectRect(o).w)), maxY = Math.max(...insert.objects.map((o) => objectRect(o).y + objectRect(o).h));
+    const at = centered(maxX - minX, maxY - minY);
+    const dx = at.x - minX, dy = at.y - minY;
+    const objects = insert.objects.map((o) => ({ ...o, x: o.x + dx, y: o.y + dy }));
+    const before = p.objects ?? [];
+    handleObjectsChange([...before, ...objects], before);
+    setSelectedIds(new Set([insert.triggerId]));
+    setEditingId(null);
+    if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
+    const win = objects.find((o) => o.type === 'window');
+    if (insert.pending) {
+      // L'objet vient d'être posé : le calque doit le rendre avant qu'une bulle s'y ancre
+      window.setTimeout(() => {
+        if (needsTarget(insert.pending!.action)) startLinking(insert.triggerId, insert.pending);
+        else openBubble(insert.triggerId, null, undefined, undefined, insert.pending);
+      }, 0);
+    } else if (win) {
+      setWindowEdit(win.id);
+    }
+  }, [handleObjectsChange, startLinking, openBubble]);
+
+  /** « Enregistrer dans mes événements… » : la sélection, normalisée, sous un nom. */
+  const saveSelectionAsEvent = useCallback(() => {
+    const objects = selectedObjects(true).filter((o) => o.type !== 'connector' || true);
+    if (objects.length === 0) return;
+    const trigger = objects.find((o) => (o.interactions?.length ?? 0) > 0);
+    const suggested = trigger ? objectShortLabel(trigger) : objectShortLabel(objects[0]);
+    const label = window.prompt('Nom de cet événement (il apparaîtra dans Ressources › Événements) :', suggested.replace(/^(Texte|Forme|Zone|Fenêtre|Dessin|Objet) « (.*) »$/, '$2'));
+    if (label === null) return;
+    saveEvent(label, objects);
+  }, [selectedObjects]);
+
+  /** Valider la bulle : l'étape est écrite (ou remplacée) et la cible prend son état de départ. */
+  const confirmBubble = useCallback(() => {
+    const b = bubble;
+    if (!b) return;
+    setBubble(null);
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const visibility = b.draft.action === 'show' || b.draft.action === 'hide' || b.draft.action === 'toggle';
     handleObjectsChange((p.objects ?? []).map((o) => {
-      if (o.id === triggerId) return { ...o, interactions: [...(o.interactions ?? []).filter((it) => it.targetId !== targetId), { targetId, action: 'toggle' as InteractionAction }] };
-      if (o.id === targetId && !o.hidden) return { ...o, hidden: true };
+      if (o.id === b.triggerId) return { ...o, interactions: sequenceWithDraft(b, o.interactions ?? []) };
+      if (b.targetId && o.id === b.targetId && visibility) { const n = { ...o }; if (b.draft.hidden) n.hidden = true; else delete n.hidden; return n; }
       return o;
     }), p.objects ?? []);
-    setReveal((r) => { const shown = { ...r.shown }; delete shown[targetId]; return { ...r, shown }; });
-  }, [interactionsFor, handleObjectsChange]);
+    if (b.targetId && visibility) setReveal((r) => { const shown = { ...r.shown }; delete shown[b.targetId!]; return { ...r, shown }; });
+  }, [bubble, handleObjectsChange]);
 
-  const setInteractionAction = useCallback((triggerId: string, index: number, action: InteractionAction) => {
-    patchObject(triggerId, (o) => ({ ...o, interactions: (o.interactions ?? []).map((it, i) => (i === index ? { ...it, action } : it)) }));
+  /** Tester : joue la séquence avec le brouillon, sans écrire ni changer de page. */
+  const testBubble = useCallback(() => {
+    const b = bubble;
+    if (!b) return;
+    const p = pagesRef.current[pageIndexRef.current];
+    const trigger = p?.objects?.find((o) => o.id === b.triggerId);
+    if (!trigger) return;
+    fireObject(b.triggerId, { draft: sequenceWithDraft(b, trigger.interactions ?? []), skipPages: true });
+  }, [bubble, fireObject]);
+
+  /** Déplace une étape de la séquence d'un cran. */
+  const moveInteraction = useCallback((triggerId: string, index: number, delta: -1 | 1) => {
+    patchObject(triggerId, (o) => {
+      const seq = [...(o.interactions ?? [])];
+      const j = index + delta;
+      if (index < 0 || index >= seq.length || j < 0 || j >= seq.length) return o;
+      [seq[index], seq[j]] = [seq[j], seq[index]];
+      return { ...o, interactions: seq };
+    });
+    setBubble((bb) => (bb && bb.triggerId === triggerId && bb.index === index ? { ...bb, index: index + delta } : bb));
   }, [patchObject]);
+
 
   const removeInteraction = useCallback((triggerId: string, index: number) => {
     patchObject(triggerId, (o) => {
@@ -1610,7 +2107,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   const recoverAll = useCallback(() => {
-    setReveal({ pages: {}, objects: {}, gaps: {}, shown: {} });
+    setReveal(emptyReveal());
   }, []);
 
   /** Pose (ou retire) un cache sur les objets sélectionnés, avec un pas d'annulation. */
@@ -1668,6 +2165,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const bus = classroom?.bus;
     if (!bus) return;
     return bus.subscribe((cmd: ClassroomCommand) => {
+      if (!activeRef.current) return; // onglet masqué : les commandes du téléphone vont à l'onglet actif
       if (cmd.kind === 'photo') {
         insertImage({ path: cmd.path, width: cmd.width, height: cmd.height });
       } else if (cmd.kind === 'camera' && cmd.action === 'offer') {
@@ -1709,21 +2207,86 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const count = selectedIdsRef.current.size;
     const many = count > 1;
     const locked = target.locked === true;
+    if (target.type === 'connector') {
+      const c = target;
+      const items: MenuItem[] = [
+        { label: many ? `Couper (${count} objets)` : 'Couper', shortcut: 'Ctrl+X', onSelect: cutSelected },
+        { label: 'Copier', shortcut: 'Ctrl+C', onSelect: copySelected },
+        { label: 'Dupliquer', shortcut: 'Ctrl+D', onSelect: duplicateSelected },
+        { separator: true, label: '' },
+        { label: 'Tracé', children: [
+          { label: 'Courbe', checked: c.route === 'curve', onSelect: () => patchSelectedConnectors((k) => ({ ...k, route: 'curve' })) },
+          { label: 'Droite', checked: c.route === 'straight', onSelect: () => patchSelectedConnectors((k) => ({ ...k, route: 'straight', bend: undefined })) },
+          { separator: true, label: '' },
+          { label: 'Redresser (enlever le cintrage)', disabled: !c.bend, onSelect: () => patchSelectedConnectors((k) => ({ ...k, bend: undefined })) },
+        ] },
+        { label: 'Flèches', children: [
+          { label: 'Aucune', checked: !c.heads.start && !c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: false, end: false } })) },
+          { label: 'À la fin', checked: !c.heads.start && c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: false, end: true } })) },
+          { label: 'Au début', checked: c.heads.start && !c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: true, end: false } })) },
+          { label: 'Aux deux bouts', checked: c.heads.start && c.heads.end, onSelect: () => patchSelectedConnectors((k) => ({ ...k, heads: { start: true, end: true } })) },
+          { separator: true, label: '' },
+          { label: 'Inverser le sens', onSelect: () => patchSelectedConnectors((k) => ({ ...k, from: k.to, to: k.from })) },
+        ] },
+        { label: c.label ? 'Modifier le texte de la flèche…' : 'Texte sur la flèche…', onSelect: () => { const t = window.prompt('Texte sur la flèche (vide : aucun)', c.label ?? ''); if (t !== null) patchSelectedConnectors((k) => ({ ...k, label: t.trim() || undefined })); } },
+        { separator: true, label: '' },
+        { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, onSelect: deleteSelected },
+      ];
+      setMenu({ x, y, items });
+      return;
+    }
     const items: MenuItem[] = [
       { label: many ? `Couper (${count} objets)` : 'Couper', shortcut: 'Ctrl+X', disabled: locked, onSelect: cutSelected },
       { label: 'Copier', shortcut: 'Ctrl+C', onSelect: copySelected },
       { label: 'Coller', shortcut: 'Ctrl+V', disabled: !clipboardHasObjects(), onSelect: pasteFromClipboard },
       { label: 'Dupliquer', shortcut: 'Ctrl+D', onSelect: duplicateSelected },
       { separator: true, label: '' },
+      // Actions propres au type d'objet, au premier niveau : ce sont les plus fréquentes
       ...(target.type === 'text' && !many && !locked
         ? [{ label: 'Modifier le texte', shortcut: 'Double-clic', onSelect: () => setEditingId(id) }]
         : []),
-      { label: 'Mettre au premier plan', shortcut: 'Ctrl+Maj+]', onSelect: () => reorderSelected('front') },
-      { label: 'Avancer', shortcut: 'Ctrl+]', onSelect: () => reorderSelected('forward') },
-      { label: 'Reculer', shortcut: 'Ctrl+[', onSelect: () => reorderSelected('backward') },
-      { label: "Mettre à l'arrière-plan", shortcut: 'Ctrl+Maj+[', onSelect: () => reorderSelected('back') },
-      { separator: true, label: '' },
-      ...(target.cover
+      ...(target.type === 'text' && gapIdsIn(target.html).length > 0
+        ? [{ label: 'Révéler tous les trous', onSelect: () => revealAllGaps(target.id) }]
+        : []),
+      ...(target.type === 'equation' && !many && !locked ? [{ label: "Modifier l'équation", shortcut: 'Double-clic', onSelect: () => setEditingId(id) }] : []),
+      ...(target.type === 'web' && !many ? [{ label: target.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site', onSelect: () => onToggleInteractive(target.id) }] : []),
+      ...(target.type === 'image' && !many ? [{ label: 'Image', children: [
+        { label: "Remplacer l'image…", onSelect: () => replaceImageInputRef.current?.click() },
+        { label: 'Mettre en fond de page', onSelect: sendImageToBackground },
+      ] }] : []),
+      ...(target.type === 'table' && !many ? (() => {
+        const cell = tableCellRef.current?.id === target.id ? tableCellRef.current : { r: 0, c: 0 };
+        return [{ label: 'Tableau', children: [
+          { label: 'Ligne au-dessus', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r)) },
+          { label: 'Ligne en dessous', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r + 1)) },
+          { label: 'Colonne avant', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c)) },
+          { label: 'Colonne après', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c + 1)) },
+          { separator: true, label: '' },
+          { label: 'Supprimer la ligne', disabled: target.rows <= 1, onSelect: () => patchTable(target.id, (t) => removeTableRow(t, cell.r)) },
+          { label: 'Supprimer la colonne', disabled: target.cols <= 1, onSelect: () => patchTable(target.id, (t) => removeTableCol(t, cell.c)) },
+          { separator: true, label: '' },
+          { label: target.header ? 'Sans ligne d\'en-tête' : 'Première ligne en en-tête', onSelect: () => patchTable(target.id, (t) => ({ ...t, header: !t.header })) },
+        ] }];
+      })() : []),
+      ...(target.type === 'window' && !many ? [{ label: 'Modifier la fenêtre', shortcut: 'Double-clic', disabled: locked, onSelect: () => setWindowEdit(id) }] : []),
+      ...(target.type === 'shape' && !many && !isLineKind(target.kind) ? (() => {
+        const attached = pagesRef.current[pageIndexRef.current]?.strokes.some((st) => st.parentId === target.id) ?? false;
+        return [
+          { label: 'Zone cliquable (invisible en lecture)', checked: !!target.hotspot, onSelect: () => toggleHotspot(target.id) },
+          { label: 'Écrire dans la forme', shortcut: 'Double-clic', disabled: locked, onSelect: () => setEditingId(id) },
+          attached
+            ? { label: 'Détacher l’encre de la forme', onSelect: () => setInkAttachment(target.id, false) }
+            : { label: 'Attacher l’encre contenue', onSelect: () => setInkAttachment(target.id, true) },
+        ];
+      })() : []),
+      // Familles d'actions en sous-menus (survol ou toucher) pour garder le menu court
+      { label: 'Ordre', children: [
+        { label: 'Mettre au premier plan', shortcut: 'Ctrl+Maj+]', onSelect: () => reorderSelected('front') },
+        { label: 'Avancer', shortcut: 'Ctrl+]', onSelect: () => reorderSelected('forward') },
+        { label: 'Reculer', shortcut: 'Ctrl+[', onSelect: () => reorderSelected('backward') },
+        { label: "Mettre à l'arrière-plan", shortcut: 'Ctrl+Maj+[', onSelect: () => reorderSelected('back') },
+      ] },
+      { label: target.cover ? 'Cache' : 'Poser un cache', children: target.cover
         ? [
             ...(reveal.objects[target.id] !== undefined
               ? [{ label: 'Recouvrir', onSelect: () => revealObject(target.id, null) }]
@@ -1731,48 +2294,42 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             ...(reveal.objects[target.id] !== true
               ? [{ label: 'Découvrir', onSelect: () => revealObject(target.id, true) }]
               : []),
+            { separator: true, label: '' },
             { label: 'Retirer le cache', onSelect: () => setCoverOnSelected(null) },
           ]
         : [
-            { label: 'Poser un rideau', onSelect: () => setCoverOnSelected({ kind: 'curtain', color: '#4B5563', label: '?' }) },
+            { label: 'Rideau', onSelect: () => setCoverOnSelected({ kind: 'curtain', color: '#4B5563', label: '?' }) },
             { label: 'Ticket à gratter (uni)', onSelect: () => setCoverOnSelected({ kind: 'scratch', color: '#9CA3AF' }) },
             { label: 'Ticket à gratter (image…)', onSelect: pickCoverImage },
-          ]),
-      ...(!many ? [
-        { separator: true, label: '' },
-        { label: `Interactions du bouton…${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, onSelect: () => setInteractionsFor(target.id) },
-        { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
-        ...((target.interactions?.length ?? 0) > 0 ? [{ label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) }] : []),
-      ] : []),
-      ...(target.type === 'text' && gapIdsIn(target.html).length > 0
-        ? [{ label: 'Révéler tous les trous', onSelect: () => revealAllGaps(target.id) }]
-        : []),
-      ...(target.type === 'image' && !many ? [
-        { label: "Remplacer l'image…", onSelect: () => replaceImageInputRef.current?.click() },
-        { label: 'Mettre en fond de page', onSelect: sendImageToBackground },
-      ] : []),
-      ...(target.type === 'equation' && !many && !locked ? [{ label: "Modifier l'équation", shortcut: 'Double-clic', onSelect: () => setEditingId(id) }] : []),
-      ...(target.type === 'web' && !many ? [{ label: target.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site', onSelect: () => onToggleInteractive(target.id) }] : []),
-      ...(target.type === 'table' && !many ? (() => {
-        const cell = tableCellRef.current?.id === target.id ? tableCellRef.current : { r: 0, c: 0 };
-        return [
+          ] },
+      ...(!many ? [{ label: `Bouton et interactions${(target.interactions?.length ?? 0) > 0 ? ` (${target.interactions?.length})` : ''}`, children: [
+        { label: 'Relier à un objet (afficher, masquer, découvrir, lancer…)…', onSelect: () => startLinking(target.id) },
+        { label: 'Action sans cible (page, remise à zéro)…', onSelect: () => { setSelectedIds(new Set([target.id])); openBubble(target.id, null); } },
+        ...((target.interactions?.length ?? 0) > 0 ? [
+          { label: 'Déclencher le bouton', onSelect: () => fireObject(target.id) },
           { separator: true, label: '' },
-          { label: 'Ligne au-dessus', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r)) },
-          { label: 'Ligne en dessous', onSelect: () => patchTable(target.id, (t) => insertTableRow(t, cell.r + 1)) },
-          { label: 'Colonne avant', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c)) },
-          { label: 'Colonne après', onSelect: () => patchTable(target.id, (t) => insertTableCol(t, cell.c + 1)) },
-          { label: 'Supprimer la ligne', disabled: target.rows <= 1, onSelect: () => patchTable(target.id, (t) => removeTableRow(t, cell.r)) },
-          { label: 'Supprimer la colonne', disabled: target.cols <= 1, onSelect: () => patchTable(target.id, (t) => removeTableCol(t, cell.c)) },
-          { label: target.header ? 'Sans ligne d\'en-tête' : 'Première ligne en en-tête', onSelect: () => patchTable(target.id, (t) => ({ ...t, header: !t.header })) },
-        ];
-      })() : []),
+          // Une entrée par étape de la séquence : ouvre sa bulle (action, options, suppression)
+          ...(target.interactions ?? []).map((it, index) => {
+            const objs = pagesRef.current[pageIndexRef.current]?.objects ?? [];
+            const t = it.targetId ? objs.find((o) => o.id === it.targetId) : null;
+            const gone = needsTarget(it.action) && !t;
+            return { label: `${index + 1}. ${describeInteraction(it, objs, pagesRef.current.map((pg) => pg.id))}`, disabled: gone, onSelect: () => { setSelectedIds(new Set([target.id])); openBubble(target.id, it.targetId ?? null, undefined, index); } };
+          }),
+        ] : []),
+        { separator: true, label: '' },
+        { label: target.hidden ? 'Visible au départ' : 'Caché au départ (révélé par un bouton)', onSelect: () => toggleHidden(target.id) },
+      ] }] : []),
+      ...(!many && target.type === 'text' ? [{ label: 'Extracteur de mots (toucher un mot le duplique)', checked: !!target.wordExtractor, onSelect: () => toggleWordExtractor(target.id) }] : []),
+      { label: 'Enregistrer dans mes événements…', onSelect: saveSelectionAsEvent },
       { label: many ? 'Exporter la sélection en image' : 'Exporter en image (PNG)', onSelect: () => void exportSelectionImage() },
       { separator: true, label: '' },
+      ...(many ? [{ label: `Grouper (${count})`, shortcut: 'Ctrl+G', onSelect: groupSelected }] : []),
+      ...(target.groupId ? [{ label: 'Dégrouper', shortcut: 'Ctrl+Maj+G', onSelect: ungroupSelected }] : []),
       { label: locked ? 'Déverrouiller' : 'Verrouiller', shortcut: 'Ctrl+Maj+K', onSelect: toggleLockSelected },
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];
     setMenu({ x, y, items });
-  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject]);
+  }, [cutSelected, copySelected, pasteFromClipboard, duplicateSelected, reorderSelected, toggleLockSelected, deleteSelected, reveal.objects, revealObject, setCoverOnSelected, pickCoverImage, revealAllGaps, sendImageToBackground, exportSelectionImage, onToggleInteractive, patchTable, toggleHidden, fireObject, setInkAttachment, patchSelectedConnectors, startLinking, openBubble, groupSelected, ungroupSelected, toggleWordExtractor, toggleHotspot, saveSelectionAsEvent]);
 
   const openCanvasMenu = useCallback((x: number, y: number, unit: { x: number; y: number }) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -1780,38 +2337,58 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const items: MenuItem[] = [
       { label: 'Coller', shortcut: 'Ctrl+V', disabled: !clipboardHasObjects(), onSelect: pasteFromClipboard },
       { label: 'Nouvelle zone de texte ici', shortcut: 'T', onSelect: () => { setTool('text'); createTextBox(unit.x, unit.y); } },
-      { label: 'Insérer une image…', onSelect: () => { dropPoint.current = unit; imageInputRef.current?.click(); } },
+      { label: 'Insérer ici', children: insertMenuItems(unit) },
       { label: 'Tout sélectionner', shortcut: 'Ctrl+A', disabled: (p.objects ?? []).length === 0, onSelect: selectAll },
       { separator: true, label: '' },
-      ...BACKGROUNDS.map((b) => ({ label: `Fond : ${b.label}`, onSelect: () => setBackground(b.id) })),
-      { separator: true, label: '' },
-      { label: p.curtain ? 'Retirer le rideau de page' : 'Rideau sur la page', onSelect: togglePageCurtain },
-      { label: 'Tout recouvrir (cette page)', onSelect: recoverCurrentPage },
-      { label: 'Tout recouvrir (tout le tableau)', onSelect: recoverAll },
-      { separator: true, label: '' },
-      { label: 'Allonger la page (+ ½ écran)', onSelect: () => extendPage() },
-      { label: 'Ajuster la hauteur de la page au contenu', disabled: !p.height, onSelect: fitPageHeight },
-      ...(p.image ? [
-        p.image && fullWidthPageHeight(p.image) > BOARD_PAGE_H && !p.height
-          ? { label: 'Document : afficher en pleine largeur (page allongée)', onSelect: () => setDocumentLayout('full') }
-          : { label: 'Document : réduire pour tenir dans la page', disabled: !p.height, onSelect: () => setDocumentLayout('fit') },
-      ] : []),
-      { label: 'Règle', onSelect: () => addInstrument('ruler') },
-      { label: 'Équerre', onSelect: () => addInstrument('setsquare') },
-      { label: 'Rapporteur', onSelect: () => addInstrument('protractor') },
-      { label: 'Projecteur', onSelect: () => setSpotlight(true) },
-      { separator: true, label: '' },
-      { label: 'Exporter en PDF…', onSelect: () => setExportOpen(true) },
-      { label: 'Exporter la page en image (PNG)', onSelect: () => void exportPageImage() },
-      { label: `Enregistrer le tableau (${GCBOARD_EXTENSION})`, onSelect: () => void saveGcboard() },
-      { label: 'Ouvrir un tableau, un PDF, une image…', onSelect: () => fileInputRef.current?.click() },
-      { separator: true, label: '' },
-      { label: 'Nouvelle page', shortcut: 'Ctrl+Entrée', onSelect: addPage },
-      { label: 'Dupliquer la page', onSelect: () => duplicatePage(pageIndexRef.current) },
-      { label: 'Effacer la page', danger: true, disabled: p.strokes.length === 0 && (p.objects ?? []).length === 0, onSelect: clearPage },
+      // Les familles d'actions sont rangées en sous-menus (survol ou toucher) pour garder le
+      // menu court sur le TBI.
+      { label: 'Changer de fond', children: BACKGROUNDS.map((b) => ({ label: b.label, checked: p.background === b.id, onSelect: () => setBackground(b.id) })) },
+      // Clic droit sur une couleur : la roue remplace cette pastille (mémorisé) et l'applique
+      { label: 'Couleur du fond', children: [
+        ...bgColors.map((c, i) => ({
+          label: swatchLabel(SWATCHES.background, i, bgColors), swatch: c, checked: (p.color ?? '#FFFFFF').toUpperCase() === c.toUpperCase(),
+          onSelect: () => setBackgroundColor(c), onContextMenu: () => pickSwatchColor(SWATCHES.background, i, setBackgroundColor),
+        })),
+        { separator: true, label: '' },
+        { label: 'Autre couleur…', onSelect: () => openColorWheel(p.color ?? '#FFFFFF', setBackgroundColor) },
+      ] },
+      { label: 'Rideau et caches', children: [
+        { label: p.curtain ? 'Retirer le rideau de page' : 'Rideau sur la page', onSelect: togglePageCurtain },
+        { separator: true, label: '' },
+        { label: 'Tout recouvrir (cette page)', onSelect: recoverCurrentPage },
+        { label: 'Tout recouvrir (tout le tableau)', onSelect: recoverAll },
+      ] },
+      { label: 'Instruments', children: [
+        { label: 'Règle', onSelect: () => addInstrument('ruler') },
+        { label: 'Équerre', onSelect: () => addInstrument('setsquare') },
+        { label: 'Rapporteur', onSelect: () => addInstrument('protractor') },
+        { separator: true, label: '' },
+        { label: 'Projecteur', onSelect: () => setSpotlight(true) },
+      ] },
+      { label: 'Page', children: [
+        { label: 'Nouvelle page', shortcut: 'Ctrl+Entrée', onSelect: addPage },
+        { label: 'Dupliquer la page', onSelect: () => duplicatePage(pageIndexRef.current) },
+        { separator: true, label: '' },
+        { label: 'Allonger la page (+ ½ écran)', onSelect: () => extendPage() },
+        { label: 'Ajuster la hauteur au contenu', disabled: !p.height, onSelect: fitPageHeight },
+        ...(p.image ? [
+          p.image && fullWidthPageHeight(p.image) > BOARD_PAGE_H && !p.height
+            ? { label: 'Document : afficher en pleine largeur (page allongée)', onSelect: () => setDocumentLayout('full') }
+            : { label: 'Document : réduire pour tenir dans la page', disabled: !p.height, onSelect: () => setDocumentLayout('fit') },
+        ] : []),
+        { separator: true, label: '' },
+        { label: 'Effacer la page', danger: true, disabled: p.strokes.length === 0 && (p.objects ?? []).length === 0, onSelect: clearPage },
+      ] },
+      { label: 'Fichier et export', children: [
+        { label: 'Ouvrir un tableau, un PDF, une image…', onSelect: () => fileInputRef.current?.click() },
+        { label: `Enregistrer le tableau (${GCBOARD_EXTENSION})`, onSelect: () => void saveGcboard() },
+        { separator: true, label: '' },
+        { label: 'Exporter en PDF…', onSelect: () => setExportOpen(true) },
+        { label: 'Exporter la page en image (PNG)', onSelect: () => void exportPageImage() },
+      ] },
     ];
     setMenu({ x, y, items });
-  }, [pasteFromClipboard, createTextBox, selectAll, setBackground, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
+  }, [pasteFromClipboard, createTextBox, insertMenuItems, selectAll, setBackground, setBackgroundColor, bgColors, addPage, duplicatePage, clearPage, togglePageCurtain, recoverCurrentPage, recoverAll, exportPageImage, saveGcboard, addInstrument, extendPage, fitPageHeight, setDocumentLayout]);
 
   const openInkMenu = useCallback((x: number, y: number) => {
     const count = selectedStrokeIdsRef.current.size;
@@ -1852,6 +2429,73 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     return { x: (e.clientX - rect.left) / k, y: (e.clientY - rect.top) / k };
   }, []);
 
+  // Déplacer vers : le prochain tap sur la page fixe la destination (la cible y sera centrée)
+  useEffect(() => {
+    if (!pickingPoint) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('.wbib, .wb__pickbanner, .wbm, .wbpop')) return;
+      e.preventDefault(); e.stopPropagation();
+      const u = toUnit(e);
+      setBubble((b) => {
+        if (!b) return b;
+        const p = pagesRef.current[pageIndexRef.current];
+        const target = b.targetId ? p?.objects?.find((o) => o.id === b.targetId) : null;
+        const r = target ? objectRect(target) : { w: 0, h: 0 };
+        return { ...b, draft: { ...b.draft, x: Math.round(u.x - r.w / 2), y: Math.round(u.y - r.h / 2) } };
+      });
+      setPickingPoint(false);
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
+  }, [pickingPoint, toUnit]);
+
+  // Mode liaison : la flèche suit la souris (au doigt, elle apparaît au contact) ; un appui hors
+  // de tout objet annule ; Échap aussi (raccourci global plus bas)
+  useEffect(() => {
+    if (!picking) return;
+    const onMove = (e: PointerEvent) => setLinkPointer(toUnit(e));
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('[data-obj], .wb__pickbanner, .wbm, .wbpop')) return;
+      cancelLinking();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerdown', onDown, true);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerdown', onDown, true); };
+  }, [picking, toUnit, cancelLinking]);
+
+  /** Résultat d'un widget (calculatrice, dé, roue, groupes, minuteur) posé sur la page en zone de texte. */
+  const placeWidgetResult = useCallback((id: string, text: string, client: { x: number; y: number } | null) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p || !text.trim()) return;
+    const widget = (p.objects ?? []).find((o) => o.id === id);
+    const at = client
+      ? toUnit({ clientX: client.x, clientY: client.y })
+      : widget && 'h' in widget ? { x: widget.x, y: widget.y + (widget as { h: number }).h + 12 } : { x: 80, y: 80 };
+    const lines = text.split('\n');
+    const longest = Math.max(...lines.map((l) => l.length));
+    const w = Math.max(MIN_TEXT_WIDTH, Math.round(longest * textSize * 0.62 + textSize));
+    const html = lines.map((l) => `<div>${escapeHtml(l) || '<br>'}</div>`).join('');
+    // Déposé au doigt : le point visé est le centre de l'étiquette, pas son coin
+    const x = client ? at.x - w / 2 : at.x;
+    const y = client ? at.y - (textSize * LINE_HEIGHT) / 2 : at.y;
+    addObject({ id: uid(), type: 'text', x: Math.max(0, x), y: Math.max(0, y), w, size: textSize, font: textFont, color, html });
+  }, [toUnit, textSize, textFont, color, addObject]);
+
+  /** Post-it : replier ou déplier dans le document. */
+  const foldText = useCallback((id: string, folded: boolean) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    const before = p.objects ?? [];
+    handleObjectsChange(before.map((o) => (o.id === id && o.type === 'text' ? { ...o, collapsed: folded } : o)), before);
+  }, [handleObjectsChange]);
+
+  /** Post-it replié touché en classe : déplié pour la séance, le document ne change pas. */
+  const unfoldInSession = useCallback((id: string) => {
+    setReveal((r) => ({ ...r, unfolded: { ...(r.unfolded ?? {}), [id]: true } }));
+  }, []);
+
 
   const clearLive = useCallback(() => {
     const live = liveRef.current;
@@ -1890,6 +2534,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (z === 1) { tx = 0; ty = Math.max(-pageOverflow(), Math.min(0, ty)); }
     setView({ zoom: z, tx, ty });
   }, [pageOverflow]);
+
 
   /** Cercle de gomme sur le calque temporaire (suit le stylet / la souris). */
   const drawEraserCursor = useCallback((x: number, y: number) => {
@@ -1947,12 +2592,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       return;
     }
 
-    // Outil forme : on étire la forme depuis le point d'appui (clic simple = taille par défaut)
+    // Outil forme : on étire la forme depuis le point d'appui (clic simple = taille par défaut) ;
+    // zone libre : le doigt trace le contour
     if (toolRef.current === 'shape') {
       e.preventDefault();
       activePointer.current = e.pointerId;
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* pointeur synthétique */ }
       const { x, y } = toUnit(e);
+      if (shapeZoneRef.current?.free) { zoneTrace.current = [{ x, y }]; return; }
       shapeDraft.current = { x0: x, y0: y, x1: x, y1: y, shift: e.shiftKey };
       return;
     }
@@ -2034,6 +2681,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     }
     if (e.pointerId !== activePointer.current) return;
     e.preventDefault();
+    const trace = zoneTrace.current;
+    if (trace) {
+      trace.push(toUnit(e));
+      const live = liveRef.current;
+      const ctx = live?.getContext('2d');
+      if (!live || !ctx) return;
+      const dpr = dprRef.current, k = scaleRef.current;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, live.width / dpr, live.height / dpr);
+      ctx.beginPath();
+      trace.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x * k, pt.y * k) : ctx.lineTo(pt.x * k, pt.y * k)));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(99,102,241,0.12)'; ctx.fill();
+      ctx.setLineDash([6, 4]); ctx.strokeStyle = '#6366F1'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+      return;
+    }
     const draft = shapeDraft.current;
     if (draft) {
       const { x, y } = toUnit(e);
@@ -2151,13 +2814,25 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
     const p = pagesRef.current[pageIndexRef.current];
     if (holdTimer.current) { window.clearTimeout(holdTimer.current); holdTimer.current = null; }
+    const trace = zoneTrace.current;
+    if (trace) {
+      zoneTrace.current = null;
+      clearLive();
+      const poly = contourToPolygon(trace);
+      if (poly) {
+        const obj = addShape(poly, 'polygon', { points: poly.points, hotspot: true, fill: null, dashed: true });
+        if (obj) { setTool('select'); setSelectedIds(new Set([obj.id])); }
+      }
+      return;
+    }
     const draft = shapeDraft.current;
     if (draft) {
       shapeDraft.current = null;
       clearLive();
       const shape = draftToShape(draft, shapeKindRef.current, shapeStyleRef.current)
         ?? { ...defaultShapeBox(shapeKindRef.current, draft.x0, draft.y0), kind: shapeKindRef.current, a: { x: 0, y: 0 }, b: { x: 1, y: 0 } };
-      const obj = addShape(shape, shape.kind, { a: shape.a, b: shape.b });
+      const zone = shapeZoneRef.current;
+      const obj = addShape(shape, shape.kind, zone ? { hotspot: true, fill: null, dashed: true } : { a: shape.a, b: shape.b });
       if (obj) { setTool('select'); setSelectedIds(new Set([obj.id])); }
       return;
     }
@@ -2176,8 +2851,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         w: Math.abs(marquee.x1 - marquee.x0), h: Math.abs(marquee.y1 - marquee.y0),
       };
       if (rect.w < 3 && rect.h < 3) return; // simple clic sur le fond : déjà désélectionné
-      const hit = (p?.objects ?? []).filter((o) => rectsIntersect(objectRect(o), rect)).map((o) => o.id);
-      setSelectedIds((prev) => (marquee.additive ? new Set([...prev, ...hit]) : new Set(hit)));
+      const hit = expandGroups(p?.objects ?? [], (p?.objects ?? []).filter((o) => rectsIntersect(objectRect(o), rect)).map((o) => o.id));
+      setSelectedIds((prev) => (marquee.additive ? new Set([...prev, ...hit]) : hit));
       // L'encre aussi : un trait est pris s'il passe dans le rectangle
       const inkHit = (p?.strokes ?? []).filter((st) => st.points.some((pt) => rectContains(rect, pt.x, pt.y))).map((st) => st.id);
       setSelectedStrokeIds((prev) => (marquee.additive ? new Set([...prev, ...inkHit]) : new Set(inkHit)));
@@ -2216,8 +2891,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       const rec = recognizeShape(stroke.points);
       if (rec && convertStroke(stroke, rec)) return;
     }
-    pushOp(p.id, { type: 'add', stroke });
-    updatePage(p.id, (pg) => ({ ...pg, strokes: [...pg.strokes, stroke] }));
+    // Trait entièrement dans une forme fermée : il lui est attaché (la forme la plus haute qui le contient)
+    const parent = [...(p.objects ?? [])].reverse().find((o) => o.type === 'shape' && !isLineKind(o.kind) && pointsInsideShape(stroke.points, o, hitCtx(), 4));
+    const placed: Stroke = parent ? { ...stroke, parentId: parent.id } : stroke;
+    pushOp(p.id, { type: 'add', stroke: placed });
+    updatePage(p.id, (pg) => ({ ...pg, strokes: [...pg.strokes, placed] }));
   }, [pushOp, updatePage, clearLive, drawEraserCursor, toUnit, convertStroke, addShape]);
 
   // Changement d'outil : on efface le cercle de gomme éventuel
@@ -2238,6 +2916,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       else if (ctrl && k === 'z') { e.preventDefault(); if (e.shiftKey) applyRedo(); else applyUndo(); }
       else if (ctrl && k === 'y') { e.preventDefault(); applyRedo(); }
       else if (ctrl && k === 'a' && OBJECT_TOOLS.includes(toolRef.current)) { e.preventDefault(); selectAll(); }
+      else if (ctrl && !e.shiftKey && k === 'g' && hasSelection) { e.preventDefault(); groupSelected(); }
+      else if (ctrl && e.shiftKey && k === 'g' && hasSelection) { e.preventDefault(); ungroupSelected(); }
       else if (ctrl && !e.shiftKey && k === 'k') { e.preventDefault(); setSearchOpen(true); }
       else if (ctrl && k === 'c' && hasSelection) { e.preventDefault(); copySelected(); }
       else if (ctrl && k === 'x' && hasSelection) { e.preventDefault(); cutSelected(); }
@@ -2253,14 +2933,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const step = e.shiftKey ? 10 : 1;
         nudgeSelected(e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0, e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0);
       }
-      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setPaletteEditor(false); setSpotlight(false); setDisplayMode(false); setPicking(false); setInteractionsFor(null); }
+      else if (!ctrl && e.key === 'Escape') { setEditingId(null); setSelectedIds(new Set()); setSelectedStrokeIds(new Set()); setMenu(null); setRadial(null); setPaletteEditor(false); setSpotlight(false); setDisplayMode(false); setPicking(false); setLinkPointer(null); setBubble(null); setInteractionsFor(null); }
       else if (!ctrl && !hasSelection && !e.altKey && (e.key === 'PageDown' || e.key === 'PageUp' || e.key === 'End' || e.key === 'Home')) {
         const el = containerRef.current;
         if (el && pageOverflow() > 0) { e.preventDefault(); scrollBy(e.key === 'PageDown' ? el.clientHeight * 0.8 : e.key === 'PageUp' ? -el.clientHeight * 0.8 : e.key === 'End' ? 1e6 : -1e6); }
       }
       else if (ctrl && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomAt(1.2, window.innerWidth / 2, window.innerHeight / 2); }
       else if (ctrl && e.key === '-') { e.preventDefault(); zoomAt(1 / 1.2, window.innerWidth / 2, window.innerHeight / 2); }
-      else if (ctrl && e.key === '0') { e.preventDefault(); setView(IDENTITY_VIEW); }
+      else if (ctrl && e.key === '0') { e.preventDefault(); if (zoomReturn.current) returnFromZoom(); else setView(IDENTITY_VIEW); }
       else if (!ctrl && !e.altKey) {
         if (k === 'p') setTool('pen');
         else if (k === 's') setTool('highlighter');
@@ -2270,13 +2950,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         else if (k === 'f') setTool('shape');
         else if (k === 'l') setTool('laser');
         else if (k === 'n') setNavOpen((v) => !v);
-        else if (k === 'pageup') setPageIndex((i) => Math.max(0, i - 1));
-        else if (k === 'pagedown') setPageIndex((i) => Math.min(pagesRef.current.length - 1, i + 1));
+        else if (k === 'pageup') goToPage(pageIndexRef.current - 1);
+        else if (k === 'pagedown') goToPage(pageIndexRef.current + 1);
       }
     };
+    if (!active) return; // onglet masqué : le clavier va à l'onglet actif
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy]);
+  }, [active, goToPage, returnFromZoom, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
 
   // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -2370,32 +3051,39 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     shape: { active: tool === 'shape', onSelect: () => setTool('shape') },
     laser: { active: tool === 'laser', onSelect: () => setTool('laser') },
     color: { swatch: color, keepOpen: true, onSelect: () => setRadial((r) => (r ? { ...r, submenu: 'color' } : r)) },
-    'color-0': { swatch: COLORS[0], active: color === COLORS[0], onSelect: () => pickColor(COLORS[0]) },
-    'color-1': { swatch: COLORS[1], active: color === COLORS[1], onSelect: () => pickColor(COLORS[1]) },
-    'color-2': { swatch: COLORS[2], active: color === COLORS[2], onSelect: () => pickColor(COLORS[2]) },
-    'color-3': { swatch: COLORS[3], active: color === COLORS[3], onSelect: () => pickColor(COLORS[3]) },
+    ...Object.fromEntries([0, 1, 2, 3].map((i) => [`color-${i}`, {
+      swatch: quickColors[i], active: color === quickColors[i], onSelect: () => pickColor(quickColors[i]),
+      onContextMenu: () => pickSwatchColor(SWATCHES.quick, i, pickColor),
+    }])),
     'size-cycle': { label: `Trait ${sizeKey}`, onSelect: () => setSizeKey((k) => (k === 'S' ? 'M' : k === 'M' ? 'L' : 'S')) },
     undo: { disabled: historyLen === 0, onSelect: applyUndo },
     redo: { disabled: redoLen === 0, onSelect: applyRedo },
-    'page-next': { disabled: pageIndex >= pages.length - 1, onSelect: () => setPageIndex((i) => Math.min(pages.length - 1, i + 1)) },
-    'page-prev': { disabled: pageIndex === 0, onSelect: () => setPageIndex((i) => Math.max(0, i - 1)) },
+    'page-next': { disabled: pageIndex >= pages.length - 1, onSelect: () => goToPage(pageIndex + 1) },
+    'page-prev': { disabled: pageIndex === 0, onSelect: () => goToPage(pageIndex - 1) },
     'page-new': { onSelect: addPage },
     'page-nav': { active: navOpen, onSelect: () => setNavOpen((v) => !v) },
     'page-clear': { disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
     'zoom-in': { onSelect: () => zoomAt(1.5, window.innerWidth / 2, window.innerHeight / 2) },
-    'zoom-reset': { disabled: view.zoom === 1, onSelect: () => setView(IDENTITY_VIEW) },
+    'zoom-reset': { disabled: view.zoom === 1, onSelect: () => (zoomReturn.current ? returnFromZoom() : setView(IDENTITY_VIEW)) },
     spotlight: { onSelect: () => setSpotlight(true) },
     ruler: { onSelect: () => addInstrument('ruler') },
     setsquare: { onSelect: () => addInstrument('setsquare') },
     protractor: { onSelect: () => addInstrument('protractor') },
     keyboard: { active: keyboardOpen, onSelect: () => setKeyboardOpen((v) => !v) },
-    library: { onSelect: () => setLibraryOpen(true) },
+    insert: { onSelect: () => { if (radial) setMenu({ x: radial.x, y: radial.y, items: insertMenuItems() }); else setInsertOpen(true); } },
+    // Un quartier par élément insérable (`insert-calc`, `insert-timer`…)
+    ...Object.fromEntries(insertEntries().map((e) => [`insert-${e.id}`, { active: e.id === 'record' && recording, onSelect: e.run }])),
+    library: { onSelect: () => setLibraryOpen('library') },
+    events: { onSelect: () => setLibraryOpen('events') },
     search: { onSelect: () => setSearchOpen(true) },
     pick: { disabled: !classroom, onSelect: () => setPickOpen(true) },
     display: { onSelect: enterDisplayMode },
   };
   const radialItems: RadialItem[] = radial?.submenu === 'color'
-    ? RADIAL_COLOR_CHOICES.map((c) => ({ id: `col-${c.hex}`, label: c.label, icon: '', swatch: c.hex, active: color === c.hex, onSelect: () => pickColor(c.hex) }))
+    ? radialColors.map((hex, i) => ({
+      id: `col-${i}`, label: swatchLabel(SWATCHES.radial, i, radialColors), icon: '', swatch: hex, active: color === hex, onSelect: () => pickColor(hex),
+      onContextMenu: () => pickSwatchColor(SWATCHES.radial, i, pickColor),
+    }))
     : palette.slots.map((id, i) => {
       const def = paletteAction(id);
       const b = paletteBindings[id];
@@ -2458,9 +3146,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       setSelectedIds(new Set([box.id]));
       if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
     };
+    if (!active) return; // onglet masqué : le collage va à l'onglet actif
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [importFiles, pasteFromClipboard, handleObjectsChange, textSize, textFont, color, insertFromUrl, insertTable]);
+  }, [active, importFiles, pasteFromClipboard, handleObjectsChange, textSize, textFont, color, insertFromUrl, insertTable]);
 
   // Le tableau occupe tout l'ecran : on fige le defilement de la page dessous.
   useEffect(() => {
@@ -2475,18 +3164,36 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Objet-bouton dont le panneau d'interactions est ouvert (null s'il a disparu de la page). */
   const interactionTrigger = interactionsFor ? pageObjects.find((o) => o.id === interactionsFor) ?? null : null;
   useEffect(() => {
-    if (interactionsFor && !interactionTrigger) { setInteractionsFor(null); setPicking(false); }
+    if (interactionsFor && !interactionTrigger) { pendingActionRef.current = null; setInteractionsFor(null); setPicking(false); setLinkPointer(null); setBubble(null); }
   }, [interactionsFor, interactionTrigger]);
+  // Flèches d'interaction : visibles seulement quand le bouton est sélectionné seul (édition) ;
+  // en mode liaison, la flèche du bouton au pointeur s'y ajoute
+  const selectedTrigger = !displayMode && OBJECT_TOOLS.includes(tool) && selectedIds.size === 1 ? pageObjects.find((o) => selectedIds.has(o.id) && (o.interactions?.length ?? 0) > 0) ?? null : null;
+  const ghostLinks: GhostLink[] = [
+    ...(selectedTrigger ? (selectedTrigger.interactions ?? []).flatMap((it, index) => (it.targetId && pageObjects.some((o) => o.id === it.targetId) ? [{
+      key: `link:${selectedTrigger.id}:${index}`,
+      from: { objectId: selectedTrigger.id, side: 'auto' as const },
+      to: { objectId: it.targetId, side: 'auto' as const },
+      label: INTERACTION_LABELS[it.action],
+      onTap: (anchor: { left: number; top: number; right: number; bottom: number }) => openBubble(selectedTrigger.id, it.targetId!, anchor, index),
+    }] : [])) : []),
+    ...(picking && interactionsFor && linkPointer ? [{ key: 'linking', from: { objectId: interactionsFor, side: 'auto' as const }, to: linkPointer }] : []),
+  ];
   const selectedTexts = pageObjects.filter((o): o is TextObject => o.type === 'text' && (o.id === editingId || selectedIds.has(o.id)));
   /** Zone de texte « active » pour la barre : celle en saisie, sinon la seule sélectionnée. */
   const selectedBox = (editingId ? selectedTexts.find((o) => o.id === editingId) : selectedTexts.length === 1 ? selectedTexts[0] : null) ?? null;
-  const showTextToolbar = tool === 'text' || (tool === 'select' && selectedTexts.length > 0);
+  // La barre « Texte » n'apparaît qu'en saisie (après un double-clic) : une zone simplement
+  // sélectionnée ou déplacée n'a pas de barre posée dessus. Avec l'outil Texte et rien de
+  // sélectionné, elle sert de réglage par défaut des prochaines zones.
+  const showTextToolbar = editingId !== null || (tool === 'text' && selectedTexts.length === 0);
   const selectedShapes = pageObjects.filter((o): o is ShapeObject => o.type === 'shape' && selectedIds.has(o.id));
   const selectedLibrary = pageObjects.filter((o): o is LibraryObject => o.type === 'library' && selectedIds.has(o.id));
   const showShapeToolbar = !showTextToolbar && (tool === 'shape' || (tool === 'select' && (selectedShapes.length > 0 || selectedLibrary.length > 0)));
   // Les autres objets (image, tableau, widget, médias) partagent une barre commune, posée sur l'objet.
-  const selectedOthers = pageObjects.filter((o) => selectedIds.has(o.id) && o.type !== 'text' && o.type !== 'shape' && o.type !== 'library');
-  const showObjectToolbar = !showTextToolbar && !showShapeToolbar && tool === 'select' && selectedOthers.length > 0;
+  const selectedConnectors = pageObjects.filter((o): o is ConnectorObject => o.type === 'connector' && selectedIds.has(o.id));
+  const showConnectorToolbar = !showTextToolbar && !showShapeToolbar && tool === 'select' && selectedConnectors.length > 0;
+  const selectedOthers = pageObjects.filter((o) => selectedIds.has(o.id) && o.type !== 'text' && o.type !== 'shape' && o.type !== 'library' && o.type !== 'connector');
+  const showObjectToolbar = !showTextToolbar && !showShapeToolbar && !showConnectorToolbar && tool === 'select' && selectedOthers.length > 0;
   const inkSelection = selectedStrokeIds.size > 0 ? strokesBounds(page.strokes.filter((st) => selectedStrokeIds.has(st.id))) : null;
   /** Applique un réglage de zone (police, taille, couleur) à toutes les zones de texte sélectionnées. */
   const patchSelectedTexts = (fn: (o: TextObject) => TextObject) => {
@@ -2505,6 +3212,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       items: [
         { id: 'page-new', label: 'Nouvelle page', icon: '＋', onSelect: addPage },
         ...BACKGROUNDS.map((b) => ({ id: `bg-${b.id}`, label: `Fond : ${b.label}`, icon: '▦', active: page.background === b.id, onSelect: () => setBackground(b.id) })),
+        ...bgColors.map((c, i) => ({
+          id: `bgc-${i}`, label: `Fond ${swatchLabel(SWATCHES.background, i, bgColors).toLowerCase()}`, icon: '', swatch: c,
+          active: (page.color ?? '#FFFFFF').toUpperCase() === c.toUpperCase(), onSelect: () => setBackgroundColor(c),
+          onContextMenu: () => pickSwatchColor(SWATCHES.background, i, setBackgroundColor),
+        })),
+        { id: 'bgc-other', label: 'Fond : autre couleur…', icon: '🎨', onSelect: () => openColorWheel(page.color ?? '#FFFFFF', setBackgroundColor) },
         { id: 'page-cover', label: 'Tout recouvrir', icon: '▥', onSelect: recoverCurrentPage },
         { id: 'page-clear', label: 'Effacer la page', icon: '🗑', disabled: page.strokes.length === 0 && pageObjects.length === 0, onSelect: clearPage },
       ],
@@ -2514,7 +3227,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       items: [
         { id: 'file-open', label: `Ouvrir (${GCBOARD_EXTENSION}, PDF, image)`, icon: '📂', disabled: !!importing, onSelect: () => fileInputRef.current?.click() },
         ...(userId ? [
-          { id: 'file-library-open', label: 'Ouvrir un tableau préparé…', icon: '📚', disabled: !!importing, onSelect: () => setLibraryDialog('open') },
+          { id: 'file-library-open', label: onOpenInTab ? 'Tableau préparé : copier ici ou ouvrir dans un onglet…' : 'Ouvrir un tableau préparé…', icon: '📚', disabled: !!importing, onSelect: () => setLibraryDialog('open') },
+          ...(onOpenDraftTab && sessionId !== FREE_BOARD_ID ? [{ id: 'file-draft-tab', label: 'Brouillon dans un onglet', icon: '🖊', onSelect: onOpenDraftTab }] : []),
           { id: 'file-library-save', label: 'Enregistrer dans Mes tableaux…', icon: '🗂', disabled: !!importing, onSelect: () => setLibraryDialog('save') },
         ] : []),
         { id: 'file-save', label: `Enregistrer un fichier ${GCBOARD_EXTENSION}`, icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
@@ -2535,7 +3249,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     {
       title: 'Séance',
       items: [
-        { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen(true) },
+        { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen('library') },
+        { id: 'ses-events', label: 'Événements (boutons prêts à poser)', icon: '⚡', onSelect: () => setLibraryOpen('events') },
         { id: 'ses-search', label: 'Rechercher (Ctrl+K)', icon: '🔎', onSelect: () => setSearchOpen(true) },
         ...(classroom ? [{ id: 'ses-pick', label: 'Tirage au sort', icon: '🎯', onSelect: () => setPickOpen(true) }] : []),
         { id: 'ses-display', label: 'Mode affichage', icon: '🖥', onSelect: enterDisplayMode },
@@ -2548,6 +3263,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { id: 'set-probe', label: 'Test du stylet (diagnostic)', icon: '🎯', active: probeOpen, onSelect: () => setProbeOpen((v) => !v) },
         { id: 'set-palette-show', label: palette.hidden ? 'Afficher la pastille' : 'Masquer la pastille', icon: '◉', active: !palette.hidden, onSelect: () => setPalette((p) => ({ ...p, hidden: !p.hidden })) },
         { id: 'set-gestures', label: `Pincer pour zoomer ${tbi.gestures ? 'activé' : 'désactivé'}`, icon: '✌️', active: tbi.gestures, onSelect: () => setTbi((t) => ({ ...t, gestures: !t.gestures })) },
+        ...(['auto', 'comfort', 'normal', 'tight'] as Density[]).map((d) => ({
+          id: `set-density-${d}`, label: DENSITY_LABELS[d], icon: d === 'tight' ? '▪' : d === 'comfort' ? '⬛' : '◼', active: tbi.density === d,
+          onSelect: () => setTbi((t) => ({ ...t, density: d })),
+        })),
         { id: 'set-doc-full', label: 'Documents importés en pleine largeur (page allongée)', icon: '⬍', active: tbi.documents === 'full', onSelect: () => setTbi((t) => ({ ...t, documents: 'full' })) },
         { id: 'set-doc-fit', label: 'Documents importés réduits pour tenir dans la page', icon: '⊡', active: tbi.documents === 'fit', onSelect: () => setTbi((t) => ({ ...t, documents: 'fit' })) },
         ...(['bottom', 'left', 'right'] as BarSide[]).map((side) => ({
@@ -2574,6 +3293,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     <div
       ref={rootRef}
       className={`wb ${dragOver ? 'is-dragover' : ''}`}
+      style={topOffset ? { top: topOffset } : undefined}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); void importFiles(e.dataTransfer.files, toUnit(e)); }}
@@ -2628,6 +3348,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         onPointerCancelCapture={onStagePointerUp}
       >
       <div
+        ref={viewElRef}
         className="wb__view"
         style={{ transform: view.zoom === 1 && view.ty === 0 ? undefined : `translate(${view.tx}px, ${view.ty}px) scale(${view.zoom})` }}
         onPointerDownCapture={coachOpen ? dismissCoach : undefined}
@@ -2667,14 +3388,23 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onTableCell={(id, r, c) => { tableCellRef.current = { id, r, c }; }}
           onEquationCommit={(id, latex, raster, ratio) => void onEquationCommit(id, latex, raster, ratio)}
           onWidgetConfig={onWidgetConfig}
+          onWidgetPlace={placeWidgetResult}
+          onFoldText={foldText}
+          onUnfoldInSession={unfoldInSession}
+          onConnectFrom={connectFrom}
           onToggleInteractive={onToggleInteractive}
           students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
           spellCheck={spellCheck && !displayMode}
           onSpellStatus={setSpellStatus}
           play={displayMode || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
+          onEditWindow={(id) => setWindowEdit(id)}
+          commands={commands}
+          onExtractWord={extractWord}
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
-          pickSourceId={interactionsFor}
+          pickSourceId={picking ? interactionsFor : null}
+          links={ghostLinks}
+          snapGrid={page.background === 'grid' || page.background === 'dots' || page.background === 'graph' ? 25 : undefined}
         />
         {!displayMode && (
           <button
@@ -2830,10 +3560,17 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             </div>
           );
         })()}
+        {pickingPoint && (
+          <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
+            <span>📍 Touchez l'endroit de la page où la cible doit aller</span>
+            <button type="button" onClick={() => setPickingPoint(false)}>Annuler</button>
+          </div>
+        )}
         {picking && (
           <div className="wb__pickbanner" onPointerDown={(e) => e.stopPropagation()}>
-            <span>Touchez l'objet que ce bouton doit afficher ou masquer</span>
-            <button type="button" onClick={() => setPicking(false)}>Annuler</button>
+            <span>⚡ Touchez l'objet sur lequel ce bouton agit</span>
+            <button type="button" onClick={() => { const id = interactionsFor; cancelLinking(); if (id) openBubble(id, null); }} title="Page suivante, précédente, aller à une page, réinitialiser la page">Sans cible…</button>
+            <button type="button" onClick={cancelLinking}>Annuler</button>
           </div>
         )}
         {!displayMode && !palette.hidden && (
@@ -2842,6 +3579,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             y={palette.y}
             onMove={(x, y) => setPalette((p) => ({ ...p, x, y }))}
             onPress={(cx, cy) => { if (coachOpen) dismissCoach(); setRadial({ x: cx, y: cy, bounds: radialBounds() }); }}
+            onSettings={() => { if (coachOpen) dismissCoach(); setRadial(null); setMenu(null); setPaletteEditor(true); }}
             open={radial !== null}
             icon={TOOL_ICONS[tool]}
             ring={paletteRing}
@@ -2949,6 +3687,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           excludeBoardId={boardId ?? null}
           allowBlank={libraryDialog === 'start'}
           onPick={(b) => void insertPreparedBoard(b)}
+          onPickTab={onOpenInTab ? (b) => { setLibraryDialog(null); onOpenInTab(b); } : undefined}
           onClose={() => setLibraryDialog(null)}
         />
       )}
@@ -2962,6 +3701,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
       {libraryOpen && (
         <BoardLibraryPanel
+          initialTab={libraryOpen}
+          onInsertEvent={insertEvent}
           onClose={() => setLibraryOpen(false)}
           onInsertItem={insertLibraryItem}
           onInsertFiles={(files) => importFiles(files)}
@@ -2990,28 +3731,65 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         <BoardPageNavigator
           pages={pages}
           pageIndex={pageIndex}
-          onSelect={setPageIndex}
+          onSelect={goToPage}
           onReorder={movePage}
           onContextMenu={openPageMenu}
           onAddPage={addPage}
         />
       )}
       {menu && <BoardContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={closeMenu} />}
-      {!displayMode && interactionTrigger && (
-        <BoardInteractionsPanel
-          trigger={interactionTrigger}
-          objects={pageObjects}
-          picking={picking}
-          onPick={() => { if (!OBJECT_TOOLS.includes(tool)) setTool('select'); setPicking(true); }}
-          onCancelPick={() => setPicking(false)}
-          onSetAction={(i, a) => setInteractionAction(interactionTrigger.id, i, a)}
-          onRemove={(i) => removeInteraction(interactionTrigger.id, i)}
-          onToggleHidden={toggleHidden}
-          onTest={() => fireObject(interactionTrigger.id)}
-          onClose={() => { setInteractionsFor(null); setPicking(false); }}
-        />
-      )}
+      {!displayMode && bubble && (() => {
+        const trigger = pageObjects.find((o) => o.id === bubble.triggerId);
+        const target = bubble.targetId ? pageObjects.find((o) => o.id === bubble.targetId) : null;
+        if (!trigger || (bubble.targetId && !target)) return null;
+        return (
+          <BoardInteractionBubble
+            anchor={bubble.anchor}
+            targetLabel={target ? objectShortLabel(target) : null}
+            actions={actionsFor(target ?? null)}
+            draft={bubble.draft}
+            existing={bubble.index !== null}
+            sequence={trigger.interactions ?? []}
+            editingIndex={bubble.index}
+            objects={pageObjects}
+            pageIds={pages.map((pg) => pg.id)}
+            onChange={(draft) => setBubble((b) => (b ? { ...b, draft } : b))}
+            onConfirm={confirmBubble}
+            onRemove={() => { if (bubble.index !== null) removeInteraction(bubble.triggerId, bubble.index); setBubble(null); }}
+            onTest={testBubble}
+            onCancel={() => setBubble(null)}
+            onSelectStep={(i) => { const it = (trigger.interactions ?? [])[i]; if (it) openBubble(trigger.id, it.targetId ?? null, bubble.anchor, i); }}
+            onPickPoint={() => setPickingPoint(true)}
+            onMoveStep={(i, delta) => moveInteraction(trigger.id, i, delta)}
+            onRemoveStep={(i) => { removeInteraction(trigger.id, i); if (bubble.index === i) setBubble(null); else if (bubble.index !== null && bubble.index > i) setBubble((b) => (b ? { ...b, index: b.index! - 1 } : b)); }}
+          />
+        );
+      })()}
       {exportOpen && <BoardExportDialog pages={pages} name="Tableau" currentIndex={pageIndex} onClose={() => setExportOpen(false)} />}
+      {openWindow && (() => {
+        const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === openWindow);
+        return w ? <BoardWindowDialog window={w} mode="view" onClose={() => setOpenWindow(null)} /> : null;
+      })()}
+      {!displayMode && windowEdit && (() => {
+        const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === windowEdit);
+        return w ? (
+          <BoardWindowDialog
+            window={w}
+            mode="edit"
+            onClose={() => setWindowEdit(null)}
+            onSave={({ title, html }) => { patchWindow(w.id, (x) => ({ ...x, title, html })); setWindowEdit(null); }}
+            onPickImage={() => windowImageInputRef.current?.click()}
+            onRemoveImage={() => patchWindow(w.id, (x) => { const n = { ...x }; delete n.imagePath; delete n.imageW; delete n.imageH; return n; })}
+          />
+        ) : null;
+      })()}
+      <input
+        ref={windowImageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void onWindowImageChosen(f); e.target.value = ''; }}
+      />
       <input
         ref={coverInputRef}
         type="file"
@@ -3033,8 +3811,6 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               fontId={selectedBox?.font ?? textFont}
               size={selectedBox?.size ?? textSize}
               color={color}
-              colors={COLORS}
-              highlights={TEXT_HIGHLIGHTS}
               onFontChange={(id) => {
                 setTextFont(id);
                 if (editingId) textApiRef.current?.applyFontFamily(id);
@@ -3051,6 +3827,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
                 else patchSelectedTexts((o) => ({ ...o, color: c }));
               }}
               onDelete={deleteSelected}
+              onInteractions={startLinking}
               spell={spellCheck}
               spellStatus={spellStatus}
               onToggleSpell={() => setSpellCheck((v) => !v)}
@@ -3070,6 +3847,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               kind={shapeKind}
               style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
               selected={selectedShapes}
+              zone={shapeZone}
+              onZone={setShapeZone}
+              interactionTarget={selectedShapes.length + selectedLibrary.length === 1 ? (selectedShapes[0] ?? selectedLibrary[0]) : null}
+              canDelete={selectedShapes.length + selectedLibrary.length > 0}
               onKind={(k) => {
                 setShapeKind(k);
                 if (selectedShapes.length > 0) patchSelectedShapes((o) => ({ ...o, kind: k, h: isLineKind(k) ? o.h : Math.max(o.h, MIN_SHAPE_H), points: undefined }));
@@ -3084,10 +3865,16 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               }}
               onLineKind={(k) => patchSelectedShapes((o) => (isLineKind(o.kind) ? { ...o, kind: k } : o))}
               onDelete={deleteSelected}
+              onInteractions={startLinking}
             />
         </BoardFloatingToolbar>
       )}
 
+      {!displayMode && showConnectorToolbar && (
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedConnectors[0].id} label={selectedConnectors.length > 1 ? `Flèches (${selectedConnectors.length})` : 'Flèche'}>
+          <BoardConnectorToolbar connectors={selectedConnectors} onPatch={patchSelectedConnectors} onDelete={deleteSelected} />
+        </BoardFloatingToolbar>
+      )}
       {!displayMode && showObjectToolbar && (
         <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
           <BoardObjectToolbar
@@ -3103,7 +3890,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             onPatchTable={patchTable}
             onToggleInteractive={onToggleInteractive}
             onEdit={(id) => setEditingId(id)}
-            onInteractions={(id) => setInteractionsFor(id)}
+            onInteractions={startLinking}
           />
         </BoardFloatingToolbar>
       )}
@@ -3128,8 +3915,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           navWidth={navWidth}
           pageIndex={pageIndex}
           pageCount={pageCount}
-          onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}
-          onNext={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+          onPrev={() => goToPage(pageIndex - 1)}
+          onNext={() => goToPage(pageIndex + 1)}
           onAdd={addPage}
           onToggleNav={() => setNavOpen((v) => !v)}
         />
@@ -3228,18 +4015,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             </button>
             {insertOpen && (
               <BoardPopover anchorRef={insertBtnRef} onClose={() => setInsertOpen(false)} className="wbi__panel" width={420}>
-                {[
-                  { label: 'Image', icon: '🖼', run: () => { dropPoint.current = null; imageInputRef.current?.click(); } },
-                  { label: 'Tableau 3 × 3', icon: '▦', run: () => insertTable(3, 3) },
-                  { label: 'Vidéo (YouTube…)', icon: '▶', run: () => { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u); } },
-                  { label: 'Site web', icon: '🌐', run: () => { const u = window.prompt('Adresse du site'); if (u) insertWeb(u); } },
-                  { label: 'Lien', icon: '🔗', run: () => { const u = window.prompt('Adresse du lien'); if (u) insertFromUrl(u); } },
-                  { label: 'Son (fichier)', icon: '🔊', run: () => audioInputRef.current?.click() },
-                  { label: recording ? 'Arrêter l\'enregistrement' : 'Enregistrer au micro', icon: recording ? '⏹' : '🎙', run: () => void toggleRecording() },
-                  { label: 'Post-it', icon: '🗒', run: () => insertSticky() },
-                  { label: 'Équation (LaTeX)', icon: '∑', run: insertEquation },
-                  ...(['timer', 'clock', 'meter', 'noise', 'traffic', 'dice', 'wheel', 'groups', 'qr', 'calc'] as WidgetKind[]).map((k) => ({ label: WIDGET_LABELS[k], icon: { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮', meter: '🎚', groups: '👥', clock: '🕒', traffic: '🚦', qr: '▦' }[k], run: () => insertWidget(k) })),
-                ].map((it) => (
+                {insertEntries().map((it) => (
                   <button key={it.label} type="button" className="wbi__item" onClick={() => { it.run(); setInsertOpen(false); }}>
                     <span>{it.icon}</span>{it.label}
                   </button>

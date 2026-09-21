@@ -19,6 +19,8 @@ export interface RadialItem {
   /** L'action remplace le contenu du menu (sous-menu) : on ne ferme pas. */
   keepOpen?: boolean;
   onSelect: () => void;
+  /** Clic droit sur le quartier (ex. personnaliser une couleur) ; le menu reste ouvert. */
+  onContextMenu?: () => void;
 }
 
 interface Props {
@@ -94,6 +96,7 @@ export function BoardRadialMenu({ x, y, items, onClose, onDragCenter, bounds }: 
       onPointerDown={(e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (e.button === 2) return; // clic droit : géré par onContextMenu du quartier
         try { (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); } catch { /* synthétique */ }
         if (onDragCenter && Math.hypot(e.clientX - cx, e.clientY - cy) < INNER) centerPress.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false };
         setHot(indexAt(e.clientX, e.clientY));
@@ -110,6 +113,7 @@ export function BoardRadialMenu({ x, y, items, onClose, onDragCenter, bounds }: 
       }}
       onPointerUp={(e) => {
         e.stopPropagation();
+        if (e.button === 2) return;
         const cp = centerPress.current;
         centerPress.current = null;
         if (cp && cp.moved) return; // fin du déplacement : le menu reste ouvert, au nouvel endroit
@@ -125,7 +129,11 @@ export function BoardRadialMenu({ x, y, items, onClose, onDragCenter, bounds }: 
         const lx = c + LABEL_R * Math.cos(am), ly = c + LABEL_R * Math.sin(am);
         const on = hot === i;
         return (
-          <g key={`${it.id}-${i}`} className={`wbr__seg ${on ? 'is-hot' : ''} ${it.active ? 'is-active' : ''} ${it.disabled ? 'is-disabled' : ''}`}>
+          <g
+            key={`${it.id}-${i}`}
+            className={`wbr__seg ${on ? 'is-hot' : ''} ${it.active ? 'is-active' : ''} ${it.disabled ? 'is-disabled' : ''}`}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (!it.disabled) it.onContextMenu?.(); }}
+          >
             <path d={radialArc(c, c, INNER, OUTER, a0, a1)} />
             {it.swatch
               ? <circle cx={lx} cy={ly - 16 * s} r={13 * s} fill={it.swatch} stroke="#FFFFFF" strokeWidth={2.5} pointerEvents="none" />

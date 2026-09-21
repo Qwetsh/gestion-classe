@@ -14,6 +14,10 @@ export interface MoreItem {
   onSelect: () => void;
   active?: boolean;
   disabled?: boolean;
+  /** Pastille de couleur à la place de l'icône. */
+  swatch?: string;
+  /** Clic droit sur l'entrée (ex. personnaliser une pastille) ; le menu reste ouvert. */
+  onContextMenu?: () => void;
 }
 
 export interface MoreSection {
@@ -41,8 +45,9 @@ export function BoardMoreMenu({ anchorRef, sections, onClose }: Props) {
                 className={`wbm__item ${it.active ? 'is-on' : ''}`}
                 disabled={it.disabled}
                 onClick={() => { it.onSelect(); onClose(); }}
+                onContextMenu={it.onContextMenu ? (e) => { e.preventDefault(); e.stopPropagation(); it.onContextMenu?.(); } : undefined}
               >
-                <span className="wbm__icon">{it.icon}</span>
+                {it.swatch ? <span className="wbm__icon wbm__icon--swatch" style={{ background: it.swatch }} aria-hidden /> : <span className="wbm__icon">{it.icon}</span>}
                 {it.label}
               </button>
             ))}
@@ -55,13 +60,14 @@ export function BoardMoreMenu({ anchorRef, sections, onClose }: Props) {
 }
 
 const CSS = `
-.wbm { padding: 10px; border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
+.wbm { padding: var(--wb-panel-pad, 10px); border-radius: 14px; background: #111827; box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
 .wbm__section + .wbm__section { margin-top: 10px; padding-top: 10px; border-top: 1px solid #1F2937; }
 .wbm__title { padding: 0 6px 6px; color: #9CA3AF; font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
 .wbm__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.wbm__item { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #F3F4F6; font: 500 13px/1.2 Inter, system-ui, sans-serif; text-align: left; cursor: pointer; }
+.wbm__item { display: flex; align-items: center; gap: 8px; height: var(--wb-menu-h, 44px); padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #F3F4F6; font: 500 13px/1.2 Inter, system-ui, sans-serif; text-align: left; cursor: pointer; }
 .wbm__item:hover:not(:disabled) { background: #1F2937; }
 .wbm__item.is-on { background: #312E81; }
 .wbm__item:disabled { opacity: 0.35; cursor: default; }
 .wbm__icon { width: 22px; text-align: center; font-size: 16px; flex: none; }
+.wbm__icon--swatch { height: 22px; border-radius: 50%; border: 2px solid #4B5563; }
 `;

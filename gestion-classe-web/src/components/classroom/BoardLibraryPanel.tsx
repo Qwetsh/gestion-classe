@@ -11,6 +11,7 @@ import {
   saveEnabledModules,
   type LibraryItem,
 } from '../../lib/boardLibrary';
+import { deleteEvent, filterPresets, insertFromSaved, loadSavedEvents, type EventInsert, type SavedEvent } from '../../lib/boardEvents';
 import {
   BREVET_SUBJECTS,
   fetchBrevetFile,
@@ -48,6 +49,10 @@ import type { Matiere } from '../../lib/brevets';
 
 interface Props {
   onInsertItem: (item: LibraryItem) => void;
+  /** Banque d'événements : pose un préréglage ou un événement enregistré (objets + actions). */
+  onInsertEvent: (insert: EventInsert) => void;
+  /** Onglet ouvert au départ. */
+  initialTab?: LibraryTab;
   onInsertFiles: (files: File[]) => Promise<void> | void;
   onInsertText: (html: string) => void;
   onInsertImageUrl: (url: string, title: string) => Promise<void> | void;
@@ -55,7 +60,8 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'library' | 'brevet' | 'notion' | 'drive';
+export type LibraryTab = 'library' | 'events' | 'brevet' | 'notion' | 'drive';
+type Tab = LibraryTab;
 
 /** OneDrive ouvert : session, fil d'Ariane (dossiers parcourus) et contenu affiché. */
 interface OneDriveView { session: OneDriveSession; path: OneDriveCrumb[]; items: OneDriveItem[]; searching: boolean }
@@ -89,9 +95,12 @@ export function LibraryIcon({ item, size = 44, color = '#111827' }: { item: Libr
   );
 }
 
-export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, onInsertImageUrl, onInsertImageBlob, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>('library');
+export function BoardLibraryPanel({ onInsertItem, onInsertEvent, initialTab = 'library', onInsertFiles, onInsertText, onInsertImageUrl, onInsertImageBlob, onClose }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [query, setQuery] = useState('');
+  /** Mes événements (navigateur, alimenté par le compte au démarrage du tableau). */
+  const [savedEvents, setSavedEvents] = useState<SavedEvent[]>(() => loadSavedEvents());
+  useEffect(() => { if (tab === 'events') setSavedEvents(loadSavedEvents()); }, [tab]);
   const [modules, setModules] = useState<string[]>(() => loadEnabledModules());
   const [showModules, setShowModules] = useState(false);
   const [subject, setSubject] = useState<Matiere | 'all'>('SVT');
@@ -293,16 +302,16 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
       <div className="wblb__box" onClick={(e) => e.stopPropagation()}>
         <div className="wblb__head">
           <div className="wblb__tabs">
-            {([['library', '🧪 Bibliothèque'], ['brevet', '📚 Annales'], ['notion', '🗂 Notion'], ['drive', '☁️ Drive']] as [Tab, string][]).map(([t, label]) => (
+            {([['library', '🧪 Bibliothèque'], ['events', '⚡ Événements'], ['brevet', '📚 Annales'], ['notion', '🗂 Notion'], ['drive', '☁️ Drive']] as [Tab, string][]).map(([t, label]) => (
               <button key={t} type="button" className={tab === t ? 'is-on' : ''} onClick={() => setTab(t)}>{label}</button>
             ))}
           </div>
           <button type="button" className="wblb__close" onClick={onClose} title="Fermer (Échap)">✕</button>
         </div>
 
-        {(tab === 'library' || tab === 'brevet' || tab === 'notion') && (
+        {(tab === 'library' || tab === 'events' || tab === 'brevet' || tab === 'notion') && (
           <div className="wblb__search">
-            <input value={query} placeholder={tab === 'library' ? 'Chercher un objet (bécher, cellule, pile…)' : tab === 'brevet' ? 'Année, centre, thème…' : 'Filtrer les entrées'} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') onClose(); if (e.key === 'Enter' && tab === 'notion') void runNotion(); }} />
+            <input value={query} placeholder={tab === 'library' ? 'Chercher un objet (bécher, cellule, pile…)' : tab === 'events' ? 'Chercher un événement (réponse, page, zoom…)' : tab === 'brevet' ? 'Année, centre, thème…' : 'Filtrer les entrées'} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') onClose(); if (e.key === 'Enter' && tab === 'notion') void runNotion(); }} />
             {tab === 'library' && <button type="button" className={showModules ? 'is-on' : ''} onClick={() => setShowModules((v) => !v)}>Modules</button>}
             {tab === 'brevet' && (
               <select value={subject} onChange={(e) => setSubject(e.target.value as Matiere | 'all')}>
@@ -341,6 +350,46 @@ export function BoardLibraryPanel({ onInsertItem, onInsertFiles, onInsertText, o
             </section>
           ))}
           {tab === 'library' && catalog.length === 0 && <p className="wblb__empty">Aucun objet : activer un module ou changer la recherche.</p>}
+
+          {tab === 'events' && (() => {
+            const presets = filterPresets(query);
+            const q = query.trim().toLowerCase();
+            const mine = q ? savedEvents.filter((e) => e.label.toLowerCase().includes(q)) : savedEvents;
+            return (
+              <>
+                <p className="wblb__lead">Un élément déjà muni de son action : posez-le, puis touchez sa cible s'il en faut une. Pour enregistrer les vôtres : clic droit sur une sélection › « Enregistrer dans mes événements… ».</p>
+                <section>
+                  <h3>Fournis</h3>
+                  <div className="wblb__grid">
+                    {presets.map((p) => (
+                      <button key={p.id} type="button" className="wblb__item wblb__item--event" onClick={() => { onInsertEvent(p.build()); onClose(); }} title={p.hint}>
+                        <span className="wblb__event-icon" aria-hidden>{p.icon}</span>
+                        <span>{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {presets.length === 0 && <p className="wblb__empty">Aucun préréglage pour cette recherche.</p>}
+                </section>
+                <section>
+                  <h3>Les miens</h3>
+                  {mine.length === 0 && <p className="wblb__empty">{savedEvents.length === 0 ? 'Rien encore : sélectionnez un bouton et ses cibles sur un tableau, puis « Enregistrer dans mes événements… ».' : 'Aucun événement pour cette recherche.'}</p>}
+                  <div className="wblb__grid">
+                    {mine.map((e) => (
+                      <div key={e.id} className="wblb__item wblb__item--event wblb__item--mine" role="button" tabIndex={0} title={`${e.objects.length} objet${e.objects.length > 1 ? 's' : ''}`}
+                        onClick={() => { onInsertEvent(insertFromSaved(e)); onClose(); }}
+                        onKeyDown={(ev) => { if (ev.key === 'Enter') { onInsertEvent(insertFromSaved(e)); onClose(); } }}>
+                        <span className="wblb__event-icon" aria-hidden>⭐</span>
+                        <span>{e.label}</span>
+                        <button type="button" className="wblb__event-del" title="Retirer de mes événements" onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`Retirer « ${e.label} » de mes événements ?`)) { deleteEvent(e.id); setSavedEvents(loadSavedEvents()); } }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </>
+            );
+          })()}
+
+
 
           {tab === 'brevet' && (
             <div className="wblb__list">
@@ -518,6 +567,13 @@ const CSS = `
 .wblb__item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border: 0; border-radius: 12px; background: #FFFFFF; color: #111827; font: 500 12px/1.2 Inter, system-ui, sans-serif; cursor: pointer; }
 .wblb__item:hover { outline: 3px solid #6366F1; }
 .wblb__item span { text-align: center; }
+.wblb__lead { margin: 4px 0 8px; color: #9CA3AF; font-size: 13px; line-height: 1.4; }
+.wblb__item--event { position: relative; min-height: 96px; justify-content: center; }
+.wblb__event-icon { font-size: 30px; line-height: 1; }
+.wblb__item--mine { background: #EEF2FF; }
+.wblb__event-del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: #6B7280; font: 700 13px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0; }
+.wblb__item--mine:hover .wblb__event-del, .wblb__event-del:focus { opacity: 1; }
+.wblb__event-del:hover { background: #FEE2E2; color: #B91C1C; }
 .wblb__empty { color: #9CA3AF; font-size: 13px; }
 .wblb__list { display: flex; flex-direction: column; gap: 8px; }
 .wblb__row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: #1F2937; }
