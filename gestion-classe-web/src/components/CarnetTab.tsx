@@ -443,7 +443,7 @@ export function CarnetTab({ userId, account, onError }: {
                 {assessments.map((a) => {
                   const stats = columnStats.get(a.id);
                   return (
-                    <th key={a.id} style={{ ...th, minWidth: 92 }}>
+                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 92 }}>
                       <button onClick={() => setStatsFor(a)} style={headerBtn} title="Statistiques de cette évaluation">
                         <span style={{ fontWeight: 600, color: 'var(--text)' }}>{a.name}</span>
                       </button>
@@ -477,7 +477,7 @@ export function CarnetTab({ userId, account, onError }: {
                       const isStatus = draft === undefined && row && row.status !== 'noted';
                       const bad = invalid[key];
                       return (
-                        <td key={a.id} style={{ ...td, padding: 0 }}>
+                        <td key={a.id} style={{ ...td, ...colSep, padding: 0 }}>
                           <input
                             ref={(el) => {
                               if (el) inputsRef.current.set(key, el);
@@ -517,14 +517,16 @@ export function CarnetTab({ userId, account, onError }: {
               <tr>
                 <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left' }}>Moyenne classe</td>
                 {assessments.map((a) => (
-                  <td key={a.id} style={tdFoot}>{formatGrade(columnStats.get(a.id)?.mean ?? null)}</td>
+                  <td key={a.id} style={{ ...tdFoot, ...colSep }}>
+                    {formatGrade(columnStats.get(a.id)?.mean ?? null)}
+                  </td>
                 ))}
                 <td style={{ ...tdFoot, background: 'var(--surface-3)' }}>{formatGrade(classAverage)}</td>
               </tr>
               <tr>
                 <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left', fontWeight: 400 }}>Médiane</td>
                 {assessments.map((a) => (
-                  <td key={a.id} style={{ ...tdFoot, fontWeight: 400 }}>
+                  <td key={a.id} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>
                     {formatGrade(columnStats.get(a.id)?.median ?? null)}
                   </td>
                 ))}
@@ -842,6 +844,11 @@ const td: React.CSSProperties = {
 const tdFoot: React.CSSProperties = {
   padding: '8px 6px', textAlign: 'center', borderTop: '2px solid var(--border)',
   fontWeight: 600, color: 'var(--text-muted)', fontSize: 12,
+};
+/** Filet vertical entre deux évaluations : assez présent pour guider l'œil le long
+ *  d'une colonne, assez discret pour ne pas quadriller le tableau. */
+const colSep: React.CSSProperties = {
+  borderLeft: '1px solid var(--border)',
 };
 const stickyCol: React.CSSProperties = {
   position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1,

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { CarnetTab } from '../components/CarnetTab';
+import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
   fetchAssessments,
   fetchClasses,
@@ -165,8 +166,12 @@ export function Evaluations() {
     if (!file || !user || !selected) return;
     setUploading(kind);
     try {
+      // Un .docx est converti en PDF a l'import : le stockage ne contient que des PDF
+      // ou des images, donc l'eleve comme le prof ouvrent toujours un format lisible
+      // sans Word. Conversion cote navigateur (mammoth + jsPDF), comme l'onglet Clouds.
+      const toUpload = isDocx(file.name) ? await docxToPdf(file) : file;
       const prev = kind === 'subject' ? selected.subject_path : selected.correction_path;
-      await uploadAssessmentDoc(user.id, selected.id, kind, file, prev);
+      await uploadAssessmentDoc(user.id, selected.id, kind, toUpload, prev);
       await loadAssessments();
       // recharge l'objet sélectionné mis à jour
       const refreshed = await fetchAssessments(user.id);
@@ -311,7 +316,7 @@ export function Evaluations() {
                       <input
                         ref={inputRef}
                         type="file"
-                        accept="application/pdf,image/*"
+                        accept="application/pdf,image/*,.docx"
                         style={{ display: 'none' }}
                         onChange={(e) => handleFile(kind, e.target.files?.[0])}
                       />
@@ -325,7 +330,7 @@ export function Evaluations() {
                         </div>
                       ) : (
                         <button onClick={() => inputRef.current?.click()} style={btnPrimary} disabled={uploading === kind}>
-                          {uploading === kind ? 'Envoi…' : `+ Ajouter ${label.toLowerCase()} (PDF/image)`}
+                          {uploading === kind ? 'Envoi…' : `+ Ajouter ${label.toLowerCase()} (PDF, Word ou image)`}
                         </button>
                       )}
                     </div>
