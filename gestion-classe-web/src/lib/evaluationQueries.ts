@@ -328,33 +328,6 @@ export async function deleteAssessmentDoc(
   if (error) throw error;
 }
 
-export interface StudentValidatedGrade {
-  id: string;
-  assessment_id: string;
-  grade: number | null;
-  grade_raw: number | null;
-  comment: string | null;
-  validated_at: string | null;
-  written_assessments?: {
-    name: string;
-    subject: string | null;
-    date: string | null;
-    bareme_total: number | null;
-  } | null;
-}
-
-/** Notes d'eval VALIDEES d'un eleve (pour la fiche eleve), eval incluse, recentes d'abord. */
-export async function fetchStudentValidatedGrades(studentId: string): Promise<StudentValidatedGrade[]> {
-  const { data, error } = await supabase
-    .from('assessment_grades')
-    .select('id, assessment_id, grade, grade_raw, comment, validated_at, written_assessments(name, subject, date, bareme_total)')
-    .eq('student_id', studentId)
-    .eq('is_validated', true)
-    .order('validated_at', { ascending: false });
-  if (error) throw error;
-  return (data || []) as unknown as StudentValidatedGrade[];
-}
-
 /** Valide une note (is_validated = true). */
 export async function validateGrade(gradeId: string): Promise<void> {
   const { error } = await supabase

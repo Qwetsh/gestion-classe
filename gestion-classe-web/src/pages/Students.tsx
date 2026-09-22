@@ -7,7 +7,8 @@ import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepa
 import { generateBulletinContext, downloadBulletinContext, getOralLabel } from '../lib/generateBulletinContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
-import { fetchStudentValidatedGrades, type StudentValidatedGrade } from '../lib/evaluationQueries';
+import { fetchStudentGradeReport, fetchCurrentPeriod, type StudentGradeReport } from '../lib/evaluationQueries';
+import { formatGrade, STATUS_LABEL } from '../lib/gradeStats';
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import QRCode from 'qrcode';
@@ -255,8 +256,8 @@ export function Students() {
   const [studentStampDetail, setStudentStampDetail] = useState<StudentStampDetail | null>(null);
   const [stampDetailLoading, setStampDetailLoading] = useState(false);
 
-  // Notes d'eval validees (informatives) dans la fiche eleve
-  const [studentExamGrades, setStudentExamGrades] = useState<StudentValidatedGrade[]>([]);
+  // Notes du carnet dans la fiche eleve (lot 6 du carnet de notes)
+  const [studentGradeReport, setStudentGradeReport] = useState<StudentGradeReport | null>(null);
   const [examGradesLoading, setExamGradesLoading] = useState(false);
 
   // Métriques de connexion à l'espace élève
@@ -1235,7 +1236,7 @@ export function Students() {
     setIsLoadingGroupGrades(true);
     setStudentStampDetail(null);
     setStampDetailLoading(true);
-    setStudentExamGrades([]);
+    setStudentGradeReport(null);
     setExamGradesLoading(true);
     setStudentConnections([]);
 
@@ -1250,11 +1251,18 @@ export function Students() {
       .catch(() => {})
       .finally(() => setStampDetailLoading(false));
 
-    // Load validated exam grades (informatives) in parallel
-    fetchStudentValidatedGrades(studentGrade.student.id)
-      .then(rows => setStudentExamGrades(rows))
-      .catch(() => {})
-      .finally(() => setExamGradesLoading(false));
+    // Notes du carnet (toutes, pas seulement les validees : voir fetchStudentGradeReport)
+    if (user) {
+      const classIdForReport = studentGrade.student.class_id ?? null;
+      fetchCurrentPeriod(user.id)
+        .then(({ schoolYear }) =>
+          fetchStudentGradeReport(user.id, studentGrade.student.id, classIdForReport, schoolYear))
+        .then(report => setStudentGradeReport(report))
+        .catch(() => {})
+        .finally(() => setExamGradesLoading(false));
+    } else {
+      setExamGradesLoading(false);
+    }
 
     try {
       // Load detailed events with session info (on demand, not at initial load)
@@ -2806,58 +2814,100 @@ export function Students() {
                 )}
               </div>
 
-              {/* Notes d'evaluation (informatives, validees) */}
+              {/* Notes du carnet (toutes, pas seulement les validees) */}
               <div className="bg-purple-50 rounded-xl p-4">
                 <h4 className="font-medium text-purple-900 mb-3 flex items-center gap-2">
-                  <span>📄</span> Notes d'évaluation ({studentExamGrades.length})
+                  <span>📄</span> Notes ({studentGradeReport?.lines.length ?? 0})
                 </h4>
                 {examGradesLoading ? (
                   <div className="flex justify-center py-4">
                     <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
                   </div>
-                ) : studentExamGrades.length === 0 ? (
+                ) : !studentGradeReport || studentGradeReport.lines.length === 0 ? (
                   <p className="text-purple-600 text-sm">
-                    Aucune note d'évaluation validée
+                    Aucune évaluation cette année pour cet élève.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {studentExamGrades.map((g) => {
-                      const bareme = g.written_assessments?.bareme_total ?? 20;
-                      const pct = g.grade != null ? Math.round((g.grade / 20) * 100) : 0;
-                      return (
-                        <div key={g.id} className="bg-white rounded-lg p-3 border border-purple-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <div>
-                              <span className="font-medium text-[var(--text)]">
-                                {g.written_assessments?.name ?? 'Évaluation'}
-                              </span>
-                              {g.written_assessments?.subject && (
+                  <>
+                    {/* Moyennes pondérées */}
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {[1, 2, 3].map((p) => (
+                        <div key={p} className="bg-white rounded-lg p-2 text-center border border-purple-100">
+                          <div className="text-xs text-[var(--text-dim)]">T{p}</div>
+                          <div className="font-bold text-[var(--text)]">
+                            {formatGrade(studentGradeReport.averageByPeriod[p])}
+                          </div>
+                        </div>
+                      ))}
+                      <div className="bg-purple-100 rounded-lg p-2 text-center border border-purple-200">
+                        <div className="text-xs text-purple-700">Année</div>
+                        <div className="font-bold text-purple-900">
+                          {formatGrade(studentGradeReport.yearAverage)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {studentGradeReport.lines.map((line) => {
+                        const { assessment: a, grade, classMean, gap, className, fromOtherClass } = line;
+                        const status = grade?.status ?? 'noted';
+                        const hasGrade = status === 'noted' && grade?.grade != null;
+                        const bareme = Number(a.bareme_total ?? 20);
+                        const pct = hasGrade ? (grade!.grade! / 20) * 100 : 0;
+                        return (
+                          <div key={a.id} className="bg-white rounded-lg p-3 border border-purple-100">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <span className="font-medium text-[var(--text)]">{a.name}</span>
                                 <span className="text-xs text-[var(--text-dim)] ml-2">
-                                  ({g.written_assessments.subject})
+                                  T{a.period ?? '?'} · coef {Number(a.coefficient)}
+                                  {!a.counts_in_average && ' · hors moyenne'}
+                                </span>
+                                {fromOtherClass && (
+                                  <span
+                                    className="text-xs text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 ml-2 whitespace-nowrap"
+                                    title="Évaluation passée dans une autre classe : l’élève a changé de classe depuis."
+                                  >
+                                    {className}
+                                  </span>
+                                )}
+                              </div>
+                              {hasGrade ? (
+                                <span className={`font-bold whitespace-nowrap ${pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                  {formatGrade(grade!.grade!)}/20
+                                </span>
+                              ) : (
+                                <span className="text-sm italic text-[var(--text-dim)] whitespace-nowrap">
+                                  {status === 'noted' ? 'non corrigée' : STATUS_LABEL[status]}
                                 </span>
                               )}
                             </div>
-                            <span className={`font-bold ${pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
-                              {g.grade != null ? `${g.grade}/20` : '—'}
-                            </span>
+
+                            {grade?.comment && (
+                              <p className="text-sm text-[var(--text)] mt-1">{grade.comment}</p>
+                            )}
+
+                            <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)] gap-2">
+                              <span>
+                                {grade?.grade_raw != null && bareme !== 20
+                                  ? `${formatGrade(Number(grade.grade_raw))}/${bareme} brut · `
+                                  : ''}
+                                moyenne classe {formatGrade(classMean)}
+                                {gap !== null && (
+                                  <span className={gap >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                    {' '}({gap >= 0 ? '+' : '−'}{formatGrade(Math.abs(gap))})
+                                  </span>
+                                )}
+                              </span>
+                              <span className="whitespace-nowrap">
+                                {a.date ? formatDate(a.date) : ''}
+                              </span>
+                            </div>
                           </div>
-                          {g.comment && (
-                            <p className="text-sm text-[var(--text)] mt-1">{g.comment}</p>
-                          )}
-                          <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)]">
-                            <span>{g.grade_raw != null ? `${g.grade_raw}/${bareme} brut` : ''}</span>
-                            <span>
-                              {g.written_assessments?.date
-                                ? formatDate(g.written_assessments.date)
-                                : g.validated_at
-                                ? formatDate(g.validated_at)
-                                : ''}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
 
