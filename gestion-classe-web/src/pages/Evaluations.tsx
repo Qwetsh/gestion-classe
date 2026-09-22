@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { CarnetTab } from '../components/CarnetTab';
 import {
   fetchAssessments,
   fetchClasses,
@@ -37,8 +38,11 @@ function groupByStudent(copies: CopyPageRow[]): StudentCopies[] {
   return [...map.values()].sort((a, b) => a.pseudo.localeCompare(b.pseudo));
 }
 
+type Tab = 'carnet' | 'eval';
+
 export function Evaluations() {
   const { user } = useAuth();
+  const [tab, setTab] = useState<Tab>('carnet');
 
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [selected, setSelected] = useState<AssessmentRow | null>(null);
@@ -58,6 +62,8 @@ export function Evaluations() {
   const [formSubject, setFormSubject] = useState('');
   const [formBareme, setFormBareme] = useState('20');
   const [creating, setCreating] = useState(false);
+
+  const handleError = useCallback((message: string) => setError(message), []);
 
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const correctionInputRef = useRef<HTMLInputElement>(null);
@@ -209,8 +215,28 @@ export function Evaluations() {
           Évaluations
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-          Sujets, corrections, copies scannées et notes par élève.
+          {tab === 'carnet'
+            ? 'Toutes les notes d’une classe sur un trimestre, saisie au clavier.'
+            : 'Sujets, corrections, copies scannées et notes par élève.'}
         </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+        {([['carnet', 'Carnet'], ['eval', 'Éval']] as [Tab, string][]).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            style={{
+              padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+              color: tab === id ? 'var(--indigo)' : 'var(--text-muted)',
+              borderBottom: tab === id ? '2px solid var(--indigo)' : '2px solid transparent',
+              marginBottom: -1,
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -220,6 +246,9 @@ export function Evaluations() {
         </div>
       )}
 
+      {tab === 'carnet' && <CarnetTab userId={user?.id ?? ''} account={user?.email ?? ''} onError={handleError} />}
+
+      {tab === 'eval' && (
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
         {/* ---- Liste des évals ---- */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -357,6 +386,7 @@ export function Evaluations() {
           )}
         </div>
       </div>
+      )}
 
       {/* Modale création d'éval */}
       {showCreate && (
