@@ -234,6 +234,7 @@ export function Classes() {
   // Visibilité des onglets élève (par classe)
   const [showStampsTab, setShowStampsTab] = useState(false);
   const [showAnnalesTab, setShowAnnalesTab] = useState(false);
+  const [showGradesTab, setShowGradesTab] = useState(false);
   const [tabsLoading, setTabsLoading] = useState(false);
 
   // Aperçu de reconnaissance à l'import (continuité inter-années)
@@ -338,23 +339,29 @@ export function Classes() {
     const cfg = await fetchStudentTabs(classId);
     setShowStampsTab(cfg?.show_stamps ?? false);
     setShowAnnalesTab(cfg?.show_annales ?? false);
+    setShowGradesTab(cfg?.show_grades ?? false);
   };
 
-  const handleToggleStudentTab = async (tab: 'stamps' | 'annales') => {
+  const handleToggleStudentTab = async (tab: 'stamps' | 'annales' | 'grades') => {
     if (!selectedClass || !user) return;
     const nextStamps = tab === 'stamps' ? !showStampsTab : showStampsTab;
     const nextAnnales = tab === 'annales' ? !showAnnalesTab : showAnnalesTab;
+    const nextGrades = tab === 'grades' ? !showGradesTab : showGradesTab;
     setShowStampsTab(nextStamps);
     setShowAnnalesTab(nextAnnales);
+    setShowGradesTab(nextGrades);
     setTabsLoading(true);
     try {
-      await saveStudentTabs(selectedClass.id, user.id, { show_stamps: nextStamps, show_annales: nextAnnales });
+      await saveStudentTabs(selectedClass.id, user.id, {
+        show_stamps: nextStamps, show_annales: nextAnnales, show_grades: nextGrades,
+      });
     } catch (err) {
       console.error('Error saving student tabs:', err);
       toast('Erreur lors de la mise à jour', 'error');
       // rollback
       setShowStampsTab(showStampsTab);
       setShowAnnalesTab(showAnnalesTab);
+      setShowGradesTab(showGradesTab);
     } finally {
       setTabsLoading(false);
     }
@@ -364,8 +371,10 @@ export function Classes() {
     if (!user || classes.length === 0) return;
     setTabsLoading(true);
     try {
-      await applyStudentTabsToAll(user.id, classes.map(c => c.id), { show_stamps: showStampsTab, show_annales: showAnnalesTab });
-      toast(`Tampons/Annales appliqués à ${classes.length} classe${classes.length > 1 ? 's' : ''}`, 'success');
+      await applyStudentTabsToAll(user.id, classes.map(c => c.id), {
+        show_stamps: showStampsTab, show_annales: showAnnalesTab, show_grades: showGradesTab,
+      });
+      toast(`Tampons/Annales/Notes appliqués à ${classes.length} classe${classes.length > 1 ? 's' : ''}`, 'success');
     } catch (err) {
       console.error('Error applying tabs to all classes:', err);
       toast('Erreur lors de la mise à jour', 'error');
@@ -1705,6 +1714,7 @@ export function Classes() {
                 <VisibilityToggle icon="⭐" label="Tampons" enabled={showStampsTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('stamps')} accent="var(--warn)" />
                 <VisibilityToggle icon="🏰" label="Maison" enabled={academyEnabled} disabled={academyLoading} onToggle={handleToggleAcademy} />
                 <VisibilityToggle icon="📚" label="Annales" enabled={showAnnalesTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('annales')} accent="var(--pos)" />
+                <VisibilityToggle icon="📄" label="Notes" enabled={showGradesTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('grades')} accent="var(--indigo)" />
                 {classes.length > 1 && (
                   <button
                     onClick={handleApplyTabsToAll}

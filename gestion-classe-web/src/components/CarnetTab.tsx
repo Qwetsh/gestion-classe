@@ -612,6 +612,7 @@ export function CarnetTab({ userId, account, onError }: {
             kind: editing.kind,
             date: editing.date ?? '',
             countsInAverage: editing.counts_in_average,
+            publishedToStudents: editing.published_to_students,
           }}
           onDelete={async () => {
             if (!window.confirm(`Supprimer « ${editing.name} » et ses notes du carnet ?`)) return;
@@ -630,7 +631,13 @@ export function CarnetTab({ userId, account, onError }: {
               countsInAverage: values.countsInAverage,
             };
             // La date reste propre à la classe : chaque groupe passe l'éval son jour.
-            await updateAssessment(editing.id, { ...patch, date: values.date || null });
+            await updateAssessment(editing.id, {
+              ...patch,
+              date: values.date || null,
+              // La publication n'est jamais propagée à la série : on publie une classe
+              // quand SES copies sont corrigées, pas celles des autres.
+              publishedToStudents: values.publishedToStudents,
+            });
             if (values.applyToSeries && editing.series_id) {
               await updateSeriesAssessments(editing.series_id, patch);
             }
@@ -654,6 +661,8 @@ interface AssessmentValues {
   kind: AssessmentKind;
   date: string;
   countsInAverage: boolean;
+  /** Édition seulement : rendre la note visible aux élèves. */
+  publishedToStudents: boolean;
   /** Création seulement : les classes sur lesquelles créer l'évaluation. */
   classIds?: string[];
   /** Édition seulement : répercuter sur les autres classes de la série. */
@@ -681,6 +690,7 @@ function AssessmentModal({
   const [kind, setKind] = useState<AssessmentKind>(initial?.kind ?? 'ecrit');
   const [date, setDate] = useState(initial?.date ?? '');
   const [countsInAverage, setCountsInAverage] = useState(initial?.countsInAverage ?? true);
+  const [publishedToStudents, setPublishedToStudents] = useState(initial?.publishedToStudents ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -710,7 +720,7 @@ function AssessmentModal({
     setError(null);
     try {
       await onSubmit({
-        name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage,
+        name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage, publishedToStudents,
         classIds: canSpread && spread && currentClassId ? [currentClassId, ...targets] : undefined,
         applyToSeries,
       });
@@ -765,6 +775,21 @@ function AssessmentModal({
           <input type="checkbox" checked={countsInAverage} onChange={(e) => setCountsInAverage(e.target.checked)} />
           Compte dans la moyenne
         </label>
+
+        {/* Édition : rendre les notes visibles aux élèves */}
+        {initial && (
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={publishedToStudents} onChange={(e) => setPublishedToStudents(e.target.checked)} />
+              Visible par les élèves
+            </label>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+              Chaque élève voit sa note, le sujet et le corrigé depuis son espace — jamais les
+              notes des autres. Encore faut-il que l’onglet « Notes » soit activé pour la classe
+              dans Classes › Ce que voient les élèves.
+            </div>
+          </div>
+        )}
 
         {/* Création : dupliquer l'évaluation sur d'autres classes */}
         {canSpread && (

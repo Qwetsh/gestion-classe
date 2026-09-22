@@ -109,6 +109,8 @@ export interface AssessmentRow {
   kind: AssessmentKind;
   group_id: string | null;
   counts_in_average: boolean;
+  /** TRUE : les élèves de la classe voient leur note, le sujet et le corrigé (migration 040). */
+  published_to_students: boolean;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
@@ -485,6 +487,7 @@ export interface UpdateAssessmentInput {
   coefficient?: number;
   kind?: AssessmentKind;
   countsInAverage?: boolean;
+  publishedToStudents?: boolean;
 }
 
 /** Modifie une évaluation. Ne propage rien à sa série : la propagation est un geste explicite. */
@@ -498,6 +501,7 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.coefficient !== undefined) row.coefficient = patch.coefficient;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
+  if (patch.publishedToStudents !== undefined) row.published_to_students = patch.publishedToStudents;
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from('written_assessments').update(row).eq('id', assessmentId);
