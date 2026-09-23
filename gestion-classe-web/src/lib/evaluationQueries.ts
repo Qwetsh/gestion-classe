@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { getCurrentSchoolYear } from './constants';
+import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
 
 // Buckets (memes noms que cote mobile / migrations)
@@ -13,7 +14,8 @@ const ASSESSMENT_SELECT =
   '*, classes(name), assessment_series(id, user_id, name, level, school_year, subject_path, correction_path, created_at)';
 
 const GRADE_SELECT =
-  'id, assessment_id, student_id, grade, grade_raw, comment, status, is_validated, validated_at, updated_at';
+  'id, assessment_id, student_id, grade, grade_raw, comment, status, is_adapted,' +
+  ' is_validated, validated_at, updated_at';
 
 /**
  * PostgREST plafonne une reponse a 1000 lignes (meme constante que `PAGE_SIZE` dans
@@ -157,6 +159,11 @@ export interface GradeRow {
    * qui reste le cycle de vie du pipeline de correction de copies scannées.
    */
   status: GradeStatus;
+  /**
+   * Le devoir était adapté pour cet élève (migration 041). Marqueur de lecture :
+   * la note compte dans la moyenne exactement comme les autres.
+   */
+  is_adapted: boolean;
   is_validated: boolean;
   validated_at: string | null;
   updated_at: string | null;
@@ -330,6 +337,88 @@ export async function deleteAssessmentDoc(
   if (error) throw error;
 }
 
+/**
+ * Upload du sujet ou de la correction **d'une serie** : un seul fichier pour toutes les
+ * classes qui passent la meme eval. Chemin conventionnel de la migration 039
+ * (`user_id/series/{seriesId}/...`), lu par l'espace eleve via `effectiveDocPath`.
+ */
+export async function uploadSeriesDoc(
+  userId: string,
+  seriesId: string,
+  kind: AssessmentDocKind,
+  file: File,
+  previousPath: string | null,
+): Promise<string> {
+  const path = `${userId}/series/${seriesId}/${kind}.${extOf(file)}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(DOCS_BUCKET)
+    .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+  if (upErr) throw upErr;
+
+  if (previousPath && previousPath !== path) {
+    await supabase.storage.from(DOCS_BUCKET).remove([previousPath]);
+  }
+
+  const column = kind === 'subject' ? 'subject_path' : 'correction_path';
+  const { error: updErr } = await supabase
+    .from('assessment_series')
+    .update({ [column]: path, updated_at: new Date().toISOString() })
+    .eq('id', seriesId);
+  if (updErr) throw updErr;
+
+  return path;
+}
+
+/** Supprime le document commun d'une serie : fichier Storage + colonne remise a null. */
+export async function deleteSeriesDoc(
+  seriesId: string,
+  kind: AssessmentDocKind,
+  path: string,
+): Promise<void> {
+  await supabase.storage.from(DOCS_BUCKET).remove([path]);
+  const column = kind === 'subject' ? 'subject_path' : 'correction_path';
+  const { error } = await supabase
+    .from('assessment_series')
+    .update({ [column]: null, updated_at: new Date().toISOString() })
+    .eq('id', seriesId);
+  if (error) throw error;
+}
+
+/**
+ * Efface le document propre des evaluations d'une serie (fichier + colonne).
+ *
+ * `effectiveDocPath` fait primer le chemin de l'eval sur celui de la serie : sans ce
+ * nettoyage, un sujet depose avant la serie continuerait d'etre servi a une classe
+ * pendant que les autres recoivent le nouveau. Un seul sujet, une seule source.
+ */
+export async function clearSeriesAssessmentDocs(
+  seriesId: string,
+  kind: AssessmentDocKind,
+): Promise<void> {
+  const column = kind === 'subject' ? 'subject_path' : 'correction_path';
+  const { data, error } = await supabase
+    .from('written_assessments')
+    .select(`id, ${column}`)
+    .eq('series_id', seriesId)
+    .not(column, 'is', null);
+  if (error) throw error;
+
+  const rows = (data || []) as unknown as { id: string; subject_path?: string; correction_path?: string }[];
+  if (rows.length === 0) return;
+
+  const paths = rows
+    .map((r) => (kind === 'subject' ? r.subject_path : r.correction_path))
+    .filter((p): p is string => !!p);
+  if (paths.length > 0) await supabase.storage.from(DOCS_BUCKET).remove(paths);
+
+  const { error: updErr } = await supabase
+    .from('written_assessments')
+    .update({ [column]: null, updated_at: new Date().toISOString() })
+    .in('id', rows.map((r) => r.id));
+  if (updErr) throw updErr;
+}
+
 /** Valide une note (is_validated = true). */
 export async function validateGrade(gradeId: string): Promise<void> {
   const { error } = await supabase
@@ -369,7 +458,7 @@ export async function fetchCurrentPeriod(userId: string): Promise<CurrentPeriod>
 }
 
 /** Élève affiché dans une ligne du carnet. */
-export interface CarnetStudent {
+export interface CarnetStudent extends StudentAccommodations {
   id: string;
   pseudo: string;
 }
@@ -397,7 +486,9 @@ export async function fetchCarnet(
   const [studentsRes, assessmentsRes] = await Promise.all([
     supabase
       .from('students')
-      .select('id, pseudo')
+      // PAP/PPRE/PAI : sert à repérer d'un coup d'œil qui a droit à un aménagement
+      // quand on coche « évaluation adaptée ». Écran privé de l'enseignant uniquement.
+      .select('id, pseudo, has_pap, has_ppre, has_pai')
       .eq('user_id', userId)
       .eq('class_id', classId)
       .order('pseudo'),
@@ -476,6 +567,78 @@ export async function saveGrade(input: SaveGradeInput): Promise<GradeRow> {
     .single();
   if (error) throw error;
   return data as unknown as GradeRow;
+}
+
+/**
+ * Marque (ou démarque) une évaluation comme adaptée pour un élève.
+ *
+ * Écrit dans la même ligne que la note : `is_adapted` ne dit rien du calcul, il dit
+ * seulement que le devoir a été aménagé pour cet élève. Créer la ligne avant toute note
+ * est volontaire — on coche souvent l'aménagement avant de corriger.
+ */
+export async function setGradeAdapted(
+  userId: string,
+  assessmentId: string,
+  studentId: string,
+  isAdapted: boolean,
+): Promise<GradeRow> {
+  const { data, error } = await supabase
+    .from('assessment_grades')
+    .upsert(
+      { user_id: userId, assessment_id: assessmentId, student_id: studentId, is_adapted: isAdapted },
+      { onConflict: 'assessment_id,student_id' },
+    )
+    .select(GRADE_SELECT)
+    .single();
+  if (error) throw error;
+  return data as unknown as GradeRow;
+}
+
+/**
+ * Convertit les notes brutes d'une évaluation quand son barème change : 15/20 devient
+ * 7,5/10. La note /20 — donc la moyenne — ne bouge pas.
+ *
+ * L'alternative (garder les notes brutes) est légitime quand on corrige une erreur de
+ * saisie du barème, mais elle change toutes les moyennes. Les deux existent, et c'est
+ * l'enseignant qui tranche : appliquer l'une en silence est le vrai danger.
+ */
+export async function rescaleGradesForBareme(
+  assessmentId: string,
+  oldBareme: number,
+  newBareme: number,
+): Promise<void> {
+  if (!(oldBareme > 0) || !(newBareme > 0) || oldBareme === newBareme) return;
+
+  const rows = await fetchAllPages<RawGradeRow>(async (from, to) => {
+    const r = await supabase
+      .from('assessment_grades')
+      .select('user_id, assessment_id, student_id, grade_raw, status')
+      .eq('assessment_id', assessmentId)
+      .range(from, to);
+    return r as unknown as PageResult<RawGradeRow>;
+  });
+
+  const factor = newBareme / oldBareme;
+  const updates = rows
+    .filter((r) => r.status === 'noted' && toNumber(r.grade_raw) !== null)
+    .map((r) => {
+      // Arrondi au centième : une note brute affichée « 7,5 » ne doit pas devenir 7,4999.
+      const raw = Math.round((toNumber(r.grade_raw) as number) * factor * 100) / 100;
+      return {
+        user_id: r.user_id,
+        assessment_id: r.assessment_id,
+        student_id: r.student_id,
+        grade_raw: raw,
+        grade: toTwenty(raw, newBareme),
+        status: r.status,
+      };
+    });
+  if (updates.length === 0) return;
+
+  const { error } = await supabase
+    .from('assessment_grades')
+    .upsert(updates, { onConflict: 'assessment_id,student_id' });
+  if (error) throw error;
 }
 
 export interface UpdateAssessmentInput {
@@ -887,6 +1050,8 @@ export async function fetchStudentGradeReport(
 export async function updateSeriesAssessments(
   seriesId: string,
   patch: UpdateAssessmentInput,
+  /** Comme pour une éval seule : convertir les notes brutes au nouveau barème, ou les garder. */
+  options: { rescaleRaw?: boolean } = {},
 ): Promise<void> {
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
@@ -899,18 +1064,30 @@ export async function updateSeriesAssessments(
   // La date n'est jamais propagée : chaque classe passe l'évaluation son jour.
   if (Object.keys(row).length === 0) return;
 
-  const { data, error } = await supabase
+  // Les anciens barèmes sont lus AVANT la mise à jour : après, ils sont perdus et la
+  // conversion des notes brutes n'a plus de point de départ.
+  const { data: before, error: beforeErr } = await supabase
+    .from('written_assessments')
+    .select('id, bareme_total')
+    .eq('series_id', seriesId)
+    .eq('is_deleted', false);
+  if (beforeErr) throw beforeErr;
+
+  const { error } = await supabase
     .from('written_assessments')
     .update(row)
     .eq('series_id', seriesId)
-    .eq('is_deleted', false)
-    .select('id');
+    .eq('is_deleted', false);
   if (error) throw error;
 
   if (patch.baremeTotal !== undefined) {
     const bareme = patch.baremeTotal;
-    for (const a of (data || []) as { id: string }[]) {
-      await recomputeGradesForBareme(a.id, bareme);
+    for (const a of (before || []) as { id: string; bareme_total: number | null }[]) {
+      if (options.rescaleRaw) {
+        await rescaleGradesForBareme(a.id, toNumber(a.bareme_total) ?? 20, bareme);
+      } else {
+        await recomputeGradesForBareme(a.id, bareme);
+      }
     }
   }
 }

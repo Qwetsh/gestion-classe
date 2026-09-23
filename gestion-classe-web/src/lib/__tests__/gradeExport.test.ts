@@ -5,7 +5,7 @@ import type { GradeStatus } from '../gradeStats';
 
 const row = (grade: number | null, status: GradeStatus = 'noted'): GradeRow => ({
   id: 'g', assessment_id: 'a', student_id: 's',
-  grade, grade_raw: null, comment: null, status,
+  grade, grade_raw: null, comment: null, status, is_adapted: false,
   is_validated: false, validated_at: null, updated_at: null,
 });
 

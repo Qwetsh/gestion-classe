@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { generateAnalysisReport, prepareReportData } from '../lib/generateReport';
+import { GradeAnalyticsSection } from '../components/GradeAnalyticsSection';
+import type { AnalyticsStudent } from '../lib/gradeAnalytics';
 import {
   LineChart,
   Line,
@@ -44,6 +46,8 @@ interface StudentData {
   id: string;
   pseudo: string;
   class_id: string;
+  /** Brut, sans valeur par defaut : une comparaison filles/garcons sur un genre suppose ment. */
+  gender: 'M' | 'F' | null;
 }
 
 interface GenderStats {
@@ -261,7 +265,9 @@ export function Analytics() {
         }
 
         setStudentGenders((data || []).map(s => ({ id: s.id, gender: s.gender || 'M' })));
-        setStudents((data || []).map(s => ({ id: s.id, pseudo: s.pseudo, class_id: s.class_id })));
+        setStudents((data || []).map(s => ({
+          id: s.id, pseudo: s.pseudo, class_id: s.class_id, gender: s.gender ?? null,
+        })));
       } catch (err) {
         console.error('Error loading students:', err);
         setStudentGenders([]);
@@ -410,6 +416,16 @@ export function Analytics() {
 
     return { globalAverage, byClass };
   }, [oralGrades, selectedClasses, classes]);
+
+  // Élèves enrichis du genre, pour le bloc Notes (qui en fait sa propre lecture).
+  const analyticsStudents = useMemo((): AnalyticsStudent[] => {
+    return students.map((s) => ({
+      id: s.id,
+      pseudo: s.pseudo,
+      classId: s.class_id,
+      gender: s.gender,
+    }));
+  }, [students]);
 
   const toggleClass = (classId: string) => {
     setSelectedClasses((prev) =>
@@ -1024,6 +1040,23 @@ export function Analytics() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Notes du carnet — même sélection de classes, période propre */}
+            <div className="pt-2">
+              <h2
+                className="text-[var(--text)] mb-4"
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 28, fontStyle: 'italic' }}
+              >
+                Notes
+              </h2>
+              <GradeAnalyticsSection
+                userId={user?.id ?? ''}
+                classes={classes}
+                selectedClasses={selectedClasses}
+                students={analyticsStudents}
+                events={events}
+              />
             </div>
           </>
         )}

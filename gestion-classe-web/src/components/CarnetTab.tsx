@@ -16,7 +16,10 @@ import {
   fetchGradeBookExport,
   createAssessmentSeries,
   updateSeriesAssessments,
+  setGradeAdapted,
+  rescaleGradesForBareme,
 } from '../lib/evaluationQueries';
+import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentStatsPanel } from './AssessmentStatsPanel';
 import { levelFromClassName } from '../lib/boardsQueries';
 import { exportGradeBookPdf, exportGradeBookXlsx } from '../lib/gradeExport';
@@ -93,6 +96,9 @@ export function CarnetTab({ userId, account, onError }: {
   const [exportAllYears, setExportAllYears] = useState(false);
 
   const inputsRef = useRef<Map<string, HTMLInputElement>>(new Map());
+  /** Miroir de `grades` : lu dans les callbacks sans les faire dépendre de chaque note. */
+  const gradesRef = useRef(grades);
+  gradesRef.current = grades;
   const pendingRef = useRef<Map<string, PendingEdit>>(new Map());
   const timerRef = useRef<number | null>(null);
 
@@ -232,6 +238,28 @@ export function CarnetTab({ userId, account, onError }: {
   };
 
   // ----------------------------------------------------------
+  // Évaluation adaptée (migration 041)
+  // ----------------------------------------------------------
+
+  /**
+   * Marque le devoir comme adapté (ou non) pour un élève.
+   *
+   * On vide d'abord la file d'écriture : la ligne revient du serveur telle qu'elle est
+   * en base, et écraser l'état avec une note encore en vol la ferait disparaître à l'écran.
+   */
+  const toggleAdapted = useCallback(async (assessmentId: string, studentId: string, next?: boolean) => {
+    await flush();
+    const key = cellKey(assessmentId, studentId);
+    const current = gradesRef.current.get(key)?.is_adapted ?? false;
+    try {
+      const row = await setGradeAdapted(userId, assessmentId, studentId, next ?? !current);
+      setGrades((prev) => new Map(prev).set(cellKey(row.assessment_id, row.student_id), row));
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Impossible d’enregistrer l’aménagement');
+    }
+  }, [flush, userId, onError]);
+
+  // ----------------------------------------------------------
   // Navigation clavier
   // ----------------------------------------------------------
 
@@ -255,6 +283,12 @@ export function CarnetTab({ userId, account, onError }: {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       focusCell(assessmentIndex, Math.max(studentIndex - 1, 0));
+    } else if (e.key === '*') {
+      // Aménagement : marqué au clavier, sans quitter la colonne en cours de saisie.
+      e.preventDefault();
+      const a = assessments[assessmentIndex];
+      const st = students[studentIndex];
+      if (a && st) void toggleAdapted(a.id, st.id);
     } else if (e.key === 'Escape') {
       // Abandon : on oublie la frappe en cours et on réaffiche la valeur enregistrée.
       e.preventDefault();
@@ -317,6 +351,25 @@ export function CarnetTab({ userId, account, onError }: {
     return values.reduce((a, b) => a + b, 0) / values.length;
   }, [students, averageFor]);
 
+  /** Élèves pour qui cette évaluation est marquée adaptée. */
+  const adaptedIds = useCallback(
+    (assessmentId: string) =>
+      new Set(
+        students.filter((s) => grades.get(cellKey(assessmentId, s.id))?.is_adapted).map((s) => s.id),
+      ),
+    [students, grades],
+  );
+
+  /** Notes brutes saisies sur une éval : de quoi juger un changement de barème. */
+  const rawGradesOf = useCallback(
+    (assessmentId: string) =>
+      students
+        .map((s) => grades.get(cellKey(assessmentId, s.id)))
+        .filter((row) => row?.status === 'noted' && row.grade_raw !== null)
+        .map((row) => Number(row!.grade_raw)),
+    [students, grades],
+  );
+
   // ----------------------------------------------------------
   // Export (lot 3) — toute l'année, toutes les classes
   // ----------------------------------------------------------
@@ -345,14 +398,38 @@ export function CarnetTab({ userId, account, onError }: {
   const className = classes.find((c) => c.id === classId)?.name ?? '';
 
   return (
-    <div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 190px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+      {/* Menu des classes : une classe est un lieu, pas une option de liste déroulante. */}
+      <nav style={sidebar}>
+        <div style={sidebarTitle}>Classes</div>
+        {classes.length === 0 ? (
+          <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-dim)' }}>Aucune classe</div>
+        ) : (
+          classes.map((c) => {
+            const on = c.id === classId;
+            return (
+              <button
+                key={c.id}
+                onClick={() => { void flush(); setClassId(c.id); }}
+                aria-current={on ? 'page' : undefined}
+                style={{
+                  ...classBtn,
+                  background: on ? 'var(--indigo-soft)' : 'transparent',
+                  color: on ? 'var(--indigo)' : 'var(--text)',
+                  borderLeftColor: on ? 'var(--indigo)' : 'transparent',
+                  fontWeight: on ? 700 : 500,
+                }}
+              >
+                {c.name}
+              </button>
+            );
+          })
+        )}
+      </nav>
+
+      <div style={{ minWidth: 0 }}>
       {/* Barre d'outils */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-        <select value={classId} onChange={(e) => { void flush(); setClassId(e.target.value); }} style={select}>
-          {classes.length === 0 && <option value="">Aucune classe</option>}
-          {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-
         <div style={{ display: 'flex', gap: 4 }}>
           {PERIODS.map((p) => (
             <button
@@ -444,13 +521,22 @@ export function CarnetTab({ userId, account, onError }: {
                   const stats = columnStats.get(a.id);
                   return (
                     <th key={a.id} style={{ ...th, ...colSep, minWidth: 92 }}>
-                      <button onClick={() => setStatsFor(a)} style={headerBtn} title="Statistiques de cette évaluation">
-                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>{a.name}</span>
+                      <button
+                        onClick={() => { void flush(); setEditing(a); }}
+                        style={headerBtn}
+                        title="Modifier cette évaluation (nom, barème, coefficient, aménagements…)"
+                      >
+                        <span style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
+                          {a.name}
+                        </span>
                       </button>
                       <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 400 }}>
                         coef {showNum(Number(a.coefficient))} · /{showNum(Number(a.bareme_total ?? 20))}
                         {!a.counts_in_average && ' · hors moy.'}
                       </div>
+                      <button onClick={() => setStatsFor(a)} style={statsBtn} title="Statistiques de cette évaluation">
+                        stats
+                      </button>
                       {stats && stats.pending > 0 && (
                         <div style={{ fontSize: 10, color: 'var(--warn)', fontWeight: 400 }}>
                           {stats.pending} à corriger
@@ -468,7 +554,12 @@ export function CarnetTab({ userId, account, onError }: {
                 const avg = averageFor(s.id);
                 return (
                   <tr key={s.id}>
-                    <td style={{ ...td, ...stickyCol, textAlign: 'left', fontWeight: 500 }}>{s.pseudo}</td>
+                    <td style={{ ...td, ...stickyCol, textAlign: 'left', fontWeight: 500 }}>
+                      {s.pseudo}
+                      {accommodationTags(s).map((tag) => (
+                        <span key={tag} title={accommodationTitle(s)} style={tagStyle}>{tag}</span>
+                      ))}
+                    </td>
                     {assessments.map((a, ai) => {
                       const key = cellKey(a.id, s.id);
                       const row = grades.get(key);
@@ -476,8 +567,9 @@ export function CarnetTab({ userId, account, onError }: {
                       const value = draft !== undefined ? draft : cellText(row);
                       const isStatus = draft === undefined && row && row.status !== 'noted';
                       const bad = invalid[key];
+                      const adapted = !!row?.is_adapted;
                       return (
-                        <td key={a.id} style={{ ...td, ...colSep, padding: 0 }}>
+                        <td key={a.id} style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
                           <input
                             ref={(el) => {
                               if (el) inputsRef.current.set(key, el);
@@ -489,7 +581,7 @@ export function CarnetTab({ userId, account, onError }: {
                             onBlur={() => { void flush(); }}
                             onKeyDown={(e) => handleKeyDown(e, ai, si)}
                             inputMode="decimal"
-                            aria-label={`${s.pseudo} — ${a.name}`}
+                            aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}`}
                             style={{
                               width: '100%', boxSizing: 'border-box', textAlign: 'center',
                               padding: '8px 4px', border: 'none', outline: 'none',
@@ -502,6 +594,14 @@ export function CarnetTab({ userId, account, onError }: {
                               fontStyle: isStatus ? 'italic' : 'normal',
                             }}
                           />
+                          {adapted && (
+                            <span
+                              title={`Évaluation adaptée pour ${s.pseudo}`}
+                              style={{ position: 'absolute', top: 1, right: 3, fontSize: 10, color: 'var(--indigo)', pointerEvents: 'none' }}
+                            >
+                              ✻
+                            </span>
+                          )}
                         </td>
                       );
                     })}
@@ -542,7 +642,8 @@ export function CarnetTab({ userId, account, onError }: {
         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 10 }}>
           <strong>Entrée</strong> ou <strong>↓</strong> : élève suivant · <strong>Tab</strong> : évaluation suivante ·
           {' '}<strong>a</strong> absent · <strong>d</strong> dispensé · <strong>n</strong> non rendu ·
-          {' '}<strong>z</strong> non rendu comptant 0 · <strong>Échap</strong> : annuler la frappe
+          {' '}<strong>z</strong> non rendu comptant 0 · <strong>*</strong> évaluation adaptée (✻) ·
+          {' '}<strong>Échap</strong> : annuler la frappe
         </p>
       )}
 
@@ -614,6 +715,10 @@ export function CarnetTab({ userId, account, onError }: {
             countsInAverage: editing.counts_in_average,
             publishedToStudents: editing.published_to_students,
           }}
+          students={students}
+          adaptedIds={adaptedIds(editing.id)}
+          onToggleAdapted={(studentId, value) => toggleAdapted(editing.id, studentId, value)}
+          gradeRaws={rawGradesOf(editing.id)}
           onDelete={async () => {
             if (!window.confirm(`Supprimer « ${editing.name} » et ses notes du carnet ?`)) return;
             await softDeleteAssessment(editing.id);
@@ -630,22 +735,30 @@ export function CarnetTab({ userId, account, onError }: {
               kind: values.kind,
               countsInAverage: values.countsInAverage,
             };
-            // La date reste propre à la classe : chaque groupe passe l'éval son jour.
-            await updateAssessment(editing.id, {
-              ...patch,
+            const oldBareme = Number(editing.bareme_total ?? 20);
+            const convert = values.baremeMode === 'convert' && values.bareme !== oldBareme;
+            // La date et la publication restent propres à la classe : chaque groupe passe
+            // l'éval son jour, et on publie une classe quand SES copies sont corrigées.
+            const ownFields = {
               date: values.date || null,
-              // La publication n'est jamais propagée à la série : on publie une classe
-              // quand SES copies sont corrigées, pas celles des autres.
               publishedToStudents: values.publishedToStudents,
-            });
+            };
+
             if (values.applyToSeries && editing.series_id) {
-              await updateSeriesAssessments(editing.series_id, patch);
+              // La série d'abord : elle lit les anciens barèmes avant de les écraser, et
+              // convertit chaque classe une seule fois — celle-ci comprise.
+              await updateSeriesAssessments(editing.series_id, patch, { rescaleRaw: convert });
+              await updateAssessment(editing.id, ownFields);
+            } else {
+              await updateAssessment(editing.id, { ...patch, ...ownFields });
+              if (convert) await rescaleGradesForBareme(editing.id, oldBareme, values.bareme);
             }
             setEditing(null);
             await load();
           }}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -667,10 +780,17 @@ interface AssessmentValues {
   classIds?: string[];
   /** Édition seulement : répercuter sur les autres classes de la série. */
   applyToSeries?: boolean;
+  /**
+   * Édition seulement, quand le barème change et que des notes existent déjà :
+   * `convert` met les notes brutes à la nouvelle échelle (15/20 → 7,5/10, moyenne
+   * inchangée), `keep` les laisse telles quelles (le /20 change, donc la moyenne aussi).
+   */
+  baremeMode?: 'convert' | 'keep';
 }
 
 function AssessmentModal({
   title, className, initial, classes, currentClassId, seriesId, onSubmit, onClose, onDelete,
+  students, adaptedIds, onToggleAdapted, gradeRaws,
 }: {
   title: string;
   className: string;
@@ -683,6 +803,13 @@ function AssessmentModal({
   onSubmit: (values: AssessmentValues) => Promise<void>;
   onClose: () => void;
   onDelete?: () => Promise<void>;
+  /** Édition : élèves de la classe, pour cocher les aménagements. */
+  students?: CarnetStudent[];
+  adaptedIds?: Set<string>;
+  /** Écrit immédiatement : un aménagement coché ne doit pas dépendre du bouton Enregistrer. */
+  onToggleAdapted?: (studentId: string, value: boolean) => Promise<void>;
+  /** Notes brutes déjà saisies : sert à décider quoi faire d'un changement de barème. */
+  gradeRaws?: number[];
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [bareme, setBareme] = useState(String(initial?.bareme ?? 20));
@@ -709,7 +836,19 @@ function AssessmentModal({
   // --- Propagation à la série (édition) ---
   const [applyToSeries, setApplyToSeries] = useState(false);
 
-  const submit = async () => {
+  // --- Changement de barème avec des notes déjà saisies ---
+  const oldBareme = initial?.bareme ?? null;
+  const parsedBareme = Number(bareme.replace(',', '.'));
+  const noteCount = gradeRaws?.length ?? 0;
+  const maxRaw = noteCount > 0 ? Math.max(...(gradeRaws as number[])) : null;
+  const baremeChanged =
+    oldBareme !== null && Number.isFinite(parsedBareme) && parsedBareme > 0 && parsedBareme !== oldBareme;
+  /** Garder les notes brutes est impossible si l'une d'elles dépasse le nouveau barème. */
+  const canKeepRaw = maxRaw === null || maxRaw <= parsedBareme;
+  /** Étape de confirmation : on ne touche pas aux notes sans le dire. */
+  const [askBareme, setAskBareme] = useState(false);
+
+  const run = async (baremeMode?: 'convert' | 'keep') => {
     const trimmed = name.trim();
     if (!trimmed) { setError('Donne un nom à l’évaluation.'); return; }
     const b = Number(bareme.replace(',', '.'));
@@ -723,11 +862,20 @@ function AssessmentModal({
         name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage, publishedToStudents,
         classIds: canSpread && spread && currentClassId ? [currentClassId, ...targets] : undefined,
         applyToSeries,
+        baremeMode,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Enregistrement impossible');
       setBusy(false);
+      setAskBareme(false);
     }
+  };
+
+  const submit = async () => {
+    // Changer le barème de 20 à 10 sans rien dire diviserait (ou doublerait) des moyennes
+    // déjà lues et recopiées. On demande, une fois, avant d'écrire.
+    if (baremeChanged && noteCount > 0) { setError(null); setAskBareme(true); return; }
+    await run();
   };
 
   return (
@@ -838,6 +986,67 @@ function AssessmentModal({
           </div>
         )}
 
+        {/* Édition : aménagements élève par élève */}
+        {initial && students && students.length > 0 && onToggleAdapted && (
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Évaluation adaptée pour…</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+              Coche les élèves dont le devoir ou l’activité a été aménagé. La note compte
+              dans la moyenne comme les autres ; la cellule porte un ✻ dans le carnet.
+              Au clavier : <strong>*</strong> dans la cellule. Enregistré immédiatement.
+            </div>
+            <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8, marginTop: 8 }}>
+              {students.map((st) => (
+                <label
+                  key={st.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', padding: '3px 0', cursor: 'pointer' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={adaptedIds?.has(st.id) ?? false}
+                    onChange={(e) => { void onToggleAdapted(st.id, e.target.checked); }}
+                  />
+                  {st.pseudo}
+                  {accommodationTags(st).map((tag) => (
+                    <span key={tag} title={accommodationTitle(st)} style={tagStyle}>{tag}</span>
+                  ))}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Changement de barème : que deviennent les notes déjà saisies ? */}
+        {askBareme && (
+          <div style={{ marginTop: 16, border: '1px solid var(--warn)', background: 'var(--surface-3)', borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+              Le barème passe de {showNum(Number(oldBareme))} à {showNum(parsedBareme)}.
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+              {noteCount} note{noteCount > 1 ? 's sont' : ' est'} déjà saisie{noteCount > 1 ? 's' : ''}.
+              Que faut-il en faire ?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              <button onClick={() => { void run('convert'); }} disabled={busy} style={{ ...btnPrimary, textAlign: 'left' }}>
+                Convertir les notes — une note de {showNum(Number(oldBareme))} devient{' '}
+                {showNum(Math.round(parsedBareme * 100) / 100)} ; les moyennes ne bougent pas.
+              </button>
+              <button
+                onClick={() => { void run('keep'); }}
+                disabled={busy || !canKeepRaw}
+                title={canKeepRaw ? undefined : `Une note vaut ${showNum(Number(maxRaw))}, au-dessus du nouveau barème.`}
+                style={{ ...btnGhost, textAlign: 'left', opacity: canKeepRaw ? 1 : 0.5 }}
+              >
+                Garder les notes telles quelles — les /20 et les moyennes changent.
+                {!canKeepRaw && ` Impossible : une note vaut ${showNum(Number(maxRaw))}.`}
+              </button>
+              <button onClick={() => setAskBareme(false)} disabled={busy} style={{ ...btnGhost, textAlign: 'left' }}>
+                Revenir en arrière
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 20 }}>
           {onDelete ? (
             <button onClick={() => { void onDelete(); }} style={btnDanger}>Supprimer</button>
@@ -885,9 +1094,28 @@ const emptyBox: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
   padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14,
 };
-const select: React.CSSProperties = {
-  padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
-  background: 'var(--bg)', color: 'var(--text)', fontSize: 13,
+const sidebar: React.CSSProperties = {
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+  overflow: 'hidden', position: 'sticky', top: 12,
+};
+const sidebarTitle: React.CSSProperties = {
+  padding: '10px 14px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+  borderBottom: '1px solid var(--border)', textTransform: 'uppercase', letterSpacing: '0.04em',
+};
+const classBtn: React.CSSProperties = {
+  display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px',
+  border: 'none', borderLeft: '3px solid transparent', cursor: 'pointer',
+  fontSize: 13, fontFamily: 'inherit',
+};
+/** Petite pastille PAP / PPRE / PAI à côté d'un nom d'élève. */
+const tagStyle: React.CSSProperties = {
+  marginLeft: 6, fontSize: 10, fontWeight: 700, color: 'var(--indigo)',
+  background: 'var(--indigo-soft)', borderRadius: 999, padding: '1px 6px',
+};
+const statsBtn: React.CSSProperties = {
+  background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer',
+  fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', fontFamily: 'inherit',
+  textDecoration: 'underline', textUnderlineOffset: 2,
 };
 const lbl: React.CSSProperties = {
   display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', margin: '12px 0 4px',
