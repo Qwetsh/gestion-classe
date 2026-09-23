@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
@@ -21,22 +20,11 @@ import { formatDayFr, formatTime, getTimeOfDay, isSameDay } from '../components/
 export function Dashboard() {
   const { user } = useAuth();
   const [boardOpen, setBoardOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
 
   // Chargement de la disposition enregistrée
   useEffect(() => {
     if (user) void initHomeLayout(user.id, HOME_MODULE_IDS);
   }, [user]);
-
-  // Les réglages ouvrent l'édition en renvoyant ici avec ?accueil=edition
-  useEffect(() => {
-    if (searchParams.get('accueil') === 'edition') {
-      setEditing(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete('accueil');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
 
   // Quitter la page met fin à l'édition
   useEffect(() => () => setEditing(false), []);

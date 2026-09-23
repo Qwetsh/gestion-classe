@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
 import { HOME_MODULES } from './home/homeModules';
-import { resetHomeLayout, toggleModule, useHomeLayoutStore } from './home/homeLayoutStore';
+import { resetHomeLayout, setEditing, toggleModule, useHomeLayoutStore } from './home/homeLayoutStore';
 
 // ── Types ──
 
@@ -460,6 +460,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
 function HomeSection({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { layout } = useHomeLayoutStore();
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -477,7 +478,7 @@ function HomeSection({ onClose }: { onClose: () => void }) {
       <div className="flex gap-2 mb-5">
         <button
           type="button"
-          onClick={() => { onClose(); navigate('/?accueil=edition'); }}
+          onClick={() => { onClose(); setEditing(true); if (location.pathname !== '/') navigate('/'); }}
           className="px-3 py-2 rounded-lg text-sm font-semibold text-white"
           style={{ background: 'var(--indigo)' }}
         >
