@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
+import { HOME_MODULES } from './home/homeModules';
+import { resetHomeLayout, toggleModule, useHomeLayoutStore } from './home/homeLayoutStore';
 
 // ── Types ──
 
@@ -8,7 +11,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SectionKey = 'tabs' | 'establishment' | 'teacher' | 'schoolYear' | 'theme' | 'data';
+type SectionKey = 'tabs' | 'home' | 'establishment' | 'teacher' | 'schoolYear' | 'theme' | 'data';
 
 interface SidebarItem {
   key: SectionKey;
@@ -20,6 +23,7 @@ interface SidebarItem {
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { key: 'tabs', label: 'Onglets visibles', icon: 'M4 6h16M4 12h16M4 18h16' },
+  { key: 'home', label: "Page d'accueil", icon: 'M4 6h6v6H4zM14 6h6v4h-6zM14 14h6v4h-6zM4 16h6v4H4z' },
   { key: 'establishment', label: 'Etablissement', icon: 'M3 21h18M9 21V7l6-3v17M9 7l-6 3v11M15 4l6 3v14' },
   { key: 'teacher', label: 'Profil enseignant', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { key: 'schoolYear', label: 'Annee scolaire', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
@@ -175,7 +179,11 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         );
 
-      // Section 2 : Etablissement
+      // Section 2 : Page d'accueil
+      case 'home':
+        return <HomeSection onClose={onClose} />;
+
+      // Section 3 : Etablissement
       case 'establishment':
         return (
           <div className="space-y-4">
@@ -443,6 +451,67 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             {renderSection()}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Section « Page d'accueil » ──
+
+function HomeSection({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  const { layout } = useHomeLayoutStore();
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const placed = new Set(layout.items.map(i => i.i));
+  const isVisible = (id: string) => placed.has(id) && !layout.hidden.includes(id);
+
+  return (
+    <div className="space-y-1">
+      <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Page d'accueil</h3>
+      <p className="text-xs text-[var(--text-muted)] mb-4">
+        Choisissez les modules affiches sur l'accueil, puis passez en mode edition pour les
+        deplacer et les redimensionner comme vous voulez.
+      </p>
+
+      <div className="flex gap-2 mb-5">
+        <button
+          type="button"
+          onClick={() => { onClose(); navigate('/?accueil=edition'); }}
+          className="px-3 py-2 rounded-lg text-sm font-semibold text-white"
+          style={{ background: 'var(--indigo)' }}
+        >
+          Personnaliser la disposition
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!confirmReset) { setConfirmReset(true); return; }
+            resetHomeLayout();
+            setConfirmReset(false);
+          }}
+          className="px-3 py-2 rounded-lg text-sm font-medium border border-[var(--border)] text-[var(--text)]"
+        >
+          {confirmReset ? 'Confirmer' : 'Reinitialiser'}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {HOME_MODULES.map(m => (
+          <div
+            key={m.id}
+            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+          >
+            <div className="min-w-0">
+              <div className="text-sm text-[var(--text)]">{m.title}</div>
+              <div className="text-xs text-[var(--text-muted)]">{m.description}</div>
+            </div>
+            <Toggle
+              checked={isVisible(m.id)}
+              onChange={(v) => toggleModule(m.id, v)}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
