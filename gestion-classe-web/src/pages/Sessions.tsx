@@ -465,7 +465,7 @@ export function Sessions() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <Layout fluid>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
@@ -477,7 +477,7 @@ export function Sessions() {
   }
 
   return (
-    <Layout>
+    <Layout fluid>
       <div className="space-y-6">
         {/* Error banner */}
         {error && (
@@ -575,7 +575,7 @@ export function Sessions() {
                   }
                 });
                 return groups.map((group) => (
-                  <div key={group.date} className="gc-card" style={{ marginBottom: 12 }}>
+                  <div key={group.date} className="gc-card listview__day">
                     <div style={{ padding: '10px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', fontStyle: 'italic', fontFamily: 'var(--font-display)', borderBottom: '1px solid var(--border)', textTransform: 'capitalize' }}>
                       {new Date(group.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </div>

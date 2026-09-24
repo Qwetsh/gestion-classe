@@ -630,7 +630,7 @@ export function GroupSessions() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <Layout fluid>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
@@ -642,7 +642,7 @@ export function GroupSessions() {
   }
 
   return (
-    <Layout>
+    <Layout fluid>
       {/* Error banner */}
       {error && (
         <div

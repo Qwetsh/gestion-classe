@@ -30,7 +30,7 @@ export function Dashboard() {
   useEffect(() => () => setEditing(false), []);
 
   return (
-    <Layout>
+    <Layout fluid>
       <HomeDataProvider onOpenBoard={(board) => setBoardOpen(board ? boardTab(board) : draftTab())}>
         <HomeContent />
       </HomeDataProvider>

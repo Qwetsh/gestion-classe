@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Seuils grand écran (voir section « Adaptatif ») : 3xl = 1920 px, 4xl = 2400 px */
+@theme {
+  --breakpoint-3xl: 120rem;
+  --breakpoint-4xl: 150rem;
+}
+
 /* Mobile-only nav: visible below 768px, hidden above */
 .mobile-nav { display: flex; }
 @media (min-width: 768px) {
@@ -342,6 +348,10 @@ textarea:focus-visible {
 @media (max-width: 1439px) {
   .plan-layout { grid-template-columns: 150px minmax(0, 1fr) 196px; gap: 10px; }
 }
+/* Grand écran : panneaux latéraux plus larges (les bureaux sont plafonnés à 170 px dans Classes.tsx) */
+@media (min-width: 1920px) {
+  .plan-layout { grid-template-columns: 220px minmax(0, 1fr) 300px; gap: 18px; }
+}
 
 /* ---- Classes pane (sidebar) ---- */
 .classes-pane {
@@ -630,7 +640,7 @@ textarea:focus-visible {
 /* ==== TRACKING SCREEN ======================================= */
 /* =========================================================== */
 
-.page--tracking { max-width: 1520px; margin: 0 auto; padding: 28px; }
+.page--tracking { margin: 0 auto; } /* largeur et marges : .gc-main (section « Adaptatif ») */
 
 .track-header {
   display: flex; justify-content: space-between; align-items: flex-end;
@@ -877,7 +887,7 @@ textarea:focus-visible {
 /* ---- Mobile (< 640px) ---- */
 @media (max-width: 640px) {
   /* Page */
-  .page--tracking { padding: 12px; }
+
 
   /* Header: compact */
   .track-header { gap: 8px; margin-bottom: 10px; }
@@ -1105,10 +1115,47 @@ textarea:focus-visible {
 }
 .gc-rail-toggle:hover { background: var(--surface-3); color: var(--text); }
 
-/* Contenu : marges reduites sur les petits ecrans d'ordinateur */
+/* ============================================================
+   Adaptatif — largeur du contenu selon le format d'écran
+   Téléphone < 640 · tablette 640–1023 · portable 1024–1439
+   · bureau 1440–1919 · grand écran ≥ 1920 · très grand ≥ 2400
+   Pages de travail (Layout fluid) : toute la largeur.
+   Pages de lecture (défaut) : colonne plafonnée, lisible.
+   ============================================================ */
+.gc-main { width: 100%; margin: 0 auto; }
+.gc-main--bleed { max-width: none; padding: 0; }
+.gc-main--reading { max-width: 1320px; }
+.gc-main--fluid { max-width: none; }
+
 .gc-main--padded { padding: 28px; }
 @media (max-width: 1439px) {
   .gc-main--padded { padding: 18px 20px; }
+}
+@media (max-width: 640px) {
+  .gc-main--padded { padding: 12px; }
+}
+
+/* Séances, vue liste : les jours se répartissent en colonnes (ordre
+   chronologique de haut en bas) dès qu'il y a la place pour deux cartes
+   d'au moins 620 px — sinon une ligne s'étire sur 2000 px. */
+.listview { columns: 620px; column-gap: 14px; }
+.listview__day { break-inside: avoid; margin-bottom: 14px; }
+
+/* Grand écran : le contenu est légèrement agrandi (zoom, pas le plein écran
+   --bleed dont le tableau blanc gère ses propres coordonnées) pour que les
+   textes de 11–13 px restent lisibles à 100 % de mise à l'échelle Windows. */
+@media (min-width: 1920px) {
+  .gc-main--reading { max-width: 1440px; }
+  .gc-main--padded { padding: 32px 40px; zoom: 1.08; }
+  .gc-sidebar:not(.gc-sidebar--rail) { width: 236px; }
+  .gc-sidenav__item { font-size: 14px; padding: 9px 12px; }
+  .gc-sidenav__section { font-size: 10.5px; }
+}
+@media (min-width: 2400px) {
+  .gc-main--padded { padding: 36px 48px; zoom: 1.15; }
+  .gc-sidebar:not(.gc-sidebar--rail) { width: 252px; }
+  .gc-sidenav__item { font-size: 15px; padding: 10px 12px; }
+  .gc-sidenav__section { font-size: 11px; }
 }
 
 /* ---- Barre laterale reduite aux icones (« rail ») ----

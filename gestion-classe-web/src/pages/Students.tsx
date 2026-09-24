@@ -1852,7 +1852,7 @@ export function Students() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <Layout fluid>
         <div className="flex justify-center items-center h-64">
           <div className="text-[var(--text-muted)]">Chargement...</div>
         </div>
@@ -1861,7 +1861,7 @@ export function Students() {
   }
 
   return (
-    <Layout>
+    <Layout fluid>
       {error && (
         <div style={{ background: 'var(--neg-soft)', color: 'var(--neg)', padding: 16, marginBottom: 16, borderRadius: 'var(--radius)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{error}</span>

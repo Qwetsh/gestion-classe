@@ -438,7 +438,7 @@ export function SessionDetail() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <Layout fluid>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
@@ -451,7 +451,7 @@ export function SessionDetail() {
 
   if (!session) {
     return (
-      <Layout>
+      <Layout fluid>
         <div className="text-center py-12">
           <div
             className="w-20 h-20 mx-auto mb-4 bg-[var(--surface-3)] flex items-center justify-center"
@@ -475,7 +475,7 @@ export function SessionDetail() {
   }
 
   return (
-    <Layout>
+    <Layout fluid>
       <div className="space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">

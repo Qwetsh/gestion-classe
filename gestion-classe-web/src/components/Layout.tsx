@@ -512,13 +512,12 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
 
         <AnnouncementBanner />
 
+        {/* Largeur : --bleed (plein écran, sans marge) > --fluid (pages de travail) > défaut (lecture).
+            Les plafonds et l'agrandissement grand écran sont dans index.css (section « Adaptatif »). */}
         <main
-          className={`gc-main${fullBleed ? '' : ' gc-main--padded'}`}
-          style={{
-            maxWidth: fullBleed ? 'none' : fluid ? 1600 : 1320,
-            margin: '0 auto',
-            padding: fullBleed ? 0 : undefined,
-          }}
+          className={`gc-main ${
+            fullBleed ? 'gc-main--bleed' : `gc-main--padded ${fluid ? 'gc-main--fluid' : 'gc-main--reading'}`
+          }`}
         >
           {children}
         </main>

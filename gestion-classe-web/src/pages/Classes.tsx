@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { useIsMobile } from '../hooks/useIsMobile';
+import { useIsMobile, useIsNarrowViewport } from '../hooks/useIsMobile';
 import { Layout } from '../components/Layout';
 import { RoomModal } from '../components/RoomModal';
 import type { Room, TableGroup } from '../components/RoomModal';
@@ -146,7 +146,10 @@ function MiniSpark({ history }: { history: (number | null)[] }) {
 export function Classes() {
   const { user } = useAuth();
   const { toast } = useUIFeedback();
-  const isMobile = useIsMobile();
+  // Une colonne sur mobile tactile, mais aussi dans une fenêtre PC rétrécie
+  const isTouchMobile = useIsMobile();
+  const isNarrow = useIsNarrowViewport();
+  const isMobile = isTouchMobile || isNarrow;
   const [classes, setClasses] = useState<Class[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -1532,7 +1535,7 @@ export function Classes() {
                   {/* Seat grid */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: 'relative', zIndex: 1 }}>
                     {Array.from({ length: selectedRoom.grid_rows }).map((_, rowIdx) => (
-                      <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: `repeat(${selectedRoom.grid_cols}, 1fr)`, gap: 8, alignItems: 'start' }}>
+                      <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: `repeat(${selectedRoom.grid_cols}, minmax(0, 170px))`, justifyContent: 'center', gap: 8, alignItems: 'start' }}>
                         {Array.from({ length: selectedRoom.grid_cols }).map((_, colIdx) => {
                           const student = getStudentAtCell(rowIdx, colIdx);
                           const isOver = dragOverCell?.row === rowIdx && dragOverCell?.col === colIdx;

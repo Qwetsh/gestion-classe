@@ -493,7 +493,7 @@ export function Analytics() {
 
   if (isLoading && classes.length === 0) {
     return (
-      <Layout>
+      <Layout fluid>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-3 border-[var(--indigo)] border-t-transparent rounded-full animate-spin" />
@@ -505,7 +505,7 @@ export function Analytics() {
   }
 
   return (
-    <Layout>
+    <Layout fluid>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -652,6 +652,8 @@ export function Analytics() {
               />
             </div>
 
+            {/* Grand écran : notes d'oral et filles/garçons côte à côte */}
+            <div className="flex flex-col gap-6 3xl:flex-row [&>*]:min-w-0 3xl:[&>*]:flex-1">
             {/* Oral grades section */}
             {oralStats.globalAverage !== null && (
               <div
@@ -781,6 +783,8 @@ export function Analytics() {
                 </ResponsiveContainer>
               </div>
             )}
+
+            </div>
 
             {/* Charts grid */}
             <div className="grid lg:grid-cols-2 gap-6">

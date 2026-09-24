@@ -365,7 +365,7 @@ export function Rewards() {
   });
 
   return (
-    <Layout>
+    <Layout fluid>
       <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Header */}
         <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
