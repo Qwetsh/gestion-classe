@@ -6,6 +6,8 @@ import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
 import { StudentAnnales } from '../components/StudentAnnales';
 import { StudentAr } from '../components/StudentAr';
+import { StudentGrades } from '../components/StudentGrades';
+import { fetchStudentGrades } from '../lib/studentGrades';
 import type { HouseId } from '../lib/academyQueries';
 import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
 
@@ -108,7 +110,10 @@ export function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [activeTab, setActiveTab] = useState<'grades' | 'stamps' | 'academy' | 'annales' | 'ar'>('grades');
+  const [activeTab, setActiveTab] = useState<'grades' | 'marks' | 'stamps' | 'academy' | 'annales' | 'ar'>('grades');
+  // Onglet « Évals » : ouvert par la classe (class_student_tabs.show_grades), resolu
+  // par la RPC elle-meme pour ne pas avoir a toucher get_student_dashboard.
+  const [showMarks, setShowMarks] = useState(false);
   // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
   // Un élève témoin voit tout (preview en conditions réelles).
   const isWitness = !!data?.is_witness;
@@ -238,6 +243,14 @@ export function StudentDashboard() {
         setStampError('Erreur de chargement des tampons');
       }
       setStampLoading(false);
+
+      // Notes d'evaluation : la RPC dit elle-meme si l'onglet est ouvert.
+      try {
+        const marks = await fetchStudentGrades(fullCode);
+        setShowMarks(marks.enabled);
+      } catch {
+        setShowMarks(false);
+      }
 
       // Load academy data
       try {
@@ -481,6 +494,7 @@ export function StudentDashboard() {
         }}>
           {[
             { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: T.indigoSoft, activeText: T.indigo },
+            ...(showMarks ? [{ key: 'marks' as const, icon: '📄', label: 'Évals', activeColor: T.indigoSoft, activeText: T.indigo }] : []),
             ...(showStamps ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
             ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
             ...(showAnnales ? [{ key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos }] : []),
@@ -565,6 +579,8 @@ export function StudentDashboard() {
           )
         ) : activeTab === 'ar' ? (
           <StudentAr />
+        ) : activeTab === 'marks' ? (
+          <StudentGrades code={currentCodeRef.current} />
         ) : activeTab === 'annales' ? (
           <StudentAnnales />
         ) : activeTab === 'stamps' && showStamps ? (

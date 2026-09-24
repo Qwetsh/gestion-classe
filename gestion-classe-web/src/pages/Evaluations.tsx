@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { CarnetTab } from '../components/CarnetTab';
+import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
   fetchAssessments,
   fetchClasses,
@@ -11,6 +13,10 @@ import {
   getDocUrl,
   uploadAssessmentDoc,
   deleteAssessmentDoc,
+  uploadSeriesDoc,
+  deleteSeriesDoc,
+  clearSeriesAssessmentDocs,
+  effectiveDocPath,
   validateGrade,
   type AssessmentRow,
   type ClassRow,
@@ -37,11 +43,69 @@ function groupByStudent(copies: CopyPageRow[]): StudentCopies[] {
   return [...map.values()].sort((a, b) => a.pseudo.localeCompare(b.pseudo));
 }
 
+/**
+ * Une évaluation telle que le prof la pense : *un* devoir, même s'il existe une ligne
+ * par classe en base. Les lignes d'une même série sont donc repliées en une seule
+ * entrée ; le sujet et le corrigé sont communs, seules les copies sont par classe.
+ */
+interface AssessmentGroup {
+  key: string;
+  name: string;
+  /** NULL pour une éval d'une seule classe, créée hors série. */
+  seriesId: string | null;
+  /** Une entrée par classe, triée par nom de classe. */
+  items: AssessmentRow[];
+}
+
+function groupAssessments(rows: AssessmentRow[]): AssessmentGroup[] {
+  const map = new Map<string, AssessmentGroup>();
+  for (const a of rows) {
+    const key = a.series_id ? `series:${a.series_id}` : `solo:${a.id}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        name: a.assessment_series?.name ?? a.name,
+        seriesId: a.series_id,
+        items: [],
+      });
+    }
+    map.get(key)!.items.push(a);
+  }
+  for (const g of map.values()) {
+    g.items.sort((x, y) => (x.classes?.name ?? '').localeCompare(y.classes?.name ?? ''));
+  }
+  return [...map.values()];
+}
+
+/** Chemin du document à afficher pour un groupe : celui de la série, sinon celui de l'éval. */
+function groupDocPath(group: AssessmentGroup, kind: AssessmentDocKind): string | null {
+  const series = group.items[0]?.assessment_series ?? null;
+  if (group.seriesId && series) {
+    const shared = kind === 'subject' ? series.subject_path : series.correction_path;
+    if (shared) return shared;
+  }
+  for (const a of group.items) {
+    const own = effectiveDocPath(a, kind);
+    if (own) return own;
+  }
+  return null;
+}
+
+type Tab = 'carnet' | 'eval';
+
 export function Evaluations() {
   const { user } = useAuth();
+  const [tab, setTab] = useState<Tab>('carnet');
 
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
-  const [selected, setSelected] = useState<AssessmentRow | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  /** Classe dont on regarde les copies scannées (une série en compte plusieurs). */
+  const [copyClassAssessmentId, setCopyClassAssessmentId] = useState<string | null>(null);
+  /**
+   * Le scan des copies est l'exception, pas la norme : le bloc reste replié tant qu'on
+   * ne le demande pas, et les copies ne sont chargées qu'à ce moment-là.
+   */
+  const [showCopies, setShowCopies] = useState(false);
   const [copies, setCopies] = useState<CopyPageRow[]>([]);
   const [copyUrls, setCopyUrls] = useState<Record<string, string>>({});
   const [grades, setGrades] = useState<GradeRow[]>([]);
@@ -59,6 +123,8 @@ export function Evaluations() {
   const [formBareme, setFormBareme] = useState('20');
   const [creating, setCreating] = useState(false);
 
+  const handleError = useCallback((message: string) => setError(message), []);
+
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const correctionInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,7 +134,6 @@ export function Evaluations() {
     try {
       const rows = await fetchAssessments(user.id);
       setAssessments(rows);
-      setSelected((prev) => (prev ? rows.find((r) => r.id === prev.id) ?? null : null));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement');
     } finally {
@@ -109,7 +174,7 @@ export function Evaluations() {
       });
       setShowCreate(false);
       await loadAssessments();
-      selectAssessment(created);
+      setSelectedKey(`solo:${created.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Création impossible');
     } finally {
@@ -117,12 +182,12 @@ export function Evaluations() {
     }
   };
 
-  const loadDetail = useCallback(async (assessment: AssessmentRow) => {
+  const loadDetail = useCallback(async (assessmentId: string) => {
     setDetailLoading(true);
     try {
       const [copyRows, gradeRows] = await Promise.all([
-        fetchAssessmentCopies(assessment.id),
-        fetchAssessmentGrades(assessment.id),
+        fetchAssessmentCopies(assessmentId),
+        fetchAssessmentGrades(assessmentId),
       ]);
       setCopies(copyRows);
       setGrades(gradeRows);
@@ -142,13 +207,29 @@ export function Evaluations() {
     }
   }, []);
 
-  const selectAssessment = (a: AssessmentRow) => {
-    setSelected(a);
+  const groups = useMemo(() => groupAssessments(assessments), [assessments]);
+  const selected = useMemo(
+    () => groups.find((g) => g.key === selectedKey) ?? null,
+    [groups, selectedKey],
+  );
+
+  const selectGroup = (g: AssessmentGroup) => {
+    setSelectedKey(g.key);
+    setShowCopies(false);
+    setCopyClassAssessmentId(g.items[0]?.id ?? null);
     setCopies([]);
     setCopyUrls({});
     setGrades([]);
-    loadDetail(a);
   };
+
+  // Les copies ne partent chercher la base que si on ouvre le bloc.
+  useEffect(() => {
+    if (!showCopies || !copyClassAssessmentId) return;
+    setCopies([]);
+    setCopyUrls({});
+    setGrades([]);
+    loadDetail(copyClassAssessmentId);
+  }, [showCopies, copyClassAssessmentId, loadDetail]);
 
   const openDoc = async (path: string) => {
     const url = await getDocUrl(path);
@@ -157,14 +238,41 @@ export function Evaluations() {
 
   const handleFile = async (kind: AssessmentDocKind, file: File | undefined) => {
     if (!file || !user || !selected) return;
+
+    // Le stockage ne contient que des PDF ou des images : l'élève comme le prof ouvrent
+    // toujours un format lisible sans Word. Un .docx doit donc être converti — mais la
+    // conversion faite dans le navigateur (mammoth + jsPDF) ne garde que la STRUCTURE du
+    // document : colonnes, zones de texte et position des images sont perdues. Word, lui,
+    // exporte un PDF parfait en un clic. On le dit, plutôt que de rendre une fiche illisible.
+    if (isDocx(file.name)) {
+      const ok = window.confirm(
+        [
+          `« ${file.name} » est un document Word.`,
+          'La conversion automatique ne respecte pas la mise en page : colonnes, zones de '
+            + 'texte et placement des images seront approximatifs.',
+          'Le mieux : dans Word, Fichier → Enregistrer sous → PDF, puis déposer ce PDF ici.',
+          'OK : convertir quand même · Annuler : je dépose un PDF.',
+        ].join('\n\n'),
+      );
+      if (!ok) return;
+    }
+
     setUploading(kind);
     try {
-      const prev = kind === 'subject' ? selected.subject_path : selected.correction_path;
-      await uploadAssessmentDoc(user.id, selected.id, kind, file, prev);
+      const toUpload = isDocx(file.name) ? await docxToPdf(file) : file;
+      if (selected.seriesId) {
+        // Un seul fichier pour toutes les classes de la série, et on efface les copies
+        // propres qui le masqueraient (cf. effectiveDocPath).
+        const series = selected.items[0]?.assessment_series ?? null;
+        const prev = kind === 'subject' ? series?.subject_path ?? null : series?.correction_path ?? null;
+        await uploadSeriesDoc(user.id, selected.seriesId, kind, toUpload, prev);
+        await clearSeriesAssessmentDocs(selected.seriesId, kind);
+      } else {
+        const a = selected.items[0];
+        const prev = kind === 'subject' ? a.subject_path : a.correction_path;
+        await uploadAssessmentDoc(user.id, a.id, kind, toUpload, prev);
+      }
       await loadAssessments();
-      // recharge l'objet sélectionné mis à jour
-      const refreshed = await fetchAssessments(user.id);
-      setSelected(refreshed.find((r) => r.id === selected.id) ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Échec de l’upload');
     } finally {
@@ -174,13 +282,21 @@ export function Evaluations() {
 
   const handleDeleteDoc = async (kind: AssessmentDocKind) => {
     if (!selected) return;
-    const path = kind === 'subject' ? selected.subject_path : selected.correction_path;
+    const path = groupDocPath(selected, kind);
     if (!path) return;
-    if (!window.confirm(`Supprimer ${kind === 'subject' ? 'le sujet' : 'la correction'} ?`)) return;
+    const label = kind === 'subject' ? 'le sujet' : 'la correction';
+    const scope = selected.items.length > 1 ? ` pour les ${selected.items.length} classes` : '';
+    if (!window.confirm(`Supprimer ${label}${scope} ?`)) return;
     try {
-      await deleteAssessmentDoc(selected.id, kind, path);
-      setSelected({ ...selected, [kind === 'subject' ? 'subject_path' : 'correction_path']: null });
-      loadAssessments();
+      if (selected.seriesId) {
+        const series = selected.items[0]?.assessment_series ?? null;
+        const shared = kind === 'subject' ? series?.subject_path : series?.correction_path;
+        if (shared) await deleteSeriesDoc(selected.seriesId, kind, shared);
+        await clearSeriesAssessmentDocs(selected.seriesId, kind);
+      } else {
+        await deleteAssessmentDoc(selected.items[0].id, kind, path);
+      }
+      await loadAssessments();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Échec de la suppression');
     }
@@ -209,8 +325,28 @@ export function Evaluations() {
           Évaluations
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-          Sujets, corrections, copies scannées et notes par élève.
+          {tab === 'carnet'
+            ? 'Toutes les notes d’une classe sur un trimestre, saisie au clavier.'
+            : 'Sujets, corrections, copies scannées et notes par élève.'}
         </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+        {([['carnet', 'Carnet'], ['eval', 'Éval']] as [Tab, string][]).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            style={{
+              padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+              color: tab === id ? 'var(--indigo)' : 'var(--text-muted)',
+              borderBottom: tab === id ? '2px solid var(--indigo)' : '2px solid transparent',
+              marginBottom: -1,
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -220,12 +356,15 @@ export function Evaluations() {
         </div>
       )}
 
+      {tab === 'carnet' && <CarnetTab userId={user?.id ?? ''} account={user?.email ?? ''} onError={handleError} />}
+
+      {tab === 'eval' && (
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
         {/* ---- Liste des évals ---- */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              {assessments.length} évaluation{assessments.length > 1 ? 's' : ''}
+              {groups.length} évaluation{groups.length > 1 ? 's' : ''}
             </span>
             <button onClick={openCreate} style={{ ...btnPrimary, padding: '5px 10px', fontSize: 12 }}>
               + Nouvelle
@@ -233,18 +372,20 @@ export function Evaluations() {
           </div>
           {loading ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Chargement…</div>
-          ) : assessments.length === 0 ? (
+          ) : groups.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
               Aucune évaluation. Clique « + Nouvelle » pour en créer une (puis ajoute le sujet/corrigé,
               et scanne les copies depuis l’app mobile).
             </div>
           ) : (
-            assessments.map((a) => {
-              const isSel = selected?.id === a.id;
+            groups.map((g) => {
+              const isSel = selectedKey === g.key;
+              const first = g.items[0];
+              const classNames = g.items.map((a) => a.classes?.name ?? '—').join(', ');
               return (
                 <button
-                  key={a.id}
-                  onClick={() => selectAssessment(a)}
+                  key={g.key}
+                  onClick={() => selectGroup(g)}
                   style={{
                     display: 'block', width: '100%', textAlign: 'left',
                     padding: '10px 16px', border: 'none', cursor: 'pointer',
@@ -252,9 +393,19 @@ export function Evaluations() {
                     background: isSel ? 'var(--indigo-soft)' : 'transparent',
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{a.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{g.name}</span>
+                    {g.items.length > 1 && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, color: 'var(--indigo)',
+                        background: 'var(--indigo-soft)', borderRadius: 999, padding: '1px 7px',
+                      }}>
+                        {g.items.length} classes
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                    {a.classes?.name ?? '—'}{a.subject ? ` · ${a.subject}` : ''} · /{a.bareme_total ?? 20}
+                    {classNames}{first.subject ? ` · ${first.subject}` : ''} · /{first.bareme_total ?? 20}
                   </div>
                 </button>
               );
@@ -270,10 +421,21 @@ export function Evaluations() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* En-tête : l'éval et les classes qui la passent */}
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                  {selected.name}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {selected.items.map((a) => a.classes?.name ?? '—').join(', ')}
+                  {selected.items.length > 1 ? ' · sujet et correction communs' : ''}
+                </div>
+              </div>
+
               {/* Sujet & correction */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 {(['subject', 'correction'] as AssessmentDocKind[]).map((kind) => {
-                  const path = kind === 'subject' ? selected.subject_path : selected.correction_path;
+                  const path = groupDocPath(selected, kind);
                   const label = kind === 'subject' ? 'Sujet' : 'Correction';
                   const inputRef = kind === 'subject' ? subjectInputRef : correctionInputRef;
                   return (
@@ -282,7 +444,7 @@ export function Evaluations() {
                       <input
                         ref={inputRef}
                         type="file"
-                        accept="application/pdf,image/*"
+                        accept="application/pdf,image/*,.docx"
                         style={{ display: 'none' }}
                         onChange={(e) => handleFile(kind, e.target.files?.[0])}
                       />
@@ -295,22 +457,71 @@ export function Evaluations() {
                           <button onClick={() => handleDeleteDoc(kind)} style={btnDanger}>Supprimer</button>
                         </div>
                       ) : (
-                        <button onClick={() => inputRef.current?.click()} style={btnPrimary} disabled={uploading === kind}>
-                          {uploading === kind ? 'Envoi…' : `+ Ajouter ${label.toLowerCase()} (PDF/image)`}
-                        </button>
+                        <>
+                          <button onClick={() => inputRef.current?.click()} style={btnPrimary} disabled={uploading === kind}>
+                            {uploading === kind ? 'Envoi…' : `+ Ajouter ${label.toLowerCase()} (PDF ou image)`}
+                          </button>
+                          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.5 }}>
+                            Document Word : dans Word, <strong>Fichier → Enregistrer sous → PDF</strong>.
+                            La conversion automatique d’un .docx abîme la mise en page.
+                          </div>
+                        </>
                       )}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Copies par élève */}
+              {/* Copies par élève — replié par défaut : scanner reste exceptionnel */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>
-                  Copies scannées {detailLoading ? '…' : `(${studentCopies.length} élève${studentCopies.length > 1 ? 's' : ''})`}
+                <button
+                  onClick={() => setShowCopies((v) => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'inherit',
+                  }}
+                >
+                  <span style={{ color: 'var(--text-muted)' }}>{showCopies ? '▾' : '▸'}</span>
+                  Copies scannées
+                  {!showCopies && (
+                    <span style={{ fontWeight: 500, color: 'var(--text-dim)' }}>
+                      — si des copies ont été scannées depuis le mobile
+                    </span>
+                  )}
+                </button>
+
+                {showCopies && selected.items.length > 1 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
+                    {selected.items.map((a) => {
+                      const on = copyClassAssessmentId === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => setCopyClassAssessmentId(a.id)}
+                          style={{
+                            ...btnBase, padding: '4px 10px', fontSize: 12,
+                            background: on ? 'var(--indigo)' : 'var(--surface-3)',
+                            color: on ? '#fff' : 'var(--text)',
+                            border: `1px solid ${on ? 'var(--indigo)' : 'var(--border)'}`,
+                          }}
+                        >
+                          {a.classes?.name ?? '—'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {showCopies && (
+                <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  {detailLoading ? 'Chargement…' : `${studentCopies.length} élève${studentCopies.length > 1 ? 's' : ''}`}
                 </div>
                 {!detailLoading && studentCopies.length === 0 ? (
-                  <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>Aucune copie scannée pour cette évaluation.</div>
+                  <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+                    Aucune copie scannée pour cette classe.
+                  </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {studentCopies.map((sc) => {
@@ -352,11 +563,14 @@ export function Evaluations() {
                     })}
                   </div>
                 )}
+                </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
+      )}
 
       {/* Modale création d'éval */}
       {showCreate && (
