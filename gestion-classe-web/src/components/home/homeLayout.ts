@@ -26,25 +26,44 @@ export interface HomeLayout {
   hidden: string[];
 }
 
-export const HOME_LAYOUT_VERSION = 1;
+export const HOME_LAYOUT_VERSION = 2;
 
-/** Disposition livrée par défaut : reprend la page d'accueil dessinée le 23/09/2026. */
+/** Hauteur par défaut du grand emploi du temps (≈ 550 px). */
+const WEEK_TIMETABLE_H = 28;
+
+/** Disposition livrée par défaut : l'emploi du temps de la semaine en haut (PLAN_accueil_v2.md). */
 export const DEFAULT_HOME_LAYOUT: HomeLayout = {
   version: HOME_LAYOUT_VERSION,
   hidden: [],
   items: [
-    { i: 'quick-actions',   x: 0, y: 0,  w: 12, h: 5 },
-    { i: 'kpi-implication', x: 0, y: 5,  w: 4,  h: 7 },
-    { i: 'kpi-alerts',      x: 4, y: 5,  w: 4,  h: 7 },
-    { i: 'kpi-sessions',    x: 8, y: 5,  w: 4,  h: 7 },
-    { i: 'student-alerts',  x: 0, y: 12, w: 8,  h: 20 },
-    { i: 'next-lesson',     x: 8, y: 12, w: 4,  h: 10 },
-    { i: 'class-averages',  x: 8, y: 22, w: 4,  h: 18 },
-    { i: 'recent-sessions', x: 0, y: 32, w: 8,  h: 21 },
-    { i: 'boards',          x: 8, y: 40, w: 4,  h: 22 },
-    { i: 'timetable',       x: 0, y: 53, w: 8,  h: 7 },
+    { i: 'week-timetable',  x: 0, y: 0,  w: 12, h: WEEK_TIMETABLE_H },
+    { i: 'quick-actions',   x: 0, y: 28, w: 12, h: 5 },
+    { i: 'kpi-implication', x: 0, y: 33, w: 4,  h: 7 },
+    { i: 'kpi-alerts',      x: 4, y: 33, w: 4,  h: 7 },
+    { i: 'kpi-sessions',    x: 8, y: 33, w: 4,  h: 7 },
+    { i: 'student-alerts',  x: 0, y: 40, w: 8,  h: 20 },
+    { i: 'next-lesson',     x: 8, y: 40, w: 4,  h: 10 },
+    { i: 'class-averages',  x: 8, y: 50, w: 4,  h: 18 },
+    { i: 'recent-sessions', x: 0, y: 60, w: 8,  h: 21 },
+    { i: 'boards',          x: 8, y: 68, w: 4,  h: 22 },
   ],
 };
+
+/**
+ * v1 → v2 : l'ancien bandeau « timetable » disparaît, le grand emploi du temps s'insère en haut
+ * et tout le reste descend d'autant — la disposition personnalisée est conservée.
+ */
+export function upgradeLayout(saved: HomeLayout): HomeLayout {
+  if (saved.version !== 1) return saved;
+  const items = saved.items
+    .filter(it => it.i !== 'timetable')
+    .map(it => ({ ...it, y: it.y + WEEK_TIMETABLE_H }));
+  return {
+    version: 2,
+    hidden: saved.hidden.filter(id => id !== 'timetable'),
+    items: [{ i: 'week-timetable', x: 0, y: 0, w: 12, h: WEEK_TIMETABLE_H }, ...items],
+  };
+}
 
 /** Hauteur en pixels d'un module de h rangées. */
 export function itemPixelHeight(h: number): number {
@@ -94,6 +113,7 @@ export function mergeLayout(
   knownIds: string[],
   defaults: HomeLayout = DEFAULT_HOME_LAYOUT,
 ): HomeLayout {
+  if (saved) saved = upgradeLayout(saved);
   if (!saved || saved.version !== HOME_LAYOUT_VERSION) {
     return {
       version: HOME_LAYOUT_VERSION,

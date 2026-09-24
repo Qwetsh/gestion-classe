@@ -17,7 +17,7 @@ export function QuickActionsModule() {
           </span>
         </Link>
 
-        <button type="button" onClick={openBoard} className="dash__quick-card dash__quick-card--dark">
+        <button type="button" onClick={() => openBoard()} className="dash__quick-card dash__quick-card--dark">
           <span className="dash__quick-ic dash__quick-ic--light"><QuickIcon name="pen" /></span>
           <span className="dash__quick-text">
             <span className="dash__quick-title">Tableau blanc</span>

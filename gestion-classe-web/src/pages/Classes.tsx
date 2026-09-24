@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -149,6 +150,9 @@ export function Classes() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  // Lien direct depuis l'accueil : /classes?class=<id>
+  const [searchParams] = useSearchParams();
+  const requestedClassId = searchParams.get('class');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [plan, setPlan] = useState<ClassRoomPlan | null>(null);
@@ -286,6 +290,8 @@ export function Classes() {
           students_count: countByClass.get(cls.id) || 0,
         }));
         setClasses(classesWithCounts);
+        const requested = requestedClassId ? classesWithCounts.find(c => c.id === requestedClassId) : undefined;
+        if (requested) setSelectedClass(prev => prev ?? requested);
       } else {
         setClasses([]);
       }

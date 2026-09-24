@@ -1313,6 +1313,7 @@ a.dash__card-link:hover { text-decoration: underline; }
   padding: 10px 16px; font-size: 12.5px; font-weight: 600;
   text-decoration: none; flex-shrink: 0;
   max-width: 140px; text-align: center; line-height: 1.25;
+  border: 0; cursor: pointer; font-family: inherit;
 }
 .dash__btn-dark:hover { opacity: 0.88; }
 
@@ -1589,6 +1590,186 @@ a.dash__card-link:hover { text-decoration: underline; }
   border-color: var(--indigo); background: var(--indigo-soft);
 }
 .dash__tt-nav--today:hover { background: var(--indigo); color: white; }
+
+/* ============================================================
+   Grand emploi du temps de la semaine — PLAN_accueil_v2.md (lot 2)
+   ============================================================ */
+
+.wtt { display: flex; flex-direction: column; }
+.wtt--empty {
+  align-items: center; justify-content: center; gap: 8px;
+  padding: 28px 22px; text-align: center;
+}
+.wtt__head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; padding: 16px 20px 10px;
+}
+.wtt__range { font-weight: 500; color: var(--text-muted); margin-left: 10px; font-size: 14px; }
+.wtt__nav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.wtt__link {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--indigo); font-weight: 600;
+}
+.wtt__link:hover { text-decoration: underline; }
+
+.wtt__grid {
+  flex: 1; min-height: 420px;
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: 44px repeat(var(--wtt-days, 5), minmax(0, 1fr));
+  padding: 0 14px 16px 6px;
+  transition: opacity 0.15s;
+}
+.wtt__grid--loading { opacity: 0.45; }
+
+.wtt__day-head {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  padding: 6px 0 8px; border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  color: var(--text-muted);
+}
+.wtt__day-name { font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.wtt__day-num { font-size: 15px; font-weight: 700; color: var(--text); }
+.wtt__day-head--today { background: var(--indigo-soft); color: var(--indigo); }
+.wtt__day-head--today .wtt__day-num { color: var(--indigo); }
+
+.wtt__hours { position: relative; }
+.wtt__hour {
+  position: absolute; right: 8px; transform: translateY(-50%);
+  font-size: 10.5px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+}
+.wtt__hour:first-child { transform: none; }
+
+.wtt__col { position: relative; border-left: 1px solid var(--border); }
+.wtt__col--today { background: color-mix(in srgb, var(--indigo-soft) 55%, transparent); }
+.wtt__line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border); }
+
+.wtt__holiday {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 8px, transparent 8px 16px);
+  color: var(--text-muted); font-size: 12px; font-weight: 600;
+}
+.wtt__holiday span { background: var(--surface); padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); }
+
+.wtt__lesson {
+  position: absolute; z-index: 1; overflow: hidden;
+  padding: 4px 7px; border-radius: var(--radius-xs);
+  border-left: 3px solid var(--lesson-color);
+  background: color-mix(in srgb, var(--lesson-color) 13%, var(--surface));
+  color: var(--text); line-height: 1.25;
+}
+.wtt__lesson-name {
+  font-size: 12.5px; font-weight: 700;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.wtt__lesson-sub { font-size: 10.5px; color: var(--text-muted); text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wtt__lesson-meta { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.wtt__lesson--past { opacity: 0.6; }
+.wtt__lesson--current {
+  box-shadow: 0 0 0 2px var(--lesson-color);
+  background: color-mix(in srgb, var(--lesson-color) 22%, var(--surface));
+}
+.wtt__lesson--other { background: var(--surface-2); }
+.wtt__lesson--canceled { background: var(--surface-2); border-left-color: var(--text-dim); opacity: 0.75; }
+.wtt__lesson--canceled .wtt__lesson-name { text-decoration: line-through; color: var(--text-muted); }
+.wtt__badge {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 1px 5px; border-radius: 4px;
+  background: var(--warn-soft); color: var(--warn); text-decoration: none;
+}
+.wtt__badge--neg { background: var(--neg-soft); color: var(--neg); }
+
+/* Cours cliquable (bouton) + séance enregistrée (lot 3) */
+.wtt__lesson {
+  font: inherit; text-align: left; cursor: pointer;
+  border-top: 0; border-right: 0; border-bottom: 0;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.wtt__lesson > * { flex-shrink: 0; }
+.wtt__lesson:hover { box-shadow: 0 2px 8px rgba(20, 25, 40, 0.12); z-index: 2; }
+.wtt__lesson:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
+.wtt__lesson--selected { box-shadow: 0 0 0 2px var(--indigo); z-index: 2; opacity: 1; }
+.wtt__lesson-session {
+  display: flex; align-items: center; gap: 4px; margin-top: 2px;
+  font-size: 10.5px; min-width: 0; white-space: nowrap; overflow: hidden;
+}
+.wtt__lesson-topic { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wtt__count {
+  font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 4px;
+  background: var(--surface-3, var(--surface-2)); color: var(--text-muted); flex-shrink: 0;
+}
+.wtt__count--pos { background: var(--pos-soft); color: var(--pos); }
+.wtt__count--neg { background: var(--neg-soft); color: var(--neg); }
+.wtt__badge--live { background: var(--indigo-soft); color: var(--indigo); }
+
+/* Détail d'un cours */
+.wtt-pop {
+  position: fixed; z-index: 60;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-top: 3px solid var(--lesson-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 32px rgba(20, 25, 40, 0.18);
+  max-height: calc(100vh - 16px); overflow-y: auto;
+  font-size: 13px;
+}
+.wtt-pop__head { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px 8px; }
+.wtt-pop__title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wtt-pop__sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.wtt-pop__close {
+  margin-left: auto; flex-shrink: 0; width: 26px; height: 26px; border-radius: 6px;
+  border: 0; background: transparent; color: var(--text-muted); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.wtt-pop__close:hover { background: var(--surface-2); color: var(--text); }
+.wtt-pop__section { padding: 8px 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 5px; }
+.wtt-pop__label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
+.wtt-pop__topic { font-weight: 600; }
+.wtt-pop__counts { display: flex; gap: 5px; flex-wrap: wrap; }
+.wtt-pop__counts .wtt__count { font-size: 11px; padding: 1px 6px; }
+.wtt-pop__muted { font-size: 12px; color: var(--text-muted); margin: 0; display: block; }
+.wtt-pop__action { font-size: 12.5px; font-weight: 600; color: var(--indigo); text-decoration: none; align-self: flex-start; }
+.wtt-pop__action:hover { text-decoration: underline; }
+.wtt-pop__board {
+  display: flex; flex-direction: column; gap: 1px; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+  padding: 7px 9px; border-radius: var(--radius-xs);
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+.wtt-pop__board:hover { border-color: var(--indigo); }
+.wtt-pop__board-title { font-weight: 600; }
+.wtt-pop__student {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px; margin: 0 -6px;
+  border-radius: var(--radius-xs); color: inherit; text-decoration: none;
+}
+.wtt-pop__student:hover { background: var(--surface-2); }
+.wtt-pop__student-name { display: block; font-weight: 600; font-size: 12.5px; }
+.wtt-pop__actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 12px; border-top: 1px solid var(--border); }
+.wtt-pop__btn {
+  font-size: 12px; font-weight: 600; text-decoration: none;
+  padding: 6px 10px; border-radius: var(--radius-xs);
+  border: 1px solid var(--border); color: var(--text); background: var(--surface);
+}
+.wtt-pop__btn:hover { border-color: var(--indigo); color: var(--indigo); }
+.wtt-pop__btn--primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.wtt-pop__btn--primary:hover { color: #fff; opacity: 0.9; }
+
+.wtt__now {
+  position: absolute; left: -4px; right: 0; z-index: 3; height: 0;
+  border-top: 2px solid var(--neg); pointer-events: none;
+}
+.wtt__now::before {
+  content: ''; position: absolute; left: 0; top: -5px;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--neg);
+}
+.wtt__nothing { text-align: center; color: var(--text-muted); font-size: 13px; margin: -8px 0 16px; }
+
+@media (max-width: 640px) {
+  .wtt__head { padding: 14px 16px 8px; flex-wrap: wrap; }
+  .wtt__range { display: block; margin-left: 0; }
+  .wtt__grid { padding: 0 8px 12px 2px; min-height: 480px; grid-template-columns: 30px repeat(var(--wtt-days, 5), minmax(0, 1fr)); }
+  .wtt__lesson { padding: 3px 4px; }
+  .wtt__lesson-name { font-size: 11px; }
+  .wtt__lesson-meta, .wtt__lesson-sub { display: none; }
+}
 
 /* ============================================================
    Grille de l'accueil (modules) — PLAN_accueil_modulaire.md

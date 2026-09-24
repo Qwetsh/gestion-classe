@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
@@ -194,7 +195,9 @@ export function Students() {
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
   const [classes, setClasses] = useState<ClassFilter[]>([]);
   const [classConfigs, setClassConfigs] = useState<Map<string, ClassConfig>>(new Map());
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  // Lien direct depuis l'accueil : /students?class=<id>&student=<id>
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(() => searchParams.get('class'));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1228,6 +1231,16 @@ export function Students() {
       console.error('QR generation error:', err);
     }
   };
+
+  // Ouvre la fiche demandée par le lien, une fois les élèves chargés (puis oublie le paramètre)
+  const requestedStudentId = searchParams.get('student');
+  useEffect(() => {
+    if (!requestedStudentId || studentGrades.length === 0) return;
+    const target = studentGrades.find(sg => sg.student.id === requestedStudentId);
+    setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('student'); return next; }, { replace: true });
+    if (target) void openStudentDetail(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedStudentId, studentGrades]);
 
   const openStudentDetail = async (studentGrade: StudentGrade) => {
     setSelectedStudentForDetail(studentGrade);

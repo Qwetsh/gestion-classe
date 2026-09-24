@@ -13,7 +13,7 @@ import { RecentSessionsModule } from './modules/RecentSessionsModule';
 import { NextLessonModule } from './modules/NextLessonModule';
 import { ClassAveragesModule } from './modules/ClassAveragesModule';
 import { BoardsModule } from './modules/BoardsModule';
-import { TimetableModule } from './modules/TimetableModule';
+import { WeekTimetableModule } from './modules/WeekTimetableModule';
 
 export interface HomeModuleDef {
   /** identifiant stable, utilisé dans la disposition enregistrée — ne jamais le renommer */
@@ -30,6 +30,14 @@ export interface HomeModuleDef {
 }
 
 export const HOME_MODULES: HomeModuleDef[] = [
+  {
+    id: 'week-timetable',
+    title: 'Emploi du temps',
+    description: "La semaine en grand : Pronote en direct, ou l'emploi du temps importé (.ics).",
+    icon: 'calendar',
+    minW: 6, minH: 20,
+    Component: WeekTimetableModule,
+  },
   {
     id: 'quick-actions',
     title: 'Raccourcis',
@@ -104,14 +112,6 @@ export const HOME_MODULES: HomeModuleDef[] = [
     icon: 'pen',
     minW: 3, minH: 9,
     Component: BoardsModule,
-  },
-  {
-    id: 'timetable',
-    title: 'Emploi du temps',
-    description: 'La semaine Pronote en liste ou en calendrier.',
-    icon: 'calendar',
-    minW: 4, minH: 6,
-    Component: TimetableModule,
   },
 ];
 

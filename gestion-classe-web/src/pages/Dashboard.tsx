@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout';
 import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
 import { GroupSessionLauncher } from '../components/live-session/GroupSessionLauncher';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
-import { draftTab } from '../lib/boardTabs';
+import { boardTab, draftTab, type BoardTab } from '../lib/boardTabs';
 import { HomeDataProvider, useHomeData } from '../components/home/HomeDataContext';
 import { HomeGrid } from '../components/home/HomeGrid';
 import { HomeEditBar } from '../components/home/HomeEditBar';
@@ -19,7 +19,7 @@ import { formatDayFr, formatTime, getTimeOfDay, isSameDay } from '../components/
  */
 export function Dashboard() {
   const { user } = useAuth();
-  const [boardOpen, setBoardOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState<BoardTab | null>(null);
 
   // Chargement de la disposition enregistrée
   useEffect(() => {
@@ -31,11 +31,11 @@ export function Dashboard() {
 
   return (
     <Layout>
-      <HomeDataProvider onOpenBoard={() => setBoardOpen(true)}>
+      <HomeDataProvider onOpenBoard={(board) => setBoardOpen(board ? boardTab(board) : draftTab())}>
         <HomeContent />
       </HomeDataProvider>
       {boardOpen && (
-        <BoardWorkspace initial={draftTab()} userId={user?.id ?? ''} onClose={() => setBoardOpen(false)} />
+        <BoardWorkspace initial={boardOpen} userId={user?.id ?? ''} onClose={() => setBoardOpen(null)} />
       )}
     </Layout>
   );

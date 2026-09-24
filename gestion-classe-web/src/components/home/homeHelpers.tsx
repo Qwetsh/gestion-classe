@@ -14,6 +14,12 @@ export function getClassColor(className: string, allClassNames: string[]): strin
   return COLOR_PALETTE[(idx >= 0 ? idx : 0) % COLOR_PALETTE.length];
 }
 
+/** « Groupe 1 » → « G1 » : la place est comptée dans une case de cours. */
+export function shortGroup(name: string): string {
+  const m = /(\d+)\s*$/.exec(name);
+  return /^groupe\s/i.test(name) && m ? `G${m[1]}` : name;
+}
+
 /** Initiales d'un pseudo RGPD (« Laetitia DA. » -> « LD ») */
 export function getInitials(pseudo: string): string {
   return pseudo

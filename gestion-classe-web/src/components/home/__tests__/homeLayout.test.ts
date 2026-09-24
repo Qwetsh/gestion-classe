@@ -5,6 +5,7 @@ import {
   readingOrder,
   itemPixelHeight,
   DEFAULT_HOME_LAYOUT,
+  upgradeLayout,
   HOME_LAYOUT_VERSION,
   HOME_ROW_HEIGHT,
   HOME_GAP,
@@ -109,6 +110,43 @@ describe('mergeLayout', () => {
       items: [{ i: 'boards', x: 0, y: 0, w: 4, h: 4 }],
     };
     expect(mergeLayout(saved, ['boards']).hidden).toEqual([]);
+  });
+});
+
+describe('upgradeLayout — v1 → v2 (grand emploi du temps)', () => {
+  const v1 = {
+    version: 1,
+    hidden: ['kpi-alerts', 'timetable'],
+    items: [
+      { i: 'boards', x: 0, y: 0, w: 4, h: 10 },
+      { i: 'timetable', x: 4, y: 0, w: 8, h: 7 },
+    ],
+  };
+
+  it('insère l’emploi du temps en haut et décale le reste sans le réorganiser', () => {
+    const out = upgradeLayout(v1);
+    expect(out.version).toBe(2);
+    expect(out.items[0]).toMatchObject({ i: 'week-timetable', x: 0, y: 0, w: 12 });
+    const h = out.items[0].h;
+    expect(out.items.find(i => i.i === 'boards')).toMatchObject({ x: 0, y: h, w: 4, h: 10 });
+  });
+
+  it('retire l’ancien bandeau, placé ou masqué', () => {
+    const out = upgradeLayout(v1);
+    expect(out.items.map(i => i.i)).not.toContain('timetable');
+    expect(out.hidden).toEqual(['kpi-alerts']);
+  });
+
+  it('passe par mergeLayout sans perdre la disposition personnalisée', () => {
+    const ids = DEFAULT_HOME_LAYOUT.items.map(i => i.i);
+    const out = mergeLayout(v1, ids);
+    expect(out.items[0].i).toBe('week-timetable');
+    expect(out.hidden).toEqual(['kpi-alerts']);
+  });
+
+  it('ne touche pas une disposition déjà à jour', () => {
+    const v2 = { version: 2, hidden: [], items: [] };
+    expect(upgradeLayout(v2)).toBe(v2);
   });
 });
 

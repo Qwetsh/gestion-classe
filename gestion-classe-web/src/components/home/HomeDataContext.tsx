@@ -11,6 +11,17 @@ import { useAuth } from '../../hooks/useAuth';
 import { pronoteFetcher } from '../../lib/pronoteFetcher';
 import type { TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
 import { getMonday, isSameDay } from './homeHelpers';
+import {
+  fetchEntriesBetween, fetchImportInfo, fetchLabelLinks,
+  type StoredTimetableEntry, type TimetableImportInfo,
+} from '../../lib/timetable/timetableQueries';
+import { resolveLabel, type LabelLink } from '../../lib/timetable/labelMatching';
+import { buildWeek, type TimetableLesson, type TimetableWeek } from '../../lib/timetable/weekView';
+import { fetchClassGroupsForUser, type ClassGroupInfo } from '../../lib/classGroupQueries';
+import {
+  fetchLastBoardByClass, fetchWeekSessions,
+  type LastBoard, type WeekSession,
+} from '../../lib/timetable/enrichmentQueries';
 
 // ---- Types ----
 
@@ -96,12 +107,26 @@ export interface HomeData {
   setTtView: (v: 'list' | 'calendar') => void;
   loadWeek: (offset: number) => void;
 
+  // Emploi du temps importé (.ics) — utilisé quand Pronote n'est pas connecté
+  timetableImport: TimetableImportInfo | null;
+  reloadTimetableImport: () => void;
+
+  /** Semaine affichée, toutes sources confondues (Pronote prioritaire, sinon emploi du temps stocké) */
+  week: TimetableWeek;
+  weekSource: 'pronote' | 'stored' | 'none';
+  weekLoading: boolean;
+
+  /** Enrichissement des cours (lot 3) : séances de la semaine affichée, dernier tableau, élèves à surveiller */
+  weekSessions: WeekSession[];
+  lastBoardByClass: Map<string, LastBoard>;
+  alertsByClass: Map<string, StudentAlert[]>;
+
   // Repères de temps, calculés une fois pour toute la page
   now: Date;
   tomorrow: Date;
 
-  /** Ouvre l'ardoise libre (le tableau blanc vit dans la page, pas dans un module) */
-  openBoard: () => void;
+  /** Ouvre l'ardoise libre, ou un tableau préparé (le tableau blanc vit dans la page, pas dans un module) */
+  openBoard: (board?: { id: string; title: string }) => void;
 }
 
 // ---- Pronote helpers ----
@@ -157,7 +182,7 @@ export function useHomeData(): HomeData {
   return ctx;
 }
 
-export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNode; onOpenBoard: () => void }) {
+export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNode; onOpenBoard: (board?: { id: string; title: string }) => void }) {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -165,6 +190,7 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
   const [classes, setClasses] = useState<DashClass[]>([]);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [studentAlerts, setStudentAlerts] = useState<StudentAlert[]>([]);
+  const [allStudentAlerts, setAllStudentAlerts] = useState<StudentAlert[]>([]);
   const [classAverages, setClassAverages] = useState<ClassAverage[]>([]);
 
   // KPIs
@@ -186,6 +212,82 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
   const pronoteFirstDay = useRef<Date | null>(null);
 
   const classNames = classes.map(c => c.name);
+
+  // ---- Emploi du temps importé ----
+
+  const [timetableImport, setTimetableImport] = useState<TimetableImportInfo | null>(null);
+  const [timetableReload, setTimetableReload] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchImportInfo(user.id)
+      .then(info => { if (!cancelled) setTimetableImport(info); })
+      .catch(err => console.error('Emploi du temps importé illisible:', err));
+    return () => { cancelled = true; };
+  }, [user, timetableReload]);
+
+  // Correspondance libellé → classe/groupe, partagée par Pronote en direct et l'import
+  const [labelLinks, setLabelLinks] = useState<LabelLink[]>([]);
+  const [classGroups, setClassGroups] = useState<ClassGroupInfo[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    Promise.all([fetchLabelLinks(user.id), fetchClassGroupsForUser(user.id)])
+      .then(([links, groups]) => {
+        if (cancelled) return;
+        setLabelLinks(links);
+        setClassGroups(groups);
+      })
+      .catch(err => console.error('Correspondance emploi du temps illisible:', err));
+    return () => { cancelled = true; };
+  }, [user, timetableReload]);
+
+  // Séances de la semaine affichée et dernier tableau par classe
+  const [weekSessions, setWeekSessions] = useState<WeekSession[]>([]);
+  const [lastBoardByClass, setLastBoardByClass] = useState<Map<string, LastBoard>>(new Map());
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const monday = getMonday(new Date());
+    monday.setDate(monday.getDate() + weekOffset * 7);
+    const nextMonday = new Date(monday);
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    fetchWeekSessions(user.id, monday, nextMonday)
+      .then(rows => { if (!cancelled) setWeekSessions(rows); })
+      .catch(err => console.error('Séances de la semaine illisibles:', err));
+    return () => { cancelled = true; };
+  }, [user, weekOffset]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchLastBoardByClass(user.id)
+      .then(map => { if (!cancelled) setLastBoardByClass(map); })
+      .catch(err => console.error('Derniers tableaux illisibles:', err));
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Cours stockés de la semaine affichée (inutile quand Pronote répond)
+  const [storedEntries, setStoredEntries] = useState<StoredTimetableEntry[]>([]);
+  const [storedLoading, setStoredLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user || pronoteConnected) return;
+    let cancelled = false;
+    const monday = getMonday(new Date());
+    monday.setDate(monday.getDate() + weekOffset * 7);
+    const nextMonday = new Date(monday);
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    setStoredLoading(true);
+    fetchEntriesBetween(user.id, monday, nextMonday)
+      .then(rows => { if (!cancelled) setStoredEntries(rows); })
+      .catch(err => console.error('Emploi du temps stocké illisible:', err))
+      .finally(() => { if (!cancelled) setStoredLoading(false); });
+    return () => { cancelled = true; };
+  }, [user, weekOffset, pronoteConnected, timetableReload]);
 
   // ---- Load Pronote data ----
 
@@ -243,7 +345,8 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
     const pw = pawnoteRef.current;
     const sess = pronoteSessionRef.current;
     const firstDay = pronoteFirstDay.current;
-    if (!pw || !sess || !firstDay) return;
+    // Sans Pronote, changer d'offset suffit : l'emploi du temps stocké se recharge tout seul
+    if (!pw || !sess || !firstDay) { setWeekOffset(offset); return; }
 
     setTtLoading(true);
     try {
@@ -295,6 +398,53 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
         .filter(l => isSameDay(l.startDate, d))
         .sort((a, b) => a.startDate.getTime() - b.startDate.getTime()),
     });
+  }
+
+  // ---- Semaine unifiée (grand emploi du temps de l'accueil) ----
+
+  const linkMap = new Map(labelLinks.map(l => [l.label, l]));
+  const weekSource: HomeData['weekSource'] = pronoteConnected
+    ? 'pronote'
+    : timetableImport || storedEntries.length > 0 ? 'stored' : 'none';
+
+  let weekLessons: TimetableLesson[];
+  let weekHolidays: { id: string; label: string; start: Date; end: Date }[] = [];
+  if (pronoteConnected) {
+    weekLessons = pronoteLessons.map(l => {
+      const label = (l.groupNames[0] || l.subject || 'Cours').replace(/^\[|\]$/g, '');
+      return {
+        id: l.id,
+        start: l.startDate,
+        end: l.endDate,
+        label,
+        subject: l.subject ?? null,
+        room: l.classrooms[0] ?? null,
+        status: l.canceled ? 'canceled' as const : 'normal' as const,
+        ...resolveLabel(label, null, linkMap, classes, classGroups),
+      };
+    });
+  } else {
+    weekLessons = storedEntries.filter(e => e.kind === 'lesson').map(e => ({
+      id: e.id,
+      start: new Date(e.starts_at),
+      end: new Date(e.ends_at),
+      label: e.label,
+      subject: e.subject,
+      room: e.room,
+      status: e.status,
+      ...resolveLabel(e.label, e.class_label, linkMap, classes, classGroups),
+    }));
+    weekHolidays = storedEntries.filter(e => e.kind === 'holiday').map(e => ({
+      id: e.id, label: e.label, start: new Date(e.starts_at), end: new Date(e.ends_at),
+    }));
+  }
+  const week = buildWeek(viewedMonday, weekLessons, weekHolidays);
+
+  const alertsByClass = new Map<string, StudentAlert[]>();
+  for (const a of allStudentAlerts) {
+    const list = alertsByClass.get(a.class_id) ?? [];
+    list.push(a);
+    alertsByClass.set(a.class_id, list);
   }
 
   // ---- Load Supabase data ----
@@ -493,10 +643,10 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
                 reason,
               };
             })
-            .sort((a, b) => a.grade - b.grade)
-            .slice(0, 5);
+            .sort((a, b) => a.grade - b.grade);
 
-          setStudentAlerts(alerts);
+          setAllStudentAlerts(alerts);
+          setStudentAlerts(alerts.slice(0, 5));
           setAlertCount(alerts.length);
         }
       } catch (err) {
@@ -532,6 +682,14 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
     ttView,
     setTtView,
     loadWeek,
+    timetableImport,
+    reloadTimetableImport: () => setTimetableReload(n => n + 1),
+    week,
+    weekSource,
+    weekLoading: pronoteConnected ? ttLoading : storedLoading,
+    weekSessions,
+    lastBoardByClass,
+    alertsByClass,
     now,
     tomorrow,
     openBoard: onOpenBoard,
