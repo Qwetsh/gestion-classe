@@ -94,7 +94,7 @@ function VisibilityToggle({ icon, label, enabled, disabled, onToggle, accent }: 
     <label
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 8px', borderRadius: 8,
+        gap: 8, padding: '4px 6px', borderRadius: 7,
         background: enabled ? 'var(--surface-3)' : 'transparent',
         cursor: disabled ? 'wait' : 'pointer', transition: 'background 0.2s',
         fontSize: 12, color: 'var(--text)',
@@ -1291,7 +1291,7 @@ export function Classes() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: !isMobile ? '230px 1fr 280px' : '1fr', gap: 16, alignItems: 'start', minHeight: 'calc(100vh - 220px)' }}>
+      <div className="plan-layout" style={isMobile ? { gridTemplateColumns: '1fr' } : undefined}>
         {/* LEFT SIDEBAR - Classes pane */}
         {!isMobile ? (
           <div className="classes-pane">
@@ -1326,12 +1326,9 @@ export function Classes() {
                         }}
                         className={`class-row ${isActive ? 'is-active' : ''}`}
                       >
-                        <ClassChip label={getClassLabel(cls.name)} color={COLOR_PALETTE[classes.indexOf(cls) % COLOR_PALETTE.length]} size={28} muted={!isActive} />
-                        <div style={{ minWidth: 0 }}>
-                          <div className="class-row__name">{cls.name}</div>
-                          <div className="class-row__meta">{cls.students_count} élèves</div>
-                        </div>
-                        <span className="class-row__count" style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                        <ClassChip label={getClassLabel(cls.name)} color={COLOR_PALETTE[classes.indexOf(cls) % COLOR_PALETTE.length]} size={22} muted={!isActive} />
+                        <div className="class-row__name">{cls.name}</div>
+                        <span className="class-row__count" title={`${cls.students_count} élèves`}>
                           {cls.students_count}
                         </span>
                       </button>
@@ -1661,7 +1658,7 @@ export function Classes() {
                 </small>
               </div>
             ) : (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {unplacedStudents.map(student => {
                   const gradeData = showGrades ? getStudentGradeData(student.id) : undefined;
                   const grade = gradeData?.grade ?? 10;
@@ -1672,32 +1669,20 @@ export function Classes() {
                       key={student.id}
                       draggable
                       onDragStart={() => handleDragStart(student.id)}
-                      style={{ padding: 4, borderRadius: 10, cursor: 'grab', transition: 'background 0.1s' }}
-                      onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'}
-                      onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                      className="student-pill pool-pill"
+                      title={student.pseudo}
                     >
-                      <div className="student-pill" style={{ width: '100%' }}>
-                        <div className="student-pill__bar" style={{ background: barColor }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-                              {student.pseudo.substring(0, 2).toUpperCase()}
-                            </span>
-                            <AccommodationBadges student={student} size="xs" bg="var(--indigo-soft)" fg="var(--indigo)" />
-                          </div>
-                          <div style={{ fontWeight: 600, fontSize: 11.5, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '1px 0' }}>
-                            {student.pseudo}
-                          </div>
-                          {gradeData && showGrades && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                                {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
-                              </span>
-                              {showMalus && <MalusBadge count={gradeData.malus} />}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <div className="student-pill__bar" style={{ background: barColor }} />
+                      <span className="pool-pill__name">{student.pseudo}</span>
+                      <AccommodationBadges student={student} size="xs" bg="var(--indigo-soft)" fg="var(--indigo)" />
+                      {gradeData && showGrades && (
+                        <>
+                          {showMalus && <MalusBadge count={gradeData.malus} />}
+                          <span className="pool-pill__grade">
+                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                          </span>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -1726,23 +1711,30 @@ export function Classes() {
                     }}
                     title="Applique l'état Tampons/Annales courant à toutes vos classes (la Maison reste par classe)"
                   >
-                    ↳ Appliquer Tampons/Annales à toutes les classes
+                    ↳ Appliquer à toutes les classes
                   </button>
                 )}
               </div>
 
-              <button
-                onClick={() => setShowGroupSplitter(true)}
-                className="btn btn--ghost"
-                style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}
-                title="Demi-groupes, latinistes… des groupes durables de cette classe (distincts des groupes de TP)"
-              >
-                👥 Groupes de classe
-              </button>
-              <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx,.xls,.csv" className="hidden" />
-              <button onClick={() => fileInputRef.current?.click()} className="btn btn--ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
-                Import CSV / Excel
-              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <button
+                  onClick={() => setShowGroupSplitter(true)}
+                  className="btn btn--ghost"
+                  style={{ justifyContent: 'center', fontSize: 12, padding: '6px 4px' }}
+                  title="Groupes de classe : demi-groupes, latinistes… des groupes durables de cette classe (distincts des groupes de TP)"
+                >
+                  👥 Groupes
+                </button>
+                <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx,.xls,.csv" className="hidden" />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn btn--ghost"
+                  style={{ justifyContent: 'center', fontSize: 12, padding: '6px 4px' }}
+                  title="Importer des élèves depuis un fichier CSV ou Excel"
+                >
+                  Importer
+                </button>
+              </div>
               <button onClick={() => handleOpenStudentModal()} className="btn btn--accent" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
                 + Ajouter un élève
               </button>

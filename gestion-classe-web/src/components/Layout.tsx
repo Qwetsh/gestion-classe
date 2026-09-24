@@ -272,7 +272,7 @@ function AccountRow({
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div className="gc-account" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <div style={{ position: 'relative' }} ref={notifRef}>
         <button onClick={handleOpenNotif} style={iconBtn} title="Notifications">
           <NavIcon name="bell" size={16} />
@@ -311,7 +311,7 @@ function AccountRow({
         {isUserMenuOpen && (
           <div style={{
             position: 'absolute',
-            ...(placement === 'up' ? { bottom: '100%', right: 0, marginBottom: 8 } : { top: '100%', right: 0, marginTop: 8 }),
+            ...(placement === 'up' ? { bottom: '100%', left: 0, marginBottom: 8 } : { top: '100%', right: 0, marginTop: 8 }),
             width: 240, background: 'var(--surface)',
             border: '1px solid var(--border)', borderRadius: 12,
             padding: 4, boxShadow: 'var(--shadow-2)', zIndex: 90,
@@ -340,6 +340,34 @@ function AccountRow({
   );
 }
 
+/* ---- Barre latérale réduite aux icônes (« rail ») ---- */
+
+type RailPref = 'auto' | 'on' | 'off';
+const RAIL_KEY = 'gc-sidebar-rail';
+/** En « auto », la barre se réduit aux icônes sous cette largeur (petits écrans d'ordinateur). */
+const RAIL_AUTO_QUERY = '(max-width: 1439px)';
+
+function useSidebarRail(): [boolean, () => void] {
+  const [pref, setPref] = useState<RailPref>(() => {
+    try { const v = localStorage.getItem(RAIL_KEY); return v === 'on' || v === 'off' ? v : 'auto'; } catch { return 'auto'; }
+  });
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(RAIL_AUTO_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(RAIL_AUTO_QUERY);
+    const onChange = () => setNarrow(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const rail = pref === 'on' || (pref === 'auto' && narrow);
+  const toggle = () => {
+    // Le choix explicite prime ensuite sur la largeur d'écran
+    const next: RailPref = rail ? 'off' : 'on';
+    setPref(next);
+    try { localStorage.setItem(RAIL_KEY, next); } catch { /* stockage indisponible */ }
+  };
+  return [rail, toggle];
+}
+
 /* ---- Marque (logo + année scolaire) ---- */
 
 function Brand({ trimestre, year }: { trimestre: number | string; year: string }) {
@@ -355,7 +383,7 @@ function Brand({ trimestre, year }: { trimestre: number | string; year: string }
         <rect x="0" y="0" width="32" height="32" rx="9" fill="url(#gc-grad)" />
         <text x="16" y="21" textAnchor="middle" fontFamily="var(--font-display)" fontSize="13" fontWeight="700" fill="#fff">GC</text>
       </svg>
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, minWidth: 0 }}>
+      <div className="gc-brand__text" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, minWidth: 0 }}>
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.01em', color: 'var(--text)' }}>
           Gestion Classe
         </span>
@@ -373,6 +401,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const notifs = useNotifications(user?.id, user?.email);
+  const [rail, toggleRail] = useSidebarRail();
   const isDev = user?.email === DEV_EMAIL;
 
   const visibleClassLife = classLifeItems.filter(item => isTabVisible(item.path.slice(1)));
@@ -390,6 +419,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
         key={item.path}
         to={item.path}
         className={`gc-sidenav__item ${isActive ? 'gc-sidenav__item--active' : ''}`}
+        title={rail ? item.label : undefined}
       >
         <NavIcon name={item.icon} size={16} />
         <span>{item.label}</span>
@@ -400,7 +430,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   return (
     <div className="gc-shell" style={{ background: fullBleed ? 'transparent' : 'var(--bg)' }}>
       {/* ---- Barre latérale (desktop) ---- */}
-      <aside className="gc-sidebar">
+      <aside className={`gc-sidebar${rail ? ' gc-sidebar--rail' : ''}`}>
         <div className="gc-sidebar__brand">
           <Brand trimestre={settings.schoolYear.trimestre} year={settings.schoolYear.label} />
         </div>
@@ -432,14 +462,27 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
 
         <div className="gc-sidebar__foot">
           {!pronoteConnected && (
-            <Link to="/pronote" className="gc-pronote-card">
+            <Link to="/pronote" className="gc-pronote-card" title={rail ? 'Pronote non connecté — Connecter' : undefined}>
               <span style={{ flexShrink: 0, marginTop: 1 }}>
                 <NavIcon name="info" size={14} />
               </span>
-              <span style={{ flex: 1, minWidth: 0 }}>Pronote non connecté</span>
+              <span className="gc-pronote-card__text" style={{ flex: 1, minWidth: 0 }}>Pronote non connecté</span>
               <span className="gc-pronote-card__cta">Connecter</span>
             </Link>
           )}
+
+          <button
+            type="button"
+            className="gc-rail-toggle"
+            onClick={toggleRail}
+            title={rail ? 'Afficher les libellés du menu' : 'Réduire le menu aux icônes'}
+            aria-label={rail ? 'Afficher les libellés du menu' : 'Réduire le menu aux icônes'}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {rail ? <path d="M13 17l5-5-5-5M6 17l5-5-5-5" /> : <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />}
+            </svg>
+            <span>Réduire le menu</span>
+          </button>
 
           <div className="gc-sidebar__account">
             <AccountRow
@@ -470,11 +513,11 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
         <AnnouncementBanner />
 
         <main
-          className="gc-main"
+          className={`gc-main${fullBleed ? '' : ' gc-main--padded'}`}
           style={{
             maxWidth: fullBleed ? 'none' : fluid ? 1600 : 1320,
             margin: '0 auto',
-            padding: fullBleed ? 0 : 28,
+            padding: fullBleed ? 0 : undefined,
           }}
         >
           {children}
