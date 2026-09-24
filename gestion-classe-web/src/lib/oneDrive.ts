@@ -75,7 +75,9 @@ export async function connectOneDrive(keys: OneDriveKeys, interactive: boolean):
     }
   }
   if (!interactive) return null;
-  const r = await pca.loginPopup({ scopes: SCOPES, prompt: known ? undefined : 'select_account' });
+  // Un clic de l'enseignant prime sur une connexion précédente restée « en cours » (fenêtre
+  // refermée ou refusée) : sans cela MSAL rejette toute nouvelle tentative par interaction_in_progress.
+  const r = await pca.loginPopup({ scopes: SCOPES, prompt: known ? undefined : 'select_account', overrideInteractionInProgress: true });
   if (r.account) pca.setActiveAccount(r.account);
   return { token: r.accessToken, account: r.account?.username ?? '' };
 }

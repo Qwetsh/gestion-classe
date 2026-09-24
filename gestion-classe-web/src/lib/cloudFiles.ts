@@ -135,7 +135,7 @@ export function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`;
 }
 
-const cancelled = (err: unknown) => err instanceof Error && /user_cancelled|interaction_in_progress|popup_closed/.test(err.message);
+const cancelled = (err: unknown) => err instanceof Error && /user_cancelled|popup_closed/.test(err.message);
 /** L'enseignant a refermé la fenêtre de connexion : pas une erreur à afficher. */
 export const isCancelled = cancelled;
 
