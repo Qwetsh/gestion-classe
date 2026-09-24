@@ -8,8 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview",
-    "postinstall": "patch-package"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.22.0",
@@ -25,7 +24,7 @@
     "katex": "^0.16.47",
     "lucide-react": "^1.37.0",
     "mammoth": "^1.12.3",
-    "pawnote": "^1.6.2",
+    "pawnote": "npm:@blockshub/pawnote-lts@1.6.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.7.284",
     "qrcode": "^1.5.4",
@@ -51,7 +50,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "patch-package": "^8.0.1",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
