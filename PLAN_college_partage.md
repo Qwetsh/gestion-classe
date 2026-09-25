@@ -63,13 +63,6 @@ CREATE TABLE schools (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Code d'adhésion séparé : NE DOIT PAS être lisible par les non-membres
-CREATE TABLE school_join_codes (
-  school_id uuid PRIMARY KEY REFERENCES schools(id) ON DELETE CASCADE,
-  code varchar(8) NOT NULL UNIQUE,
-  rotated_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE school_members (
   school_id uuid REFERENCES schools(id) ON DELETE CASCADE,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -140,9 +133,9 @@ Notes :
 | RPC | Rôle | Contrôles |
 |---|---|---|
 | `search_schools(q)` | Liste des collèges : `id, name, city, uai, nb_profs`. | Aucune donnée élève, aucun email de prof. Min. 2 caractères. |
-| `create_school(name, city, uai)` | Crée collège + code d'adhésion, le créateur devient `admin`. | Refus si UAI déjà pris (→ proposer de rejoindre). |
-| `join_school(school_id, code, display_name, subject)` | Adhésion. | Code correct ; compteur d'échecs (anti force brute). |
-| `get_school_join_code()` / `rotate_school_join_code()` | Afficher / changer le code (membres). | Membre actif. |
+| `create_school(name, city, uai)` | Crée le collège, le créateur devient `admin` et membre. | Refus si UAI déjà pris (→ proposer de rejoindre). |
+| `join_school(school_id, display_name, subject)` | Adhésion **libre** (sélection dans la liste). | Pas déjà membre d'un autre collège. Adhésion journalisée. |
+| `remove_school_member(user_id)` | Retirer un membre inconnu. | Appelant `admin`. |
 | `list_school_classes(school_year)` | Classes du collège + nb d'élèves + profs qui l'ont. | Membre. |
 | `list_school_class_students(school_class_id)` | `identity_id, pseudo, gender, already_mine`. | Membre du collège de la classe. Pas de code élève, pas de PAP/PAI ici. |
 | `import_school_students(target_class_id, identity_ids[], copy_flags bool)` | Crée les lignes `students` du prof appelant (`user_id = auth.uid()`, même `identity_id`, pseudo + genre copiés). | Classe cible = au prof ; identités = du collège ; `ON CONFLICT (user_id, identity_id) DO NOTHING` + retour du nb importés / déjà présents. Transaction unique. |
@@ -150,7 +143,7 @@ Notes :
 | `regenerate_student_code(student_id)` | Nouveau code sur l'**identité**, propagé à toutes les lignes. | Ligne au prof. Message front : « le code change aussi chez vos collègues ». |
 
 Les RLS des nouvelles tables : lecture réservée aux membres ; **aucune écriture directe** (tout passe
-par les RPC). `school_join_codes` : aucune policy (accès RPC uniquement).
+par les RPC).
 
 ---
 
@@ -158,10 +151,9 @@ par les RPC). `school_join_codes` : aucune policy (accès RPC uniquement).
 
 ### A. Rattacher son collège (Réglages → Établissement)
 - Champ de recherche → `search_schools` (préremplie avec `settings.establishment.name`).
-- Trouvé → « Rejoindre » → saisie du **code d'adhésion** (donné par un collègue déjà inscrit) +
-  nom affiché + matière (préremplis depuis `settings.teacher`).
+- Trouvé → « Rejoindre » → nom affiché + matière (préremplis depuis `settings.teacher`). Pas de code.
 - Pas trouvé → « Créer mon collège » (nom, ville, UAI facultatif).
-- Membre : affichage du code d'adhésion à transmettre, bouton « Changer le code ».
+- Membre : liste des collègues du collège (nom, matière, date d'arrivée) ; l'admin peut retirer un membre.
 - **Bonus** : si l'URL Pronote est configurée, l'UAI est souvent le sous-domaine
   (`0541234x.index-education.net`) → préremplir et proposer le bon collège automatiquement.
 
@@ -225,8 +217,8 @@ moi (arrivée en cours d'année saisie par un collègue) → import en un clic. 
 | # | Risque | Parade |
 |---|---|---|
 | 10 | Doublons de collège (« Clg P. Verlaine » / « Collège Paul-Verlaine »). | Recherche insensible accents/casse + ville ; UAI unique ; un seul collège par prof. |
-| 11 | N'importe quel inscrit rejoint un collège et voit les élèves. | Code d'adhésion obligatoire, table séparée non lisible, rotation possible. |
-| 12 | Force brute du code d'adhésion. | 8 caractères alphanumériques + compteur d'échecs par utilisateur (ex. 5/heure). |
+| 11 | Adhésion libre : n'importe quel compte peut rejoindre un collège, voir les pseudos et récupérer des codes élèves (donc ouvrir leur espace élève). | **Choix assumé** (décision 1). Garde-fous : liste des membres visible par tous les membres, bannière « X a rejoint le collège » chez les membres, l'admin peut retirer un membre (ses copies d'élèves sont alors supprimées). Pseudonymisation déjà en place. Durcissable plus tard (validation par un membre) sans changer le modèle. |
+| 12 | Membre retiré qui garde des copies d'élèves. | `remove_school_member` supprime ses lignes `students` liées à des identités du collège (les identités restent). |
 | 13 | « 5e1 » / « 5E1 » / « 5ème 1 » → 3 classes du collège. | `name_key` normalisé + contrainte unique ; suggestion à la saisie. |
 | 14 | Deux profs créent la même classe du collège en même temps. | `ON CONFLICT` sur `name_key` → renvoie l'existante. |
 | 15 | Demi-groupes / options : classe du prof ≠ classe du collège. | Cases à cocher à l'import ; rattachement à la classe mère ; classes mixtes non rattachées. |
@@ -259,7 +251,7 @@ moi (arrivée en cours d'année saisie par un collègue) → import en un clic. 
 |---|---|---|---|
 | **1. Base** | Tables, backfill identités, triggers, drop unique, RPC collège/import. Invisible pour les utilisateurs. | — | ~½ j |
 | **2. Espace élève multi-profs** | RPC élève avec `p_student_id` + sélecteur de matière. | Lot 1 | ~½ j |
-| **3. Collège (réglages)** | Rechercher / créer / rejoindre, code d'adhésion, rattachement des classes. | Lot 1 | ~½ j |
+| **3. Collège (réglages)** | Rechercher / créer / rejoindre, liste des membres, rattachement des classes. | Lot 1 | ~½ j |
 | **4. Récupérer mes élèves** | Écran d'import collègue + « Mettre à jour depuis le collège ». | Lots 1-3 | ~½ j |
 | **5. Garde-fous import** | Rapprochement pseudo ↔ identités dans l'import Excel/Pronote d'une classe rattachée. | Lot 1 | ~¼ j |
 | **6. Mobile** | Vérifier insertion sans `student_code` ; afficher le code depuis la ligne (inchangé). | Lot 1 | contrôle |
@@ -273,7 +265,7 @@ Ordre : **1 → 2 → 3 → 4 → 5**. Rien n'est ouvert aux collègues avant la
   2 lignes avec `p_student_id` d'un autre élève (refus).
 - RLS : compte B membre du collège ne lit **aucune** ligne `students`/`events`/`stamps` de A via
   l'API (seulement via les RPC listées).
-- Compte non membre : `list_school_class_students` refusé ; `school_join_codes` illisible.
+- Compte non membre : `list_school_class_students` refusé.
 - Parcours complet avec 2 comptes de test : Thomas rattache 5e1 → collègue rejoint → importe 5e1
   → un élève se connecte avec son code → voit « SVT · Français ».
 - Réimport de la même classe → 0 doublon. Import Excel d'une classe rattachée → élèves reconnus.
@@ -281,11 +273,10 @@ Ordre : **1 → 2 → 3 → 4 → 5**. Rien n'est ouvert aux collègues avant la
 
 ---
 
-## 9. Points à trancher
+## 9. Décisions
 
-1. **Adhésion** : code d'adhésion transmis par un collègue (recommandé, simple et sûr) ou demande
-   validée par un membre (plus de code, mais attente).
-2. **PAP/PPRE/PAI** : copiés par défaut à l'import (recommandé) ou jamais.
-3. **Un seul collège par prof** pour le MVP (recommandé) ; multi-collèges plus tard (profs
-   partagés sur 2 établissements).
-4. **Pseudo** : copie indépendante par prof (recommandé) ou pseudo commun synchronisé.
+1. **Adhésion** : libre, par sélection du collège dans la liste ; si absent, on le crée. (Garde-fous : bug n°11.)
+2. **PAP/PPRE/PAI** : recopiés à l'import (booléens seuls).
+3. **Un seul collège par prof** pour le MVP.
+4. **Pseudo** : copié à l'import puis indépendant chez chaque prof (une correction chez l'un ne se
+   répercute pas chez l'autre). *À confirmer.*
