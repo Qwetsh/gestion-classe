@@ -48,18 +48,18 @@ function averageOf(rows: StudentAssessment[], period: number | null): number | n
   );
 }
 
-export function StudentGrades({ code }: { code: string }) {
+export function StudentGrades({ code, studentId = null }: { code: string; studentId?: string | null }) {
   const [rows, setRows] = useState<StudentAssessment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    fetchStudentGrades(code)
+    fetchStudentGrades(code, studentId)
       .then((r) => { if (alive) setRows(r.assessments); })
       .catch(() => { if (alive) setError('Impossible de charger tes notes.'); });
     return () => { alive = false; };
-  }, [code]);
+  }, [code, studentId]);
 
   const openDoc = async (assessment: StudentAssessment, kind: StudentDocKind) => {
     const key = `${assessment.id}|${kind}`;

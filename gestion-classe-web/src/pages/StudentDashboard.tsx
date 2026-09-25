@@ -80,7 +80,29 @@ interface StampData {
   }[];
 }
 
+/** Un « espace » = un prof qui a l'élève (même code chez plusieurs profs d'un collège). */
+interface StudentSpace {
+  student_id: string;
+  teacher: string;
+  subject: string | null;
+  class_name: string;
+}
+
+const SPACE_KEY = (code: string) => `student_space_${code}`;
+
+function readRememberedSpace(code: string): string | null {
+  try { return localStorage.getItem(SPACE_KEY(code)); } catch { return null; }
+}
+
+function rememberSpace(code: string, studentId: string | null) {
+  try {
+    if (studentId) localStorage.setItem(SPACE_KEY(code), studentId);
+    else localStorage.removeItem(SPACE_KEY(code));
+  } catch { /* stockage indisponible : on redemandera le choix */ }
+}
+
 interface DashboardData {
+  student_id?: string;
   pseudo: string;
   class_name: string;
   trimester: number;
@@ -127,6 +149,11 @@ export function StudentDashboard() {
   const [showBonusSelect, setShowBonusSelect] = useState(false);
   const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; color: string; date: string } | null>(null);
   const currentCodeRef = useRef('');
+  // Ligne élève choisie (null tant que le code ne mène qu'à un prof ou qu'aucun choix n'est fait).
+  const studentIdRef = useRef<string | null>(null);
+  // Espaces proposés quand le code mène à plusieurs profs ; `spacePicker` = écran de choix affiché.
+  const [spaces, setSpaces] = useState<StudentSpace[]>([]);
+  const [spacePicker, setSpacePicker] = useState(false);
   const [muted, setMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -216,7 +243,7 @@ export function StudentDashboard() {
     }
   }, [code]);
 
-  const handleSubmit = async (override?: string) => {
+  const handleSubmit = async (override?: string, chosenStudentId?: string) => {
     const fullCode = override ?? code.join('');
     if (fullCode.length !== 6) return;
     setIsLoading(true);
@@ -224,19 +251,40 @@ export function StudentDashboard() {
     currentCodeRef.current = fullCode;
 
     try {
-      const { data: result, error: rpcError } = await supabase.rpc('get_student_dashboard', { p_code: fullCode });
+      // Choix explicite, sinon dernier espace consulté sur cet appareil.
+      const remembered = chosenStudentId ? null : readRememberedSpace(fullCode);
+      const fetchDashboard = (studentId: string | null) =>
+        supabase.rpc('get_student_dashboard', { p_code: fullCode, p_student_id: studentId });
+
+      let { data: result, error: rpcError } = await fetchDashboard(chosenStudentId ?? remembered);
       if (rpcError) throw rpcError;
-      if (result?.error) {
-        setError(result.error === 'not_found' ? 'Code incorrect. Vérifie et réessaie.' : 'Erreur inconnue');
+      // Espace mémorisé devenu invalide (élève retiré par ce prof) : on repart sans.
+      if (result?.error === 'invalid_code' && remembered) {
+        rememberSpace(fullCode, null);
+        ({ data: result, error: rpcError } = await fetchDashboard(null));
+        if (rpcError) throw rpcError;
+      }
+      if (result?.error === 'choose_space') {
+        setSpaces(result.spaces as StudentSpace[]);
+        setSpacePicker(true);
         setIsLoading(false);
         return;
       }
+      if (result?.error) {
+        setError(result.error === 'invalid_code' ? 'Code incorrect. Vérifie et réessaie.' : 'Erreur inconnue');
+        setIsLoading(false);
+        return;
+      }
+      studentIdRef.current = result.student_id ?? null;
+      if (chosenStudentId || remembered) rememberSpace(fullCode, studentIdRef.current);
+      setSpacePicker(false);
       setData(result);
+      const studentId = studentIdRef.current;
 
       // Load stamp data
       setStampLoading(true);
       try {
-        const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_code: fullCode });
+        const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_code: fullCode, p_student_id: studentId });
         if (!sErr && sData) setStampData(sData);
         else setStampError('Impossible de charger les tampons');
       } catch {
@@ -246,7 +294,7 @@ export function StudentDashboard() {
 
       // Notes d'evaluation : la RPC dit elle-meme si l'onglet est ouvert.
       try {
-        const marks = await fetchStudentGrades(fullCode);
+        const marks = await fetchStudentGrades(fullCode, studentId);
         setShowMarks(marks.enabled);
       } catch {
         setShowMarks(false);
@@ -254,7 +302,7 @@ export function StudentDashboard() {
 
       // Load academy data
       try {
-        const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
+        const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode, p_student_id: studentId });
         if (aData && !aData.error) {
           setAcademyData({
             enabled: aData.enabled ?? false,
@@ -264,6 +312,12 @@ export function StudentDashboard() {
           });
         }
       } catch { /* ignore */ }
+
+      // Liste des espaces (bouton « Changer de matière ») même si le choix venait de la mémoire.
+      try {
+        const { data: sp } = await supabase.rpc('get_student_spaces', { p_code: fullCode });
+        setSpaces(Array.isArray(sp) ? (sp as StudentSpace[]) : []);
+      } catch { setSpaces([]); }
     } catch {
       setError('Erreur de connexion. Réessaie.');
     }
@@ -276,7 +330,7 @@ export function StudentDashboard() {
     if (activeTab !== 'stamps' || !showStamps || !currentCodeRef.current) return;
     const refresh = async () => {
       if (document.visibilityState !== 'visible' || !currentCodeRef.current) return;
-      const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
+      const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current, p_student_id: studentIdRef.current });
       if (sData && !sData.error) setStampData(sData);
     };
     const interval = setInterval(refresh, 30000);
@@ -290,20 +344,34 @@ export function StudentDashboard() {
   const handleSelectBonus = async (bonusId: string) => {
     if (!stampData?.active_card || !currentCodeRef.current) return;
     try {
-      const { error: err } = await supabase.rpc('select_student_bonus', { p_code: currentCodeRef.current, p_bonus_id: bonusId });
+      const { error: err } = await supabase.rpc('select_student_bonus', { p_code: currentCodeRef.current, p_bonus_id: bonusId, p_student_id: studentIdRef.current });
       if (err) throw err;
       setShowBonusSelect(false);
       setShowCelebration(true);
       celebrationTimerRef.current = setTimeout(() => setShowCelebration(false), 3500);
       // Reload stamp data
-      const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
+      const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current, p_student_id: studentIdRef.current });
       if (sData) setStampData(sData);
     } catch {
       setError('Erreur lors de la selection du bonus');
     }
   };
 
+  // Retour à l'écran de choix de matière, sans ressaisir le code.
+  const handleChangeSpace = () => {
+    setData(null);
+    setStampData(null);
+    setAcademyData(null);
+    setShowMarks(false);
+    setActiveTab('grades');
+    studentIdRef.current = null;
+    setSpacePicker(true);
+  };
+
   const handleLogout = () => {
+    studentIdRef.current = null;
+    setSpaces([]);
+    setSpacePicker(false);
     setData(null);
     setStampData(null);
     setAcademyData(null);
@@ -322,6 +390,78 @@ export function StudentDashboard() {
   };
 
   const gradePercent = (grade: number) => Math.min(100, (grade / 20) * 100);
+
+  // ============================================
+  // SPACE PICKER (un code, plusieurs profs)
+  // ============================================
+  if (!data && spacePicker) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: `radial-gradient(ellipse at 50% 30%, ${T.bg2} 0%, ${T.bg} 70%)`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+        fontFamily: T.font,
+      }}>
+        <div style={{
+          background: T.card,
+          borderRadius: '20px',
+          padding: '32px 24px',
+          maxWidth: '400px',
+          width: '100%',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+          border: `1px solid ${T.cardBorder}`,
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ color: T.goldBright, fontFamily: T.font, fontWeight: 600, fontSize: 30, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
+              Quelle matière ?
+            </h1>
+            <p style={{ color: T.textMuted, fontSize: '14px', marginTop: '8px' }}>
+              Choisis l'espace que tu veux consulter
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {spaces.map(space => (
+              <button
+                key={space.student_id}
+                onClick={() => handleSubmit(currentCodeRef.current, space.student_id)}
+                disabled={isLoading}
+                style={{
+                  width: '100%', padding: '14px 16px', borderRadius: '12px',
+                  border: `1px solid ${T.cardBorder}`, background: T.surface,
+                  color: T.text, textAlign: 'left', cursor: 'pointer',
+                  opacity: isLoading ? 0.7 : 1,
+                }}
+              >
+                <div style={{ fontSize: '16px', fontWeight: 700 }}>{space.subject || 'Matière'}</div>
+                <div style={{ fontSize: '13px', color: T.textDim, marginTop: '2px' }}>
+                  {space.teacher} · {space.class_name}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <p style={{ color: T.neg, textAlign: 'center', fontSize: '14px', marginTop: '16px' }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%', marginTop: '16px', padding: '10px', borderRadius: '10px',
+              border: 'none', background: 'transparent', color: T.textMuted,
+              fontSize: '14px', cursor: 'pointer',
+            }}
+          >
+            Changer de code
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ============================================
   // CODE ENTRY SCREEN
@@ -465,6 +605,21 @@ export function StudentDashboard() {
                 {muted ? '🔇' : '🔊'}
               </button>
             )}
+            {spaces.length > 1 && !isAcademyTab && (
+              <button
+                onClick={handleChangeSpace}
+                style={{
+                  padding: '8px 14px', borderRadius: '8px',
+                  border: `1px solid ${T.cardBorder}`,
+                  background: 'transparent',
+                  color: T.textMuted,
+                  fontSize: '13px', cursor: 'pointer',
+                }}
+                title="Changer de matière"
+              >
+                Matière
+              </button>
+            )}
           <button
             onClick={handleLogout}
             style={{
@@ -571,6 +726,7 @@ export function StudentDashboard() {
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
               <AcademyQuiz
                 studentCode={currentCodeRef.current}
+                studentId={studentIdRef.current}
                 onComplete={() => {
                   setAcademyData(prev => prev ? { ...prev, test_completed: true } : prev);
                 }}
@@ -580,7 +736,7 @@ export function StudentDashboard() {
         ) : activeTab === 'ar' ? (
           <StudentAr />
         ) : activeTab === 'marks' ? (
-          <StudentGrades code={currentCodeRef.current} />
+          <StudentGrades code={currentCodeRef.current} studentId={studentIdRef.current} />
         ) : activeTab === 'annales' ? (
           <StudentAnnales />
         ) : activeTab === 'stamps' && showStamps ? (
