@@ -36,8 +36,8 @@ export interface StudentGradesResult {
   assessments: StudentAssessment[];
 }
 
-export async function fetchStudentGrades(code: string): Promise<StudentGradesResult> {
-  const { data, error } = await supabase.rpc('get_student_grades', { p_code: code });
+export async function fetchStudentGrades(code: string, studentId: string | null = null): Promise<StudentGradesResult> {
+  const { data, error } = await supabase.rpc('get_student_grades', { p_code: code, p_student_id: studentId });
   if (error) throw error;
   const result = data as { enabled?: boolean; assessments?: StudentAssessment[]; error?: string } | null;
   if (!result || result.error) return { enabled: false, assessments: [] };

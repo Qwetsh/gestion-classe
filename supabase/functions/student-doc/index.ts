@@ -59,32 +59,36 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } },
   );
 
-  // 1. Le code identifie un élève, et donc une classe.
+  // 1. L'évaluation existe et est publiée.
+  const { data: assessment } = await supabase
+    .from("written_assessments")
+    .select("id, class_id, subject_path, correction_path, series_id, assessment_series(subject_path, correction_path)")
+    .eq("id", assessmentId)
+    .eq("is_deleted", false)
+    .eq("published_to_students", true)
+    .maybeSingle();
+  if (!assessment) return json({ error: "forbidden" }, 403);
+
+  // 2. Le code désigne bien un élève de la classe de cette évaluation. Un même code peut
+  //    mener à plusieurs lignes (un élève partagé entre les profs d'un collège) : on
+  //    retient celle qui est dans la classe de l'évaluation.
   const { data: student } = await supabase
     .from("students")
     .select("id, class_id, is_witness")
     .eq("student_code", code)
+    .eq("class_id", assessment.class_id)
+    .eq("is_deleted", false)
+    .limit(1)
     .maybeSingle();
-  if (!student?.class_id) return json({ error: "invalid_code" }, 403);
+  if (!student) return json({ error: "invalid_code" }, 403);
 
-  // 2. Premier verrou : l'onglet Notes est-il ouvert à cette classe ?
+  // 3. L'onglet Notes est-il ouvert à cette classe ?
   const { data: tabs } = await supabase
     .from("class_student_tabs")
     .select("show_grades")
     .eq("class_id", student.class_id)
     .maybeSingle();
   if (!tabs?.show_grades && !student.is_witness) return json({ error: "forbidden" }, 403);
-
-  // 3. Second verrou : l'évaluation appartient bien à sa classe, et elle est publiée.
-  const { data: assessment } = await supabase
-    .from("written_assessments")
-    .select("id, subject_path, correction_path, series_id, assessment_series(subject_path, correction_path)")
-    .eq("id", assessmentId)
-    .eq("class_id", student.class_id)
-    .eq("is_deleted", false)
-    .eq("published_to_students", true)
-    .maybeSingle();
-  if (!assessment) return json({ error: "forbidden" }, 403);
 
   // Le document peut être porté par l'évaluation ou, s'il est commun, par sa série.
   const series = assessment.assessment_series as

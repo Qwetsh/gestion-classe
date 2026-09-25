@@ -11,10 +11,12 @@ type Phase = 'intro' | 'question' | 'ranking' | 'submitting' | 'waiting';
 
 interface AcademyQuizProps {
   studentCode: string;
+  /** Ligne élève choisie quand le code mène à plusieurs profs. */
+  studentId?: string | null;
   onComplete?: () => void;
 }
 
-export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
+export function AcademyQuiz({ studentCode, studentId = null, onComplete }: AcademyQuizProps) {
   const [phase, setPhase] = useState<Phase>('intro');
   const [questions, setQuestions] = useState<(AcademyQuestion & { answers: AcademyAnswer[] })[]>([]);
   const [qIndex, setQIndex] = useState(0);
@@ -83,6 +85,7 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
           p_code: studentCode,
           p_responses: responses,
           p_preferences: preferences,
+          p_student_id: studentId,
         });
 
       console.log('[AcademyQuiz] RPC result:', result, 'error:', rpcError);
@@ -103,7 +106,7 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
       setError(`Erreur: ${err instanceof Error ? err.message : String(err)}`);
       setPhase('ranking');
     }
-  }, [answers, ranking, studentCode, onComplete]);
+  }, [answers, ranking, studentCode, studentId, onComplete]);
 
   return (
     <div className="academy-root" style={{

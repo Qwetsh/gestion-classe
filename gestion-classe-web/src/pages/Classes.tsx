@@ -14,6 +14,9 @@ import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import { GroupSplitter } from '../components/class-groups/GroupSplitter';
 import { AccommodationBadges } from '../components/AccommodationBadges';
+import { useSearchParams } from 'react-router-dom';
+import { ImportFromSchoolModal } from '../components/school/ImportFromSchoolModal';
+import { getMySchool } from '../lib/schoolQueries';
 
 interface Class {
   id: string;
@@ -244,13 +247,29 @@ export function Classes() {
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Collège partagé : récupérer les élèves déjà saisis par un collègue (même code élève).
+  const [isSchoolMember, setIsSchoolMember] = useState(false);
+  const [showSchoolImport, setShowSchoolImport] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Load classes and rooms
   useEffect(() => {
     if (user) {
       loadClasses();
       loadRooms();
+      getMySchool()
+        .then((s) => setIsSchoolMember(!!s))
+        .catch(() => setIsSchoolMember(false));
     }
   }, [user]);
+
+  // Ouverture directe depuis les réglages (/classes?import=school)
+  useEffect(() => {
+    if (searchParams.get('import') !== 'school') return;
+    setShowSchoolImport(true);
+    searchParams.delete('import');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const loadClasses = async () => {
     if (!user) return;
@@ -1297,6 +1316,15 @@ export function Classes() {
           <div className="classes-pane">
             <div className="classes-pane__head">
               <span>CLASSES</span>
+              {isSchoolMember && (
+                <button
+                  onClick={() => setShowSchoolImport(true)}
+                  style={{ marginLeft: 'auto', marginRight: 4, height: 24, padding: '0 6px', borderRadius: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 11 }}
+                  title="Récupérer des élèves déjà saisis par un collègue du collège"
+                >
+                  Collège
+                </button>
+              )}
               <button
                 onClick={() => handleOpenClassModal()}
                 style={{ width: 24, height: 24, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -1313,6 +1341,11 @@ export function Classes() {
                   <button onClick={() => handleOpenClassModal()} className="btn btn--primary" style={{ marginTop: 12, fontSize: 12 }}>
                     Créer une classe
                   </button>
+                  {isSchoolMember && (
+                    <button onClick={() => setShowSchoolImport(true)} className="btn btn--ghost" style={{ marginTop: 8, fontSize: 12 }}>
+                      Récupérer du collège
+                    </button>
+                  )}
                 </div>
               ) : (
                 classes.map(cls => {
@@ -1395,6 +1428,15 @@ export function Classes() {
                   </svg>
                 </button>
               </>
+            )}
+            {isSchoolMember && (
+              <button
+                onClick={() => setShowSchoolImport(true)}
+                className="p-2 border border-[var(--border)] rounded-lg text-[var(--text-muted)] text-xs"
+                title="Récupérer des élèves du collège"
+              >
+                Collège
+              </button>
             )}
             <button
               onClick={() => handleOpenClassModal()}
@@ -1742,6 +1784,16 @@ export function Classes() {
           </div>
         )}
       </div>
+
+      {user && (
+        <ImportFromSchoolModal
+          isOpen={showSchoolImport}
+          onClose={() => setShowSchoolImport(false)}
+          userId={user.id}
+          myClasses={classes.map((c) => ({ id: c.id, name: c.name }))}
+          onImported={() => { void loadClasses(); }}
+        />
+      )}
 
       {/* Groupes de classe (demi-groupes durables) */}
       {showGroupSplitter && selectedClass && user && (

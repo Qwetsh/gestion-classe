@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
 import { HOME_MODULES } from './home/homeModules';
 import { resetHomeLayout, setEditing, toggleModule, useHomeLayoutStore } from './home/homeLayoutStore';
+import { SchoolSection } from './school/SchoolSection';
 
 // ── Types ──
 
@@ -187,7 +188,9 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
       case 'establishment':
         return (
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Etablissement</h3>
+            <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Collège partagé</h3>
+            <SchoolSection onClose={onClose} />
+            <h3 className="font-semibold text-sm text-[var(--indigo)] mt-8 mb-4">Etablissement (documents)</h3>
             <div>
               <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Nom</label>
               <input
