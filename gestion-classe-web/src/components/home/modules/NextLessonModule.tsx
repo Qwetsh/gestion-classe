@@ -18,12 +18,12 @@ export function NextLessonModule() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <ClassChip
-            label={getClassLabel(nextLesson.groupNames[0] || 'C')}
-            color={getClassColor(nextLesson.groupNames[0] || '', classNames)}
+            label={getClassLabel(nextLesson.groupNames[0] || nextLesson.classNames[0] || 'C')}
+            color={getClassColor(nextLesson.groupNames[0] || nextLesson.classNames[0] || '', classNames)}
             size={32}
           />
           <span style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {nextLesson.groupNames[0] || nextLesson.subject || 'Cours'}
+            {nextLesson.groupNames[0] || nextLesson.classNames[0] || nextLesson.subject || 'Cours'}
           </span>
         </div>
         <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 400, letterSpacing: '-0.02em' }}>

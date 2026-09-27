@@ -66,7 +66,10 @@ export interface PronoteLesson {
   subject?: string;
   teacherNames: string[];
   classrooms: string[];
+  /** Parties de classe / groupes (« 3°EP1 ») */
   groupNames: string[];
+  /** Classes entières (« 4D ») — absentes de pawnote d'origine, ajoutées par patches/pawnote+1.6.4.patch */
+  classNames: string[];
   canceled: boolean;
   status?: string;
 }
@@ -167,6 +170,7 @@ function parseLessons(timetable: Timetable): PronoteLesson[] {
       teacherNames: lesson.teacherNames || [],
       classrooms: lesson.classrooms || [],
       groupNames: lesson.groupNames || [],
+      classNames: lesson.classNames || [],
       canceled: lesson.canceled,
       status: lesson.status,
     }));
@@ -411,7 +415,9 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
   let weekHolidays: { id: string; label: string; start: Date; end: Date }[] = [];
   if (pronoteConnected) {
     weekLessons = pronoteLessons.map(l => {
-      const label = (l.groupNames[0] || l.subject || 'Cours').replace(/^\[|\]$/g, '');
+      // Même logique que l'import .ics : le groupe (« 3°EP1 ») nomme le cours, la classe (« 3E ») sert à le rattacher
+      const className = l.classNames[0]?.replace(/^\[|\]$/g, '') || null;
+      const label = (l.groupNames[0] || className || l.subject || 'Cours').replace(/^\[|\]$/g, '');
       return {
         id: l.id,
         start: l.startDate,
@@ -420,7 +426,7 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
         subject: l.subject ?? null,
         room: l.classrooms[0] ?? null,
         status: l.canceled ? 'canceled' as const : 'normal' as const,
-        ...resolveLabel(label, null, linkMap, classes, classGroups),
+        ...resolveLabel(label, className, linkMap, classes, classGroups),
       };
     });
   } else {

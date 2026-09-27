@@ -65,9 +65,9 @@ function HomeContent() {
           <p className="dash__subtitle">
             {isSameDay(nextLesson.startDate, tomorrow) ? 'Demain' : 'Prochaine séance'},{' '}
             {tomorrowLessons.length > 0 ? (
-              <>{tomorrowLessons.length} séances. Commence par <strong>{nextLesson.groupNames[0] || nextLesson.subject || 'Cours'}</strong>, {formatTime(nextLesson.startDate)}.</>
+              <>{tomorrowLessons.length} séances. Commence par <strong>{nextLesson.groupNames[0] || nextLesson.classNames[0] || nextLesson.subject || 'Cours'}</strong>, {formatTime(nextLesson.startDate)}.</>
             ) : (
-              <>commence par <strong>{nextLesson.groupNames[0] || nextLesson.subject || 'Cours'}</strong>, {formatTime(nextLesson.startDate)}.</>
+              <>commence par <strong>{nextLesson.groupNames[0] || nextLesson.classNames[0] || nextLesson.subject || 'Cours'}</strong>, {formatTime(nextLesson.startDate)}.</>
             )}
           </p>
         )}

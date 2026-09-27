@@ -74,6 +74,7 @@ interface PronoteLesson {
   teacherNames: string[];
   classrooms: string[];
   groupNames: string[];
+  classNames: string[];
   canceled: boolean;
   status?: string;
   backgroundColor?: string;
@@ -114,6 +115,7 @@ function parseLessons(timetable: Timetable): PronoteLesson[] {
       teacherNames: lesson.teacherNames || [],
       classrooms: lesson.classrooms || [],
       groupNames: lesson.groupNames || [],
+      classNames: lesson.classNames || [],
       canceled: lesson.canceled,
       status: lesson.status,
       backgroundColor: lesson.backgroundColor,
@@ -143,9 +145,9 @@ function LessonCard({ lesson }: { lesson: PronoteLesson }) {
         {lesson.subject || 'Sans matiere'}
         {lesson.canceled && ' (Annule)'}
       </div>
-      {lesson.groupNames.length > 0 && (
+      {(lesson.classNames.length > 0 || lesson.groupNames.length > 0) && (
         <div className="text-[var(--indigo)] font-medium truncate">
-          {lesson.groupNames.join(', ')}
+          {[...lesson.classNames, ...lesson.groupNames].join(', ')}
         </div>
       )}
       {lesson.classrooms.length > 0 && (
@@ -369,7 +371,7 @@ export function Pronote() {
 
       // Extract unique class/group names
       const classSet = new Set<string>();
-      parsed.forEach(l => l.groupNames.forEach(g => classSet.add(g)));
+      parsed.forEach(l => { l.classNames.forEach(c => classSet.add(c)); l.groupNames.forEach(g => classSet.add(g)); });
       setDetectedClasses(Array.from(classSet).sort());
     } catch (err: unknown) {
       console.error('Timetable error:', err);
