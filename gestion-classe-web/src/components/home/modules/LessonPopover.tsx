@@ -1,10 +1,12 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useHomeData } from '../HomeDataContext';
 import { formatTime, getInitials, shortGroup } from '../homeHelpers';
 import { sameDay, type PlacedLesson } from '../../../lib/timetable/weekView';
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
+import { noteForLesson } from '../../../lib/timetable/lessonNotesQueries';
+import { useUIFeedback } from '../../../contexts/UIFeedbackContext';
 
 const POPOVER_WIDTH = 300;
 const MARGIN = 8;
@@ -26,8 +28,28 @@ export function LessonPopover({
   onClose: () => void;
   onManageLinks: () => void;
 }) {
-  const { lastBoardByClass, alertsByClass, openBoard } = useHomeData();
+  const { lastBoardByClass, alertsByClass, openBoard, lessonNotes, saveNote, setNoteDone } = useHomeData();
+  const { toast } = useUIFeedback();
   const ref = useRef<HTMLDivElement>(null);
+
+  // Note pour ce cours (indépendante de la séance : rien n'est créé dans sessions)
+  const note = noteForLesson(lessonNotes, lesson);
+  const [draft, setDraft] = useState(note?.content ?? '');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const submitNote = async (content: string) => {
+    setSaving(true);
+    try {
+      await saveNote(lesson, content);
+      setDraft(content.trim());
+      setEditing(false);
+    } catch (err) {
+      console.error(err);
+      toast('Impossible d’enregistrer la note.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // À droite du cours s'il y a la place, sinon à gauche ; toujours dans la fenêtre.
   // Mesure après rendu, appliquée directement au style (pas de second rendu).
@@ -51,6 +73,8 @@ export function LessonPopover({
     const onDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (ref.current?.contains(target) || target.closest('.wtt__lesson')) return;
+      // Une note en cours de frappe ne se perd pas sur un clic malheureux
+      if (ref.current?.querySelector('textarea:focus')) return;
       onClose();
     };
     const onMove = () => onClose();
@@ -128,6 +152,67 @@ export function LessonPopover({
               <p className="wtt-pop__muted">Aucune séance enregistrée sur ce créneau.</p>
             </div>
           ) : null}
+
+          {/* Note pour ce cours : rédigée à l'avance, rappelée au moment du cours (accueil + téléphone) */}
+          {!canceled && (note || !past) && (
+            <div className={`wtt-pop__section ${note && !note.done && current ? 'wtt-pop__section--note-live' : ''}`}>
+              <div className="wtt-pop__label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Note pour ce cours</span>
+                {note && !editing && (
+                  <button
+                    type="button"
+                    className="wtt__link"
+                    onClick={() => setNoteDone(note, !note.done).catch(() => toast('Impossible de mettre à jour la note.'))}
+                    title={note.done ? 'Remettre en avant' : 'Ne plus mettre en avant'}
+                  >
+                    {note.done ? 'Réactiver' : '✓ Vu'}
+                  </button>
+                )}
+              </div>
+              {editing || (!note && !past) ? (
+                <>
+                  <textarea
+                    className="wtt-pop__note-input"
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    placeholder="Ex. : rendre les copies, interro 10 min, faire passer Léa à l’oral…"
+                    rows={3}
+                    autoFocus={editing}
+                    onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitNote(draft); }}
+                  />
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    {(editing || draft.trim()) && (
+                      <button type="button" className="wtt-pop__btn" onClick={() => { setDraft(note?.content ?? ''); setEditing(false); }} disabled={saving}>
+                        Annuler
+                      </button>
+                    )}
+                    {note && editing && (
+                      <button type="button" className="wtt-pop__btn" onClick={() => submitNote('')} disabled={saving} title="Supprimer la note">
+                        Supprimer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="wtt-pop__btn wtt-pop__btn--primary"
+                      onClick={() => submitNote(draft)}
+                      disabled={saving || draft.trim() === (note?.content ?? '')}
+                    >
+                      {saving ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </>
+              ) : note ? (
+                <>
+                  <div className={`wtt-pop__note ${note.done ? 'wtt-pop__note--done' : ''}`}>{note.content}</div>
+                  {!past && (
+                    <button type="button" className="wtt__link" style={{ alignSelf: 'flex-start' }} onClick={() => { setDraft(note.content); setEditing(true); }}>
+                      Modifier
+                    </button>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
 
           {!past && !canceled && lastBoard && (
             <div className="wtt-pop__section">

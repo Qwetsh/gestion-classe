@@ -1749,6 +1749,27 @@ a.dash__card-link:hover { text-decoration: underline; }
 .wtt__count--neg { background: var(--neg-soft); color: var(--neg); }
 .wtt__badge--live { background: var(--indigo-soft); color: var(--indigo); }
 
+/* Note écrite sur un cours (migration 044) */
+.wtt__lesson--noted { border-left-style: double; border-left-width: 5px; }
+.wtt__lesson-note {
+  display: flex; align-items: center; gap: 3px; margin-top: 2px;
+  font-size: 10.5px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.wtt__lesson-note--done { font-weight: 400; color: var(--text-muted); text-decoration: line-through; }
+.wtt__lesson--current .wtt__lesson-note:not(.wtt__lesson-note--done) {
+  background: var(--warn-soft); color: var(--text); border-radius: 4px; padding: 1px 4px;
+}
+.wtt-pop__section--note-live { background: var(--warn-soft); }
+.wtt-pop__note { white-space: pre-wrap; font-size: 13px; line-height: 1.4; }
+.wtt-pop__note--done { color: var(--text-muted); text-decoration: line-through; }
+.wtt-pop__note-input {
+  width: 100%; resize: vertical; font: inherit; font-size: 12.5px; line-height: 1.4;
+  padding: 6px 8px; border-radius: var(--radius-xs); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+}
+.wtt-pop__note-input:focus { outline: 2px solid var(--indigo); outline-offset: 0; }
+
 /* Détail d'un cours */
 .wtt-pop {
   position: fixed; z-index: 60;

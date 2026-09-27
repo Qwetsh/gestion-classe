@@ -6,6 +6,7 @@ import { useHomeData } from '../HomeDataContext';
 import { QuickIcon, formatTime, getClassColor, shortGroup } from '../homeHelpers';
 import { assignSessions, percentOfDay, sameDay, type PlacedLesson } from '../../../lib/timetable/weekView';
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
+import { noteForLesson, type LessonNote } from '../../../lib/timetable/lessonNotesQueries';
 import { LessonPopover } from './LessonPopover';
 
 /**
@@ -16,7 +17,7 @@ import { LessonPopover } from './LessonPopover';
 export function WeekTimetableModule() {
   const {
     week, weekSource, weekLoading, weekOffset, isCurrentWeek, loadWeek,
-    classNames, timetableImport, reloadTimetableImport, weekSessions,
+    classNames, timetableImport, reloadTimetableImport, weekSessions, lessonNotes,
   } = useHomeData();
   const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<{ lesson: PlacedLesson; anchor: DOMRect } | null>(null);
@@ -145,6 +146,7 @@ export function WeekTimetableModule() {
                   past={l.end < now}
                   current={l.start <= now && l.end > now}
                   session={sessionByLesson.get(l.id) ?? null}
+                  note={noteForLesson(lessonNotes, l)}
                   selected={selected?.lesson.id === l.id}
                   onSelect={(anchor) => setSelected(prev => (prev?.lesson.id === l.id ? null : { lesson: l, anchor }))}
                 />
@@ -181,7 +183,7 @@ export function WeekTimetableModule() {
 }
 
 function LessonBlock({
-  lesson, startHour, endHour, color, showSubject, past, current, session, selected, onSelect,
+  lesson, startHour, endHour, color, showSubject, past, current, session, note, selected, onSelect,
 }: {
   lesson: PlacedLesson;
   startHour: number;
@@ -191,6 +193,8 @@ function LessonBlock({
   past: boolean;
   current: boolean;
   session: WeekSession | null;
+  /** note écrite sur ce cours depuis l'accueil (null : aucune) */
+  note: LessonNote | null;
   selected: boolean;
   onSelect: (anchor: DOMRect) => void;
 }) {
@@ -214,6 +218,7 @@ function LessonBlock({
         past && 'wtt__lesson--past',
         current && 'wtt__lesson--current',
         !lesson.className && 'wtt__lesson--other',
+        note && !note.done && !past && 'wtt__lesson--noted',
       ].filter(Boolean).join(' ')}
       style={{
         top: `${top}%`,
@@ -222,7 +227,7 @@ function LessonBlock({
         width: `calc(${100 / lesson.lanes}% - 6px)`,
         ['--lesson-color' as string]: color,
       }}
-      title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null].filter(Boolean).join(' · ')}
+      title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null, note ? `Note : ${note.content}` : null].filter(Boolean).join(' · ')}
     >
       <div className="wtt__lesson-name">
         {name}
@@ -245,6 +250,12 @@ function LessonBlock({
         <div className="wtt__lesson-meta">
           {formatTime(lesson.start)}
           {lesson.room && <> · {lesson.room.replace(/^salle\s+(?=\d)/i, '')}</>}
+        </div>
+      )}
+      {note && !session && (
+        // Note écrite pour ce cours : en avant tant que le cours n'est pas passé (ni marquée « vue »)
+        <div className={`wtt__lesson-note ${note.done || past ? 'wtt__lesson-note--done' : ''}`} title={note.content}>
+          <span aria-hidden>📝</span> {note.content.split('\n')[0]}
         </div>
       )}
     </button>

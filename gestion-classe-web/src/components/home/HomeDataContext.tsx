@@ -4,7 +4,7 @@
  * Extrait de l'ancien Dashboard.tsx (lot 0 de PLAN_accueil_modulaire.md).
  */
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,6 +22,10 @@ import {
   fetchLastBoardByClass, fetchWeekSessions,
   type LastBoard, type WeekSession,
 } from '../../lib/timetable/enrichmentQueries';
+import {
+  fetchLessonNotes, indexLessonNotes, lessonNoteKey, saveLessonNote, setLessonNoteDone,
+  type LessonNote,
+} from '../../lib/timetable/lessonNotesQueries';
 
 // ---- Types ----
 
@@ -123,6 +127,13 @@ export interface HomeData {
   weekSessions: WeekSession[];
   lastBoardByClass: Map<string, LastBoard>;
   alertsByClass: Map<string, StudentAlert[]>;
+
+  /** Notes écrites sur les cours de la semaine affichée, indexées par lessonNoteKey (heure de début + libellé) */
+  lessonNotes: Map<string, LessonNote>;
+  /** Crée / remplace / supprime (contenu vide) la note d'un cours */
+  saveNote: (lesson: Pick<TimetableLesson, 'start' | 'end' | 'label' | 'classId' | 'groupId'>, content: string) => Promise<void>;
+  /** Marque une note « vue » (ou la remet en avant) */
+  setNoteDone: (note: LessonNote, done: boolean) => Promise<void>;
 
   // Repères de temps, calculés une fois pour toute la page
   now: Date;
@@ -262,8 +273,33 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
     fetchWeekSessions(user.id, monday, nextMonday)
       .then(rows => { if (!cancelled) setWeekSessions(rows); })
       .catch(err => console.error('Séances de la semaine illisibles:', err));
+    fetchLessonNotes(user.id, monday, nextMonday)
+      .then(rows => { if (!cancelled) setLessonNotes(indexLessonNotes(rows)); });
     return () => { cancelled = true; };
   }, [user, weekOffset]);
+
+  // Notes sur les cours (migration 044) : une par cours, indépendantes des séances
+  const [lessonNotes, setLessonNotes] = useState<Map<string, LessonNote>>(new Map());
+
+  const saveNote = useCallback(async (lesson: Pick<TimetableLesson, 'start' | 'end' | 'label' | 'classId' | 'groupId'>, content: string) => {
+    if (!user) return;
+    const saved = await saveLessonNote(user.id, lesson, content);
+    const key = lessonNoteKey(lesson.start, lesson.label);
+    setLessonNotes(prev => {
+      const next = new Map(prev);
+      if (saved) next.set(key, saved); else next.delete(key);
+      return next;
+    });
+  }, [user]);
+
+  const setNoteDone = useCallback(async (note: LessonNote, done: boolean) => {
+    await setLessonNoteDone(note.id, done);
+    setLessonNotes(prev => {
+      const next = new Map(prev);
+      next.set(lessonNoteKey(note.startsAt, note.label), { ...note, done });
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -696,6 +732,9 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
     weekSessions,
     lastBoardByClass,
     alertsByClass,
+    lessonNotes,
+    saveNote,
+    setNoteDone,
     now,
     tomorrow,
     openBoard: onOpenBoard,

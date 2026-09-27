@@ -15,6 +15,7 @@ import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import { GroupSplitter } from '../components/class-groups/GroupSplitter';
 import { AccommodationBadges } from '../components/AccommodationBadges';
+import { SeatingGeneratorModal } from '../components/SeatingGeneratorModal';
 
 interface Class {
   id: string;
@@ -27,6 +28,7 @@ interface Student {
   id: string;
   pseudo: string;
   created_at: string;
+  gender?: 'M' | 'F' | null;
   has_pap?: boolean;
   has_ppre?: boolean;
   has_pai?: boolean;
@@ -216,6 +218,8 @@ export function Classes() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStudentsPanel, setShowStudentsPanel] = useState(false);
   const [showGroupSplitter, setShowGroupSplitter] = useState(false);
+  // Génération automatique du plan (contraintes + règles)
+  const [showGenerator, setShowGenerator] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showRoomDeleteModal, setShowRoomDeleteModal] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
@@ -419,7 +423,7 @@ export function Classes() {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('id, pseudo, created_at, has_pap, has_ppre, has_pai')
+        .select('id, pseudo, created_at, gender, has_pap, has_ppre, has_pai')
         .eq('class_id', classId)
         .order('pseudo');
 
@@ -1294,6 +1298,16 @@ export function Classes() {
           <button className="btn btn--ghost" style={{ fontSize: 13 }} onClick={() => window.print()}>
             Imprimer le plan
           </button>
+          {selectedClass && selectedRoom && (
+            <button
+              className="btn btn--ghost"
+              style={{ fontSize: 13 }}
+              onClick={() => setShowGenerator(true)}
+              title="Placer automatiquement les élèves selon des contraintes (devant, à côté de, éloigné de…)"
+            >
+              ✨ Générer
+            </button>
+          )}
           <button onClick={handleSavePlan} disabled={isSaving || !hasChanges} className="btn btn--accent" style={{ opacity: hasChanges ? 1 : 0.5 }}>
             {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
           </button>
@@ -1751,6 +1765,22 @@ export function Classes() {
           </div>
         )}
       </div>
+
+      {/* Génération automatique du plan sous contraintes */}
+      {showGenerator && selectedClass && selectedRoom && user && (
+        <SeatingGeneratorModal
+          userId={user.id}
+          classId={selectedClass.id}
+          students={students.map(s => {
+            const g = studentGrades.get(s.id);
+            return { id: s.id, pseudo: s.pseudo, gender: s.gender ?? null, has_pap: s.has_pap, has_ppre: s.has_ppre, has_pai: s.has_pai, grade: g?.grade, malus: g?.malus };
+          })}
+          room={{ name: selectedRoom.name, grid_rows: selectedRoom.grid_rows, grid_cols: selectedRoom.grid_cols, disabled_cells: selectedRoom.disabled_cells }}
+          currentPositions={positions}
+          onApply={(next) => { setPositions(next); setHasChanges(true); }}
+          onClose={() => setShowGenerator(false)}
+        />
+      )}
 
       {/* Groupes de classe (demi-groupes durables) */}
       {showGroupSplitter && selectedClass && user && (
