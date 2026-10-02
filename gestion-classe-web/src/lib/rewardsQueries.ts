@@ -272,8 +272,42 @@ export async function updateCategory(id: string, updates: Partial<Pick<StampCate
   if (error) throw error;
 }
 
-export async function deleteCategory(id: string): Promise<void> {
+/**
+ * Supprime une categorie seulement si aucun tampon ne l'utilise ; sinon elle est
+ * desactivee (ON DELETE SET NULL ferait perdre leur icone aux tampons deja donnes).
+ */
+export async function deleteCategory(id: string): Promise<{ deleted: boolean; usedBy: number }> {
+  const { count, error: countError } = await supabase
+    .from('stamps')
+    .select('id', { count: 'exact', head: true })
+    .eq('category_id', id);
+  if (countError) throw countError;
+  if (count && count > 0) {
+    await updateCategory(id, { is_active: false });
+    return { deleted: false, usedBy: count };
+  }
   const { error } = await supabase.from('stamp_categories').delete().eq('id', id);
+  if (error) throw error;
+  return { deleted: true, usedBy: 0 };
+}
+
+/** Enregistre l'ordre d'affichage (seules les lignes dont la position change sont ecrites). */
+export async function reorderCategories(ordered: StampCategory[]): Promise<void> {
+  const changed = ordered
+    .map((cat, i) => ({ cat, i }))
+    .filter(({ cat, i }) => cat.display_order !== i);
+  for (const { cat, i } of changed) {
+    await updateCategory(cat.id, { display_order: i });
+  }
+}
+
+/** « Repartir de zero » : desactive toutes les categories (reactivables, tampons intacts). */
+export async function deactivateAllCategories(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('stamp_categories')
+    .update({ is_active: false })
+    .eq('user_id', userId)
+    .eq('is_active', true);
   if (error) throw error;
 }
 
@@ -314,9 +348,20 @@ export async function updateBonus(id: string, updates: Partial<Pick<Bonus, 'labe
   if (error) throw error;
 }
 
-export async function deleteBonus(id: string): Promise<void> {
+/** Meme regle que deleteCategory : un bonus deja choisi par un eleve est desactive, pas supprime. */
+export async function deleteBonus(id: string): Promise<{ deleted: boolean; usedBy: number }> {
+  const { count, error: countError } = await supabase
+    .from('bonus_selections')
+    .select('id', { count: 'exact', head: true })
+    .eq('bonus_id', id);
+  if (countError) throw countError;
+  if (count && count > 0) {
+    await updateBonus(id, { is_active: false });
+    return { deleted: false, usedBy: count };
+  }
   const { error } = await supabase.from('bonuses').delete().eq('id', id);
   if (error) throw error;
+  return { deleted: true, usedBy: 0 };
 }
 
 // ============================================
