@@ -10,6 +10,8 @@ import {
   createCategory,
   updateCategory,
   deleteCategory as deleteCategoryApi,
+  reorderCategories,
+  deactivateAllCategories,
   createBonus,
   updateBonus,
   deleteBonus as deleteBonusApi,
@@ -146,12 +148,14 @@ export function Rewards() {
 
   const saveCategory = async () => {
     if (!user || !catLabel.trim() || !catIcon.trim()) return;
+    if (duplicateCategory) return;
     setIsSaving(true);
     try {
       if (editingCategory) {
         await updateCategory(editingCategory.id, { label: catLabel.trim(), icon: catIcon.trim(), color: catColor });
       } else {
-        await createCategory(user.id, catLabel.trim(), catIcon.trim(), catColor, categories.length);
+        const nextOrder = categories.reduce((max, c) => Math.max(max, c.display_order + 1), 0);
+        await createCategory(user.id, catLabel.trim(), catIcon.trim(), catColor, nextOrder);
       }
       setShowCategoryModal(false);
       await loadData();
@@ -163,6 +167,11 @@ export function Rewards() {
     }
   };
 
+  // Le libelle sert de cle d'affichage (dedoublonnage web/mobile) : pas deux categories au meme nom
+  const duplicateCategory = showCategoryModal
+    ? categories.find(c => c.label === catLabel.trim() && c.id !== editingCategory?.id) ?? null
+    : null;
+
   const toggleCategory = async (cat: StampCategory) => {
     try {
       await updateCategory(cat.id, { is_active: !cat.is_active });
@@ -173,12 +182,49 @@ export function Rewards() {
   };
 
   const deleteCategory = async (id: string) => {
-    const ok = await showConfirm({ title: 'Supprimer la categorie', message: 'Supprimer cette categorie ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    const ok = await showConfirm({
+      title: 'Supprimer la catégorie',
+      message: 'Supprimer cette catégorie ?\n\nSi des tampons ont déjà été donnés avec, elle sera seulement désactivée : les cartes des élèves restent intactes.',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
     if (!ok) return;
     try {
-      await deleteCategoryApi(id);
+      const { deleted, usedBy } = await deleteCategoryApi(id);
       await loadData();
-      showSuccess('Catégorie supprimée');
+      showSuccess(deleted ? 'Catégorie supprimée' : `Catégorie désactivée (utilisée par ${usedBy} tampon${usedBy > 1 ? 's' : ''})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
+  const moveCategory = async (id: string, direction: -1 | 1) => {
+    const index = categories.findIndex(c => c.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= categories.length) return;
+    const ordered = [...categories];
+    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+    setCategories(ordered.map((c, i) => ({ ...c, display_order: i })));
+    try {
+      await reorderCategories(ordered);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+    await loadData(true);
+  };
+
+  const startFromScratch = async () => {
+    if (!user) return;
+    const ok = await showConfirm({
+      title: 'Repartir de zéro',
+      message: 'Désactiver toutes les catégories pour créer les vôtres ?\n\nLes tampons déjà donnés restent sur les cartes des élèves, et chaque catégorie pourra être réactivée.',
+      confirmLabel: 'Tout désactiver',
+    });
+    if (!ok) return;
+    try {
+      await deactivateAllCategories(user.id);
+      await loadData();
+      showSuccess('Catégories désactivées : ajoutez les vôtres');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
     }
@@ -206,7 +252,8 @@ export function Rewards() {
       if (editingBonus) {
         await updateBonus(editingBonus.id, { label: bonusLabel.trim() });
       } else {
-        await createBonus(user.id, bonusLabel.trim(), bonuses.length);
+        const nextOrder = bonuses.reduce((max, b) => Math.max(max, b.display_order + 1), 0);
+        await createBonus(user.id, bonusLabel.trim(), nextOrder);
       }
       setShowBonusModal(false);
       await loadData();
@@ -228,12 +275,17 @@ export function Rewards() {
   };
 
   const deleteBonusFn = async (id: string) => {
-    const ok = await showConfirm({ title: 'Supprimer le bonus', message: 'Supprimer ce bonus ?', confirmLabel: 'Supprimer', variant: 'danger' });
+    const ok = await showConfirm({
+      title: 'Supprimer le bonus',
+      message: 'Supprimer ce bonus ?\n\nS\'il a déjà été choisi par un élève, il sera seulement désactivé.',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
     if (!ok) return;
     try {
-      await deleteBonusApi(id);
+      const { deleted } = await deleteBonusApi(id);
       await loadData();
-      showSuccess('Bonus supprimé');
+      showSuccess(deleted ? 'Bonus supprimé' : 'Bonus désactivé (déjà choisi par un élève)');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
     }
@@ -382,7 +434,7 @@ export function Rewards() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="hidden md:inline">Catégories & Bonus</span>
+              <span>Personnaliser</span>
             </button>
             <button
               onClick={doResetAll}
@@ -511,6 +563,18 @@ export function Rewards() {
                 className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
                 placeholder="Ex: Participation remarquable"
               />
+              {duplicateCategory && (
+                <p className="text-xs mt-1 text-[var(--neg)]">
+                  {duplicateCategory.is_active
+                    ? 'Cette catégorie existe déjà.'
+                    : 'Cette catégorie existe déjà (désactivée) : réactivez-la plutôt.'}
+                </p>
+              )}
+              {editingCategory && !duplicateCategory && (
+                <p className="text-xs mt-1 text-[var(--text-muted)]">
+                  Le changement s'applique aussi aux tampons déjà donnés avec cette catégorie.
+                </p>
+              )}
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
@@ -545,7 +609,7 @@ export function Rewards() {
               </button>
               <button
                 onClick={saveCategory}
-                disabled={isSaving || !catLabel.trim() || !catIcon.trim()}
+                disabled={isSaving || !catLabel.trim() || !catIcon.trim() || !!duplicateCategory}
                 className="px-4 py-2 text-sm rounded-xl text-white font-medium disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
               >
@@ -663,6 +727,8 @@ export function Rewards() {
                 <CategoriesTab
                   categories={categories}
                   onAdd={() => openCategoryModal()}
+                  onMove={moveCategory}
+                  onStartFromScratch={startFromScratch}
                   onEdit={openCategoryModal}
                   onToggle={toggleCategory}
                   onDelete={deleteCategory}
@@ -957,10 +1023,12 @@ function OverviewTab({
 }
 
 function CategoriesTab({
-  categories, onAdd, onEdit, onToggle, onDelete,
+  categories, onAdd, onMove, onStartFromScratch, onEdit, onToggle, onDelete,
 }: {
   categories: StampCategory[];
   onAdd: () => void;
+  onMove: (id: string, direction: -1 | 1) => void;
+  onStartFromScratch: () => void;
   onEdit: (c: StampCategory) => void;
   onToggle: (c: StampCategory) => void;
   onDelete: (id: string) => void;
@@ -968,18 +1036,33 @@ function CategoriesTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--text-muted)]">{categories.length} catégorie(s)</p>
-        <button
-          onClick={onAdd}
-          className="px-4 py-2 rounded-xl text-sm font-medium text-white"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
-        >
-          + Ajouter
-        </button>
+        <p className="text-sm text-[var(--text-muted)]">
+          {categories.filter(c => c.is_active).length} active(s) sur {categories.length}
+        </p>
+        <div className="flex items-center gap-2">
+          {categories.some(c => c.is_active) && (
+            <button
+              onClick={onStartFromScratch}
+              className="px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-3)]"
+            >
+              Repartir de zéro
+            </button>
+          )}
+          <button
+            onClick={onAdd}
+            className="px-4 py-2 rounded-xl text-sm font-medium text-white"
+            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+          >
+            + Ajouter
+          </button>
+        </div>
       </div>
+      <p className="text-xs text-[var(--text-muted)]">
+        Ces catégories sont les vôtres : les autres enseignants ont leur propre liste. Une catégorie désactivée n'est plus proposée, mais les tampons déjà donnés restent sur les cartes.
+      </p>
 
       <div className="grid grid-cols-1 gap-3">
-        {categories.map(cat => (
+        {categories.map((cat, i) => (
           <div
             key={cat.id}
             className={`p-4 rounded-xl border transition-all ${
@@ -1002,6 +1085,22 @@ function CategoriesTab({
               </div>
             </div>
             <div className="flex items-center gap-2 justify-end flex-wrap">
+              <button
+                onClick={() => onMove(cat.id, -1)}
+                disabled={i === 0}
+                title="Monter"
+                className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)] disabled:opacity-30"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => onMove(cat.id, 1)}
+                disabled={i === categories.length - 1}
+                title="Descendre"
+                className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)] disabled:opacity-30"
+              >
+                ▼
+              </button>
               <button onClick={() => onToggle(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
                 {cat.is_active ? 'Désactiver' : 'Activer'}
               </button>
