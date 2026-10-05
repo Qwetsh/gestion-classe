@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { WorkCorrection } from '../components/productions/WorkCorrection';
 import {
+  autoPoints,
   fetchActivities,
   fetchWorks,
   fetchClassStudents,
@@ -238,7 +239,13 @@ export function Productions() {
                         <td style={td}>{work && work.group_pseudos.length > 1 ? work.group_pseudos.filter((p) => p !== student.pseudo).join(', ') : <span style={{ color: 'var(--text-dim)' }}>seul</span>}</td>
                         <td style={td}>{work ? fmtDate(work.submitted_at ?? work.updated_at) : '—'}</td>
                         <td style={td}>{work ? work.version : '—'}</td>
-                        <td style={td}>{work?.total_points != null ? `${work.total_points} / ${activity.bareme_total}` : '—'}</td>
+                        <td style={td}>
+                          {work?.total_points != null ? `${work.total_points} / ${activity.bareme_total}` : work && work.status !== 'draft' ? (() => {
+                            // Pas encore corrigée : aperçu des points des réponses à choix (correction automatique).
+                            const a = autoPoints(activity.definition, work.content);
+                            return a ? <span style={{ color: 'var(--text-muted)' }} title="Réponses à choix corrigées automatiquement, questions ouvertes à corriger">auto {String(a.points).replace('.', ',')} / {String(a.max).replace('.', ',')}</span> : '—';
+                          })() : '—'}
+                        </td>
                         <td style={{ ...td, textAlign: 'right' }}>
                           {work && <button onClick={() => setOpenId(work.id)} style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}>{work.status === 'draft' ? 'Lire' : work.correction ? 'Revoir' : 'Corriger'}</button>}
                         </td>

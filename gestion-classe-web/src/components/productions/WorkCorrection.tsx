@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  applyAuto,
+  checkQ1Cell,
   computeTotal,
   deleteWork,
+  hasAuto,
+  q1Label,
   saveWorkCorrection,
   setWorkStatus,
   fetchWorkVersions,
@@ -11,6 +15,7 @@ import {
   type WorkRow,
   type WorkCorrection as Correction,
   type WorkVersionRow,
+  type Q1Row,
 } from '../../lib/productionsQueries';
 
 /**
@@ -20,6 +25,9 @@ import {
  * « Enregistrer » pose la correction (statut corrigée), « Valider » la fige (statut validée,
  * l'élève ne peut plus renvoyer). « Appliquer au binôme » recopie la correction sur les autres
  * membres du groupe (même contenu envoyé) : ils restent notés individuellement ensuite.
+ * Les questions à réponses fermées (tableau de la question 1 depuis la définition v2) sont corrigées
+ * automatiquement à l'ouverture d'une copie pas encore corrigée ; le bouton « Auto » refait ce calcul,
+ * et chaque case reste modifiable à la main.
  */
 
 const ZONE_NAMES: Record<string, string> = {
@@ -35,6 +43,13 @@ function fmtDate(iso: string | null): string {
 const fmtPts = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
 function emptyCorrection(): Correction { return { questions: {} }; }
+
+/** Correction de départ : celle enregistrée, sinon la correction automatique des réponses à choix. */
+function initialCorrection(work: WorkRow, activity: ActivityRow): { corr: Correction; auto: boolean } {
+  if (work.correction) return { corr: work.correction, auto: false };
+  if (!hasAuto(activity.definition)) return { corr: emptyCorrection(), auto: false };
+  return { corr: applyAuto(activity.definition, emptyCorrection(), work.content), auto: true };
+}
 
 interface Props {
   work: WorkRow;
@@ -53,7 +68,8 @@ interface Props {
 export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, onDeleted, onPrev, onNext, position, toast }: Props) {
   const def = activity.definition;
   const content = work.content as Record<string, unknown>;
-  const [corr, setCorr] = useState<Correction>(() => work.correction ?? emptyCorrection());
+  const [corr, setCorr] = useState<Correction>(() => initialCorrection(work, activity).corr);
+  const [autoPrefilled, setAutoPrefilled] = useState(() => initialCorrection(work, activity).auto);
   const [advice, setAdvice] = useState(work.advice ?? '');
   const [skills, setSkills] = useState<Record<string, number>>(() => work.skills ?? {});
   const [saving, setSaving] = useState(false);
@@ -63,12 +79,14 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
 
   // Nouvelle copie ouverte (navigation) : repartir de sa correction.
   useEffect(() => {
-    setCorr(work.correction ?? emptyCorrection());
+    const init = initialCorrection(work, activity);
+    setCorr(init.corr);
+    setAutoPrefilled(init.auto);
     setAdvice(work.advice ?? '');
     setSkills(work.skills ?? {});
     setDirty(false);
     setVersions(null);
-  }, [work.id, work.correction, work.advice, work.skills]);
+  }, [work, activity]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -100,6 +118,10 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
     setCorr((c) => ({
       questions: { ...c.questions, [q.id]: { ...(c.questions[q.id] ?? {}), criteres: Object.fromEntries(q.criteres.map((cr) => [cr.id, value])), points: null } },
     }));
+    setDirty(true);
+  };
+  const redoAuto = (q: ActivityQuestion) => {
+    setCorr((c) => applyAuto(def, c, content, q.id));
     setDirty(true);
   };
   const setRemark = (qid: string, remarque: string) => {
@@ -157,7 +179,7 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
   const renderAnswer = (q: ActivityQuestion) => {
     const v = content[q.id];
     if (q.type === 'tableau') {
-      const lignes = (v ?? {}) as Record<string, Record<string, string>>;
+      const lignes = (v ?? {}) as Record<string, Q1Row>;
       return (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
           <tbody>
@@ -165,14 +187,22 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
               const row = lignes[l.id] ?? {};
               return (
                 <tr key={l.id} style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
-                  <td style={{ ...tdSmall, width: 90 }}><strong>Ligne {i + 1}</strong><br />{ZONE_NAMES[row.zone] ?? row.zone ?? '—'}</td>
+                  <td style={{ ...tdSmall, width: 90 }}><strong>Ligne {i + 1}</strong><br />{ZONE_NAMES[row.zone ?? ''] ?? row.zone ?? '—'}</td>
                   <td style={tdSmall}>
-                    {(def.colonnes_q1 ?? []).map((col) => (
-                      <div key={col.id} style={{ marginBottom: 3 }}>
-                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{col.nom} : </span>
-                        {row[col.id] ? <span>{row[col.id]}</span> : <span style={{ color: 'var(--text-dim)' }}>—</span>}
-                      </div>
-                    ))}
+                    {(def.colonnes_q1 ?? []).map((col) => {
+                      // Définition v2 : cases listées par `champs` (menus, nombre) ; v1 : un texte libre par colonne.
+                      const champs = col.champs ?? [{ id: col.id }];
+                      const auto = q.criteres.some((cr) => cr.auto?.colonne === col.id) ? checkQ1Cell(def, row, col.id) : null;
+                      const texte = champs.map((ch) => q1Label(def, ch, row[ch.id])).filter(Boolean).join(' · ');
+                      return (
+                        <div key={col.id} style={{ marginBottom: 3 }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{col.nom} : </span>
+                          {texte
+                            ? <span style={{ color: auto === true ? 'var(--pos, #047857)' : auto === false ? 'var(--neg)' : undefined }}>{auto === true ? '✓ ' : auto === false ? '✗ ' : ''}{texte}</span>
+                            : <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                        </div>
+                      );
+                    })}
                   </td>
                 </tr>
               );
@@ -240,6 +270,16 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
                 Copie validée le {fmtDate(work.validated_at)} : l’élève ne peut plus la renvoyer. <button onClick={reopen} style={{ ...btnGhost, padding: '2px 8px', fontSize: 12, marginLeft: 8 }}>Rouvrir</button>
               </div>
             )}
+            {autoPrefilled && !locked && (
+              <div style={{ ...note, background: 'var(--indigo-soft, rgba(99,102,241,.12))', color: 'var(--indigo)' }}>
+                Les réponses à choix ont été corrigées automatiquement (✓ / ✗ dans la copie, cases pré-cochées). Vérifie, corrige les questions ouvertes, puis enregistre.
+              </div>
+            )}
+            {!autoPrefilled && !locked && work.modified_after_correction && hasAuto(def) && (
+              <div style={{ ...note, background: 'var(--warn-soft, rgba(245,158,11,.14))', color: 'var(--warn, #b45309)' }}>
+                Copie renvoyée après correction : le bouton « Auto » d’une question refait la correction automatique sur le nouvel envoi.
+              </div>
+            )}
 
             {def.questions.map((q) => {
               const c = corr.questions[q.id];
@@ -248,9 +288,12 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
                 <section key={q.id} style={{ marginBottom: 18, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '8px 12px', background: 'var(--surface-3)' }}>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{q.num}. {q.titre}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{q.bonus ? 'bonus, non compté' : `${fmtPts(pts)} / ${fmtPts(q.points)}`}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{q.bonus ? 'bonus, non compté' : `${fmtPts(pts)} / ${fmtPts(q.points)}`}{q.auto && ' · corrigée automatiquement'}</span>
                     {!locked && (
                       <>
+                        {q.criteres.some((cr) => cr.auto) && (
+                          <button onClick={() => redoAuto(q)} style={{ ...btnGhost, padding: '2px 8px', fontSize: 11 }} title="Refaire la correction automatique d’après les réponses de l’élève">Auto</button>
+                        )}
                         <button onClick={() => setAll(q, true)} style={{ ...btnGhost, padding: '2px 8px', fontSize: 11 }}>Tout</button>
                         <button onClick={() => setAll(q, false)} style={{ ...btnGhost, padding: '2px 8px', fontSize: 11 }}>Rien</button>
                       </>
@@ -267,7 +310,7 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
                         return (
                           <label key={cr.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, cursor: locked ? 'default' : 'pointer', padding: '4px 6px', borderRadius: 6, background: on ? 'var(--pos-soft, rgba(16,185,129,.12))' : 'transparent' }}>
                             <input type="checkbox" checked={on} disabled={locked} onChange={() => toggle(q.id, cr.id)} style={{ marginTop: 2 }} />
-                            <span style={{ flex: 1 }}>{cr.nom}</span>
+                            <span style={{ flex: 1 }}>{cr.nom}{cr.auto && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-dim)' }}>auto</span>}</span>
                             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{q.bonus ? '★' : `${fmtPts(cr.points)} pt`}</span>
                           </label>
                         );
