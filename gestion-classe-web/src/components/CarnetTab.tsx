@@ -21,6 +21,7 @@ import {
 } from '../lib/evaluationQueries';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentStatsPanel } from './AssessmentStatsPanel';
+import { PronoteImportModal } from './PronoteImportModal';
 import { levelFromClassName } from '../lib/boardsQueries';
 import { exportGradeBookPdf, exportGradeBookXlsx } from '../lib/gradeExport';
 import {
@@ -92,6 +93,7 @@ export function CarnetTab({ userId, account, onError }: {
   const [editing, setEditing] = useState<AssessmentRow | null>(null);
   const [statsFor, setStatsFor] = useState<AssessmentRow | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [showPronote, setShowPronote] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportAllYears, setExportAllYears] = useState(false);
 
@@ -457,6 +459,10 @@ export function CarnetTab({ userId, account, onError }: {
             : saveState === 'error' ? 'Échec' : ''}
         </span>
 
+        <button onClick={() => { void flush(); setShowPronote(true); }} style={btnGhost} disabled={!classId || !schoolYear || students.length === 0}>
+          ⬆ Importer Pronote
+        </button>
+
         <button onClick={() => setShowExport(true)} style={btnGhost} disabled={!schoolYear}>
           ⬇ Sauvegarder
         </button>
@@ -655,6 +661,21 @@ export function CarnetTab({ userId, account, onError }: {
           userId={userId}
           onClose={() => setStatsFor(null)}
           onEdit={() => { setEditing(statsFor); setStatsFor(null); }}
+        />
+      )}
+
+      {showPronote && (
+        <PronoteImportModal
+          userId={userId}
+          classId={classId}
+          className={className}
+          period={period}
+          schoolYear={schoolYear}
+          students={students}
+          assessments={assessments}
+          grades={grades}
+          onClose={() => setShowPronote(false)}
+          onDone={load}
         />
       )}
 
