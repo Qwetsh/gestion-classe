@@ -26,6 +26,7 @@ export interface HiddenTabs {
   rewards: boolean;
   'group-sessions': boolean;
   evaluations: boolean;
+  productions: boolean;
   academy: boolean;
   'tp-templates': boolean;
   brevets: boolean;
@@ -57,6 +58,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     rewards: false,
     'group-sessions': false,
     evaluations: false,
+    productions: false,
     academy: false,
     'tp-templates': false,
     brevets: false,

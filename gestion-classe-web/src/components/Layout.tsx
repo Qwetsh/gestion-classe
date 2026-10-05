@@ -31,6 +31,7 @@ const classLifeItems = [
   { path: '/rewards', label: 'Récompenses', icon: 'star' },
   { path: '/group-sessions', label: 'Groupes', icon: 'group' },
   { path: '/evaluations', label: 'Évaluations', icon: 'evaluations' },
+  { path: '/productions', label: 'Productions', icon: 'productions' },
   { path: '/academy', label: 'Académie', icon: 'academy' },
 ];
 
@@ -59,6 +60,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
     case 'star': return <svg {...common}><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/></svg>;
     case 'group': return <svg {...common}><circle cx="8" cy="9" r="2.8"/><circle cx="16.5" cy="9" r="2.3"/><path d="M3 19c.4-3 2.6-5 5-5s4.6 2 5 5M14.5 16c.6-1.3 1.9-2 3-2 1.8 0 3.2 1.4 3.5 3"/></svg>;
     case 'evaluations': return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12l2.2 2.2 4.5-4.5"/></svg>;
+    case 'productions': return <svg {...common}><path d="M5 4h9l5 5v11a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v5h5M8 13h8M8 17h5"/></svg>;
     case 'academy': return <svg {...common}><path d="M4 21V9l4-2.5V4l4 2 4-2v2.5L20 9v12"/><path d="M4 21h16M10 21v-5h4v5"/></svg>;
     case 'flask': return <svg {...common}><path d="M9.5 3v6L4.8 17.4A2 2 0 006.55 20.5h10.9a2 2 0 001.75-3.1L14.5 9V3"/><path d="M8.5 3h7M7.2 14.5h9.6"/></svg>;
     case 'book': return <svg {...common}><path d="M4 4.5A1.5 1.5 0 015.5 3H19v16H5.5A1.5 1.5 0 004 20.5V4.5z"/><path d="M4 17.5h15"/></svg>;

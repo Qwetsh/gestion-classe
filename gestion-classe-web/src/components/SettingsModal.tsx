@@ -39,6 +39,7 @@ const TAB_OPTIONS: { key: keyof HiddenTabs; label: string }[] = [
   { key: 'rewards', label: 'Recompenses' },
   { key: 'group-sessions', label: 'Groupes' },
   { key: 'evaluations', label: 'Evaluations' },
+  { key: 'productions', label: 'Productions' },
   { key: 'academy', label: 'Academie' },
   { key: 'tp-templates', label: 'Mes TP' },
   { key: 'brevets', label: 'Annales' },
