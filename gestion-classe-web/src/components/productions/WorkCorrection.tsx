@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   computeTotal,
+  deleteWork,
   saveWorkCorrection,
   setWorkStatus,
   fetchWorkVersions,
@@ -42,13 +43,14 @@ interface Props {
   groupMates: WorkRow[];
   onClose: () => void;
   onSaved: (updated: WorkRow[]) => void;
+  onDeleted: (workId: string) => void;
   onPrev?: () => void;
   onNext?: () => void;
   position?: { index: number; total: number };
   toast: (msg: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, onPrev, onNext, position, toast }: Props) {
+export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, onDeleted, onPrev, onNext, position, toast }: Props) {
   const def = activity.definition;
   const content = work.content as Record<string, unknown>;
   const [corr, setCorr] = useState<Correction>(() => work.correction ?? emptyCorrection());
@@ -131,6 +133,19 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
       await setWorkStatus(work.id, 'corrected');
       onSaved([{ ...work, status: 'corrected', validated_at: null }]);
       toast('Copie rouverte : l’élève peut renvoyer, et tu peux modifier la correction.', 'info');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
+  };
+
+  const remove = async () => {
+    const who = work.students?.pseudo ?? 'cet élève';
+    if (!window.confirm(`Supprimer définitivement la copie de ${who} (et son historique) ? Le prochain envoi de l’élève repartira de zéro.`)) return;
+    try {
+      await deleteWork(work.id);
+      onDeleted(work.id);
+      toast('Copie supprimée.', 'info');
+      onClose();
     } catch (e) {
       toast((e as Error).message, 'error');
     }
@@ -318,6 +333,7 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
           <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>
             {dirty ? 'Modifications non enregistrées.' : work.corrected_at ? `Corrigée le ${fmtDate(work.corrected_at)}${work.corrected_by === 'claude' ? ' par Claude' : ''}.` : 'Pas encore corrigée.'}
           </span>
+          <button onClick={remove} disabled={saving} style={{ ...btnGhost, color: 'var(--neg)' }}>Supprimer cette copie</button>
           {!locked && sameContent.length > 0 && (
             <button onClick={() => persist([work, ...sameContent], false)} disabled={saving} style={btnGhost} title={sameContent.map((m) => m.students?.pseudo).join(', ')}>
               Enregistrer pour le binôme ({sameContent.length + 1})

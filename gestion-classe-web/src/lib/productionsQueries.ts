@@ -191,6 +191,17 @@ export async function saveWorkCorrection(
   if (error) throw error;
 }
 
+/**
+ * Suppression définitive d'une production (et de son historique, en cascade).
+ * Volontairement pas un soft delete : la RPC student_work_save retrouve la ligne par
+ * (activity_id, student_id) et la réutiliserait en la laissant masquée. Après suppression,
+ * le prochain envoi de l'élève repart proprement d'une nouvelle ligne (envoi n°1).
+ */
+export async function deleteWork(workId: string): Promise<void> {
+  const { error } = await supabase.from('student_works').delete().eq('id', workId);
+  if (error) throw error;
+}
+
 export async function setWorkStatus(workId: string, status: WorkStatus): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (status === 'validated') patch.validated_at = new Date().toISOString();

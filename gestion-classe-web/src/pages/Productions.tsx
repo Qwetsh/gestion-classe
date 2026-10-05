@@ -259,6 +259,7 @@ export function Productions() {
           groupMates={works.filter((w) => w.id !== openWork.id && w.group_key && w.group_key === openWork.group_key)}
           onClose={() => setOpenId(null)}
           onSaved={(updated) => setWorks((ws) => ws.map((w) => updated.find((u) => u.id === w.id) ?? w))}
+          onDeleted={(id) => setWorks((ws) => ws.filter((w) => w.id !== id))}
           onPrev={openIndex > 0 ? () => setOpenId(ordered[openIndex - 1].id) : undefined}
           onNext={openIndex >= 0 && openIndex < ordered.length - 1 ? () => setOpenId(ordered[openIndex + 1].id) : undefined}
           position={openIndex >= 0 ? { index: openIndex, total: ordered.length } : undefined}
