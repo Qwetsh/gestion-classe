@@ -1,24 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { WorkCorrection } from '../components/productions/WorkCorrection';
 import {
   autoPoints,
   fetchActivities,
+  fetchActivityAssessments,
   fetchWorks,
   fetchClassStudents,
+  gradableWorks,
+  sendGradesToCarnet,
   updateActivity,
   WORK_STATUS_LABEL,
+  type ActivityAssessmentRow,
   type ActivityRow,
   type WorkRow,
   type WorkStatus,
 } from '../lib/productionsQueries';
+import { printWorks } from '../lib/productionsPrint';
 
 /**
  * Productions : les fiches d'activité que les élèves remplissent dans une application
  * (« Terre en mouvement »…) et envoient avec leur code. Ici : lecture et suivi des envois.
  * La correction par critères est dans components/productions/WorkCorrection.tsx.
- * Lien Claude, envoi des notes dans le carnet et impression : à venir.
+ * Par classe : « Envoyer les notes au carnet » (évaluation TP coef 1 créée au premier envoi, puis mise à jour)
+ * et « Imprimer les copies corrigées » (lib/productionsPrint.ts). Lien Claude : à venir.
  */
 
 const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
@@ -36,7 +43,10 @@ function fmtDate(iso: string | null): string {
 
 export function Productions() {
   const { toast: showToast } = useUIFeedback();
+  const { user } = useAuth();
   const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [links, setLinks] = useState<ActivityAssessmentRow[]>([]);   // évaluations du carnet liées, par classe
+  const [sending, setSending] = useState(false);
   const [activityId, setActivityId] = useState<string | null>(null);
   const [works, setWorks] = useState<WorkRow[]>([]);
   const [classId, setClassId] = useState<string>('');
@@ -75,6 +85,10 @@ export function Productions() {
 
   useEffect(() => { void loadActivities(); }, [loadActivities]);
   useEffect(() => { if (activityId) void loadWorks(activityId); }, [activityId, loadWorks]);
+  useEffect(() => {
+    if (!activityId) { setLinks([]); return; }
+    fetchActivityAssessments(activityId).then(setLinks).catch(() => setLinks([]));
+  }, [activityId]);
 
   // Classes présentes dans les envois de cette activité.
   const classOptions = useMemo(() => {
@@ -107,6 +121,39 @@ export function Productions() {
     for (const r of rows) { if (r.work) c[r.work.status]++; else c.none++; }
     return c;
   }, [rows]);
+
+  const classWorks = useMemo(() => works.filter((w) => w.class_id === classId), [works, classId]);
+  const gradable = useMemo(() => gradableWorks(classWorks), [classWorks]);
+  const className = classOptions.find(([id]) => id === classId)?.[1] ?? '';
+  const carnetLink = links.find((l) => l.class_id === classId && !l.written_assessments?.is_deleted) ?? null;
+
+  const sendToCarnet = async () => {
+    if (!activity || !user || !classId) return;
+    const msg = carnetLink
+      ? `Mettre à jour ${gradable.length} note${gradable.length > 1 ? 's' : ''} dans l’évaluation « ${carnetLink.written_assessments?.name ?? activity.title} » (${className}) ?`
+      : `Créer l’évaluation « ${activity.title} » (${className}, TP, coefficient 1, /${activity.bareme_total}) dans le carnet et y envoyer ${gradable.length} note${gradable.length > 1 ? 's' : ''} ?`;
+    if (!window.confirm(msg)) return;
+    setSending(true);
+    try {
+      const r = await sendGradesToCarnet({ userId: user.id, activity, classId, works: classWorks });
+      if (r.created) setLinks(await fetchActivityAssessments(activity.id));
+      showToast(`${r.sent} note${r.sent > 1 ? 's' : ''} envoyée${r.sent > 1 ? 's' : ''} au carnet${r.created ? ' (évaluation créée)' : ''}. Onglet Évaluations → Carnet.`, 'success');
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const print = () => {
+    if (!activity) return;
+    try {
+      const n = printWorks(activity, classWorks, className);
+      if (n === 0) showToast('Aucune copie corrigée à imprimer pour cette classe.', 'warning');
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
+  };
 
   const toggleAccepting = async () => {
     if (!activity) return;
@@ -208,6 +255,23 @@ export function Productions() {
                   {loadingWorks ? 'Actualisation…' : 'Actualiser'}
                 </button>
               </div>
+
+              {classId && (
+                <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: 'var(--text-muted)' }}>
+                    {gradable.length} copie{gradable.length > 1 ? 's' : ''} corrigée{gradable.length > 1 ? 's' : ''} sur {classWorks.length} reçue{classWorks.length > 1 ? 's' : ''}.
+                    {carnetLink
+                      ? <> Carnet : évaluation « {carnetLink.written_assessments?.name ?? activity.title} » liée, les envois suivants mettent les notes à jour.</>
+                      : <> Pas encore d’évaluation au carnet pour cette classe : elle sera créée au premier envoi (TP, coefficient 1, /{activity.bareme_total}).</>}
+                  </div>
+                  <button onClick={print} style={btnGhost} disabled={gradable.length === 0} title="Une page par élève : réponses, critères acquis, remarques, compétences, conseils">
+                    Imprimer les copies corrigées
+                  </button>
+                  <button onClick={sendToCarnet} style={btnPrimary} disabled={sending || gradable.length === 0 || !user}>
+                    {sending ? 'Envoi…' : carnetLink ? `Mettre à jour les notes au carnet (${gradable.length})` : `Envoyer les notes au carnet (${gradable.length})`}
+                  </button>
+                </div>
+              )}
 
               <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

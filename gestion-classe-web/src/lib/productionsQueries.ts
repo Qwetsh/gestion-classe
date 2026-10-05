@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { createAssessment, saveGrade } from './evaluationQueries';
+import { toTwenty } from './gradeStats';
 
 /**
  * Productions numériques : fiches d'activité remplies par les élèves dans une application
@@ -291,6 +293,80 @@ export async function saveWorkCorrection(
 export async function deleteWork(workId: string): Promise<void> {
   const { error } = await supabase.from('student_works').delete().eq('id', workId);
   if (error) throw error;
+}
+
+/* ---------- envoi des notes dans le carnet ---------- */
+
+/** Évaluation du carnet liée à une activité pour une classe (table activity_assessments). */
+export interface ActivityAssessmentRow {
+  activity_id: string;
+  class_id: string;
+  assessment_id: string;
+  written_assessments: { name: string; is_deleted: boolean } | null;
+}
+
+export async function fetchActivityAssessments(activityId: string): Promise<ActivityAssessmentRow[]> {
+  const { data, error } = await supabase
+    .from('activity_assessments')
+    .select('activity_id, class_id, assessment_id, written_assessments(name, is_deleted)')
+    .eq('activity_id', activityId);
+  if (error) throw error;
+  return (data ?? []) as unknown as ActivityAssessmentRow[];
+}
+
+/** Copies dont la note peut partir au carnet : corrigées ou validées, avec un total. */
+export const gradableWorks = (works: WorkRow[]): WorkRow[] =>
+  works.filter((w) => w.total_points != null && (w.status === 'corrected' || w.status === 'validated'));
+
+/**
+ * Envoie les notes des copies corrigées d'une classe dans le carnet.
+ * L'évaluation du carnet (TP, coefficient 1, barème de l'activité) est créée au premier envoi et mémorisée
+ * dans activity_assessments ; les envois suivants mettent les notes à jour sur la même évaluation.
+ */
+export async function sendGradesToCarnet(input: {
+  userId: string;
+  activity: ActivityRow;
+  classId: string;
+  works: WorkRow[];
+}): Promise<{ assessmentId: string; created: boolean; sent: number }> {
+  const bareme = Number(input.activity.bareme_total) || 10;
+  const links = await fetchActivityAssessments(input.activity.id);
+  const link = links.find((l) => l.class_id === input.classId);
+  let assessmentId = link && !link.written_assessments?.is_deleted ? link.assessment_id : null;
+  let created = false;
+  if (!assessmentId) {
+    const a = await createAssessment({
+      userId: input.userId,
+      classId: input.classId,
+      name: input.activity.title,
+      subject: 'SVT',
+      date: new Date().toISOString().slice(0, 10),
+      baremeTotal: bareme,
+      coefficient: 1,
+      kind: 'tp',
+    });
+    assessmentId = a.id;
+    created = true;
+    const { error } = await supabase
+      .from('activity_assessments')
+      .upsert({ activity_id: input.activity.id, class_id: input.classId, assessment_id: assessmentId, user_id: input.userId }, { onConflict: 'activity_id,class_id' });
+    if (error) throw error;
+  }
+  let sent = 0;
+  for (const w of gradableWorks(input.works)) {
+    const raw = Number(w.total_points);
+    const grade = toTwenty(raw, bareme);
+    await saveGrade({
+      userId: input.userId,
+      assessmentId,
+      studentId: w.student_id,
+      raw,
+      grade: grade == null ? null : Math.round(grade * 100) / 100,
+      status: 'noted',
+    });
+    sent++;
+  }
+  return { assessmentId, created, sent };
 }
 
 export async function setWorkStatus(workId: string, status: WorkStatus): Promise<void> {
