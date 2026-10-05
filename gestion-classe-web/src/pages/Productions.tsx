@@ -1,25 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { WorkCorrection } from '../components/productions/WorkCorrection';
 import {
   fetchActivities,
   fetchWorks,
   fetchClassStudents,
-  fetchWorkVersions,
   updateActivity,
   WORK_STATUS_LABEL,
   type ActivityRow,
-  type ActivityQuestion,
   type WorkRow,
   type WorkStatus,
-  type WorkVersionRow,
 } from '../lib/productionsQueries';
 
 /**
  * Productions : les fiches d'activité que les élèves remplissent dans une application
  * (« Terre en mouvement »…) et envoient avec leur code. Ici : lecture et suivi des envois.
- * La correction (par critères, par Claude), l'envoi des notes dans le carnet et l'impression
- * viennent dans un second temps, une fois les premières vraies copies reçues.
+ * La correction par critères est dans components/productions/WorkCorrection.tsx.
+ * Lien Claude, envoi des notes dans le carnet et impression : à venir.
  */
 
 const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
@@ -35,10 +33,6 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
-const ZONE_NAMES: Record<string, string> = {
-  islande: 'Islande', atlantique: 'Atlantique', andes: 'Andes', java: 'Java', himalaya: 'Himalaya', rhin: 'Fossé rhénan',
-};
-
 export function Productions() {
   const { toast: showToast } = useUIFeedback();
   const [activities, setActivities] = useState<ActivityRow[]>([]);
@@ -48,7 +42,7 @@ export function Productions() {
   const [classStudents, setClassStudents] = useState<{ id: string; pseudo: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingWorks, setLoadingWorks] = useState(false);
-  const [open, setOpen] = useState<WorkRow | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [showExpected, setShowExpected] = useState(false);
   const [expectedDraft, setExpectedDraft] = useState('');
 
@@ -101,6 +95,11 @@ export function Productions() {
     const byStudent = new Map(works.filter((w) => w.class_id === classId).map((w) => [w.student_id, w]));
     return classStudents.map((s) => ({ student: s, work: byStudent.get(s.id) ?? null }));
   }, [works, classStudents, classId]);
+
+  // Copies de la classe dans l'ordre du tableau, pour passer de l'une à l'autre.
+  const ordered = useMemo(() => rows.map((r) => r.work).filter((w): w is WorkRow => !!w), [rows]);
+  const openWork = useMemo(() => works.find((w) => w.id === openId) ?? null, [works, openId]);
+  const openIndex = openWork ? ordered.findIndex((w) => w.id === openWork.id) : -1;
 
   const counts = useMemo(() => {
     const c = { draft: 0, submitted: 0, corrected: 0, validated: 0, none: 0 };
@@ -158,7 +157,7 @@ export function Productions() {
             {activities.map((a) => (
               <button
                 key={a.id}
-                onClick={() => { setActivityId(a.id); setClassId(''); setOpen(null); }}
+                onClick={() => { setActivityId(a.id); setClassId(''); setOpenId(null); }}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', cursor: 'pointer',
                   background: a.id === activityId ? 'var(--surface-3)' : 'transparent', borderBottom: '1px solid var(--border)',
@@ -241,7 +240,7 @@ export function Productions() {
                         <td style={td}>{work ? work.version : '—'}</td>
                         <td style={td}>{work?.total_points != null ? `${work.total_points} / ${activity.bareme_total}` : '—'}</td>
                         <td style={{ ...td, textAlign: 'right' }}>
-                          {work && <button onClick={() => setOpen(work)} style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}>Lire</button>}
+                          {work && <button onClick={() => setOpenId(work.id)} style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}>{work.status === 'draft' ? 'Lire' : work.correction ? 'Revoir' : 'Corriger'}</button>}
                         </td>
                       </tr>
                     ))}
@@ -253,7 +252,19 @@ export function Productions() {
         </div>
       )}
 
-      {open && activity && <WorkModal work={open} activity={activity} onClose={() => setOpen(null)} />}
+      {openWork && activity && (
+        <WorkCorrection
+          work={openWork}
+          activity={activity}
+          groupMates={works.filter((w) => w.id !== openWork.id && w.group_key && w.group_key === openWork.group_key)}
+          onClose={() => setOpenId(null)}
+          onSaved={(updated) => setWorks((ws) => ws.map((w) => updated.find((u) => u.id === w.id) ?? w))}
+          onPrev={openIndex > 0 ? () => setOpenId(ordered[openIndex - 1].id) : undefined}
+          onNext={openIndex >= 0 && openIndex < ordered.length - 1 ? () => setOpenId(ordered[openIndex + 1].id) : undefined}
+          position={openIndex >= 0 ? { index: openIndex, total: ordered.length } : undefined}
+          toast={showToast}
+        />
+      )}
 
       {showExpected && activity && (
         <div style={overlay} onClick={() => setShowExpected(false)}>
@@ -274,123 +285,12 @@ export function Productions() {
   );
 }
 
-/* ---------- Lecture d'une production ---------- */
-
-function answerText(v: unknown): string {
-  if (v == null) return '';
-  return typeof v === 'string' ? v : JSON.stringify(v);
-}
-
-function WorkModal({ work, activity, onClose }: { work: WorkRow; activity: ActivityRow; onClose: () => void }) {
-  const def = activity.definition;
-  const c = work.content as Record<string, unknown>;
-  const [versions, setVersions] = useState<WorkVersionRow[] | null>(null);
-  const app = (c.app ?? null) as Record<string, { ok: boolean; type: string | null; etapes: number }> | null;
-
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
-
-  const renderQuestion = (q: ActivityQuestion) => {
-    const v = c[q.id];
-    if (q.type === 'tableau') {
-      const lignes = (v ?? {}) as Record<string, Record<string, string>>;
-      return (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface-3)' }}>
-              <th style={thSmall}>Zone</th>
-              {(def.colonnes_q1 ?? []).map((col) => <th key={col.id} style={thSmall}>{col.nom}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {(def.lignes_q1 ?? []).map((l) => {
-              const row = lignes[l.id] ?? {};
-              return (
-                <tr key={l.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={tdSmall}><strong>{ZONE_NAMES[row.zone] ?? row.zone ?? '—'}</strong></td>
-                  {(def.colonnes_q1 ?? []).map((col) => <td key={col.id} style={tdSmall}>{row[col.id] || <span style={{ color: 'var(--text-dim)' }}>—</span>}</td>)}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      );
-    }
-    if (q.type === 'deductive') {
-      const o = (v ?? {}) as Record<string, string>;
-      return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-          {(q.champs ?? []).map((ch) => (
-            <div key={ch.id} style={answerBox}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>{ch.nom}</div>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{o[ch.id] || <span style={{ color: 'var(--text-dim)' }}>—</span>}</div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    const t = answerText(v);
-    return <div style={{ ...answerBox, whiteSpace: 'pre-wrap' }}>{t || <span style={{ color: 'var(--text-dim)' }}>— (pas de réponse)</span>}</div>;
-  };
-
-  return (
-    <div style={overlay} onClick={onClose}>
-      <div style={{ ...modal, width: 'min(980px, 96vw)', maxHeight: '92vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>{work.students?.pseudo ?? 'Élève'} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {work.classes?.name ?? ''}</span></h2>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {activity.title} · {WORK_STATUS_LABEL[work.status]} · envoi n°{work.version} le {fmtDate(work.submitted_at)}
-              {work.group_pseudos.length > 1 && ` · binôme : ${work.group_pseudos.join(', ')}`}
-            </div>
-          </div>
-          <button onClick={onClose} style={btnGhost}>Fermer</button>
-        </div>
-
-        {app && (
-          <div style={{ ...answerBox, marginBottom: 12, fontSize: 12 }}>
-            <strong>Dans l’application :</strong>{' '}
-            {Object.entries(app).map(([z, s]) => `${ZONE_NAMES[z] ?? z} ${s.ok ? '✓' : `${s.etapes}/3`}${s.type ? ` (${s.type})` : ''}`).join(' · ') || 'aucune zone commencée'}
-          </div>
-        )}
-
-        {def.questions.map((q) => (
-          <section key={q.id} style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{q.num}. {q.titre}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{q.bonus ? 'bonus' : `${q.points} pt${q.points > 1 ? 's' : ''}`}</span>
-            </div>
-            <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--text-muted)' }}>{q.consigne}</p>
-            {renderQuestion(q)}
-          </section>
-        ))}
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-          {versions === null ? (
-            <button onClick={() => fetchWorkVersions(work.id).then(setVersions).catch(() => setVersions([]))} style={{ ...btnGhost, fontSize: 12 }}>Voir l’historique des envois</button>
-          ) : versions.length === 0 ? 'Aucun envoi archivé.' : (
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {versions.map((v) => <li key={v.id}>Envoi n°{v.version} · {fmtDate(v.submitted_at)}</li>)}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ---------- styles ---------- */
 
 const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 };
 const pill: React.CSSProperties = { display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 600 };
 const th: React.CSSProperties = { padding: '8px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' };
 const td: React.CSSProperties = { padding: '8px 12px', verticalAlign: 'top' };
-const thSmall: React.CSSProperties = { padding: '6px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left' };
-const tdSmall: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'top', whiteSpace: 'pre-wrap' };
-const answerBox: React.CSSProperties = { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 13 };
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };
 const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, color: 'var(--text)' };
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14 };
