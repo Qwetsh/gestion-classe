@@ -39,8 +39,9 @@ export interface ActivityQuestion {
 }
 
 /** Instantané envoyé par l'application avec chaque production. */
-export interface ActivityColumnField { id: string; nom?: string; unite?: string; choix?: boolean }
-export interface ActivityExpectedQ1 { relief: string; seismes: string; volcans: string; gps_sens: string; gps_vitesse: number; type: string; indices: string[] }
+export interface ActivityColumnField { id: string; nom?: string; unite?: string; choix?: boolean; bool?: boolean }
+/** v2-v3 : relief, seismes, volcans, gps_sens, gps_vitesse ; v4 (missions) : type, mouvement, indices. */
+export interface ActivityExpectedQ1 { relief?: string; seismes?: string; volcans?: string; gps_sens?: string; gps_vitesse?: number; mouvement?: string; type: string; indices: string[] }
 export interface ActivityDefinition {
   competences?: { id: string; nom: string }[];
   lignes_q1?: { id: string; choix: string[] }[];
@@ -186,14 +187,18 @@ export function computeTotal(def: ActivityDefinition, corr: WorkCorrection | nul
 
 /* ---------- correction automatique (réponses à choix) ---------- */
 
-export type Q1Row = Record<string, string | undefined>;
+export type Q1Row = Record<string, unknown>;
 
-/** Libellé d'une réponse à choix (ou la valeur brute si elle n'est pas dans les menus : ancienne version de la fiche). */
-export function q1Label(def: ActivityDefinition, field: ActivityColumnField, value: string | undefined): string {
+/** Libellé d'une valeur enregistrée : menu (id → nom), liste d'ids, booléen, nombre avec unité, ou valeur brute. */
+export function q1Label(def: ActivityDefinition, field: ActivityColumnField, value: unknown): string {
   if (value == null || value === '') return '';
-  const opt = def.choix_q1?.[field.id]?.find((o) => o.id === value);
+  if (Array.isArray(value)) return value.map((v) => q1Label(def, field, v)).filter(Boolean).join(', ');
+  if (typeof value === 'boolean' || field.bool) return value ? (field.nom ?? 'oui') : `non ${field.nom ?? ''}`.trim();
+  const s = String(value);
+  const opt = def.choix_q1?.[field.id]?.find((o) => o.id === s);
   if (opt) return opt.nom;
-  return field.unite ? `${value} ${field.unite}` : value;
+  const texte = field.unite ? `${s} ${field.unite}` : s;
+  return field.nom && !field.unite && typeof value === 'number' ? `${texte} ${field.nom}` : texte;
 }
 
 /**
@@ -201,14 +206,20 @@ export function q1Label(def: ActivityDefinition, field: ActivityColumnField, val
  * null : pas vérifiable (zone absente ou définition sans corrigé). Même règle que `verifierQ1` dans l'application.
  */
 export function checkQ1Cell(def: ActivityDefinition, row: Q1Row | undefined, colonne: string): boolean | null {
-  const att = row?.zone ? def.attendu_q1?.[row.zone] : undefined;
+  const zone = typeof row?.zone === 'string' ? row.zone : '';
+  const att = zone ? def.attendu_q1?.[zone] : undefined;
   if (!att || !row) return null;
+  // v4 : la question 1 est la mission de l'application.
+  if (colonne === 'finalisee') return row.ok === true;
+  if (colonne === 'hypothese') return row.ok === true && Number(row.essais_hyp) <= 2;
+  if (colonne === 'indice') return typeof row.indice === 'string' && !!row.indice && att.indices.includes(row.indice);
+  if (colonne === 'type' && 'essais_type' in row) return row.ok === true && Number(row.essais_type) <= 1;
+  // v2-v3 : réponses à choix.
   if (colonne === 'gps') {
     const v = parseFloat(String(row.gps_vitesse ?? '').replace(',', '.'));
     const tol = def.tolerance_vitesse ?? 0.5;
-    return row.gps_sens === att.gps_sens && Number.isFinite(v) && Math.abs(v - att.gps_vitesse) <= tol;
+    return row.gps_sens === att.gps_sens && Number.isFinite(v) && att.gps_vitesse != null && Math.abs(v - att.gps_vitesse) <= tol;
   }
-  if (colonne === 'indice') return !!row.indice && att.indices.includes(row.indice);
   const key = colonne as keyof ActivityExpectedQ1;
   return !!row[colonne] && row[colonne] === att[key];
 }

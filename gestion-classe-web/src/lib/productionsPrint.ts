@@ -36,7 +36,7 @@ function answerHtml(def: ActivityRow['definition'], q: ActivityQuestion, content
         const mark = auto === true ? '<b class="ok">✓</b> ' : auto === false ? '<b class="ko">✗</b> ' : '';
         return `<div><span class="lbl">${esc(col.nom)} :</span> ${texte ? mark + esc(texte) : '<span class="vide">—</span>'}</div>`;
       });
-      return `<tr><td class="zone"><b>Ligne ${i + 1}</b><br>${esc(ZONE_NAMES[row.zone ?? ''] ?? row.zone ?? '—')}</td><td>${cells.join('')}</td></tr>`;
+      return `<tr><td class="zone"><b>Ligne ${i + 1}</b><br>${esc(ZONE_NAMES[String(row.zone ?? '')] ?? row.zone ?? '—')}</td><td>${cells.join('')}</td></tr>`;
     });
     return `<table class="q1">${rows.join('')}</table>`;
   }

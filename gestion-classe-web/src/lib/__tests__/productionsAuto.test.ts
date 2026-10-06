@@ -73,6 +73,29 @@ describe('correction automatique des réponses à choix', () => {
     expect(q1Label(def, { id: 'relief' }, undefined)).toBe('');
   });
 
+  it('corrige la question 1 version « missions » (v4)', () => {
+    const d4: ActivityDefinition = {
+      lignes_q1: [{ id: 'l1', choix: ['islande', 'atlantique'] }],
+      attendu_q1: { islande: { type: 'divergence', mouvement: 'ecartent', indices: ['gps_ecartent', 'ocean_effusif'] } },
+      choix_q1: { indice: [{ id: 'gps_ecartent', nom: 'GPS : s’écartent' }], indices: [{ id: 'effusif', nom: 'volcans effusifs' }] },
+      questions: [{
+        id: 'q1', num: '1', points: 1, type: 'tableau', titre: '', consigne: '', auto: true,
+        criteres: [
+          { id: 'l1_finalisee', nom: '', points: 0.5, auto: { ligne: 'l1', colonne: 'finalisee' } },
+          { id: 'l1_hypothese', nom: '', points: 0.15, auto: { ligne: 'l1', colonne: 'hypothese' } },
+          { id: 'l1_type', nom: '', points: 0.1, auto: { ligne: 'l1', colonne: 'type' } },
+          { id: 'l1_indice', nom: '', points: 0.25, auto: { ligne: 'l1', colonne: 'indice' } },
+        ],
+      }],
+    };
+    const row = { zone: 'islande', ok: true, mouvement: 'ecartent', indices: ['effusif'], vitesse: '1,9', essais_hyp: 2, type: 'divergence', essais_type: 2, indice: 'gps_ecartent' };
+    expect(autoCorrection(d4, { q1: { l1: row } })).toEqual({ q1: { l1_finalisee: true, l1_hypothese: true, l1_type: false, l1_indice: true } });
+    expect(autoPoints(d4, { q1: { l1: { ...row, ok: false } } })).toEqual({ points: 0.25, max: 1 });
+    expect(q1Label(d4, { id: 'indices', choix: true }, ['effusif', 'inconnu'])).toBe('volcans effusifs, inconnu');
+    expect(q1Label(d4, { id: 'ok', bool: true, nom: 'finalisée' }, true)).toBe('finalisée');
+    expect(q1Label(d4, { id: 'essais_hyp', nom: 'essais' }, 2)).toBe('2 essais');
+  });
+
   it('ignore les activités sans question fermée', () => {
     const sans: ActivityDefinition = { questions: [{ id: 'q3', num: '3', points: 1, type: 'texte', titre: '', consigne: '', criteres: [{ id: 'r', nom: '', points: 1 }] }] };
     expect(hasAuto(sans)).toBe(false);

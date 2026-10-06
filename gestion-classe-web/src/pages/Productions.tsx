@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -19,13 +19,16 @@ import {
   type WorkStatus,
 } from '../lib/productionsQueries';
 import { printWorks } from '../lib/productionsPrint';
+import { buildClaudeExport, downloadText, importClaudeCorrections, parseClaudeCorrection } from '../lib/productionsExport';
 
 /**
  * Productions : les fiches d'activité que les élèves remplissent dans une application
  * (« Terre en mouvement »…) et envoient avec leur code. Ici : lecture et suivi des envois.
  * La correction par critères est dans components/productions/WorkCorrection.tsx.
  * Par classe : « Envoyer les notes au carnet » (évaluation TP coef 1 créée au premier envoi, puis mise à jour)
- * et « Imprimer les copies corrigées » (lib/productionsPrint.ts). Lien Claude : à venir.
+ * et « Imprimer les copies corrigées » (lib/productionsPrint.ts). Correction par Claude : « Exporter pour Claude »
+ * (document Markdown avec consignes, barème, corrigé et copies) puis « Importer la correction Claude » (JSON renvoyé),
+ * voir lib/productionsExport.ts.
  */
 
 const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
@@ -47,6 +50,8 @@ export function Productions() {
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [links, setLinks] = useState<ActivityAssessmentRow[]>([]);   // évaluations du carnet liées, par classe
   const [sending, setSending] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [activityId, setActivityId] = useState<string | null>(null);
   const [works, setWorks] = useState<WorkRow[]>([]);
   const [classId, setClassId] = useState<string>('');
@@ -142,6 +147,35 @@ export function Productions() {
       showToast((e as Error).message, 'error');
     } finally {
       setSending(false);
+    }
+  };
+
+  const exportable = useMemo(() => classWorks.filter((w) => w.status !== 'draft'), [classWorks]);
+
+  const exportClaude = () => {
+    if (!activity) return;
+    if (exportable.length === 0) { showToast('Aucune copie envoyée dans cette classe.', 'warning'); return; }
+    const md = buildClaudeExport(activity, exportable, className);
+    const slug = `${activity.key}_${className}`.replace(/[^A-Za-z0-9_-]+/g, '-');
+    downloadText(`correction-claude_${slug}.md`, md);
+    showToast(`${exportable.length} copie${exportable.length > 1 ? 's' : ''} exportée${exportable.length > 1 ? 's' : ''}. Donne ce fichier à Claude, puis importe sa réponse JSON ici.`, 'success');
+  };
+
+  const importClaude = async (file: File) => {
+    if (!activity) return;
+    setImporting(true);
+    try {
+      const entries = parseClaudeCorrection(await file.text());
+      if (entries.length === 0) throw new Error('Aucune copie reconnue dans ce fichier (il faut un tableau d’objets avec work_id).');
+      const r = await importClaudeCorrections(activity, classWorks, entries);
+      setWorks((ws) => ws.map((w) => r.updated.find((u) => u.id === w.id) ?? w));
+      const msg = `${r.updated.length} correction${r.updated.length > 1 ? 's' : ''} importée${r.updated.length > 1 ? 's' : ''} (par Claude)${r.skipped.length ? ` · ${r.skipped.length} ignorée${r.skipped.length > 1 ? 's' : ''} : ${r.skipped.join(' ; ')}` : ''}.`;
+      showToast(msg, r.updated.length ? 'success' : 'warning');
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    } finally {
+      setImporting(false);
+      if (fileInput.current) fileInput.current.value = '';
     }
   };
 
@@ -264,6 +298,14 @@ export function Productions() {
                       ? <> Carnet : évaluation « {carnetLink.written_assessments?.name ?? activity.title} » liée, les envois suivants mettent les notes à jour.</>
                       : <> Pas encore d’évaluation au carnet pour cette classe : elle sera créée au premier envoi (TP, coefficient 1, /{activity.bareme_total}).</>}
                   </div>
+                  <button onClick={exportClaude} style={btnGhost} disabled={exportable.length === 0} title="Fichier Markdown à donner à un Claude correcteur : consignes, barème, corrigé attendu et les copies envoyées">
+                    Exporter pour Claude ({exportable.length})
+                  </button>
+                  <button onClick={() => fileInput.current?.click()} style={btnGhost} disabled={importing || exportable.length === 0} title="Fichier JSON (ou texte contenant le bloc JSON) renvoyé par Claude : critères, remarques, compétences, conseils">
+                    {importing ? 'Import…' : 'Importer la correction Claude'}
+                  </button>
+                  <input ref={fileInput} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" style={{ display: 'none' }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void importClaude(f); }} />
                   <button onClick={print} style={btnGhost} disabled={gradable.length === 0} title="Une page par élève : réponses, critères acquis, remarques, compétences, conseils">
                     Imprimer les copies corrigées
                   </button>

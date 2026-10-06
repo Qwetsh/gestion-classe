@@ -187,7 +187,7 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
               const row = lignes[l.id] ?? {};
               return (
                 <tr key={l.id} style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
-                  <td style={{ ...tdSmall, width: 90 }}><strong>Ligne {i + 1}</strong><br />{ZONE_NAMES[row.zone ?? ''] ?? row.zone ?? '—'}</td>
+                  <td style={{ ...tdSmall, width: 90 }}><strong>Ligne {i + 1}</strong><br />{ZONE_NAMES[String(row.zone ?? '')] ?? String(row.zone ?? '—')}</td>
                   <td style={tdSmall}>
                     {(def.colonnes_q1 ?? []).map((col) => {
                       // Définition v2 : cases listées par `champs` (menus, nombre) ; v1 : un texte libre par colonne.
