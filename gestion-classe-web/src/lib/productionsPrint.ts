@@ -1,4 +1,4 @@
-import { checkQ1Cell, q1Label, type ActivityQuestion, type ActivityRow, type Q1Row, type WorkRow } from './productionsQueries';
+import { ZONE_NAMES, checkQ1Cell, q1Label, questionScore, type ActivityQuestion, type ActivityRow, type Q1Row, type WorkRow } from './productionsQueries';
 
 /**
  * Impression des copies corrigées d'une activité numérique : une page par élève, avec ses réponses,
@@ -6,22 +6,12 @@ import { checkQ1Cell, q1Label, type ActivityQuestion, type ActivityRow, type Q1R
  * Ouvre une fenêtre d'impression du navigateur (HTML autonome, aucune dépendance).
  */
 
-const ZONE_NAMES: Record<string, string> = {
-  islande: 'Islande', atlantique: 'Atlantique', andes: 'Andes', java: 'Java', himalaya: 'Himalaya', rhin: 'Fossé rhénan',
-};
 const SKILL_LEVELS = ['Insuffisante', 'Fragile', 'Satisfaisante', 'Très bonne'];
 
 const esc = (s: unknown): string =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const pts = (n: number): string => String(Math.round(n * 100) / 100).replace('.', ',');
 const fmtDate = (iso: string | null): string => (iso ? new Date(iso).toLocaleDateString('fr-FR') : '');
-
-function questionPoints(q: ActivityQuestion, work: WorkRow): number {
-  const c = work.correction?.questions[q.id];
-  if (!c) return 0;
-  if (typeof c.points === 'number') return c.points;
-  return q.criteres.reduce((s, cr) => s + (c.criteres?.[cr.id] ? cr.points : 0), 0);
-}
 
 function answerHtml(def: ActivityRow['definition'], q: ActivityQuestion, content: Record<string, unknown>): string {
   const v = content[q.id];
@@ -61,7 +51,7 @@ function copyHtml(activity: ActivityRow, work: WorkRow): string {
     return `
       <section class="question">
         <header><span class="num">${esc(q.num)}</span><span class="titre">${esc(q.titre)}</span>
-          <span class="score">${q.bonus ? 'bonus' : `${pts(questionPoints(q, work))} / ${pts(q.points)}`}</span></header>
+          <span class="score">${q.bonus ? 'bonus' : `${pts(questionScore(q, work.correction))} / ${pts(q.points)}`}</span></header>
         <div class="corps">
           <div class="reponse">${answerHtml(def, q, content)}</div>
           <div class="criteres"><ul>${crit.join('')}</ul>${c?.remarque ? `<p class="remarque">${esc(c.remarque)}</p>` : ''}</div>

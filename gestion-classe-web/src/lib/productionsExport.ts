@@ -1,4 +1,5 @@
 import {
+  ZONE_NAMES,
   applyAuto,
   autoPoints,
   checkQ1Cell,
@@ -19,9 +20,6 @@ import {
  * La question 1 (réponses fermées) reste corrigée automatiquement ici : le correcteur ne la touche pas.
  */
 
-const ZONE_NAMES: Record<string, string> = {
-  islande: 'Islande', atlantique: 'Atlantique', andes: 'Andes', java: 'Java', himalaya: 'Himalaya', rhin: 'Fossé rhénan',
-};
 const pts = (n: number): string => String(Math.round(n * 100) / 100).replace('.', ',');
 const today = (): string => new Date().toLocaleDateString('fr-FR');
 

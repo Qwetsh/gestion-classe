@@ -171,6 +171,19 @@ export async function fetchClassStudents(classId: string): Promise<{ id: string;
   return data ?? [];
 }
 
+/** Noms affichés des zones de la question 1 (export, impression, copie vue par l'élève). */
+export const ZONE_NAMES: Record<string, string> = {
+  islande: 'Islande', atlantique: 'Atlantique', andes: 'Andes', java: 'Java', himalaya: 'Himalaya', rhin: 'Fossé rhénan',
+};
+
+/** Points obtenus à une question : points libres s'ils sont saisis, sinon somme des critères cochés. */
+export function questionScore(q: ActivityQuestion, corr: WorkCorrection | null | undefined): number {
+  const c = corr?.questions[q.id];
+  if (!c) return 0;
+  if (typeof c.points === 'number') return c.points;
+  return Math.round(q.criteres.reduce((s, cr) => s + (c.criteres?.[cr.id] ? cr.points : 0), 0) * 100) / 100;
+}
+
 /** Total d'une correction d'après les critères cochés (ou les points libres), bonus exclu. */
 export function computeTotal(def: ActivityDefinition, corr: WorkCorrection | null): number | null {
   if (!corr) return null;

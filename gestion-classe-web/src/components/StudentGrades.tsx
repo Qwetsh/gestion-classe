@@ -6,9 +6,11 @@ import {
   type StudentDocKind,
 } from '../lib/studentGrades';
 import { formatGrade, STATUS_LABEL, studentAverage, type GradeStatus } from '../lib/gradeStats';
+import { StudentWorkSheet } from './StudentWorkSheet';
 
 /**
- * Onglet « Évals » de l'espace élève : ses notes, le sujet et le corrigé.
+ * Onglet « Évals » de l'espace élève : ses notes, le sujet et le corrigé, et pour les activités
+ * numériques sa copie corrigée (StudentWorkSheet, plein écran pensé pour le téléphone).
  *
  * L'élève ne voit que ses propres notes — aucune moyenne de classe, aucun classement sur
  * les évaluations. Les moyennes sont calculées ici avec `gradeStats`, le même module que
@@ -52,6 +54,7 @@ export function StudentGrades({ code }: { code: string }) {
   const [rows, setRows] = useState<StudentAssessment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<StudentAssessment | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -158,8 +161,13 @@ export function StudentGrades({ code }: { code: string }) {
                 <p style={{ color: T.textMuted, fontSize: 13, margin: '10px 0 0' }}>{a.comment}</p>
               )}
 
-              {(a.has_subject || a.has_correction) && (
+              {(a.has_subject || a.has_correction || a.has_work) && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  {a.has_work && (
+                    <button onClick={() => setSheet(a)} style={{ ...docBtn, borderColor: T.indigo + '77', color: T.indigo }}>
+                      📝 Ma copie corrigée
+                    </button>
+                  )}
                   {a.has_subject && (
                     <button onClick={() => { void openDoc(a, 'subject'); }} disabled={opening === `${a.id}|subject`} style={docBtn}>
                       {opening === `${a.id}|subject` ? '…' : '📄 Le sujet'}
@@ -176,6 +184,10 @@ export function StudentGrades({ code }: { code: string }) {
           );
         })}
       </div>
+
+      {sheet && (
+        <StudentWorkSheet code={code} assessmentId={sheet.id} assessmentName={sheet.name} onClose={() => setSheet(null)} />
+      )}
     </div>
   );
 }

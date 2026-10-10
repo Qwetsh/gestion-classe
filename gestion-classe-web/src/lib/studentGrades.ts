@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { GradeStatus } from './gradeStats';
+import type { ActivityDefinition, WorkCorrection } from './productionsQueries';
 
 /**
  * Espace élève — notes d'évaluation (migration 040).
@@ -28,6 +29,8 @@ export interface StudentAssessment {
   status: GradeStatus;
   has_subject: boolean;
   has_correction: boolean;
+  /** Activité numérique : la copie corrigée de l'élève est consultable (migration 047). */
+  has_work: boolean;
 }
 
 export interface StudentGradesResult {
@@ -64,4 +67,44 @@ export async function fetchStudentDocUrl(
   const url = (data as { url?: string } | null)?.url;
   if (!url) throw new Error('Document indisponible');
   return url;
+}
+
+/* ---------- copie corrigée d'une activité numérique (migration 047) ---------- */
+
+export interface StudentWorkActivity {
+  title: string;
+  sequence: string | null;
+  level: string | null;
+  bareme_total: number;
+  definition: ActivityDefinition;
+  definition_version: number;
+}
+
+export interface StudentWorkView {
+  content: Record<string, unknown>;
+  correction: WorkCorrection;
+  advice: string | null;
+  skills: Record<string, number> | null;
+  total_points: number | null;
+  status: 'corrected' | 'validated';
+  version: number;
+  submitted_at: string | null;
+  corrected_at: string | null;
+  group_pseudos: string[];
+}
+
+/**
+ * La copie corrigée de l'élève pour une évaluation issue d'une activité numérique.
+ * La RPC revérifie les trois verrous (onglet ouvert, évaluation publiée, copie corrigée)
+ * et ne renvoie jamais le corrigé attendu de l'enseignant. null si rien à montrer.
+ */
+export async function fetchStudentWorkCorrection(
+  code: string,
+  assessmentId: string,
+): Promise<{ activity: StudentWorkActivity; work: StudentWorkView } | null> {
+  const { data, error } = await supabase.rpc('get_student_work_correction', { p_code: code, p_assessment_id: assessmentId });
+  if (error) throw error;
+  const r = data as { found?: boolean; error?: string; activity?: StudentWorkActivity; work?: StudentWorkView } | null;
+  if (!r || r.error || !r.found || !r.activity || !r.work) return null;
+  return { activity: r.activity, work: r.work };
 }
