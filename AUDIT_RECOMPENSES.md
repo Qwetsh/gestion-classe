@@ -233,3 +233,11 @@ Dérive de schéma (index uniques non versionnés) ; dédoublonnage par libellé
 3. L'heuristique milliseconde/microseconde n'a pas de colonne `source` pour la confirmer ; en ajouter une sur `stamps`.
 4. Logs Postgres limités à 24 h : rien sur les 7-8 octobre.
 5. Sémantique PostgREST `ignoreDuplicates` sur un autre index unique (A3) à confirmer par un test contrôlé.
+
+## Correctifs appliqués le 10/10/2026 (mobile da9de70, migration 049)
+
+- **A1** : push unitaire (catégories, bonus, cartes, tampons) ; succès marqués un à un ; échecs remontés avec leur identifiant dans le résultat de synchro ; les tampons dont la carte n'est pas sur le serveur comptent comme erreurs (plus de `return 0` silencieux). `syncService.ts`.
+- **A2** : index `unique_category_per_user` / `unique_bonus_per_user` versionnés (migration 049) ; au 23505 sur le libellé, adoption de la ligne serveur (`adoptServerCategory` / `adoptServerBonus`, tampons et choix de bonus réaffectés) ; `cleanupDuplicateCategories` garde la catégorie synchronisée comme keeper ; fusion appelée au pull des catégories.
+- **A3** : `syncStore.sync` pousse même si le pull échoue ou dépasse le délai ; `pushPending` (push seul) relancé 15 s après un envoi immédiat raté, et au retour au premier plan (`useAutoSync`, `AppState`) ; synchro complète au premier plan si la dernière date de plus de 30 min ; compteur d'attente réel (plus remis à 0 d'office) et badge numérique sur le bouton de synchro ; en séance, `awardStamp` résout immédiatement le conflit de carte (23505 → remappage sur l'UUID serveur) et le conflit d'emplacement (premier slot libre, un nouvel essai) ; les écrans annoncent « enregistré sur le téléphone, envoi en attente » quand le tampon n'est pas parti.
+- **B1** : verrou `withSyncLock` sur `syncAll`, `pullFromServer`, `pullStudentStamps`, `pullStampConfigOnly` ; au pull, suppression locale seulement si `synced_at < début du pull` (7 boucles).
+- Restent ouverts : B2 (tampon au-delà du slot 10 invisible), B3, B4, et l'ajout d'une colonne `source` sur `stamps`. L'APK doit être reconstruit pour que ces correctifs atteignent les téléphones.
