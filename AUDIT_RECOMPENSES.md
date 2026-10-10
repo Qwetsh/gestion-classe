@@ -191,3 +191,45 @@ Requête SQL de contrôle des trous côté serveur :
 SELECT card_id, count(*) n, max(slot_number) max_slot
 FROM stamps GROUP BY card_id HAVING max(slot_number) <> count(*);
 ```
+
+---
+---
+
+# Audit n°2 — tampons posés depuis le mobile non pris en compte (lecture seule)
+
+Date : 2026-10-10. Déclencheur : retours d'enseignants, « certains tampons posés depuis l'application mobile n'ont pas été pris en compte ». Périmètre : chemin complet mobile (attribution → SQLite → push/pull), web, RPC élève, base de production.
+
+État prod : 279 cartes, 257 tampons, 0 doublon `(card_id, slot_number)`, 0 carte > 10, 0 élève à deux cartes actives, 0 tampon orphelin ou sans catégorie, 0 carte `completed` sans bonus. Le P0 du 12/09 (`upsertLocalRow` + `remapLocalCard`, plus aucun `INSERT OR REPLACE`, `pending_deletions`) est bien en place partout.
+
+**Conclusion : la base n'est pas corrompue ; les tampons n'arrivent pas (ou tardent) au serveur, sans aucun retour à l'enseignant.** Indice : pour l'enseignant principal, 100 % des tampons du 24/09 au 05/10 ont une `awarded_at` à la milliseconde (client mobile) ; le 08/10, 0 tampon mobile et une rafale de 9 tampons web en 110 s sur 9 élèves, typique d'une ressaisie. Si les tampons mobiles correspondants sont encore en attente sur le téléphone, le prochain sync réussi créera des doublons.
+
+## A. Graves
+
+### A1. Push « tout ou rien » : un tampon invalide bloque tous les autres, durablement, sans message
+`services/sync/syncService.ts:1484` : un seul `upsert` pour tous les tampons en attente ; une FK ou RLS en échec sur une ligne ⇒ aucun `synced_at` posé, même erreur à chaque sync, visible seulement sur l'écran de sync manuelle. Idem catégories (:1309) et cartes (:1394). En plus, :1414-1419 écarte **silencieusement** les tampons dont la carte n'est pas sur le serveur (`return 0` = « réussi »).
+Correctif : pousser par tampon (ou par carte), marquer `synced_at` individuellement, remonter chaque échec avec son id, compter les tampons écartés comme erreurs, afficher « N tampons non envoyés » (le badge de `SyncButton` n'indique qu'un point).
+
+### A2. Catégorie locale impossible à pousser ⇒ tous ses tampons bloqués
+La prod a les index `unique_category_per_user (user_id, label)` et `unique_bonus_per_user (user_id, label)`, **absents du dépôt**. Si le premier `pullStampConfigOnly` échoue (hors ligne), `seedDefaultStampData` sème 19 catégories locales aux mêmes libellés que le serveur ; au pull suivant les locales non synchronisées ne sont pas supprimées (:1621) et `cleanupDuplicateCategories` (`stampRepository.ts:158-180`) peut garder la locale comme « keeper » (mêmes `display_order`). Chaque tampon posé référence un `category_id` inconnu du serveur ⇒ FK 23503 au push immédiat (`console.warn`), 23505 au push de la catégorie, puis A1.
+Correctif : versionner les deux index ; au 23505 sur le libellé, récupérer l'id serveur, remapper `stamps.category_id`, supprimer la locale ; `cleanupDuplicateCategories` : garder la catégorie synchronisée ; au pull, fusionner une locale non synchronisée dont le libellé existe sur le serveur.
+
+### A3. Aucune relance de synchronisation ; échec immédiat fréquent quand la carte active a été créée côté serveur
+Sync auto **une fois par lancement** (`app/(main)/index.tsx:97`, `hasAutoSynced`), même si elle échoue ; rien au retour du réseau ni au retour au premier plan. `syncStore.sync` fait pull puis push sous `withTimeout(2 min)` : un pull trop long ⇒ **push jamais exécuté**. Dans `awardStamp` (`stampRepository.ts:477-510`) toute erreur de push est avalée et l'écran affiche quand même « Tampon attribué ». Cas systématique : la carte active a été créée côté serveur (RPC `award_stamp` web, `get_student_stamps` de l'espace élève, reset web) après le dernier pull ⇒ le mobile crée sa carte n°N (MAX+1 local), l'upsert `{ onConflict: 'id', ignoreDuplicates: true }` part en 23505 sur `(student_id, card_number)` ⇒ `cardOnServer` reste faux ⇒ le tampon n'est même pas tenté avant le prochain `syncAll` réussi.
+Conséquence : web et espace élève ne voient pas le tampon ⇒ ressaisie ⇒ doublon au sync suivant.
+Correctif : relancer la sync au retour réseau (`NetInfo`) et à `AppState` « active » ; ne pas conditionner le push au succès du pull ; au 23505 sur la carte, résoudre l'id serveur `(student_id, card_number)` et remapper immédiatement ; indicateur « en attente » sur le tampon et badge global. À terme : RPC `award_stamp` quand le téléphone est en ligne, chemin local seulement hors ligne.
+
+## B. Majeurs
+- **B1. Course pull ↔ attribution** (`syncService.ts:1770-1781` tampons, :1708-1731 cartes) : une ligne poussée et marquée `synced_at` entre la lecture serveur et la lecture locale est supprimée (cascade sur les tampons pour une carte). Déclencheurs : `pullStudentStamps` à chaque focus de la fiche élève (`history.tsx:203-212`), sync de fond ; aucun verrou `isSyncing` dans `syncService`. Correctif : ne supprimer que si `synced_at` < début du pull ; mutex commun.
+- **B2. Tampon décalé au-delà du slot 10** (pull :1801-1805, `?? 21`) : invisible (10 cases rendues) mais compté (« 11/10 ») ; replacé sur la carte suivante seulement si elle existe déjà localement et est synchronisée. Correctif : bandeau « tampon en attente de la prochaine carte », création/push de la carte suivante.
+- **B3. Reset web d'un élève** partiellement annulé par les tampons mobiles non poussés (remap sur la nouvelle carte n°1) : voulu, mais surprenant.
+- **B4. RPC `select_student_bonus`** (définition prod) : `status='active' LIMIT 1` sans `ORDER BY`, insertion de la carte n+1 sans `ON CONFLICT`.
+
+## C. Mineurs
+Dérive de schéma (index uniques non versionnés) ; dédoublonnage par libellé fait séparément web/mobile ; `syncStamps:1416` sans `.eq('user_id')` (RLS filtre) ; `lastSyncResult.errors` consulté seulement sur l'écran de sync manuelle.
+
+## Hypothèses non vérifiables depuis le poste
+1. Contenu SQLite des téléphones : `SELECT * FROM stamps WHERE synced_at IS NULL` ; `SELECT * FROM stamp_cards WHERE synced_at IS NULL` ; `SELECT label, synced_at, COUNT(*) FROM stamp_categories GROUP BY label HAVING COUNT(*) > 1` — test décisif pour A1/A2/A3 et pour prévenir les doublons après ressaisie.
+2. Version de l'APK d'Aurélie (contient-il le P0 du 12/09 ?).
+3. L'heuristique milliseconde/microseconde n'a pas de colonne `source` pour la confirmer ; en ajouter une sur `stamps`.
+4. Logs Postgres limités à 24 h : rien sur les 7-8 octobre.
+5. Sémantique PostgREST `ignoreDuplicates` sur un autre index unique (A3) à confirmer par un test contrôlé.
