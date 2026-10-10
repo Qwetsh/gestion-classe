@@ -231,7 +231,9 @@ export function StudentDashboard() {
         setIsLoading(false);
         return;
       }
-      setData(result);
+      // La RPC get_student_dashboard renvoie « bavardages » (nom historique du type d'événement) ;
+      // l'interface parle de « malus » depuis le renommage des libellés.
+      setData({ ...result, malus: Number(result.malus ?? result.bavardages ?? 0) });
 
       // Load stamp data
       setStampLoading(true);
