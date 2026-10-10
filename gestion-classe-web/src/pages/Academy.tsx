@@ -409,7 +409,7 @@ export function Academy() {
                         {awardAmount > 0 ? '+' : ''}{awardAmount}
                       </div>
                     </div>
-                    <input type="range" min="-50" max="100" step="5" value={awardAmount} onChange={e => setAwardAmount(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--gold)' }} />
+                    <input type="range" min="-50" max="100" step="1" value={awardAmount} onChange={e => setAwardAmount(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--gold)' }} />
                   </div>
 
                   {/* Hidden toggle */}
