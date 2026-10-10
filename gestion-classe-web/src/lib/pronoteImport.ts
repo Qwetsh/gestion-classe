@@ -3,13 +3,19 @@ import type { GradeStatus } from './gradeStats';
 /**
  * Lecture d'un export de notes Pronote (CSV « Notes d'une classe »).
  *
- * Structure observée :
+ * Structure observée (trois lignes d'en-tête) :
  *   ;;;01/10                      ← date de chaque évaluation (colonnes d'évaluation seulement)
  *   29 élèves;Moyenne;N.R.;       ← libellés ; « Moyenne » et « N.R. » sont des colonnes de synthèse
  *   ;;;1-/10                      ← coefficient puis « -/ » puis barème
  *   "BACHARI Amina";"14,00";"";"7,00"
  *   …
  *   "Moyenne de la classe :";…    ← ligne de synthèse, ignorée
+ *
+ * Variante à deux lignes d'en-tête (observée le 10/10/2026, export d'un seul devoir) : les barèmes
+ * sont sur la ligne des libellés, qui commence par le nombre d'élèves :
+ *   ;;22/09
+ *   29 élèves;Moyenne;1-/10
+ *   "AGAZZI Thomas";"20,00";"10,00"
  *
  * La colonne « Moyenne » est ramenée sur 20 : elle ne doit jamais être prise pour une note.
  * Le nom de l'évaluation n'est pas dans le fichier (seulement la matière, dans le nom du
@@ -113,16 +119,22 @@ export function parsePronoteCsv(text: string): PronoteExport {
   const rows = splitCsv(text).filter((r) => r.some((c) => c.trim() !== ''));
   if (rows.length < 3) throw new Error('Fichier trop court : ce n’est pas un export de notes Pronote.');
 
-  // Les trois lignes d'en-tête : la dernière contient les « coef-/barème ». Une date
-  // (« 01/10 ») ressemble à un barème (« 1/10 ») : on retient la première ligne sans
-  // nom d'élève après la première, ce qui écarte la ligne des dates.
-  const baremeRowIdx = rows.findIndex(
-    (r, i) => i >= 1 && i < 6 && (r[0] ?? '').trim() === '' && r.slice(1).some((c) => /\/\s*\d/.test(c)),
-  );
+  // La ligne des barèmes porte des cellules « coef-/barème » (« 1-/10 »). Une date (« 01/10 »)
+  // ressemble à un barème (« 1/10 ») : le tiret avant la barre les distingue. À défaut de tiret,
+  // on retient la première ligne sans nom d'élève après la première, ce qui écarte la ligne des dates.
+  const isBaremeCell = (c: string) => /-\s*\/\s*\d/.test(c);
+  let baremeRowIdx = rows.findIndex((r, i) => i >= 1 && i < 6 && r.slice(1).some(isBaremeCell));
+  if (baremeRowIdx < 0) {
+    baremeRowIdx = rows.findIndex(
+      (r, i) => i >= 1 && i < 6 && (r[0] ?? '').trim() === '' && r.slice(1).some((c) => /\/\s*\d/.test(c)),
+    );
+  }
   if (baremeRowIdx < 0) throw new Error('Barèmes introuvables : ce n’est pas un export de notes Pronote.');
   const baremeRow = rows[baremeRowIdx];
-  const labelRow = rows[baremeRowIdx - 1] ?? [];
-  const dateRow = rows[baremeRowIdx - 2] ?? [];
+  // Variante à deux lignes : les libellés (« 29 élèves », « Moyenne ») sont sur la ligne des barèmes.
+  const merged = (baremeRow[0] ?? '').trim() !== '';
+  const labelRow = merged ? baremeRow : (rows[baremeRowIdx - 1] ?? []);
+  const dateRow = (merged ? rows[baremeRowIdx - 1] : rows[baremeRowIdx - 2]) ?? [];
 
   const evals: PronoteEval[] = [];
   for (let col = 1; col < baremeRow.length; col++) {
@@ -132,7 +144,7 @@ export function parsePronoteCsv(text: string): PronoteExport {
     if (!bareme || bareme <= 0) continue;
     evals.push({
       col,
-      label: (labelRow[col] ?? '').trim(),
+      label: merged ? '' : (labelRow[col] ?? '').trim(),
       rawDate: (dateRow[col] ?? '').trim(),
       bareme,
       coefficient: num(m[1]) ?? 1,
