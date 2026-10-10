@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
+import { Modal } from '../components/Modal';
+import { CategoryIcon } from '../components/rewards/CategoryIcon';
+import { IconPicker } from '../components/rewards/IconPicker';
+import { ChevronDown, ChevronUp, Gift, Pencil, Plus, RotateCcw, Settings2, Stamp, Trash2 } from 'lucide-react';
 import {
   fetchCategories,
   fetchBonuses,
@@ -64,6 +68,7 @@ export function Rewards() {
 
   // Form state
   const [catLabel, setCatLabel] = useState('');
+  const [catIconRef, setCatIconRef] = useState<string | null>(null);
   const [catIcon, setCatIcon] = useState('');
   const [catColor, setCatColor] = useState('#4CAF50');
   const [bonusLabel, setBonusLabel] = useState('');
@@ -136,26 +141,30 @@ export function Rewards() {
       setEditingCategory(cat);
       setCatLabel(cat.label);
       setCatIcon(cat.icon);
+      setCatIconRef(cat.icon_ref ?? null);
       setCatColor(cat.color);
     } else {
       setEditingCategory(null);
       setCatLabel('');
-      setCatIcon('');
+      setCatIcon('⭐');
+      setCatIconRef(null);
       setCatColor('#4CAF50');
     }
     setShowCategoryModal(true);
   };
 
   const saveCategory = async () => {
-    if (!user || !catLabel.trim() || !catIcon.trim()) return;
+    if (!user || !catLabel.trim()) return;
     if (duplicateCategory) return;
+    // L'emoji reste toujours renseigné : c'est le repli des anciens clients (APK mobile installé).
+    const iconFallback = catIcon.trim() || '⭐';
     setIsSaving(true);
     try {
       if (editingCategory) {
-        await updateCategory(editingCategory.id, { label: catLabel.trim(), icon: catIcon.trim(), color: catColor });
+        await updateCategory(editingCategory.id, { label: catLabel.trim(), icon: iconFallback, icon_ref: catIconRef, color: catColor });
       } else {
         const nextOrder = categories.reduce((max, c) => Math.max(max, c.display_order + 1), 0);
-        await createCategory(user.id, catLabel.trim(), catIcon.trim(), catColor, nextOrder);
+        await createCategory(user.id, catLabel.trim(), iconFallback, catColor, nextOrder, catIconRef);
       }
       setShowCategoryModal(false);
       await loadData();
@@ -430,10 +439,7 @@ export function Rewards() {
               onClick={() => setShowConfigModal(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors flex items-center gap-1.5"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <Settings2 size={14} />
               <span>Personnaliser</span>
             </button>
             <button
@@ -550,79 +556,93 @@ export function Rewards() {
         </div>
       </div>
 
-      {/* Category Modal */}
+      {/* Category Modal (au-dessus du panneau Personnaliser) */}
       {showCategoryModal && (
-        <Modal title={editingCategory ? 'Modifier catégorie' : 'Nouvelle catégorie'} onClose={() => setShowCategoryModal(false)}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--text)] mb-1">Label</label>
-              <input
-                type="text"
-                value={catLabel}
-                onChange={e => setCatLabel(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
-                placeholder="Ex: Participation remarquable"
-              />
-              {duplicateCategory && (
-                <p className="text-xs mt-1 text-[var(--neg)]">
-                  {duplicateCategory.is_active
-                    ? 'Cette catégorie existe déjà.'
-                    : 'Cette catégorie existe déjà (désactivée) : réactivez-la plutôt.'}
-                </p>
-              )}
-              {editingCategory && !duplicateCategory && (
-                <p className="text-xs mt-1 text-[var(--text-muted)]">
-                  Le changement s'applique aussi aux tampons déjà donnés avec cette catégorie.
-                </p>
-              )}
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-[var(--text)] mb-1">Icône (emoji)</label>
-                <input
-                  type="text"
-                  value={catIcon}
-                  onChange={e => setCatIcon(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-center text-2xl"
-                  placeholder="⭐"
-                  maxLength={4}
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-[var(--text)] mb-1">Couleur</label>
-                <input
-                  type="color"
-                  value={catColor}
-                  onChange={e => setCatColor(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-[var(--border)] cursor-pointer"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--surface-3)]">
-              <span className="text-2xl">{catIcon || '?'}</span>
-              <span className="text-sm font-medium" style={{ color: catColor }}>{catLabel || 'Aperçu'}</span>
-              <div className="w-4 h-4 rounded-full ml-auto" style={{ backgroundColor: catColor }} />
-            </div>
-            <div className="flex justify-end gap-3">
+        <Modal
+          isOpen
+          title={editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
+          icon={<Stamp size={20} className="text-[var(--indigo)]" />}
+          size="lg"
+          zIndex={60}
+          onClose={() => setShowCategoryModal(false)}
+          footer={(
+            <div className="flex justify-end gap-2">
               <button onClick={() => setShowCategoryModal(false)} className="px-4 py-2 text-sm rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-3)]">
                 Annuler
               </button>
               <button
                 onClick={saveCategory}
-                disabled={isSaving || !catLabel.trim() || !catIcon.trim() || !!duplicateCategory}
+                disabled={isSaving || !catLabel.trim() || !!duplicateCategory}
                 className="px-4 py-2 text-sm rounded-xl text-white font-medium disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                style={{ background: 'var(--gradient-primary, linear-gradient(135deg, #6366F1, #8B5CF6))' }}
               >
-                {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+                {isSaving ? 'Enregistrement…' : editingCategory ? 'Enregistrer' : 'Créer la catégorie'}
               </button>
             </div>
+          )}
+        >
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Nom</label>
+              <input
+                type="text"
+                value={catLabel}
+                onChange={e => setCatLabel(e.target.value)}
+                autoFocus
+                className="w-full px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] text-sm focus:border-[var(--indigo)] outline-none"
+                placeholder="Ex. : Participation remarquable"
+              />
+              {duplicateCategory && (
+                <p className="text-xs mt-1.5 text-[var(--neg)]">
+                  {duplicateCategory.is_active
+                    ? 'Cette catégorie existe déjà.'
+                    : 'Cette catégorie existe déjà (désactivée) : réactive-la plutôt.'}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Couleur</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {CATEGORY_COLORS.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCatColor(c)}
+                    title={c}
+                    className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+                    style={{ backgroundColor: c, borderColor: catColor.toLowerCase() === c.toLowerCase() ? 'var(--text)' : 'transparent' }}
+                  />
+                ))}
+                <label className="w-8 h-8 rounded-full border border-dashed border-[var(--border)] grid place-items-center cursor-pointer text-[var(--text-muted)] text-xs" title="Couleur personnalisée">
+                  +
+                  <input type="color" value={catColor} onChange={e => setCatColor(e.target.value)} className="sr-only" />
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Icône</label>
+              <IconPicker
+                value={{ icon: catIcon, iconRef: catIconRef }}
+                color={catColor}
+                userId={user?.id ?? ''}
+                onChange={v => { setCatIcon(v.icon); setCatIconRef(v.iconRef); }}
+              />
+            </div>
+
+            {editingCategory && !duplicateCategory && (
+              <p className="text-xs text-[var(--text-muted)]">
+                Le changement s’applique aussi aux tampons déjà donnés avec cette catégorie.
+              </p>
+            )}
           </div>
         </Modal>
       )}
 
       {/* Bonus Modal */}
       {showBonusModal && (
-        <Modal title={editingBonus ? 'Modifier bonus' : 'Nouveau bonus'} onClose={() => setShowBonusModal(false)}>
+        <Modal isOpen title={editingBonus ? 'Modifier le bonus' : 'Nouveau bonus'} icon={<Gift size={20} className="text-[var(--indigo)]" />} zIndex={60} onClose={() => setShowBonusModal(false)}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[var(--text)] mb-1">Label</label>
@@ -653,7 +673,7 @@ export function Rewards() {
 
       {/* Stamp Attribution Modal */}
       {showStampModal && stampTarget && (
-        <Modal title={`Attribuer un tampon — ${stampTarget.pseudo}`} onClose={() => setShowStampModal(false)}>
+        <Modal isOpen title={`Attribuer un tampon — ${stampTarget.pseudo}`} onClose={() => setShowStampModal(false)}>
           <p className="text-sm text-[var(--text-muted)] mb-4">
             Carte n°{stampTarget.card_number} — {stampTarget.stamp_count}/10
           </p>
@@ -664,7 +684,9 @@ export function Rewards() {
                 onClick={() => doAwardStamp(cat.id)}
                 className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--indigo)] hover:bg-[var(--surface-3)] transition-all text-left"
               >
-                <span className="text-2xl">{cat.icon}</span>
+                <span className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ backgroundColor: cat.color + '22', color: cat.color }}>
+                  <CategoryIcon icon={cat.icon} iconRef={cat.icon_ref} size={20} color={cat.color} />
+                </span>
                 <span className="text-sm font-medium text-[var(--text)]">{cat.label}</span>
                 <div className="w-3 h-3 rounded-full ml-auto flex-shrink-0" style={{ backgroundColor: cat.color }} />
               </button>
@@ -674,7 +696,7 @@ export function Rewards() {
       )}
 
       {bonusTarget && (
-        <Modal title={`Choisir le bonus — ${bonusTarget.pseudo}`} onClose={() => setBonusTarget(null)}>
+        <Modal isOpen title={`Choisir le bonus — ${bonusTarget.pseudo}`} onClose={() => setBonusTarget(null)}>
           <p className="text-sm text-[var(--text-muted)] mb-4">
             Carte n°{bonusTarget.card_number} complète. Le bonus choisi termine la carte et en ouvre une nouvelle.
           </p>
@@ -693,36 +715,39 @@ export function Rewards() {
         </Modal>
       )}
 
-      {/* Config Modal (Catégories & Bonus) */}
+      {/* Panneau Personnaliser (catégories et bonus) */}
       {showConfigModal && (
-        <Modal title="Configuration — Catégories & Bonus" onClose={() => setShowConfigModal(false)}>
+        <Modal
+          isOpen
+          title="Personnaliser les récompenses"
+          icon={<Settings2 size={20} className="text-[var(--indigo)]" />}
+          size="2xl"
+          zIndex={50}
+          onClose={() => setShowConfigModal(false)}
+        >
           <div className="space-y-4">
-            {/* Config tabs */}
-            <div className="flex gap-1 bg-[var(--bg)] rounded-xl p-1">
-              <button
-                onClick={() => setConfigTab('categories')}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  configTab === 'categories'
-                    ? 'bg-[var(--surface)] text-[var(--indigo)] shadow-sm'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                ⭐ Catégories
-              </button>
-              <button
-                onClick={() => setConfigTab('bonuses')}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  configTab === 'bonuses'
-                    ? 'bg-[var(--surface)] text-[var(--indigo)] shadow-sm'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                🎁 Bonus
-              </button>
+            <div className="flex gap-1 p-1 rounded-xl bg-[var(--surface-3)]" role="tablist">
+              {([
+                { id: 'categories' as ConfigTab, label: 'Catégories de tampons', Icon: Stamp, count: categories.filter(c => c.is_active).length },
+                { id: 'bonuses' as ConfigTab, label: 'Bonus de fin de carte', Icon: Gift, count: bonuses.filter(b => b.is_active).length },
+              ]).map(t => (
+                <button
+                  key={t.id}
+                  role="tab"
+                  aria-selected={configTab === t.id}
+                  onClick={() => setConfigTab(t.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    configTab === t.id ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  <t.Icon size={15} className={configTab === t.id ? 'text-[var(--indigo)]' : ''} />
+                  <span>{t.label}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${configTab === t.id ? 'bg-[var(--indigo-soft)] text-[var(--indigo)]' : 'bg-[var(--surface)] text-[var(--text-muted)]'}`}>{t.count}</span>
+                </button>
+              ))}
             </div>
 
-            {/* Config content */}
-            <div className="max-h-[60vh] overflow-y-auto">
+            <div className="max-h-[62vh] overflow-y-auto -mx-1 px-1 pb-1">
               {configTab === 'categories' ? (
                 <CategoriesTab
                   categories={categories}
@@ -749,7 +774,7 @@ export function Rewards() {
 
       {/* Student Stamp Detail Modal */}
       {showDetailModal && detailTarget && (
-        <Modal title={`${detailTarget.pseudo} — Carte à tampons`} onClose={() => setShowDetailModal(false)}>
+        <Modal isOpen title={`${detailTarget.pseudo} — Carte à tampons`} onClose={() => setShowDetailModal(false)}>
           {detailLoading ? (
             <div className="text-center py-8 text-[var(--text-muted)]">Chargement...</div>
           ) : !stampDetail ? (
@@ -813,7 +838,9 @@ export function Rewards() {
                         }}
                         title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
                       >
-                        <span className="text-xl drop-shadow-sm">{stamp ? stamp.category_icon : tier.emptyIcon}</span>
+                        {stamp
+                          ? <CategoryIcon icon={stamp.category_icon} iconRef={stamp.category_icon_ref} size={22} color="#fff" title={stamp.category_label} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.35))' }} />
+                          : <span className="text-xl drop-shadow-sm">{tier.emptyIcon}</span>}
                         {stamp && (
                           <button
                             onClick={() => doRemoveStamp(stamp.id)}
@@ -835,7 +862,9 @@ export function Rewards() {
                   <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Détails des tampons</p>
                   {stampDetail.stamps.map(s => (
                     <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--bg)] group/row">
-                      <span className="text-base">{s.category_icon}</span>
+                      <span className="w-6 h-6 rounded-md grid place-items-center" style={{ backgroundColor: s.category_color + '22', color: s.category_color }}>
+                        <CategoryIcon icon={s.category_icon} iconRef={s.category_icon_ref} size={14} color={s.category_color} />
+                      </span>
                       <span className="text-xs text-[var(--text)] flex-1">{s.category_label}</span>
                       <span className="text-xs text-[var(--text-muted)]">
                         {new Date(s.awarded_at).toLocaleDateString('fr-FR')}
@@ -1022,6 +1051,42 @@ function OverviewTab({
   );
 }
 
+/** Palette proposée pour la couleur d'une catégorie (la roue reste disponible). */
+const CATEGORY_COLORS = ['#4CAF50', '#2196F3', '#6366F1', '#9C27B0', '#E91E63', '#F44336', '#FF9800', '#FFC107', '#00BCD4', '#8BC34A', '#795548', '#607D8B'];
+
+function Switch({ checked, onChange, title }: { checked: boolean; onChange: () => void; title: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      title={title}
+      onClick={onChange}
+      className="relative w-10 h-6 rounded-full transition-colors shrink-0"
+      style={{ backgroundColor: checked ? 'var(--indigo)' : 'var(--border-strong, var(--border))' }}
+    >
+      <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all" style={{ left: checked ? 18 : 2 }} />
+    </button>
+  );
+}
+
+function IconButton({ onClick, title, danger, disabled, children }: { onClick: () => void; title: string; danger?: boolean; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      className={`w-8 h-8 rounded-lg grid place-items-center transition-colors disabled:opacity-30 ${
+        danger ? 'text-[var(--text-muted)] hover:text-[var(--neg)] hover:bg-[var(--neg-soft)]' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-3)]'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function CategoriesTab({
   categories, onAdd, onMove, onStartFromScratch, onEdit, onToggle, onDelete,
 }: {
@@ -1033,87 +1098,68 @@ function CategoriesTab({
   onToggle: (c: StampCategory) => void;
   onDelete: (id: string) => void;
 }) {
+  const active = categories.filter(c => c.is_active).length;
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--text-muted)]">
-          {categories.filter(c => c.is_active).length} active(s) sur {categories.length}
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-[var(--text-muted)] leading-snug">
+          Les motifs pour lesquels tu donnes un tampon. <b className="text-[var(--text)] font-medium">{active}</b> proposée{active > 1 ? 's' : ''} en séance sur {categories.length}.
+          Cette liste t’appartient : chaque enseignant a la sienne.
         </p>
-        <div className="flex items-center gap-2">
-          {categories.some(c => c.is_active) && (
-            <button
-              onClick={onStartFromScratch}
-              className="px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-3)]"
-            >
-              Repartir de zéro
+        <div className="flex items-center gap-2 shrink-0">
+          {active > 0 && (
+            <button onClick={onStartFromScratch} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-3)]" title="Désactiver toutes les catégories pour recomposer la liste">
+              <RotateCcw size={13} /> Repartir de zéro
             </button>
           )}
-          <button
-            onClick={onAdd}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-white"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
-          >
-            + Ajouter
+          <button onClick={onAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--gradient-primary, linear-gradient(135deg, #6366F1, #8B5CF6))' }}>
+            <Plus size={15} /> Nouvelle catégorie
           </button>
         </div>
       </div>
-      <p className="text-xs text-[var(--text-muted)]">
-        Ces catégories sont les vôtres : les autres enseignants ont leur propre liste. Une catégorie désactivée n'est plus proposée, mais les tampons déjà donnés restent sur les cartes.
-      </p>
 
-      <div className="grid grid-cols-1 gap-3">
-        {categories.map((cat, i) => (
-          <div
-            key={cat.id}
-            className={`p-4 rounded-xl border transition-all ${
-              cat.is_active
-                ? 'border-[var(--border)] bg-[var(--surface)]'
-                : 'border-dashed border-[var(--border)] bg-[var(--surface-3)] opacity-60'
-            }`}
-            style={{ boxShadow: cat.is_active ? 'var(--shadow-xs)' : undefined }}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: cat.color + '20' }}>
-                {cat.icon}
+      {categories.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center">
+          <Stamp size={28} className="mx-auto mb-2 text-[var(--text-muted)]" />
+          <p className="text-sm text-[var(--text)]">Aucune catégorie pour l’instant.</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Crée la première : un nom, une couleur, une icône.</p>
+        </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {categories.map((cat, i) => (
+            <li
+              key={cat.id}
+              className={`flex items-center gap-3 pl-1.5 pr-2 py-2 rounded-xl border transition-colors ${
+                cat.is_active ? 'border-[var(--border)] bg-[var(--surface)]' : 'border-dashed border-[var(--border)] bg-[var(--surface-3)]'
+              }`}
+            >
+              <div className="flex flex-col -my-1">
+                <button onClick={() => onMove(cat.id, -1)} disabled={i === 0} title="Monter" aria-label="Monter" className="w-6 h-4 grid place-items-center text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-20">
+                  <ChevronUp size={14} />
+                </button>
+                <button onClick={() => onMove(cat.id, 1)} disabled={i === categories.length - 1} title="Descendre" aria-label="Descendre" className="w-6 h-4 grid place-items-center text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-20">
+                  <ChevronDown size={14} />
+                </button>
               </div>
+              <span
+                className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${cat.is_active ? '' : 'opacity-50 grayscale'}`}
+                style={{ backgroundColor: cat.color + '22', color: cat.color }}
+              >
+                <CategoryIcon icon={cat.icon} iconRef={cat.icon_ref} size={22} color={cat.color} />
+              </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--text)] truncate">{cat.label}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                  <span className="text-xs text-[var(--text-muted)]">{cat.is_active ? 'Active' : 'Désactivée'}</span>
-                </div>
+                <p className={`text-sm font-semibold truncate ${cat.is_active ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>{cat.label}</p>
+                <p className="text-xs text-[var(--text-muted)] truncate">
+                  {cat.is_active ? 'Proposée en séance' : 'Désactivée · les tampons déjà donnés restent sur les cartes'}
+                </p>
               </div>
-            </div>
-            <div className="flex items-center gap-2 justify-end flex-wrap">
-              <button
-                onClick={() => onMove(cat.id, -1)}
-                disabled={i === 0}
-                title="Monter"
-                className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)] disabled:opacity-30"
-              >
-                ▲
-              </button>
-              <button
-                onClick={() => onMove(cat.id, 1)}
-                disabled={i === categories.length - 1}
-                title="Descendre"
-                className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)] disabled:opacity-30"
-              >
-                ▼
-              </button>
-              <button onClick={() => onToggle(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
-                {cat.is_active ? 'Désactiver' : 'Activer'}
-              </button>
-              <button onClick={() => onEdit(cat)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--indigo)]">
-                Modifier
-              </button>
-              <button onClick={() => onDelete(cat.id)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--neg-soft)] text-[var(--neg)]">
-                Supprimer
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+              <Switch checked={cat.is_active} onChange={() => onToggle(cat)} title={cat.is_active ? 'Désactiver' : 'Activer'} />
+              <IconButton onClick={() => onEdit(cat)} title="Modifier"><Pencil size={15} /></IconButton>
+              <IconButton onClick={() => onDelete(cat.id)} title="Supprimer" danger><Trash2 size={15} /></IconButton>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1127,74 +1173,46 @@ function BonusesTab({
   onToggle: (b: Bonus) => void;
   onDelete: (id: string) => void;
 }) {
+  const active = bonuses.filter(b => b.is_active).length;
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--text-muted)]">{bonuses.length} bonus</p>
-        <button
-          onClick={onAdd}
-          className="px-4 py-2 rounded-xl text-sm font-medium text-white"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
-        >
-          + Ajouter
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-[var(--text-muted)] leading-snug">
+          Ce que l’élève peut choisir quand sa carte est complète. <b className="text-[var(--text)] font-medium">{active}</b> proposé{active > 1 ? 's' : ''} sur {bonuses.length}.
+        </p>
+        <button onClick={onAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white shrink-0" style={{ background: 'var(--gradient-primary, linear-gradient(135deg, #6366F1, #8B5CF6))' }}>
+          <Plus size={15} /> Nouveau bonus
         </button>
       </div>
 
-      <div className="space-y-2">
-        {bonuses.map((bonus, i) => (
-          <div
-            key={bonus.id}
-            className={`p-3 rounded-xl border transition-all ${
-              bonus.is_active
-                ? 'border-[var(--border)] bg-[var(--surface)]'
-                : 'border-dashed border-[var(--border)] bg-[var(--surface-3)] opacity-60'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-lg w-8 text-center">{i + 1}.</span>
-              <span className="text-2xl">🎁</span>
-              <span className="flex-1 text-sm font-medium text-[var(--text)] truncate">{bonus.label}</span>
-              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">{bonus.is_active ? 'Actif' : 'Désactivé'}</span>
-            </div>
-            <div className="flex items-center gap-1 justify-end mt-2">
-              <button onClick={() => onToggle(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
-                {bonus.is_active ? 'Désactiver' : 'Activer'}
-              </button>
-              <button onClick={() => onEdit(bonus)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--surface-3)] text-[var(--indigo)]">
-                Modifier
-              </button>
-              <button onClick={() => onDelete(bonus.id)} className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--neg-soft)] text-[var(--neg)]">
-                Supprimer
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// Generic Modal
-// ============================================
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative bg-[var(--surface)] rounded-2xl p-6 w-full max-w-lg"
-        style={{ boxShadow: 'var(--shadow-2)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[var(--text)]">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--surface-3)] text-[var(--text-muted)]">
-            x
-          </button>
+      {bonuses.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center">
+          <Gift size={28} className="mx-auto mb-2 text-[var(--text-muted)]" />
+          <p className="text-sm text-[var(--text)]">Aucun bonus pour l’instant.</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Ex. : « +1 point sur la note de son choix », « Choisir sa place une semaine ».</p>
         </div>
-        {children}
-      </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {bonuses.map((bonus, i) => (
+            <li
+              key={bonus.id}
+              className={`flex items-center gap-3 pl-3 pr-2 py-2 rounded-xl border transition-colors ${
+                bonus.is_active ? 'border-[var(--border)] bg-[var(--surface)]' : 'border-dashed border-[var(--border)] bg-[var(--surface-3)]'
+              }`}
+            >
+              <span className="w-7 h-7 rounded-lg grid place-items-center text-xs font-bold bg-[var(--indigo-soft)] text-[var(--indigo)] shrink-0">{i + 1}</span>
+              <Gift size={18} className={bonus.is_active ? 'text-[var(--indigo)]' : 'text-[var(--text-muted)]'} />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold truncate ${bonus.is_active ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>{bonus.label}</p>
+                <p className="text-xs text-[var(--text-muted)]">{bonus.is_active ? 'Proposé aux élèves' : 'Désactivé'}</p>
+              </div>
+              <Switch checked={bonus.is_active} onChange={() => onToggle(bonus)} title={bonus.is_active ? 'Désactiver' : 'Activer'} />
+              <IconButton onClick={() => onEdit(bonus)} title="Modifier"><Pencil size={15} /></IconButton>
+              <IconButton onClick={() => onDelete(bonus.id)} title="Supprimer" danger><Trash2 size={15} /></IconButton>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

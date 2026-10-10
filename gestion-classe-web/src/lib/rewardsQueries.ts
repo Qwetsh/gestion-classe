@@ -8,7 +8,10 @@ export interface StampCategory {
   id: string;
   user_id: string;
   label: string;
+  /** Emoji de repli, toujours renseigné (affiché par les anciens clients). */
   icon: string;
+  /** Icône riche optionnelle : « lucide:<Nom> » ou URL https d'une image importée (migration 048). */
+  icon_ref: string | null;
   color: string;
   display_order: number;
   is_active: boolean;
@@ -256,10 +259,10 @@ export async function fetchCategories(userId: string): Promise<StampCategory[]> 
   });
 }
 
-export async function createCategory(userId: string, label: string, icon: string, color: string, displayOrder: number): Promise<StampCategory> {
+export async function createCategory(userId: string, label: string, icon: string, color: string, displayOrder: number, iconRef: string | null = null): Promise<StampCategory> {
   const { data, error } = await supabase
     .from('stamp_categories')
-    .insert({ user_id: userId, label, icon, color, display_order: displayOrder, is_active: true })
+    .insert({ user_id: userId, label, icon, icon_ref: iconRef, color, display_order: displayOrder, is_active: true })
     .select()
     .single();
 
@@ -267,7 +270,7 @@ export async function createCategory(userId: string, label: string, icon: string
   return data;
 }
 
-export async function updateCategory(id: string, updates: Partial<Pick<StampCategory, 'label' | 'icon' | 'color' | 'display_order' | 'is_active'>>): Promise<void> {
+export async function updateCategory(id: string, updates: Partial<Pick<StampCategory, 'label' | 'icon' | 'icon_ref' | 'color' | 'display_order' | 'is_active'>>): Promise<void> {
   const { error } = await supabase.from('stamp_categories').update(updates).eq('id', id);
   if (error) throw error;
 }
@@ -540,6 +543,7 @@ export interface StampDetail {
   slot_number: number;
   category_label: string;
   category_icon: string;
+  category_icon_ref: string | null;
   category_color: string;
   awarded_at: string;
 }
@@ -592,7 +596,7 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
   // Get stamps with category info
   const { data: stamps } = await supabase
     .from('stamps')
-    .select('id, slot_number, awarded_at, stamp_categories(label, icon, color)')
+    .select('id, slot_number, awarded_at, stamp_categories(label, icon, icon_ref, color)')
     .eq('card_id', card.id)
     .order('slot_number');
 
@@ -609,6 +613,7 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
     slot_number: s.slot_number,
     category_label: (s.stamp_categories as any)?.label || '?',
     category_icon: (s.stamp_categories as any)?.icon || '⭐',
+    category_icon_ref: (s.stamp_categories as any)?.icon_ref ?? null,
     category_color: (s.stamp_categories as any)?.color || '#999',
     awarded_at: s.awarded_at,
   }));

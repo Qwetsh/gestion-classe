@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { buildPhotoUrl } from '../lib/security';
@@ -3114,7 +3115,9 @@ export function Students() {
                               }}
                               title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
                             >
-                              <span className="text-lg drop-shadow-sm">{stamp ? stamp.category_icon : tier.emptyIcon}</span>
+                              {stamp
+                                ? <CategoryIcon icon={stamp.category_icon} iconRef={stamp.category_icon_ref} size={20} color="#fff" title={stamp.category_label} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.35))' }} />
+                                : <span className="text-lg drop-shadow-sm">{tier.emptyIcon}</span>}
                             </div>
                           );
                         })}

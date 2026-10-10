@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { getCardTier } from '../lib/rewardsQueries';
+import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
@@ -55,6 +56,7 @@ interface StampData {
       slot_number: number;
       category_label: string;
       category_icon: string;
+      category_icon_ref?: string | null;
       category_color: string;
       awarded_at: string;
     }[];
@@ -72,6 +74,7 @@ interface StampData {
   categories: {
     label: string;
     icon: string;
+    icon_ref?: string | null;
     color: string;
   }[];
   available_bonuses: {
@@ -125,7 +128,7 @@ export function StudentDashboard() {
   const [stampError, setStampError] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showBonusSelect, setShowBonusSelect] = useState(false);
-  const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; color: string; date: string } | null>(null);
+  const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; iconRef?: string | null; color: string; date: string } | null>(null);
   const currentCodeRef = useRef('');
   const [muted, setMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -729,8 +732,8 @@ function StampCardView({
   showBonusSelect: boolean;
   setShowBonusSelect: (v: boolean) => void;
   onSelectBonus: (bonusId: string) => void;
-  selectedStampDetail: { label: string; icon: string; color: string; date: string } | null;
-  setSelectedStampDetail: (v: { label: string; icon: string; color: string; date: string } | null) => void;
+  selectedStampDetail: { label: string; icon: string; iconRef?: string | null; color: string; date: string } | null;
+  setSelectedStampDetail: (v: { label: string; icon: string; iconRef?: string | null; color: string; date: string } | null) => void;
 }) {
   const { confirm: showConfirm } = useUIFeedback();
 
@@ -783,7 +786,7 @@ function StampCardView({
             background: T.card, borderRadius: '16px', padding: '24px',
             border: `1px solid ${T.cardBorder}`, textAlign: 'center', maxWidth: '280px',
           }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>{selectedStampDetail.icon}</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><CategoryIcon icon={selectedStampDetail.icon} iconRef={selectedStampDetail.iconRef} size={48} color={selectedStampDetail.color} /></div>
             <p style={{ color: T.text, fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
             <p style={{ color: T.textDim, fontSize: '12px', marginTop: '8px' }}>
               {new Date(selectedStampDetail.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -840,7 +843,7 @@ function StampCardView({
               <button
                 key={i}
                 onClick={() => stamp ? setSelectedStampDetail({
-                  label: stamp.category_label, icon: stamp.category_icon,
+                  label: stamp.category_label, icon: stamp.category_icon, iconRef: stamp.category_icon_ref ?? null,
                   color: stamp.category_color, date: stamp.awarded_at,
                 }) : undefined}
                 disabled={!stamp}
@@ -857,7 +860,7 @@ function StampCardView({
                   animation: stamp ? `stampAppear 0.4s ease ${i * 0.05}s both` : undefined,
                 }}
               >
-                {stamp ? <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>{stamp.category_icon}</span> : (
+                {stamp ? <CategoryIcon icon={stamp.category_icon} iconRef={stamp.category_icon_ref} size={24} color="#fff" title={stamp.category_label} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} /> : (
                   <span style={{ color: 'rgba(255,255,255,0.3)' }}>{tier.emptyIcon}</span>
                 )}
               </button>
@@ -996,7 +999,7 @@ function StampCardView({
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '6px 10px', borderRadius: '8px', background: T.surface,
               }}>
-                <span style={{ fontSize: '16px' }}>{cat.icon}</span>
+                <CategoryIcon icon={cat.icon} iconRef={cat.icon_ref} size={16} color={cat.color} />
                 <span style={{ color: T.text, fontSize: '11px' }}>{cat.label}</span>
               </div>
             ))}
