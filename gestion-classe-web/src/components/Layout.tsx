@@ -6,6 +6,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import SettingsModal from './SettingsModal';
 import { FeedbackButton } from './FeedbackButton';
 import { AnnouncementBanner } from './AnnouncementBanner';
+import { HeldWorksAlert } from './productions/HeldWorksAlert';
 import { supabase } from '../lib/supabase';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
@@ -512,6 +513,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
           />
         </header>
 
+        <HeldWorksAlert />
         <AnnouncementBanner />
 
         {/* Largeur : --bleed (plein écran, sans marge) > --fluid (pages de travail) > défaut (lecture).

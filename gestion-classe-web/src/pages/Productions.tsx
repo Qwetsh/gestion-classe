@@ -45,7 +45,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export function Productions() {
-  const { toast: showToast } = useUIFeedback();
+  const { toast: showToast, confirm } = useUIFeedback();
   const { user } = useAuth();
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [links, setLinks] = useState<ActivityAssessmentRow[]>([]);   // évaluations du carnet liées, par classe
@@ -191,6 +191,17 @@ export function Productions() {
 
   const toggleAccepting = async () => {
     if (!activity) return;
+    // Fermer est rarement voulu en pleine séance : on le dit clairement (une séance entière perdue le 15/10/2026).
+    if (activity.accepting_submissions) {
+      const ok = await confirm({
+        title: `Fermer les envois de « ${activity.title} » ?`,
+        message: 'Les élèves ne pourront plus envoyer leur fiche. Ce qu’ils enverront quand même sera mis de côté, et un bandeau rouge te préviendra sur toutes les pages pour que tu puisses le récupérer.',
+        details: 'À faire seulement quand l’activité est terminée pour toutes tes classes (avant la correction, par exemple).',
+        confirmLabel: 'Fermer les envois',
+        variant: 'warning',
+      });
+      if (!ok) return;
+    }
     try {
       await updateActivity(activity.id, { accepting_submissions: !activity.accepting_submissions });
       setActivities((as) => as.map((a) => (a.id === activity.id ? { ...a, accepting_submissions: !a.accepting_submissions } : a)));

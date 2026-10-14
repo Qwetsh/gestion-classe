@@ -400,3 +400,42 @@ export async function setWorkStatus(workId: string, status: WorkStatus): Promise
   const { error } = await supabase.from('student_works').update(patch).eq('id', workId);
   if (error) throw error;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Fiches mises de côté (migration 051)                              */
+/* ------------------------------------------------------------------ */
+
+/** Fiche reçue alors que les envois de l'activité étaient fermés : gardée, en attente d'acceptation. */
+export interface HeldWorkRow {
+  id: string;
+  activity_id: string;
+  pseudos: string[];
+  class_name: string | null;
+  submit: boolean;
+  attempts: number;
+  first_at: string;
+  last_at: string;
+  activities: { title: string; accepting_submissions: boolean } | null;
+}
+
+export async function fetchHeldWorks(): Promise<HeldWorkRow[]> {
+  const { data, error } = await supabase
+    .from('student_work_held')
+    .select('id, activity_id, pseudos, class_name, submit, attempts, first_at, last_at, activities(title, accepting_submissions)')
+    .order('last_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as HeldWorkRow[];
+}
+
+/** Rouvre l'activité et enregistre chaque fiche mise de côté comme un envoi normal. */
+export async function acceptHeldWorks(activityId: string): Promise<{ accepted: number; failed: number }> {
+  const { data, error } = await supabase.rpc('student_work_accept_held', { p_activity_id: activityId });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data as { accepted: number; failed: number };
+}
+
+export async function discardHeldWorks(activityId: string): Promise<void> {
+  const { error } = await supabase.from('student_work_held').delete().eq('activity_id', activityId);
+  if (error) throw error;
+}
