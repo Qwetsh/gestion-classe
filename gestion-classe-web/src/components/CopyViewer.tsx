@@ -265,6 +265,10 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
   );
   const adding = rows.find((r) => r.student.id === addingId) ?? null;
 
+  // Aucune copie scannée ni transcrite : les notes ont été saisies à la main, parler de
+  // copies « manquantes » n'aurait pas de sens.
+  const anyScanned = rows.some((r) => r.state === 'scanned');
+
   const counts = {
     all: rows.length,
     scanned: rows.filter((r) => r.state === 'scanned').length,
@@ -281,7 +285,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
       {/* ---- Élèves ---- */}
       <div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-          {FILTERS.map(([id, label]) => (
+          {FILTERS.filter(([id]) => anyScanned || (id !== 'scanned' && id !== 'missing')).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setFilter(id)}
@@ -338,9 +342,9 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
                   )
                 ) : r.state === 'absent' ? (
                   <Badge tone="neg">Absent</Badge>
-                ) : (
+                ) : anyScanned ? (
                   <Badge tone="warn">Manquante</Badge>
-                )}
+                ) : null}
               </button>
             );
           })}

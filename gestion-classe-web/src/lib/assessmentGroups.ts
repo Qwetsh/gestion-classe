@@ -1,4 +1,4 @@
-import type { CopyOverview, CopyStage } from './copyStatus';
+import { describeCopyOverview, type CopyOverview, type CopyStage } from './copyStatus';
 import { effectiveDocPath, type AssessmentDocKind, type AssessmentRow } from './evaluationQueries';
 
 /**
@@ -95,6 +95,43 @@ export function hasCopies(a: Pick<AssessmentRow, 'kind'>): boolean {
 /** Brouillons du Correcteur qui attendent la validation du prof, pour une classe. */
 export function pendingDrafts(o: CopyOverview | undefined): number {
   return o ? Math.max(0, o.graded - o.validated) : 0;
+}
+
+/** Une éval dont aucune copie n'est passée par le scan ni la transcription : notes saisies à la main. */
+export function neverScanned(o: Pick<CopyOverview, 'scanned' | 'transcribed'>): boolean {
+  return o.scanned === 0 && o.transcribed === 0;
+}
+
+/** Résumé d'une ligne de classe : les copies si l'éval en a, sinon les notes. */
+export function describeClassRow(o: CopyOverview, withCopies: boolean): string {
+  if (withCopies && !neverScanned(o)) return describeCopyOverview(o);
+  const parts = [`${o.graded}/${o.total} notée${o.graded > 1 ? 's' : ''}`];
+  if (o.absent > 0) parts.push(`${o.absent} absent${o.absent > 1 ? 's' : ''}`);
+  const drafts = pendingDrafts(o);
+  if (drafts > 0) parts.push(`${drafts} brouillon${drafts > 1 ? 's' : ''}`);
+  return parts.join(' · ');
+}
+
+export interface HeaderChip {
+  label: string;
+  tone: 'warn' | 'info' | 'ok' | 'published' | 'neutral';
+}
+
+/**
+ * La pastille sous le nom d'une colonne du carnet : ce qu'il reste à faire sur cette éval.
+ * Brouillons à valider d'abord, puis l'avancement des copies, puis les notes manquantes ;
+ * rien quand tout est fait et rien à publier.
+ */
+export function carnetHeaderChip(o: CopyOverview | undefined, withoutGrade: number): HeaderChip | null {
+  if (o) {
+    const drafts = pendingDrafts(o);
+    if (drafts > 0) return { label: `À valider (${drafts})`, tone: 'warn' };
+    if (o.stage === 'publiee') return { label: 'Publiée', tone: 'published' };
+    if (o.scanned > 0 && (o.stage === 'scan' || o.stage === 'scannee')) return { label: stageLabel(o), tone: o.stage === 'scan' ? 'warn' : 'info' };
+  }
+  if (withoutGrade > 0) return { label: `${withoutGrade} sans note`, tone: 'neutral' };
+  if (o && o.graded > 0 && o.stage === 'validee') return { label: 'À publier', tone: 'ok' };
+  return null;
 }
 
 /**

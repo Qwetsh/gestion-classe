@@ -4,23 +4,22 @@ import {
   createAssessment,
   fetchCarnet,
   fetchClasses,
+  fetchCopyOverviews,
   fetchCurrentPeriod,
   saveGrade,
-  softDeleteAssessment,
-  updateAssessment,
   type AssessmentRow,
   type CarnetStudent,
   type ClassRow,
   type GradeRow,
   fetchGradeBookExport,
   createAssessmentSeries,
-  updateSeriesAssessments,
   setGradeAdapted,
-  rescaleGradesForBareme,
 } from '../lib/evaluationQueries';
+import type { CopyOverview } from '../lib/copyStatus';
+import { carnetHeaderChip, type HeaderChip } from '../lib/assessmentGroups';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
-import { AssessmentStatsPanel } from './AssessmentStatsPanel';
 import { AssessmentModal } from './AssessmentModal';
+import { MoreMenu } from './MoreMenu';
 import { PronoteImportModal } from './PronoteImportModal';
 import { levelFromClassName } from '../lib/boardsQueries';
 import { exportGradeBookPdf, exportGradeBookXlsx } from '../lib/gradeExport';
@@ -41,9 +40,20 @@ import {
  * Le critère n°1 est la vitesse de saisie : remplir une colonne de 28 notes doit prendre
  * moins de deux minutes sans toucher la souris. Tout le reste en découle — navigation au
  * clavier, écriture différée, raccourcis de statut.
+ *
+ * Tout ce qui concerne UNE éval (réglages, sujet, copies, validation, publication, stats)
+ * est sur sa fiche, ouverte depuis le nom de la colonne ; ici on saisit et on lit.
  */
 
 const PERIODS = [1, 2, 3];
+
+const CHIP_COLORS: Record<HeaderChip['tone'], [string, string]> = {
+  warn: ['var(--warn-soft)', 'var(--warn)'],
+  info: ['var(--indigo-soft)', 'var(--indigo)'],
+  ok: ['var(--pos-soft)', 'var(--pos)'],
+  published: ['var(--pos)', '#fff'],
+  neutral: ['var(--surface-3)', 'var(--text-muted)'],
+};
 
 /** Clé d'une cellule. */
 const cellKey = (assessmentId: string, studentId: string) => `${assessmentId}|${studentId}`;
@@ -86,6 +96,8 @@ export function CarnetTab({ userId, account, onError }: {
   const [students, setStudents] = useState<CarnetStudent[]>([]);
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [grades, setGrades] = useState<Map<string, GradeRow>>(new Map());
+  /** État des copies et des brouillons par éval : la pastille sous le nom de la colonne. */
+  const [overviews, setOverviews] = useState<Record<string, CopyOverview>>({});
   const [loading, setLoading] = useState(true);
 
   /** Texte en cours de frappe, par cellule. Absent = on affiche la valeur enregistrée. */
@@ -95,8 +107,6 @@ export function CarnetTab({ userId, account, onError }: {
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
   const [showCreate, setShowCreate] = useState(false);
-  const [editing, setEditing] = useState<AssessmentRow | null>(null);
-  const [statsFor, setStatsFor] = useState<AssessmentRow | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showPronote, setShowPronote] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -142,6 +152,10 @@ export function CarnetTab({ userId, account, onError }: {
       setGrades(new Map(data.grades.map((g) => [cellKey(g.assessment_id, g.student_id), g])));
       setDrafts({});
       setInvalid({});
+      // L'état des copies n'empêche pas d'afficher la grille : il arrive après.
+      fetchCopyOverviews(data.assessments)
+        .then((d) => setOverviews(d.overviews))
+        .catch(() => setOverviews({}));
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Chargement du carnet impossible');
     } finally {
@@ -359,25 +373,6 @@ export function CarnetTab({ userId, account, onError }: {
     return values.reduce((a, b) => a + b, 0) / values.length;
   }, [students, averageFor]);
 
-  /** Élèves pour qui cette évaluation est marquée adaptée. */
-  const adaptedIds = useCallback(
-    (assessmentId: string) =>
-      new Set(
-        students.filter((s) => grades.get(cellKey(assessmentId, s.id))?.is_adapted).map((s) => s.id),
-      ),
-    [students, grades],
-  );
-
-  /** Notes brutes saisies sur une éval : de quoi juger un changement de barème. */
-  const rawGradesOf = useCallback(
-    (assessmentId: string) =>
-      students
-        .map((s) => grades.get(cellKey(assessmentId, s.id)))
-        .filter((row) => row?.status === 'noted' && row.grade_raw !== null)
-        .map((row) => Number(row!.grade_raw)),
-    [students, grades],
-  );
-
   // ----------------------------------------------------------
   // Export (lot 3) — toute l'année, toutes les classes
   // ----------------------------------------------------------
@@ -465,13 +460,14 @@ export function CarnetTab({ userId, account, onError }: {
             : saveState === 'error' ? 'Échec' : ''}
         </span>
 
-        <button onClick={() => { void flush(); setShowPronote(true); }} style={btnGhost} disabled={!classId || !schoolYear || students.length === 0}>
-          ⬆ Importer Pronote
-        </button>
-
-        <button onClick={() => setShowExport(true)} style={btnGhost} disabled={!schoolYear}>
-          ⬇ Sauvegarder
-        </button>
+        <MoreMenu
+          label="⋯"
+          title="Sauvegarder les notes, importer un export Pronote"
+          items={[
+            { label: 'Sauvegarder les notes (Excel, PDF)', onClick: () => setShowExport(true), disabled: !schoolYear, title: 'Toutes les classes et les trois trimestres de l’année' },
+            { label: 'Importer un export Pronote (CSV)', onClick: () => { void flush(); setShowPronote(true); }, disabled: !classId || !schoolYear || students.length === 0, title: 'Dans la classe et le trimestre affichés' },
+          ]}
+        />
 
         <button onClick={() => setShowCreate(true)} style={btnPrimary} disabled={!classId}>
           + Évaluation
@@ -530,38 +526,26 @@ export function CarnetTab({ userId, account, onError }: {
               <tr>
                 <th style={{ ...th, ...stickyCol, textAlign: 'left', minWidth: 180 }}>Élève</th>
                 {assessments.map((a) => {
-                  const stats = columnStats.get(a.id);
+                  const chip = carnetHeaderChip(overviews[a.id], columnStats.get(a.id)?.pending ?? 0);
                   return (
-                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 92 }}>
-                      <button
-                        onClick={() => { void flush(); setEditing(a); }}
-                        style={headerBtn}
-                        title="Modifier cette évaluation (nom, barème, coefficient, aménagements…)"
+                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 110 }}>
+                      <Link
+                        to={`/evaluations/${a.id}`}
+                        onClick={() => { void flush(); }}
+                        style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3, fontSize: 12 }}
+                        title="Fiche de l’évaluation : sujet, corrigé, copies, validation, publication, réglages, statistiques"
                       >
-                        <span style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
-                          {a.name}
-                        </span>
-                      </button>
+                        {a.name} ↗
+                      </Link>
                       <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 400 }}>
                         coef {showNum(Number(a.coefficient))} · /{showNum(Number(a.bareme_total ?? 20))}
                         {!a.counts_in_average && ' · hors moy.'}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                        <button onClick={() => setStatsFor(a)} style={statsBtn} title="Statistiques de cette évaluation">
-                          stats
-                        </button>
-                        <Link
-                          to={`/evaluations/${a.id}`}
-                          onClick={() => { void flush(); }}
-                          style={{ ...statsBtn, color: 'var(--indigo)', textDecoration: 'none' }}
-                          title="Fiche de l’évaluation : sujet, corrigé, copies, validation, publication, statistiques"
-                        >
-                          fiche ↗
-                        </Link>
-                      </div>
-                      {stats && stats.pending > 0 && (
-                        <div style={{ fontSize: 10, color: 'var(--warn)', fontWeight: 400 }}>
-                          {stats.pending} à corriger
+                      {chip && (
+                        <div style={{ marginTop: 3 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: '1px 7px', background: CHIP_COLORS[chip.tone][0], color: CHIP_COLORS[chip.tone][1], whiteSpace: 'nowrap' }}>
+                            {chip.label}
+                          </span>
                         </div>
                       )}
                     </th>
@@ -606,7 +590,7 @@ export function CarnetTab({ userId, account, onError }: {
                             onKeyDown={(e) => handleKeyDown(e, ai, si)}
                             inputMode="decimal"
                             aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}${pending ? ' (brouillon à valider)' : ''}`}
-                            title={pending ? 'Brouillon du Correcteur : à valider dans la fiche de l’évaluation (fiche ↗) pour que l’élève le voie. Le modifier ici le valide.' : undefined}
+                            title={pending ? 'Brouillon du Correcteur : à valider dans la fiche de l’évaluation (nom de la colonne) pour que l’élève le voie. Le modifier ici le valide.' : undefined}
                             style={{
                               width: '100%', boxSizing: 'border-box', textAlign: 'center',
                               padding: '8px 4px', border: 'none', outline: 'none',
@@ -677,19 +661,9 @@ export function CarnetTab({ userId, account, onError }: {
           <strong>Entrée</strong> ou <strong>↓</strong> : élève suivant · <strong>Tab</strong> : évaluation suivante ·
           {' '}<strong>a</strong> absent · <strong>d</strong> dispensé · <strong>n</strong> non rendu ·
           {' '}<strong>z</strong> non rendu comptant 0 · <strong>*</strong> évaluation adaptée (✻) ·
-          {' '}<strong>Échap</strong> : annuler la frappe
+          {' '}<strong>Échap</strong> : annuler la frappe ·
+          {' '}<strong style={{ color: 'var(--warn)' }}>*</strong> orange : brouillon du Correcteur, à valider dans la fiche
         </p>
-      )}
-
-      {statsFor && (
-        <AssessmentStatsPanel
-          assessment={statsFor}
-          entries={entriesFor(statsFor.id)}
-          stats={columnStats.get(statsFor.id) ?? describeGrades([])}
-          userId={userId}
-          onClose={() => setStatsFor(null)}
-          onEdit={() => { setEditing(statsFor); setStatsFor(null); }}
-        />
       )}
 
       {showPronote && (
@@ -751,62 +725,6 @@ export function CarnetTab({ userId, account, onError }: {
         />
       )}
 
-      {editing && (
-        <AssessmentModal
-          title="Modifier l’évaluation"
-          className={className}
-          initial={{
-            name: editing.name,
-            bareme: Number(editing.bareme_total ?? 20),
-            coefficient: Number(editing.coefficient),
-            kind: editing.kind,
-            date: editing.date ?? '',
-            countsInAverage: editing.counts_in_average,
-            publishedToStudents: editing.published_to_students,
-          }}
-          students={students}
-          adaptedIds={adaptedIds(editing.id)}
-          onToggleAdapted={(studentId, value) => toggleAdapted(editing.id, studentId, value)}
-          gradeRaws={rawGradesOf(editing.id)}
-          onDelete={async () => {
-            if (!window.confirm(`Supprimer « ${editing.name} » et ses notes du carnet ?`)) return;
-            await softDeleteAssessment(editing.id);
-            setEditing(null);
-            await load();
-          }}
-          onClose={() => setEditing(null)}
-          seriesId={editing.series_id}
-          onSubmit={async (values) => {
-            const patch = {
-              name: values.name,
-              baremeTotal: values.bareme,
-              coefficient: values.coefficient,
-              kind: values.kind,
-              countsInAverage: values.countsInAverage,
-            };
-            const oldBareme = Number(editing.bareme_total ?? 20);
-            const convert = values.baremeMode === 'convert' && values.bareme !== oldBareme;
-            // La date et la publication restent propres à la classe : chaque groupe passe
-            // l'éval son jour, et on publie une classe quand SES copies sont corrigées.
-            const ownFields = {
-              date: values.date || null,
-              publishedToStudents: values.publishedToStudents,
-            };
-
-            if (values.applyToSeries && editing.series_id) {
-              // La série d'abord : elle lit les anciens barèmes avant de les écraser, et
-              // convertit chaque classe une seule fois — celle-ci comprise.
-              await updateSeriesAssessments(editing.series_id, patch, { rescaleRaw: convert });
-              await updateAssessment(editing.id, ownFields);
-            } else {
-              await updateAssessment(editing.id, { ...patch, ...ownFields });
-              if (convert) await rescaleGradesForBareme(editing.id, oldBareme, values.bareme);
-            }
-            setEditing(null);
-            await load();
-          }}
-        />
-      )}
       </div>
     </div>
   );
@@ -836,9 +754,6 @@ const colSep: React.CSSProperties = {
 const stickyCol: React.CSSProperties = {
   position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1,
 };
-const headerBtn: React.CSSProperties = {
-  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
-};
 const emptyBox: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
   padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14,
@@ -860,11 +775,6 @@ const classBtn: React.CSSProperties = {
 const tagStyle: React.CSSProperties = {
   marginLeft: 6, fontSize: 10, fontWeight: 700, color: 'var(--indigo)',
   background: 'var(--indigo-soft)', borderRadius: 999, padding: '1px 6px',
-};
-const statsBtn: React.CSSProperties = {
-  background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer',
-  fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', fontFamily: 'inherit',
-  textDecoration: 'underline', textUnderlineOffset: 2,
 };
 const btnBase: React.CSSProperties = {
   padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
