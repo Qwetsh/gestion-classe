@@ -146,6 +146,33 @@ Une trace de ce que l'élève a écrit, gardée après la suppression des scans,
   purgée qu'une fois toutes ses copies parties, la purge de nuit repasse chaque jour. L'onglet
   Évaluations affiche « N copies sans transcription : scans conservés ».
 
+### Ajout — Bouton « Corriger » par l'API Claude (01/11/2026, « Oui, lance-le » de Thomas via la session Correcteur)
+Corriger dans l'app une copie scannée en retard (élève sans note) ou reprise, comme le reste de la
+classe, sans repasser par le Correcteur. Branche `feat/copies-correction-api`.
+- Migration 057 (**appliquée en prod le 01/11/2026** avec le « Oui, applique » de Thomas ; RLS vérifiée en transaction annulée : prof oui, autre compte et anon non) : `assessment_correction_kits` (kit v1 de `build_kit.py` par
+  éval : barème, corrigé, calibrage, harmonisation, consignes ; RLS propriétaire, aucune RPC élève)
+  et `assessment_ai_corrections` (journal : état, modèle, tokens, coût estimé, `a_arbitrer` ;
+  seule la fonction écrit, le prof lit).
+- Correcteur : `push_grades.py --kit kit_<classe>.json` envoie le kit seul (aucune note ne bouge) ;
+  `--with-grades` y ajoute les notes ; `--dry-run` marche. Sauvegarde dans
+  `_sauvegardes/2026-11-01_avant_kit/`.
+- Edge Function `corriger-copie` (**déployée le 01/11/2026**, v1, JWT exigé ; démarrage vérifié : un appel sans compte prof reçoit 401) : JWT du prof propriétaire ; Claude Opus 5.5,
+  réflexion adaptative, effort `high`, streaming, sortie structurée (une propriété obligatoire par
+  ligne du barème : L01…Lnn, la seule façon d'imposer le nombre de lignes), repli serveur des refus
+  (`fallbacks: "default"`). Bloc barème + corrigé + calibrage + harmonisation mis en cache, puis
+  5 copies de référence réparties sur l'éventail des notes (validées et transcrites d'abord ; ni
+  nom ni commentaire général), puis les pages. Vérification comme `generer_correction.py --check`,
+  un second essai au plus ; note /20 au demi-point supérieur, niveaux de compétence 80/60/40 %,
+  détail v1 avec `"source": "api"`. Écrit la note en brouillon, la transcription, et le journal.
+  Réponse immédiate (202), correction en tâche de fond ; l'interface suit le journal.
+- Web, « Voir les copies » : « Corriger » (scannée sans note) / « Recorriger » (notée ; confirmation
+  si validée, la recorrection retire la validation), désactivés sans kit (« Corrige d'abord la classe
+  dans le Correcteur »), état « Correction en cours… », encadré « À arbitrer » et coût. Mobile : non.
+- Clé : secret Supabase `ANTHROPIC_API_KEY`, posé par Thomas (clé d'une organisation Console liée à
+  son abonnement Max). Environ 0,30 $ par copie.
+- Limite connue : une Edge Function a une durée maximale (150 s en offre gratuite). Une correction
+  plus longue est coupée : l'interface l'affiche « interrompue » au bout de 10 min, rien n'est écrit.
+
 ## 2. Ordre conseillé
 1 → 2 → 3 → 4. Le lot 1 seul supprime déjà les problèmes de poids, de noms, de pages mélangées et de fichiers mal nommés ; le lot 2 peut démarrer en parallèle si Thomas le souhaite (fichiers distincts).
 

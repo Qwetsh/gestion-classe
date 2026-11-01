@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  AiCorrectionStartError,
+  fetchAiCorrection,
   fetchAssessmentCopies,
   fetchAssessmentGrades,
   fetchAssessmentTranscripts,
   fetchExpectedStudents,
+  fetchLatestAiCorrections,
   getCopyUrls,
+  hasCorrectionKit,
+  startAiCorrection,
   validateAllGrades,
   validateGrade,
   type AssessmentRow,
@@ -16,6 +21,17 @@ import { parseGradeDetails } from '../lib/gradeDetails';
 import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/copyTranscript';
 import { GradeDetailsView } from './GradeDetailsView';
 import { CopyTranscriptView } from './CopyTranscriptView';
+import {
+  COST_HINT,
+  NO_KIT_MESSAGE,
+  correctionMode,
+  describeStartError,
+  formatCost,
+  isApiGrade,
+  isRunActive,
+  isRunInterrupted,
+  type AiCorrectionRun,
+} from '../lib/aiCorrection';
 
 type RowState = 'scanned' | 'absent' | 'missing';
 type Filter = 'all' | RowState;
@@ -63,16 +79,24 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
+  // Bouton « Corriger » (migration 057) : kit envoyé par le Correcteur, dernier appel par élève.
+  const [hasKit, setHasKit] = useState(false);
+  const [aiRuns, setAiRuns] = useState<Record<string, AiCorrectionRun>>({});
+  const [startingId, setStartingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [roster, copies, grades, transcripts] = await Promise.all([
+      const [roster, copies, grades, transcripts, kit, runs] = await Promise.all([
         fetchExpectedStudents([assessment]),
         fetchAssessmentCopies(assessment.id),
         fetchAssessmentGrades(assessment.id),
         fetchAssessmentTranscripts(assessment.id),
+        hasCorrectionKit(assessment.id),
+        fetchLatestAiCorrections(assessment.id),
       ]);
+      setHasKit(kit);
+      setAiRuns(runs);
       const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
       const next: Row[] = (roster[assessment.id] ?? []).map((student) => {
         const pages = copies
@@ -182,6 +206,55 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
     }
   };
 
+  // Suit les corrections en cours ; à la fin, recharge les notes et la transcription.
+  const activeRunIds = Object.values(aiRuns).filter((r) => isRunActive(r)).map((r) => r.id).join(',');
+  useEffect(() => {
+    if (!activeRunIds) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const fresh = await Promise.all(activeRunIds.split(',').map((id) => fetchAiCorrection(id)));
+        const finished = fresh.filter((r): r is AiCorrectionRun => !!r && r.status !== 'running');
+        if (finished.length === 0) return;
+        setAiRuns((prev) => ({ ...prev, ...Object.fromEntries(finished.map((r) => [r.student_id, r])) }));
+        if (finished.some((r) => r.status === 'done')) {
+          await load();
+          onChanged?.();
+        }
+      } catch {
+        // réseau : on réessaie au prochain tour
+      }
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [activeRunIds, load, onChanged]);
+
+  const handleCorrect = async (r: Row) => {
+    const mode = correctionMode({ pages: r.pages.length, grade: r.grade });
+    if (!mode) return;
+    const validated = mode === 'recorriger' && !!r.grade?.is_validated;
+    const question = validated
+      ? `La note de ${r.student.pseudo} est validée. La recorriger la repasse en brouillon (invisible pour l’élève) jusqu’à ce que tu la valides de nouveau.\n\nRecorriger avec Claude (${COST_HINT} de crédits API) ?`
+      : mode === 'recorriger'
+        ? `Recorriger la copie de ${r.student.pseudo} avec Claude (${COST_HINT} de crédits API) ? La note actuelle sera remplacée (en brouillon).`
+        : `Corriger la copie de ${r.student.pseudo} avec Claude (${COST_HINT} de crédits API) ? La note arrive en brouillon.`;
+    if (!window.confirm(question)) return;
+    setStartingId(r.student.id);
+    try {
+      const runId = await startAiCorrection({
+        assessmentId: assessment.id,
+        studentId: r.student.id,
+        mode,
+        confirmValidated: validated,
+      });
+      const run = await fetchAiCorrection(runId);
+      if (run) setAiRuns((prev) => ({ ...prev, [run.student_id]: run }));
+    } catch (e) {
+      onError(e instanceof AiCorrectionStartError ? describeStartError(e.code) : e instanceof Error ? e.message : 'Correction impossible');
+      if (e instanceof AiCorrectionStartError && e.code === 'already_running') load();
+    } finally {
+      setStartingId(null);
+    }
+  };
+
   const counts = {
     all: rows.length,
     scanned: rows.filter((r) => r.state === 'scanned').length,
@@ -250,6 +323,10 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
                     {r.grade.grade}{r.grade.is_validated ? '' : '*'}
                   </span>
                 )}
+                {isRunActive(aiRuns[r.student.id]) && <Badge tone="info">Correction…</Badge>}
+                {aiRuns[r.student.id]?.status === 'done' && isApiGrade(r.grade?.details) && aiRuns[r.student.id].a_arbitrer.length > 0 && (
+                  <Badge tone="warn">⚑ {aiRuns[r.student.id].a_arbitrer.length}</Badge>
+                )}
                 {r.grade?.subject_version && <Badge>{r.grade.subject_version}</Badge>}
                 {r.grade?.is_adapted && <Badge tone="info">Adaptée</Badge>}
                 {r.grade?.copy_annotated && <Badge tone="info">Annotée</Badge>}
@@ -298,12 +375,33 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
                   Valider la note
                 </button>
               )}
+              {(() => {
+                const mode = correctionMode({ pages: selected.pages.length, grade: selected.grade });
+                if (!mode) return null;
+                const busy = startingId === selected.student.id || isRunActive(aiRuns[selected.student.id]);
+                return (
+                  <button
+                    onClick={() => handleCorrect(selected)}
+                    disabled={!hasKit || busy}
+                    title={hasKit ? `Correction par Claude Opus 5.5, en brouillon (${COST_HINT})` : NO_KIT_MESSAGE}
+                    style={{ ...btn, opacity: !hasKit || busy ? 0.55 : 1, cursor: !hasKit || busy ? 'default' : 'pointer' }}
+                  >
+                    {busy ? 'Correction en cours…' : mode === 'corriger' ? 'Corriger' : 'Recorriger'}
+                  </button>
+                );
+              })()}
               {page && urls[page.storage_path] && (
                 <a href={urls[page.storage_path]} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--indigo)' }}>
                   Ouvrir ↗
                 </a>
               )}
             </div>
+            {!hasKit && correctionMode({ pages: selected.pages.length, grade: selected.grade }) === 'corriger' && (
+              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
+                {NO_KIT_MESSAGE} : le bouton « Corriger » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
+              </div>
+            )}
+            <AiRunPanel run={aiRuns[selected.student.id]} apiGrade={isApiGrade(selected.grade?.details)} />
 
             <div
               style={{
@@ -425,6 +523,59 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** État du dernier appel « Corriger » de l'élève : en cours, erreur, ou points à arbitrer et coût. */
+function AiRunPanel({ run, apiGrade }: { run: AiCorrectionRun | undefined; apiGrade: boolean }) {
+  if (!run) return null;
+  const box: React.CSSProperties = { borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12.5 };
+  const when = new Date(run.finished_at ?? run.started_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  const cost = run.cost_usd != null ? ` · coût estimé ${formatCost(run.cost_usd)}` : '';
+  if (isRunActive(run)) {
+    return (
+      <div style={{ ...box, background: 'var(--indigo-soft)', color: 'var(--indigo)', fontWeight: 600 }}>
+        Correction en cours par Claude… (1 à 2 minutes, tu peux changer d’élève)
+      </div>
+    );
+  }
+  if (isRunInterrupted(run) || run.status === 'error') {
+    return (
+      <div style={{ ...box, background: 'var(--neg-soft)', color: 'var(--neg)' }}>
+        <strong>Correction automatique échouée</strong> ({when}{cost}) :{' '}
+        {run.error ?? 'appel interrompu (délai dépassé). Rien n’a été enregistré ; tu peux relancer.'}
+      </div>
+    );
+  }
+  // Une note renvoyée depuis par le Correcteur remplace celle de l'API : le journal n'est plus d'actualité.
+  if (!apiGrade) return null;
+  return (
+    <div style={{ ...box, background: run.a_arbitrer.length ? 'var(--warn-soft)' : 'var(--surface-3)', border: '1px solid var(--border)' }}>
+      {run.a_arbitrer.length > 0 ? (
+        <>
+          <div style={{ fontWeight: 700, color: 'var(--warn)', marginBottom: 6 }}>
+            ⚑ À arbitrer ({run.a_arbitrer.length}) : vérifie avant de valider
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text)' }}>
+            {run.a_arbitrer.map((a, i) => (
+              <li key={i} style={{ marginBottom: 3 }}>
+                <strong>{a.question}</strong> · note mise {String(a.note_mise).replace('.', ',')} — {a.raison}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <div style={{ color: 'var(--text-muted)' }}>Claude ne signale rien à arbitrer.</div>
+      )}
+      {run.error && <div style={{ color: 'var(--neg)', marginTop: 6 }}>{run.error}</div>}
+      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
+        Corrigée par Claude ({run.model ?? '?'}) le {when}
+        {cost}
+        {run.input_tokens != null &&
+          ` · ${((run.input_tokens + (run.cache_creation_tokens ?? 0) + (run.cache_read_tokens ?? 0)) / 1000).toFixed(0)} k tokens lus, ${((run.output_tokens ?? 0) / 1000).toFixed(1).replace('.', ',')} k écrits`}
+        {run.attempts > 1 && ` · ${run.attempts} essais`}
       </div>
     </div>
   );
