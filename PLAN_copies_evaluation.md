@@ -4,8 +4,10 @@
 > Remplace `PLAN_scan_copies.md` (v1 partiellement codée, jamais utilisée).
 > Statut : **validé par Thomas le 01/11/2026** (réponses aux 4 questions en §3).
 > - Lot 1 **codé le 01/11/2026** : migration 052 appliquée en prod (branche `feat/copies-schema`),
->   mobile `feat/scan-copies` (58effde). Tests jest + tsc OK. **Pas encore testé sur téléphone** :
->   APK / dev client à reconstruire (module natif ML Kit). Barème à la création : /10, /20, /30, /40
+>   mobile `feat/scan-copies` (58effde). Tests jest + tsc OK. **APK preview construit le 01/11/2026**
+>   (build EAS 9b171e0c, après le correctif af255d2 : expo-image forcé en ~3.0.11, la dépendance
+>   ML Kit tirait expo-image 58.x qui cassait Gradle). Pas encore testé sur le téléphone ; le dev
+>   client (profil `development`) reste à reconstruire. Barème à la création : /10, /20, /30, /40
 >   (le reste se règle sur le web). Liste du scan = toute la classe, pas encore filtrée par demi-groupe.
 > - Lot 2 **codé le 01/11/2026** : web `feat/copies-suivi` (état par éval × classe calculé dans
 >   `lib/copyStatus.ts`, visionneuse `components/CopyViewer.tsx`) ; Correcteur (hors git, originaux
