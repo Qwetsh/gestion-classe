@@ -7,6 +7,8 @@ import {
 } from '../lib/studentGrades';
 import { formatGrade, STATUS_LABEL, studentAverage, type GradeStatus } from '../lib/gradeStats';
 import { StudentWorkSheet } from './StudentWorkSheet';
+import { GradeDetailsView, type DetailsPalette } from './GradeDetailsView';
+import { parseGradeDetails } from '../lib/gradeDetails';
 
 /**
  * Onglet « Évals » de l'espace élève : ses notes, le sujet et le corrigé, et pour les activités
@@ -32,6 +34,18 @@ const T = {
   indigoSoft: '#1e1b4b',
 } as const;
 
+const DETAILS_PALETTE: DetailsPalette = {
+  text: T.text,
+  muted: T.textMuted,
+  dim: T.textDim,
+  border: T.cardBorder,
+  surface: T.surface,
+  pos: T.pos,
+  warn: T.warn,
+  neg: T.neg,
+  accent: T.indigo,
+};
+
 function gradeColor(g: number): string {
   if (g >= 14) return T.pos;
   if (g >= 10) return T.warn;
@@ -55,6 +69,8 @@ export function StudentGrades({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
   const [sheet, setSheet] = useState<StudentAssessment | null>(null);
+  /** Évaluation dont le détail de correction est déplié. */
+  const [openDetails, setOpenDetails] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -127,6 +143,8 @@ export function StudentGrades({ code }: { code: string }) {
         {rows.map((a) => {
           const hasGrade = a.status === 'noted' && a.grade !== null;
           const bareme = Number(a.bareme_total ?? 20);
+          const details = hasGrade ? parseGradeDetails(a.details) : null;
+          const detailsOpen = openDetails === a.id;
           return (
             <div key={a.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 16 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -157,8 +175,24 @@ export function StudentGrades({ code }: { code: string }) {
                 )}
               </div>
 
-              {a.comment && (
+              {a.comment && !detailsOpen && (
                 <p style={{ color: T.textMuted, fontSize: 13, margin: '10px 0 0' }}>{a.comment}</p>
+              )}
+
+              {details && (
+                <>
+                  <button
+                    onClick={() => setOpenDetails(detailsOpen ? null : a.id)}
+                    style={{ ...docBtn, marginTop: 12, borderColor: T.indigo + '77', color: T.indigo }}
+                  >
+                    {detailsOpen ? '▾ Masquer le détail' : '▸ Le détail de ma correction'}
+                  </button>
+                  {detailsOpen && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}` }}>
+                      <GradeDetailsView details={details} palette={DETAILS_PALETTE} />
+                    </div>
+                  )}
+                </>
               )}
 
               {(a.has_subject || a.has_correction || a.has_work) && (
