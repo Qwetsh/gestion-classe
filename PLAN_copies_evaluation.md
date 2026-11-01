@@ -119,7 +119,8 @@ Tests : test de la fonction sur une éval de test (fichiers et lignes supprimés
 Pour l'alerte « copies de voisins qui se ressemblent » (`Correcteur/scripts/voisins.py`) : les plans
 de classe n'ont pas d'historique, donc on photographie le placement par éval.
 - Migration 055 `assessment_placements` (une ligne par éval, RLS propriétaire, invisible des élèves ;
-  un trigger complète salle, taille, allées et tables depuis `rooms`). **Écrite, pas encore appliquée.**
+  un trigger complète salle, taille, allées et tables depuis `rooms`). **Appliquée en prod le
+  01/11/2026** avec l'accord de Thomas (vérifiée en transaction annulée).
 - Mobile (`feat/copies-placement`) : photo `auto` mise en file au premier scan d'une copie, à partir
   du plan de la séance sur le téléphone (jamais écrasée par une autre prise auto) ; bouton
   « Placement » sur l'écran de scan pour corriger la photo (`manual`) sans toucher au plan habituel.
