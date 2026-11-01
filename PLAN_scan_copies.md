@@ -1,5 +1,7 @@
 # Plan — Scan de copies depuis le mobile → correction par Claude
 
+> ⚠️ **Remplacé par `PLAN_copies_evaluation.md` (01/11/2026).** Gardé pour l'historique de la v1.
+
 > Objectif : scanner les copies d'éval depuis l'app mobile au moment de la récupération,
 > les stocker dans Supabase **déjà nominées** (liées à l'élève), les consulter sur le web,
 > puis les récupérer depuis Claude terminal (PC) pour correction automatique.
