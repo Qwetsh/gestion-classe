@@ -813,6 +813,18 @@ export interface CarnetData {
  * au passage d'année (`class_id → SET NULL`) garde ses notes en base et sur sa fiche,
  * mais ne figure plus ici. Les évals supprimées (`is_deleted`) sont exclues.
  */
+/** Élèves d'une classe avec leurs aménagements (PAP, PPRE, PAI), comme dans le carnet. */
+export async function fetchCarnetStudents(userId: string, classId: string): Promise<CarnetStudent[]> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, pseudo, has_pap, has_ppre, has_pai')
+    .eq('user_id', userId)
+    .eq('class_id', classId)
+    .order('pseudo');
+  if (error) throw error;
+  return (data || []) as CarnetStudent[];
+}
+
 export async function fetchCarnet(
   userId: string,
   classId: string,

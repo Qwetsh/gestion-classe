@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AiCorrectionStartError,
   fetchAiCorrection,
@@ -11,7 +11,6 @@ import {
   getCopyUrls,
   hasCorrectionKit,
   startAiCorrection,
-  validateAllGrades,
   validateGrade,
   type AssessmentRow,
   type CopyPageRow,
@@ -23,7 +22,7 @@ import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/co
 import { GradeDetailsView } from './GradeDetailsView';
 import { CopyTranscriptView } from './CopyTranscriptView';
 import { AddCopyDialog } from './AddCopyDialog';
-import { ExportCorrectionsDialog, downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
+import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import {
   COST_HINT,
   NO_KIT_MESSAGE,
@@ -68,6 +67,8 @@ interface CopyViewerProps {
   onError: (message: string) => void;
   /** Appelé après une validation, pour rafraîchir l'état affiché ailleurs. */
   onChanged?: () => void;
+  /** Change quand le parent a modifié les copies ou les notes (validation de la classe, purge…) : on recharge sans perdre l'élève affiché. */
+  refreshKey?: number;
 }
 
 /**
@@ -75,7 +76,7 @@ interface CopyViewerProps {
  * manquants), et la copie de l'élève choisi en grand, page par page.
  * Clavier : ← → pages, ↑ ↓ élèves.
  */
-export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) {
+export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: CopyViewerProps) {
   const [rows, setRows] = useState<Row[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -91,10 +92,14 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const [startingId, setStartingId] = useState<string | null>(null);
   // « Ajouter une copie » (migration 058) : élève dont la fenêtre est ouverte.
   const [addingId, setAddingId] = useState<string | null>(null);
-  // Export PDF des corrections (fiches à imprimer).
-  const [exportOpen, setExportOpen] = useState(false);
+
+  // La ligne de l'éval est relue à chaque rechargement du parent ; on ne recharge les copies
+  // que si l'éval change ou si le parent le demande (refreshKey), pas à chaque nouvel objet.
+  const assessmentRef = useRef(assessment);
+  assessmentRef.current = assessment;
 
   const load = useCallback(async () => {
+    const assessment = assessmentRef.current;
     setLoading(true);
     try {
       const [roster, copies, grades, transcripts, kit, runs, versions] = await Promise.all([
@@ -129,12 +134,12 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
     } finally {
       setLoading(false);
     }
-  }, [assessment, onError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessment.id, refreshKey, onError]);
 
-  useEffect(() => {
-    setSelectedId(null);
-    load();
-  }, [load]);
+  // Nouvelle éval : on repart du premier élève. Simple rechargement : on garde l'élève affiché.
+  useEffect(() => { setSelectedId(null); }, [assessment.id]);
+  useEffect(() => { load(); }, [load]);
 
   const visible = useMemo(
     () => rows.filter((r) => filter === 'all' || r.state === filter),
@@ -168,38 +173,6 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   // Avec des scans, la transcription est un onglet à côté de la correction ; sans scan, elle
   // prend la place des pages.
   const [sideTab, setSideTab] = useState<'correction' | 'transcription'>('correction');
-  const drafts = rows.filter((r) => r.grade && r.grade.grade != null && !r.grade.is_validated).length;
-  const [validatingAll, setValidatingAll] = useState(false);
-
-  const handleValidateAll = async () => {
-    const flagged = rows.filter((r) => {
-      const run = aiRuns[r.student.id];
-      return r.grade && !r.grade.is_validated && run?.status === 'done' && isApiGrade(r.grade.details) && mentionsOtherVersion(run.a_arbitrer);
-    });
-    const warning = flagged.length
-      ? `
-
-⚠ Dont ${flagged.map((r) => r.student.pseudo).join(', ')} : Claude signale une copie faite sur une autre version du sujet.`
-      : '';
-    if (!window.confirm(`Valider les ${drafts} note${drafts > 1 ? 's' : ''} en brouillon de cette classe ?${warning}`)) return;
-    setValidatingAll(true);
-    try {
-      await validateAllGrades(assessment.id);
-      setRows((prev) =>
-        prev.map((r) =>
-          r.grade && r.grade.grade != null && !r.grade.is_validated
-            ? { ...r, grade: { ...r.grade, is_validated: true } }
-            : r,
-        ),
-      );
-      onChanged?.();
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Échec de la validation');
-    } finally {
-      setValidatingAll(false);
-    }
-  };
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -307,20 +280,6 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, alignItems: 'start' }}>
       {/* ---- Élèves ---- */}
       <div>
-        {drafts > 0 && (
-          <button
-            onClick={handleValidateAll}
-            disabled={validatingAll}
-            style={{ ...btn, width: '100%', marginBottom: 8, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)' }}
-          >
-            {validatingAll ? 'Validation…' : `Valider toute la classe (${drafts} brouillon${drafts > 1 ? 's' : ''})`}
-          </button>
-        )}
-        {rows.some((r) => r.grade?.details) && (
-          <button onClick={() => setExportOpen(true)} style={{ ...btn, width: '100%', marginBottom: 8 }}>
-            Exporter les corrections (PDF)
-          </button>
-        )}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           {FILTERS.map(([id, label]) => (
             <button
@@ -446,7 +405,7 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
                     title={hasKit ? `Correction par Claude Opus 5.5, en brouillon (${COST_HINT})` : NO_KIT_MESSAGE}
                     style={{ ...btn, opacity: !hasKit || busy ? 0.55 : 1, cursor: !hasKit || busy ? 'default' : 'pointer' }}
                   >
-                    {busy ? 'Correction en cours…' : mode === 'corriger' ? 'Corriger' : 'Recorriger'}
+                    {busy ? 'Correction en cours…' : mode === 'corriger' ? 'Corriger avec Claude' : 'Recorriger avec Claude'}
                   </button>
                 );
               })()}
@@ -458,7 +417,7 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
             </div>
             {!hasKit && correctionMode({ pages: selected.pages.length, grade: selected.grade }) === 'corriger' && (
               <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
-                {NO_KIT_MESSAGE} : le bouton « Corriger » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
+                {NO_KIT_MESSAGE} : le bouton « Corriger avec Claude » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
               </div>
             )}
             <AiRunPanel run={aiRuns[selected.student.id]} apiGrade={isApiGrade(selected.grade?.details)} />
@@ -587,7 +546,6 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
           </>
         )}
       </div>
-      {exportOpen && <ExportCorrectionsDialog assessment={assessment} rows={rows} onClose={() => setExportOpen(false)} />}
       {adding && (
         <AddCopyDialog
           assessment={assessment}

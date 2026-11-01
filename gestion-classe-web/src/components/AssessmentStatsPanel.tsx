@@ -103,15 +103,18 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function AssessmentStatsPanel({
-  assessment, entries, stats, userId, onClose, onEdit,
+/**
+ * Le contenu des statistiques, sans habillage : indicateurs, distribution, effectifs et, pour
+ * une série, la comparaison entre classes. Affiché dans le panneau latéral du carnet et, en
+ * place, dans la fiche d'une évaluation.
+ */
+export function AssessmentStatsBody({
+  assessment, entries, stats, userId,
 }: {
   assessment: AssessmentRow;
   entries: GradeEntry[];
   stats: GradeStats;
   userId: string;
-  onClose: () => void;
-  onEdit: () => void;
 }) {
   const [series, setSeries] = useState<SeriesClassRow[] | null>(null);
   const [seriesError, setSeriesError] = useState<string | null>(null);
@@ -126,6 +129,72 @@ export function AssessmentStatsPanel({
   }, [assessment.series_id, userId]);
 
   const total = entries.length;
+
+  return (
+    <div>
+      {/* Indicateurs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        <Stat label="Moyenne" value={formatGrade(stats.mean)} />
+        <Stat label="Médiane" value={formatGrade(stats.median)} />
+        <Stat label="Écart-type" value={formatGrade(stats.stdDev)} />
+        <Stat label="Min" value={formatGrade(stats.min)} />
+        <Stat label="Max" value={formatGrade(stats.max)} />
+        <Stat label="≥ 10/20" value={formatRate(stats.successRate)} />
+        <Stat label="Q1" value={formatGrade(stats.q1)} />
+        <Stat label="Q3" value={formatGrade(stats.q3)} />
+        <Stat label="Notes" value={`${stats.count}/${total}`} />
+      </div>
+
+      {/* Distribution */}
+      <h4 style={sectionTitle}>Distribution</h4>
+      <HistogramChart buckets={stats.histogram} total={stats.count} />
+
+      {/* Effectifs par statut */}
+      <h4 style={sectionTitle}>Effectifs</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {(Object.keys(stats.statusCounts) as GradeStatus[])
+          .filter((s) => stats.statusCounts[s] > 0)
+          .map((s) => (
+            <div key={s} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text)' }}>
+              <span>{STATUS_LABEL[s]}</span>
+              <strong>{stats.statusCounts[s]}</strong>
+            </div>
+          ))}
+        {stats.pending > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--warn)' }}>
+            <span>Dont sans note</span>
+            <strong>{stats.pending}</strong>
+          </div>
+        )}
+      </div>
+
+      {/* Comparaison entre classes de la série */}
+      {assessment.series_id && (
+        <>
+          <h4 style={sectionTitle}>Comparaison entre classes</h4>
+          {seriesError ? (
+            <div style={{ fontSize: 13, color: 'var(--neg)' }}>{seriesError}</div>
+          ) : series === null ? (
+            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
+          ) : (
+            <SeriesComparison rows={series} currentId={assessment.id} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function AssessmentStatsPanel({
+  assessment, entries, stats, userId, onClose, onEdit,
+}: {
+  assessment: AssessmentRow;
+  entries: GradeEntry[];
+  stats: GradeStats;
+  userId: string;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
   const bareme = Number(assessment.bareme_total ?? 20);
 
   return (
@@ -138,7 +207,7 @@ export function AssessmentStatsPanel({
           padding: 24, boxSizing: 'border-box', boxShadow: 'var(--shadow-2)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
               {assessment.name}
@@ -153,55 +222,7 @@ export function AssessmentStatsPanel({
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', lineHeight: 1 }}>✕</button>
         </div>
 
-        {/* Indicateurs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 20 }}>
-          <Stat label="Moyenne" value={formatGrade(stats.mean)} />
-          <Stat label="Médiane" value={formatGrade(stats.median)} />
-          <Stat label="Écart-type" value={formatGrade(stats.stdDev)} />
-          <Stat label="Min" value={formatGrade(stats.min)} />
-          <Stat label="Max" value={formatGrade(stats.max)} />
-          <Stat label="≥ 10/20" value={formatRate(stats.successRate)} />
-          <Stat label="Q1" value={formatGrade(stats.q1)} />
-          <Stat label="Q3" value={formatGrade(stats.q3)} />
-          <Stat label="Notes" value={`${stats.count}/${total}`} />
-        </div>
-
-        {/* Distribution */}
-        <h4 style={sectionTitle}>Distribution</h4>
-        <HistogramChart buckets={stats.histogram} total={stats.count} />
-
-        {/* Effectifs par statut */}
-        <h4 style={sectionTitle}>Effectifs</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {(Object.keys(stats.statusCounts) as GradeStatus[])
-            .filter((s) => stats.statusCounts[s] > 0)
-            .map((s) => (
-              <div key={s} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text)' }}>
-                <span>{STATUS_LABEL[s]}</span>
-                <strong>{stats.statusCounts[s]}</strong>
-              </div>
-            ))}
-          {stats.pending > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--warn)' }}>
-              <span>Dont pas encore corrigées</span>
-              <strong>{stats.pending}</strong>
-            </div>
-          )}
-        </div>
-
-        {/* Comparaison entre classes de la série */}
-        {assessment.series_id && (
-          <>
-            <h4 style={sectionTitle}>Comparaison entre classes</h4>
-            {seriesError ? (
-              <div style={{ fontSize: 13, color: 'var(--neg)' }}>{seriesError}</div>
-            ) : series === null ? (
-              <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
-            ) : (
-              <SeriesComparison rows={series} currentId={assessment.id} />
-            )}
-          </>
-        )}
+        <AssessmentStatsBody assessment={assessment} entries={entries} stats={stats} userId={userId} />
 
         <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
           <button onClick={onEdit} style={btnPrimary}>Modifier l’évaluation</button>
