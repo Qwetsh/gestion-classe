@@ -173,6 +173,22 @@ classe, sans repasser par le Correcteur. Branche `feat/copies-correction-api`.
 - Limite connue : une Edge Function a une durée maximale (150 s en offre gratuite). Une correction
   plus longue est coupée : l'interface l'affiche « interrompue » au bout de 10 min, rien n'est écrit.
 
+### Correctif — Un kit par version du sujet (01/11/2026, après la 1re correction réelle)
+Nathan HE. (4D) a composé sur le sujet v4 ; le kit de la 4D était v5 (sans le dire) : correction
+sur le mauvais barème. Branche `feat/copies-kits-versions` (empilée sur l'export PDF).
+- Migration 059 (**appliquée en prod le 01/11/2026**, « Ok go » de Thomas ; l'ancien kit 4D sans version reste en base, inerte dès qu'il existe des kits versionnés) : `assessment_correction_kits.version_key` (colonne générée
+  depuis `kit.version`, minuscules ; '' = sans version), clé primaire (assessment_id, version_key).
+- `push_grades.py --kit` se répète (un kit par version ; deux kits de même version ou un kit sans
+  version parmi plusieurs : refus). Sauvegarde `_sauvegardes/2026-11-01_avant_kits_versions/`.
+- `corriger-copie` (**redéployée le 01/11/2026**, v3) choisit le kit d'après `assessment_grades.subject_version`
+  (pickKit) : kit de la version ; kit sans version seulement si les autres élèves ont la même
+  version et aucune autre ; élève sans version et plusieurs kits : refus. Références : jamais une
+  copie d'une autre version déclarée.
+- Web : messages clairs pour ces refus ; version du sujet obligatoire dans « Ajouter une copie »
+  dès que l'éval a 2 versions connues (copies ou kits) ; alerte rouge quand Claude signale dans
+  « à arbitrer » une copie d'une autre version, et confirmation avant de valider (seule ou en groupe).
+- Constat : aucune copie de la 4D n'a de version saisie (le scan mobile la laisse facultative).
+
 ### Ajout — « Ajouter une copie » depuis l'ordinateur (01/11/2026, demande de Thomas via la session Correcteur)
 Faire noter une copie après les autres sans repasser par le scan mobile. Branche `feat/copies-ajout`.
 - Web, « Voir les copies » : bouton « Ajouter une copie » sur chaque élève (scanné, sans copie ou

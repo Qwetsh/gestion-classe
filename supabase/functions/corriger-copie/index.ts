@@ -8,6 +8,7 @@ import {
   formatKitBlock,
   formatReference,
   formatTask,
+  pickKit,
   pickReferences,
   validateOutput,
   type CorrectionKit,
@@ -25,6 +26,9 @@ import {
  * dans un bloc mis en cache ; 5 copies de référence de la même éval ; les pages de l'élève.
  * La note part en BROUILLON (Thomas valide), la transcription dans assessment_copy_transcripts,
  * les points « à arbitrer », le coût et les tokens dans assessment_ai_corrections.
+ *
+ * Kit : celui de la version du sujet de l'élève (assessment_grades.subject_version, migration
+ * 059) ; si on ne peut pas savoir lequel prendre, refus (409) plutôt qu'un mauvais barème.
  *
  * Corps : { assessment_id, student_id, mode: "corriger" | "recorriger", confirm_validated? }.
  * Auth : JWT du prof propriétaire de l'éval. Réponse immédiate 202 { run_id } : la correction
@@ -60,6 +64,7 @@ interface Job {
   assessmentId: string;
   studentId: string;
   prenom: string;
+  studentVersion: string | null;
   kit: CorrectionKit;
   pages: { storage_path: string }[];
 }
@@ -101,14 +106,6 @@ Deno.serve(async (req: Request) => {
 
   if (!Deno.env.get("ANTHROPIC_API_KEY")) return json({ error: "no_api_key" }, 503);
 
-  const { data: kitRow } = await sb
-    .from("assessment_correction_kits")
-    .select("kit")
-    .eq("assessment_id", assessmentId)
-    .maybeSingle();
-  if (!kitRow) return json({ error: "no_kit" }, 409);
-  const kit = kitRow.kit as CorrectionKit;
-
   const { data: pages } = await sb
     .from("assessment_copy_pages")
     .select("storage_path, page_order")
@@ -119,10 +116,30 @@ Deno.serve(async (req: Request) => {
 
   const { data: grade } = await sb
     .from("assessment_grades")
-    .select("grade, is_validated")
+    .select("grade, is_validated, subject_version")
     .eq("assessment_id", assessmentId)
     .eq("student_id", studentId)
     .maybeSingle();
+
+  // Le kit de la version du sujet de l'élève (un par version, migration 059).
+  const [{ data: kitRows }, { data: others }] = await Promise.all([
+    sb.from("assessment_correction_kits").select("kit, version_key").eq("assessment_id", assessmentId),
+    sb.from("assessment_grades")
+      .select("subject_version")
+      .eq("assessment_id", assessmentId)
+      .neq("student_id", studentId)
+      .not("subject_version", "is", null),
+  ]);
+  const studentVersion = (grade?.subject_version as string | null | undefined) ?? null;
+  const choice = pickKit(
+    (kitRows ?? []) as { kit: CorrectionKit; version_key: string }[],
+    studentVersion,
+    (others ?? []).map((o) => o.subject_version as string | null),
+  );
+  if (!choice.ok) {
+    return json({ error: choice.error, versions: choice.versions, student_version: studentVersion }, 409);
+  }
+  const kit = choice.kit.kit;
   const graded = grade?.grade !== null && grade?.grade !== undefined;
   if (mode === "corriger" && graded) return json({ error: "already_graded" }, 409);
   if (mode === "recorriger" && !graded) return json({ error: "not_graded" }, 409);
@@ -152,7 +169,7 @@ Deno.serve(async (req: Request) => {
     .single();
   if (runError || !run) return json({ error: "journal_failed" }, 500);
 
-  const job: Job = { runId: run.id, userId: user.id, assessmentId, studentId, prenom, kit, pages };
+  const job: Job = { runId: run.id, userId: user.id, assessmentId, studentId, prenom, studentVersion, kit, pages };
   const work = correct(sb, job).catch(async (e) => {
     console.error("corriger-copie", job.runId, e);
     await finish(sb, job.runId, { status: "error", error: describeError(e) });
@@ -178,7 +195,7 @@ async function finish(sb: SupabaseClient, runId: string, fields: Record<string, 
 async function loadReferences(sb: SupabaseClient, job: Job): Promise<ReferenceCandidate[]> {
   const { data: grades } = await sb
     .from("assessment_grades")
-    .select("student_id, grade, is_validated, details")
+    .select("student_id, grade, is_validated, details, subject_version")
     .eq("assessment_id", job.assessmentId)
     .eq("status", "noted")
     .neq("student_id", job.studentId)
@@ -199,8 +216,9 @@ async function loadReferences(sb: SupabaseClient, job: Job): Promise<ReferenceCa
     is_validated: g.is_validated === true,
     details: g.details,
     transcript: byStudent.get(g.student_id) ?? null,
+    subject_version: g.subject_version as string | null,
   }));
-  return pickReferences(candidates, job.kit, job.studentId);
+  return pickReferences(candidates, job.kit, job.studentId, 5, job.studentVersion);
 }
 
 async function loadPage(sb: SupabaseClient, path: string): Promise<Anthropic.Beta.BetaImageBlockParam> {
