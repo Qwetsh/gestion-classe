@@ -185,53 +185,6 @@ export function AssessmentStatsBody({
   );
 }
 
-export function AssessmentStatsPanel({
-  assessment, entries, stats, userId, onClose, onEdit,
-}: {
-  assessment: AssessmentRow;
-  entries: GradeEntry[];
-  stats: GradeStats;
-  userId: string;
-  onClose: () => void;
-  onEdit: () => void;
-}) {
-  const bareme = Number(assessment.bareme_total ?? 20);
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 110, display: 'flex', justifyContent: 'flex-end' }}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 460, maxWidth: '96vw', height: '100%', overflowY: 'auto',
-          background: 'var(--surface)', borderLeft: '1px solid var(--border)',
-          padding: 24, boxSizing: 'border-box', boxShadow: 'var(--shadow-2)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-              {assessment.name}
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-              {assessment.classes?.name ?? '—'} · T{assessment.period ?? '?'} ·
-              {' '}coef {Number(assessment.coefficient)} · /{bareme}
-              {assessment.date ? ` · ${new Date(assessment.date).toLocaleDateString('fr-FR')}` : ''}
-              {!assessment.counts_in_average && ' · hors moyenne'}
-            </p>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', lineHeight: 1 }}>✕</button>
-        </div>
-
-        <AssessmentStatsBody assessment={assessment} entries={entries} stats={stats} userId={userId} />
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
-          <button onClick={onEdit} style={btnPrimary}>Modifier l’évaluation</button>
-          <button onClick={onClose} style={btnGhost}>Fermer</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /**
  * Comparaison inter-classes : un tableau, pas un graphique. Trois à cinq classes sur
@@ -300,9 +253,3 @@ const sectionTitle: React.CSSProperties = {
 const tdNum: React.CSSProperties = {
   padding: '6px 4px', textAlign: 'right', borderBottom: '1px solid var(--border)', color: 'var(--text)',
 };
-const btnBase: React.CSSProperties = {
-  padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', border: '1px solid transparent',
-};
-const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo)', color: '#fff' };
-const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };

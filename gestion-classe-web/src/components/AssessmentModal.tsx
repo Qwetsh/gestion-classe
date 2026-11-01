@@ -17,8 +17,6 @@ export interface AssessmentValues {
   kind: AssessmentKind;
   date: string;
   countsInAverage: boolean;
-  /** Édition seulement : rendre la note visible aux élèves. */
-  publishedToStudents: boolean;
   /** Création seulement : les classes sur lesquelles créer l'évaluation. */
   classIds?: string[];
   /** Édition seulement : répercuter sur les autres classes de la série. */
@@ -60,7 +58,6 @@ export function AssessmentModal({
   const [kind, setKind] = useState<AssessmentKind>(initial?.kind ?? 'ecrit');
   const [date, setDate] = useState(initial?.date ?? '');
   const [countsInAverage, setCountsInAverage] = useState(initial?.countsInAverage ?? true);
-  const [publishedToStudents, setPublishedToStudents] = useState(initial?.publishedToStudents ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,7 +99,7 @@ export function AssessmentModal({
     setError(null);
     try {
       await onSubmit({
-        name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage, publishedToStudents,
+        name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage,
         classIds: canSpread && spread && currentClassId ? [currentClassId, ...targets] : undefined,
         applyToSeries,
         baremeMode,
@@ -166,21 +163,6 @@ export function AssessmentModal({
           <input type="checkbox" checked={countsInAverage} onChange={(e) => setCountsInAverage(e.target.checked)} />
           Compte dans la moyenne
         </label>
-
-        {/* Édition : rendre les notes visibles aux élèves */}
-        {initial && (
-          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={publishedToStudents} onChange={(e) => setPublishedToStudents(e.target.checked)} />
-              Visible par les élèves
-            </label>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-              Chaque élève voit sa note, le sujet et le corrigé depuis son espace — jamais les
-              notes des autres. Encore faut-il que l’onglet « Notes » soit activé pour la classe
-              dans Classes › Ce que voient les élèves.
-            </div>
-          </div>
-        )}
 
         {/* Création : dupliquer l'évaluation sur d'autres classes */}
         {canSpread && (

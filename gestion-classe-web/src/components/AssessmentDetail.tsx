@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useRef, useState } from 'react';
 import { CopyViewer } from './CopyViewer';
+import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import { ExportCorrectionsDialog, exportableSheets, type ExportableRow } from './ExportCorrectionsDialog';
 import { isApiGrade, mentionsOtherVersion } from '../lib/aiCorrection';
 import {
   COPY_RETENTION_DAYS,
   COPY_STAGE_LABEL,
-  describeCopyOverview,
   retentionState,
   type CopyOverview,
   type CopyStage,
@@ -14,10 +13,12 @@ import {
 import { describeKeptCopies } from '../lib/copyTranscript';
 import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
+  describeClassRow,
   formatSession,
   groupDocPath,
   hasCopies,
   hasCopyContent,
+  neverScanned,
   pendingDrafts,
   stageLabel,
   type AssessmentGroup,
@@ -66,41 +67,6 @@ export function StageChip({ stage, overview, title }: { stage: CopyStage; overvi
   );
 }
 
-/** Petit menu ⋯ : les actions rares d'une ligne, hors de vue tant qu'on ne les cherche pas. */
-function RowMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean; title?: string }[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
-  if (items.length === 0) return null;
-  return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block', marginLeft: 6 }}>
-      <button onClick={() => setOpen((o) => !o)} style={{ ...btnGhost, padding: '4px 8px', fontSize: 12 }} title="Scans : conserver ou supprimer" aria-haspopup="menu" aria-expanded={open}>
-        ⋯
-      </button>
-      {open && (
-        <div role="menu" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 220, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-2)', zIndex: 20, padding: 4 }}>
-          {items.map((it) => (
-            <button
-              key={it.label}
-              role="menuitem"
-              onClick={() => { setOpen(false); it.onClick(); }}
-              title={it.title}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, borderRadius: 6, color: it.danger ? 'var(--neg)' : 'var(--text)' }}
-            >
-              {it.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 interface AssessmentDetailProps {
   group: AssessmentGroup;
   overviews: Record<string, CopyOverview>;
@@ -112,11 +78,9 @@ interface AssessmentDetailProps {
   onError: (message: string) => void;
   /** Recharge les évals et leur état (après un fichier déposé, une validation, une publication). */
   onReload: () => Promise<void>;
-  /** Dans l'onglet Éval : lien vers la fiche complète. */
-  sheetLink?: boolean;
 }
 
-export function AssessmentDetail({ group, overviews, sessionStarts, userId, openId, onOpen, onError, onReload, sheetLink }: AssessmentDetailProps) {
+export function AssessmentDetail({ group, overviews, sessionStarts, userId, openId, onOpen, onError, onReload }: AssessmentDetailProps) {
   const [uploading, setUploading] = useState<AssessmentDocKind | null>(null);
   const [validating, setValidating] = useState<string | null>(null);
   /** « Exporter en PDF » : classe et fiches chargées pour la fenêtre d'export. */
@@ -303,6 +267,8 @@ Publier quand même pour ${cls} ?`
   };
 
   const withCopies = group.items.some(hasCopies);
+  /** Des copies sont passées par le scan quelque part dans la série : la chaîne « copies » s'applique. */
+  const anyScanned = group.items.some((a) => overviews[a.id] && !neverScanned(overviews[a.id]));
   const target = group.items.find((a) => a.id === openId) ?? null;
 
   return (
@@ -356,11 +322,6 @@ Publier quand même pour ${cls} ?`
               ? 'scan au téléphone → correction sur le PC (Correcteur) → valider → publier'
               : 'saisie dans le carnet (ou envoi depuis Productions) → publier'}
           </div>
-          {sheetLink && group.items[0] && (
-            <Link to={`/evaluations/${group.items[0].id}`} style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--indigo)', fontWeight: 600 }}>
-              Fiche complète ↗
-            </Link>
-          )}
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <tbody>
@@ -369,7 +330,7 @@ Publier quand même pour ${cls} ?`
               const on = openId === a.id;
               const drafts = pendingDrafts(o);
               const r = o ? retentionState(a, o.pages) : null;
-              const menu: { label: string; onClick: () => void; danger?: boolean; title?: string }[] = [];
+              const menu: MoreMenuItem[] = [];
               if (r?.kind === 'scheduled') menu.push({ label: `Garder les scans ${COPY_RETENTION_DAYS} j de plus`, onClick: () => handleExtend(a), title: 'En cas de contestation' });
               if (r?.kind === 'scheduled' || r?.kind === 'kept') menu.push({ label: 'Supprimer les scans maintenant', onClick: () => handlePurgeNow(a), danger: true });
               return (
@@ -382,7 +343,7 @@ Publier quand même pour ${cls} ?`
                   </td>
                   <td style={{ padding: '8px 6px' }}>{o && <StageChip stage={o.stage} overview={o} />}</td>
                   <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>
-                    {o ? (hasCopies(a) ? describeCopyOverview(o) : `${o.graded}/${o.total} notée${o.graded > 1 ? 's' : ''}`) : '…'}
+                    {o ? describeClassRow(o, hasCopies(a)) : '…'}
                     {o && r && r.kind !== 'none' && (
                       <div style={{ fontSize: 11.5, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
                         {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
@@ -432,16 +393,21 @@ Publier quand même pour ${cls} ?`
                         {exportLoading === a.id ? 'Préparation…' : 'Exporter en PDF'}
                       </button>
                     )}
-                    <RowMenu items={menu} />
+                    {menu.length > 0 && (
+                      <span style={{ marginLeft: 6 }}>
+                        <MoreMenu items={menu} compact title="Scans : conserver ou supprimer" />
+                      </span>
+                    )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {withCopies && group.items.every((a) => !hasCopyContent(overviews[a.id])) && (
+        {withCopies && !anyScanned && (
           <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
-            Les copies se scannent au téléphone, en séance : bouton « Copies ».
+            Aucune copie scannée pour cette éval. Les copies se scannent au téléphone, en séance (bouton « Copies »),
+            ou s’ajoutent ici depuis la liste des élèves (« Ajouter une copie »).
           </div>
         )}
         {target && (
