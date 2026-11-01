@@ -58,6 +58,8 @@ export function AddCopyDialog({
   const [version, setVersion] = useState(subjectVersion ?? '');
   const [adapted, setAdapted] = useState(isAdapted);
   const [hasCamera, setHasCamera] = useState(false);
+  // Plusieurs versions du sujet : la version de la copie décide du barème (bouton « Corriger »).
+  const versionRequired = knownVersions.length >= 2 && !version.trim();
 
   useEffect(() => {
     navigator.mediaDevices
@@ -159,7 +161,12 @@ export function AddCopyDialog({
 
         {tab === 'import' && <ImportTab onAdd={addDrafts} onError={onError} />}
         {tab === 'webcam' && <WebcamTab onAdd={addDrafts} onError={onError} />}
-        {tab === 'qr' && (
+        {tab === 'qr' && versionRequired && (
+          <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: 'var(--warn)', border: '1px dashed var(--border)', borderRadius: 10 }}>
+            Indique d’abord la version du sujet (plus bas) : le QR code s’affiche ensuite.
+          </div>
+        )}
+        {tab === 'qr' && !versionRequired && (
           <QrTab
             assessment={assessment}
             studentId={student.id}
@@ -200,11 +207,17 @@ export function AddCopyDialog({
               value={version}
               onChange={(e) => setVersion(e.target.value)}
               placeholder="—"
-              style={{ width: 70, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+              style={{
+                width: 70, padding: '3px 6px', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)',
+                border: `1px solid ${versionRequired ? 'var(--neg)' : 'var(--border)'}`,
+              }}
             />
             <datalist id="add-copy-versions">
               {knownVersions.map((v) => <option key={v} value={v} />)}
             </datalist>
+            {versionRequired && (
+              <span style={{ color: 'var(--neg)', fontWeight: 600 }}>obligatoire ({knownVersions.join(', ')})</span>
+            )}
           </label>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={adapted} onChange={(e) => setAdapted(e.target.checked)} />
@@ -230,8 +243,9 @@ export function AddCopyDialog({
           {tab !== 'qr' && (
             <button
               onClick={handleSend}
-              disabled={drafts.length === 0 || sending !== null}
-              style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)', opacity: drafts.length === 0 || sending !== null ? 0.55 : 1 }}
+              disabled={drafts.length === 0 || sending !== null || versionRequired}
+              title={versionRequired ? 'Indique d’abord la version du sujet' : undefined}
+              style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)', opacity: drafts.length === 0 || sending !== null || versionRequired ? 0.55 : 1 }}
             >
               {sending !== null ? `Envoi… ${sending}/${drafts.length}` : `Envoyer ${drafts.length || ''} page(s)`}
             </button>

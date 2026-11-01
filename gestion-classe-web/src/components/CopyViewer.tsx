@@ -6,6 +6,7 @@ import {
   fetchAssessmentGrades,
   fetchAssessmentTranscripts,
   fetchExpectedStudents,
+  fetchKitVersions,
   fetchLatestAiCorrections,
   getCopyUrls,
   hasCorrectionKit,
@@ -32,6 +33,7 @@ import {
   isApiGrade,
   isRunActive,
   isRunInterrupted,
+  mentionsOtherVersion,
   type AiCorrectionRun,
 } from '../lib/aiCorrection';
 
@@ -83,6 +85,8 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const [zoom, setZoom] = useState(false);
   // Bouton « Corriger » (migration 057) : kit envoyé par le Correcteur, dernier appel par élève.
   const [hasKit, setHasKit] = useState(false);
+  // Versions du sujet qui ont un kit (une copie d'une autre version n'a pas le bon barème).
+  const [kitVersions, setKitVersions] = useState<string[]>([]);
   const [aiRuns, setAiRuns] = useState<Record<string, AiCorrectionRun>>({});
   const [startingId, setStartingId] = useState<string | null>(null);
   // « Ajouter une copie » (migration 058) : élève dont la fenêtre est ouverte.
@@ -93,15 +97,17 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [roster, copies, grades, transcripts, kit, runs] = await Promise.all([
+      const [roster, copies, grades, transcripts, kit, runs, versions] = await Promise.all([
         fetchExpectedStudents([assessment]),
         fetchAssessmentCopies(assessment.id),
         fetchAssessmentGrades(assessment.id),
         fetchAssessmentTranscripts(assessment.id),
         hasCorrectionKit(assessment.id),
         fetchLatestAiCorrections(assessment.id),
+        fetchKitVersions(assessment.id),
       ]);
       setHasKit(kit);
+      setKitVersions(versions);
       setAiRuns(runs);
       const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
       const next: Row[] = (roster[assessment.id] ?? []).map((student) => {
@@ -166,7 +172,16 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const [validatingAll, setValidatingAll] = useState(false);
 
   const handleValidateAll = async () => {
-    if (!window.confirm(`Valider les ${drafts} note${drafts > 1 ? 's' : ''} en brouillon de cette classe ?`)) return;
+    const flagged = rows.filter((r) => {
+      const run = aiRuns[r.student.id];
+      return r.grade && !r.grade.is_validated && run?.status === 'done' && isApiGrade(r.grade.details) && mentionsOtherVersion(run.a_arbitrer);
+    });
+    const warning = flagged.length
+      ? `
+
+⚠ Dont ${flagged.map((r) => r.student.pseudo).join(', ')} : Claude signale une copie faite sur une autre version du sujet.`
+      : '';
+    if (!window.confirm(`Valider les ${drafts} note${drafts > 1 ? 's' : ''} en brouillon de cette classe ?${warning}`)) return;
     setValidatingAll(true);
     try {
       await validateAllGrades(assessment.id);
@@ -201,6 +216,16 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   }, [selected, moveStudent]);
 
   const handleValidate = async (g: GradeRow) => {
+    // Claude a signalé une copie faite sur une autre version du sujet : la note vient d'un autre barème.
+    const run = aiRuns[g.student_id];
+    if (
+      run?.status === 'done' &&
+      isApiGrade(g.details) &&
+      mentionsOtherVersion(run.a_arbitrer) &&
+      !window.confirm('Claude signale que cette copie semble faite sur une autre version du sujet : la note a pu être calculée sur le mauvais barème. Valider quand même ?')
+    ) {
+      return;
+    }
     try {
       await validateGrade(g.id);
       setRows((prev) =>
@@ -254,7 +279,7 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
       const run = await fetchAiCorrection(runId);
       if (run) setAiRuns((prev) => ({ ...prev, [run.student_id]: run }));
     } catch (e) {
-      onError(e instanceof AiCorrectionStartError ? describeStartError(e.code) : e instanceof Error ? e.message : 'Correction impossible');
+      onError(e instanceof AiCorrectionStartError ? describeStartError(e.code, e.info) : e instanceof Error ? e.message : 'Correction impossible');
       if (e instanceof AiCorrectionStartError && e.code === 'already_running') load();
     } finally {
       setStartingId(null);
@@ -262,8 +287,8 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   };
 
   const knownVersions = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.grade?.subject_version).filter((v): v is string => !!v))).sort(),
-    [rows],
+    () => Array.from(new Set([...rows.map((r) => r.grade?.subject_version), ...kitVersions].filter((v): v is string => !!v))).sort(),
+    [rows, kitVersions],
   );
   const adding = rows.find((r) => r.student.id === addingId) ?? null;
 
@@ -609,7 +634,15 @@ function AiRunPanel({ run, apiGrade }: { run: AiCorrectionRun | undefined; apiGr
   }
   // Une note renvoyée depuis par le Correcteur remplace celle de l'API : le journal n'est plus d'actualité.
   if (!apiGrade) return null;
+  const otherVersion = mentionsOtherVersion(run.a_arbitrer);
   return (
+    <>
+    {otherVersion && (
+      <div style={{ ...box, background: 'var(--neg-soft)', color: 'var(--neg)', fontWeight: 600 }}>
+        ⚠ Claude signale que cette copie semble faite sur une autre version du sujet : la note a pu être
+        calculée sur le mauvais barème. Vérifie la version (« Ajouter une copie ») et recorrige avant de valider.
+      </div>
+    )}
     <div style={{ ...box, background: run.a_arbitrer.length ? 'var(--warn-soft)' : 'var(--surface-3)', border: '1px solid var(--border)' }}>
       {run.a_arbitrer.length > 0 ? (
         <>
@@ -636,6 +669,7 @@ function AiRunPanel({ run, apiGrade }: { run: AiCorrectionRun | undefined; apiGr
         {run.attempts > 1 && ` · ${run.attempts} essais`}
       </div>
     </div>
+    </>
   );
 }
 

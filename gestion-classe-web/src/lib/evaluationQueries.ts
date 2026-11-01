@@ -476,10 +476,24 @@ export async function fetchAiCorrection(runId: string): Promise<AiCorrectionRun 
 /** Erreur de démarrage renvoyée par la fonction (no_kit, needs_confirmation…). */
 export class AiCorrectionStartError extends Error {
   readonly code: string;
-  constructor(code: string) {
+  /** Versions des kits et de la copie, quand le refus vient de la version du sujet. */
+  readonly info: { versions?: string[]; student_version?: string | null };
+  constructor(code: string, info: { versions?: string[]; student_version?: string | null } = {}) {
     super(code);
     this.code = code;
+    this.info = info;
   }
+}
+
+/** Versions du sujet qui ont un kit (migration 059) ; vide si les kits n'en indiquent pas. */
+export async function fetchKitVersions(assessmentId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('assessment_correction_kits')
+    .select('version_key')
+    .eq('assessment_id', assessmentId);
+  // Table ou colonne absente (migrations 057/059 pas encore passées) : aucune version connue.
+  if (error) return [];
+  return ((data || []) as { version_key: string }[]).map((r) => r.version_key).filter(Boolean);
 }
 
 /**
@@ -502,15 +516,18 @@ export async function startAiCorrection(params: {
   });
   if (error) {
     let code = 'unknown';
+    let info: { versions?: string[]; student_version?: string | null } = {};
     const ctx = (error as { context?: Response }).context;
     if (ctx && typeof ctx.json === 'function') {
       try {
-        code = ((await ctx.json()) as { error?: string }).error ?? code;
+        const body = (await ctx.json()) as { error?: string; versions?: string[]; student_version?: string | null };
+        code = body.error ?? code;
+        info = { versions: body.versions, student_version: body.student_version };
       } catch {
         // corps non JSON : code inconnu
       }
     }
-    throw new AiCorrectionStartError(code);
+    throw new AiCorrectionStartError(code, info);
   }
   const runId = (data as { run_id?: string } | null)?.run_id;
   if (!runId) throw new AiCorrectionStartError('unknown');

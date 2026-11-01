@@ -73,6 +73,8 @@ describe('affichage', () => {
   it('messages et coût', () => {
     expect(describeStartError('no_kit')).toMatch('Corrige d’abord la classe dans le Correcteur');
     expect(describeStartError('bizarre')).toBe('Correction impossible (bizarre).');
+    expect(describeStartError('no_kit_for_version', { versions: ['v5'], student_version: 'v4' })).toMatch(/Copie : v4\. Kits : v5\.$/);
+    expect(describeStartError('already_running', { versions: ['v5'] })).toBe('Une correction est déjà en cours pour cet élève.');
     expect(formatCost(0.3124)).toBe('0,31 $');
     expect(formatCost(null)).toBe('—');
   });
