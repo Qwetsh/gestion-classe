@@ -173,6 +173,24 @@ classe, sans repasser par le Correcteur. Branche `feat/copies-correction-api`.
 - Limite connue : une Edge Function a une durée maximale (150 s en offre gratuite). Une correction
   plus longue est coupée : l'interface l'affiche « interrompue » au bout de 10 min, rien n'est écrit.
 
+### Ajout — « Ajouter une copie » depuis l'ordinateur (01/11/2026, demande de Thomas via la session Correcteur)
+Faire noter une copie après les autres sans repasser par le scan mobile. Branche `feat/copies-ajout`.
+- Web, « Voir les copies » : bouton « Ajouter une copie » sur chaque élève (scanné, sans copie ou
+  absent : tout élève s'ouvre désormais ; ↑ ↓ ne passent que par ceux qui ont une copie). Fenêtre à
+  trois onglets : **Importer** (images ou PDF, une page par page de PDF, glisser-déposer),
+  **Webcam** (si une caméra est détectée), **QR code**. Vignettes ordonnables, rotation, retrait ;
+  réduction dans le navigateur à 2000 px / JPEG 0,75 (repli 0,5 au-delà de 4,5 Mo), comme le mobile.
+  Pages ajoutées après les existantes, ou à leur place sur confirmation (les anciennes ne partent
+  qu'après l'envoi des nouvelles). Version du sujet et « copie adaptée » enregistrées comme au scan
+  mobile (seules ces colonnes de assessment_grades). Copie déjà notée : « pense à Recorriger ».
+- QR code : migration 058 (**non appliquée**) `assessment_upload_tokens` (SHA-256 du jeton, un élève
+  d'une éval, 15 min, 8 pages, révoqué à la fermeture de la fenêtre ; RPC `claim_upload_token_page`
+  réservée à service_role pour compter les pages sans dépasser). Edge Function `depot-copie`
+  (**non déployée**, verify_jwt off : create/revoke vérifient le JWT du prof ; info/upload le jeton ;
+  JPEG ≤ 5 Mo vérifié). Page publique `/depot#<jeton>` (jeton dans le fragment, jamais envoyé au
+  serveur web) : pseudo, classe et éval seulement, appareil photo natif, rotation, envoi.
+- Le Correcteur récupère ces pages comme les autres (sync_copies.py lit assessment_copy_pages).
+
 ## 2. Ordre conseillé
 1 → 2 → 3 → 4. Le lot 1 seul supprime déjà les problèmes de poids, de noms, de pages mélangées et de fichiers mal nommés ; le lot 2 peut démarrer en parallèle si Thomas le souhaite (fichiers distincts).
 
