@@ -22,6 +22,7 @@ import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/co
 import { GradeDetailsView } from './GradeDetailsView';
 import { CopyTranscriptView } from './CopyTranscriptView';
 import { AddCopyDialog } from './AddCopyDialog';
+import { ExportCorrectionsDialog, downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import {
   COST_HINT,
   NO_KIT_MESSAGE,
@@ -86,6 +87,8 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const [startingId, setStartingId] = useState<string | null>(null);
   // « Ajouter une copie » (migration 058) : élève dont la fenêtre est ouverte.
   const [addingId, setAddingId] = useState<string | null>(null);
+  // Export PDF des corrections (fiches à imprimer).
+  const [exportOpen, setExportOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -288,6 +291,11 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
             {validatingAll ? 'Validation…' : `Valider toute la classe (${drafts} brouillon${drafts > 1 ? 's' : ''})`}
           </button>
         )}
+        {rows.some((r) => r.grade?.details) && (
+          <button onClick={() => setExportOpen(true)} style={{ ...btn, width: '100%', marginBottom: 8 }}>
+            Exporter les corrections (PDF)
+          </button>
+        )}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           {FILTERS.map(([id, label]) => (
             <button
@@ -381,6 +389,18 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
               {selected.grade && selected.grade.grade != null && !selected.grade.is_validated && (
                 <button onClick={() => handleValidate(selected.grade!)} style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)' }}>
                   Valider la note
+                </button>
+              )}
+              {details && (
+                <button
+                  onClick={() => {
+                    const sheet = exportableSheets([selected]);
+                    if (sheet.length) downloadCorrectionsPdf(assessment, sheet, false, selected.student.pseudo);
+                  }}
+                  style={btn}
+                  title="Fiche de correction de cet élève, à imprimer"
+                >
+                  PDF
                 </button>
               )}
               <button
@@ -542,6 +562,7 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
           </>
         )}
       </div>
+      {exportOpen && <ExportCorrectionsDialog assessment={assessment} rows={rows} onClose={() => setExportOpen(false)} />}
       {adding && (
         <AddCopyDialog
           assessment={assessment}
