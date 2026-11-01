@@ -4,8 +4,10 @@
 > Remplace `PLAN_scan_copies.md` (v1 partiellement codée, jamais utilisée).
 > Statut : **validé par Thomas le 01/11/2026** (réponses aux 4 questions en §3).
 > - Lot 1 **codé le 01/11/2026** : migration 052 appliquée en prod (branche `feat/copies-schema`),
->   mobile `feat/scan-copies` (58effde). Tests jest + tsc OK. **Pas encore testé sur téléphone** :
->   APK / dev client à reconstruire (module natif ML Kit). Barème à la création : /10, /20, /30, /40
+>   mobile `feat/scan-copies` (58effde). Tests jest + tsc OK. **APK preview construit le 01/11/2026**
+>   (build EAS 9b171e0c, après le correctif af255d2 : expo-image forcé en ~3.0.11, la dépendance
+>   ML Kit tirait expo-image 58.x qui cassait Gradle). Pas encore testé sur le téléphone ; le dev
+>   client (profil `development`) reste à reconstruire. Barème à la création : /10, /20, /30, /40
 >   (le reste se règle sur le web). Liste du scan = toute la classe, pas encore filtrée par demi-groupe.
 > - Lot 2 **codé le 01/11/2026** : web `feat/copies-suivi` (état par éval × classe calculé dans
 >   `lib/copyStatus.ts`, visionneuse `components/CopyViewer.tsx`) ; Correcteur (hors git, originaux
@@ -21,7 +23,15 @@
 >   carnet, `saveGrade` valide) ; Correcteur : `details` dans `grades_<classe>.json`, envoyé par
 >   `push_grades.py` (statut `noted`, brouillon). Retouche d'une correction = JSON du Correcteur +
 >   nouvel envoi (pas d'édition du détail dans l'app). Rendu pas encore vu dans le navigateur.
-> - Lot 4 : à faire.
+> - Lot 4 **livré le 01/11/2026** : migration 054 **appliquée en prod** (dates `published_at`,
+>   `copies_purge_at`, `copies_purged_at` ; publier = suppression dans 30 j, dépublier = suspendue,
+>   copie scannée en retard = repoussée de 30 j ; jeton dans Vault ; job pg_cron
+>   `purge-assessment-copies` chaque nuit à 3 h 15 UTC) ; Edge Function `purge-assessment-copies`
+>   **déployée** (`supabase/functions/`, sans JWT, jeton `x-purge-token`, `dryRun`) — testée en prod
+>   sur une éval temporaire (page indexée + fichier orphelin supprimés, puis éval effacée) ; web
+>   `feat/copies-purge` (« Scans supprimés le … (dans N j) », « Garder 30 j de plus »,
+>   « Supprimer maintenant ») ; Correcteur : `sync_copies.py` ne touche plus aux copies locales
+>   d'une éval purgée.
 
 ---
 
