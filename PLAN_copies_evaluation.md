@@ -115,6 +115,19 @@ Tests : test de la fonction sur une éval de test (fichiers et lignes supprimés
 
 ---
 
+### Ajout — Placement du jour de l'éval (01/11/2026, demande de Thomas via la session Correcteur)
+Pour l'alerte « copies de voisins qui se ressemblent » (`Correcteur/scripts/voisins.py`) : les plans
+de classe n'ont pas d'historique, donc on photographie le placement par éval.
+- Migration 055 `assessment_placements` (une ligne par éval, RLS propriétaire, invisible des élèves ;
+  un trigger complète salle, taille, allées et tables depuis `rooms`). **Appliquée en prod le
+  01/11/2026** avec l'accord de Thomas (vérifiée en transaction annulée).
+- Mobile (`feat/copies-placement`) : photo `auto` mise en file au premier scan d'une copie, à partir
+  du plan de la séance sur le téléphone (jamais écrasée par une autre prise auto) ; bouton
+  « Placement » sur l'écran de scan pour corriger la photo (`manual`) sans toucher au plan habituel.
+  Opération annexe : en échec (table absente…), elle ne bloque jamais l'envoi des copies.
+- Correcteur : `sync_copies.py` écrit `placement` (`source: "eval"`, `photo: auto|corrigee`) au
+  format lu par `voisins.py` ; rien sans photo.
+
 ## 2. Ordre conseillé
 1 → 2 → 3 → 4. Le lot 1 seul supprime déjà les problèmes de poids, de noms, de pages mélangées et de fichiers mal nommés ; le lot 2 peut démarrer en parallèle si Thomas le souhaite (fichiers distincts).
 
