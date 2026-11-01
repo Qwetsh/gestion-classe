@@ -60,6 +60,12 @@ describe('computeCopyOverview', () => {
     const o = computeCopyOverview([{ id: 'a' }], [page('a'), page('zz')], [grade('zz', { grade: 5 })], false);
     expect(o).toMatchObject({ total: 1, scanned: 1, graded: 0, stage: 'scannee' });
   });
+
+  it('counts scanned copies still waiting for a transcription (their scans are kept)', () => {
+    const o = computeCopyOverview(students, [page('a'), page('b'), page('b')], [], true, new Set(['a', 'zz']));
+    expect(o).toMatchObject({ transcribed: 1, untranscribed: 1 });
+    expect(computeCopyOverview(students, [page('a')], [], true)).toMatchObject({ transcribed: 0, untranscribed: 1 });
+  });
 });
 
 describe('describeCopyOverview', () => {

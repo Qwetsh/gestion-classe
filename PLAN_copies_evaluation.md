@@ -128,6 +128,24 @@ de classe n'ont pas d'historique, donc on photographie le placement par éval.
 - Correcteur : `sync_copies.py` écrit `placement` (`source: "eval"`, `photo: auto|corrigee`) au
   format lu par `voisins.py` ; rien sans photo.
 
+### Ajout — Transcription des copies (01/11/2026, « Oui on fait ça » de Thomas via la session Correcteur)
+Une trace de ce que l'élève a écrit, gardée après la suppression des scans, visible du prof seul.
+- Migration 056 `assessment_copy_transcripts` (PK éval + élève, `transcript` jsonb
+  `{"v": 1, "items": [{"q", "texte"}]}`, RLS propriétaire). Table à part : `details` est lu par
+  l'élève (RPC get_student_grades), la transcription jamais. **Appliquée en prod le 01/11/2026**
+  avec l'accord de Thomas (RLS vérifiée en transaction annulée : prof oui, autre compte et anon
+  non), puis Edge Function redéployée (v3, garde-fou vérifié en dryRun sur une éval de test).
+- Correcteur : `push_grades.py` envoie `transcription` quand elle est présente (après les notes ;
+  un échec ne bloque pas les notes) ; `--transcriptions-only` n'envoie que les transcriptions, sans
+  toucher aux notes, au détail ni à la validation. Sauvegarde dans
+  `_sauvegardes/2026-11-01_avant_transcriptions/`.
+- Web : la visionneuse montre la copie transcrite question par question, en face des points et du
+  commentaire (onglet « Transcription » à côté de « Correction ») ; sans scan, elle remplace les pages.
+- Garde-fou : la purge de nuit, « Supprimer maintenant » (web) et « Effacer les scans » (téléphone)
+  ne suppriment que les pages des copies transcrites. Les autres restent ; l'éval n'est marquée
+  purgée qu'une fois toutes ses copies parties, la purge de nuit repasse chaque jour. L'onglet
+  Évaluations affiche « N copies sans transcription : scans conservés ».
+
 ## 2. Ordre conseillé
 1 → 2 → 3 → 4. Le lot 1 seul supprime déjà les problèmes de poids, de noms, de pages mélangées et de fichiers mal nommés ; le lot 2 peut démarrer en parallèle si Thomas le souhaite (fichiers distincts).
 

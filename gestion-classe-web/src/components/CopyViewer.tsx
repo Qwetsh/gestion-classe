@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchAssessmentCopies,
   fetchAssessmentGrades,
+  fetchAssessmentTranscripts,
   fetchExpectedStudents,
   getCopyUrls,
   validateAllGrades,
@@ -12,7 +13,9 @@ import {
   type RosterStudent,
 } from '../lib/evaluationQueries';
 import { parseGradeDetails } from '../lib/gradeDetails';
+import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/copyTranscript';
 import { GradeDetailsView } from './GradeDetailsView';
+import { CopyTranscriptView } from './CopyTranscriptView';
 
 type RowState = 'scanned' | 'absent' | 'missing';
 type Filter = 'all' | RowState;
@@ -21,6 +24,8 @@ interface Row {
   student: RosterStudent;
   pages: CopyPageRow[];
   grade: GradeRow | null;
+  /** Transcription du Correcteur (migration 056) : reste quand les scans sont supprimés. */
+  transcript: TranscriptItem[] | null;
   state: RowState;
 }
 
@@ -28,7 +33,7 @@ const NO_COPY = new Set(['absent', 'dispense', 'non_rendu', 'non_rendu_zero']);
 
 /** On ouvre un élève s'il y a une copie à regarder ou une correction à relire. */
 function isSelectable(r: Row): boolean {
-  return r.state === 'scanned' || r.grade?.grade != null || !!r.grade?.details;
+  return r.state === 'scanned' || r.grade?.grade != null || !!r.grade?.details || !!r.transcript;
 }
 
 const FILTERS: [Filter, string][] = [
@@ -62,10 +67,11 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [roster, copies, grades] = await Promise.all([
+      const [roster, copies, grades, transcripts] = await Promise.all([
         fetchExpectedStudents([assessment]),
         fetchAssessmentCopies(assessment.id),
         fetchAssessmentGrades(assessment.id),
+        fetchAssessmentTranscripts(assessment.id),
       ]);
       const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
       const next: Row[] = (roster[assessment.id] ?? []).map((student) => {
@@ -73,9 +79,11 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
           .filter((c) => c.student_id === student.id)
           .sort((a, b) => a.page_order - b.page_order);
         const grade = gradeBy.get(student.id) ?? null;
+        const transcript = parseTranscript(transcripts[student.id]);
+        // Une copie dont les scans sont supprimés reste « scannée » : sa transcription la remplace.
         const state: RowState =
-          pages.length > 0 ? 'scanned' : grade && NO_COPY.has(grade.status) ? 'absent' : 'missing';
-        return { student, pages, grade, state };
+          pages.length > 0 || transcript ? 'scanned' : grade && NO_COPY.has(grade.status) ? 'absent' : 'missing';
+        return { student, pages, grade, transcript, state };
       });
       setRows(next);
       setSelectedId((cur) => cur ?? next.find(isSelectable)?.student.id ?? null);
@@ -117,6 +125,13 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   );
 
   const details = useMemo(() => parseGradeDetails(selected?.grade?.details), [selected]);
+  const transcriptBlocks = useMemo(
+    () => (selected?.transcript ? alignTranscript(selected.transcript, details?.questions ?? []) : null),
+    [selected, details],
+  );
+  // Avec des scans, la transcription est un onglet à côté de la correction ; sans scan, elle
+  // prend la place des pages.
+  const [sideTab, setSideTab] = useState<'correction' | 'transcription'>('correction');
   const drafts = rows.filter((r) => r.grade && r.grade.grade != null && !r.grade.is_validated).length;
   const [validatingAll, setValidatingAll] = useState(false);
 
@@ -239,7 +254,11 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
                 {r.grade?.is_adapted && <Badge tone="info">Adaptée</Badge>}
                 {r.grade?.copy_annotated && <Badge tone="info">Annotée</Badge>}
                 {r.state === 'scanned' ? (
-                  <Badge tone="ok">{r.pages.length} p.</Badge>
+                  r.pages.length > 0 ? (
+                    <Badge tone="ok">{r.pages.length} p.</Badge>
+                  ) : (
+                    <Badge tone="info">Texte</Badge>
+                  )
                 ) : r.state === 'absent' ? (
                   <Badge tone="neg">Absent</Badge>
                 ) : (
@@ -286,7 +305,17 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: details && selected.pages.length > 0 ? 'minmax(0, 1fr) 380px' : 'minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  (selected.pages.length > 0 && (details || transcriptBlocks)) || (details && transcriptBlocks)
+                    ? 'minmax(0, 1fr) 380px'
+                    : 'minmax(0, 1fr)',
+                gap: 16,
+                alignItems: 'start',
+              }}
+            >
               {selected.pages.length > 0 ? (
                 <div>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -334,23 +363,63 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
                   Clic sur la page : zoom · ← → pages · ↑ ↓ élèves
                 </div>
                 </div>
+              ) : transcriptBlocks ? (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                    Copie transcrite
+                    <span style={{ fontWeight: 500 }}>
+                      {assessment.copies_purged_at ? ' · scans supprimés' : ' · pas de scan'}, visible par toi seul
+                    </span>
+                  </div>
+                  <CopyTranscriptView blocks={transcriptBlocks} />
+                </div>
               ) : !details ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 10 }}>
                   Pas de copie scannée pour cet élève.
                 </div>
               ) : null}
-              {details && (
+              {(details || (transcriptBlocks && selected.pages.length > 0)) && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: 'var(--surface)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    Correction{details.version ? ` · sujet ${details.version}` : ''}
-                    {selected.grade && !selected.grade.is_validated && (
-                      <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · brouillon, invisible pour l’élève</span>
-                    )}
-                  </div>
-                  <GradeDetailsView details={details} />
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 10 }}>
-                    Une retouche se fait dans le Correcteur (JSON), puis on renvoie avec push_grades.py.
-                  </div>
+                  {transcriptBlocks && selected.pages.length > 0 && details && (
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                      {(['correction', 'transcription'] as const).map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setSideTab(t)}
+                          style={{
+                            ...chip,
+                            background: sideTab === t ? 'var(--text)' : 'var(--surface-3)',
+                            color: sideTab === t ? 'var(--surface)' : 'var(--text-muted)',
+                          }}
+                        >
+                          {t === 'correction' ? 'Correction' : 'Transcription'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {transcriptBlocks && selected.pages.length > 0 && (!details || sideTab === 'transcription') ? (
+                    <>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
+                        Transcription du correcteur, gardée après la suppression des scans. Visible par toi seul.
+                      </div>
+                      <div style={{ maxHeight: 700, overflowY: 'auto' }}>
+                        <CopyTranscriptView blocks={transcriptBlocks} />
+                      </div>
+                    </>
+                  ) : details ? (
+                    <>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10 }}>
+                        Correction{details.version ? ` · sujet ${details.version}` : ''}
+                        {selected.grade && !selected.grade.is_validated && (
+                          <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · brouillon, invisible pour l’élève</span>
+                        )}
+                      </div>
+                      <GradeDetailsView details={details} />
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 10 }}>
+                        Une retouche se fait dans le Correcteur (JSON), puis on renvoie avec push_grades.py.
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               )}
             </div>

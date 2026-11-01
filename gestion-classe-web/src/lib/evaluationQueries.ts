@@ -3,6 +3,7 @@ import { getCurrentSchoolYear } from './constants';
 import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
 import { computeCopyOverview, extendedPurgeDate, type CopyGradeInput, type CopyOverview } from './copyStatus';
+import { planCopyPurge } from './copyTranscript';
 
 // Buckets (memes noms que cote mobile / migrations)
 const COPIES_BUCKET = 'assessment-copies';
@@ -343,7 +344,7 @@ export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOv
   const ids = items.map((a) => a.id);
   const sessionIds = [...new Set(items.map((a) => a.session_id).filter((s): s is string => !!s))];
 
-  const [expected, pages, grades, sessionsRes] = await Promise.all([
+  const [expected, pages, grades, sessionsRes, transcripts] = await Promise.all([
     fetchExpectedStudents(items),
     fetchAllPages<{ assessment_id: string; student_id: string }>(async (from, to) => {
       const r = await supabase
@@ -364,6 +365,7 @@ export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOv
     sessionIds.length > 0
       ? supabase.from('sessions').select('id, started_at').in('id', sessionIds)
       : Promise.resolve({ data: [] as { id: string; started_at: string }[], error: null }),
+    fetchTranscribedKeys(ids),
   ]);
 
   const startById = new Map((sessionsRes.data || []).map((s) => [s.id, s.started_at]));
@@ -375,6 +377,7 @@ export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOv
       pages.filter((p) => p.assessment_id === a.id),
       grades.filter((g) => g.assessment_id === a.id),
       a.published_to_students,
+      transcripts[a.id],
     );
     const start = a.session_id ? startById.get(a.session_id) : undefined;
     if (start) sessionStarts[a.id] = start;
@@ -399,33 +402,90 @@ export async function extendCopiesRetention(a: Pick<AssessmentRow, 'id' | 'copie
   return next;
 }
 
+// ============================================================
+// Transcriptions des copies (migration 056) — visibles du prof seul
+// ============================================================
+
+/** Table absente (migration 056 pas encore appliquée) : on fait comme s'il n'y avait rien. */
+function isMissingTable(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === 'PGRST205' || error.code === '42P01');
+}
+
+/** Élèves transcrits, par éval. */
+export async function fetchTranscribedKeys(assessmentIds: string[]): Promise<Record<string, Set<string>>> {
+  const out: Record<string, Set<string>> = {};
+  if (assessmentIds.length === 0) return out;
+  const rows = await fetchAllPages<{ assessment_id: string; student_id: string }>(async (from, to) => {
+    const r = await supabase
+      .from('assessment_copy_transcripts')
+      .select('assessment_id, student_id')
+      .in('assessment_id', assessmentIds)
+      .range(from, to);
+    if (isMissingTable(r.error)) return { data: [], error: null };
+    return r as unknown as PageResult<{ assessment_id: string; student_id: string }>;
+  });
+  for (const r of rows) (out[r.assessment_id] ??= new Set()).add(r.student_id);
+  return out;
+}
+
+/** Transcriptions d'une éval : élève → JSON brut (lu par parseTranscript). */
+export async function fetchAssessmentTranscripts(assessmentId: string): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase
+    .from('assessment_copy_transcripts')
+    .select('student_id, transcript')
+    .eq('assessment_id', assessmentId);
+  if (isMissingTable(error)) return {};
+  if (error) throw error;
+  const out: Record<string, unknown> = {};
+  for (const r of (data || []) as { student_id: string; transcript: unknown }[]) out[r.student_id] = r.transcript;
+  return out;
+}
+
+export interface PurgeNowResult {
+  files: number;
+  /** Copies sans transcription : leurs scans sont gardés. */
+  kept: number;
+}
+
 /**
  * « Supprimer maintenant » : efface les scans d'une éval (fichiers du bucket, puis index des
  * pages) sans attendre la purge de nuit. L'éval, les notes et leur détail restent.
- * Renvoie le nombre de fichiers supprimés.
+ * Seules les copies transcrites perdent leurs scans (migration 056) : les autres restent, et
+ * l'éval n'est marquée « purgée » que lorsqu'il n'en reste plus.
  */
-export async function purgeCopiesNow(assessmentId: string): Promise<number> {
-  const pages = await fetchAllPages<{ storage_path: string }>(async (from, to) => {
-    const r = await supabase
-      .from('assessment_copy_pages')
-      .select('storage_path')
-      .eq('assessment_id', assessmentId)
-      .range(from, to);
-    return r as unknown as PageResult<{ storage_path: string }>;
-  });
-  const paths = pages.map((p) => p.storage_path);
-  for (let i = 0; i < paths.length; i += 100) {
-    const { error } = await supabase.storage.from(COPIES_BUCKET).remove(paths.slice(i, i + 100));
+export async function purgeCopiesNow(assessmentId: string): Promise<PurgeNowResult> {
+  const [pages, transcribed] = await Promise.all([
+    fetchAllPages<{ student_id: string; storage_path: string }>(async (from, to) => {
+      const r = await supabase
+        .from('assessment_copy_pages')
+        .select('student_id, storage_path')
+        .eq('assessment_id', assessmentId)
+        .range(from, to);
+      return r as unknown as PageResult<{ student_id: string; storage_path: string }>;
+    }),
+    fetchTranscribedKeys([assessmentId]),
+  ]);
+  const plan = planCopyPurge(pages, transcribed[assessmentId] ?? new Set());
+  for (let i = 0; i < plan.paths.length; i += 100) {
+    const { error } = await supabase.storage.from(COPIES_BUCKET).remove(plan.paths.slice(i, i + 100));
     if (error) throw error;
   }
-  const { error: delError } = await supabase.from('assessment_copy_pages').delete().eq('assessment_id', assessmentId);
-  if (delError) throw delError;
-  const { error: markError } = await supabase
-    .from('written_assessments')
-    .update({ copies_purged_at: new Date().toISOString() })
-    .eq('id', assessmentId);
-  if (markError) throw markError;
-  return paths.length;
+  if (plan.purgedStudents.length > 0) {
+    const { error: delError } = await supabase
+      .from('assessment_copy_pages')
+      .delete()
+      .eq('assessment_id', assessmentId)
+      .in('student_id', plan.purgedStudents);
+    if (delError) throw delError;
+  }
+  if (plan.keptStudents.length === 0 && pages.length > 0) {
+    const { error: markError } = await supabase
+      .from('written_assessments')
+      .update({ copies_purged_at: new Date().toISOString() })
+      .eq('id', assessmentId);
+    if (markError) throw markError;
+  }
+  return { files: plan.paths.length, kept: plan.keptStudents.length };
 }
 
 /** Signed URLs de plusieurs pages en un appel (visionneuse de copies). Chemin → URL. */
