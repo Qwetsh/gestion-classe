@@ -132,8 +132,9 @@ de classe n'ont pas d'historique, donc on photographie le placement par éval.
 Une trace de ce que l'élève a écrit, gardée après la suppression des scans, visible du prof seul.
 - Migration 056 `assessment_copy_transcripts` (PK éval + élève, `transcript` jsonb
   `{"v": 1, "items": [{"q", "texte"}]}`, RLS propriétaire). Table à part : `details` est lu par
-  l'élève (RPC get_student_grades), la transcription jamais. **Non appliquée** : feu vert de Thomas
-  attendu, puis redéploiement de l'Edge Function (dans cet ordre).
+  l'élève (RPC get_student_grades), la transcription jamais. **Appliquée en prod le 01/11/2026**
+  avec l'accord de Thomas (RLS vérifiée en transaction annulée : prof oui, autre compte et anon
+  non), puis Edge Function redéployée (v3, garde-fou vérifié en dryRun sur une éval de test).
 - Correcteur : `push_grades.py` envoie `transcription` quand elle est présente (après les notes ;
   un échec ne bloque pas les notes) ; `--transcriptions-only` n'envoie que les transcriptions, sans
   toucher aux notes, au détail ni à la validation. Sauvegarde dans
