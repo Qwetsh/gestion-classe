@@ -19,7 +19,11 @@
 >   (code inchangé par rapport à master).
 >   À reprendre à l'étape 3 (vocabulaire) : pour une éval jamais scannée, la ligne de classe dit « 0/29 scannée »
 >   et la liste des élèves « Manquante » ; dire plutôt « 24/29 notées » et ne pas marquer de copie manquante.
-> - Questions Q1 à Q5 (§4) toujours ouvertes : elles conditionnent les étapes 2 à 4.
+> - Canevas visuel des trois écrans validé par Thomas le 01/11/2026 (« Oui, continue ») : il tranche les
+>   questions du §4 avec les choix par défaut (Q1 liste Éval retirée, Q2 et Q3 dans un menu ⋯, Q4 pleine page,
+>   Q5 vocabulaire). Étapes 2 et 3 **codées** (PR #16, `feat/ergonomie-carnet`, empilée sur #14) ; étape 4
+>   **codée** (PR #17, `feat/ergonomie-productions`, empilée sur #16). Les trois vérifiées connectées dans
+>   Chrome. Fusion dans l'ordre #14 → #16 → #17, avec le feu vert de Thomas.
 
 ---
 
