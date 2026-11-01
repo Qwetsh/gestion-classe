@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { CarnetTab } from '../components/CarnetTab';
+import { CopyViewer } from '../components/CopyViewer';
+import { COPY_STAGE_LABEL, describeCopyOverview, type CopyOverview, type CopyStage } from '../lib/copyStatus';
 import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
   fetchAssessments,
   fetchClasses,
   createAssessment,
-  fetchAssessmentCopies,
-  fetchAssessmentGrades,
-  getCopyUrl,
+  fetchCopyOverviews,
   getDocUrl,
   uploadAssessmentDoc,
   deleteAssessmentDoc,
@@ -17,30 +17,33 @@ import {
   deleteSeriesDoc,
   clearSeriesAssessmentDocs,
   effectiveDocPath,
-  validateGrade,
   type AssessmentRow,
   type ClassRow,
-  type CopyPageRow,
-  type GradeRow,
   type AssessmentDocKind,
 } from '../lib/evaluationQueries';
 
-interface StudentCopies {
-  studentId: string;
-  pseudo: string;
-  pages: CopyPageRow[];
+const STAGE_ORDER: CopyStage[] = ['vide', 'scan', 'scannee', 'corrigee', 'validee', 'publiee'];
+
+const STAGE_COLORS: Record<CopyStage, [string, string]> = {
+  vide: ['var(--surface-3)', 'var(--text-dim)'],
+  scan: ['var(--warn-soft)', 'var(--warn)'],
+  scannee: ['var(--indigo-soft)', 'var(--indigo)'],
+  corrigee: ['var(--warn-soft)', 'var(--warn)'],
+  validee: ['var(--pos-soft)', 'var(--pos)'],
+  publiee: ['var(--pos)', '#fff'],
+};
+
+function StageChip({ stage, title }: { stage: CopyStage; title?: string }) {
+  const [bg, fg] = STAGE_COLORS[stage];
+  return (
+    <span title={title} style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '1px 7px', background: bg, color: fg, whiteSpace: 'nowrap' }}>
+      {COPY_STAGE_LABEL[stage]}
+    </span>
+  );
 }
 
-function groupByStudent(copies: CopyPageRow[]): StudentCopies[] {
-  const map = new Map<string, StudentCopies>();
-  for (const c of copies) {
-    const pseudo = c.students?.pseudo ?? 'Élève';
-    if (!map.has(c.student_id)) {
-      map.set(c.student_id, { studentId: c.student_id, pseudo, pages: [] });
-    }
-    map.get(c.student_id)!.pages.push(c);
-  }
-  return [...map.values()].sort((a, b) => a.pseudo.localeCompare(b.pseudo));
+function formatSession(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 /**
@@ -77,6 +80,19 @@ function groupAssessments(rows: AssessmentRow[]): AssessmentGroup[] {
   return [...map.values()];
 }
 
+/**
+ * Étape d'une éval repliée sur plusieurs classes : la moins avancée des classes qui ont
+ * des copies (une série n'est « scannée » que si toutes ses classes le sont).
+ */
+function groupStage(group: AssessmentGroup, overviews: Record<string, CopyOverview>): CopyStage | null {
+  const stages = group.items
+    .map((a) => overviews[a.id])
+    .filter((o): o is CopyOverview => !!o && (o.stage !== 'vide' || o.scanned > 0))
+    .map((o) => o.stage);
+  if (stages.length === 0) return null;
+  return stages.reduce((min, st) => (STAGE_ORDER.indexOf(st) < STAGE_ORDER.indexOf(min) ? st : min));
+}
+
 /** Chemin du document à afficher pour un groupe : celui de la série, sinon celui de l'éval. */
 function groupDocPath(group: AssessmentGroup, kind: AssessmentDocKind): string | null {
   const series = group.items[0]?.assessment_series ?? null;
@@ -101,17 +117,11 @@ export function Evaluations() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   /** Classe dont on regarde les copies scannées (une série en compte plusieurs). */
   const [copyClassAssessmentId, setCopyClassAssessmentId] = useState<string | null>(null);
-  /**
-   * Le scan des copies est l'exception, pas la norme : le bloc reste replié tant qu'on
-   * ne le demande pas, et les copies ne sont chargées qu'à ce moment-là.
-   */
-  const [showCopies, setShowCopies] = useState(false);
-  const [copies, setCopies] = useState<CopyPageRow[]>([]);
-  const [copyUrls, setCopyUrls] = useState<Record<string, string>>({});
-  const [grades, setGrades] = useState<GradeRow[]>([]);
+  /** État des copies par éval (scannée, corrigée…) et début de la séance liée. */
+  const [overviews, setOverviews] = useState<Record<string, CopyOverview>>({});
+  const [sessionStarts, setSessionStarts] = useState<Record<string, string>>({});
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [uploading, setUploading] = useState<AssessmentDocKind | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,6 +144,13 @@ export function Evaluations() {
     try {
       const rows = await fetchAssessments(user.id);
       setAssessments(rows);
+      // L'état des copies ne concerne que l'écrit ; il n'empêche pas d'afficher la liste.
+      fetchCopyOverviews(rows.filter((a) => a.kind === 'ecrit' || a.kind === 'dm'))
+        .then((d) => {
+          setOverviews(d.overviews);
+          setSessionStarts(d.sessionStarts);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : 'État des copies indisponible'));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement');
     } finally {
@@ -182,31 +199,6 @@ export function Evaluations() {
     }
   };
 
-  const loadDetail = useCallback(async (assessmentId: string) => {
-    setDetailLoading(true);
-    try {
-      const [copyRows, gradeRows] = await Promise.all([
-        fetchAssessmentCopies(assessmentId),
-        fetchAssessmentGrades(assessmentId),
-      ]);
-      setCopies(copyRows);
-      setGrades(gradeRows);
-      // Signed URLs des vignettes
-      const urls: Record<string, string> = {};
-      await Promise.all(
-        copyRows.map(async (c) => {
-          const u = await getCopyUrl(c.storage_path);
-          if (u) urls[c.id] = u;
-        }),
-      );
-      setCopyUrls(urls);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur de chargement du détail');
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
-
   const groups = useMemo(() => groupAssessments(assessments), [assessments]);
   const selected = useMemo(
     () => groups.find((g) => g.key === selectedKey) ?? null,
@@ -215,21 +207,9 @@ export function Evaluations() {
 
   const selectGroup = (g: AssessmentGroup) => {
     setSelectedKey(g.key);
-    setShowCopies(false);
-    setCopyClassAssessmentId(g.items[0]?.id ?? null);
-    setCopies([]);
-    setCopyUrls({});
-    setGrades([]);
+    // On ouvre directement les copies d'une classe qui en a ; sinon rien n'est chargé.
+    setCopyClassAssessmentId(g.items.find((a) => (overviews[a.id]?.scanned ?? 0) > 0)?.id ?? null);
   };
-
-  // Les copies ne partent chercher la base que si on ouvre le bloc.
-  useEffect(() => {
-    if (!showCopies || !copyClassAssessmentId) return;
-    setCopies([]);
-    setCopyUrls({});
-    setGrades([]);
-    loadDetail(copyClassAssessmentId);
-  }, [showCopies, copyClassAssessmentId, loadDetail]);
 
   const openDoc = async (path: string) => {
     const url = await getDocUrl(path);
@@ -301,22 +281,6 @@ export function Evaluations() {
       setError(e instanceof Error ? e.message : 'Échec de la suppression');
     }
   };
-
-  const handleValidate = async (gradeId: string) => {
-    try {
-      await validateGrade(gradeId);
-      setGrades((prev) =>
-        prev.map((g) =>
-          g.id === gradeId ? { ...g, is_validated: true, validated_at: new Date().toISOString() } : g,
-        ),
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Échec de la validation');
-    }
-  };
-
-  const studentCopies = groupByStudent(copies);
-  const gradeByStudent = new Map(grades.map((g) => [g.student_id, g]));
 
   return (
     <Layout fluid>
@@ -395,6 +359,10 @@ export function Evaluations() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{g.name}</span>
+                    {(() => {
+                      const st = groupStage(g, overviews);
+                      return st ? <StageChip stage={st} /> : null;
+                    })()}
                     {g.items.length > 1 && (
                       <span style={{
                         fontSize: 11, fontWeight: 700, color: 'var(--indigo)',
@@ -472,100 +440,54 @@ export function Evaluations() {
                 })}
               </div>
 
-              {/* Copies par élève — replié par défaut : scanner reste exceptionnel */}
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-                <button
-                  onClick={() => setShowCopies((v) => !v)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
-                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                    fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ color: 'var(--text-muted)' }}>{showCopies ? '▾' : '▸'}</span>
-                  Copies scannées
-                  {!showCopies && (
-                    <span style={{ fontWeight: 500, color: 'var(--text-dim)' }}>
-                      — si des copies ont été scannées depuis le mobile
-                    </span>
-                  )}
-                </button>
-
-                {showCopies && selected.items.length > 1 && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-                    {selected.items.map((a) => {
-                      const on = copyClassAssessmentId === a.id;
-                      return (
-                        <button
-                          key={a.id}
-                          onClick={() => setCopyClassAssessmentId(a.id)}
-                          style={{
-                            ...btnBase, padding: '4px 10px', fontSize: 12,
-                            background: on ? 'var(--indigo)' : 'var(--surface-3)',
-                            color: on ? '#fff' : 'var(--text)',
-                            border: `1px solid ${on ? 'var(--indigo)' : 'var(--border)'}`,
-                          }}
-                        >
-                          {a.classes?.name ?? '—'}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {showCopies && (
-                <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  {detailLoading ? 'Chargement…' : `${studentCopies.length} élève${studentCopies.length > 1 ? 's' : ''}`}
-                </div>
-                {!detailLoading && studentCopies.length === 0 ? (
-                  <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-                    Aucune copie scannée pour cette classe.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {studentCopies.map((sc) => {
-                      const g = gradeByStudent.get(sc.studentId);
-                      return (
-                        <div key={sc.studentId} style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{sc.pseudo}</span>
-                            {g && (
-                              <span style={{ fontSize: 13, fontWeight: 700, color: g.is_validated ? 'var(--pos)' : 'var(--warn)' }}>
-                                {g.grade != null ? `${g.grade}/20` : '—'}{g.is_validated ? ' ✓' : ' (brouillon)'}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {sc.pages.map((p) => (
+              {/* Copies : une ligne par classe, puis la visionneuse de la classe choisie */}
+              {selected.items.some((a) => a.kind === 'ecrit' || a.kind === 'dm') && (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Copies</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <tbody>
+                      {selected.items.map((a) => {
+                        const o = overviews[a.id];
+                        const on = copyClassAssessmentId === a.id;
+                        return (
+                          <tr key={a.id} style={{ borderTop: '1px solid var(--border)', background: on ? 'var(--indigo-soft)' : undefined }}>
+                            <td style={{ padding: '8px 6px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                              {a.classes?.name ?? '—'}
+                            </td>
+                            <td style={{ padding: '8px 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                              {sessionStarts[a.id] ? `séance du ${formatSession(sessionStarts[a.id])}` : a.date ? formatSession(a.date) : ''}
+                            </td>
+                            <td style={{ padding: '8px 6px' }}>{o && <StageChip stage={o.stage} />}</td>
+                            <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{o ? describeCopyOverview(o) : '…'}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'right' }}>
                               <button
-                                key={p.id}
-                                onClick={() => copyUrls[p.id] && window.open(copyUrls[p.id], '_blank', 'noopener')}
-                                title={`Page ${p.page_order}`}
-                                style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 0, overflow: 'hidden', cursor: 'pointer', background: 'var(--surface-3)' }}
+                                onClick={() => setCopyClassAssessmentId(on ? null : a.id)}
+                                disabled={!o || o.scanned === 0}
+                                style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, opacity: !o || o.scanned === 0 ? 0.5 : 1 }}
                               >
-                                {copyUrls[p.id] ? (
-                                  <img src={copyUrls[p.id]} alt={`p${p.page_order}`} style={{ width: 80, height: 106, objectFit: 'cover', display: 'block' }} />
-                                ) : (
-                                  <div style={{ width: 80, height: 106, display: 'grid', placeItems: 'center', color: 'var(--text-dim)', fontSize: 12 }}>p{p.page_order}</div>
-                                )}
+                                {on ? 'Fermer' : 'Voir les copies'}
                               </button>
-                            ))}
-                          </div>
-                          {g && g.comment && (
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>{g.comment}</div>
-                          )}
-                          {g && !g.is_validated && (
-                            <button onClick={() => handleValidate(g.id)} style={{ ...btnPrimary, marginTop: 8 }}>Valider la note</button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {selected.items.every((a) => (overviews[a.id]?.scanned ?? 0) === 0) && (
+                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
+                      Les copies se scannent au téléphone, en séance : bouton « Copies ».
+                    </div>
+                  )}
+                  {(() => {
+                    const target = selected.items.find((a) => a.id === copyClassAssessmentId);
+                    return target ? (
+                      <div style={{ marginTop: 16 }}>
+                        <CopyViewer assessment={target} onError={handleError} onChanged={loadAssessments} />
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
-                )}
-              </div>
+              )}
             </div>
           )}
         </div>

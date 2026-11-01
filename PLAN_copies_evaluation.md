@@ -7,7 +7,13 @@
 >   mobile `feat/scan-copies` (58effde). Tests jest + tsc OK. **Pas encore testé sur téléphone** :
 >   APK / dev client à reconstruire (module natif ML Kit). Barème à la création : /10, /20, /30, /40
 >   (le reste se règle sur le web). Liste du scan = toute la classe, pas encore filtrée par demi-groupe.
-> - Lots 2 à 4 : à faire.
+> - Lot 2 **codé le 01/11/2026** : web `feat/copies-suivi` (état par éval × classe calculé dans
+>   `lib/copyStatus.ts`, visionneuse `components/CopyViewer.tsx`) ; Correcteur (hors git, originaux
+>   dans `Correcteur/_sauvegardes/2026-11-01_avant_lot2/`) : `sync_copies.py` v2 (`--series`, `--dest`,
+>   incrémental, manifeste v2 avec tous les élèves), barème par version dans `generer_correction.py`
+>   (`corrections_<classe>_<version>.json`), skill `/corriger` et `formats.md` à jour. Tests : vitest,
+>   `python -m unittest discover -s scripts/tests`. Visionneuse pas encore vue dans le navigateur.
+> - Lots 3 et 4 : à faire.
 
 ---
 

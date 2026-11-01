@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { getCurrentSchoolYear } from './constants';
 import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
+import { computeCopyOverview, type CopyGradeInput, type CopyOverview } from './copyStatus';
 
 // Buckets (memes noms que cote mobile / migrations)
 const COPIES_BUCKET = 'assessment-copies';
@@ -15,7 +16,7 @@ const ASSESSMENT_SELECT =
 
 const GRADE_SELECT =
   'id, assessment_id, student_id, grade, grade_raw, comment, status, is_adapted,' +
-  ' is_validated, validated_at, updated_at';
+  ' is_validated, validated_at, updated_at, subject_version, copy_annotated';
 
 /**
  * PostgREST plafonne une reponse a 1000 lignes (meme constante que `PAGE_SIZE` dans
@@ -113,6 +114,8 @@ export interface AssessmentRow {
   counts_in_average: boolean;
   /** TRUE : les élèves de la classe voient leur note, le sujet et le corrigé (migration 040). */
   published_to_students: boolean;
+  /** Séance où les copies ont été scannées au téléphone (migration 052, facultatif). */
+  session_id: string | null;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
@@ -167,6 +170,10 @@ export interface GradeRow {
   is_validated: boolean;
   validated_at: string | null;
   updated_at: string | null;
+  /** Version du sujet passée par l'élève, saisie au scan (migration 052). */
+  subject_version: string | null;
+  /** La copie scannée porte déjà des annotations du prof (migration 052). */
+  copy_annotated: boolean;
   students?: { pseudo: string } | null;
 }
 
@@ -264,6 +271,108 @@ export async function fetchAssessmentGrades(assessmentId: string): Promise<Grade
   return (data || []) as unknown as GradeRow[];
 }
 
+// ============================================================
+// Suivi des copies scannées (lot 2 de PLAN_copies_evaluation.md)
+// ============================================================
+
+export interface RosterStudent {
+  id: string;
+  pseudo: string;
+  class_id: string;
+}
+
+/**
+ * Élèves attendus pour chaque éval : la classe, ou seulement le demi-groupe quand l'éval en a
+ * un (`group_id`). L'élève témoin et les élèves supprimés ne comptent pas.
+ */
+export async function fetchExpectedStudents(
+  items: AssessmentRow[],
+): Promise<Record<string, RosterStudent[]>> {
+  if (items.length === 0) return {};
+  const classIds = [...new Set(items.map((a) => a.class_id))];
+  const groupIds = [...new Set(items.map((a) => a.group_id).filter((g): g is string => !!g))];
+
+  const [studentsRes, membersRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('id, pseudo, class_id')
+      .in('class_id', classIds)
+      .eq('is_deleted', false)
+      .eq('is_witness', false)
+      .order('pseudo'),
+    groupIds.length > 0
+      ? supabase.from('class_group_members').select('group_id, student_id').in('group_id', groupIds)
+      : Promise.resolve({ data: [] as { group_id: string; student_id: string }[], error: null }),
+  ]);
+  if (studentsRes.error) throw studentsRes.error;
+  if (membersRes.error) throw membersRes.error;
+
+  const students = (studentsRes.data || []) as RosterStudent[];
+  const membersByGroup = new Map<string, Set<string>>();
+  for (const m of membersRes.data || []) {
+    if (!membersByGroup.has(m.group_id)) membersByGroup.set(m.group_id, new Set());
+    membersByGroup.get(m.group_id)!.add(m.student_id);
+  }
+
+  const out: Record<string, RosterStudent[]> = {};
+  for (const a of items) {
+    const members = a.group_id ? membersByGroup.get(a.group_id) : null;
+    out[a.id] = students.filter((s) => s.class_id === a.class_id && (!members || members.has(s.id)));
+  }
+  return out;
+}
+
+export interface CopyOverviewData {
+  overviews: Record<string, CopyOverview>;
+  /** Début de la séance liée, par éval. */
+  sessionStarts: Record<string, string>;
+}
+
+/** État des copies de plusieurs évals (une ligne par classe) en quatre requêtes. */
+export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOverviewData> {
+  if (items.length === 0) return { overviews: {}, sessionStarts: {} };
+  const ids = items.map((a) => a.id);
+  const sessionIds = [...new Set(items.map((a) => a.session_id).filter((s): s is string => !!s))];
+
+  const [expected, pages, grades, sessionsRes] = await Promise.all([
+    fetchExpectedStudents(items),
+    fetchAllPages<{ assessment_id: string; student_id: string }>(async (from, to) => {
+      const r = await supabase
+        .from('assessment_copy_pages')
+        .select('assessment_id, student_id')
+        .in('assessment_id', ids)
+        .range(from, to);
+      return r as unknown as PageResult<{ assessment_id: string; student_id: string }>;
+    }),
+    fetchAllPages<CopyGradeInput & { assessment_id: string }>(async (from, to) => {
+      const r = await supabase
+        .from('assessment_grades')
+        .select('assessment_id, student_id, status, grade, is_validated')
+        .in('assessment_id', ids)
+        .range(from, to);
+      return r as unknown as PageResult<CopyGradeInput & { assessment_id: string }>;
+    }),
+    sessionIds.length > 0
+      ? supabase.from('sessions').select('id, started_at').in('id', sessionIds)
+      : Promise.resolve({ data: [] as { id: string; started_at: string }[], error: null }),
+  ]);
+
+  const startById = new Map((sessionsRes.data || []).map((s) => [s.id, s.started_at]));
+  const overviews: Record<string, CopyOverview> = {};
+  const sessionStarts: Record<string, string> = {};
+  for (const a of items) {
+    overviews[a.id] = computeCopyOverview(
+      expected[a.id] ?? [],
+      pages.filter((p) => p.assessment_id === a.id),
+      grades.filter((g) => g.assessment_id === a.id),
+      a.published_to_students,
+    );
+    const start = a.session_id ? startById.get(a.session_id) : undefined;
+    if (start) sessionStarts[a.id] = start;
+  }
+  return { overviews, sessionStarts };
+}
+
 /** Signed URL d'une page de copie (bucket prive assessment-copies). */
 export async function getCopyUrl(storagePath: string): Promise<string | null> {
   const { data, error } = await supabase.storage
@@ -271,6 +380,18 @@ export async function getCopyUrl(storagePath: string): Promise<string | null> {
     .createSignedUrl(storagePath, 3600);
   if (error) return null;
   return data.signedUrl;
+}
+
+/** Signed URLs de plusieurs pages en un appel (visionneuse de copies). Chemin → URL. */
+export async function getCopyUrls(storagePaths: string[]): Promise<Record<string, string>> {
+  if (storagePaths.length === 0) return {};
+  const { data, error } = await supabase.storage
+    .from(COPIES_BUCKET)
+    .createSignedUrls(storagePaths, 3600);
+  if (error) throw error;
+  const out: Record<string, string> = {};
+  for (const d of data ?? []) if (d.path && d.signedUrl) out[d.path] = d.signedUrl;
+  return out;
 }
 
 /** Signed URL d'un document (sujet/correction, bucket prive assessment-docs). */
