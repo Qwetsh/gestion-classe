@@ -266,6 +266,54 @@ export function buildGrade(kit: CorrectionKit, out: CorrectionOutput): GradeFrom
 }
 
 // --------------------------------------------------------------------------- //
+// Version du sujet (migration 059 : un kit par version)
+// --------------------------------------------------------------------------- //
+
+/** Version normalisée : « V4 » et « v4 » sont la même ; vide = pas de version. */
+export function versionKey(v: string | null | undefined): string {
+  return (v ?? '').trim().toLowerCase();
+}
+
+export type KitChoice<K> =
+  | { ok: true; kit: K }
+  | { ok: false; error: 'no_kit' | 'version_unknown' | 'no_kit_for_version' | 'kit_version_unsure'; versions: string[] };
+
+/**
+ * Kit à utiliser pour la copie d'un élève, sans jamais deviner :
+ *  - version de l'élève connue : le kit de cette version ; à défaut, un kit sans version, mais
+ *    seulement si d'autres élèves de l'éval ont cette même version et aucune autre (sinon on ne
+ *    sait pas sur quel sujet le kit a été écrit) ;
+ *  - version inconnue : le kit s'il n'y en a qu'un, sinon refus.
+ * `classVersions` : versions saisies pour les AUTRES élèves de l'éval.
+ */
+export function pickKit<K extends { version_key: string }>(
+  kits: K[],
+  studentVersion: string | null | undefined,
+  classVersions: (string | null | undefined)[],
+): KitChoice<K> {
+  const versions = kits.map((k) => k.version_key).filter(Boolean).sort();
+  if (kits.length === 0) return { ok: false, error: 'no_kit', versions };
+  const mine = versionKey(studentVersion);
+  if (!mine) return kits.length === 1 ? { ok: true, kit: kits[0] } : { ok: false, error: 'version_unknown', versions };
+
+  const exact = kits.find((k) => k.version_key === mine);
+  if (exact) return { ok: true, kit: exact };
+  const unversioned = kits.find((k) => !k.version_key);
+  if (!unversioned || versions.length > 0) return { ok: false, error: 'no_kit_for_version', versions };
+  const others = new Set(classVersions.map(versionKey).filter(Boolean));
+  return others.size === 1 && others.has(mine)
+    ? { ok: true, kit: unversioned }
+    : { ok: false, error: 'kit_version_unsure', versions };
+}
+
+/** Claude signale-t-il, dans ses points à arbitrer, une copie faite sur une autre version du sujet ? */
+export function mentionsOtherVersion(arbitrages: { question?: string; raison?: string }[]): boolean {
+  return arbitrages.some((a) =>
+    /\bversion\b|\bv\s?\d+\b|autre sujet|ancien sujet|sujet diff[ée]rent|pas le m[êe]me sujet/i.test(`${a.question ?? ''} ${a.raison ?? ''}`),
+  );
+}
+
+// --------------------------------------------------------------------------- //
 // Copies de référence
 // --------------------------------------------------------------------------- //
 
@@ -275,6 +323,8 @@ export interface ReferenceCandidate {
   is_validated: boolean;
   details: unknown;
   transcript: TranscriptItem[] | null;
+  /** Version du sujet saisie pour cet élève (assessment_grades.subject_version). */
+  subject_version?: string | null;
 }
 
 interface RefQuestion {
@@ -301,10 +351,15 @@ export function pickReferences(
   kit: Pick<CorrectionKit, 'bareme'>,
   excludeStudentId: string,
   n = 5,
+  studentVersion: string | null = null,
 ): ReferenceCandidate[] {
   const labels = kit.bareme.questions.map((q) => q.label);
+  const mine = versionKey(studentVersion);
   const usable = candidates.filter((c) => {
     if (c.student_id === excludeStudentId || !Number.isFinite(c.grade)) return false;
+    // Une copie d'une autre version déclarée n'est pas une référence, même si le barème coïncide.
+    const theirs = versionKey(c.subject_version);
+    if (mine && theirs && theirs !== mine) return false;
     const qs = refQuestions(c.details);
     return !!qs && qs.length === labels.length && qs.every((q, i) => q?.label === labels[i]);
   });

@@ -11,6 +11,7 @@
 >   `AssessmentModal` et `AssessmentStatsBody` extraits, « Corriger avec Claude », lien « fiche ↗ »
 >   dans l'en-tête de colonne du Carnet, retour vers la même classe et le même trimestre.
 >   L'onglet Éval reste en place. tsc + vitest OK ; pas encore vérifié connecté dans le navigateur.
+>   Mise à jour avec master le 01/11/2026 (PR #13 export PDF et #15 kit par version intégrées).
 > - Questions Q1 à Q5 (§4) toujours ouvertes : elles conditionnent les étapes 2 à 4.
 
 ---
@@ -149,11 +150,11 @@ Statistiques (repliable)
   Moyenne 12,4 · Médiane 12 · … · histogramme · comparaison 5e1 / 5e2 / 5e4
 ```
 
-**Place réservée — « Exporter en PDF »** (demandé par Thomas le 01/11/2026, codé par la session « Scan des
-copies d'éval », pas ici) : sur la ligne de chaque classe, à droite de « Publier » (récapitulatif de la classe
-+ une fiche par élève) ; et dans la visionneuse, dans la barre de l'élève affiché, à côté de « Valider la
-note » (fiche de cet élève seul). Rien d'autre ne bouge pour lui faire de la place : la ligne de classe
-garde l'ordre Voir les copies · Valider la classe · Publier · Exporter en PDF · ⋯.
+**« Exporter en PDF »** (PR #13, fusionnée le 01/11/2026) : sur la ligne de chaque classe, à droite de
+« Publier » (récapitulatif de la classe + une fiche par élève, fenêtre `ExportCorrectionsDialog`) ; et dans la
+visionneuse, bouton « PDF » dans la barre de l'élève affiché (sa fiche seule). La ligne de classe suit
+l'ordre Voir les copies · Valider la classe · Publier · Exporter en PDF · ⋯. « Valider la classe » reprend
+l'avertissement « copie faite sur une autre version du sujet » de la PR #15.
 
 Pour un **TP venu de Productions** (ou un oral, un DM sans copie), la section Copies est remplacée par une ligne « Notes saisies dans le Carnet » ou « Notes envoyées depuis Productions → ouvrir », et la publication se fait au même endroit (ligne de la classe).
 

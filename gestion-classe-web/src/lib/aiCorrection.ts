@@ -4,6 +4,10 @@
  * vivent dans supabase/functions/corriger-copie/correction.ts.
  */
 
+import { mentionsOtherVersion } from '../../../supabase/functions/corriger-copie/correction.ts';
+
+export { mentionsOtherVersion };
+
 export type AiCorrectionMode = 'corriger' | 'recorriger';
 
 export interface AiArbitrage {
@@ -78,12 +82,19 @@ const START_ERRORS: Record<string, string> = {
   not_graded: 'Cet élève n’a pas encore de note : utilise « Corriger ».',
   needs_confirmation: 'La note est validée : confirme la recorrection.',
   already_running: 'Une correction est déjà en cours pour cet élève.',
+  version_unknown: 'Cette éval a un kit par version du sujet : indique la version de la copie (« Ajouter une copie ») avant de corriger.',
+  no_kit_for_version: 'Pas de kit pour la version du sujet de cette copie : envoie-le depuis le Correcteur (push_grades.py --kit).',
+  kit_version_unsure: 'Le kit n’indique pas sa version du sujet et cette copie a une version à elle : envoie un kit par version depuis le Correcteur.',
   not_found: 'Évaluation introuvable.',
   unauthorized: 'Session expirée : reconnecte-toi.',
 };
 
-export function describeStartError(code: string): string {
-  return START_ERRORS[code] ?? `Correction impossible (${code}).`;
+export function describeStartError(code: string, info?: { versions?: string[]; student_version?: string | null }): string {
+  const base = START_ERRORS[code] ?? `Correction impossible (${code}).`;
+  if (!info || !['version_unknown', 'no_kit_for_version', 'kit_version_unsure'].includes(code)) return base;
+  const copy = info.student_version ? ` Copie : ${info.student_version}.` : '';
+  const kits = info.versions?.length ? ` Kits : ${info.versions.join(', ')}.` : '';
+  return base + copy + kits;
 }
 
 export function formatCost(usd: number | null): string {

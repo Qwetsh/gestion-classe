@@ -6,10 +6,13 @@ import {
   estimateCostUsd,
   formatKitBlock,
   formatReference,
+  mentionsOtherVersion,
   niveau,
   noteSur20,
+  pickKit,
   pickReferences,
   validateOutput,
+  versionKey,
   type CorrectionKit,
   type ReferenceCandidate,
 } from '../../../../supabase/functions/corriger-copie/correction.ts';
@@ -237,5 +240,58 @@ describe('estimateCostUsd', () => {
       estimateCostUsd({ input_tokens: 20_000, output_tokens: 8_000, cache_creation_tokens: 10_000, cache_read_tokens: 0 }),
     ).toBe(0.29); // 0,08 + 0,16 + 0,05
     expect(estimateCostUsd({ input_tokens: 0, output_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 1_000_000 })).toBe(0.2);
+  });
+});
+
+describe('pickKit (un kit par version du sujet)', () => {
+  const k = (version_key: string) => ({ version_key, id: version_key || 'unique' });
+
+  it("prend le kit de la version de l'élève, sans tenir compte de la casse", () => {
+    expect(versionKey(' V4 ')).toBe('v4');
+    const r = pickKit([k('v5'), k('v4')], 'V4', []);
+    expect(r.ok && r.kit.id).toBe('v4');
+  });
+
+  it("refuse quand la version de l'élève n'a pas de kit", () => {
+    expect(pickKit([k('v5')], 'v4', [])).toEqual({ ok: false, error: 'no_kit_for_version', versions: ['v5'] });
+  });
+
+  it("élève sans version : le kit s'il est seul, sinon refus", () => {
+    expect(pickKit([k('v5')], null, []).ok).toBe(true);
+    expect(pickKit([k('')], '', []).ok).toBe(true);
+    expect(pickKit([k('v5'), k('v4')], null, [])).toMatchObject({ ok: false, error: 'version_unknown' });
+    expect(pickKit([], null, [])).toMatchObject({ ok: false, error: 'no_kit' });
+  });
+
+  it('kit sans version : seulement si le reste de la classe a la même version (cas de Nathan HE.)', () => {
+    // La classe en v5, le kit sans version : il vaut pour une copie v5…
+    expect(pickKit([k('')], 'v5', ['v5', 'V5', null]).ok).toBe(true);
+    // …pas pour une copie v4 ;
+    expect(pickKit([k('')], 'v4', ['v5', 'v5'])).toMatchObject({ ok: false, error: 'kit_version_unsure' });
+    // et si personne d'autre n'a de version, on ne sait pas sur quel sujet le kit a été écrit.
+    expect(pickKit([k('')], 'v4', [null, null])).toMatchObject({ ok: false, error: 'kit_version_unsure' });
+  });
+});
+
+describe('mentionsOtherVersion', () => {
+  it('repère une copie faite sur une autre version du sujet', () => {
+    expect(mentionsOtherVersion([{ question: 'Copie entière', raison: "L'élève a composé sur le sujet v4 (photos A et B)." }])).toBe(true);
+    expect(mentionsOtherVersion([{ question: 'Q3', raison: 'Semble être une autre version du sujet.' }])).toBe(true);
+    expect(mentionsOtherVersion([{ question: 'Q3', raison: 'Mot illisible.' }])).toBe(false);
+    expect(mentionsOtherVersion([])).toBe(false);
+  });
+});
+
+describe('pickReferences et version du sujet', () => {
+  it("écarte une copie d'une autre version déclarée", () => {
+    const details = { questions: kit.bareme.questions.map((q) => ({ label: q.label, bareme: q.bareme, points: 0, commentaire: 'c' })) };
+    const base = { is_validated: true, details, transcript: [{ q: 'Q1', texte: 't' }] };
+    const cs: ReferenceCandidate[] = [
+      { ...base, student_id: 'a', grade: 10, subject_version: 'v5' },
+      { ...base, student_id: 'b', grade: 12, subject_version: 'V4' },
+      { ...base, student_id: 'c', grade: 14, subject_version: null },
+    ];
+    expect(pickReferences(cs, kit, 'x', 5, 'v4').map((c) => c.student_id)).toEqual(['b', 'c']);
+    expect(pickReferences(cs, kit, 'x', 5, null).map((c) => c.student_id)).toEqual(['a', 'b', 'c']);
   });
 });

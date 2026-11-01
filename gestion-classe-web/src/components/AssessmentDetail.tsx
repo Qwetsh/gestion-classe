@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyViewer } from './CopyViewer';
+import { ExportCorrectionsDialog, exportableSheets, type ExportableRow } from './ExportCorrectionsDialog';
+import { isApiGrade, mentionsOtherVersion } from '../lib/aiCorrection';
 import {
   COPY_RETENTION_DAYS,
   COPY_STAGE_LABEL,
@@ -25,6 +27,9 @@ import {
   deleteAssessmentDoc,
   deleteSeriesDoc,
   extendCopiesRetention,
+  fetchAssessmentGrades,
+  fetchExpectedStudents,
+  fetchLatestAiCorrections,
   getDocUrl,
   purgeCopiesNow,
   updateAssessment,
@@ -114,6 +119,9 @@ interface AssessmentDetailProps {
 export function AssessmentDetail({ group, overviews, sessionStarts, userId, openId, onOpen, onError, onReload, sheetLink }: AssessmentDetailProps) {
   const [uploading, setUploading] = useState<AssessmentDocKind | null>(null);
   const [validating, setValidating] = useState<string | null>(null);
+  /** « Exporter en PDF » : classe et fiches chargées pour la fenêtre d'export. */
+  const [exporting, setExporting] = useState<{ assessment: AssessmentRow; rows: ExportableRow[] } | null>(null);
+  const [exportLoading, setExportLoading] = useState<string | null>(null);
   /** Incrémenté quand une action d'ici change les copies ou les notes : la visionneuse recharge. */
   const [viewerKey, setViewerKey] = useState(0);
   const subjectInputRef = useRef<HTMLInputElement>(null);
@@ -222,19 +230,53 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     }
   };
 
+  /** Élèves et notes d'une classe, dans l'ordre de la liste : pour l'export PDF et l'avertissement « autre version ». */
+  const loadRows = async (a: AssessmentRow): Promise<ExportableRow[]> => {
+    const [roster, grades] = await Promise.all([fetchExpectedStudents([a]), fetchAssessmentGrades(a.id)]);
+    const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
+    return (roster[a.id] ?? []).map((student) => ({ student, grade: gradeBy.get(student.id) ?? null }));
+  };
+
   // Valider la classe = tous les brouillons du Correcteur deviennent visibles à la publication.
   const handleValidateClass = async (a: AssessmentRow) => {
     const n = pendingDrafts(overviews[a.id]);
     const cls = a.classes?.name ?? 'cette classe';
-    if (!window.confirm(`Valider les ${n} note${n > 1 ? 's' : ''} en brouillon de ${cls} ?`)) return;
     setValidating(a.id);
     try {
+      // Claude a signalé une copie faite sur une autre version du sujet : sa note vient d'un
+      // autre barème, on le dit avant de valider en bloc (même garde-fou que par élève).
+      const [rows, runs] = await Promise.all([loadRows(a), fetchLatestAiCorrections(a.id)]);
+      const flagged = rows.filter((r) => {
+        const run = runs[r.student.id];
+        return r.grade && !r.grade.is_validated && run?.status === 'done' && isApiGrade(r.grade.details) && mentionsOtherVersion(run.a_arbitrer);
+      });
+      const warning = flagged.length
+        ? `\n\n⚠ Dont ${flagged.map((r) => r.student.pseudo).join(', ')} : Claude signale une copie faite sur une autre version du sujet.`
+        : '';
+      if (!window.confirm(`Valider les ${n} note${n > 1 ? 's' : ''} en brouillon de ${cls} ?${warning}`)) return;
       await validateAllGrades(a.id);
       await reloadAll();
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Échec de la validation');
     } finally {
       setValidating(null);
+    }
+  };
+
+  // Exporter en PDF = les fiches de correction de la classe à imprimer (récapitulatif + une par élève).
+  const handleExport = async (a: AssessmentRow) => {
+    setExportLoading(a.id);
+    try {
+      const rows = await loadRows(a);
+      if (exportableSheets(rows).length === 0) {
+        onError(`Aucune correction détaillée pour ${a.classes?.name ?? 'cette classe'} : rien à exporter.`);
+        return;
+      }
+      setExporting({ assessment: a, rows });
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Export impossible');
+    } finally {
+      setExportLoading(null);
     }
   };
 
@@ -380,6 +422,16 @@ Publier quand même pour ${cls} ?`
                     >
                       {a.published_to_students ? 'Dépublier' : 'Publier'}
                     </button>
+                    {o && o.graded > 0 && hasCopies(a) && (
+                      <button
+                        onClick={() => handleExport(a)}
+                        disabled={exportLoading === a.id}
+                        style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
+                        title="Fiches de correction à imprimer : récapitulatif de la classe et une fiche par élève"
+                      >
+                        {exportLoading === a.id ? 'Préparation…' : 'Exporter en PDF'}
+                      </button>
+                    )}
                     <RowMenu items={menu} />
                   </td>
                 </tr>
@@ -398,6 +450,9 @@ Publier quand même pour ${cls} ?`
           </div>
         )}
       </div>
+      {exporting && (
+        <ExportCorrectionsDialog assessment={exporting.assessment} rows={exporting.rows} onClose={() => setExporting(null)} />
+      )}
     </div>
   );
 }
