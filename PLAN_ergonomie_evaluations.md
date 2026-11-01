@@ -149,6 +149,12 @@ Statistiques (repliable)
   Moyenne 12,4 · Médiane 12 · … · histogramme · comparaison 5e1 / 5e2 / 5e4
 ```
 
+**Place réservée — « Exporter en PDF »** (demandé par Thomas le 01/11/2026, codé par la session « Scan des
+copies d'éval », pas ici) : sur la ligne de chaque classe, à droite de « Publier » (récapitulatif de la classe
++ une fiche par élève) ; et dans la visionneuse, dans la barre de l'élève affiché, à côté de « Valider la
+note » (fiche de cet élève seul). Rien d'autre ne bouge pour lui faire de la place : la ligne de classe
+garde l'ordre Voir les copies · Valider la classe · Publier · Exporter en PDF · ⋯.
+
 Pour un **TP venu de Productions** (ou un oral, un DM sans copie), la section Copies est remplacée par une ligne « Notes saisies dans le Carnet » ou « Notes envoyées depuis Productions → ouvrir », et la publication se fait au même endroit (ligne de la classe).
 
 ### 3.3 Ce qui disparaît, ce qui bouge
