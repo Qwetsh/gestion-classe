@@ -11,6 +11,7 @@ import {
   type CopyOverview,
   type CopyStage,
 } from '../lib/copyStatus';
+import { describeKeptCopies } from '../lib/copyTranscript';
 import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
   fetchAssessments,
@@ -54,7 +55,7 @@ function StageChip({ stage, title }: { stage: CopyStage; title?: string }) {
 
 /** Il y a quelque chose à ouvrir : des copies scannées ou des notes (brouillons compris). */
 function hasCopyContent(o: CopyOverview | undefined): boolean {
-  return !!o && (o.scanned > 0 || o.graded > 0);
+  return !!o && (o.scanned > 0 || o.graded > 0 || o.transcribed > 0);
 }
 
 function formatSession(iso: string): string {
@@ -239,10 +240,15 @@ export function Evaluations() {
 
   const handlePurgeNow = async (a: AssessmentRow) => {
     const cls = a.classes?.name ?? 'cette classe';
-    if (!window.confirm(`Supprimer définitivement les scans de « ${a.name} » (${cls}) ?\n\nLes notes et leur détail restent.`)) return;
+    // Une copie sans transcription garde ses scans (migration 056) : on le dit avant.
+    const untranscribed = overviews[a.id]?.untranscribed ?? 0;
+    const keptNote = untranscribed > 0
+      ? `\n\n${untranscribed > 1 ? `${untranscribed} copies n’ont` : '1 copie n’a'} pas de transcription : leurs scans seront conservés.`
+      : '';
+    if (!window.confirm(`Supprimer définitivement les scans de « ${a.name} » (${cls}) ?\n\nLes notes, leur détail et les transcriptions restent.${keptNote}`)) return;
     try {
-      await purgeCopiesNow(a.id);
-      if (copyClassAssessmentId === a.id) setCopyClassAssessmentId(null);
+      const { kept } = await purgeCopiesNow(a.id);
+      if (copyClassAssessmentId === a.id && kept === 0) setCopyClassAssessmentId(null);
       await loadAssessments();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Suppression impossible');
@@ -532,8 +538,9 @@ Publier quand même pour ${cls} ?`
                                   <div style={{ fontSize: 11.5, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
                                     {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
                                     {r.kind === 'scheduled' && (r.days <= 0
-                                      ? 'Scans supprimés cette nuit'
+                                      ? (o.untranscribed > 0 ? describeKeptCopies(o.untranscribed) : 'Scans supprimés cette nuit')
                                       : `Scans supprimés le ${formatSession(r.at)} (dans ${r.days} j)`)}
+                                    {r.kind === 'scheduled' && r.days > 0 && o.untranscribed > 0 && ` · ${describeKeptCopies(o.untranscribed)}`}
                                     {r.kind === 'purged' && `Scans supprimés le ${formatSession(r.at)}`}
                                     {r.kind === 'scheduled' && (
                                       <button onClick={() => handleExtend(a)} style={linkBtn} title="En cas de contestation">
@@ -555,7 +562,7 @@ Publier quand même pour ${cls} ?`
                                 disabled={!hasCopyContent(o)}
                                 style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, opacity: hasCopyContent(o) ? 1 : 0.5 }}
                               >
-                                {on ? 'Fermer' : o && o.scanned === 0 ? 'Voir les notes' : 'Voir les copies'}
+                                {on ? 'Fermer' : o && o.scanned === 0 && o.transcribed === 0 ? 'Voir les notes' : 'Voir les copies'}
                               </button>
                               <button
                                 onClick={() => togglePublish(a)}

@@ -46,6 +46,10 @@ export interface CopyOverview {
   graded: number;
   /** Parmi eux, notes validées par le prof. */
   validated: number;
+  /** Élèves dont la copie est transcrite (migration 056). */
+  transcribed: number;
+  /** Élèves avec des pages mais sans transcription : la purge garde leurs scans. */
+  untranscribed: number;
   stage: CopyStage;
 }
 
@@ -57,6 +61,7 @@ export function computeCopyOverview(
   pages: CopyPageInput[],
   grades: CopyGradeInput[],
   published: boolean,
+  transcribedIds: ReadonlySet<string> = new Set(),
 ): CopyOverview {
   const expected = new Set(students.map((s) => s.id));
   const pagesBy = new Map<string, number>();
@@ -84,6 +89,8 @@ export function computeCopyOverview(
 
   const scanned = pagesBy.size;
   const total = expected.size;
+  const transcribed = [...expected].filter((id) => transcribedIds.has(id)).length;
+  const untranscribed = [...pagesBy.keys()].filter((id) => !transcribedIds.has(id)).length;
   const missing = Math.max(0, total - scanned - absent);
   const present = total - absent;
 
@@ -103,6 +110,8 @@ export function computeCopyOverview(
     pages: [...pagesBy.values()].reduce((a, b) => a + b, 0),
     graded,
     validated,
+    transcribed,
+    untranscribed,
     stage,
   };
 }
