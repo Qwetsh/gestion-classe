@@ -1,127 +1,18 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { CarnetTab } from '../components/CarnetTab';
-import { CopyViewer } from '../components/CopyViewer';
-import {
-  COPY_RETENTION_DAYS,
-  COPY_STAGE_LABEL,
-  describeCopyOverview,
-  retentionState,
-  type CopyOverview,
-  type CopyStage,
-} from '../lib/copyStatus';
-import { describeKeptCopies } from '../lib/copyTranscript';
-import { docxToPdf, isDocx } from '../lib/docConvert';
+import { AssessmentDetail, StageChip } from '../components/AssessmentDetail';
+import { groupAssessments, groupStage, hasCopies, hasCopyContent, type AssessmentGroup } from '../lib/assessmentGroups';
+import type { CopyOverview } from '../lib/copyStatus';
 import {
   fetchAssessments,
   fetchClasses,
   createAssessment,
-  extendCopiesRetention,
   fetchCopyOverviews,
-  getDocUrl,
-  purgeCopiesNow,
-  updateAssessment,
-  uploadAssessmentDoc,
-  deleteAssessmentDoc,
-  uploadSeriesDoc,
-  deleteSeriesDoc,
-  clearSeriesAssessmentDocs,
-  effectiveDocPath,
   type AssessmentRow,
   type ClassRow,
-  type AssessmentDocKind,
 } from '../lib/evaluationQueries';
-
-const STAGE_ORDER: CopyStage[] = ['vide', 'scan', 'scannee', 'corrigee', 'validee', 'publiee'];
-
-const STAGE_COLORS: Record<CopyStage, [string, string]> = {
-  vide: ['var(--surface-3)', 'var(--text-dim)'],
-  scan: ['var(--warn-soft)', 'var(--warn)'],
-  scannee: ['var(--indigo-soft)', 'var(--indigo)'],
-  corrigee: ['var(--warn-soft)', 'var(--warn)'],
-  validee: ['var(--pos-soft)', 'var(--pos)'],
-  publiee: ['var(--pos)', '#fff'],
-};
-
-function StageChip({ stage, title }: { stage: CopyStage; title?: string }) {
-  const [bg, fg] = STAGE_COLORS[stage];
-  return (
-    <span title={title} style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '1px 7px', background: bg, color: fg, whiteSpace: 'nowrap' }}>
-      {COPY_STAGE_LABEL[stage]}
-    </span>
-  );
-}
-
-/** Il y a quelque chose à ouvrir : des copies scannées ou des notes (brouillons compris). */
-function hasCopyContent(o: CopyOverview | undefined): boolean {
-  return !!o && (o.scanned > 0 || o.graded > 0 || o.transcribed > 0);
-}
-
-function formatSession(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-/**
- * Une évaluation telle que le prof la pense : *un* devoir, même s'il existe une ligne
- * par classe en base. Les lignes d'une même série sont donc repliées en une seule
- * entrée ; le sujet et le corrigé sont communs, seules les copies sont par classe.
- */
-interface AssessmentGroup {
-  key: string;
-  name: string;
-  /** NULL pour une éval d'une seule classe, créée hors série. */
-  seriesId: string | null;
-  /** Une entrée par classe, triée par nom de classe. */
-  items: AssessmentRow[];
-}
-
-function groupAssessments(rows: AssessmentRow[]): AssessmentGroup[] {
-  const map = new Map<string, AssessmentGroup>();
-  for (const a of rows) {
-    const key = a.series_id ? `series:${a.series_id}` : `solo:${a.id}`;
-    if (!map.has(key)) {
-      map.set(key, {
-        key,
-        name: a.assessment_series?.name ?? a.name,
-        seriesId: a.series_id,
-        items: [],
-      });
-    }
-    map.get(key)!.items.push(a);
-  }
-  for (const g of map.values()) {
-    g.items.sort((x, y) => (x.classes?.name ?? '').localeCompare(y.classes?.name ?? ''));
-  }
-  return [...map.values()];
-}
-
-/**
- * Étape d'une éval repliée sur plusieurs classes : la moins avancée des classes qui ont
- * des copies (une série n'est « scannée » que si toutes ses classes le sont).
- */
-function groupStage(group: AssessmentGroup, overviews: Record<string, CopyOverview>): CopyStage | null {
-  const stages = group.items
-    .map((a) => overviews[a.id])
-    .filter((o): o is CopyOverview => !!o && (o.stage !== 'vide' || o.scanned > 0))
-    .map((o) => o.stage);
-  if (stages.length === 0) return null;
-  return stages.reduce((min, st) => (STAGE_ORDER.indexOf(st) < STAGE_ORDER.indexOf(min) ? st : min));
-}
-
-/** Chemin du document à afficher pour un groupe : celui de la série, sinon celui de l'éval. */
-function groupDocPath(group: AssessmentGroup, kind: AssessmentDocKind): string | null {
-  const series = group.items[0]?.assessment_series ?? null;
-  if (group.seriesId && series) {
-    const shared = kind === 'subject' ? series.subject_path : series.correction_path;
-    if (shared) return shared;
-  }
-  for (const a of group.items) {
-    const own = effectiveDocPath(a, kind);
-    if (own) return own;
-  }
-  return null;
-}
 
 type Tab = 'carnet' | 'eval';
 
@@ -138,7 +29,6 @@ export function Evaluations() {
   const [sessionStarts, setSessionStarts] = useState<Record<string, string>>({});
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState<AssessmentDocKind | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Création d'une éval depuis le web
@@ -151,9 +41,6 @@ export function Evaluations() {
 
   const handleError = useCallback((message: string) => setError(message), []);
 
-  const subjectInputRef = useRef<HTMLInputElement>(null);
-  const correctionInputRef = useRef<HTMLInputElement>(null);
-
   const loadAssessments = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -161,7 +48,7 @@ export function Evaluations() {
       const rows = await fetchAssessments(user.id);
       setAssessments(rows);
       // L'état des copies ne concerne que l'écrit ; il n'empêche pas d'afficher la liste.
-      fetchCopyOverviews(rows.filter((a) => a.kind === 'ecrit' || a.kind === 'dm'))
+      fetchCopyOverviews(rows.filter(hasCopies))
         .then((d) => {
           setOverviews(d.overviews);
           setSessionStarts(d.sessionStarts);
@@ -227,128 +114,6 @@ export function Evaluations() {
     setCopyClassAssessmentId(g.items.find((a) => hasCopyContent(overviews[a.id]))?.id ?? null);
   };
 
-  // Scans : supprimés automatiquement 30 j après la publication (migration 054). Le prof peut
-  // les garder plus longtemps (contestation) ou les supprimer tout de suite.
-  const handleExtend = async (a: AssessmentRow) => {
-    try {
-      await extendCopiesRetention(a);
-      await loadAssessments();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Prolongation impossible');
-    }
-  };
-
-  const handlePurgeNow = async (a: AssessmentRow) => {
-    const cls = a.classes?.name ?? 'cette classe';
-    // Une copie sans transcription garde ses scans (migration 056) : on le dit avant.
-    const untranscribed = overviews[a.id]?.untranscribed ?? 0;
-    const keptNote = untranscribed > 0
-      ? `\n\n${untranscribed > 1 ? `${untranscribed} copies n’ont` : '1 copie n’a'} pas de transcription : leurs scans seront conservés.`
-      : '';
-    if (!window.confirm(`Supprimer définitivement les scans de « ${a.name} » (${cls}) ?\n\nLes notes, leur détail et les transcriptions restent.${keptNote}`)) return;
-    try {
-      const { kept } = await purgeCopiesNow(a.id);
-      if (copyClassAssessmentId === a.id && kept === 0) setCopyClassAssessmentId(null);
-      await loadAssessments();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Suppression impossible');
-    }
-  };
-
-  // Publier = l'élève voit ses notes VALIDÉES, le sujet et le corrigé. Un brouillon reste caché
-  // même après publication (migration 053) : on le dit avant, plutôt que de laisser croire
-  // que toute la classe a sa note.
-  const togglePublish = async (a: AssessmentRow) => {
-    const o = overviews[a.id];
-    const pending = o ? o.graded - o.validated : 0;
-    const cls = a.classes?.name ?? 'cette classe';
-    const message = a.published_to_students
-      ? `Retirer « ${a.name} » de l’espace élève de ${cls} ? Les élèves ne verront plus leur note.`
-      : pending > 0
-        ? `${pending} note${pending > 1 ? 's sont' : ' est'} encore en brouillon : ${pending > 1 ? 'ces élèves ne verront pas leur note' : 'cet élève ne verra pas sa note'} tant qu’elle n’est pas validée.
-
-Publier quand même pour ${cls} ?`
-        : `Publier « ${a.name} » pour ${cls} ? Les élèves verront leur note, son détail, le sujet et le corrigé.`;
-    if (!window.confirm(message)) return;
-    try {
-      await updateAssessment(a.id, { publishedToStudents: !a.published_to_students });
-      await loadAssessments();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Publication impossible');
-    }
-  };
-
-  const openDoc = async (path: string) => {
-    const url = await getDocUrl(path);
-    if (url) window.open(url, '_blank', 'noopener');
-  };
-
-  const handleFile = async (kind: AssessmentDocKind, file: File | undefined) => {
-    if (!file || !user || !selected) return;
-
-    // Le stockage ne contient que des PDF ou des images : l'élève comme le prof ouvrent
-    // toujours un format lisible sans Word. Un .docx doit donc être converti — mais la
-    // conversion faite dans le navigateur (mammoth + jsPDF) ne garde que la STRUCTURE du
-    // document : colonnes, zones de texte et position des images sont perdues. Word, lui,
-    // exporte un PDF parfait en un clic. On le dit, plutôt que de rendre une fiche illisible.
-    if (isDocx(file.name)) {
-      const ok = window.confirm(
-        [
-          `« ${file.name} » est un document Word.`,
-          'La conversion automatique ne respecte pas la mise en page : colonnes, zones de '
-            + 'texte et placement des images seront approximatifs.',
-          'Le mieux : dans Word, Fichier → Enregistrer sous → PDF, puis déposer ce PDF ici.',
-          'OK : convertir quand même · Annuler : je dépose un PDF.',
-        ].join('\n\n'),
-      );
-      if (!ok) return;
-    }
-
-    setUploading(kind);
-    try {
-      const toUpload = isDocx(file.name) ? await docxToPdf(file) : file;
-      if (selected.seriesId) {
-        // Un seul fichier pour toutes les classes de la série, et on efface les copies
-        // propres qui le masqueraient (cf. effectiveDocPath).
-        const series = selected.items[0]?.assessment_series ?? null;
-        const prev = kind === 'subject' ? series?.subject_path ?? null : series?.correction_path ?? null;
-        await uploadSeriesDoc(user.id, selected.seriesId, kind, toUpload, prev);
-        await clearSeriesAssessmentDocs(selected.seriesId, kind);
-      } else {
-        const a = selected.items[0];
-        const prev = kind === 'subject' ? a.subject_path : a.correction_path;
-        await uploadAssessmentDoc(user.id, a.id, kind, toUpload, prev);
-      }
-      await loadAssessments();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Échec de l’upload');
-    } finally {
-      setUploading(null);
-    }
-  };
-
-  const handleDeleteDoc = async (kind: AssessmentDocKind) => {
-    if (!selected) return;
-    const path = groupDocPath(selected, kind);
-    if (!path) return;
-    const label = kind === 'subject' ? 'le sujet' : 'la correction';
-    const scope = selected.items.length > 1 ? ` pour les ${selected.items.length} classes` : '';
-    if (!window.confirm(`Supprimer ${label}${scope} ?`)) return;
-    try {
-      if (selected.seriesId) {
-        const series = selected.items[0]?.assessment_series ?? null;
-        const shared = kind === 'subject' ? series?.subject_path : series?.correction_path;
-        if (shared) await deleteSeriesDoc(selected.seriesId, kind, shared);
-        await clearSeriesAssessmentDocs(selected.seriesId, kind);
-      } else {
-        await deleteAssessmentDoc(selected.items[0].id, kind, path);
-      }
-      await loadAssessments();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Échec de la suppression');
-    }
-  };
-
   return (
     <Layout fluid>
       <div style={{ marginBottom: 20 }}>
@@ -358,7 +123,7 @@ Publier quand même pour ${cls} ?`
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
           {tab === 'carnet'
             ? 'Toutes les notes d’une classe sur un trimestre, saisie au clavier.'
-            : 'Sujets, corrections, copies scannées et notes par élève.'}
+            : 'Sujets, corrigés, copies scannées et notes par élève.'}
         </p>
       </div>
 
@@ -450,9 +215,9 @@ Publier quand même pour ${cls} ?`
 
         {/* ---- Détail ---- */}
         <div>
-          {!selected ? (
+          {!selected || !user ? (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>
-              Sélectionne une évaluation pour voir le sujet, la correction, les copies et les notes.
+              Sélectionne une évaluation pour voir le sujet, le corrigé, les copies et les notes.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -463,138 +228,21 @@ Publier quand même pour ${cls} ?`
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                   {selected.items.map((a) => a.classes?.name ?? '—').join(', ')}
-                  {selected.items.length > 1 ? ' · sujet et correction communs' : ''}
+                  {selected.items.length > 1 ? ' · sujet et corrigé communs' : ''}
                 </div>
               </div>
 
-              {/* Sujet & correction */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {(['subject', 'correction'] as AssessmentDocKind[]).map((kind) => {
-                  const path = groupDocPath(selected, kind);
-                  const label = kind === 'subject' ? 'Sujet' : 'Correction';
-                  const inputRef = kind === 'subject' ? subjectInputRef : correctionInputRef;
-                  return (
-                    <div key={kind} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{label}</div>
-                      <input
-                        ref={inputRef}
-                        type="file"
-                        accept="application/pdf,image/*,.docx"
-                        style={{ display: 'none' }}
-                        onChange={(e) => handleFile(kind, e.target.files?.[0])}
-                      />
-                      {path ? (
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <button onClick={() => openDoc(path)} style={btnPrimary}>Ouvrir</button>
-                          <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>
-                            {uploading === kind ? '…' : 'Remplacer'}
-                          </button>
-                          <button onClick={() => handleDeleteDoc(kind)} style={btnDanger}>Supprimer</button>
-                        </div>
-                      ) : (
-                        <>
-                          <button onClick={() => inputRef.current?.click()} style={btnPrimary} disabled={uploading === kind}>
-                            {uploading === kind ? 'Envoi…' : `+ Ajouter ${label.toLowerCase()} (PDF ou image)`}
-                          </button>
-                          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.5 }}>
-                            Document Word : dans Word, <strong>Fichier → Enregistrer sous → PDF</strong>.
-                            La conversion automatique d’un .docx abîme la mise en page.
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Copies : une ligne par classe, puis la visionneuse de la classe choisie */}
-              {selected.items.some((a) => a.kind === 'ecrit' || a.kind === 'dm') && (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Copies</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <tbody>
-                      {selected.items.map((a) => {
-                        const o = overviews[a.id];
-                        const on = copyClassAssessmentId === a.id;
-                        return (
-                          <tr key={a.id} style={{ borderTop: '1px solid var(--border)', background: on ? 'var(--indigo-soft)' : undefined }}>
-                            <td style={{ padding: '8px 6px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                              {a.classes?.name ?? '—'}
-                            </td>
-                            <td style={{ padding: '8px 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                              {sessionStarts[a.id] ? `séance du ${formatSession(sessionStarts[a.id])}` : a.date ? formatSession(a.date) : ''}
-                            </td>
-                            <td style={{ padding: '8px 6px' }}>{o && <StageChip stage={o.stage} />}</td>
-                            <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>
-                              {o ? describeCopyOverview(o) : '…'}
-                              {o && (() => {
-                                const r = retentionState(a, o.pages);
-                                if (r.kind === 'none') return null;
-                                const linkBtn: React.CSSProperties = {
-                                  background: 'none', border: 'none', padding: 0, marginLeft: 8, cursor: 'pointer',
-                                  fontSize: 11.5, fontWeight: 600, color: 'var(--indigo)', fontFamily: 'inherit',
-                                };
-                                return (
-                                  <div style={{ fontSize: 11.5, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
-                                    {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
-                                    {r.kind === 'scheduled' && (r.days <= 0
-                                      ? (o.untranscribed > 0 ? describeKeptCopies(o.untranscribed) : 'Scans supprimés cette nuit')
-                                      : `Scans supprimés le ${formatSession(r.at)} (dans ${r.days} j)`)}
-                                    {r.kind === 'scheduled' && r.days > 0 && o.untranscribed > 0 && ` · ${describeKeptCopies(o.untranscribed)}`}
-                                    {r.kind === 'purged' && `Scans supprimés le ${formatSession(r.at)}`}
-                                    {r.kind === 'scheduled' && (
-                                      <button onClick={() => handleExtend(a)} style={linkBtn} title="En cas de contestation">
-                                        Garder {COPY_RETENTION_DAYS} j de plus
-                                      </button>
-                                    )}
-                                    {(r.kind === 'scheduled' || r.kind === 'kept') && (
-                                      <button onClick={() => handlePurgeNow(a)} style={{ ...linkBtn, color: 'var(--neg)' }}>
-                                        Supprimer maintenant
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </td>
-                            <td style={{ padding: '8px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <button
-                                onClick={() => setCopyClassAssessmentId(on ? null : a.id)}
-                                disabled={!hasCopyContent(o)}
-                                style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, opacity: hasCopyContent(o) ? 1 : 0.5 }}
-                              >
-                                {on ? 'Fermer' : o && o.scanned === 0 && o.transcribed === 0 ? 'Voir les notes' : 'Voir les copies'}
-                              </button>
-                              <button
-                                onClick={() => togglePublish(a)}
-                                style={{
-                                  ...(a.published_to_students ? btnGhost : btnPrimary),
-                                  padding: '4px 10px', fontSize: 12, marginLeft: 6,
-                                }}
-                                title={a.published_to_students ? 'Visible dans l’espace élève' : 'Rendre visible dans l’espace élève'}
-                              >
-                                {a.published_to_students ? 'Dépublier' : 'Publier'}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  {selected.items.every((a) => !hasCopyContent(overviews[a.id])) && (
-                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
-                      Les copies se scannent au téléphone, en séance : bouton « Copies ».
-                    </div>
-                  )}
-                  {(() => {
-                    const target = selected.items.find((a) => a.id === copyClassAssessmentId);
-                    return target ? (
-                      <div style={{ marginTop: 16 }}>
-                        <CopyViewer assessment={target} onError={handleError} onChanged={loadAssessments} />
-                      </div>
-                    ) : null;
-                  })()}
-                </div>
-              )}
+              <AssessmentDetail
+                group={selected}
+                overviews={overviews}
+                sessionStarts={sessionStarts}
+                userId={user.id}
+                openId={copyClassAssessmentId}
+                onOpen={setCopyClassAssessmentId}
+                onError={handleError}
+                onReload={loadAssessments}
+                sheetLink
+              />
             </div>
           )}
         </div>
@@ -669,4 +317,3 @@ const btnBase: React.CSSProperties = {
 };
 const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo)', color: '#fff' };
 const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };
-const btnDanger: React.CSSProperties = { ...btnBase, background: 'var(--neg-soft)', color: 'var(--neg)' };

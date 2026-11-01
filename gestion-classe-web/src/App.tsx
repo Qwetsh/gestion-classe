@@ -24,6 +24,7 @@ import { Academy } from './pages/Academy';
 import { Brevets } from './pages/Brevets';
 import { Clouds } from './pages/Clouds';
 import { Evaluations } from './pages/Evaluations';
+import { AssessmentSheet } from './pages/AssessmentSheet';
 import { Productions } from './pages/Productions';
 import { CopyDepot } from './pages/CopyDepot';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -128,6 +129,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Evaluations />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/evaluations/:id"
+          element={
+            <ProtectedRoute>
+              <AssessmentSheet />
             </ProtectedRoute>
           }
         />
