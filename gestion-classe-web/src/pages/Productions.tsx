@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { WorkCorrection } from '../components/productions/WorkCorrection';
+import { MoreMenu } from '../components/MoreMenu';
 import {
   autoPoints,
   fetchActivities,
@@ -26,9 +27,11 @@ import { buildClaudeExport, downloadText, importClaudeCorrections, parseClaudeCo
  * (« Terre en mouvement »…) et envoient avec leur code. Ici : lecture et suivi des envois.
  * La correction par critères est dans components/productions/WorkCorrection.tsx.
  * Par classe : « Envoyer les notes au carnet » (évaluation TP coef 1 créée au premier envoi, puis mise à jour)
- * et « Imprimer les copies corrigées » (lib/productionsPrint.ts). Correction par Claude : « Exporter pour Claude »
- * (document Markdown avec consignes, barème, corrigé et copies) puis « Importer la correction Claude » (JSON renvoyé),
- * voir lib/productionsExport.ts.
+ * et « Imprimer les corrigées » (lib/productionsPrint.ts). Dans le menu ⋯ : « Actualiser », et la correction par
+ * Claude par fichier — « Exporter pour Claude » (document Markdown avec consignes, barème, corrigé et fiches) puis
+ * « Importer la correction Claude » (JSON renvoyé), voir lib/productionsExport.ts.
+ * Le bouton de ligne s'appelle « Ouvrir » : la fenêtre dit elle-même s'il reste à corriger (« Corriger » est
+ * réservé, dans Évaluations, à la correction d'une copie par l'API Claude).
  */
 
 const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
@@ -284,47 +287,50 @@ export function Productions() {
                 </button>
               </div>
 
-              <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-                <label style={{ fontSize: 13, fontWeight: 600 }}>Classe</label>
-                <select value={classId} onChange={(e) => setClassId(e.target.value)} style={{ ...inp, width: 160 }}>
-                  {classOptions.length === 0 && <option value="">—</option>}
-                  {classOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-                </select>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12 }}>
-                  {(['submitted', 'corrected', 'validated', 'draft'] as WorkStatus[]).map((s) => (
-                    <span key={s} style={{ ...pill, background: STATUS_COLOR[s].bg, color: STATUS_COLOR[s].fg }}>{WORK_STATUS_LABEL[s]} : {counts[s]}</span>
-                  ))}
-                  <span style={{ ...pill, background: 'var(--surface-3)', color: 'var(--text-muted)' }}>Rien reçu : {counts.none}</span>
-                </div>
-                <button onClick={() => loadWorks(activity.id)} style={{ ...btnGhost, marginLeft: 'auto' }} disabled={loadingWorks}>
-                  {loadingWorks ? 'Actualisation…' : 'Actualiser'}
-                </button>
-              </div>
-
-              {classId && (
-                <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: 'var(--text-muted)' }}>
-                    {gradable.length} copie{gradable.length > 1 ? 's' : ''} corrigée{gradable.length > 1 ? 's' : ''} sur {classWorks.length} reçue{classWorks.length > 1 ? 's' : ''}.
-                    {carnetLink
-                      ? <> Carnet : évaluation « {carnetLink.written_assessments?.name ?? activity.title} » liée, les envois suivants mettent les notes à jour.</>
-                      : <> Pas encore d’évaluation au carnet pour cette classe : elle sera créée au premier envoi (TP, coefficient 1, /{activity.bareme_total}).</>}
+              {/* La classe : ses compteurs et, dessous, ce qu'on fait de ses fiches. Un seul bloc. */}
+              <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                  <label htmlFor="productions-classe" style={{ fontSize: 13, fontWeight: 600 }}>Classe</label>
+                  <select id="productions-classe" value={classId} onChange={(e) => setClassId(e.target.value)} style={{ ...inp, width: 160 }}>
+                    {classOptions.length === 0 && <option value="">—</option>}
+                    {classOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12 }}>
+                    {(['submitted', 'corrected', 'validated', 'draft'] as WorkStatus[]).map((s) => (
+                      <span key={s} style={{ ...pill, background: STATUS_COLOR[s].bg, color: STATUS_COLOR[s].fg }}>{WORK_STATUS_LABEL[s]} : {counts[s]}</span>
+                    ))}
+                    <span style={{ ...pill, background: 'var(--surface-3)', color: 'var(--text-muted)' }}>Rien reçu : {counts.none}</span>
                   </div>
-                  <button onClick={exportClaude} style={btnGhost} disabled={exportable.length === 0} title="Fichier Markdown à donner à un Claude correcteur : consignes, barème, corrigé attendu et les copies envoyées">
-                    Exporter pour Claude ({exportable.length})
-                  </button>
-                  <button onClick={() => fileInput.current?.click()} style={btnGhost} disabled={importing || exportable.length === 0} title="Fichier JSON (ou texte contenant le bloc JSON) renvoyé par Claude : critères, remarques, compétences, conseils">
-                    {importing ? 'Import…' : 'Importer la correction Claude'}
-                  </button>
-                  <input ref={fileInput} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" style={{ display: 'none' }}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void importClaude(f); }} />
-                  <button onClick={print} style={btnGhost} disabled={gradable.length === 0} title="Une page par élève : réponses, critères acquis, remarques, compétences, conseils">
-                    Imprimer les copies corrigées
-                  </button>
-                  <button onClick={sendToCarnet} style={btnPrimary} disabled={sending || gradable.length === 0 || !user}>
-                    {sending ? 'Envoi…' : carnetLink ? `Mettre à jour les notes au carnet (${gradable.length})` : `Envoyer les notes au carnet (${gradable.length})`}
-                  </button>
                 </div>
-              )}
+
+                {classId && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                    <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: 'var(--text-muted)' }}>
+                      {gradable.length} fiche{gradable.length > 1 ? 's' : ''} corrigée{gradable.length > 1 ? 's' : ''} sur {classWorks.length} reçue{classWorks.length > 1 ? 's' : ''}.
+                      {carnetLink
+                        ? <> Carnet : évaluation « {carnetLink.written_assessments?.name ?? activity.title} » liée, les envois suivants mettent les notes à jour.</>
+                        : <> Pas encore d’évaluation au carnet pour cette classe : elle sera créée au premier envoi (TP, coefficient 1, /{activity.bareme_total}).</>}
+                    </div>
+                    <button onClick={print} style={btnGhost} disabled={gradable.length === 0} title="Une page par élève : réponses, critères acquis, remarques, compétences, conseils">
+                      Imprimer les corrigées
+                    </button>
+                    <button onClick={sendToCarnet} style={btnPrimary} disabled={sending || gradable.length === 0 || !user}>
+                      {sending ? 'Envoi…' : carnetLink ? `Mettre à jour les notes au carnet (${gradable.length})` : `Envoyer les notes au carnet (${gradable.length})`}
+                    </button>
+                    <MoreMenu
+                      label="⋯"
+                      title="Actualiser, correction par Claude (fichier)"
+                      items={[
+                        { label: loadingWorks ? 'Actualisation…' : 'Actualiser les envois', onClick: () => { void loadWorks(activity.id); }, disabled: loadingWorks },
+                        { label: `Exporter pour Claude (${exportable.length})`, onClick: exportClaude, disabled: exportable.length === 0, title: 'Fichier Markdown à donner à un Claude correcteur : consignes, barème, corrigé attendu et les fiches envoyées' },
+                        { label: importing ? 'Import…' : 'Importer la correction Claude', onClick: () => fileInput.current?.click(), disabled: importing || exportable.length === 0, title: 'Fichier JSON (ou texte contenant le bloc JSON) renvoyé par Claude : critères, remarques, compétences, conseils' },
+                      ]}
+                    />
+                    <input ref={fileInput} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" style={{ display: 'none' }}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) void importClaude(f); }} />
+                  </div>
+                )}
+              </div>
 
               <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -364,7 +370,15 @@ export function Productions() {
                           })() : '—'}
                         </td>
                         <td style={{ ...td, textAlign: 'right' }}>
-                          {work && <button onClick={() => setOpenId(work.id)} style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}>{work.status === 'draft' ? 'Lire' : work.correction ? 'Revoir' : 'Corriger'}</button>}
+                          {work && (
+                            <button
+                              onClick={() => setOpenId(work.id)}
+                              style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}
+                              title={work.status === 'draft' ? 'Brouillon de l’élève : lecture seule' : work.correction ? 'Revoir la correction' : 'Corriger cette fiche'}
+                            >
+                              Ouvrir
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
