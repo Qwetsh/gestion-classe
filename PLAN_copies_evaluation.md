@@ -2,7 +2,12 @@
 
 > Rédigé le 01/11/2026 après lecture du code (web, mobile, Supabase en prod, Correcteur).
 > Remplace `PLAN_scan_copies.md` (v1 partiellement codée, jamais utilisée).
-> Statut : **validé par Thomas le 01/11/2026** (réponses aux 4 questions en §3) — lot 1 en cours.
+> Statut : **validé par Thomas le 01/11/2026** (réponses aux 4 questions en §3).
+> - Lot 1 **codé le 01/11/2026** : migration 052 appliquée en prod (branche `feat/copies-schema`),
+>   mobile `feat/scan-copies` (58effde). Tests jest + tsc OK. **Pas encore testé sur téléphone** :
+>   APK / dev client à reconstruire (module natif ML Kit). Barème à la création : /10, /20, /30, /40
+>   (le reste se règle sur le web). Liste du scan = toute la classe, pas encore filtrée par demi-groupe.
+> - Lots 2 à 4 : à faire.
 
 ---
 
