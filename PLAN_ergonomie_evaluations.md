@@ -12,6 +12,13 @@
 >   dans l'en-tête de colonne du Carnet, retour vers la même classe et le même trimestre.
 >   L'onglet Éval reste en place. tsc + vitest OK ; pas encore vérifié connecté dans le navigateur.
 >   Mise à jour avec master le 01/11/2026 (PR #13 export PDF et #15 kit par version intégrées).
+>   **Vérifié connecté le 01/11/2026** (Chrome, données réelles) : Carnet → « fiche ↗ » → fiche (en-tête,
+>   Modifier, lignes de classe avec Fermer / Publier / Exporter en PDF, visionneuse, statistiques), onglet Éval →
+>   « Fiche complète ↗ », retour « ← Carnet » sur la bonne classe et le bon trimestre. Aucune copie scannée en
+>   prod à ce jour : le chemin « pages scannées » de la visionneuse n'a pas pu être exercé sur des données réelles
+>   (code inchangé par rapport à master).
+>   À reprendre à l'étape 3 (vocabulaire) : pour une éval jamais scannée, la ligne de classe dit « 0/29 scannée »
+>   et la liste des élèves « Manquante » ; dire plutôt « 24/29 notées » et ne pas marquer de copie manquante.
 > - Questions Q1 à Q5 (§4) toujours ouvertes : elles conditionnent les étapes 2 à 4.
 
 ---
