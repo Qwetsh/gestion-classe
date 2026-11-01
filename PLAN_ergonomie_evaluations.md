@@ -23,7 +23,13 @@
 >   questions du §4 avec les choix par défaut (Q1 liste Éval retirée, Q2 et Q3 dans un menu ⋯, Q4 pleine page,
 >   Q5 vocabulaire). Étapes 2 et 3 **codées** (PR #16, `feat/ergonomie-carnet`, empilée sur #14) ; étape 4
 >   **codée** (PR #17, `feat/ergonomie-productions`, empilée sur #16). Les trois vérifiées connectées dans
->   Chrome. Fusion dans l'ordre #14 → #16 → #17, avec le feu vert de Thomas.
+>   Chrome. **En ligne le 01/11/2026** (« Oui, mets en ligne ») : #14 fusionnée dans master ; #16 et #17 ont
+>   atterri dans leur branche de base avant que GitHub ne la rebascule, donc portées dans master par la PR #18.
+>   Déploiement GitHub Pages OK. Vérifié sur le site publié avec la 4D (25 copies scannées, kit présent :
+>   « Recorriger avec Claude » actif, transcriptions, export PDF 25 fiches, Carnet avec pastilles, Productions).
+>   Choix appliqués par défaut pour les questions du §4, modifiables : Q1 liste Éval retirée ; Q2 Importer Pronote
+>   et Q3 export/import Claude dans un menu ⋯ ; Q4 fiche pleine page ; Q5 « À valider (n) », « n sans note »,
+>   « Corriger avec Claude », « Ouvrir ».
 
 ---
 
