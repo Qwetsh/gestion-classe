@@ -149,14 +149,14 @@ Une trace de ce que l'élève a écrit, gardée après la suppression des scans,
 ### Ajout — Bouton « Corriger » par l'API Claude (01/11/2026, « Oui, lance-le » de Thomas via la session Correcteur)
 Corriger dans l'app une copie scannée en retard (élève sans note) ou reprise, comme le reste de la
 classe, sans repasser par le Correcteur. Branche `feat/copies-correction-api`.
-- Migration 057 (**non appliquée**) : `assessment_correction_kits` (kit v1 de `build_kit.py` par
+- Migration 057 (**appliquée en prod le 01/11/2026** avec le « Oui, applique » de Thomas ; RLS vérifiée en transaction annulée : prof oui, autre compte et anon non) : `assessment_correction_kits` (kit v1 de `build_kit.py` par
   éval : barème, corrigé, calibrage, harmonisation, consignes ; RLS propriétaire, aucune RPC élève)
   et `assessment_ai_corrections` (journal : état, modèle, tokens, coût estimé, `a_arbitrer` ;
   seule la fonction écrit, le prof lit).
 - Correcteur : `push_grades.py --kit kit_<classe>.json` envoie le kit seul (aucune note ne bouge) ;
   `--with-grades` y ajoute les notes ; `--dry-run` marche. Sauvegarde dans
   `_sauvegardes/2026-11-01_avant_kit/`.
-- Edge Function `corriger-copie` (**non déployée**) : JWT du prof propriétaire ; Claude Opus 5.5,
+- Edge Function `corriger-copie` (**déployée le 01/11/2026**, v1, JWT exigé ; démarrage vérifié : un appel sans compte prof reçoit 401) : JWT du prof propriétaire ; Claude Opus 5.5,
   réflexion adaptative, effort `high`, streaming, sortie structurée (une propriété obligatoire par
   ligne du barème : L01…Lnn, la seule façon d'imposer le nombre de lignes), repli serveur des refus
   (`fallbacks: "default"`). Bloc barème + corrigé + calibrage + harmonisation mis en cache, puis
