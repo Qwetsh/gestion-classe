@@ -183,10 +183,10 @@ Faire noter une copie après les autres sans repasser par le scan mobile. Branch
   Pages ajoutées après les existantes, ou à leur place sur confirmation (les anciennes ne partent
   qu'après l'envoi des nouvelles). Version du sujet et « copie adaptée » enregistrées comme au scan
   mobile (seules ces colonnes de assessment_grades). Copie déjà notée : « pense à Recorriger ».
-- QR code : migration 058 (**non appliquée**) `assessment_upload_tokens` (SHA-256 du jeton, un élève
+- QR code : migration 058 (**appliquée en prod le 01/11/2026** ; vérifiée en transaction annulée : plafond de pages, jeton expiré refusé, RPC interdite à anon et authenticated, jetons visibles du prof seul) `assessment_upload_tokens` (SHA-256 du jeton, un élève
   d'une éval, 15 min, 8 pages, révoqué à la fermeture de la fenêtre ; RPC `claim_upload_token_page`
   réservée à service_role pour compter les pages sans dépasser). Edge Function `depot-copie`
-  (**non déployée**, verify_jwt off : create/revoke vérifient le JWT du prof ; info/upload le jeton ;
+  (**déployée le 01/11/2026**, v1 ; testée avec un jeton de test : infos OK, faux jeton et jeton révoqué refusés, non-JPEG refusé, create sans compte refusé ; verify_jwt off : create/revoke vérifient le JWT du prof ; info/upload le jeton ;
   JPEG ≤ 5 Mo vérifié). Page publique `/depot#<jeton>` (jeton dans le fragment, jamais envoyé au
   serveur web) : pseudo, classe et éval seulement, appareil photo natif, rotation, envoi.
 - Le Correcteur récupère ces pages comme les autres (sync_copies.py lit assessment_copy_pages).
