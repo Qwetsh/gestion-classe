@@ -4,6 +4,7 @@ import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
 import { computeCopyOverview, extendedPurgeDate, type CopyGradeInput, type CopyOverview } from './copyStatus';
 import { planCopyPurge } from './copyTranscript';
+import { latestRunByStudent, type AiCorrectionMode, type AiCorrectionRun } from './aiCorrection';
 
 // Buckets (memes noms que cote mobile / migrations)
 const COPIES_BUCKET = 'assessment-copies';
@@ -439,6 +440,81 @@ export async function fetchAssessmentTranscripts(assessmentId: string): Promise<
   const out: Record<string, unknown> = {};
   for (const r of (data || []) as { student_id: string; transcript: unknown }[]) out[r.student_id] = r.transcript;
   return out;
+}
+
+/* ---------- bouton « Corriger » (migration 057, Edge Function corriger-copie) ---------- */
+
+/** Le Correcteur a-t-il envoyé le kit de correction de cette éval (push_grades.py --kit) ? */
+export async function hasCorrectionKit(assessmentId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('assessment_correction_kits')
+    .select('assessment_id', { count: 'exact', head: true })
+    .eq('assessment_id', assessmentId);
+  if (isMissingTable(error)) return false;
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+/** Dernier appel de correction automatique de chaque élève de l'éval. */
+export async function fetchLatestAiCorrections(assessmentId: string): Promise<Record<string, AiCorrectionRun>> {
+  const { data, error } = await supabase
+    .from('assessment_ai_corrections')
+    .select('*')
+    .eq('assessment_id', assessmentId)
+    .order('started_at', { ascending: false });
+  if (isMissingTable(error)) return {};
+  if (error) throw error;
+  return latestRunByStudent((data || []) as AiCorrectionRun[]);
+}
+
+export async function fetchAiCorrection(runId: string): Promise<AiCorrectionRun | null> {
+  const { data, error } = await supabase.from('assessment_ai_corrections').select('*').eq('id', runId).maybeSingle();
+  if (error) throw error;
+  return (data as AiCorrectionRun | null) ?? null;
+}
+
+/** Erreur de démarrage renvoyée par la fonction (no_kit, needs_confirmation…). */
+export class AiCorrectionStartError extends Error {
+  readonly code: string;
+  constructor(code: string) {
+    super(code);
+    this.code = code;
+  }
+}
+
+/**
+ * Lance la correction d'une copie par Claude : la fonction répond tout de suite avec l'id de
+ * l'appel, la correction tourne en tâche de fond (suivre avec fetchAiCorrection).
+ */
+export async function startAiCorrection(params: {
+  assessmentId: string;
+  studentId: string;
+  mode: AiCorrectionMode;
+  confirmValidated?: boolean;
+}): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('corriger-copie', {
+    body: {
+      assessment_id: params.assessmentId,
+      student_id: params.studentId,
+      mode: params.mode,
+      confirm_validated: params.confirmValidated === true,
+    },
+  });
+  if (error) {
+    let code = 'unknown';
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        code = ((await ctx.json()) as { error?: string }).error ?? code;
+      } catch {
+        // corps non JSON : code inconnu
+      }
+    }
+    throw new AiCorrectionStartError(code);
+  }
+  const runId = (data as { run_id?: string } | null)?.run_id;
+  if (!runId) throw new AiCorrectionStartError('unknown');
+  return runId;
 }
 
 export interface PurgeNowResult {
