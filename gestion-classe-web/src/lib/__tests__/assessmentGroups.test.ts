@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupAssessments, groupOf, groupStage, pendingDrafts, stageLabel } from '../assessmentGroups';
+import { carnetHeaderChip, describeClassRow, groupAssessments, groupOf, groupStage, pendingDrafts, stageLabel } from '../assessmentGroups';
 import type { CopyOverview } from '../copyStatus';
 import type { AssessmentRow } from '../evaluationQueries';
 
@@ -62,6 +62,28 @@ describe('groupAssessments', () => {
     expect(groupStage(g, {})).toBeNull();
     expect(groupStage(g, { a: overview({ stage: 'publiee' }), b: overview({ stage: 'scan', scanned: 3 }) })).toBe('scan');
     expect(groupStage(g, { a: overview({ stage: 'validee' }), b: overview({ stage: 'vide' }) })).toBe('validee');
+  });
+});
+
+describe('carnetHeaderChip', () => {
+  it('dit ce qui reste à faire, dans l’ordre : valider, publier, scanner, noter', () => {
+    expect(carnetHeaderChip(overview({ stage: 'corrigee', graded: 24, validated: 21 }), 2)?.label).toBe('À valider (3)');
+    expect(carnetHeaderChip(overview({ stage: 'publiee', graded: 24, validated: 24 }), 0)?.label).toBe('Publiée');
+    expect(carnetHeaderChip(overview({ stage: 'scan', scanned: 18, missing: 8 }), 26)?.label).toBe('Scan 18/26');
+    expect(carnetHeaderChip(overview({ stage: 'scannee', scanned: 26, missing: 0 }), 26)?.label).toBe('Scannée');
+    expect(carnetHeaderChip(overview({ stage: 'vide', graded: 22, validated: 22 }), 4)?.label).toBe('4 sans note');
+    expect(carnetHeaderChip(overview({ stage: 'validee', graded: 26, validated: 26 }), 0)?.label).toBe('À publier');
+    expect(carnetHeaderChip(overview({ stage: 'corrigee', graded: 26, validated: 26 }), 0)).toBeNull();
+    expect(carnetHeaderChip(undefined, 3)?.label).toBe('3 sans note');
+    expect(carnetHeaderChip(undefined, 0)).toBeNull();
+  });
+});
+
+describe('describeClassRow', () => {
+  it('parle de notes, pas de scans, pour une éval jamais scannée', () => {
+    expect(describeClassRow(overview({ graded: 24, validated: 21, absent: 2 }), true)).toBe('24/26 notées · 2 absents · 3 brouillons');
+    expect(describeClassRow(overview({ graded: 1, validated: 1 }), false)).toBe('1/26 notée');
+    expect(describeClassRow(overview({ scanned: 22, missing: 4, graded: 20, validated: 20 }), true)).toContain('22/26 scannées');
   });
 });
 

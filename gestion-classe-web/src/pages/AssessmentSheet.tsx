@@ -226,7 +226,6 @@ export function AssessmentSheet() {
             kind: focus.kind,
             date: focus.date ?? '',
             countsInAverage: focus.counts_in_average,
-            publishedToStudents: focus.published_to_students,
           }}
           students={students}
           adaptedIds={adaptedIds}
@@ -244,9 +243,9 @@ export function AssessmentSheet() {
             };
             const oldBareme = Number(focus.bareme_total ?? 20);
             const convert = values.baremeMode === 'convert' && values.bareme !== oldBareme;
-            // La date et la publication restent propres à la classe : chaque groupe passe
-            // l'éval son jour, et on publie une classe quand SES copies sont corrigées.
-            const ownFields = { date: values.date || null, publishedToStudents: values.publishedToStudents };
+            // La date reste propre à la classe : chaque groupe passe l'éval son jour.
+            // La publication, elle, se fait sur la ligne de la classe (bouton Publier).
+            const ownFields = { date: values.date || null };
             if (values.applyToSeries && focus.series_id) {
               await updateSeriesAssessments(focus.series_id, patch, { rescaleRaw: convert });
               await updateAssessment(focus.id, ownFields);
