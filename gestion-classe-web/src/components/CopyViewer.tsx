@@ -21,6 +21,7 @@ import { parseGradeDetails } from '../lib/gradeDetails';
 import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/copyTranscript';
 import { GradeDetailsView } from './GradeDetailsView';
 import { CopyTranscriptView } from './CopyTranscriptView';
+import { AddCopyDialog } from './AddCopyDialog';
 import {
   COST_HINT,
   NO_KIT_MESSAGE,
@@ -83,6 +84,8 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
   const [hasKit, setHasKit] = useState(false);
   const [aiRuns, setAiRuns] = useState<Record<string, AiCorrectionRun>>({});
   const [startingId, setStartingId] = useState<string | null>(null);
+  // « Ajouter une copie » (migration 058) : élève dont la fenêtre est ouverte.
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -255,6 +258,12 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
     }
   };
 
+  const knownVersions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.grade?.subject_version).filter((v): v is string => !!v))).sort(),
+    [rows],
+  );
+  const adding = rows.find((r) => r.student.id === addingId) ?? null;
+
   const counts = {
     all: rows.length,
     scanned: rows.filter((r) => r.state === 'scanned').length,
@@ -304,12 +313,11 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
               <button
                 key={r.student.id}
                 onClick={() => select(r.student.id)}
-                disabled={!isSelectable(r)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
                   padding: '7px 10px', border: 'none', borderBottom: '1px solid var(--border)',
                   background: on ? 'var(--indigo-soft)' : 'transparent',
-                  cursor: isSelectable(r) ? 'pointer' : 'default', fontFamily: 'inherit',
+                  cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: isSelectable(r) ? 'var(--text)' : 'var(--text-dim)' }}>
@@ -375,6 +383,13 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
                   Valider la note
                 </button>
               )}
+              <button
+                onClick={() => setAddingId(selected.student.id)}
+                style={btn}
+                title="Importer des photos ou un PDF, la webcam, ou un QR code pour le téléphone"
+              >
+                Ajouter une copie
+              </button>
               {(() => {
                 const mode = correctionMode({ pages: selected.pages.length, grade: selected.grade });
                 if (!mode) return null;
@@ -474,6 +489,9 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
               ) : !details ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 10 }}>
                   Pas de copie scannée pour cet élève.
+                  <div style={{ marginTop: 10 }}>
+                    <button onClick={() => setAddingId(selected.student.id)} style={btn}>Ajouter une copie</button>
+                  </div>
                 </div>
               ) : null}
               {(details || (transcriptBlocks && selected.pages.length > 0)) && (
@@ -524,6 +542,25 @@ export function CopyViewer({ assessment, onError, onChanged }: CopyViewerProps) 
           </>
         )}
       </div>
+      {adding && (
+        <AddCopyDialog
+          assessment={assessment}
+          student={{ id: adding.student.id, pseudo: adding.student.pseudo }}
+          existingPages={adding.pages.length}
+          graded={adding.grade?.grade != null}
+          subjectVersion={adding.grade?.subject_version ?? null}
+          isAdapted={!!adding.grade?.is_adapted}
+          knownVersions={knownVersions}
+          onError={onError}
+          onClose={(changed) => {
+            setAddingId(null);
+            if (changed) {
+              load();
+              onChanged?.();
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
