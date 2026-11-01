@@ -574,6 +574,8 @@ export function CarnetTab({ userId, account, onError }: {
                       const isStatus = draft === undefined && row && row.status !== 'noted';
                       const bad = invalid[key];
                       const adapted = !!row?.is_adapted;
+                      // Brouillon du Correcteur : compte pour le prof, invisible pour l'élève (053).
+                      const pending = draft === undefined && !!row && row.grade != null && !row.is_validated;
                       return (
                         <td key={a.id} style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
                           <input
@@ -587,19 +589,29 @@ export function CarnetTab({ userId, account, onError }: {
                             onBlur={() => { void flush(); }}
                             onKeyDown={(e) => handleKeyDown(e, ai, si)}
                             inputMode="decimal"
-                            aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}`}
+                            aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}${pending ? ' (brouillon à valider)' : ''}`}
+                            title={pending ? 'Brouillon du correcteur : à valider (onglet Éval) pour que l’élève le voie. Le modifier ici le valide.' : undefined}
                             style={{
                               width: '100%', boxSizing: 'border-box', textAlign: 'center',
                               padding: '8px 4px', border: 'none', outline: 'none',
                               background: bad ? 'var(--neg-soft)' : 'transparent',
                               color: bad ? 'var(--neg)'
                                 : isStatus ? 'var(--text-dim)'
+                                : pending ? 'var(--warn)'
                                 : 'var(--text)',
                               fontSize: 13,
                               fontWeight: isStatus ? 400 : 600,
                               fontStyle: isStatus ? 'italic' : 'normal',
                             }}
                           />
+                          {pending && (
+                            <span
+                              aria-hidden
+                              style={{ position: 'absolute', top: 1, left: 3, fontSize: 10, color: 'var(--warn)', pointerEvents: 'none' }}
+                            >
+                              *
+                            </span>
+                          )}
                           {adapted && (
                             <span
                               title={`Évaluation adaptée pour ${s.pseudo}`}

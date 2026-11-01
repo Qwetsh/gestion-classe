@@ -11,6 +11,7 @@ import {
   createAssessment,
   fetchCopyOverviews,
   getDocUrl,
+  updateAssessment,
   uploadAssessmentDoc,
   deleteAssessmentDoc,
   uploadSeriesDoc,
@@ -40,6 +41,11 @@ function StageChip({ stage, title }: { stage: CopyStage; title?: string }) {
       {COPY_STAGE_LABEL[stage]}
     </span>
   );
+}
+
+/** Il y a quelque chose à ouvrir : des copies scannées ou des notes (brouillons compris). */
+function hasCopyContent(o: CopyOverview | undefined): boolean {
+  return !!o && (o.scanned > 0 || o.graded > 0);
 }
 
 function formatSession(iso: string): string {
@@ -208,7 +214,30 @@ export function Evaluations() {
   const selectGroup = (g: AssessmentGroup) => {
     setSelectedKey(g.key);
     // On ouvre directement les copies d'une classe qui en a ; sinon rien n'est chargé.
-    setCopyClassAssessmentId(g.items.find((a) => (overviews[a.id]?.scanned ?? 0) > 0)?.id ?? null);
+    setCopyClassAssessmentId(g.items.find((a) => hasCopyContent(overviews[a.id]))?.id ?? null);
+  };
+
+  // Publier = l'élève voit ses notes VALIDÉES, le sujet et le corrigé. Un brouillon reste caché
+  // même après publication (migration 053) : on le dit avant, plutôt que de laisser croire
+  // que toute la classe a sa note.
+  const togglePublish = async (a: AssessmentRow) => {
+    const o = overviews[a.id];
+    const pending = o ? o.graded - o.validated : 0;
+    const cls = a.classes?.name ?? 'cette classe';
+    const message = a.published_to_students
+      ? `Retirer « ${a.name} » de l’espace élève de ${cls} ? Les élèves ne verront plus leur note.`
+      : pending > 0
+        ? `${pending} note${pending > 1 ? 's sont' : ' est'} encore en brouillon : ${pending > 1 ? 'ces élèves ne verront pas leur note' : 'cet élève ne verra pas sa note'} tant qu’elle n’est pas validée.
+
+Publier quand même pour ${cls} ?`
+        : `Publier « ${a.name} » pour ${cls} ? Les élèves verront leur note, son détail, le sujet et le corrigé.`;
+    if (!window.confirm(message)) return;
+    try {
+      await updateAssessment(a.id, { publishedToStudents: !a.published_to_students });
+      await loadAssessments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Publication impossible');
+    }
   };
 
   const openDoc = async (path: string) => {
@@ -459,13 +488,23 @@ export function Evaluations() {
                             </td>
                             <td style={{ padding: '8px 6px' }}>{o && <StageChip stage={o.stage} />}</td>
                             <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{o ? describeCopyOverview(o) : '…'}</td>
-                            <td style={{ padding: '8px 6px', textAlign: 'right' }}>
+                            <td style={{ padding: '8px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <button
                                 onClick={() => setCopyClassAssessmentId(on ? null : a.id)}
-                                disabled={!o || o.scanned === 0}
-                                style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, opacity: !o || o.scanned === 0 ? 0.5 : 1 }}
+                                disabled={!hasCopyContent(o)}
+                                style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, opacity: hasCopyContent(o) ? 1 : 0.5 }}
                               >
-                                {on ? 'Fermer' : 'Voir les copies'}
+                                {on ? 'Fermer' : o && o.scanned === 0 ? 'Voir les notes' : 'Voir les copies'}
+                              </button>
+                              <button
+                                onClick={() => togglePublish(a)}
+                                style={{
+                                  ...(a.published_to_students ? btnGhost : btnPrimary),
+                                  padding: '4px 10px', fontSize: 12, marginLeft: 6,
+                                }}
+                                title={a.published_to_students ? 'Visible dans l’espace élève' : 'Rendre visible dans l’espace élève'}
+                              >
+                                {a.published_to_students ? 'Dépublier' : 'Publier'}
                               </button>
                             </td>
                           </tr>
@@ -473,7 +512,7 @@ export function Evaluations() {
                       })}
                     </tbody>
                   </table>
-                  {selected.items.every((a) => (overviews[a.id]?.scanned ?? 0) === 0) && (
+                  {selected.items.every((a) => !hasCopyContent(overviews[a.id])) && (
                     <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
                       Les copies se scannent au téléphone, en séance : bouton « Copies ».
                     </div>

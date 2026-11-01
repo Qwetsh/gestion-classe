@@ -31,6 +31,11 @@ export interface StudentAssessment {
   has_correction: boolean;
   /** Activité numérique : la copie corrigée de l'élève est consultable (migration 047). */
   has_work: boolean;
+  /**
+   * Détail de la correction (format v1 du Correcteur, lu par lib/gradeDetails). La RPC ne le
+   * renvoie que pour une note validée par le prof (migration 053).
+   */
+  details?: unknown;
 }
 
 export interface StudentGradesResult {

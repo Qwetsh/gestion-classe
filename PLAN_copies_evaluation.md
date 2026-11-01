@@ -13,7 +13,15 @@
 >   incrémental, manifeste v2 avec tous les élèves), barème par version dans `generer_correction.py`
 >   (`corrections_<classe>_<version>.json`), skill `/corriger` et `formats.md` à jour. Tests : vitest,
 >   `python -m unittest discover -s scripts/tests`. Visionneuse pas encore vue dans le navigateur.
-> - Lots 3 et 4 : à faire.
+> - Lot 3 **codé le 01/11/2026** : migration 053 **appliquée en prod** (rattrapage : 399 notes
+>   validées ; trigger « saisie du prof sans détail = validée » pour ne pas dépendre de l'ordre de
+>   déploiement ; `get_student_grades` masque note/commentaire/détail des brouillons et renvoie
+>   `details`) ; web `feat/copies-retour` (détail + radar prof et élève via `GradeDetailsView`,
+>   « Valider toute la classe », « Publier / Dépublier » par classe, brouillons signalés dans le
+>   carnet, `saveGrade` valide) ; Correcteur : `details` dans `grades_<classe>.json`, envoyé par
+>   `push_grades.py` (statut `noted`, brouillon). Retouche d'une correction = JSON du Correcteur +
+>   nouvel envoi (pas d'édition du détail dans l'app). Rendu pas encore vu dans le navigateur.
+> - Lot 4 : à faire.
 
 ---
 

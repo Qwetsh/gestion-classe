@@ -174,6 +174,11 @@ export interface GradeRow {
   subject_version: string | null;
   /** La copie scannée porte déjà des annotations du prof (migration 052). */
   copy_annotated: boolean;
+  /**
+   * Détail de correction brut (format v1 du Correcteur, cf. lib/gradeDetails). Chargé seulement
+   * par fetchAssessmentGrades : le carnet n'en a pas besoin.
+   */
+  details?: unknown;
   students?: { pseudo: string } | null;
 }
 
@@ -265,7 +270,7 @@ export async function fetchAssessmentCopies(assessmentId: string): Promise<CopyP
 export async function fetchAssessmentGrades(assessmentId: string): Promise<GradeRow[]> {
   const { data, error } = await supabase
     .from('assessment_grades')
-    .select(GRADE_SELECT + ', students(pseudo)')
+    .select(GRADE_SELECT + ', details, students(pseudo)')
     .eq('assessment_id', assessmentId);
   if (error) throw error;
   return (data || []) as unknown as GradeRow[];
@@ -540,6 +545,22 @@ export async function clearSeriesAssessmentDocs(
   if (updErr) throw updErr;
 }
 
+/**
+ * Valide tous les brouillons notés d'une éval pour une classe (bouton « Valider toute la
+ * classe »). Renvoie le nombre de notes validées.
+ */
+export async function validateAllGrades(assessmentId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('assessment_grades')
+    .update({ is_validated: true, validated_at: new Date().toISOString() })
+    .eq('assessment_id', assessmentId)
+    .eq('is_validated', false)
+    .not('grade', 'is', null)
+    .select('id');
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
 /** Valide une note (is_validated = true). */
 export async function validateGrade(gradeId: string): Promise<void> {
   const { error } = await supabase
@@ -667,8 +688,10 @@ export interface SaveGradeInput {
  * Enregistre une cellule du carnet. S'appuie sur `UNIQUE (assessment_id, student_id)`
  * pour créer ou mettre à jour en un seul aller-retour.
  *
- * `is_validated` n'est volontairement pas touché : la validation reste le geste explicite
- * du pipeline de correction de copies.
+ * Une note saisie (ou retouchée) à la main est validée : c'est le prof qui l'écrit, il n'a pas
+ * à la valider une seconde fois. Seuls les brouillons du Correcteur attendent le geste
+ * « Valider » — et l'élève ne voit que les notes validées (migration 053, dont un trigger
+ * applique la même règle côté base).
  */
 export async function saveGrade(input: SaveGradeInput): Promise<GradeRow> {
   const { data, error } = await supabase
@@ -681,6 +704,8 @@ export async function saveGrade(input: SaveGradeInput): Promise<GradeRow> {
         grade: input.grade,
         grade_raw: input.raw,
         status: input.status,
+        is_validated: true,
+        validated_at: new Date().toISOString(),
       },
       { onConflict: 'assessment_id,student_id' },
     )
