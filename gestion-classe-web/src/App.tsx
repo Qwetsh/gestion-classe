@@ -25,6 +25,7 @@ import { Brevets } from './pages/Brevets';
 import { Clouds } from './pages/Clouds';
 import { Evaluations } from './pages/Evaluations';
 import { Productions } from './pages/Productions';
+import { CopyDepot } from './pages/CopyDepot';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
 import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
@@ -44,6 +45,8 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/eleve" element={<StudentDashboard />} />
+        {/* Envoi d'une copie depuis le téléphone (QR code de « Ajouter une copie », jeton dans le #) */}
+        <Route path="/depot" element={<CopyDepot />} />
 
         {/* Protected routes */}
         <Route
