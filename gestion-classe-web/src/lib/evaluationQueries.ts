@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { getCurrentSchoolYear } from './constants';
 import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
-import { computeCopyOverview, type CopyGradeInput, type CopyOverview } from './copyStatus';
+import { computeCopyOverview, extendedPurgeDate, type CopyGradeInput, type CopyOverview } from './copyStatus';
 
 // Buckets (memes noms que cote mobile / migrations)
 const COPIES_BUCKET = 'assessment-copies';
@@ -116,6 +116,10 @@ export interface AssessmentRow {
   published_to_students: boolean;
   /** Séance où les copies ont été scannées au téléphone (migration 052, facultatif). */
   session_id: string | null;
+  /** Migration 054 : dernière publication, suppression prévue des scans, dernière suppression. */
+  published_at: string | null;
+  copies_purge_at: string | null;
+  copies_purged_at: string | null;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
@@ -385,6 +389,43 @@ export async function getCopyUrl(storagePath: string): Promise<string | null> {
     .createSignedUrl(storagePath, 3600);
   if (error) return null;
   return data.signedUrl;
+}
+
+/** « Garder 30 j de plus » : repousse la suppression automatique des scans d'une éval. */
+export async function extendCopiesRetention(a: Pick<AssessmentRow, 'id' | 'copies_purge_at'>): Promise<string> {
+  const next = extendedPurgeDate(a.copies_purge_at);
+  const { error } = await supabase.from('written_assessments').update({ copies_purge_at: next }).eq('id', a.id);
+  if (error) throw error;
+  return next;
+}
+
+/**
+ * « Supprimer maintenant » : efface les scans d'une éval (fichiers du bucket, puis index des
+ * pages) sans attendre la purge de nuit. L'éval, les notes et leur détail restent.
+ * Renvoie le nombre de fichiers supprimés.
+ */
+export async function purgeCopiesNow(assessmentId: string): Promise<number> {
+  const pages = await fetchAllPages<{ storage_path: string }>(async (from, to) => {
+    const r = await supabase
+      .from('assessment_copy_pages')
+      .select('storage_path')
+      .eq('assessment_id', assessmentId)
+      .range(from, to);
+    return r as unknown as PageResult<{ storage_path: string }>;
+  });
+  const paths = pages.map((p) => p.storage_path);
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await supabase.storage.from(COPIES_BUCKET).remove(paths.slice(i, i + 100));
+    if (error) throw error;
+  }
+  const { error: delError } = await supabase.from('assessment_copy_pages').delete().eq('assessment_id', assessmentId);
+  if (delError) throw delError;
+  const { error: markError } = await supabase
+    .from('written_assessments')
+    .update({ copies_purged_at: new Date().toISOString() })
+    .eq('id', assessmentId);
+  if (markError) throw markError;
+  return paths.length;
 }
 
 /** Signed URLs de plusieurs pages en un appel (visionneuse de copies). Chemin → URL. */

@@ -3,14 +3,23 @@ import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { CarnetTab } from '../components/CarnetTab';
 import { CopyViewer } from '../components/CopyViewer';
-import { COPY_STAGE_LABEL, describeCopyOverview, type CopyOverview, type CopyStage } from '../lib/copyStatus';
+import {
+  COPY_RETENTION_DAYS,
+  COPY_STAGE_LABEL,
+  describeCopyOverview,
+  retentionState,
+  type CopyOverview,
+  type CopyStage,
+} from '../lib/copyStatus';
 import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
   fetchAssessments,
   fetchClasses,
   createAssessment,
+  extendCopiesRetention,
   fetchCopyOverviews,
   getDocUrl,
+  purgeCopiesNow,
   updateAssessment,
   uploadAssessmentDoc,
   deleteAssessmentDoc,
@@ -215,6 +224,29 @@ export function Evaluations() {
     setSelectedKey(g.key);
     // On ouvre directement les copies d'une classe qui en a ; sinon rien n'est chargé.
     setCopyClassAssessmentId(g.items.find((a) => hasCopyContent(overviews[a.id]))?.id ?? null);
+  };
+
+  // Scans : supprimés automatiquement 30 j après la publication (migration 054). Le prof peut
+  // les garder plus longtemps (contestation) ou les supprimer tout de suite.
+  const handleExtend = async (a: AssessmentRow) => {
+    try {
+      await extendCopiesRetention(a);
+      await loadAssessments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Prolongation impossible');
+    }
+  };
+
+  const handlePurgeNow = async (a: AssessmentRow) => {
+    const cls = a.classes?.name ?? 'cette classe';
+    if (!window.confirm(`Supprimer définitivement les scans de « ${a.name} » (${cls}) ?\n\nLes notes et leur détail restent.`)) return;
+    try {
+      await purgeCopiesNow(a.id);
+      if (copyClassAssessmentId === a.id) setCopyClassAssessmentId(null);
+      await loadAssessments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Suppression impossible');
+    }
   };
 
   // Publier = l'élève voit ses notes VALIDÉES, le sujet et le corrigé. Un brouillon reste caché
@@ -487,7 +519,36 @@ Publier quand même pour ${cls} ?`
                               {sessionStarts[a.id] ? `séance du ${formatSession(sessionStarts[a.id])}` : a.date ? formatSession(a.date) : ''}
                             </td>
                             <td style={{ padding: '8px 6px' }}>{o && <StageChip stage={o.stage} />}</td>
-                            <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{o ? describeCopyOverview(o) : '…'}</td>
+                            <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>
+                              {o ? describeCopyOverview(o) : '…'}
+                              {o && (() => {
+                                const r = retentionState(a, o.pages);
+                                if (r.kind === 'none') return null;
+                                const linkBtn: React.CSSProperties = {
+                                  background: 'none', border: 'none', padding: 0, marginLeft: 8, cursor: 'pointer',
+                                  fontSize: 11.5, fontWeight: 600, color: 'var(--indigo)', fontFamily: 'inherit',
+                                };
+                                return (
+                                  <div style={{ fontSize: 11.5, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
+                                    {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
+                                    {r.kind === 'scheduled' && (r.days <= 0
+                                      ? 'Scans supprimés cette nuit'
+                                      : `Scans supprimés le ${formatSession(r.at)} (dans ${r.days} j)`)}
+                                    {r.kind === 'purged' && `Scans supprimés le ${formatSession(r.at)}`}
+                                    {r.kind === 'scheduled' && (
+                                      <button onClick={() => handleExtend(a)} style={linkBtn} title="En cas de contestation">
+                                        Garder {COPY_RETENTION_DAYS} j de plus
+                                      </button>
+                                    )}
+                                    {(r.kind === 'scheduled' || r.kind === 'kept') && (
+                                      <button onClick={() => handlePurgeNow(a)} style={{ ...linkBtn, color: 'var(--neg)' }}>
+                                        Supprimer maintenant
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </td>
                             <td style={{ padding: '8px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <button
                                 onClick={() => setCopyClassAssessmentId(on ? null : a.id)}

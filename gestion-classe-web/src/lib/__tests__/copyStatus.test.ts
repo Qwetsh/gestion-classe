@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { computeCopyOverview, describeCopyOverview } from '../copyStatus';
+import {
+  computeCopyOverview,
+  daysUntilPurge,
+  describeCopyOverview,
+  extendedPurgeDate,
+  retentionState,
+} from '../copyStatus';
 
 const students = ['a', 'b', 'c', 'd'].map((id) => ({ id }));
 const page = (student_id: string) => ({ student_id });
@@ -65,5 +71,30 @@ describe('describeCopyOverview', () => {
       false,
     );
     expect(describeCopyOverview(o)).toBe('2/4 scannées · 1 absent · 1 manquante · 1 notée');
+  });
+});
+
+describe('conservation des scans', () => {
+  const now = new Date('2026-11-01T10:00:00.000Z');
+
+  it('compte les jours restants avant la suppression', () => {
+    expect(daysUntilPurge('2026-12-01T10:00:00.000Z', now)).toBe(30);
+    expect(daysUntilPurge('2026-11-01T22:00:00.000Z', now)).toBe(1);
+    expect(daysUntilPurge('2026-10-30T10:00:00.000Z', now)).toBe(-2);
+  });
+
+  it('« Garder 30 j de plus » part de la date prévue, ou d’aujourd’hui si elle est passée', () => {
+    expect(extendedPurgeDate('2026-11-20T00:00:00.000Z', now)).toBe('2026-12-20T00:00:00.000Z');
+    expect(extendedPurgeDate('2026-10-01T00:00:00.000Z', now)).toBe('2026-12-01T10:00:00.000Z');
+    expect(extendedPurgeDate(null, now)).toBe('2026-12-01T10:00:00.000Z');
+  });
+
+  it('dit si les scans sont conservés, programmés ou supprimés', () => {
+    expect(retentionState({ copies_purge_at: null, copies_purged_at: null }, 0, now)).toEqual({ kind: 'none' });
+    expect(retentionState({ copies_purge_at: null, copies_purged_at: null }, 12, now)).toEqual({ kind: 'kept' });
+    expect(retentionState({ copies_purge_at: '2026-11-11T10:00:00.000Z', copies_purged_at: null }, 12, now))
+      .toEqual({ kind: 'scheduled', days: 10, at: '2026-11-11T10:00:00.000Z' });
+    expect(retentionState({ copies_purge_at: '2026-10-01T00:00:00.000Z', copies_purged_at: '2026-10-02T03:15:00.000Z' }, 0, now))
+      .toEqual({ kind: 'purged', at: '2026-10-02T03:15:00.000Z' });
   });
 });

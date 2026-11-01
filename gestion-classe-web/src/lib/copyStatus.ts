@@ -116,3 +116,42 @@ export function describeCopyOverview(o: CopyOverview): string {
   if (o.validated > 0) parts.push(`${o.validated} validée${o.validated > 1 ? 's' : ''}`);
   return parts.join(' · ');
 }
+
+// ============================================================
+// Conservation des scans (migration 054)
+// ============================================================
+
+/** Durée ajoutée par « Garder 30 j de plus » — la même que le délai après publication. */
+export const COPY_RETENTION_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Jours restants avant la suppression des scans (0 = cette nuit, négatif = en retard). */
+export function daysUntilPurge(purgeAt: string, now: Date = new Date()): number {
+  return Math.ceil((Date.parse(purgeAt) - now.getTime()) / DAY_MS);
+}
+
+/** Nouvelle date après « Garder 30 j de plus » : 30 jours après la date prévue, ou après aujourd'hui si elle est passée. */
+export function extendedPurgeDate(purgeAt: string | null, now: Date = new Date()): string {
+  const base = Math.max(purgeAt ? Date.parse(purgeAt) : 0, now.getTime());
+  return new Date(base + COPY_RETENTION_DAYS * DAY_MS).toISOString();
+}
+
+export type RetentionState =
+  | { kind: 'none' }
+  | { kind: 'kept' }
+  | { kind: 'scheduled'; days: number; at: string }
+  | { kind: 'purged'; at: string };
+
+/**
+ * Ce qu'on dit au prof sur les scans d'une classe : rien à conserver, conservés tant que l'éval
+ * n'est pas publiée, suppression prévue, ou déjà supprimés.
+ */
+export function retentionState(
+  a: { copies_purge_at: string | null; copies_purged_at: string | null },
+  pages: number,
+  now: Date = new Date(),
+): RetentionState {
+  if (pages === 0) return a.copies_purged_at ? { kind: 'purged', at: a.copies_purged_at } : { kind: 'none' };
+  if (!a.copies_purge_at) return { kind: 'kept' };
+  return { kind: 'scheduled', days: daysUntilPurge(a.copies_purge_at, now), at: a.copies_purge_at };
+}

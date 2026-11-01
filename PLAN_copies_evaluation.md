@@ -21,7 +21,15 @@
 >   carnet, `saveGrade` valide) ; Correcteur : `details` dans `grades_<classe>.json`, envoyé par
 >   `push_grades.py` (statut `noted`, brouillon). Retouche d'une correction = JSON du Correcteur +
 >   nouvel envoi (pas d'édition du détail dans l'app). Rendu pas encore vu dans le navigateur.
-> - Lot 4 : à faire.
+> - Lot 4 **livré le 01/11/2026** : migration 054 **appliquée en prod** (dates `published_at`,
+>   `copies_purge_at`, `copies_purged_at` ; publier = suppression dans 30 j, dépublier = suspendue,
+>   copie scannée en retard = repoussée de 30 j ; jeton dans Vault ; job pg_cron
+>   `purge-assessment-copies` chaque nuit à 3 h 15 UTC) ; Edge Function `purge-assessment-copies`
+>   **déployée** (`supabase/functions/`, sans JWT, jeton `x-purge-token`, `dryRun`) — testée en prod
+>   sur une éval temporaire (page indexée + fichier orphelin supprimés, puis éval effacée) ; web
+>   `feat/copies-purge` (« Scans supprimés le … (dans N j) », « Garder 30 j de plus »,
+>   « Supprimer maintenant ») ; Correcteur : `sync_copies.py` ne touche plus aux copies locales
+>   d'une éval purgée.
 
 ---
 
