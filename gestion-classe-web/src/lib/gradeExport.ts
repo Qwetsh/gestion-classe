@@ -5,6 +5,7 @@ import type { AssessmentRow, ExportClass, ExportStudent, GradeBookExport, GradeR
 import {
   describeGrades,
   effectiveGrade,
+  STATUS_LABEL,
   STATUS_SHORT,
   studentAverage,
   type GradeEntry,
@@ -342,4 +343,37 @@ export function exportGradeBookPdf(data: GradeBookExport, account: string): void
   }
 
   doc.save(`notes_${yearSlug(data)}_${stamp(now)}.pdf`);
+}
+
+/**
+ * Les notes d'une seule éval en Excel (menu ▾ d'une colonne du carnet) : une ligne par élève,
+ * note sur le barème, note sur 20, statut, et si la note est encore en brouillon.
+ */
+export function exportAssessmentNotesXlsx(
+  assessment: Pick<AssessmentRow, 'name' | 'bareme_total' | 'date'> & { classes?: { name: string } | null },
+  roster: readonly { id: string; pseudo: string }[],
+  grades: readonly Pick<GradeRow, 'student_id' | 'grade' | 'grade_raw' | 'status' | 'is_validated'>[],
+): void {
+  const bareme = Number(assessment.bareme_total ?? 20);
+  const byStudent = new Map(grades.map((g) => [g.student_id, g]));
+  const rows: (string | number | null)[][] = [
+    ['Élève', `Note /${bareme}`, 'Note /20', 'Statut', 'Brouillon'],
+    ...roster.map((s) => {
+      const g = byStudent.get(s.id);
+      const noted = !!g && g.status === 'noted' && g.grade_raw != null;
+      return [
+        s.pseudo,
+        noted ? Number(g!.grade_raw) : null,
+        noted && g!.grade != null ? Number(g!.grade) : null,
+        g ? STATUS_LABEL[g.status as keyof typeof STATUS_LABEL] ?? g.status : 'Pas de note',
+        g && g.grade != null && !g.is_validated ? 'oui' : '',
+      ];
+    }),
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 24 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Notes');
+  const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  XLSX.writeFile(wb, `notes_${slug(assessment.classes?.name ?? '')}_${slug(assessment.name)}.xlsx`);
 }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   ASSESSMENT_KIND_LABEL,
   createAssessment,
+  fetchAssessments,
   fetchCarnet,
   fetchClasses,
   fetchCopyOverviews,
@@ -24,18 +25,16 @@ import {
   DEFAULT_PREFS,
   filterAssessments,
   hasUnsequenced,
-  headerTitle,
   isFiltered,
   kindsPresent,
   NO_FILTERS,
   parsePrefs,
-  sequenceOf,
   sequencesPresent,
-  shortDate,
   type CarnetPrefs,
   type CellMark,
 } from '../lib/carnetView';
-import { KindIcon } from './KindIcon';
+import { ColumnHeader } from './carnet/ColumnHeader';
+import { columnLabels, sameNameTarget } from '../lib/columnHeader';
 import { StudentGradeModal } from './StudentGradeModal';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentModal } from './AssessmentModal';
@@ -95,6 +94,17 @@ const cellKey = (assessmentId: string, studentId: string) => `${assessmentId}|${
 /** Affichage d'un nombre à la française, sans zéro décimal inutile. */
 const showNum = (n: number) => String(n).replace('.', ',');
 
+const DISMISSED_KEY = 'gc.carnet.relinkDismissed';
+function readDismissed(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(DISMISSED_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
 /** Ce qu'affiche une cellule au repos, d'après la note enregistrée. */
 function cellText(row: GradeRow | undefined): string {
   if (!row) return '';
@@ -143,6 +153,16 @@ export function CarnetTab({ userId, account, onError }: {
   const filters = prefs.filters;
   const setFilter = <K extends keyof CarnetPrefs['filters']>(k: K, v: CarnetPrefs['filters'][K]) =>
     setPrefs((p) => ({ ...p, filters: { ...p.filters, [k]: v } }));
+
+  /** Toutes les évals de l'utilisateur : taille des séries et rattachement « même nom ». */
+  const [allAssessments, setAllAssessments] = useState<AssessmentRow[]>([]);
+  /** Suggestions « même nom » écartées (« Ce n'est pas la même éval »), sur ce navigateur. */
+  const [dismissed, setDismissed] = useState<Set<string>>(readDismissed);
+  const dismissSuggestion = (id: string) => setDismissed((prev) => {
+    const next = new Set(prev).add(id);
+    try { window.localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next])); } catch { /* navigation privée */ }
+    return next;
+  });
 
   /** Bouton « i » d'une cellule : la modale élève × éval. */
   const [detail, setDetail] = useState<{ assessment: AssessmentRow; studentId: string } | null>(null);
@@ -201,6 +221,8 @@ export function CarnetTab({ userId, account, onError }: {
       setGrades(new Map(data.grades.map((g) => [cellKey(g.assessment_id, g.student_id), g])));
       setDrafts({});
       setInvalid({});
+      // Les séries et les suggestions de rattachement n'empêchent pas d'afficher la grille.
+      fetchAssessments(userId).then(setAllAssessments).catch(() => setAllAssessments([]));
       // L'état des copies n'empêche pas d'afficher la grille : il arrive après.
       fetchCopyOverviews(data.assessments)
         .then((d) => { setOverviews(d.overviews); setCopyKeys(d.copyKeys); })
@@ -217,6 +239,23 @@ export function CarnetTab({ userId, account, onError }: {
   /** Les colonnes affichées : les évals du trimestre, moins celles écartées par les filtres. */
   const visible = useMemo(() => filterAssessments(assessments, filters), [assessments, filters]);
   const filtered = isFiltered(filters);
+  const labels = useMemo(() => columnLabels(visible), [visible]);
+  const seriesSize = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of allAssessments) if (a.series_id) m.set(a.series_id, (m.get(a.series_id) ?? 0) + 1);
+    return m;
+  }, [allAssessments]);
+  /** Même nom dans une autre classe, pas encore reliée : proposé dans l'en-tête de la colonne. */
+  const suggestions = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof sameNameTarget>>();
+    if (allAssessments.length === 0) return m;
+    for (const a of visible) {
+      if (a.series_id || dismissed.has(a.id)) continue;
+      const t = sameNameTarget(a, allAssessments);
+      if (t) m.set(a.id, t);
+    }
+    return m;
+  }, [visible, allAssessments, dismissed]);
 
   // ----------------------------------------------------------
   // Écriture différée — et son filet de sécurité
@@ -630,31 +669,25 @@ export function CarnetTab({ userId, account, onError }: {
                 <th className="gc-carnet__name-col" style={{ ...th, ...stickyCol, textAlign: 'left' }}>Élève</th>
                 {visible.map((a) => {
                   const chip = carnetHeaderChip(overviews[a.id], columnStats.get(a.id)?.pending ?? 0);
-                  const title = headerTitle(a);
-                  const date = shortDate(a.date);
-                  const seq = sequenceOf(a);
+                  const label = labels.get(a.id);
+                  if (!label) return null;
                   return (
-                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 84, maxWidth: 150 }}>
-                      <Link
-                        to={`/evaluations/${a.id}`}
-                        onClick={() => { void flush(); }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%', fontWeight: 600, color: 'var(--text)', textDecoration: 'none', fontSize: 12 }}
-                        title={`${a.name}${seq ? ` · ${seq}` : ''} — ouvrir la fiche : sujet, corrigé, copies, validation, publication, réglages, statistiques`}
-                      >
-                        <span style={{ color: 'var(--text-muted)', flexShrink: 0, display: 'inline-flex' }}><KindIcon kind={a.kind} /></span>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>{title}</span>
-                      </Link>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                        {date && `${date} · `}coef {showNum(Number(a.coefficient))} · /{showNum(Number(a.bareme_total ?? 20))}
-                        {!a.counts_in_average && ' · hors moy.'}
-                      </div>
-                      {chip && (
-                        <div style={{ marginTop: 3 }}>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: '1px 7px', background: CHIP_COLORS[chip.tone][0], color: CHIP_COLORS[chip.tone][1], whiteSpace: 'nowrap' }}>
-                            {chip.label}
-                          </span>
-                        </div>
-                      )}
+                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 112, maxWidth: 168, textAlign: 'left', verticalAlign: 'top', fontWeight: 400 }}>
+                      <ColumnHeader
+                        assessment={a}
+                        label={label}
+                        chip={chip ? (
+                          <span className="gc-pill" style={{ background: CHIP_COLORS[chip.tone][0], color: CHIP_COLORS[chip.tone][1] }}>{chip.label}</span>
+                        ) : null}
+                        seriesSize={a.series_id ? seriesSize.get(a.series_id) ?? 1 : 0}
+                        suggestion={suggestions.get(a.id) ?? null}
+                        all={allAssessments}
+                        userId={userId}
+                        onOpen={() => { void flush(); }}
+                        onDismissSuggestion={() => dismissSuggestion(a.id)}
+                        onChanged={() => { void load(); }}
+                        onError={onError}
+                      />
                     </th>
                   );
                 })}
