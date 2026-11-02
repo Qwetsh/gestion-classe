@@ -209,5 +209,10 @@ export function useAssessmentCopies(
   // Aucune copie scannée ni transcrite : les notes ont été saisies à la main.
   const anyScanned = rows.some((r) => r.state === 'scanned');
 
-  return { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, replaceGrade };
+  /** Suit un appel lancé ailleurs (correction en lot) : il est relu toutes les 4 s comme les autres. */
+  const trackRun = useCallback((run: AiCorrectionRun) => {
+    setAiRuns((prev) => ({ ...prev, [run.student_id]: run }));
+  }, []);
+
+  return { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, replaceGrade, trackRun };
 }

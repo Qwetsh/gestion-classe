@@ -40,7 +40,8 @@ export interface AiCorrectionRun {
 /** Au-delà, un appel encore « en cours » a été interrompu (limite d'exécution de la fonction). */
 export const RUN_STALE_MS = 10 * 60_000;
 
-/** Coût indicatif d'une copie, annoncé avant l'appel. */
+/** Coût indicatif d'une copie, annoncé avant l'appel (et multiplié pour un lot). */
+export const COST_PER_COPY_USD = 0.3;
 export const COST_HINT = '≈ 0,30 $';
 
 export const NO_KIT_MESSAGE = 'Corrige d’abord la classe dans le Correcteur';

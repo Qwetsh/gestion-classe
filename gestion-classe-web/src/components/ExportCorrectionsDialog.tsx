@@ -8,10 +8,36 @@ import {
   type CorrectionSheet,
 } from '../lib/correctionsPdf';
 import type { AssessmentRow } from '../lib/evaluationQueries';
+import { correctionsDocxBlob } from '../lib/correctionsDocx';
+import { buildCopiesMarkdown, studentLabels } from '../lib/copiesMarkdown';
+import { downloadText } from '../lib/productionsExport';
 
 export interface ExportableRow {
   student: { id: string; pseudo: string };
-  grade: { grade: number | null; is_validated: boolean; details?: unknown } | null;
+  grade: {
+    grade: number | null;
+    is_validated: boolean;
+    details?: unknown;
+    grade_raw?: number | null;
+    status?: string | null;
+  } | null;
+  /** Transcription de la copie (migration 056), pour l'export Markdown. */
+  transcript?: unknown;
+}
+
+type ExportFormat = 'pdf' | 'word' | 'md';
+
+const FORMATS: [ExportFormat, string, string][] = [
+  ['pdf', 'PDF à imprimer', 'Récapitulatif et une fiche par élève, comme le Word du Correcteur.'],
+  ['word', 'Word modifiable', 'Le même contenu en .docx, pour retoucher un commentaire avant d’imprimer.'],
+  ['md', 'Markdown pour Claude', 'Sans aucun nom : « Élève 01, 02… ». Pour un bilan de classe ou des remédiations.'],
+];
+
+function downloadBlob(name: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Fiches exportables (élèves avec un détail de correction), dans l'ordre de la liste. */
@@ -64,8 +90,57 @@ export function ExportCorrectionsDialog({
   const sheets = useMemo(() => exportableSheets(rows), [rows]);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(sheets.filter((s) => s.validated).map((s) => s.studentId)));
   const [summary, setSummary] = useState(true);
+  const [format, setFormat] = useState<ExportFormat>('pdf');
+  const [withTranscripts, setWithTranscripts] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const labels = useMemo(() => studentLabels(rows.map((r) => r.student)), [rows]);
+  const hasTranscripts = rows.some((r) => !!r.transcript);
   const chosen = sheets.filter((s) => picked.has(s.studentId));
   const draftsLeftOut = sheets.filter((s) => !s.validated && !picked.has(s.studentId)).length;
+  const exportNow = async () => {
+    const className = assessment.classes?.name ?? '';
+    setBusy(true);
+    setError(null);
+    try {
+      if (format === 'pdf') {
+        downloadCorrectionsPdf(assessment, chosen, summary);
+      } else if (format === 'word') {
+        const blob = await correctionsDocxBlob({
+          assessmentName: assessment.name,
+          evaluationTitle: evaluationTitle(chosen.map((s) => s.raw)),
+          className,
+          sheets: chosen,
+          summary,
+        });
+        downloadBlob(correctionsPdfName(className, assessment.name).replace(/\.pdf$/, '.docx'), blob);
+      } else {
+        const { markdown } = buildCopiesMarkdown({
+          assessmentName: assessment.name,
+          className,
+          bareme: Number(assessment.bareme_total ?? 20),
+          roster: rows.map((r) => r.student),
+          grades: Object.fromEntries(rows.filter((r) => r.grade).map((r) => [r.student.id, {
+            grade: r.grade!.grade,
+            grade_raw: r.grade!.grade_raw ?? null,
+            status: r.grade!.status ?? 'noted',
+            is_validated: r.grade!.is_validated,
+            details: r.grade!.details,
+          }])),
+          transcripts: Object.fromEntries(rows.map((r) => [r.student.id, r.transcript])),
+          only: new Set(chosen.map((s) => s.studentId)),
+          withTranscripts: withTranscripts && hasTranscripts,
+        });
+        downloadText(correctionsPdfName(className, assessment.name).replace(/\.pdf$/, '_anonyme.md'), markdown);
+      }
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Export impossible');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggle = (id: string) =>
     setPicked((prev) => {
       const next = new Set(prev);
@@ -75,11 +150,24 @@ export function ExportCorrectionsDialog({
     });
 
   return (
-    <Modal isOpen onClose={onClose} title="Exporter les corrections (PDF)" size="lg">
+    <Modal isOpen onClose={onClose} title={`Exporter les corrections · ${assessment.classes?.name ?? ''}`} size="lg">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} role="radiogroup" aria-label="Format">
+          {FORMATS.map(([id, label]) => (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={format === id}
+              onClick={() => setFormat(id)}
+              style={{ ...btn, ...(format === id ? { background: 'var(--indigo)', color: '#fff', border: '1px solid var(--indigo)' } : {}) }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div style={{ color: 'var(--text-muted)', fontSize: 12.5 }}>
-          Une fiche par élève (questions, compétences, forces, faiblesses, commentaire), comme le Word du Correcteur.
-          Ni la transcription ni les points à arbitrer.
+          {FORMATS.find(([id]) => id === format)![2]}
+          {format !== 'md' && ' Ni la transcription ni les points à arbitrer.'}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setPicked(new Set(sheets.map((s) => s.studentId)))} style={btn}>Tout cocher</button>
@@ -103,21 +191,40 @@ export function ExportCorrectionsDialog({
             {draftsLeftOut} brouillon{draftsLeftOut > 1 ? 's' : ''} non validé{draftsLeftOut > 1 ? 's' : ''} hors de l’export : coche-les pour les inclure.
           </div>
         )}
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 }}>
-          <input type="checkbox" checked={summary} onChange={(e) => setSummary(e.target.checked)} />
-          Récapitulatif de la classe en première page (notes et réussite par question)
-        </label>
+        {format !== 'md' && (
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 }}>
+            <input type="checkbox" checked={summary} onChange={(e) => setSummary(e.target.checked)} />
+            Récapitulatif de la classe en première page (notes et réussite par question)
+          </label>
+        )}
+        {format === 'md' && (
+          <>
+            {hasTranscripts && (
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 }}>
+                <input type="checkbox" checked={withTranscripts} onChange={(e) => setWithTranscripts(e.target.checked)} />
+                Inclure la transcription des copies
+              </label>
+            )}
+            <details style={{ fontSize: 12.5 }}>
+              <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Correspondance des numéros (reste dans l’app)</summary>
+              <div style={{ columns: 2, marginTop: 6, color: 'var(--text-muted)' }}>
+                {rows.map((r) => <div key={r.student.id}><strong>{labels.get(r.student.id)}</strong> · {r.student.pseudo}</div>)}
+              </div>
+            </details>
+            <div style={{ fontSize: 12, color: 'var(--warn)' }}>
+              Prénoms et pseudos sont remplacés partout. Relis quand même le fichier avant de le coller : un nom écrit autrement sur une copie peut rester.
+            </div>
+          </>
+        )}
+        {error && <div style={{ fontSize: 12.5, color: 'var(--neg)' }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={btn}>Annuler</button>
           <button
-            onClick={() => {
-              downloadCorrectionsPdf(assessment, chosen, summary);
-              onClose();
-            }}
-            disabled={chosen.length === 0}
-            style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)', opacity: chosen.length === 0 ? 0.55 : 1 }}
+            onClick={() => { void exportNow(); }}
+            disabled={chosen.length === 0 || busy}
+            style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)', opacity: chosen.length === 0 || busy ? 0.55 : 1 }}
           >
-            Télécharger le PDF ({chosen.length} fiche{chosen.length > 1 ? 's' : ''})
+            {busy ? 'Préparation…' : `Télécharger ${format === 'pdf' ? 'le PDF' : format === 'word' ? 'le Word' : 'le Markdown'} (${chosen.length} élève${chosen.length > 1 ? 's' : ''})`}
           </button>
         </div>
       </div>

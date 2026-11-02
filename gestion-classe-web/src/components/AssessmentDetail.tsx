@@ -32,6 +32,7 @@ import {
   deleteSeriesDoc,
   extendCopiesRetention,
   fetchAssessmentGrades,
+  fetchAssessmentTranscripts,
   fetchExpectedStudents,
   fetchLatestAiCorrections,
   getDocUrl,
@@ -205,9 +206,11 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
 
   /** Élèves et notes d'une classe, dans l'ordre de la liste : pour l'export PDF et l'avertissement « autre version ». */
   const loadRows = async (a: AssessmentRow): Promise<ExportableRow[]> => {
-    const [roster, grades] = await Promise.all([fetchExpectedStudents([a]), fetchAssessmentGrades(a.id)]);
+    const [roster, grades, transcripts] = await Promise.all([
+      fetchExpectedStudents([a]), fetchAssessmentGrades(a.id), fetchAssessmentTranscripts(a.id),
+    ]);
     const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
-    return (roster[a.id] ?? []).map((student) => ({ student, grade: gradeBy.get(student.id) ?? null }));
+    return (roster[a.id] ?? []).map((student) => ({ student, grade: gradeBy.get(student.id) ?? null, transcript: transcripts[student.id] }));
   };
 
   // Valider la classe = tous les brouillons du Correcteur deviennent visibles à la publication.
@@ -446,9 +449,9 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                         onClick={() => handleExport(a)}
                         disabled={exportLoading === a.id}
                         style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
-                        title="Fiches de correction à imprimer : récapitulatif de la classe et une fiche par élève"
+                        title="Fiches de correction : PDF à imprimer, Word modifiable, ou Markdown sans nom pour Claude"
                       >
-                        {exportLoading === a.id ? 'Préparation…' : 'Exporter en PDF'}
+                        {exportLoading === a.id ? 'Préparation…' : 'Exporter…'}
                       </button>
                     )}
                     {menu.length > 0 && (

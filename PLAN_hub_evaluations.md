@@ -58,6 +58,16 @@
 >   (répond et lit la nouvelle colonne), PR #25 fusionnée, déploiement OK. Vérifié sur le site publié :
 >   Dupliquer et Publier… sur la fiche, menu ⋯ d'une éval publiée avec Copier pour Pronote et Retenir les
 >   corrections, console sans erreur ; aucune publication réelle modifiée. Prochaine étape : phase 5.
+> - Phase 5 **codée le 02/11/2026** (branche `feat/hub-phase5`), **sans migration ni changement serveur** :
+>   correction en lot tenue par le navigateur (`lib/aiBatch.ts`, `hooks/useAiBatch.ts`, `AiBatchPanel`) :
+>   bouton « Corriger avec Claude (N copies) » dans la visionneuse quand un kit existe et qu'au moins deux
+>   copies scannées n'ont pas de note ; même Edge Function `corriger-copie` qu'un élève seul, deux copies à la
+>   fois, coût annoncé (≈ 0,30 $ la copie), avancement, erreurs, « Arrêter » ; arrêt automatique sur une erreur
+>   de clé API ou de crédits ; reprise = relancer (les copies notées sont sautées). Exports dans « Exporter… »
+>   (ex-« Exporter en PDF ») : PDF, Word (`lib/correctionsDocx.ts`, docx déjà en dépendance) et Markdown
+>   pseudonymisé (`lib/copiesMarkdown.ts`) : « Élève 01… » dans l'ordre de la classe, correspondance affichée
+>   dans la fenêtre, prénoms, pseudos et noms en capitales remplacés dans commentaires et transcriptions
+>   (vérifié sur les 25 copies de 4D : 23 prénoms dans les données brutes, 0 dans l'export).
 
 ---
 
