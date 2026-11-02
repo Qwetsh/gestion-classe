@@ -151,3 +151,22 @@ export function stageLabel(o: CopyOverview): string {
     case 'publiee': return 'Publiée';
   }
 }
+
+/**
+ * Ce que l'élève voit d'une éval (migration 064) : rien, sa note seule (corrections retenues),
+ * ou tout — note, détail, commentaire, corrigé et copie corrigée.
+ */
+export type PublicationState = 'none' | 'notes' | 'all';
+
+export function publicationState(
+  a: Pick<AssessmentRow, 'published_to_students'> & { corrections_withheld?: boolean | null },
+): PublicationState {
+  if (!a.published_to_students) return 'none';
+  return a.corrections_withheld ? 'notes' : 'all';
+}
+
+export const PUBLICATION_LABEL: Record<PublicationState, string> = {
+  none: 'Non publiée',
+  notes: 'Notes publiées, corrections retenues',
+  all: 'Publiée',
+};

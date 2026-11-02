@@ -8,7 +8,7 @@ import { CopyTranscriptView } from './CopyTranscriptView';
 import { GradeDetailsView } from './GradeDetailsView';
 import { KindIcon } from './KindIcon';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
-import { hasCopies } from '../lib/assessmentGroups';
+import { hasCopies, publicationState, PUBLICATION_LABEL } from '../lib/assessmentGroups';
 import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 import { alignTranscript } from '../lib/copyTranscript';
 import { parseGradeDetails } from '../lib/gradeDetails';
@@ -188,7 +188,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
             <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
               <KindIcon kind={assessment.kind} />
               <span>{assessment.name} · {ASSESSMENT_KIND_LABEL[assessment.kind]} · {assessment.classes?.name ?? ''} · /{String(bareme).replace('.', ',')}</span>
-              <Badge tone={assessment.published_to_students ? 'ok' : 'neutral'}>{assessment.published_to_students ? 'Publiée' : 'Non publiée'}</Badge>
+              <Badge tone={publicationState(assessment) === 'all' ? 'ok' : publicationState(assessment) === 'notes' ? 'warn' : 'neutral'}>{PUBLICATION_LABEL[publicationState(assessment)]}</Badge>
             </div>
           </div>
           <Link to={`/evaluations/${assessment.id}`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--indigo)' }}>Fiche de l’éval ↗</Link>

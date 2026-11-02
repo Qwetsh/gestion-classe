@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { AssessmentDetail } from '../components/AssessmentDetail';
 import { AssessmentModal } from '../components/AssessmentModal';
 import { AssessmentStatsBody } from '../components/AssessmentStatsPanel';
+import { DuplicateAssessmentDialog } from '../components/DuplicateAssessmentDialog';
 import { GroupSessionDetail } from '../components/groups/GroupSessionDetail';
 import { groupOf, hasCopyContent } from '../lib/assessmentGroups';
 import { sequencesPresent } from '../lib/carnetView';
@@ -44,6 +45,7 @@ export function AssessmentSheet() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   /** Élèves et notes de la classe en cours : pour Modifier (aménagements, barème) et les stats. */
   const [students, setStudents] = useState<CarnetStudent[]>([]);
@@ -73,7 +75,9 @@ export function AssessmentSheet() {
       setSessionStarts(d.sessionStarts);
       if (!openedOnce.current) {
         openedOnce.current = true;
-        if (hasCopyContent(d.overviews[id])) setOpenId(id);
+        // Un TP de groupe montre ses résultats dans la section « Séance de groupe » : pas de visionneuse d'office.
+        const own = g.items.find((a) => a.id === id);
+        if (hasCopyContent(d.overviews[id]) && own?.kind !== 'groupe') setOpenId(id);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement');
@@ -186,6 +190,11 @@ export function AssessmentSheet() {
               <button onClick={() => setEditing(true)} style={btnGhost} title="Nom, type, date, barème, coefficient, aménagements">
                 Modifier{group.items.length > 1 ? ` (${focus.classes?.name ?? ''})` : ''}
               </button>
+              {focus.kind !== 'groupe' && (
+                <button onClick={() => setDuplicating(true)} style={btnGhost} title="Même éval pour une autre classe, ou une nouvelle fois : réglages, sujet et corrigé, sans les notes">
+                  Dupliquer
+                </button>
+              )}
               <button onClick={handleDelete} style={btnDanger}>
                 Supprimer{group.items.length > 1 ? ` (${focus.classes?.name ?? ''})` : ''}
               </button>
@@ -228,6 +237,15 @@ export function AssessmentSheet() {
             </div>
           </details>
         </div>
+      )}
+
+      {duplicating && focus && user && (
+        <DuplicateAssessmentDialog
+          source={focus}
+          userId={user.id}
+          onClose={() => setDuplicating(false)}
+          onCreated={(newId) => { setDuplicating(false); navigate(`/evaluations/${newId}`); }}
+        />
       )}
 
       {editing && focus && (
