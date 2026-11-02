@@ -2111,3 +2111,11 @@ a.dash__card-link:hover { text-decoration: underline; }
   /* Au doigt, pas de survol : le « i » reste discret mais visible. */
   .gc-cell__info { opacity: .55; }
 }
+
+/* Modale élève × éval (hub Évaluations, phase 2) : copie à gauche, correction et historique à droite. */
+.gc-sgm__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 16px; align-items: start; }
+.gc-sgm__body.is-single { grid-template-columns: minmax(0, 760px); justify-content: center; }
+@media (max-width: 900px) {
+  .gc-sgm__body, .gc-sgm__body.is-single { grid-template-columns: minmax(0, 1fr); }
+  .gc-sgm { padding: 12px !important; }
+}
