@@ -42,6 +42,7 @@ Autres notes qui existent et ne sont dans aucun des trois types du brief : **par
 | Export Markdown pour Claude + import JSON | oui **pour les productions seulement** | `productionsExport.ts` |
 | Suppression auto des scans 30 j après publication, prolongation, suppression manuelle | oui | menu ⋯ de la ligne de classe |
 | Séries (même éval sur plusieurs classes, sujet et corrigé communs) | oui | `assessment_series` |
+| **Import du paquet de la classe** (PDF du photocopieur ou photos), découpage en copies de N pages, attribution dans l'ordre alphabétique, retouches (glisser, couper, fusionner, tourner), absents, webcam élève par élève | oui (PR #20, 02/11) | `ClassCopiesDialog`, `lib/classCopies.ts` |
 | Bucket privé + URL signées, RLS partout, jeton QR haché à expiration courte, API Claude sans nom (pseudos) | oui | migrations 052 à 059 |
 
 ### 1.4 Ce qui **manque** par rapport au brief
@@ -50,7 +51,7 @@ Autres notes qui existent et ne sont dans aucun des trois types du brief : **par
 3. **Historique des corrections** (versions datées, IA ou prof) : `assessment_grades` ne garde que l'état courant ; `student_works` a un historique des *envois*, pas des corrections.
 4. **Publication séparée** notes / corrections : un seul drapeau `published_to_students`.
 5. **Titre court, séquence, icône de type** dans les en-têtes ; **filtres** type / période / séquence / publiée (le Carnet filtre par classe et trimestre seulement).
-6. **Découpage d'un PDF de classe** en copies par élève avec écran d'assignation page → élève.
+6. ~~Découpage d'un PDF de classe~~ : fait le 02/11 (PR #20). Reste éventuellement la lecture du nom en haut de page par l'API (1 à 2 centimes par classe), à décider.
 7. **Correction IA en lot** (toutes les copies non corrigées, file d'attente, progression). Aujourd'hui : un élève à la fois, 1 à 2 min chacun, limite de durée de l'Edge Function.
 8. **Exports** : colonne de notes « prête pour Pronote » (ordre alphabétique, Abs / NR) ; corrections en **Word** ; **Markdown pseudonymisé** pour l'assistant Claude côté copies.
 9. **Création unifiée par type** ; composition des groupes depuis le hub ; choix de l'activité numérique.
@@ -172,7 +173,7 @@ Un script (ou une fonction SQL) crée, **pour chaque séance terminée**, une é
 | **1. Modèle + grille** | Migration 060 (colonnes, historique, vue). Grille : titre court, icône de type, date, filtres, bouton « i » (ouvre la visionneuse actuelle en attendant la modale), pied « manquantes », mobile | Grille filtrable sur téléphone et PC, données inchangées | 060 (additive) |
 | **2. Modale élève × éval** | Sections copie / transcription / correction + historique ; ← → ; actions ; PDF individuel. La visionneuse de la fiche s'appuie dessus | Même chaîne copies qu'aujourd'hui, dans la modale | — |
 | **3. Groupes → hub** | Fin de séance → éval `groupe` + cellules par membre ; note individuelle ajustable ; section Critères dans la modale ; Fiche : critères × groupes, matériel, photos, PDF fiches ; bascule des séances passées (après ton OK) ; espace élève : note publiable | Une séance de groupe notée apparaît dans le carnet et se publie | bascule (script, réversible) |
-| **4. Fiche : publication, imports, exports des notes** | Publication séparée notes / corrections (RPC élève à adapter) ; avancement en chiffres ; import PDF de classe avec découpage et assignation page → élève ; export « colonne Pronote » ; dupliquer | Publier les notes sans les corrections ; importer un PDF scanné de toute la classe | — (RPC modifiée, rétro-compatible) |
+| **4. Fiche : publication, exports des notes** | Publication séparée notes / corrections (RPC élève à adapter) ; avancement en chiffres ; export « colonne Pronote » ; dupliquer ; (l'import du paquet de la classe existe depuis la PR #20) | Publier les notes sans les corrections ; copier la colonne dans Pronote | — (RPC modifiée, rétro-compatible) |
 | **5. IA en lot + exports des corrections** | File de correction (table `assessment_ai_jobs` ou boucle côté client avec reprise), progression, erreurs ; exports Word (docx, déjà en dépendance) et Markdown pseudonymisé (Élève 01…, table de correspondance dans l'app) | Corriger 25 copies d'un clic, suivre, valider ; sortir le Word et le Markdown | petite table de file (additive) |
 | **6. Création unifiée + retrait** | « + Évaluation » par type ; Réponses d'une production dans la modale ; Fiche › section Activité (envois, corrigé attendu) ; retrait de Productions et Groupes de la navigation (code conservé) | Tout se fait depuis Évaluations | — |
 
