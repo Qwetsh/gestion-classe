@@ -27,6 +27,15 @@
 >   424 notes intactes), PR #23 fusionnée, déploiement OK, vérifié sur le site publié (modale d'Ayaz, 4D :
 >   copie, correction, radar, section Historique avec la version actuelle). Prochaine étape : phase 3,
 >   séances de groupe dans le carnet.
+> - Phase 3 **codée le 02/11/2026** (branche `feat/hub-phase3`) : migration 063 (kind `groupe`,
+>   `written_assessments.group_session_id`, synchronisation par déclencheurs sur les tables de séance de groupe
+>   — web et mobile —, note individuelle ajustable, éval à la corbeille si la séance est supprimée, auteur
+>   'groupe' dans l'historique), **vérifiée en transaction annulée, pas appliquée** ; la bascule des séances
+>   passées est une commande à part, limitée au compte de Thomas (13 séances ; un autre compte a 1 séance, qui
+>   ne sera versée que si elle change). Web : type « TP de groupe » (icône, filtre, formulaire avec type et
+>   barème verrouillés), détail de séance extrait dans `components/groups/GroupSessionDetail.tsx` et partagé
+>   par la page Groupes et la fiche de l'éval, section Critères dans la modale (groupe, membres, points, malus,
+>   note du groupe, note ajustée et « Remettre la note du groupe »).
 
 ---
 

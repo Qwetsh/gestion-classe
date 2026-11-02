@@ -17,6 +17,8 @@ export function KindIcon({ kind, size = 12 }: { kind: AssessmentKind; size?: num
       return <svg {...common}><title>{ASSESSMENT_KIND_LABEL.tp}</title><path d="M9 3h6M10 3v6l-5 9a2 2 0 001.8 3h10.4a2 2 0 001.8-3l-5-9V3M7.5 14h9" /></svg>;
     case 'oral':
       return <svg {...common}><title>{ASSESSMENT_KIND_LABEL.oral}</title><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></svg>;
+    case 'groupe':
+      return <svg {...common}><title>{ASSESSMENT_KIND_LABEL.groupe}</title><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M2 20c.6-3 3-5 6-5s5.4 2 6 5M12.5 15.3c1-.8 2.2-1.3 3.5-1.3 3 0 5.4 2 6 5" /></svg>;
     case 'projet':
       return <svg {...common}><title>{ASSESSMENT_KIND_LABEL.projet}</title><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>;
     case 'ecrit':
