@@ -53,6 +53,11 @@
 >   classes, sujet et corrigé recopiés, trimestre en cours). Fiche d'un TP de groupe sans blocs de copies.
 >   L'avancement en chiffres existait déjà sur la ligne de classe. Mise en ligne : migration 064, puis
 >   redéploiement de `student-doc`, puis fusion.
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : migration 064 appliquée (aucune éval retenue, les 7
+>   évals publiées montrent tout comme avant, droits élève intacts), `student-doc` redéployée en version 4
+>   (répond et lit la nouvelle colonne), PR #25 fusionnée, déploiement OK. Vérifié sur le site publié :
+>   Dupliquer et Publier… sur la fiche, menu ⋯ d'une éval publiée avec Copier pour Pronote et Retenir les
+>   corrections, console sans erreur ; aucune publication réelle modifiée. Prochaine étape : phase 5.
 
 ---
 
