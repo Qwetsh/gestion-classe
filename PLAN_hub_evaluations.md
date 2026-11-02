@@ -36,6 +36,12 @@
 >   barème verrouillés), détail de séance extrait dans `components/groups/GroupSessionDetail.tsx` et partagé
 >   par la page Groupes et la fiche de l'éval, section Critères dans la modale (groupe, membres, points, malus,
 >   note du groupe, note ajustée et « Remettre la note du groupe »).
+  **En ligne le 02/11/2026** (« Oui, mets en ligne ») : PR #24 fusionnée, déploiement OK, migration 063
+  appliquée (6 déclencheurs, fonction fermée aux clients), bascule du compte de Thomas : 13 évals « TP de
+  groupe » hors moyenne et non publiées, 252 notes, les 424 notes existantes intactes. Vérifié sur le site
+  publié (carnet 3A, modale avec critères et historique « Séance de groupe », fiche avec la section séance,
+  moyenne inchangée, console sans erreur). À reprendre : la fiche d'un TP de groupe affiche encore les blocs
+  de copies scannées, inutiles pour ce type. Prochaine étape : phase 4.
 
 ---
 
