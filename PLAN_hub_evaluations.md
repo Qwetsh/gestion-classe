@@ -23,6 +23,10 @@
 >   remplacer la copie, imprimer en PDF), ← → élèves, ↑ ↓ pages, Échap. Données et gestes extraits dans
 >   `hooks/useAssessmentCopies.ts`, partagés avec la visionneuse de la fiche. Vérifié dans Chrome sur la 4D.
 >   Reportés : critères (type groupe) à la phase 3, réponses (type production) à la phase 6.
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : migration 061 appliquée (table vide, RLS, trigger,
+>   424 notes intactes), PR #23 fusionnée, déploiement OK, vérifié sur le site publié (modale d'Ayaz, 4D :
+>   copie, correction, radar, section Historique avec la version actuelle). Prochaine étape : phase 3,
+>   séances de groupe dans le carnet.
 
 ---
 
