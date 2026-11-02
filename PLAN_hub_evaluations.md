@@ -95,6 +95,10 @@
 >   corrigé, scanner = fenêtre de la classe, corrections, notes Excel, Pronote, relier) ; relier ou détacher
 >   une série, suggestion « même nom ». Sans migration. Reste : ouvrir la fenêtre de classe sur l'onglet QR
 >   code une fois la PR #21 en ligne.
+>   - En-têtes allégés (03/11/2026, PR #29, en ligne) : par défaut, plus de pastilles d'avancement,
+>     « hors moy. », « coef » ni « N classes » dans l'en-tête (la pastille « même nom » reste). Case
+>     « Détails des colonnes » (préférence du carnet, décochée par défaut) pour les rétablir ; résumé
+>     toujours lisible en tête du menu ▾ et dans l'infobulle du titre. Sans migration.
 
 ---
 
