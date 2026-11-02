@@ -13,6 +13,8 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
  * Garde-fou (migration 056) : seules les copies qui ont une transcription
  * (`assessment_copy_transcripts`) perdent leurs scans. Les autres restent ; l'éval n'est alors
  * pas marquée purgée et elle est reprise chaque nuit, jusqu'à ce que toutes soient transcrites.
+ * Une copie « Pas de nom » (`assessment_unnamed_pages`, migration 062, fichiers sous
+ * `sans-nom/`) compte comme non transcrite : elle attend d'être identifiée ou supprimée.
  *
  * Authentification : en-tête `x-purge-token`, comparé au jeton rangé dans Vault par la
  * migration (fonction `purge_copies_token_ok`, réservée à service_role). Pas de JWT : l'appel
@@ -99,6 +101,13 @@ serve(async (req: Request) => {
       if (trError) throw trError;
       const transcribed = new Set((transcripts ?? []).map((t) => t.student_id as string));
 
+      const { data: unnamed, error: unError } = await sb
+        .from("assessment_unnamed_pages")
+        .select("copy_id")
+        .eq("assessment_id", a.id);
+      if (unError) throw unError;
+      const unnamedCopies = new Set((unnamed ?? []).map((u) => u.copy_id as string)).size;
+
       // Élèves dont on garde les scans : des pages, pas de transcription.
       const kept = new Set(
         (pages ?? []).map((p) => p.student_id as string).filter((s) => !transcribed.has(s)),
@@ -106,8 +115,10 @@ serve(async (req: Request) => {
       // Chemin : <user>/<assessment>/<student>/<page>.jpg ; un fichier hors dossier d'élève ne part
       // qu'avec le dernier élève.
       const studentOf = (path: string) => path.split("/")[2] ?? "";
+      // Des scans restent (non transcrits ou sans nom) : seuls ceux des élèves transcrits partent.
+      const holding = kept.size > 0 || unnamedCopies > 0;
       const deletable = (path: string) =>
-        kept.size === 0 || (path.split("/").length >= 4 && transcribed.has(studentOf(path)));
+        !holding || (path.split("/").length >= 4 && transcribed.has(studentOf(path)));
 
       const paths = new Set(
         (pages ?? []).filter((p) => transcribed.has(p.student_id as string)).map((p) => p.storage_path as string),
@@ -133,14 +144,14 @@ serve(async (req: Request) => {
       // Rien à supprimer (éval publiée sans scan) : on ne la marque pas « purgée », sinon l'écran
       // du prof afficherait « scans supprimés » pour des copies qui n'ont jamais existé.
       // Des copies sans transcription restent : pas « purgée » non plus, on repasse demain.
-      if (!dryRun && kept.size === 0 && (all.length > 0 || (pages?.length ?? 0) > 0)) {
+      if (!dryRun && !holding && (all.length > 0 || (pages?.length ?? 0) > 0)) {
         const { error: markError } = await sb
           .from("written_assessments")
           .update({ copies_purged_at: new Date().toISOString() })
           .eq("id", a.id);
         if (markError) throw markError;
       }
-      report.push({ assessmentId: a.id, files: all.length, pages: purgedPages, kept: kept.size });
+      report.push({ assessmentId: a.id, files: all.length, pages: purgedPages, kept: kept.size + unnamedCopies });
     } catch (e) {
       // Une éval en échec n'empêche pas les autres ; elle sera reprise la nuit suivante.
       report.push({ assessmentId: a.id, files: 0, pages: 0, kept: 0, error: e instanceof Error ? e.message : String(e) });

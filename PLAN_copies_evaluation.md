@@ -234,6 +234,29 @@ Le cas « pas le temps de scanner en classe » : le paquet entier d'un coup. Bra
   l'API (Haiku 5.5, 0,10 $ / 0,50 $ par million de tokens) : environ 0,0005 $ par copie avec un
   bandeau du haut de page, soit 1 à 2 centimes pour une classe — à décider avec Thomas.
 
+### Ajout — QR code pour toute la classe et copies « Pas de nom » (02/11/2026, demande de Thomas)
+Branche `feat/copies-qr-classe`. Migration 062 appliquée en prod et Edge Functions `depot-copie`
+(v2) et `purge-assessment-copies` (v5) redéployées le 02/11/2026.
+- **QR code (téléphone)**, 3e onglet de « Ajouter les copies de la classe » : un jeton pour toute
+  l'éval (`assessment_upload_tokens.student_id` NULL ; 60 min, 200 pages, révoqué à la fermeture de
+  la fenêtre ; plafond 1-300 dans la contrainte). La page /depot liste les élèves attendus (sans copie
+  en haut), on photographie, « Envoyer », « Élève suivant → ». depot-copie vérifie que chaque élève
+  envoyé est un élève attendu de l'éval (classe ou demi-groupe, ni témoin ni supprimé). La fenêtre
+  du PC suit les arrivées toutes les 3 s (« reçu N p. » dans la liste).
+- **« Pas de nom »** : import (liste déroulante d'une copie), webcam (bouton), page /depot (bouton,
+  « Autre sans nom »). Table à part **`assessment_unnamed_pages`** (id, user_id, assessment_id,
+  **copy_id**, page_order, storage_path, created_at ; une copie = un copy_id ; fichiers sous
+  `<user>/<éval>/sans-nom/<page>.jpg`) : assessment_copy_pages garde son élève obligatoire, donc
+  rien ne change pour le mobile, la purge des copies nommées et sync_copies.py.
+- **Identifier** : « Voir les copies » affiche « Pas de nom · N copie(s) à identifier » au-dessus de
+  la liste ; la copie en grand, « C'est la copie de… » + « Attribuer » (RPC `assign_unnamed_copy`,
+  SECURITY INVOKER : les pages passent dans assessment_copy_pages après celles de l'élève, le
+  fichier ne bouge pas) ou « Supprimer » (lignes + fichiers).
+- **Purge** : une copie sans nom compte comme non transcrite : l'éval n'est pas purgée tant qu'il en
+  reste (reprise chaque nuit) ; ses fichiers `sans-nom/` ne partent pas avec les autres.
+- **Correcteur** : sync_copies.py ne voit pas les copies sans nom tant qu'il ne lit pas
+  assessment_unnamed_pages (à ajouter de son côté s'il en a besoin ; format ci-dessus).
+
 ## 2. Ordre conseillé
 1 → 2 → 3 → 4. Le lot 1 seul supprime déjà les problèmes de poids, de noms, de pages mélangées et de fichiers mal nommés ; le lot 2 peut démarrer en parallèle si Thomas le souhaite (fichiers distincts).
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../supabase', () => ({ supabase: {} }));
 vi.mock('../pdfjs', () => ({ getPdfjs: vi.fn() }));
 
-import { COPY_PROFILE, depotUrl, describeDepotError, fitSize, movePage, rotatedSize } from '../copyUpload';
+import { COPY_PROFILE, depotUrl, describeDepotError, fitSize, groupUnnamed, movePage, rotatedSize, sortFilesByName } from '../copyUpload';
 
 describe('fitSize (même profil que le scan mobile)', () => {
   it('ramène le grand côté à 2000 px', () => {
@@ -50,5 +50,30 @@ describe('lien du QR code', () => {
   it('explique les refus', () => {
     expect(describeDepotError('expired_or_full')).toMatch('nombre maximum de pages');
     expect(describeDepotError('zzz')).toBe('Envoi impossible (zzz).');
+  });
+});
+
+describe('copies « Pas de nom »', () => {
+  it('regroupe les pages par copie, dans l’ordre des pages, la plus ancienne copie d’abord', () => {
+    const out = groupUnnamed([
+      { id: 'p3', copy_id: 'B', page_order: 1, storage_path: 'b1', created_at: '2026-11-02T10:05:00Z' },
+      { id: 'p2', copy_id: 'A', page_order: 2, storage_path: 'a2', created_at: '2026-11-02T10:01:00Z' },
+      { id: 'p1', copy_id: 'A', page_order: 1, storage_path: 'a1', created_at: '2026-11-02T10:00:00Z' },
+    ]);
+    expect(out.map((c) => c.copyId)).toEqual(['A', 'B']);
+    expect(out[0].pages.map((p) => p.storage_path)).toEqual(['a1', 'a2']);
+  });
+  it('a un message pour un élève hors de l’éval', () => {
+    expect(describeDepotError('bad_student')).toMatch(/élève/);
+  });
+});
+
+describe('sortFilesByName', () => {
+  it('range IMG_2 avant IMG_10', () => {
+    expect(sortFilesByName([{ name: 'IMG_10.jpg' }, { name: 'IMG_2.jpg' }, { name: 'img_1.jpg' }]).map((f) => f.name)).toEqual([
+      'img_1.jpg',
+      'IMG_2.jpg',
+      'IMG_10.jpg',
+    ]);
   });
 });
