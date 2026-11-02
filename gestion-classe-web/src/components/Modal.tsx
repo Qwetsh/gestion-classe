@@ -7,7 +7,7 @@ interface ModalProps {
   icon?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '6xl';
   /** Higher z-index for nested modals */
   zIndex?: number;
 }
@@ -18,6 +18,7 @@ const sizeClasses = {
   lg: 'max-w-lg',
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
+  '6xl': 'max-w-6xl',
 };
 
 export function Modal({

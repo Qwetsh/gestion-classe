@@ -88,6 +88,8 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
   const [exportLoading, setExportLoading] = useState<string | null>(null);
   /** Incrémenté quand une action d'ici change les copies ou les notes : la visionneuse recharge. */
   const [viewerKey, setViewerKey] = useState(0);
+  // « Ajouter les copies » sur une classe sans rien encore : ouvre la vue et la fenêtre de la classe.
+  const [classAddFor, setClassAddFor] = useState<string | null>(null);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const correctionInputRef = useRef<HTMLInputElement>(null);
 
@@ -363,6 +365,15 @@ Publier quand même pour ${cls} ?`
                     >
                       {on ? 'Fermer' : o && o.scanned === 0 && o.transcribed === 0 ? 'Voir les notes' : 'Voir les copies'}
                     </button>
+                    {o && hasCopies(a) && o.scanned === 0 && o.transcribed === 0 && !a.copies_purged_at && (
+                      <button
+                        onClick={() => { setClassAddFor(a.id); onOpen(a.id); }}
+                        style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
+                        title="Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste"
+                      >
+                        Ajouter les copies
+                      </button>
+                    )}
                     {drafts > 0 && (
                       <button
                         onClick={() => handleValidateClass(a)}
@@ -407,12 +418,19 @@ Publier quand même pour ${cls} ?`
         {withCopies && !anyScanned && (
           <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
             Aucune copie scannée pour cette éval. Les copies se scannent au téléphone, en séance (bouton « Copies »),
-            ou s’ajoutent ici depuis la liste des élèves (« Ajouter une copie »).
+            ou s’ajoutent ici, élève par élève (« Ajouter une copie ») ou pour toute la classe d’un coup (« Ajouter les copies de la classe »).
           </div>
         )}
         {target && (
           <div style={{ marginTop: 16 }}>
-            <CopyViewer assessment={target} onError={onError} onChanged={onReload} refreshKey={viewerKey} />
+            <CopyViewer
+              assessment={target}
+              onError={onError}
+              onChanged={onReload}
+              refreshKey={viewerKey}
+              openClassAdd={classAddFor === target.id}
+              onClassAddOpened={() => setClassAddFor(null)}
+            />
           </div>
         )}
       </div>

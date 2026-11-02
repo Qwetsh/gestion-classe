@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { Modal } from './Modal';
 import {
+  canvasToPreparedDraft,
   createDepotToken,
   depotUrl,
   draftId,
   filesToDrafts,
   movePage,
-  preparePage,
+  draftToUpload,
   revokeDepotToken,
   saveCopyInfo,
   uploadPagesAsTeacher,
@@ -108,7 +109,7 @@ export function AddCopyDialog({
     setSending(0);
     try {
       const pages: Blob[] = [];
-      for (const d of drafts) pages.push(await preparePage(d.source, d.turns));
+      for (const d of drafts) pages.push(await draftToUpload(d));
       await uploadPagesAsTeacher({
         userId: assessment.user_id,
         assessmentId: assessment.id,
@@ -256,15 +257,33 @@ export function AddCopyDialog({
   );
 }
 
-function ImportTab({ onAdd, onError }: { onAdd: (d: DraftPage[]) => void; onError: (m: string) => void }) {
+export function ImportTab({
+  onAdd,
+  onError,
+  convert = filesToDrafts,
+  label = 'Glisse ici les photos ou le PDF de la copie, ou clique pour les choisir.',
+  hint = 'Un PDF donne une page par page. Réduites à 2000 px avant l’envoi.',
+  compact = false,
+}: {
+  onAdd: (d: DraftPage[]) => void;
+  onError: (m: string) => void;
+  /** Fichiers → pages (le paquet d'une classe passe par filesToCompactDrafts). */
+  convert?: (files: File[], onProgress?: (pages: number) => void) => Promise<DraftPage[]>;
+  label?: string;
+  hint?: string;
+  /** Zone basse, quand des pages sont déjà là. */
+  compact?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
+  const [read, setRead] = useState(0);
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const take = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setBusy(true);
+    setRead(0);
     try {
-      const drafts = await filesToDrafts(Array.from(files));
+      const drafts = await convert(Array.from(files), setRead);
       if (drafts.length === 0) onError('Aucune image ni PDF dans ce choix.');
       onAdd(drafts);
     } catch (e) {
@@ -280,19 +299,33 @@ function ImportTab({ onAdd, onError }: { onAdd: (d: DraftPage[]) => void; onErro
       onDrop={(e) => { e.preventDefault(); setOver(false); take(e.dataTransfer.files); }}
       onClick={() => input.current?.click()}
       style={{
-        border: `2px dashed ${over ? 'var(--indigo)' : 'var(--border)'}`, borderRadius: 10, padding: 28,
+        border: `2px dashed ${over ? 'var(--indigo)' : 'var(--border)'}`, borderRadius: 10, padding: compact ? 12 : 28,
         textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13,
         background: over ? 'var(--indigo-soft)' : 'transparent',
       }}
     >
-      {busy ? 'Lecture des fichiers…' : 'Glisse ici les photos ou le PDF de la copie, ou clique pour les choisir.'}
-      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Un PDF donne une page par page. Réduites à 2000 px avant l’envoi.</div>
+      {busy ? `Lecture des fichiers…${read > 0 ? ` ${read} page(s)` : ''}` : label}
+      {!compact && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{hint}</div>}
       <input ref={input} type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => { take(e.target.files); e.target.value = ''; }} />
     </div>
   );
 }
 
-function WebcamTab({ onAdd, onError }: { onAdd: (d: DraftPage[]) => void; onError: (m: string) => void }) {
+export function WebcamTab({
+  onAdd,
+  onError,
+  compact = false,
+  disabled = false,
+  children,
+}: {
+  onAdd: (d: DraftPage[]) => void;
+  onError: (m: string) => void;
+  /** Page mise au profil d'envoi dès la prise (beaucoup de pages : la classe entière). */
+  compact?: boolean;
+  disabled?: boolean;
+  /** Boutons en plus, à côté de « Prendre la page ». */
+  children?: React.ReactNode;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
   const onErrorRef = useRef(onError);
@@ -319,6 +352,12 @@ function WebcamTab({ onAdd, onError }: { onAdd: (d: DraftPage[]) => void; onErro
     canvas.width = v.videoWidth;
     canvas.height = v.videoHeight;
     canvas.getContext('2d')?.drawImage(v, 0, 0);
+    if (compact) {
+      canvasToPreparedDraft(canvas)
+        .then((d) => onAdd([d]))
+        .catch(() => onError('Photo impossible à préparer.'));
+      return;
+    }
     canvas.toBlob((b) => {
       if (b) onAdd([{ id: draftId(), source: canvas, turns: 0, preview: URL.createObjectURL(b) }]);
     }, 'image/jpeg', 0.6);
@@ -327,9 +366,16 @@ function WebcamTab({ onAdd, onError }: { onAdd: (d: DraftPage[]) => void; onErro
   return (
     <div style={{ textAlign: 'center' }}>
       <video ref={video} muted playsInline style={{ width: '100%', maxHeight: 360, background: '#000', borderRadius: 10 }} />
-      <button onClick={capture} disabled={!ready} style={{ ...btn, marginTop: 8, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)' }}>
-        Prendre la page
-      </button>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+        <button
+          onClick={capture}
+          disabled={!ready || disabled}
+          style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)', opacity: !ready || disabled ? 0.55 : 1 }}
+        >
+          Prendre la page
+        </button>
+        {children}
+      </div>
       <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Une photo par page ; recommence pour les suivantes.</div>
     </div>
   );

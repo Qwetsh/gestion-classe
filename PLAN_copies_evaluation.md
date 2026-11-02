@@ -207,6 +207,33 @@ Faire noter une copie après les autres sans repasser par le scan mobile. Branch
   serveur web) : pseudo, classe et éval seulement, appareil photo natif, rotation, envoi.
 - Le Correcteur récupère ces pages comme les autres (sync_copies.py lit assessment_copy_pages).
 
+### Ajout — « Ajouter les copies de la classe » (02/11/2026, demande de Thomas via la session Correcteur)
+Le cas « pas le temps de scanner en classe » : le paquet entier d'un coup. Branche `feat/copies-classe`,
+**sans migration ni Edge Function**.
+- Web : bouton « Ajouter les copies de la classe » en tête de la liste des élèves (« Voir les copies »),
+  et « Ajouter les copies » sur la ligne d'une classe qui n'a encore rien (la vue ne s'ouvrait pas).
+- **Importer le paquet** (PDF du photocopieur ou photos, fichiers pris dans l'ordre de leur nom) :
+  découpé en copies de N pages (N = nombre de pages le plus fréquent des copies déjà rangées, sinon 2,
+  modifiable, « Redécouper »), attribuées dans l'ordre de la liste aux élèves sans copie ni absence.
+  Chaque page de PDF est mise au profil 2000 px / JPEG 0,75 dès la lecture (une classe en canvas
+  pèserait ~600 Mo) et part telle quelle si elle n'est pas tournée.
+- Retouches : glisser une copie sur un élève (ou liste déroulante ; un élève déjà pris échange),
+  couper avant une page, fusionner avec la suivante, faire passer une page de bord dans la copie
+  voisine, tourner, retirer ; « abs. » sur un élève sort de l'ordre et décale toute la suite d'un cran ;
+  « réattribuer d'ici » / « Réattribuer dans l'ordre ».
+- **Webcam, élève par élève** : on prend les pages de l'élève en cours, « Élève suivant → » passe au
+  prochain sans copie (clic sur un élève pour le choisir).
+- Version du sujet et « copie adaptée » par élève dans la liste ; version obligatoire pour chaque élève
+  qui reçoit une copie dès 2 versions connues (+ « à ceux qui reçoivent une copie sans version »).
+  Absents notés dans le carnet (statut absent, élèves sans note seulement ; case décochable).
+- Rien ne part avant « Envoyer » : uploadPagesAsTeacher élève par élève (pages ajoutées après les
+  existantes), même format qu'au scan mobile ; échecs gardés dans la fenêtre, arrêt après 3 de suite.
+- **Pas fait** : QR « classe entière » (un jeton par éval, student_id facultatif dans
+  assessment_upload_tokens + depot-copie + page /depot avec la liste) : demande une migration et
+  doublonne l'appli mobile, qui fait déjà ce parcours. Lecture du nom en haut de la 1re page par
+  l'API (Haiku 5.5, 0,10 $ / 0,50 $ par million de tokens) : environ 0,0005 $ par copie avec un
+  bandeau du haut de page, soit 1 à 2 centimes pour une classe — à décider avec Thomas.
+
 ## 2. Ordre conseillé
 1 → 2 → 3 → 4. Le lot 1 seul supprime déjà les problèmes de poids, de noms, de pages mélangées et de fichiers mal nommés ; le lot 2 peut démarrer en parallèle si Thomas le souhaite (fichiers distincts).
 
