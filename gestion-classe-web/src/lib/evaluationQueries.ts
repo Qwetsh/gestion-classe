@@ -1111,6 +1111,41 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.baremeTotal !== undefined) await recomputeGradesForBareme(assessmentId, patch.baremeTotal);
 }
 
+/**
+ * Relie une éval à la même éval passée par d'autres classes (en-têtes du carnet, 02/11/2026) :
+ * une série existante, ou une éval seule (la série est alors créée pour les deux). Les notes ne
+ * bougent pas ; le sujet et le corrigé propres à l'éval restent les siens (effectiveDocPath
+ * préfère ceux de l'éval à ceux de la série).
+ */
+export async function linkAssessmentToTarget(input: {
+  userId: string;
+  assessmentId: string;
+  target: { seriesId: string | null; assessmentIds: string[]; name: string };
+  level: string | null;
+  schoolYear: string | null;
+}): Promise<string> {
+  let seriesId = input.target.seriesId;
+  if (!seriesId) {
+    const { data, error } = await supabase
+      .from('assessment_series')
+      .insert({ user_id: input.userId, name: input.target.name, level: input.level, school_year: input.schoolYear })
+      .select('id')
+      .single();
+    if (error) throw error;
+    seriesId = (data as { id: string }).id;
+  }
+  const ids = [input.assessmentId, ...(input.target.seriesId ? [] : input.target.assessmentIds)];
+  const { error } = await supabase.from('written_assessments').update({ series_id: seriesId }).in('id', ids);
+  if (error) throw error;
+  return seriesId;
+}
+
+/** Sort une éval de sa série (« Ce n'était pas la même éval »). Ses notes et ses fichiers restent. */
+export async function detachFromSeries(assessmentId: string): Promise<void> {
+  const { error } = await supabase.from('written_assessments').update({ series_id: null }).eq('id', assessmentId);
+  if (error) throw error;
+}
+
 /** Suppression douce, cohérente avec le filtre `is_deleted` de `fetchAssessments`. */
 export async function softDeleteAssessment(assessmentId: string): Promise<void> {
   const { error } = await supabase
