@@ -2056,3 +2056,58 @@ a.dash__card-link:hover { text-decoration: underline; }
   }
   .room-canvas::before { opacity: 0.1; }
 }
+
+
+/* ============================================================
+   Carnet de notes (hub Évaluations, phase 1) — PLAN_hub_evaluations.md
+   ============================================================ */
+.gc-carnet {
+  display: grid;
+  grid-template-columns: minmax(140px, 190px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.gc-carnet__classes {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; position: sticky; top: 12px;
+}
+.gc-carnet__classes-title {
+  padding: 10px 14px; font-size: 12px; font-weight: 700; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .04em;
+}
+.gc-carnet__class {
+  display: block; width: 100%; text-align: left; padding: 9px 12px; border: none;
+  border-left: 3px solid transparent; cursor: pointer; font-size: 13px; font-family: inherit;
+  background: transparent; color: var(--text); font-weight: 500;
+}
+.gc-carnet__class.is-on {
+  background: var(--indigo-soft); color: var(--indigo); border-left-color: var(--indigo); font-weight: 700;
+}
+/* Colonne des noms : étroite, « Prénom NO. », le reste au survol. */
+.gc-carnet__name-col { min-width: 110px; max-width: 170px; }
+.gc-carnet__name { display: inline-block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+/* Bouton « i » d'une cellule : visible au survol ou quand la note est en saisie. */
+.gc-cell__info {
+  position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; padding: 0;
+  border-radius: 50%; border: 1px solid var(--border); background: var(--surface);
+  color: var(--indigo); font-size: 10px; font-weight: 700; font-style: italic; line-height: 14px;
+  font-family: Georgia, serif; cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+.gc-cell:hover .gc-cell__info,
+.gc-cell:focus-within .gc-cell__info,
+.gc-cell__info:focus-visible { opacity: 1; }
+
+@media (max-width: 767px) {
+  .gc-carnet { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .gc-carnet__classes { display: flex; overflow-x: auto; position: static; border-radius: 10px; }
+  .gc-carnet__classes-title { display: none; }
+  .gc-carnet__class {
+    width: auto; flex: 0 0 auto; white-space: nowrap; border-left: none;
+    border-bottom: 3px solid transparent; padding: 9px 14px; min-height: 44px;
+  }
+  .gc-carnet__class.is-on { border-bottom-color: var(--indigo); }
+  .gc-carnet__name-col { min-width: 84px; max-width: 110px; }
+  .gc-carnet__name { max-width: 96px; }
+  /* Au doigt, pas de survol : le « i » reste discret mais visible. */
+  .gc-cell__info { opacity: .55; }
+}

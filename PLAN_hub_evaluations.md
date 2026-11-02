@@ -2,8 +2,15 @@
 
 > Rédigé le 02/11/2026 après lecture du code web, des tables Supabase en production (projet Class'it),
 > des buckets, des Edge Functions, de l'app mobile et des scripts du Correcteur. Répond au brief
-> « Refonte : hub central Évaluations » de Thomas. **Aucun code écrit.** Statut : **en attente de validation**
-> (questions en §6). Fait suite à `PLAN_ergonomie_evaluations.md` (fiche d'éval + Carnet seul, en ligne le 01/11).
+> « Refonte : hub central Évaluations » de Thomas. Fait suite à `PLAN_ergonomie_evaluations.md`.
+> Statut : **plan validé par Thomas le 02/11/2026** (« Valide, lance la phase 1 » : recommandations du §6 retenues).
+> - Phase 1 **codée le 02/11/2026** (branche `feat/hub-phase1`) : migration 060 réduite à ce que la phase lit
+>   (`short_name`, `sequence` ; le reste du §3.2 vient avec les phases 2 à 4), **vérifiée en transaction annulée,
+>   pas appliquée** ; en-têtes compacts (icône du type, titre court, date), filtres type / séquence / publication
+>   (gardés dans le navigateur), colonne Moyenne facultative (calculée sur les colonnes affichées), indicateur de
+>   cellule (brouillon *, copie à corriger ●, copie manquante ○), bouton « i » → visionneuse ouverte sur l'élève,
+>   pied « Copies manquantes », rendu téléphone (classes en rangée, noms étroits). Titre court et séquence dans le
+>   formulaire de l'éval. Vérifié dans Chrome sur la 4D, et à 390 px.
 
 ---
 
@@ -170,7 +177,7 @@ Un script (ou une fonction SQL) crée, **pour chaque séance terminée**, une é
 
 | Phase | Contenu | Livrable testable | Migration |
 |---|---|---|---|
-| **1. Modèle + grille** | Migration 060 (colonnes, historique, vue). Grille : titre court, icône de type, date, filtres, bouton « i » (ouvre la visionneuse actuelle en attendant la modale), pied « manquantes », mobile | Grille filtrable sur téléphone et PC, données inchangées | 060 (additive) |
+| **1. Modèle + grille** | Migration 060 (titre court, séquence ; historique et vue reportés aux phases qui s'en servent). Grille : titre court, icône de type, date, filtres, bouton « i » (ouvre la visionneuse actuelle en attendant la modale), pied « manquantes », mobile | Grille filtrable sur téléphone et PC, données inchangées | 060 (additive) |
 | **2. Modale élève × éval** | Sections copie / transcription / correction + historique ; ← → ; actions ; PDF individuel. La visionneuse de la fiche s'appuie dessus | Même chaîne copies qu'aujourd'hui, dans la modale | — |
 | **3. Groupes → hub** | Fin de séance → éval `groupe` + cellules par membre ; note individuelle ajustable ; section Critères dans la modale ; Fiche : critères × groupes, matériel, photos, PDF fiches ; bascule des séances passées (après ton OK) ; espace élève : note publiable | Une séance de groupe notée apparaît dans le carnet et se publie | bascule (script, réversible) |
 | **4. Fiche : publication, exports des notes** | Publication séparée notes / corrections (RPC élève à adapter) ; avancement en chiffres ; export « colonne Pronote » ; dupliquer ; (l'import du paquet de la classe existe depuis la PR #20) | Publier les notes sans les corrections ; copier la colonne dans Pronote | — (RPC modifiée, rétro-compatible) |

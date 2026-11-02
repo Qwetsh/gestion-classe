@@ -73,6 +73,8 @@ interface CopyViewerProps {
   /** Ouvrir « Ajouter les copies de la classe » dès que la liste est chargée. */
   openClassAdd?: boolean;
   onClassAddOpened?: () => void;
+  /** Élève affiché à l'ouverture (bouton « i » d'une cellule du carnet) ; sinon le premier qui a une copie. */
+  initialStudentId?: string | null;
 }
 
 /**
@@ -80,7 +82,7 @@ interface CopyViewerProps {
  * manquants), et la copie de l'élève choisi en grand, page par page.
  * Clavier : ← → pages, ↑ ↓ élèves.
  */
-export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddOpened }: CopyViewerProps) {
+export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddOpened, initialStudentId = null }: CopyViewerProps) {
   const [rows, setRows] = useState<Row[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -103,6 +105,8 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
   // que si l'éval change ou si le parent le demande (refreshKey), pas à chaque nouvel objet.
   const assessmentRef = useRef(assessment);
   assessmentRef.current = assessment;
+  const initialStudentRef = useRef(initialStudentId);
+  initialStudentRef.current = initialStudentId;
 
   const load = useCallback(async () => {
     const assessment = assessmentRef.current;
@@ -133,7 +137,12 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
         return { student, pages, grade, transcript, state };
       });
       setRows(next);
-      setSelectedId((cur) => cur ?? next.find(isSelectable)?.student.id ?? null);
+      setSelectedId((cur) => {
+        if (cur) return cur;
+        const wanted = initialStudentRef.current;
+        if (wanted && next.some((r) => r.student.id === wanted)) return wanted;
+        return next.find(isSelectable)?.student.id ?? null;
+      });
       setUrls(await getCopyUrls(copies.map((c) => c.storage_path)));
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Copies introuvables');
