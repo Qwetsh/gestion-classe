@@ -602,6 +602,10 @@ export function CarnetTab({ userId, account, onError }: {
               <input type="checkbox" checked={prefs.showAverage} onChange={(e) => setPrefs((p) => ({ ...p, showAverage: e.target.checked }))} />
               Colonne moyenne
             </label>
+            <label style={{ ...filterLabel, cursor: 'pointer' }} title="Avancement, hors moyenne, coefficient et classes reliées dans chaque en-tête (toujours visibles dans le menu ▾)">
+              <input type="checkbox" checked={prefs.showColumnDetails} onChange={(e) => setPrefs((p) => ({ ...p, showColumnDetails: e.target.checked }))} />
+              Détails des colonnes
+            </label>
             {filtered && (
               <button onClick={() => setPrefs((p) => ({ ...p, filters: NO_FILTERS }))} style={linkBtn}>
                 Tout afficher ({visible.length}/{assessments.length})
@@ -676,9 +680,8 @@ export function CarnetTab({ userId, account, onError }: {
                       <ColumnHeader
                         assessment={a}
                         label={label}
-                        chip={chip ? (
-                          <span className="gc-pill" style={{ background: CHIP_COLORS[chip.tone][0], color: CHIP_COLORS[chip.tone][1] }}>{chip.label}</span>
-                        ) : null}
+                        chip={chip ? { label: chip.label, background: CHIP_COLORS[chip.tone][0], color: CHIP_COLORS[chip.tone][1] } : null}
+                        showDetails={prefs.showColumnDetails}
                         seriesSize={a.series_id ? seriesSize.get(a.series_id) ?? 1 : 0}
                         suggestion={suggestions.get(a.id) ?? null}
                         all={allAssessments}

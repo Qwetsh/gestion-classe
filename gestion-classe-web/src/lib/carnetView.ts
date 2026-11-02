@@ -103,9 +103,14 @@ export const CELL_MARK_LABEL: Record<Exclude<CellMark, null>, string> = {
 export interface CarnetPrefs {
   filters: CarnetFilters;
   showAverage: boolean;
+  /**
+   * « Détails des colonnes » : pastilles d'avancement, « hors moy. », coefficient et nombre de
+   * classes de la série dans l'en-tête. Masqués par défaut ; toujours lisibles dans le menu ▾.
+   */
+  showColumnDetails: boolean;
 }
 
-export const DEFAULT_PREFS: CarnetPrefs = { filters: NO_FILTERS, showAverage: true };
+export const DEFAULT_PREFS: CarnetPrefs = { filters: NO_FILTERS, showAverage: true, showColumnDetails: false };
 
 /** Relit des préférences enregistrées en ignorant ce qui ne ressemble à rien de connu. */
 export function parsePrefs(raw: string | null): CarnetPrefs {
@@ -121,6 +126,7 @@ export function parsePrefs(raw: string | null): CarnetPrefs {
         published: f.published === 'yes' || f.published === 'no' ? f.published : 'all',
       },
       showAverage: v.showAverage !== false,
+      showColumnDetails: v.showColumnDetails === true,
     };
   } catch {
     return DEFAULT_PREFS;

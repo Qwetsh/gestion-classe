@@ -2165,6 +2165,10 @@ a.dash__card-link:hover { text-decoration: underline; }
 .gc-colmenu__item--warn { background: var(--warn-soft); }
 .gc-colmenu__item--warn:hover { background: var(--warn-soft); outline: 1px solid var(--warn); }
 .gc-colmenu__item--warn strong { color: var(--warn); }
+.gc-colmenu__summary {
+  padding: 4px 10px 6px; font-size: 12px; line-height: 1.4; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); margin: 0 0 4px;
+}
 .gc-colmenu__sep { height: 1px; background: var(--border); margin: 4px 6px; }
 .gc-colmenu__doc { display: flex; align-items: center; gap: 6px; padding: 3px 10px; }
 .gc-colmenu__doc > span { flex: 1; font-weight: 500; }

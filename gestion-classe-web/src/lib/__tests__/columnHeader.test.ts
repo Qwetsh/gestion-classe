@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { columnLabels, normalizeName, relinkTargets, sameNameTarget } from '../columnHeader';
+import { columnDetailsSummary, columnLabels, normalizeName, relinkTargets, sameNameTarget } from '../columnHeader';
 
 const base = { bareme_total: 10, coefficient: 1, school_year: '2026-2027', period: 1, series_id: null as string | null };
 
@@ -23,6 +23,20 @@ describe('titres des colonnes', () => {
     expect(labels.get('d')?.title).toBe('TP de groupe');
     expect(labels.get('e')?.title).toBe('Expérience microbiote');
     expect(labels.get('f')).toEqual({ title: 'Séq. 2', meta: 'Écrit · 02/11 · /20', coefficient: 2 });
+  });
+});
+
+describe('résumé des détails d’une colonne', () => {
+  it('assemble avancement, hors moyenne, coefficient et série dans cet ordre', () => {
+    expect(columnDetailsSummary({ chip: '18 sans note', countsInAverage: false, coefficient: 2, seriesSize: 4 }))
+      .toBe('18 sans note · hors moyenne · coef 2 · 4 classes');
+    expect(columnDetailsSummary({ chip: 'À valider (3)', countsInAverage: true, coefficient: 1.5, seriesSize: 0 }))
+      .toBe('À valider (3) · coef 1,5');
+    expect(columnDetailsSummary({ chip: null, countsInAverage: true, coefficient: null, seriesSize: 2 })).toBe('2 classes');
+  });
+
+  it('ne dit rien quand il n’y a rien à dire (série d’une seule classe comprise)', () => {
+    expect(columnDetailsSummary({ chip: null, countsInAverage: true, coefficient: null, seriesSize: 1 })).toBe('');
   });
 });
 

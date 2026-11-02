@@ -32,8 +32,9 @@ const GROUP_AUTO_NAME = /^TP de groupe du \d{2}\/\d{2}$/i;
 export interface ColumnLabel {
   /** Ce que la colonne affiche (deux lignes au plus). */
   title: string;
-  /** « Groupe · 22/09 · /10 », plus « · coef 2 » quand le coefficient n'est pas 1. */
+  /** « Groupe · 22/09 · /10 », sans le coefficient. */
   meta: string;
+  /** Le coefficient quand il n'est pas 1, null sinon. */
   coefficient: number | null;
 }
 
@@ -68,6 +69,30 @@ export function columnLabels(items: readonly LabelInput[]): Map<string, ColumnLa
     out.set(a.id, { title, meta: parts.join(' · '), coefficient: Number.isFinite(coef) && coef !== 1 ? coef : null });
   }
   return out;
+}
+
+/** « coef 2 », « coef 1,5 ». */
+export function coefLabel(coefficient: number): string {
+  return `coef ${String(coefficient).replace('.', ',')}`;
+}
+
+/**
+ * Les détails masqués par défaut dans l'en-tête, en une ligne : avancement, « hors moyenne »,
+ * coefficient (s'il n'est pas 1), nombre de classes de la série. '' s'il n'y a rien à dire.
+ * Exemple : « 18 sans note · hors moyenne · coef 2 · 4 classes ».
+ */
+export function columnDetailsSummary(d: {
+  chip: string | null;
+  countsInAverage: boolean;
+  coefficient: number | null;
+  seriesSize: number;
+}): string {
+  const parts: string[] = [];
+  if (d.chip) parts.push(d.chip);
+  if (!d.countsInAverage) parts.push('hors moyenne');
+  if (d.coefficient !== null) parts.push(coefLabel(d.coefficient));
+  if (d.seriesSize > 1) parts.push(`${d.seriesSize} classes`);
+  return parts.join(' · ');
 }
 
 /** Une cible de rattachement : une série existante, ou une éval seule d'une autre classe. */

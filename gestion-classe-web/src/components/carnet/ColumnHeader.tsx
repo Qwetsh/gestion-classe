@@ -6,7 +6,7 @@ import { PronoteColumnDialog } from '../PronoteColumnDialog';
 import { RelinkDialog } from '../RelinkDialog';
 import { ClassCopiesDialog, type ClassCopyStudent } from '../ClassCopiesDialog';
 import { hasCopies } from '../../lib/assessmentGroups';
-import type { ColumnLabel, RelinkTarget } from '../../lib/columnHeader';
+import { coefLabel, columnDetailsSummary, type ColumnLabel, type RelinkTarget } from '../../lib/columnHeader';
 import { exportAssessmentNotesXlsx } from '../../lib/gradeExport';
 import {
   downloadAssessmentDoc,
@@ -27,11 +27,17 @@ import {
  * actions de l'éval : sujet et corrigé, scanner les copies, télécharger corrections et notes,
  * Pronote, relier à une autre classe. Le menu et les fenêtres s'affichent par-dessus la page
  * (portail), pas dans l'en-tête collant du tableau.
+ *
+ * Par défaut l'en-tête est sobre : avancement, « hors moy. », coefficient et nombre de classes
+ * de la série n'y figurent que si « Détails des colonnes » est coché. Ils restent lisibles en
+ * une ligne en tête du menu ▾ et dans l'infobulle du titre. La pastille « même nom en … »
+ * reste toujours visible : c'est une action.
  */
 export function ColumnHeader({
   assessment,
   label,
   chip,
+  showDetails,
   seriesSize,
   suggestion,
   all,
@@ -43,8 +49,10 @@ export function ColumnHeader({
 }: {
   assessment: AssessmentRow;
   label: ColumnLabel;
-  /** Pastille d'avancement (« 18 sans note », « À valider »), déjà mise en forme. */
-  chip: React.ReactNode;
+  /** Pastille d'avancement (« 18 sans note », « À valider ») et ses couleurs. */
+  chip: { label: string; background: string; color: string } | null;
+  /** « Détails des colonnes » coché : pastilles et coefficient dans l'en-tête. */
+  showDetails: boolean;
   /** Nombre de classes de sa série (0 ou 1 : pas de série). */
   seriesSize: number;
   /** Même nom dans d'autres classes, pas encore reliée. */
@@ -197,6 +205,10 @@ export function ColumnHeader({
   const withCopies = hasCopies(assessment);
   const canRelink = assessment.kind !== 'groupe';
   const coef = label.coefficient;
+  const details = columnDetailsSummary({
+    chip: chip?.label ?? null, countsInAverage: assessment.counts_in_average, coefficient: coef, seriesSize,
+  });
+  const pills = showDetails || !!suggestion;
 
   return (
     <>
@@ -205,7 +217,7 @@ export function ColumnHeader({
           to={`/evaluations/${assessment.id}`}
           onClick={onOpen}
           className="gc-colhead__title"
-          title={`${assessment.name} — ouvrir la fiche`}
+          title={`${assessment.name} — ouvrir la fiche${details ? `\n${details}` : ''}`}
         >
           {label.title}
         </Link>
@@ -225,12 +237,12 @@ export function ColumnHeader({
       </div>
       <div className="gc-colhead__meta">
         {label.meta}
-        {coef !== null && <> · <strong>coef {String(coef).replace('.', ',')}</strong></>}
+        {showDetails && coef !== null && <> · <strong>{coefLabel(coef)}</strong></>}
       </div>
-      <div className="gc-colhead__pills">
-        {chip}
-        {!assessment.counts_in_average && <span className="gc-pill gc-pill--outline">hors moy.</span>}
-        {seriesSize > 1 && <span className="gc-pill gc-pill--indigo" title="Même éval dans plusieurs classes">{seriesSize} classes</span>}
+      {pills && <div className="gc-colhead__pills">
+        {showDetails && chip && <span className="gc-pill" style={{ background: chip.background, color: chip.color }}>{chip.label}</span>}
+        {showDetails && !assessment.counts_in_average && <span className="gc-pill gc-pill--outline">hors moy.</span>}
+        {showDetails && seriesSize > 1 && <span className="gc-pill gc-pill--indigo" title="Même éval dans plusieurs classes">{seriesSize} classes</span>}
         {suggestion && (
           <button
             type="button"
@@ -241,10 +253,11 @@ export function ColumnHeader({
             même nom en {suggestion.classNames.join(', ')}
           </button>
         )}
-      </div>
+      </div>}
 
       {menu && createPortal(
         <div ref={menuRef} role="menu" aria-label={assessment.name} className="gc-colmenu" style={{ top: menu.top, left: menu.left }}>
+          {details && <div className="gc-colmenu__summary">{details}</div>}
           <Link role="menuitem" to={`/evaluations/${assessment.id}`} onClick={() => { closeMenu(); onOpen(); }} className="gc-colmenu__item gc-colmenu__item--strong">
             Ouvrir la fiche
           </Link>
