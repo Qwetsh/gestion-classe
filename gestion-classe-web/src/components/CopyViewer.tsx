@@ -8,6 +8,7 @@ import { AddCopyDialog } from './AddCopyDialog';
 import { ClassCopiesDialog } from './ClassCopiesDialog';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import { AiRunPanel, Badge } from './AiRunPanel';
+import { AiBatchPanel } from './AiBatchPanel';
 import { isSelectable, useAssessmentCopies, type CopyRow, type CopyRowState } from '../hooks/useAssessmentCopies';
 import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 
@@ -71,7 +72,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
       return id ? { assessmentId: assessment.id, studentId: id } : null;
     });
   }, [initialStudent, assessment.id]);
-  const { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct } =
+  const { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, trackRun } =
     useAssessmentCopies(assessment, { onError, onChanged, refreshKey, onLoaded });
 
   const visible = useMemo(
@@ -149,6 +150,9 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
           >
             Ajouter les copies de la classe
           </button>
+        )}
+        {!paperless && (
+          <AiBatchPanel assessmentId={assessment.id} rows={rows} aiRuns={aiRuns} hasKit={hasKit} trackRun={trackRun} />
         )}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           {FILTERS.filter(([id]) => anyScanned || (id !== 'scanned' && id !== 'missing')).map(([id, label]) => (
