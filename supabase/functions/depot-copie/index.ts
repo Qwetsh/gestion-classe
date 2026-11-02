@@ -5,7 +5,7 @@ import { decodeBase64, encodeBase64Url } from "jsr:@std/encoding@1";
  * « Ajouter une copie » par QR code (migration 058).
  *
  * Le prof, dans « Voir les copies », crée un jeton pour un élève, ou pour toute l'éval
- * (migration 060, « Ajouter les copies de la classe ») ; le QR code ouvre la page publique
+ * (migration 061, « Ajouter les copies de la classe ») ; le QR code ouvre la page publique
  * /depot#<jeton> sur son téléphone, qui envoie les pages ici. La page publique n'a jamais
  * d'accès direct à Supabase : tout passe par cette fonction, qui vérifie le jeton.
  *
@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
       const user = await currentUser(sb, req);
       if (!user) return json({ error: "unauthorized" }, 401);
       const assessmentId = String(body.assessment_id ?? "");
-      // Sans élève : jeton de classe (migration 060).
+      // Sans élève : jeton de classe (migration 061).
       const studentId = body.student_id == null || body.student_id === "" ? null : String(body.student_id);
       if (!UUID.test(assessmentId) || (studentId !== null && !UUID.test(studentId))) {
         return json({ error: "bad_request" }, 400);

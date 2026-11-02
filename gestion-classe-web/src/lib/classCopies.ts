@@ -14,7 +14,7 @@ export interface Bundle<P> {
 }
 
 /**
- * Copie rangée sans élève (« Pas de nom », migration 060), à identifier plus tard dans l'app.
+ * Copie rangée sans élève (« Pas de nom », migration 061), à identifier plus tard dans l'app.
  * Plusieurs copies peuvent l'être ; l'attribution dans l'ordre les laisse où elles sont.
  */
 export const UNNAMED = '__pas_de_nom__';

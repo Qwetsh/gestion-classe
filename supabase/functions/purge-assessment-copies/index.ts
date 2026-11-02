@@ -13,7 +13,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
  * Garde-fou (migration 056) : seules les copies qui ont une transcription
  * (`assessment_copy_transcripts`) perdent leurs scans. Les autres restent ; l'éval n'est alors
  * pas marquée purgée et elle est reprise chaque nuit, jusqu'à ce que toutes soient transcrites.
- * Une copie « Pas de nom » (`assessment_unnamed_pages`, migration 060, fichiers sous
+ * Une copie « Pas de nom » (`assessment_unnamed_pages`, migration 061, fichiers sous
  * `sans-nom/`) compte comme non transcrite : elle attend d'être identifiée ou supprimée.
  *
  * Authentification : en-tête `x-purge-token`, comparé au jeton rangé dans Vault par la

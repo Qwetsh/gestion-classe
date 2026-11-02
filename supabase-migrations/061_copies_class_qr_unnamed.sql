@@ -1,4 +1,4 @@
--- Migration 060 : QR code pour toute la classe et copies « Pas de nom »
+-- Migration 061 : QR code pour toute la classe et copies « Pas de nom »
 -- Description : dans « Ajouter les copies de la classe », un seul QR code pour l'éval : le
 --   téléphone enchaîne les élèves (page /depot), comme le scan mobile. Et une copie peut être
 --   rangée sans élève (« Pas de nom »), pour être identifiée plus tard dans l'app.

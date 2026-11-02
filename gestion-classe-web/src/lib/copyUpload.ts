@@ -228,7 +228,7 @@ export async function uploadPagesAsTeacher(params: {
   }
 }
 
-/* ---------- copies « Pas de nom » (migration 060) ---------- */
+/* ---------- copies « Pas de nom » (migration 061) ---------- */
 
 /** Une copie rangée sans élève, à identifier plus tard. */
 export interface UnnamedCopy {
@@ -253,7 +253,7 @@ export function groupUnnamed(
   return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.copyId.localeCompare(b.copyId));
 }
 
-/** Copies sans nom d'une éval ; vide si la migration 060 n'est pas passée. */
+/** Copies sans nom d'une éval ; vide si la migration 061 n'est pas passée. */
 export async function fetchUnnamedCopies(assessmentId: string): Promise<UnnamedCopy[]> {
   const { data, error } = await supabase
     .from('assessment_unnamed_pages')
@@ -342,7 +342,7 @@ export interface DepotToken {
 }
 
 export interface DepotInfo {
-  /** Jeton d'un élève, ou de toute l'éval (migration 060). Absent : ancienne fonction (élève). */
+  /** Jeton d'un élève, ou de toute l'éval (migration 061). Absent : ancienne fonction (élève). */
   mode?: 'student' | 'class';
   pseudo: string;
   class_name: string;

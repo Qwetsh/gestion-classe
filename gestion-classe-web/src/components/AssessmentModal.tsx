@@ -17,6 +17,10 @@ export interface AssessmentValues {
   kind: AssessmentKind;
   date: string;
   countsInAverage: boolean;
+  /** Titre court de l'en-tête de colonne du carnet ('' = le nom). Migration 060. */
+  shortName: string;
+  /** Séquence du programme ('' = aucune). Migration 060. */
+  sequence: string;
   /** Création seulement : les classes sur lesquelles créer l'évaluation. */
   classIds?: string[];
   /** Édition seulement : répercuter sur les autres classes de la série. */
@@ -31,7 +35,7 @@ export interface AssessmentValues {
 
 export function AssessmentModal({
   title, className, initial, classes, currentClassId, seriesId, onSubmit, onClose, onDelete,
-  students, adaptedIds, onToggleAdapted, gradeRaws,
+  students, adaptedIds, onToggleAdapted, gradeRaws, sequences = [], defaultSequence = '',
 }: {
   title: string;
   className: string;
@@ -51,6 +55,10 @@ export function AssessmentModal({
   onToggleAdapted?: (studentId: string, value: boolean) => Promise<void>;
   /** Notes brutes déjà saisies : sert à décider quoi faire d'un changement de barème. */
   gradeRaws?: number[];
+  /** Séquences déjà utilisées dans la classe : proposées à la saisie. */
+  sequences?: string[];
+  /** Création : séquence pré-remplie (celle du filtre du carnet). */
+  defaultSequence?: string;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [bareme, setBareme] = useState(String(initial?.bareme ?? 20));
@@ -58,6 +66,8 @@ export function AssessmentModal({
   const [kind, setKind] = useState<AssessmentKind>(initial?.kind ?? 'ecrit');
   const [date, setDate] = useState(initial?.date ?? '');
   const [countsInAverage, setCountsInAverage] = useState(initial?.countsInAverage ?? true);
+  const [shortName, setShortName] = useState(initial?.shortName ?? '');
+  const [sequence, setSequence] = useState(initial?.sequence ?? defaultSequence);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +110,7 @@ export function AssessmentModal({
     try {
       await onSubmit({
         name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage,
+        shortName: shortName.trim(), sequence: sequence.trim(),
         classIds: canSpread && spread && currentClassId ? [currentClassId, ...targets] : undefined,
         applyToSeries,
         baremeMode,
@@ -120,7 +131,7 @@ export function AssessmentModal({
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'grid', placeItems: 'center', zIndex: 100 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: 440, maxWidth: '92vw', boxShadow: 'var(--shadow-2)' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: 440, maxWidth: '92vw', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: 'var(--shadow-2)' }}>
         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{title}</h3>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>{className}</p>
 
@@ -132,6 +143,20 @@ export function AssessmentModal({
 
         <label style={lbl}>Nom</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Éval Nutrition" style={inp} autoFocus />
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={lbl} htmlFor="assessment-short-name">Titre court <span style={{ fontWeight: 400 }}>(en-tête du carnet)</span></label>
+            <input id="assessment-short-name" value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder={name.trim() ? name.trim().slice(0, 14) : 'Éval 1'} maxLength={24} style={inp} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={lbl} htmlFor="assessment-sequence">Séquence</label>
+            <input id="assessment-sequence" value={sequence} onChange={(e) => setSequence(e.target.value)} placeholder="Séquence 1" list="assessment-sequences" style={inp} />
+            <datalist id="assessment-sequences">
+              {sequences.map((q) => <option key={q} value={q} />)}
+            </datalist>
+          </div>
+        </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
@@ -205,8 +230,8 @@ export function AssessmentModal({
               Appliquer aux autres classes de la série
             </label>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-              Nom, type, barème, coefficient et prise en compte dans la moyenne. La date reste
-              propre à chaque classe.
+              Nom, titre court, séquence, type, barème, coefficient et prise en compte dans la
+              moyenne. La date reste propre à chaque classe.
             </div>
           </div>
         )}

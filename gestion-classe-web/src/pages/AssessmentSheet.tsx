@@ -6,6 +6,7 @@ import { AssessmentDetail } from '../components/AssessmentDetail';
 import { AssessmentModal } from '../components/AssessmentModal';
 import { AssessmentStatsBody } from '../components/AssessmentStatsPanel';
 import { groupOf, hasCopyContent } from '../lib/assessmentGroups';
+import { sequencesPresent } from '../lib/carnetView';
 import type { CopyOverview } from '../lib/copyStatus';
 import { describeGrades, type GradeEntry, type GradeStatus } from '../lib/gradeStats';
 import {
@@ -175,6 +176,7 @@ export function AssessmentSheet() {
                 {ASSESSMENT_KIND_LABEL[focus.kind]} · {group.items.map((a) => a.classes?.name ?? '—').join(', ')}
                 {' '}· /{bareme} · coef {Number(focus.coefficient)}
                 {focus.period ? ` · T${focus.period}` : ''}
+                {focus.sequence ? ` · ${focus.sequence}` : ''}
                 {!focus.counts_in_average && ' · hors moyenne'}
                 {group.items.length > 1 ? ' · sujet et corrigé communs' : ''}
               </div>
@@ -226,7 +228,10 @@ export function AssessmentSheet() {
             kind: focus.kind,
             date: focus.date ?? '',
             countsInAverage: focus.counts_in_average,
+            shortName: focus.short_name ?? '',
+            sequence: focus.sequence ?? '',
           }}
+          sequences={sequencesPresent((rows ?? []).filter((r) => r.class_id === focus.class_id))}
           students={students}
           adaptedIds={adaptedIds}
           onToggleAdapted={toggleAdapted}
@@ -240,6 +245,8 @@ export function AssessmentSheet() {
               coefficient: values.coefficient,
               kind: values.kind,
               countsInAverage: values.countsInAverage,
+              shortName: values.shortName,
+              sequence: values.sequence,
             };
             const oldBareme = Number(focus.bareme_total ?? 20);
             const convert = values.baremeMode === 'convert' && values.bareme !== oldBareme;
