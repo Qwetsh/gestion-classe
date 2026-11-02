@@ -83,6 +83,8 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
       alive = false;
     };
   }, [assessment.id, refreshKey, showUnnamed]);
+  /** TP de groupe (migration 063) : noté en séance, sans copie papier. */
+  const paperless = assessment.kind === 'groupe';
 
   // L'élève demandé ne sert qu'à l'ouverture : on le fige au premier rendu.
   const [initialStudent] = useState(initialStudentId);
@@ -198,13 +200,15 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, alignItems: 'start' }}>
       {/* ---- Élèves ---- */}
       <div>
-        <button
-          onClick={() => setAddingClass(true)}
-          style={{ ...btn, width: '100%', marginBottom: 8 }}
-          title="Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste"
-        >
-          Ajouter les copies de la classe
-        </button>
+        {!paperless && (
+          <button
+            onClick={() => setAddingClass(true)}
+            style={{ ...btn, width: '100%', marginBottom: 8 }}
+            title="Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste"
+          >
+            Ajouter les copies de la classe
+          </button>
+        )}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           {FILTERS.filter(([id]) => anyScanned || (id !== 'scanned' && id !== 'missing')).map(([id, label]) => (
             <button
@@ -343,13 +347,15 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                   PDF
                 </button>
               )}
-              <button
-                onClick={() => setAddingId(selected.student.id)}
-                style={btn}
-                title="Importer des photos ou un PDF, la webcam, ou un QR code pour le téléphone"
-              >
-                Ajouter une copie
-              </button>
+              {!paperless && (
+                <button
+                  onClick={() => setAddingId(selected.student.id)}
+                  style={btn}
+                  title="Importer des photos ou un PDF, la webcam, ou un QR code pour le téléphone"
+                >
+                  Ajouter une copie
+                </button>
+              )}
               {(() => {
                 const mode = correctionMode({ pages: selected.pages.length, grade: selected.grade });
                 if (!mode) return null;
@@ -445,6 +451,10 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                     </span>
                   </div>
                   <CopyTranscriptView blocks={transcriptBlocks} />
+                </div>
+              ) : !details && paperless ? (
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 10 }}>
+                  Noté en séance de groupe, sans copie. Les critères du groupe sont plus bas, dans « Séance de groupe ».
                 </div>
               ) : !details ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 10 }}>

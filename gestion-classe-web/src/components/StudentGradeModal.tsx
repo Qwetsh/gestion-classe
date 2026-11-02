@@ -8,11 +8,12 @@ import { CopyTranscriptView } from './CopyTranscriptView';
 import { GradeDetailsView } from './GradeDetailsView';
 import { KindIcon } from './KindIcon';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
-import { hasCopies } from '../lib/assessmentGroups';
+import { hasCopies, publicationState, PUBLICATION_LABEL } from '../lib/assessmentGroups';
 import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 import { alignTranscript } from '../lib/copyTranscript';
 import { parseGradeDetails } from '../lib/gradeDetails';
 import { describeGradeValue, formatVersionDate, gradeSource, SOURCE_LABEL } from '../lib/gradeHistory';
+import { isGroupGradeAdjusted, parseGroupDetails } from '../lib/groupDetails';
 import { parseGradeCell, STATUS_LABEL, toTwenty, type GradeStatus } from '../lib/gradeStats';
 import {
   ASSESSMENT_KIND_LABEL,
@@ -119,14 +120,17 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
   }, [adding, move, row, close]);
 
   const details = useMemo(() => parseGradeDetails(grade?.details), [grade?.details]);
+  /** TP de groupe (migration 063) : critères du groupe et note du groupe. */
+  const groupInfo = useMemo(() => parseGroupDetails(grade?.details), [grade?.details]);
+  const groupAdjusted = isGroupGradeAdjusted(grade, groupInfo);
   const transcriptBlocks = useMemo(
     () => (row?.transcript ? alignTranscript(row.transcript, details?.questions ?? []) : null),
     [row?.transcript, details],
   );
 
-  const saveNote = async () => {
-    if (!user || !row || noteText === null) return;
-    const parsed = parseGradeCell(noteText, bareme);
+  const saveNote = async (text: string | null = noteText) => {
+    if (!user || !row || text === null) return;
+    const parsed = parseGradeCell(text, bareme);
     if (!parsed) { setNoteError(`Note entre 0 et ${String(bareme).replace('.', ',')}, ou a (absent), d (dispensé), n (non rendu), z (non rendu, 0).`); return; }
     setSavingNote(true);
     setNoteError(null);
@@ -184,7 +188,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
             <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
               <KindIcon kind={assessment.kind} />
               <span>{assessment.name} · {ASSESSMENT_KIND_LABEL[assessment.kind]} · {assessment.classes?.name ?? ''} · /{String(bareme).replace('.', ',')}</span>
-              <Badge tone={assessment.published_to_students ? 'ok' : 'neutral'}>{assessment.published_to_students ? 'Publiée' : 'Non publiée'}</Badge>
+              <Badge tone={publicationState(assessment) === 'all' ? 'ok' : publicationState(assessment) === 'notes' ? 'warn' : 'neutral'}>{PUBLICATION_LABEL[publicationState(assessment)]}</Badge>
             </div>
           </div>
           <Link to={`/evaluations/${assessment.id}`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--indigo)' }}>Fiche de l’éval ↗</Link>
@@ -329,10 +333,63 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                     <div style={{ marginTop: 10 }}><button onClick={() => setAdding(true)} style={btn}>Ajouter une copie</button></div>
                   </div>
                 )}
+                {groupInfo && (
+                  <section style={panel} aria-label="Critères du groupe">
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                      {groupInfo.nom || 'Groupe'}
+                      {groupInfo.membres.length > 0 && <span style={{ fontWeight: 500 }}> · {groupInfo.membres.join(', ')}</span>}
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                      <thead>
+                        <tr style={{ color: 'var(--text-dim)', textAlign: 'left' }}>
+                          <th style={{ padding: '4px 6px', fontWeight: 600 }}>Critère</th>
+                          <th style={{ padding: '4px 6px', fontWeight: 600, textAlign: 'right' }}>Points</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupInfo.criteres.map((c, i) => (
+                          <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                            <td style={{ padding: '6px' }}>{c.label}</td>
+                            <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700, color: c.max > 0 && c.points / c.max >= 0.75 ? 'var(--pos)' : c.max > 0 && c.points / c.max >= 0.5 ? 'var(--warn)' : 'var(--neg)' }}>
+                              {String(c.points).replace('.', ',')}/{String(c.max).replace('.', ',')}
+                            </td>
+                          </tr>
+                        ))}
+                        {groupInfo.malus > 0 && (
+                          <tr style={{ borderTop: '1px solid var(--border)', color: 'var(--neg)' }}>
+                            <td style={{ padding: '6px' }}>Malus de conduite</td>
+                            <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700 }}>−{String(groupInfo.malus).replace('.', ',')}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: '1px solid var(--border)' }}>
+                          <td style={{ padding: '6px', fontWeight: 700 }}>Note du groupe</td>
+                          <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700 }}>{String(groupInfo.total).replace('.', ',')}/{String(groupInfo.bareme).replace('.', ',')}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10, fontSize: 12.5 }}>
+                      {groupAdjusted ? (
+                        <>
+                          <Badge tone="warn">Note ajustée pour {row.student.pseudo}</Badge>
+                          <span style={{ color: 'var(--text-muted)' }}>elle ne suit plus le groupe</span>
+                          <button onClick={() => { void saveNote(String(groupInfo.total)); }} disabled={savingNote} style={btn}>
+                            Remettre la note du groupe ({String(groupInfo.total).replace('.', ',')})
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {row.student.pseudo} a la note de son groupe. La changer ci-dessus l’ajuste pour lui seul ; les points se modifient dans la fiche de l’éval.
+                        </span>
+                      )}
+                    </div>
+                  </section>
+                )}
                 {(details || grade?.comment) && (
                   <section style={panel}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10 }}>
-                      Correction{details?.version ? ` · sujet ${details.version}` : ''} · {SOURCE_LABEL[gradeSource(grade?.details)]}
+                      Correction{details?.version ? ` · sujet ${details.version}` : ''} · {SOURCE_LABEL[gradeSource(grade?.details, grade)]}
                       {isDraft && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · brouillon</span>}
                     </div>
                     {details ? <GradeDetailsView details={details} /> : <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>{grade?.comment}</p>}
@@ -351,7 +408,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                     <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <li style={versionRow}>
                         <strong style={{ minWidth: 92 }}>{formatVersionDate(grade.updated_at) || 'Actuelle'}</strong>
-                        <span style={{ flex: 1 }}>{SOURCE_LABEL[gradeSource(grade.details)]} · {describeGradeValue(grade, bareme)}</span>
+                        <span style={{ flex: 1 }}>{SOURCE_LABEL[gradeSource(grade.details, grade)]} · {describeGradeValue(grade, bareme)}</span>
                         <Badge tone="info">actuelle</Badge>
                       </li>
                       {(revisions ?? []).map((v) => {
@@ -385,7 +442,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                     )}
                   </section>
                 )}
-                {!showLeft && !(withCopies && anyScanned) && !details && !grade?.comment && (revisions == null || revisions.length === 0) && (
+                {!showLeft && !(withCopies && anyScanned) && !details && !groupInfo && !grade?.comment && (revisions == null || revisions.length === 0) && (
                   <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-dim)', fontSize: 12.5 }}>
                     {grade ? 'Pas de copie ni de correction détaillée pour cette note.' : 'Pas encore de note : tape-la ci-dessus.'}
                   </div>

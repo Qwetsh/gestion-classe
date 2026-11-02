@@ -39,7 +39,7 @@ export function filterAssessments<T extends Pick<AssessmentRow, 'kind' | 'sequen
 
 /** Types présents, dans l'ordre du formulaire de création. */
 export function kindsPresent(list: Pick<AssessmentRow, 'kind'>[]): AssessmentKind[] {
-  const order: AssessmentKind[] = ['ecrit', 'dm', 'tp', 'oral', 'projet'];
+  const order: AssessmentKind[] = ['ecrit', 'dm', 'tp', 'groupe', 'oral', 'projet'];
   const seen = new Set(list.map((a) => a.kind));
   return order.filter((k) => seen.has(k));
 }
@@ -113,7 +113,7 @@ export function parsePrefs(raw: string | null): CarnetPrefs {
   try {
     const v = JSON.parse(raw) as Partial<CarnetPrefs> & { filters?: Partial<CarnetFilters> };
     const f: Partial<CarnetFilters> = v.filters ?? {};
-    const kinds: (AssessmentKind | 'all')[] = ['all', 'ecrit', 'dm', 'tp', 'oral', 'projet'];
+    const kinds: (AssessmentKind | 'all')[] = ['all', 'ecrit', 'dm', 'tp', 'groupe', 'oral', 'projet'];
     return {
       filters: {
         kind: kinds.includes(f.kind as AssessmentKind) ? (f.kind as AssessmentKind | 'all') : 'all',

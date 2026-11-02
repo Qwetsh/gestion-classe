@@ -116,6 +116,8 @@ export interface AssessmentRow {
   counts_in_average: boolean;
   /** TRUE : les élèves de la classe voient leur note, le sujet et le corrigé (migration 040). */
   published_to_students: boolean;
+  /** Migration 064 : publiée sans les corrections (note seule). Absent avant la migration. */
+  corrections_withheld?: boolean;
   /** Séance où les copies ont été scannées au téléphone (migration 052, facultatif). */
   session_id: string | null;
   /** Migration 054 : dernière publication, suppression prévue des scans, dernière suppression. */
@@ -128,10 +130,12 @@ export interface AssessmentRow {
    */
   short_name?: string | null;
   sequence?: string | null;
+  /** Migration 063 : séance de groupe dont l'éval (kind = groupe) reprend les notes. */
+  group_session_id?: string | null;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
-export type AssessmentKind = 'ecrit' | 'tp' | 'oral' | 'dm' | 'projet';
+export type AssessmentKind = 'ecrit' | 'tp' | 'oral' | 'dm' | 'projet' | 'groupe';
 
 export const ASSESSMENT_KIND_LABEL: Record<AssessmentKind, string> = {
   ecrit: 'Évaluation écrite',
@@ -139,6 +143,8 @@ export const ASSESSMENT_KIND_LABEL: Record<AssessmentKind, string> = {
   oral: 'Oral',
   dm: 'Devoir maison',
   projet: 'Projet',
+  // Migration 063 : créée par la base à la fin d'une séance de groupe, jamais à la main.
+  groupe: 'TP de groupe',
 };
 
 /** Série : une même évaluation déclinée sur plusieurs classes. Porte le sujet et le corrigé. */
@@ -463,7 +469,7 @@ export async function fetchTranscribedKeys(assessmentIds: string[]): Promise<Rec
 /** Une version remplacée d'une note (migration 061, archivée par trigger). */
 export interface GradeRevisionRow {
   id: string;
-  source: 'prof' | 'ia' | 'correcteur';
+  source: 'prof' | 'ia' | 'correcteur' | 'groupe';
   grade: number | null;
   grade_raw: number | null;
   status: string | null;
@@ -702,6 +708,17 @@ export async function uploadAssessmentDoc(
   if (updErr) throw updErr;
 
   return path;
+}
+
+/**
+ * Télécharge un sujet ou un corrigé pour le recopier ailleurs (Dupliquer, phase 4) : chaque
+ * éval garde son propre fichier, pour qu'en supprimer un n'en prive pas l'autre.
+ */
+export async function downloadAssessmentDoc(storagePath: string, kind: AssessmentDocKind): Promise<File> {
+  const { data, error } = await supabase.storage.from(DOCS_BUCKET).download(storagePath);
+  if (error || !data) throw error ?? new Error('Document introuvable');
+  const ext = storagePath.split('.').pop() ?? 'pdf';
+  return new File([data], `${kind}.${ext}`, { type: data.type || 'application/octet-stream' });
 }
 
 /** Supprime un document (sujet/correction) : fichier Storage + colonne remise a null. */
@@ -1065,6 +1082,8 @@ export interface UpdateAssessmentInput {
   kind?: AssessmentKind;
   countsInAverage?: boolean;
   publishedToStudents?: boolean;
+  /** Migration 064 : publiée sans les corrections. */
+  correctionsWithheld?: boolean;
   /** Migration 060. Chaîne vide = effacer. */
   shortName?: string | null;
   sequence?: string | null;
@@ -1082,6 +1101,7 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
   if (patch.publishedToStudents !== undefined) row.published_to_students = patch.publishedToStudents;
+  if (patch.correctionsWithheld !== undefined) row.corrections_withheld = patch.correctionsWithheld;
   Object.assign(row, optionalLabels(patch, true));
   if (Object.keys(row).length === 0) return;
 

@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { CopyViewer } from './CopyViewer';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import { ExportCorrectionsDialog, exportableSheets, type ExportableRow } from './ExportCorrectionsDialog';
+import { PronoteColumnDialog } from './PronoteColumnDialog';
+import { PublishDialog } from './PublishDialog';
 import { isApiGrade, mentionsOtherVersion } from '../lib/aiCorrection';
 import {
   COPY_RETENTION_DAYS,
@@ -20,6 +22,7 @@ import {
   hasCopyContent,
   neverScanned,
   pendingDrafts,
+  publicationState,
   stageLabel,
   type AssessmentGroup,
 } from '../lib/assessmentGroups';
@@ -86,6 +89,10 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
   /** « Exporter en PDF » : classe et fiches chargées pour la fenêtre d'export. */
   const [exporting, setExporting] = useState<{ assessment: AssessmentRow; rows: ExportableRow[] } | null>(null);
   const [exportLoading, setExportLoading] = useState<string | null>(null);
+  /** Publier : la fenêtre « notes et corrections, ou notes seules » de cette classe. */
+  const [publishing, setPublishing] = useState<AssessmentRow | null>(null);
+  /** Copier pour Pronote : la colonne de cette classe. */
+  const [pronoteFor, setPronoteFor] = useState<AssessmentRow | null>(null);
   /** Incrémenté quand une action d'ici change les copies ou les notes : la visionneuse recharge. */
   const [viewerKey, setViewerKey] = useState(0);
   // « Ajouter les copies » sur une classe sans rien encore : ouvre la vue et la fenêtre de la classe.
@@ -246,22 +253,41 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     }
   };
 
-  // Publier = l'élève voit ses notes VALIDÉES, le sujet et le corrigé. Un brouillon reste caché
-  // même après publication (migration 053) : on le dit avant, plutôt que de laisser croire
-  // que toute la classe a sa note.
-  const togglePublish = async (a: AssessmentRow) => {
-    const pending = pendingDrafts(overviews[a.id]);
-    const cls = a.classes?.name ?? 'cette classe';
-    const message = a.published_to_students
-      ? `Retirer « ${a.name} » de l’espace élève de ${cls} ? Les élèves ne verront plus leur note.`
-      : pending > 0
-        ? `${pending} note${pending > 1 ? 's sont' : ' est'} encore en brouillon : ${pending > 1 ? 'ces élèves ne verront pas leur note' : 'cet élève ne verra pas sa note'} tant qu’elle n’est pas validée.
+  // Publier = l'élève voit ses notes VALIDÉES (un brouillon reste caché, migration 053), avec
+  // ou sans les corrections (migration 064) : la fenêtre PublishDialog fait choisir.
+  const publish = async (a: AssessmentRow, withCorrections: boolean) => {
+    try {
+      await updateAssessment(a.id, {
+        publishedToStudents: true,
+        ...(withCorrections ? (a.corrections_withheld ? { correctionsWithheld: false } : {}) : { correctionsWithheld: true }),
+      });
+      await reloadAll();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Publication impossible');
+    }
+  };
 
-Publier quand même pour ${cls} ?`
-        : `Publier « ${a.name} » pour ${cls} ? Les élèves verront leur note, son détail, le sujet et le corrigé.`;
+  /** Second temps : les corrections retenues deviennent visibles, ou l'inverse. */
+  const setCorrections = async (a: AssessmentRow, visible: boolean) => {
+    const cls = a.classes?.name ?? 'cette classe';
+    const message = visible
+      ? `Publier les corrections de « ${a.name} » pour ${cls} ? Les élèves verront le détail, le commentaire, le corrigé et leur copie corrigée.`
+      : `Retenir les corrections de « ${a.name} » pour ${cls} ? Les élèves garderont leur note, sans le détail, le commentaire, le corrigé ni leur copie corrigée.`;
     if (!window.confirm(message)) return;
     try {
-      await updateAssessment(a.id, { publishedToStudents: !a.published_to_students });
+      await updateAssessment(a.id, { correctionsWithheld: !visible });
+      await reloadAll();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Publication impossible');
+    }
+  };
+
+  const unpublish = async (a: AssessmentRow) => {
+    const cls = a.classes?.name ?? 'cette classe';
+    if (!window.confirm(`Retirer « ${a.name} » de l’espace élève de ${cls} ? Les élèves ne verront plus leur note.`)) return;
+    try {
+      // Republier repartira de « tout » : on ne garde pas une retenue oubliée.
+      await updateAssessment(a.id, { publishedToStudents: false, ...(a.corrections_withheld ? { correctionsWithheld: false } : {}) });
       await reloadAll();
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Publication impossible');
@@ -322,7 +348,9 @@ Publier quand même pour ${cls} ?`
           <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
             {withCopies
               ? 'scan au téléphone → correction sur le PC (Correcteur) → valider → publier'
-              : 'saisie dans le carnet (ou envoi depuis Productions) → publier'}
+              : group.items.some((a) => a.kind === 'groupe')
+                ? 'notation en séance, par groupe et sur critères (détail plus bas) → publier'
+                : 'saisie dans le carnet (ou envoi depuis Productions) → publier'}
           </div>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -332,7 +360,12 @@ Publier quand même pour ${cls} ?`
               const on = openId === a.id;
               const drafts = pendingDrafts(o);
               const r = o ? retentionState(a, o.pages) : null;
+              const pub = publicationState(a);
               const menu: MoreMenuItem[] = [];
+              if (o && o.graded + o.absent > 0) {
+                menu.push({ label: 'Copier pour Pronote', onClick: () => setPronoteFor(a), title: 'La colonne des notes, dans l’ordre de la liste Pronote' });
+              }
+              if (pub === 'all') menu.push({ label: 'Retenir les corrections', onClick: () => setCorrections(a, false), title: 'Les élèves gardent leur note, sans le détail ni le corrigé' });
               if (r?.kind === 'scheduled') menu.push({ label: `Garder les scans ${COPY_RETENTION_DAYS} j de plus`, onClick: () => handleExtend(a), title: 'En cas de contestation' });
               if (r?.kind === 'scheduled' || r?.kind === 'kept') menu.push({ label: 'Supprimer les scans maintenant', onClick: () => handlePurgeNow(a), danger: true });
               return (
@@ -354,6 +387,11 @@ Publier quand même pour ${cls} ?`
                           : `Scans supprimés le ${formatSession(r.at)} (dans ${r.days} j)`)}
                         {r.kind === 'scheduled' && r.days > 0 && o.untranscribed > 0 && ` · ${describeKeptCopies(o.untranscribed)}`}
                         {r.kind === 'purged' && `Scans supprimés le ${formatSession(r.at)}`}
+                      </div>
+                    )}
+                    {pub === 'notes' && (
+                      <div style={{ fontSize: 11.5, marginTop: 3, color: 'var(--warn)' }}>
+                        Notes publiées · corrections retenues
                       </div>
                     )}
                   </td>
@@ -384,15 +422,24 @@ Publier quand même pour ${cls} ?`
                         {validating === a.id ? 'Validation…' : `Valider la classe (${drafts})`}
                       </button>
                     )}
+                    {pub === 'notes' && (
+                      <button
+                        onClick={() => setCorrections(a, true)}
+                        style={{ ...btnPrimary, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
+                        title="Le détail, le commentaire, le corrigé et la copie corrigée deviennent visibles"
+                      >
+                        Publier les corrections
+                      </button>
+                    )}
                     <button
-                      onClick={() => togglePublish(a)}
+                      onClick={() => (pub === 'none' ? setPublishing(a) : unpublish(a))}
                       style={{
-                        ...(a.published_to_students || drafts > 0 ? btnGhost : btnPrimary),
+                        ...(pub !== 'none' || drafts > 0 ? btnGhost : btnPrimary),
                         padding: '4px 10px', fontSize: 12, marginLeft: 6,
                       }}
-                      title={a.published_to_students ? 'Visible dans l’espace élève' : 'Rendre visible dans l’espace élève (notes validées, sujet et corrigé)'}
+                      title={pub === 'none' ? 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' : 'Visible dans l’espace élève'}
                     >
-                      {a.published_to_students ? 'Dépublier' : 'Publier'}
+                      {pub === 'none' ? 'Publier…' : 'Dépublier'}
                     </button>
                     {o && o.graded > 0 && hasCopies(a) && (
                       <button
@@ -406,7 +453,7 @@ Publier quand même pour ${cls} ?`
                     )}
                     {menu.length > 0 && (
                       <span style={{ marginLeft: 6 }}>
-                        <MoreMenu items={menu} compact title="Scans : conserver ou supprimer" />
+                        <MoreMenu items={menu} compact title="Plus d’actions : Pronote, corrections, scans" />
                       </span>
                     )}
                   </td>
@@ -434,6 +481,15 @@ Publier quand même pour ${cls} ?`
           </div>
         )}
       </div>
+      {publishing && (
+        <PublishDialog
+          assessment={publishing}
+          drafts={pendingDrafts(overviews[publishing.id])}
+          onClose={() => setPublishing(null)}
+          onConfirm={(withCorrections) => publish(publishing, withCorrections)}
+        />
+      )}
+      {pronoteFor && <PronoteColumnDialog assessment={pronoteFor} onClose={() => setPronoteFor(null)} />}
       {exporting && (
         <ExportCorrectionsDialog assessment={exporting.assessment} rows={exporting.rows} onClose={() => setExporting(null)} />
       )}

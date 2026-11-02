@@ -27,6 +27,37 @@
 >   424 notes intactes), PR #23 fusionnée, déploiement OK, vérifié sur le site publié (modale d'Ayaz, 4D :
 >   copie, correction, radar, section Historique avec la version actuelle). Prochaine étape : phase 3,
 >   séances de groupe dans le carnet.
+> - Phase 3 **codée le 02/11/2026** (branche `feat/hub-phase3`) : migration 063 (kind `groupe`,
+>   `written_assessments.group_session_id`, synchronisation par déclencheurs sur les tables de séance de groupe
+>   — web et mobile —, note individuelle ajustable, éval à la corbeille si la séance est supprimée, auteur
+>   'groupe' dans l'historique), **vérifiée en transaction annulée, pas appliquée** ; la bascule des séances
+>   passées est une commande à part, limitée au compte de Thomas (13 séances ; un autre compte a 1 séance, qui
+>   ne sera versée que si elle change). Web : type « TP de groupe » (icône, filtre, formulaire avec type et
+>   barème verrouillés), détail de séance extrait dans `components/groups/GroupSessionDetail.tsx` et partagé
+>   par la page Groupes et la fiche de l'éval, section Critères dans la modale (groupe, membres, points, malus,
+>   note du groupe, note ajustée et « Remettre la note du groupe »).
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : PR #24 fusionnée, déploiement OK, migration 063
+>   appliquée (6 déclencheurs, fonction fermée aux clients), bascule du compte de Thomas : 13 évals « TP de
+>   groupe » hors moyenne et non publiées, 252 notes, les 424 notes existantes intactes. Vérifié sur le site
+>   publié (carnet 3A, modale avec critères et historique « Séance de groupe », fiche avec la section séance,
+>   moyenne inchangée, console sans erreur). À reprendre : la fiche d'un TP de groupe affiche encore les blocs
+>   de copies scannées, inutiles pour ce type (corrigé en phase 4). Prochaine étape : phase 4.
+> - Phase 4 **codée le 02/11/2026** (branche `feat/hub-phase4`) : migration 064 (`corrections_withheld`,
+>   fonctions élève `get_student_grades` et `get_student_work_correction` réécrites depuis leur version EN
+>   LIGNE, qui vient de la PR #3 non fusionnée) et Edge Function `student-doc` (version 3 déployée + refus du
+>   corrigé retenu), **vérifiées en transaction annulée, pas appliquées**. Web : « Publier… » ouvre un choix
+>   « notes et corrections » ou « notes seulement », puis « Publier les corrections » sur la ligne ; « Retenir
+>   les corrections » dans le menu ⋯ ; l'espace élève dit « La correction sera publiée plus tard ». « Copier
+>   pour Pronote » (menu ⋯ de la ligne) : colonne des notes brutes, ordre des noms deviné sur les deux
+>   lettres du pseudo, lignes douteuses surlignées. « Dupliquer » dans l'en-tête de la fiche (une ou plusieurs
+>   classes, sujet et corrigé recopiés, trimestre en cours). Fiche d'un TP de groupe sans blocs de copies.
+>   L'avancement en chiffres existait déjà sur la ligne de classe. Mise en ligne : migration 064, puis
+>   redéploiement de `student-doc`, puis fusion.
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : migration 064 appliquée (aucune éval retenue, les 7
+>   évals publiées montrent tout comme avant, droits élève intacts), `student-doc` redéployée en version 4
+>   (répond et lit la nouvelle colonne), PR #25 fusionnée, déploiement OK. Vérifié sur le site publié :
+>   Dupliquer et Publier… sur la fiche, menu ⋯ d'une éval publiée avec Copier pour Pronote et Retenir les
+>   corrections, console sans erreur ; aucune publication réelle modifiée. Prochaine étape : phase 5.
 
 ---
 

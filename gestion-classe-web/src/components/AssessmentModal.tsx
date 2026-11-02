@@ -64,6 +64,8 @@ export function AssessmentModal({
   const [bareme, setBareme] = useState(String(initial?.bareme ?? 20));
   const [coefficient, setCoefficient] = useState(String(initial?.coefficient ?? 1));
   const [kind, setKind] = useState<AssessmentKind>(initial?.kind ?? 'ecrit');
+  /** Éval créée par une séance de groupe (migration 063) : type et barème suivent la séance. */
+  const fromGroupSession = initial?.kind === 'groupe';
   const [date, setDate] = useState(initial?.date ?? '');
   const [countsInAverage, setCountsInAverage] = useState(initial?.countsInAverage ?? true);
   const [shortName, setShortName] = useState(initial?.shortName ?? '');
@@ -161,10 +163,12 @@ export function AssessmentModal({
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label style={lbl}>Type</label>
-            <select value={kind} onChange={(e) => setKind(e.target.value as AssessmentKind)} style={inp}>
-              {(Object.keys(ASSESSMENT_KIND_LABEL) as AssessmentKind[]).map((k) => (
-                <option key={k} value={k}>{ASSESSMENT_KIND_LABEL[k]}</option>
-              ))}
+            <select value={kind} onChange={(e) => setKind(e.target.value as AssessmentKind)} style={inp} disabled={fromGroupSession}>
+              {(Object.keys(ASSESSMENT_KIND_LABEL) as AssessmentKind[])
+                .filter((k) => k !== 'groupe' || fromGroupSession)
+                .map((k) => (
+                  <option key={k} value={k}>{ASSESSMENT_KIND_LABEL[k]}</option>
+                ))}
             </select>
           </div>
           <div style={{ width: 130 }}>
@@ -176,7 +180,7 @@ export function AssessmentModal({
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label style={lbl}>Barème</label>
-            <input value={bareme} onChange={(e) => setBareme(e.target.value)} inputMode="decimal" style={inp} />
+            <input value={bareme} onChange={(e) => setBareme(e.target.value)} inputMode="decimal" style={inp} disabled={fromGroupSession} title={fromGroupSession ? 'Somme des critères de la séance de groupe' : undefined} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={lbl}>Coefficient</label>
