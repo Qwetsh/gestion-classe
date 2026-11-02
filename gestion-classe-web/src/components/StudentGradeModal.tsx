@@ -14,6 +14,7 @@ import { alignTranscript } from '../lib/copyTranscript';
 import { parseGradeDetails } from '../lib/gradeDetails';
 import { describeGradeValue, formatVersionDate, gradeSource, SOURCE_LABEL } from '../lib/gradeHistory';
 import { isGroupGradeAdjusted, parseGroupDetails } from '../lib/groupDetails';
+import { fetchActivityForAssessment, fetchStudentWork, WORK_STATUS_LABEL, type ActivityRow, type WorkRow } from '../lib/productionsQueries';
 import { parseGradeCell, STATUS_LABEL, toTwenty, type GradeStatus } from '../lib/gradeStats';
 import {
   ASSESSMENT_KIND_LABEL,
@@ -97,6 +98,25 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
     return () => { alive = false; };
   }, [grade?.id, historyKey]);
   const revisions = history && history.key === historyKey ? history.list : undefined;
+
+  // ---- Production numérique (phase 6) : l'activité liée à l'éval, puis la fiche de l'élève ----
+  const [linkedActivity, setLinkedActivity] = useState<ActivityRow | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchActivityForAssessment(assessment.id).then((a) => { if (alive) setLinkedActivity(a); }).catch(() => {});
+    return () => { alive = false; };
+  }, [assessment.id]);
+  const [production, setProduction] = useState<{ key: string; work: WorkRow | null } | null>(null);
+  const productionKey = linkedActivity ? `${linkedActivity.id}|${currentId}` : '';
+  useEffect(() => {
+    if (!linkedActivity) return;
+    let alive = true;
+    fetchStudentWork(linkedActivity.id, currentId)
+      .then((work) => { if (alive) setProduction({ key: `${linkedActivity.id}|${currentId}`, work }); })
+      .catch(() => { if (alive) setProduction({ key: `${linkedActivity.id}|${currentId}`, work: null }); });
+    return () => { alive = false; };
+  }, [linkedActivity, currentId]);
+  const work = production && production.key === productionKey ? production.work : undefined;
 
   // ---- Clavier : ← → élèves, ↑ ↓ pages, Échap ferme (sauf fenêtre ouverte par-dessus) ----
   useEffect(() => {
@@ -333,6 +353,27 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                     <div style={{ marginTop: 10 }}><button onClick={() => setAdding(true)} style={btn}>Ajouter une copie</button></div>
                   </div>
                 )}
+                {linkedActivity && (
+                  <section style={panel} aria-label="Production numérique">
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Production · {linkedActivity.title}
+                    </div>
+                    {work === undefined ? (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Chargement…</div>
+                    ) : work === null ? (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Rien reçu de cet élève.</div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
+                        <Badge tone={work.status === 'validated' ? 'ok' : work.status === 'corrected' ? 'warn' : 'info'}>{WORK_STATUS_LABEL[work.status]}</Badge>
+                        {work.total_points != null && <span style={{ fontWeight: 700 }}>{String(work.total_points).replace('.', ',')}/{linkedActivity.bareme_total}</span>}
+                        <span style={{ color: 'var(--text-muted)' }}>envoi n°{work.version}{work.group_pseudos.length > 1 ? ` · avec ${work.group_pseudos.filter((p) => p !== row.student.pseudo).join(', ')}` : ''}</span>
+                        <Link to={`/evaluations/${assessment.id}?eleve=${currentId}`} onClick={close} style={{ color: 'var(--indigo)', fontWeight: 600, textDecoration: 'none' }}>
+                          {work.correction ? 'Revoir sa production ↗' : 'Corriger sa production ↗'}
+                        </Link>
+                      </div>
+                    )}
+                  </section>
+                )}
                 {groupInfo && (
                   <section style={panel} aria-label="Critères du groupe">
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
@@ -442,7 +483,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                     )}
                   </section>
                 )}
-                {!showLeft && !(withCopies && anyScanned) && !details && !groupInfo && !grade?.comment && (revisions == null || revisions.length === 0) && (
+                {!showLeft && !(withCopies && anyScanned) && !details && !groupInfo && !linkedActivity && !grade?.comment && (revisions == null || revisions.length === 0) && (
                   <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-dim)', fontSize: 12.5 }}>
                     {grade ? 'Pas de copie ni de correction détaillée pour cette note.' : 'Pas encore de note : tape-la ci-dessus.'}
                   </div>

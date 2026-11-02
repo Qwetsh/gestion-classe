@@ -130,6 +130,68 @@ export async function fetchActivities(): Promise<ActivityRow[]> {
   return (data ?? []) as ActivityRow[];
 }
 
+/** Activité numérique liée à une éval du carnet (activity_assessments), ou null. */
+export async function fetchActivityForAssessment(assessmentId: string): Promise<ActivityRow | null> {
+  const { data: link, error } = await supabase
+    .from('activity_assessments')
+    .select('activity_id')
+    .eq('assessment_id', assessmentId)
+    .maybeSingle();
+  if (error || !link) return null;
+  const { data, error: actErr } = await supabase
+    .from('activities')
+    .select('*')
+    .eq('id', (link as { activity_id: string }).activity_id)
+    .eq('is_deleted', false)
+    .maybeSingle();
+  if (actErr) return null;
+  return (data as ActivityRow | null) ?? null;
+}
+
+/** Activités déjà liées à une éval (non supprimée) de cette classe : activité → éval. */
+export async function fetchClassActivityLinks(classId: string): Promise<Record<string, string>> {
+  const { data, error } = await supabase
+    .from('activity_assessments')
+    .select('activity_id, assessment_id, written_assessments(is_deleted)')
+    .eq('class_id', classId);
+  if (error) throw error;
+  const out: Record<string, string> = {};
+  for (const l of (data ?? []) as unknown as { activity_id: string; assessment_id: string; written_assessments: { is_deleted: boolean } | null }[]) {
+    if (l.written_assessments && !l.written_assessments.is_deleted) out[l.activity_id] = l.assessment_id;
+  }
+  return out;
+}
+
+/** Production d'un élève pour une activité (la plus récente), ou null. */
+export async function fetchStudentWork(activityId: string, studentId: string): Promise<WorkRow | null> {
+  const { data, error } = await supabase
+    .from('student_works')
+    .select(WORK_SELECT)
+    .eq('activity_id', activityId)
+    .eq('student_id', studentId)
+    .eq('is_deleted', false)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return (data as unknown as WorkRow | null) ?? null;
+}
+
+/**
+ * Lie une activité à une éval du carnet pour une classe (création unifiée, phase 6) : crée
+ * l'éval (TP, coefficient 1, barème de l'activité) si la classe n'en a pas encore, puis y met
+ * les notes des productions déjà corrigées. Renvoie l'éval.
+ */
+export async function linkActivityToClass(input: {
+  userId: string;
+  activity: ActivityRow;
+  classId: string;
+}): Promise<{ assessmentId: string; created: boolean }> {
+  const works = (await fetchWorks(input.activity.id)).filter((w) => w.class_id === input.classId);
+  const r = await sendGradesToCarnet({ userId: input.userId, activity: input.activity, classId: input.classId, works });
+  return { assessmentId: r.assessmentId, created: r.created };
+}
+
 export async function updateActivity(
   id: string,
   patch: Partial<Pick<ActivityRow, 'title' | 'expected_answers' | 'accepting_submissions' | 'bareme_total'>>,

@@ -39,6 +39,7 @@ import { KindIcon } from './KindIcon';
 import { StudentGradeModal } from './StudentGradeModal';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentModal } from './AssessmentModal';
+import { NewAssessmentChooser } from './NewAssessmentChooser';
 import { MoreMenu } from './MoreMenu';
 import { PronoteImportModal } from './PronoteImportModal';
 import { levelFromClassName } from '../lib/boardsQueries';
@@ -153,6 +154,8 @@ export function CarnetTab({ userId, account, onError }: {
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
   const [showCreate, setShowCreate] = useState(false);
+  /** « + Évaluation » : d'abord le type (phase 6), puis le formulaire pour une éval classique. */
+  const [choosingType, setChoosingType] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showPronote, setShowPronote] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -514,7 +517,7 @@ export function CarnetTab({ userId, account, onError }: {
           ]}
         />
 
-        <button onClick={() => setShowCreate(true)} style={btnPrimary} disabled={!classId}>
+        <button onClick={() => setChoosingType(true)} style={btnPrimary} disabled={!classId}>
           + Évaluation
         </button>
       </div>
@@ -833,6 +836,16 @@ export function CarnetTab({ userId, account, onError }: {
           grades={grades}
           onClose={() => setShowPronote(false)}
           onDone={load}
+        />
+      )}
+
+      {choosingType && (
+        <NewAssessmentChooser
+          userId={userId}
+          classId={classId}
+          className={className}
+          onClassic={() => { setChoosingType(false); setShowCreate(true); }}
+          onClose={() => setChoosingType(false)}
         />
       )}
 

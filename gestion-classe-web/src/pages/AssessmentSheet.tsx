@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { AssessmentDetail } from '../components/AssessmentDetail';
@@ -7,7 +7,9 @@ import { AssessmentModal } from '../components/AssessmentModal';
 import { AssessmentStatsBody } from '../components/AssessmentStatsPanel';
 import { DuplicateAssessmentDialog } from '../components/DuplicateAssessmentDialog';
 import { GroupSessionDetail } from '../components/groups/GroupSessionDetail';
-import { groupOf, hasCopyContent } from '../lib/assessmentGroups';
+import { ActivityClassPanel } from '../components/productions/ActivityClassPanel';
+import { fetchActivityForAssessment, type ActivityRow } from '../lib/productionsQueries';
+import { groupOf, hasCopies, hasCopyContent, neverScanned } from '../lib/assessmentGroups';
 import { sequencesPresent } from '../lib/carnetView';
 import type { CopyOverview } from '../lib/copyStatus';
 import { describeGrades, type GradeEntry, type GradeStatus } from '../lib/gradeStats';
@@ -36,6 +38,9 @@ import {
  */
 export function AssessmentSheet() {
   const { id } = useParams<{ id: string }>();
+  /** Lien depuis la modale du carnet : la production de cet élève s'ouvre à l'arrivée. */
+  const [searchParams] = useSearchParams();
+  const studentParam = searchParams.get('eleve');
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -46,6 +51,8 @@ export function AssessmentSheet() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  /** Activité numérique liée à l'éval de la classe en cours (phase 6), si elle existe. */
+  const [activity, setActivity] = useState<{ assessmentId: string; row: ActivityRow | null } | null>(null);
 
   /** Élèves et notes de la classe en cours : pour Modifier (aménagements, barème) et les stats. */
   const [students, setStudents] = useState<CarnetStudent[]>([]);
@@ -75,9 +82,11 @@ export function AssessmentSheet() {
       setSessionStarts(d.sessionStarts);
       if (!openedOnce.current) {
         openedOnce.current = true;
-        // Un TP de groupe montre ses résultats dans la section « Séance de groupe » : pas de visionneuse d'office.
+        // La visionneuse s'ouvre d'office pour des copies (écrit, DM, ou des scans). Un TP de groupe
+        // ou une production montre ses résultats dans sa propre section, plus bas.
         const own = g.items.find((a) => a.id === id);
-        if (hasCopyContent(d.overviews[id]) && own?.kind !== 'groupe') setOpenId(id);
+        const o = d.overviews[id];
+        if (own && hasCopyContent(o) && (hasCopies(own) || (o && !neverScanned(o)))) setOpenId(id);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement');
@@ -98,6 +107,17 @@ export function AssessmentSheet() {
   }, [user, focus]);
 
   useEffect(() => { void loadFocus(); }, [loadFocus]);
+
+  const focusId = focus?.id ?? null;
+  useEffect(() => {
+    if (!focusId) return;
+    let alive = true;
+    fetchActivityForAssessment(focusId)
+      .then((row) => { if (alive) setActivity({ assessmentId: focusId, row }); })
+      .catch(() => { if (alive) setActivity({ assessmentId: focusId, row: null }); });
+    return () => { alive = false; };
+  }, [focusId]);
+  const linkedActivity = activity && activity.assessmentId === focusId ? activity.row : null;
 
   const reload = useCallback(async () => {
     await load();
@@ -211,6 +231,23 @@ export function AssessmentSheet() {
             onError={handleError}
             onReload={reload}
           />
+
+          {/* Production numérique (phase 6) : l'activité pour cette classe, ses envois et leur correction. */}
+          {linkedActivity && (
+            <section aria-label="Activité numérique" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Activité numérique{group.items.length > 1 ? ` · ${focus.classes?.name ?? ''}` : ''}</div>
+              <ActivityClassPanel
+                key={`${linkedActivity.id}|${focus.id}`}
+                activity={linkedActivity}
+                classId={focus.class_id}
+                className={focus.classes?.name ?? ''}
+                assessmentId={focus.id}
+                initialStudentId={studentParam}
+                onActivityChange={(a) => setActivity({ assessmentId: focus.id, row: a })}
+                onGradesSynced={() => { void reload(); }}
+              />
+            </section>
+          )}
 
           {/* TP de groupe (migration 063) : la séance elle-même, ses critères, groupes, matériel et photos. */}
           {focus.kind === 'groupe' && focus.group_session_id && (
