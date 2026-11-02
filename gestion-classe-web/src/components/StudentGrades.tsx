@@ -195,6 +195,12 @@ export function StudentGrades({ code }: { code: string }) {
                 </>
               )}
 
+              {a.corrections_withheld && (
+                <p style={{ color: T.textDim, fontSize: 12.5, margin: '10px 0 0', fontStyle: 'italic' }}>
+                  La correction sera publiée plus tard.
+                </p>
+              )}
+
               {(a.has_subject || a.has_correction || a.has_work) && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   {a.has_work && (

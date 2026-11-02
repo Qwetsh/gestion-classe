@@ -36,6 +36,11 @@ export interface StudentAssessment {
    * renvoie que pour une note validée par le prof (migration 053).
    */
   details?: unknown;
+  /**
+   * Publiée sans les corrections (migration 064) : la note est là, le détail, le commentaire,
+   * le corrigé et la copie corrigée viendront plus tard. Absent avant la migration.
+   */
+  corrections_withheld?: boolean;
 }
 
 export interface StudentGradesResult {

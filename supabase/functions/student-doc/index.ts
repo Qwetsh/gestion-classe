@@ -9,9 +9,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * 6 chiffres. On ne peut donc ni lui appliquer les RLS, ni rendre le bucket public —
  * un corrigé accessible à qui devine une URL n'est pas acceptable.
  *
- * Cette fonction tranche : elle valide le code côté serveur, vérifie les deux verrous
- * (onglet Notes actif pour la classe, évaluation publiée), et ne rend qu'une URL signée
- * de courte durée. La clé de service ne quitte jamais le serveur.
+ * Cette fonction tranche : elle valide le code côté serveur, vérifie les verrous
+ * (onglet Notes actif pour la classe, évaluation publiée, corrections non retenues pour le
+ * corrigé — migration 064), et ne rend qu'une URL signée de courte durée. La clé de service
+ * ne quitte jamais le serveur.
+ *
+ * Reprend la version 3 déployée (code élève partagé entre profs, PR #3) : à redéployer
+ * APRÈS la migration 064, qui crée la colonne `corrections_withheld`.
  */
 
 const corsHeaders = {
@@ -59,32 +63,39 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } },
   );
 
-  // 1. Le code identifie un élève, et donc une classe.
+  // 1. L'évaluation existe et est publiée.
+  const { data: assessment } = await supabase
+    .from("written_assessments")
+    .select("id, class_id, subject_path, correction_path, series_id, corrections_withheld, assessment_series(subject_path, correction_path)")
+    .eq("id", assessmentId)
+    .eq("is_deleted", false)
+    .eq("published_to_students", true)
+    .maybeSingle();
+  if (!assessment) return json({ error: "forbidden" }, 403);
+
+  // Publiée sans les corrections (migration 064) : le sujet oui, le corrigé pas encore.
+  if (kind === "correction" && assessment.corrections_withheld) return json({ error: "forbidden" }, 403);
+
+  // 2. Le code désigne bien un élève de la classe de cette évaluation. Un même code peut
+  //    mener à plusieurs lignes (un élève partagé entre les profs d'un collège) : on
+  //    retient celle qui est dans la classe de l'évaluation.
   const { data: student } = await supabase
     .from("students")
     .select("id, class_id, is_witness")
     .eq("student_code", code)
+    .eq("class_id", assessment.class_id)
+    .eq("is_deleted", false)
+    .limit(1)
     .maybeSingle();
-  if (!student?.class_id) return json({ error: "invalid_code" }, 403);
+  if (!student) return json({ error: "invalid_code" }, 403);
 
-  // 2. Premier verrou : l'onglet Notes est-il ouvert à cette classe ?
+  // 3. L'onglet Notes est-il ouvert à cette classe ?
   const { data: tabs } = await supabase
     .from("class_student_tabs")
     .select("show_grades")
     .eq("class_id", student.class_id)
     .maybeSingle();
   if (!tabs?.show_grades && !student.is_witness) return json({ error: "forbidden" }, 403);
-
-  // 3. Second verrou : l'évaluation appartient bien à sa classe, et elle est publiée.
-  const { data: assessment } = await supabase
-    .from("written_assessments")
-    .select("id, subject_path, correction_path, series_id, assessment_series(subject_path, correction_path)")
-    .eq("id", assessmentId)
-    .eq("class_id", student.class_id)
-    .eq("is_deleted", false)
-    .eq("published_to_students", true)
-    .maybeSingle();
-  if (!assessment) return json({ error: "forbidden" }, 403);
 
   // Le document peut être porté par l'évaluation ou, s'il est commun, par sa série.
   const series = assessment.assessment_series as
