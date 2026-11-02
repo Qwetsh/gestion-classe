@@ -85,7 +85,15 @@ describe('préférences enregistrées', () => {
     expect(parsePrefs(null).showAverage).toBe(true);
     expect(parsePrefs('{pas du json')).toEqual(parsePrefs(null));
     const p = parsePrefs(JSON.stringify({ filters: { kind: 'tp', sequence: 'Séquence 1', published: 'no' }, showAverage: false }));
-    expect(p).toEqual({ filters: { kind: 'tp', sequence: 'Séquence 1', published: 'no' }, showAverage: false });
+    expect(p).toEqual({ filters: { kind: 'tp', sequence: 'Séquence 1', published: 'no' }, showAverage: false, showColumnDetails: false });
     expect(parsePrefs(JSON.stringify({ filters: { kind: 'bidon', published: 'peut-être' } })).filters).toEqual(NO_FILTERS);
+  });
+
+  it('détails des colonnes : décochés par défaut, y compris pour une ancienne préférence', () => {
+    expect(parsePrefs(null).showColumnDetails).toBe(false);
+    expect(parsePrefs('{pas du json').showColumnDetails).toBe(false);
+    expect(parsePrefs(JSON.stringify({ filters: NO_FILTERS, showAverage: true })).showColumnDetails).toBe(false);
+    expect(parsePrefs(JSON.stringify({ filters: NO_FILTERS, showAverage: true, showColumnDetails: 'oui' })).showColumnDetails).toBe(false);
+    expect(parsePrefs(JSON.stringify({ filters: NO_FILTERS, showAverage: true, showColumnDetails: true })).showColumnDetails).toBe(true);
   });
 });
