@@ -1,20 +1,30 @@
 import { STATUS_LABEL, toTwenty, type GradeStatus } from './gradeStats';
+import { isGroupGradeAdjusted, parseGroupDetails } from './groupDetails';
 
 /**
  * Historique des corrections d'une note (migration 061) : qui a écrit une version, et ce qu'elle
  * disait. Même règle que le trigger `assessment_grades_archive` pour l'auteur. Logique pure, testée.
  */
 
-export type GradeSource = 'prof' | 'ia' | 'correcteur';
+export type GradeSource = 'prof' | 'ia' | 'correcteur' | 'groupe';
 
 export const SOURCE_LABEL: Record<GradeSource, string> = {
   prof: 'Saisie du prof',
   ia: 'Claude (« Corriger avec Claude »)',
   correcteur: 'Correcteur (PC)',
+  groupe: 'Séance de groupe',
 };
 
-/** Auteur d'une version d'après son détail : details.source = 'api' → Claude ; autre détail → Correcteur ; rien → prof. */
-export function gradeSource(details: unknown): GradeSource {
+/**
+ * Auteur d'une version d'après son détail : note de groupe → la séance (ou le prof s'il l'avait
+ * ajustée) ; details.source = 'api' → Claude ; autre détail → Correcteur ; rien → prof.
+ */
+export function gradeSource(
+  details: unknown,
+  grade?: { status: string | null; grade_raw: number | null } | null,
+): GradeSource {
+  const group = parseGroupDetails(details);
+  if (group) return grade && isGroupGradeAdjusted(grade, group) ? 'prof' : 'groupe';
   if (details && typeof details === 'object') {
     return (details as { source?: unknown }).source === 'api' ? 'ia' : 'correcteur';
   }

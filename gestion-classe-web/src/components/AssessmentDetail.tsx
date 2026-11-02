@@ -322,7 +322,9 @@ Publier quand même pour ${cls} ?`
           <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
             {withCopies
               ? 'scan au téléphone → correction sur le PC (Correcteur) → valider → publier'
-              : 'saisie dans le carnet (ou envoi depuis Productions) → publier'}
+              : group.items.some((a) => a.kind === 'groupe')
+                ? 'notation en séance, par groupe et sur critères (détail plus bas) → publier'
+                : 'saisie dans le carnet (ou envoi depuis Productions) → publier'}
           </div>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

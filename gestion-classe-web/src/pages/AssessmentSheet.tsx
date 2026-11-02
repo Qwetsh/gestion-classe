@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { AssessmentDetail } from '../components/AssessmentDetail';
 import { AssessmentModal } from '../components/AssessmentModal';
 import { AssessmentStatsBody } from '../components/AssessmentStatsPanel';
+import { GroupSessionDetail } from '../components/groups/GroupSessionDetail';
 import { groupOf, hasCopyContent } from '../lib/assessmentGroups';
 import { sequencesPresent } from '../lib/carnetView';
 import type { CopyOverview } from '../lib/copyStatus';
@@ -201,6 +202,18 @@ export function AssessmentSheet() {
             onError={handleError}
             onReload={reload}
           />
+
+          {/* TP de groupe (migration 063) : la séance elle-même, ses critères, groupes, matériel et photos. */}
+          {focus.kind === 'groupe' && focus.group_session_id && (
+            <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }} aria-label="Séance de groupe">
+              <div style={{ padding: '14px 16px 0', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Séance de groupe</div>
+              <GroupSessionDetail
+                sessionId={focus.group_session_id}
+                onChanged={() => { void reload(); }}
+                onDeleted={() => navigate(backTo)}
+              />
+            </section>
+          )}
 
           {/* Statistiques de la classe en cours, repliées par défaut */}
           <details style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
