@@ -1,61 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AiCorrectionStartError,
-  fetchAiCorrection,
-  fetchAssessmentCopies,
-  fetchAssessmentGrades,
-  fetchAssessmentTranscripts,
-  fetchExpectedStudents,
-  fetchKitVersions,
-  fetchLatestAiCorrections,
-  getCopyUrls,
-  hasCorrectionKit,
-  startAiCorrection,
-  validateGrade,
-  type AssessmentRow,
-  type CopyPageRow,
-  type GradeRow,
-  type RosterStudent,
-} from '../lib/evaluationQueries';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getCopyUrls, type AssessmentRow } from '../lib/evaluationQueries';
+import { assignUnnamedCopy, deleteUnnamedCopy, fetchUnnamedCopies, type UnnamedCopy } from '../lib/copyUpload';
 import { parseGradeDetails } from '../lib/gradeDetails';
-import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/copyTranscript';
+import { alignTranscript } from '../lib/copyTranscript';
 import { GradeDetailsView } from './GradeDetailsView';
 import { CopyTranscriptView } from './CopyTranscriptView';
 import { AddCopyDialog } from './AddCopyDialog';
 import { ClassCopiesDialog } from './ClassCopiesDialog';
-import { assignUnnamedCopy, deleteUnnamedCopy, fetchUnnamedCopies, type UnnamedCopy } from '../lib/copyUpload';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
-import {
-  COST_HINT,
-  NO_KIT_MESSAGE,
-  correctionMode,
-  describeStartError,
-  formatCost,
-  isApiGrade,
-  isRunActive,
-  isRunInterrupted,
-  mentionsOtherVersion,
-  type AiCorrectionRun,
-} from '../lib/aiCorrection';
+import { AiRunPanel, Badge } from './AiRunPanel';
+import { isSelectable, useAssessmentCopies, type CopyRow, type CopyRowState } from '../hooks/useAssessmentCopies';
+import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 
-type RowState = 'scanned' | 'absent' | 'missing';
-type Filter = 'all' | RowState;
-
-interface Row {
-  student: RosterStudent;
-  pages: CopyPageRow[];
-  grade: GradeRow | null;
-  /** Transcription du Correcteur (migration 056) : reste quand les scans sont supprimés. */
-  transcript: TranscriptItem[] | null;
-  state: RowState;
-}
-
-const NO_COPY = new Set(['absent', 'dispense', 'non_rendu', 'non_rendu_zero']);
-
-/** On ouvre un élève s'il y a une copie à regarder ou une correction à relire. */
-function isSelectable(r: Row): boolean {
-  return r.state === 'scanned' || r.grade?.grade != null || !!r.grade?.details || !!r.transcript;
-}
+type Filter = 'all' | CopyRowState;
 
 const FILTERS: [Filter, string][] = [
   ['all', 'Tous'],
@@ -73,95 +30,74 @@ interface CopyViewerProps {
   refreshKey?: number;
   /** Ouvrir « Ajouter les copies de la classe » dès que la liste est chargée. */
   openClassAdd?: boolean;
-  onClassAddOpened?: () => void;
-  /** Élève affiché à l'ouverture (bouton « i » d'une cellule du carnet) ; sinon le premier qui a une copie. */
+  /** La fenêtre « Ajouter les copies de la classe » ouverte par `openClassAdd` vient d'être fermée. */
+  onClassAddClosed?: () => void;
+  /** Élève affiché à l'ouverture ; sinon le premier qui a une copie. */
   initialStudentId?: string | null;
 }
 
 /**
  * Copies scannées d'une classe pour une éval : tous les élèves attendus (scannés, absents,
  * manquants), et la copie de l'élève choisi en grand, page par page.
- * Clavier : ← → pages, ↑ ↓ élèves.
+ * Clavier : ← → pages, ↑ ↓ élèves. Données et gestes : hooks/useAssessmentCopies.ts (partagés
+ * avec la modale élève × éval du carnet).
  */
-export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddOpened, initialStudentId = null }: CopyViewerProps) {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [urls, setUrls] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddClosed, initialStudentId = null }: CopyViewerProps) {
   const [filter, setFilter] = useState<Filter>('all');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // L'élève affiché, pour une éval donnée : changer d'éval repart du premier élève sans effet à part.
+  const [sel, setSel] = useState<{ assessmentId: string; studentId: string } | null>(null);
+  const selectedId = sel && sel.assessmentId === assessment.id ? sel.studentId : null;
+  const setSelectedId = useCallback(
+    (id: string | null) => setSel(id ? { assessmentId: assessment.id, studentId: id } : null),
+    [assessment.id],
+  );
   const [pageIndex, setPageIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
-  // Bouton « Corriger » (migration 057) : kit envoyé par le Correcteur, dernier appel par élève.
-  const [hasKit, setHasKit] = useState(false);
-  // Versions du sujet qui ont un kit (une copie d'une autre version n'a pas le bon barème).
-  const [kitVersions, setKitVersions] = useState<string[]>([]);
-  const [aiRuns, setAiRuns] = useState<Record<string, AiCorrectionRun>>({});
-  const [startingId, setStartingId] = useState<string | null>(null);
   // « Ajouter une copie » (migration 058) : élève dont la fenêtre est ouverte.
   const [addingId, setAddingId] = useState<string | null>(null);
   // « Ajouter les copies de la classe » : le paquet entier d'un coup.
   const [addingClass, setAddingClass] = useState(false);
-  // Copies « Pas de nom » (migration 062), à identifier : celle qu'on regarde.
+  // Copies « Pas de nom » (migration 062), à identifier : la liste, et celle qu'on regarde.
   const [unnamed, setUnnamed] = useState<UnnamedCopy[]>([]);
+  const [unnamedUrls, setUnnamedUrls] = useState<Record<string, string>>({});
   const [unnamedId, setUnnamedId] = useState<string | null>(null);
-
-  // La ligne de l'éval est relue à chaque rechargement du parent ; on ne recharge les copies
-  // que si l'éval change ou si le parent le demande (refreshKey), pas à chaque nouvel objet.
-  const assessmentRef = useRef(assessment);
-  assessmentRef.current = assessment;
-  const initialStudentRef = useRef(initialStudentId);
-  initialStudentRef.current = initialStudentId;
-
-  const load = useCallback(async () => {
-    const assessment = assessmentRef.current;
-    setLoading(true);
+  const showUnnamed = useCallback(async (copies: UnnamedCopy[]) => {
+    setUnnamed(copies);
+    setUnnamedId((cur) => (cur && copies.some((c) => c.copyId === cur) ? cur : null));
     try {
-      const [roster, copies, grades, transcripts, kit, runs, versions, unnamedCopies] = await Promise.all([
-        fetchExpectedStudents([assessment]),
-        fetchAssessmentCopies(assessment.id),
-        fetchAssessmentGrades(assessment.id),
-        fetchAssessmentTranscripts(assessment.id),
-        hasCorrectionKit(assessment.id),
-        fetchLatestAiCorrections(assessment.id),
-        fetchKitVersions(assessment.id),
-        fetchUnnamedCopies(assessment.id),
-      ]);
-      setUnnamed(unnamedCopies);
-      setUnnamedId((cur) => (cur && unnamedCopies.some((c) => c.copyId === cur) ? cur : null));
-      setHasKit(kit);
-      setKitVersions(versions);
-      setAiRuns(runs);
-      const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
-      const next: Row[] = (roster[assessment.id] ?? []).map((student) => {
-        const pages = copies
-          .filter((c) => c.student_id === student.id)
-          .sort((a, b) => a.page_order - b.page_order);
-        const grade = gradeBy.get(student.id) ?? null;
-        const transcript = parseTranscript(transcripts[student.id]);
-        // Une copie dont les scans sont supprimés reste « scannée » : sa transcription la remplace.
-        const state: RowState =
-          pages.length > 0 || transcript ? 'scanned' : grade && NO_COPY.has(grade.status) ? 'absent' : 'missing';
-        return { student, pages, grade, transcript, state };
-      });
-      setRows(next);
-      setSelectedId((cur) => {
-        if (cur) return cur;
-        const wanted = initialStudentRef.current;
-        if (wanted && next.some((r) => r.student.id === wanted)) return wanted;
-        return next.find(isSelectable)?.student.id ?? null;
-      });
-      setUrls(await getCopyUrls([...copies.map((c) => c.storage_path), ...unnamedCopies.flatMap((c) => c.pages.map((p) => p.storage_path))]));
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Copies introuvables');
-    } finally {
-      setLoading(false);
+      setUnnamedUrls(await getCopyUrls(copies.flatMap((c) => c.pages.map((p) => p.storage_path))));
+    } catch {
+      // vignettes indisponibles : la liste reste utilisable
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessment.id, refreshKey, onError]);
+  }, []);
+  const loadUnnamed = useCallback(
+    async () => showUnnamed(await fetchUnnamedCopies(assessment.id)),
+    [assessment.id, showUnnamed],
+  );
+  useEffect(() => {
+    let alive = true;
+    fetchUnnamedCopies(assessment.id).then((copies) => {
+      if (alive) showUnnamed(copies);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [assessment.id, refreshKey, showUnnamed]);
 
-  // Nouvelle éval : on repart du premier élève. Simple rechargement : on garde l'élève affiché.
-  useEffect(() => { setSelectedId(null); }, [assessment.id]);
-  useEffect(() => { load(); }, [load]);
+  // L'élève demandé ne sert qu'à l'ouverture : on le fige au premier rendu.
+  const [initialStudent] = useState(initialStudentId);
+  // Après chaque chargement : on garde l'élève affiché, sinon celui demandé, sinon le premier qui a une copie.
+  const onLoaded = useCallback((next: CopyRow[]) => {
+    setSel((cur) => {
+      if (cur && cur.assessmentId === assessment.id) return cur;
+      const id = initialStudent && next.some((r) => r.student.id === initialStudent)
+        ? initialStudent
+        : next.find(isSelectable)?.student.id ?? null;
+      return id ? { assessmentId: assessment.id, studentId: id } : null;
+    });
+  }, [initialStudent, assessment.id]);
+  const { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct } =
+    useAssessmentCopies(assessment, { onError, onChanged, refreshKey, onLoaded });
 
   const visible = useMemo(
     () => rows.filter((r) => filter === 'all' || r.state === filter),
@@ -175,7 +111,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
     setSelectedId(id);
     setPageIndex(0);
     setZoom(false);
-  }, []);
+  }, [setSelectedId]);
 
   const moveStudent = useCallback(
     (delta: 1 | -1) => {
@@ -211,81 +147,6 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
     return () => window.removeEventListener('keydown', onKey);
   }, [selected, moveStudent]);
 
-  const handleValidate = async (g: GradeRow) => {
-    // Claude a signalé une copie faite sur une autre version du sujet : la note vient d'un autre barème.
-    const run = aiRuns[g.student_id];
-    if (
-      run?.status === 'done' &&
-      isApiGrade(g.details) &&
-      mentionsOtherVersion(run.a_arbitrer) &&
-      !window.confirm('Claude signale que cette copie semble faite sur une autre version du sujet : la note a pu être calculée sur le mauvais barème. Valider quand même ?')
-    ) {
-      return;
-    }
-    try {
-      await validateGrade(g.id);
-      setRows((prev) =>
-        prev.map((r) => (r.grade?.id === g.id ? { ...r, grade: { ...g, is_validated: true } } : r)),
-      );
-      onChanged?.();
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Échec de la validation');
-    }
-  };
-
-  // Suit les corrections en cours ; à la fin, recharge les notes et la transcription.
-  const activeRunIds = Object.values(aiRuns).filter((r) => isRunActive(r)).map((r) => r.id).join(',');
-  useEffect(() => {
-    if (!activeRunIds) return;
-    const timer = window.setInterval(async () => {
-      try {
-        const fresh = await Promise.all(activeRunIds.split(',').map((id) => fetchAiCorrection(id)));
-        const finished = fresh.filter((r): r is AiCorrectionRun => !!r && r.status !== 'running');
-        if (finished.length === 0) return;
-        setAiRuns((prev) => ({ ...prev, ...Object.fromEntries(finished.map((r) => [r.student_id, r])) }));
-        if (finished.some((r) => r.status === 'done')) {
-          await load();
-          onChanged?.();
-        }
-      } catch {
-        // réseau : on réessaie au prochain tour
-      }
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [activeRunIds, load, onChanged]);
-
-  const handleCorrect = async (r: Row) => {
-    const mode = correctionMode({ pages: r.pages.length, grade: r.grade });
-    if (!mode) return;
-    const validated = mode === 'recorriger' && !!r.grade?.is_validated;
-    const question = validated
-      ? `La note de ${r.student.pseudo} est validée. La recorriger la repasse en brouillon (invisible pour l’élève) jusqu’à ce que tu la valides de nouveau.\n\nRecorriger avec Claude (${COST_HINT} de crédits API) ?`
-      : mode === 'recorriger'
-        ? `Recorriger la copie de ${r.student.pseudo} avec Claude (${COST_HINT} de crédits API) ? La note actuelle sera remplacée (en brouillon).`
-        : `Corriger la copie de ${r.student.pseudo} avec Claude (${COST_HINT} de crédits API) ? La note arrive en brouillon.`;
-    if (!window.confirm(question)) return;
-    setStartingId(r.student.id);
-    try {
-      const runId = await startAiCorrection({
-        assessmentId: assessment.id,
-        studentId: r.student.id,
-        mode,
-        confirmValidated: validated,
-      });
-      const run = await fetchAiCorrection(runId);
-      if (run) setAiRuns((prev) => ({ ...prev, [run.student_id]: run }));
-    } catch (e) {
-      onError(e instanceof AiCorrectionStartError ? describeStartError(e.code, e.info) : e instanceof Error ? e.message : 'Correction impossible');
-      if (e instanceof AiCorrectionStartError && e.code === 'already_running') load();
-    } finally {
-      setStartingId(null);
-    }
-  };
-
-  const knownVersions = useMemo(
-    () => Array.from(new Set([...rows.map((r) => r.grade?.subject_version), ...kitVersions].filter((v): v is string => !!v))).sort(),
-    [rows, kitVersions],
-  );
   const adding = rows.find((r) => r.student.id === addingId) ?? null;
   const unnamedCopy = unnamed.find((c) => c.copyId === unnamedId) ?? null;
 
@@ -299,9 +160,8 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
     try {
       await assignUnnamedCopy(copy.copyId, studentId);
       setUnnamedId(null);
-      setSelectedId(studentId);
-      setPageIndex(0);
-      await load();
+      select(studentId);
+      await Promise.all([load(), loadUnnamed()]);
       onChanged?.();
     } catch (e) {
       onError(e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Attribution impossible');
@@ -313,22 +173,15 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
     try {
       await deleteUnnamedCopy(copy);
       setUnnamedId(null);
-      await load();
+      await loadUnnamed();
       onChanged?.();
     } catch (e) {
       onError(e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Suppression impossible');
     }
   };
 
-  useEffect(() => {
-    if (!openClassAdd || loading || rows.length === 0) return;
-    setAddingClass(true);
-    onClassAddOpened?.();
-  }, [openClassAdd, loading, rows.length, onClassAddOpened]);
-
-  // Aucune copie scannée ni transcrite : les notes ont été saisies à la main, parler de
-  // copies « manquantes » n'aurait pas de sens.
-  const anyScanned = rows.some((r) => r.state === 'scanned');
+  // Ouverte par un geste ici, ou demandée par la fiche (« Ajouter les copies » sur la ligne de la classe).
+  const classAddOpen = addingClass || (openClassAdd && !loading && rows.length > 0);
 
   const counts = {
     all: rows.length,
@@ -447,7 +300,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
             key={unnamedCopy.copyId}
             copy={unnamedCopy}
             index={unnamed.indexOf(unnamedCopy)}
-            urls={urls}
+            urls={unnamedUrls}
             rows={rows}
             onAssign={(studentId) => handleAssignUnnamed(unnamedCopy, studentId)}
             onDelete={() => handleDeleteUnnamed(unnamedCopy)}
@@ -474,7 +327,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                 </span>
               )}
               {selected.grade && selected.grade.grade != null && !selected.grade.is_validated && (
-                <button onClick={() => handleValidate(selected.grade!)} style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)' }}>
+                <button onClick={() => validate(selected.grade!)} style={{ ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)' }}>
                   Valider la note
                 </button>
               )}
@@ -503,7 +356,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                 const busy = startingId === selected.student.id || isRunActive(aiRuns[selected.student.id]);
                 return (
                   <button
-                    onClick={() => handleCorrect(selected)}
+                    onClick={() => correct(selected)}
                     disabled={!hasKit || busy}
                     title={hasKit ? `Correction par Claude Opus 5.5, en brouillon (${COST_HINT})` : NO_KIT_MESSAGE}
                     style={{ ...btn, opacity: !hasKit || busy ? 0.55 : 1, cursor: !hasKit || busy ? 'default' : 'pointer' }}
@@ -649,7 +502,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
           </>
         )}
       </div>
-      {addingClass && (
+      {classAddOpen && (
         <ClassCopiesDialog
           assessment={assessment}
           students={rows.map((r) => ({
@@ -663,8 +516,10 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
           onError={onError}
           onClose={(changed) => {
             setAddingClass(false);
+            if (openClassAdd) onClassAddClosed?.();
             if (changed) {
               load();
+              loadUnnamed();
               onChanged?.();
             }
           }}
@@ -705,7 +560,7 @@ function UnnamedCopyPanel({
   copy: UnnamedCopy;
   index: number;
   urls: Record<string, string>;
-  rows: Row[];
+  rows: CopyRow[];
   onAssign: (studentId: string) => void;
   onDelete: () => void;
 }) {
@@ -768,83 +623,6 @@ function UnnamedCopyPanel({
         )}
       </div>
     </div>
-  );
-}
-
-/** État du dernier appel « Corriger » de l'élève : en cours, erreur, ou points à arbitrer et coût. */
-function AiRunPanel({ run, apiGrade }: { run: AiCorrectionRun | undefined; apiGrade: boolean }) {
-  if (!run) return null;
-  const box: React.CSSProperties = { borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12.5 };
-  const when = new Date(run.finished_at ?? run.started_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-  const cost = run.cost_usd != null ? ` · coût estimé ${formatCost(run.cost_usd)}` : '';
-  if (isRunActive(run)) {
-    return (
-      <div style={{ ...box, background: 'var(--indigo-soft)', color: 'var(--indigo)', fontWeight: 600 }}>
-        Correction en cours par Claude… (1 à 2 minutes, tu peux changer d’élève)
-      </div>
-    );
-  }
-  if (isRunInterrupted(run) || run.status === 'error') {
-    return (
-      <div style={{ ...box, background: 'var(--neg-soft)', color: 'var(--neg)' }}>
-        <strong>Correction automatique échouée</strong> ({when}{cost}) :{' '}
-        {run.error ?? 'appel interrompu (délai dépassé). Rien n’a été enregistré ; tu peux relancer.'}
-      </div>
-    );
-  }
-  // Une note renvoyée depuis par le Correcteur remplace celle de l'API : le journal n'est plus d'actualité.
-  if (!apiGrade) return null;
-  const otherVersion = mentionsOtherVersion(run.a_arbitrer);
-  return (
-    <>
-    {otherVersion && (
-      <div style={{ ...box, background: 'var(--neg-soft)', color: 'var(--neg)', fontWeight: 600 }}>
-        ⚠ Claude signale que cette copie semble faite sur une autre version du sujet : la note a pu être
-        calculée sur le mauvais barème. Vérifie la version (« Ajouter une copie ») et recorrige avant de valider.
-      </div>
-    )}
-    <div style={{ ...box, background: run.a_arbitrer.length ? 'var(--warn-soft)' : 'var(--surface-3)', border: '1px solid var(--border)' }}>
-      {run.a_arbitrer.length > 0 ? (
-        <>
-          <div style={{ fontWeight: 700, color: 'var(--warn)', marginBottom: 6 }}>
-            ⚑ À arbitrer ({run.a_arbitrer.length}) : vérifie avant de valider
-          </div>
-          <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text)' }}>
-            {run.a_arbitrer.map((a, i) => (
-              <li key={i} style={{ marginBottom: 3 }}>
-                <strong>{a.question}</strong> · note mise {String(a.note_mise).replace('.', ',')} — {a.raison}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <div style={{ color: 'var(--text-muted)' }}>Claude ne signale rien à arbitrer.</div>
-      )}
-      {run.error && <div style={{ color: 'var(--neg)', marginTop: 6 }}>{run.error}</div>}
-      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
-        Corrigée par Claude ({run.model ?? '?'}) le {when}
-        {cost}
-        {run.input_tokens != null &&
-          ` · ${((run.input_tokens + (run.cache_creation_tokens ?? 0) + (run.cache_read_tokens ?? 0)) / 1000).toFixed(0)} k tokens lus, ${((run.output_tokens ?? 0) / 1000).toFixed(1).replace('.', ',')} k écrits`}
-        {run.attempts > 1 && ` · ${run.attempts} essais`}
-      </div>
-    </div>
-    </>
-  );
-}
-
-function Badge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'ok' | 'warn' | 'neg' | 'info' }) {
-  const colors = {
-    neutral: ['var(--surface-3)', 'var(--text-muted)'],
-    ok: ['var(--pos-soft)', 'var(--pos)'],
-    warn: ['var(--warn-soft)', 'var(--warn)'],
-    neg: ['var(--neg-soft)', 'var(--neg)'],
-    info: ['var(--indigo-soft)', 'var(--indigo)'],
-  }[tone];
-  return (
-    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: colors[0], color: colors[1], whiteSpace: 'nowrap' }}>
-      {children}
-    </span>
   );
 }
 

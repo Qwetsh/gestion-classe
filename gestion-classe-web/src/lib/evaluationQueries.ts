@@ -460,6 +460,37 @@ export async function fetchTranscribedKeys(assessmentIds: string[]): Promise<Rec
   return out;
 }
 
+/** Une version remplacée d'une note (migration 061, archivée par trigger). */
+export interface GradeRevisionRow {
+  id: string;
+  source: 'prof' | 'ia' | 'correcteur';
+  grade: number | null;
+  grade_raw: number | null;
+  status: string | null;
+  comment: string | null;
+  details: unknown;
+  was_validated: boolean;
+  /** Date de la version (son dernier enregistrement). */
+  version_at: string | null;
+  /** Date à laquelle elle a été remplacée. */
+  replaced_at: string;
+}
+
+/**
+ * Versions remplacées d'une note, de la plus récente à la plus ancienne. `null` si la table
+ * n'existe pas encore (migration 061 non appliquée) : l'écran n'affiche alors pas d'historique.
+ */
+export async function fetchGradeRevisions(gradeId: string): Promise<GradeRevisionRow[] | null> {
+  const { data, error } = await supabase
+    .from('assessment_grade_revisions')
+    .select('id, source, grade, grade_raw, status, comment, details, was_validated, version_at, replaced_at')
+    .eq('grade_id', gradeId)
+    .order('replaced_at', { ascending: false });
+  if (isMissingTable(error)) return null;
+  if (error) throw error;
+  return (data || []) as GradeRevisionRow[];
+}
+
 /** Transcriptions d'une éval : élève → JSON brut (lu par parseTranscript). */
 export async function fetchAssessmentTranscripts(assessmentId: string): Promise<Record<string, unknown>> {
   const { data, error } = await supabase
