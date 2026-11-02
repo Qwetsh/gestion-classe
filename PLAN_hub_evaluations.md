@@ -68,6 +68,9 @@
 >   pseudonymisé (`lib/copiesMarkdown.ts`) : « Élève 01… » dans l'ordre de la classe, correspondance affichée
 >   dans la fenêtre, prénoms, pseudos et noms en capitales remplacés dans commentaires et transcriptions
 >   (vérifié sur les 25 copies de 4D : 23 prénoms dans les données brutes, 0 dans l'export).
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : PR #26 fusionnée, déploiement OK, vérifié sur le site
+>   publié (« Exporter… » et ses trois formats sur la fiche de 4D, console sans erreur, rien téléchargé). Le lot
+>   n'a pas encore tourné en vrai (aucune copie scannée sans note). Prochaine étape : phase 6.
 
 ---
 
