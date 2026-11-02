@@ -171,6 +171,39 @@ export async function fetchClassStudents(classId: string): Promise<{ id: string;
   return data ?? [];
 }
 
+/* ---------- groupes (élèves qui ont rempli ensemble sur un poste) ---------- */
+
+/**
+ * Une production de groupe : les lignes student_works d'élèves qui ont envoyé ensemble (même group_key,
+ * posé par student_work_save) et dont le contenu est identique. Un membre validé n'est plus mis à jour par
+ * les envois suivants : si son contenu a divergé, il forme son propre groupe. Élève seul : groupe d'un membre.
+ */
+export interface WorkGroup {
+  key: string;
+  /** Membres triés par pseudo ; le premier sert de référence (export Claude, navigation). */
+  works: WorkRow[];
+}
+
+const pseudoOf = (w: WorkRow): string => w.students?.pseudo ?? '';
+
+export function groupWorks(works: WorkRow[]): WorkGroup[] {
+  const groups = new Map<string, WorkRow[]>();
+  for (const w of works) {
+    const key = w.group_key ? `${w.group_key}:${JSON.stringify(w.content)}` : `seul:${w.id}`;
+    const g = groups.get(key);
+    if (g) g.push(w); else groups.set(key, [w]);
+  }
+  return [...groups.entries()]
+    .map(([key, ws]) => ({ key, works: [...ws].sort((a, b) => pseudoOf(a).localeCompare(pseudoOf(b))) }))
+    .sort((a, b) => pseudoOf(a.works[0]).localeCompare(pseudoOf(b.works[0])));
+}
+
+/** Les membres ont-ils la même correction (même note, mêmes critères, remarques, conseils, compétences) ? */
+export function sameCorrection(works: WorkRow[]): boolean {
+  const sig = (w: WorkRow) => JSON.stringify([w.total_points, w.correction, w.advice ?? null, w.skills ?? null]);
+  return works.every((w) => sig(w) === sig(works[0]));
+}
+
 /** Noms affichés des zones de la question 1 (export, impression, copie vue par l'élève). */
 export const ZONE_NAMES: Record<string, string> = {
   islande: 'Islande', atlantique: 'Atlantique', andes: 'Andes', java: 'Java', himalaya: 'Himalaya', rhin: 'Fossé rhénan',

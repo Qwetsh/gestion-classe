@@ -4,6 +4,7 @@ import {
   autoPoints,
   checkQ1Cell,
   computeTotal,
+  groupWorks,
   q1Label,
   saveWorkCorrection,
   type ActivityQuestion,
@@ -17,6 +18,8 @@ import {
  * Correction par Claude : export des copies d'une classe en un document Markdown lisible (consignes, barème,
  * corrigé attendu, copies), puis import du JSON renvoyé par le correcteur (critères cochés, remarques,
  * compétences, conseils), enregistré sur chaque copie avec corrected_by = 'claude'.
+ * Un groupe (élèves qui ont envoyé ensemble, voir groupWorks) n'est exporté qu'une fois, sous le work_id de son
+ * premier membre ; à l'import, la correction est enregistrée pour tous les membres du groupe.
  * La question 1 (réponses fermées) reste corrigée automatiquement ici : le correcteur ne la touche pas.
  */
 
@@ -50,10 +53,12 @@ function answerText(def: ActivityRow['definition'], q: ActivityQuestion, content
 export function buildClaudeExport(activity: ActivityRow, works: WorkRow[], className: string): string {
   const def = activity.definition;
   const open = def.questions.filter((q) => !q.criteres.some((cr) => cr.auto));
-  const sorted = [...works].sort((a, b) => (a.students?.pseudo ?? '').localeCompare(b.students?.pseudo ?? ''));
+  const groups = groupWorks(works);
+  const sorted = groups.map((g) => g.works[0]);
+  const names = (w: WorkRow) => groups.find((g) => g.works[0] === w)!.works.map((m) => m.students?.pseudo ?? 'Élève').join(', ');
   const exemple = {
     work_id: sorted[0]?.id ?? '00000000-0000-0000-0000-000000000000',
-    pseudo: sorted[0]?.students?.pseudo ?? 'Élève',
+    pseudo: sorted[0] ? names(sorted[0]) : 'Élève',
     questions: Object.fromEntries(open.map((q) => [q.id, { criteres: Object.fromEntries(q.criteres.map((cr) => [cr.id, false])), remarque: '' }])),
     skills: Object.fromEntries((def.competences ?? []).map((c) => [c.id, 0])),
     advice: '',
@@ -102,9 +107,9 @@ export function buildClaudeExport(activity: ActivityRow, works: WorkRow[], class
   out.push('');
   sorted.forEach((w, i) => {
     const a = autoPoints(def, w.content);
-    out.push(`### Copie ${i + 1} — ${w.students?.pseudo ?? 'Élève'} — work_id \`${w.id}\``);
+    out.push(`### Copie ${i + 1} — ${names(w)} — work_id \`${w.id}\``);
     out.push('');
-    out.push(`Envoi n°${w.version}${w.group_pseudos.length > 1 ? ` · binôme : ${w.group_pseudos.join(', ')}` : ''}${a ? ` · question 1 (auto) : ${pts(a.points)} / ${pts(a.max)}` : ''}`);
+    out.push(`Envoi n°${w.version}${names(w).includes(',') ? ' · copie de groupe, une seule correction pour tous' : ''}${a ? ` · question 1 (auto) : ${pts(a.points)} / ${pts(a.max)}` : ''}`);
     out.push('');
     for (const q of def.questions) {
       out.push(`**${q.num}. ${q.titre}**${q.criteres.some((cr) => cr.auto) ? ' (auto, pour information)' : ''}`);
@@ -183,18 +188,22 @@ export async function importClaudeCorrections(
   entries: ClaudeEntry[],
 ): Promise<{ updated: WorkRow[]; skipped: string[] }> {
   const def = activity.definition;
+  const groups = groupWorks(works);
   const updated: WorkRow[] = [];
   const skipped: string[] = [];
   for (const e of entries) {
-    const w = works.find((x) => x.id === e.work_id);
-    if (!w) { skipped.push(`${e.pseudo ?? e.work_id} : copie introuvable dans cette classe`); continue; }
-    if (w.status === 'validated') { skipped.push(`${w.students?.pseudo ?? e.work_id} : copie déjà validée`); continue; }
-    const correction = applyAuto(def, correctionFromEntry(def, e), w.content);
-    const advice = typeof e.advice === 'string' && e.advice.trim() ? e.advice.trim() : null;
-    const skills = skillsFromEntry(def, e);
-    const totalPoints = computeTotal(def, correction);
-    await saveWorkCorrection(w.id, { correction, advice, skills, totalPoints, correctedBy: 'claude' });
-    updated.push({ ...w, correction, advice, skills, total_points: totalPoints, corrected_by: 'claude', corrected_at: new Date().toISOString(), status: 'corrected', modified_after_correction: false });
+    const group = groups.find((g) => g.works.some((x) => x.id === e.work_id));
+    if (!group) { skipped.push(`${e.pseudo ?? e.work_id} : copie introuvable dans cette classe`); continue; }
+    for (const w of group.works) {
+      if (updated.some((u) => u.id === w.id)) continue;
+      if (w.status === 'validated') { skipped.push(`${w.students?.pseudo ?? e.work_id} : copie déjà validée`); continue; }
+      const correction = applyAuto(def, correctionFromEntry(def, e), w.content);
+      const advice = typeof e.advice === 'string' && e.advice.trim() ? e.advice.trim() : null;
+      const skills = skillsFromEntry(def, e);
+      const totalPoints = computeTotal(def, correction);
+      await saveWorkCorrection(w.id, { correction, advice, skills, totalPoints, correctedBy: 'claude' });
+      updated.push({ ...w, correction, advice, skills, total_points: totalPoints, corrected_by: 'claude', corrected_at: new Date().toISOString(), status: 'corrected', modified_after_correction: false });
+    }
   }
   return { updated, skipped };
 }
