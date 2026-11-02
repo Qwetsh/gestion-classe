@@ -14,6 +14,15 @@
 >   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : migration 060 appliquée (2 colonnes vides, 27 évals
 >   intactes), PR #22 fusionnée, déploiement Pages OK, vérifié sur le site publié (grille 4D, formulaire avec titre
 >   court et séquence, « i » sur Ayaz). Prochaine étape : phase 2, modale élève × éval.
+> - Phase 2 **codée le 02/11/2026** (branche `feat/hub-phase2`) : migration 061 (table
+>   `assessment_grade_revisions` + trigger d'archivage, RLS lecture prof seule), **vérifiée en transaction
+>   annulée, pas appliquée** ; modale élève × éval (`components/StudentGradeModal.tsx`) ouverte par le « i » de
+>   chaque cellule, tous types : note modifiable (même saisie que le carnet), statut, brouillon / validée,
+>   publiée ou non, copie (pages, zoom), transcription (seule ou en onglet), correction (détail, radar, à
+>   arbitrer), historique des versions, actions (valider, corriger / recorriger avec Claude, ajouter ou
+>   remplacer la copie, imprimer en PDF), ← → élèves, ↑ ↓ pages, Échap. Données et gestes extraits dans
+>   `hooks/useAssessmentCopies.ts`, partagés avec la visionneuse de la fiche. Vérifié dans Chrome sur la 4D.
+>   Reportés : critères (type groupe) à la phase 3, réponses (type production) à la phase 6.
 
 ---
 

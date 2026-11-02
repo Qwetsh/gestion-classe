@@ -36,7 +36,7 @@ import {
   type CellMark,
 } from '../lib/carnetView';
 import { KindIcon } from './KindIcon';
-import { CellDetailDialog } from './CellDetailDialog';
+import { StudentGradeModal } from './StudentGradeModal';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentModal } from './AssessmentModal';
 import { MoreMenu } from './MoreMenu';
@@ -143,7 +143,7 @@ export function CarnetTab({ userId, account, onError }: {
   const setFilter = <K extends keyof CarnetPrefs['filters']>(k: K, v: CarnetPrefs['filters'][K]) =>
     setPrefs((p) => ({ ...p, filters: { ...p.filters, [k]: v } }));
 
-  /** Bouton « i » d'une cellule : la visionneuse ouverte sur cet élève. */
+  /** Bouton « i » d'une cellule : la modale élève × éval. */
   const [detail, setDetail] = useState<{ assessment: AssessmentRow; studentId: string } | null>(null);
 
   /** Texte en cours de frappe, par cellule. Absent = on affiche la valeur enregistrée. */
@@ -685,7 +685,6 @@ export function CarnetTab({ userId, account, onError }: {
                       // Brouillon du Correcteur ou de Claude : compte pour le prof, invisible pour l'élève (053).
                       const pending = draft === undefined && !!row && row.grade != null && !row.is_validated;
                       const mark = draft === undefined ? cellMark(a, row, !!copyKeys[a.id]?.has(s.id), overviews[a.id]) : null;
-                      const withDetail = hasCopies(a);
                       return (
                         <td key={a.id} className="gc-cell" style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
                           <input
@@ -724,7 +723,7 @@ export function CarnetTab({ userId, account, onError }: {
                               {MARK_STYLE[mark].glyph}
                             </span>
                           )}
-                          {withDetail && (
+                          {(
                             <button
                               type="button"
                               tabIndex={-1}
@@ -732,7 +731,7 @@ export function CarnetTab({ userId, account, onError }: {
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={(e) => { e.currentTarget.blur(); void flush(); setDetail({ assessment: a, studentId: s.id }); }}
                               aria-label={`Détail : ${s.pseudo}, ${a.name}`}
-                              title="Détail : copie, correction, transcription"
+                              title="Détail : note, copie, correction, historique"
                             >
                               i
                             </button>
@@ -809,12 +808,12 @@ export function CarnetTab({ userId, account, onError }: {
           {' '}<strong style={{ color: 'var(--warn)' }}>*</strong> brouillon à valider ·
           {' '}<strong style={{ color: 'var(--indigo)' }}>●</strong> copie à corriger ·
           {' '}<strong>○</strong> copie manquante ·
-          {' '}<strong>i</strong> (au survol d’une note) : détail de la copie
+          {' '}<strong>i</strong> (au survol d’une note) : détail de l’élève (copie, correction, historique)
         </p>
       )}
 
       {detail && (
-        <CellDetailDialog
+        <StudentGradeModal
           assessment={detail.assessment}
           studentId={detail.studentId}
           onError={onError}

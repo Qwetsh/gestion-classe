@@ -429,7 +429,7 @@ Publier quand même pour ${cls} ?`
               onChanged={onReload}
               refreshKey={viewerKey}
               openClassAdd={classAddFor === target.id}
-              onClassAddOpened={() => setClassAddFor(null)}
+              onClassAddClosed={() => setClassAddFor(null)}
             />
           </div>
         )}
