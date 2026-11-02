@@ -22,6 +22,7 @@ import { alignTranscript, parseTranscript, type TranscriptItem } from '../lib/co
 import { GradeDetailsView } from './GradeDetailsView';
 import { CopyTranscriptView } from './CopyTranscriptView';
 import { AddCopyDialog } from './AddCopyDialog';
+import { ClassCopiesDialog } from './ClassCopiesDialog';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import {
   COST_HINT,
@@ -69,6 +70,9 @@ interface CopyViewerProps {
   onChanged?: () => void;
   /** Change quand le parent a modifié les copies ou les notes (validation de la classe, purge…) : on recharge sans perdre l'élève affiché. */
   refreshKey?: number;
+  /** Ouvrir « Ajouter les copies de la classe » dès que la liste est chargée. */
+  openClassAdd?: boolean;
+  onClassAddOpened?: () => void;
 }
 
 /**
@@ -76,7 +80,7 @@ interface CopyViewerProps {
  * manquants), et la copie de l'élève choisi en grand, page par page.
  * Clavier : ← → pages, ↑ ↓ élèves.
  */
-export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: CopyViewerProps) {
+export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddOpened }: CopyViewerProps) {
   const [rows, setRows] = useState<Row[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -92,6 +96,8 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
   const [startingId, setStartingId] = useState<string | null>(null);
   // « Ajouter une copie » (migration 058) : élève dont la fenêtre est ouverte.
   const [addingId, setAddingId] = useState<string | null>(null);
+  // « Ajouter les copies de la classe » : le paquet entier d'un coup.
+  const [addingClass, setAddingClass] = useState(false);
 
   // La ligne de l'éval est relue à chaque rechargement du parent ; on ne recharge les copies
   // que si l'éval change ou si le parent le demande (refreshKey), pas à chaque nouvel objet.
@@ -265,6 +271,12 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
   );
   const adding = rows.find((r) => r.student.id === addingId) ?? null;
 
+  useEffect(() => {
+    if (!openClassAdd || loading || rows.length === 0) return;
+    setAddingClass(true);
+    onClassAddOpened?.();
+  }, [openClassAdd, loading, rows.length, onClassAddOpened]);
+
   // Aucune copie scannée ni transcrite : les notes ont été saisies à la main, parler de
   // copies « manquantes » n'aurait pas de sens.
   const anyScanned = rows.some((r) => r.state === 'scanned');
@@ -284,6 +296,13 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, alignItems: 'start' }}>
       {/* ---- Élèves ---- */}
       <div>
+        <button
+          onClick={() => setAddingClass(true)}
+          style={{ ...btn, width: '100%', marginBottom: 8 }}
+          title="Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste"
+        >
+          Ajouter les copies de la classe
+        </button>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           {FILTERS.filter(([id]) => anyScanned || (id !== 'scanned' && id !== 'missing')).map(([id, label]) => (
             <button
@@ -550,6 +569,27 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0 }: C
           </>
         )}
       </div>
+      {addingClass && (
+        <ClassCopiesDialog
+          assessment={assessment}
+          students={rows.map((r) => ({
+            id: r.student.id,
+            pseudo: r.student.pseudo,
+            existingPages: r.pages.length,
+            grade: r.grade,
+            absent: r.state === 'absent',
+          }))}
+          knownVersions={knownVersions}
+          onError={onError}
+          onClose={(changed) => {
+            setAddingClass(false);
+            if (changed) {
+              load();
+              onChanged?.();
+            }
+          }}
+        />
+      )}
       {adding && (
         <AddCopyDialog
           assessment={assessment}

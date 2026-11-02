@@ -32,6 +32,8 @@ export interface DraftPage {
   turns: number;
   /** Vignette (object URL), à libérer avec URL.revokeObjectURL. */
   preview: string;
+  /** `source` est déjà un JPEG au profil d'envoi : sans rotation, il part tel quel. */
+  prepared?: boolean;
 }
 
 let seq = 0;
@@ -72,11 +74,25 @@ export async function preparePage(source: Blob | HTMLCanvasElement, turns = 0): 
   return blob.size <= COPY_PROFILE.maxBytes ? blob : canvasToBlob(canvas, COPY_PROFILE.fallbackQuality);
 }
 
+/** Page prête à l'envoi, sans réencoder une page déjà au profil et non tournée. */
+export async function draftToUpload(d: DraftPage): Promise<Blob> {
+  if (d.prepared && d.source instanceof Blob && ((d.turns % 4) + 4) % 4 === 0) return d.source;
+  return preparePage(d.source, d.turns);
+}
+
 /** Une page par page de PDF, rendue à 2000 px sur le grand côté. */
 export async function pdfToCanvases(file: File): Promise<HTMLCanvasElement[]> {
+  const out: HTMLCanvasElement[] = [];
+  await eachPdfPage(file, async (canvas) => {
+    out.push(canvas);
+  });
+  return out;
+}
+
+/** Rend les pages d'un PDF une à une (2000 px sur le grand côté). */
+async function eachPdfPage(file: File, onPage: (canvas: HTMLCanvasElement) => Promise<void>): Promise<void> {
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const out: HTMLCanvasElement[] = [];
   try {
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
@@ -91,12 +107,11 @@ export async function pdfToCanvases(file: File): Promise<HTMLCanvasElement[]> {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       // pdfjs-dist v5 : le type RenderParameters exige un cast (voir mémoire projet)
       await page.render({ canvasContext: ctx, viewport } as never).promise;
-      out.push(canvas);
+      await onPage(canvas);
     }
   } finally {
     await doc.destroy();
   }
-  return out;
 }
 
 /** Fichiers choisis (images et PDF) → pages en attente, dans l'ordre. */
@@ -110,6 +125,40 @@ export async function filesToDrafts(files: File[]): Promise<DraftPage[]> {
       }
     } else if (f.type.startsWith('image/')) {
       drafts.push({ id: draftId(), source: f, turns: 0, preview: URL.createObjectURL(f) });
+    }
+  }
+  return drafts;
+}
+
+/** Ordre « naturel » des noms de fichiers : IMG_2 avant IMG_10. */
+export function sortFilesByName<T extends { name: string }>(files: T[]): T[] {
+  return [...files].sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+}
+
+/** Un canvas → page au profil d'envoi, gardée en JPEG (le canvas est libéré). */
+export async function canvasToPreparedDraft(canvas: HTMLCanvasElement): Promise<DraftPage> {
+  const blob = await preparePage(canvas, 0);
+  canvas.width = 0;
+  canvas.height = 0;
+  return { id: draftId(), source: blob, turns: 0, preview: URL.createObjectURL(blob), prepared: true };
+}
+
+/**
+ * Comme filesToDrafts, pour le paquet d'une classe : chaque page de PDF est mise au profil
+ * d'envoi tout de suite et son canvas libéré (une classe en canvas pèserait ~600 Mo).
+ * Les fichiers sont pris dans l'ordre de leur nom.
+ */
+export async function filesToCompactDrafts(files: File[], onProgress?: (pages: number) => void): Promise<DraftPage[]> {
+  const drafts: DraftPage[] = [];
+  for (const f of sortFilesByName(files)) {
+    if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+      await eachPdfPage(f, async (canvas) => {
+        drafts.push(await canvasToPreparedDraft(canvas));
+        onProgress?.(drafts.length);
+      });
+    } else if (f.type.startsWith('image/')) {
+      drafts.push({ id: draftId(), source: f, turns: 0, preview: URL.createObjectURL(f) });
+      onProgress?.(drafts.length);
     }
   }
   return drafts;
