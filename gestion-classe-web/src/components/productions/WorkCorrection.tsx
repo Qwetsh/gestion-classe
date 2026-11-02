@@ -6,6 +6,7 @@ import {
   deleteWork,
   hasAuto,
   q1Label,
+  sameCorrection,
   saveWorkCorrection,
   setWorkStatus,
   fetchWorkVersions,
@@ -23,8 +24,9 @@ import {
  * À gauche la réponse de l'élève, à droite les critères du barème (cases à cocher, points fixes),
  * une remarque par question, les compétences, les conseils. Le total se calcule tout seul.
  * « Enregistrer » pose la correction (statut corrigée), « Valider » la fige (statut validée,
- * l'élève ne peut plus renvoyer). « Appliquer au binôme » recopie la correction sur les autres
- * membres du groupe (même contenu envoyé) : ils restent notés individuellement ensuite.
+ * l'élève ne peut plus renvoyer). Pour une production de groupe (élèves qui ont envoyé ensemble,
+ * voir groupWorks), tout part par défaut pour tous les membres ; « Corriger pour » permet de choisir
+ * un membre seul, qui garde alors sa propre correction et sa propre note.
  * Les questions à réponses fermées (tableau de la question 1 depuis la définition v2) sont corrigées
  * automatiquement à l'ouverture d'une copie pas encore corrigée ; le bouton « Auto » refait ce calcul,
  * et chaque case reste modifiable à la main.
@@ -52,10 +54,9 @@ function initialCorrection(work: WorkRow, activity: ActivityRow): { corr: Correc
 }
 
 interface Props {
-  work: WorkRow;
+  /** Membres de la production (un seul si l'élève était seul), triés par pseudo : même contenu envoyé. */
+  group: WorkRow[];
   activity: ActivityRow;
-  /** Autres productions du même binôme (même group_key, même contenu), pour « appliquer au binôme ». */
-  groupMates: WorkRow[];
   onClose: () => void;
   onSaved: (updated: WorkRow[]) => void;
   onDeleted: (workId: string) => void;
@@ -65,8 +66,19 @@ interface Props {
   toast: (msg: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, onDeleted, onPrev, onNext, position, toast }: Props) {
+const pseudo = (w: WorkRow) => w.students?.pseudo ?? 'Élève';
+
+export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, onPrev, onNext, position, toast }: Props) {
   const def = activity.definition;
+  // « Corriger pour » : tout le groupe, ou l'id d'un membre seul. Une autre production ouverte repart sur tout le groupe.
+  const [target, setTarget] = useState<'group' | string>('group');
+  const groupIds = group.map((w) => w.id).join(',');
+  useEffect(() => { setTarget('group'); }, [groupIds]);
+  const member = target === 'group' ? null : group.find((w) => w.id === target) ?? null;
+  // Copie affichée : le membre choisi, ou le premier du groupe (tous ont envoyé le même contenu).
+  const work = member ?? group[0];
+  const scope = member ? [member] : group;
+  const editable = scope.filter((w) => w.status !== 'validated');
   const content = work.content as Record<string, unknown>;
   const [corr, setCorr] = useState<Correction>(() => initialCorrection(work, activity).corr);
   const [autoPrefilled, setAutoPrefilled] = useState(() => initialCorrection(work, activity).auto);
@@ -129,20 +141,24 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
     setDirty(true);
   };
 
-  const persist = async (targets: WorkRow[], validate: boolean) => {
+  /** Enregistre (et valide si demandé) la correction affichée pour les membres choisis encore modifiables. */
+  const persist = async (validate: boolean) => {
+    const targets = editable;
     setSaving(true);
     try {
       const updated: WorkRow[] = [];
+      const savedSkills = Object.keys(skills).length ? skills : null;
       for (const w of targets) {
-        await saveWorkCorrection(w.id, { correction: corr, advice: advice || null, skills: Object.keys(skills).length ? skills : null, totalPoints: total, correctedBy: 'prof' });
+        await saveWorkCorrection(w.id, { correction: corr, advice: advice || null, skills: savedSkills, totalPoints: total, correctedBy: 'prof' });
         let status: WorkRow['status'] = 'corrected';
         let validated_at = w.validated_at;
         if (validate) { await setWorkStatus(w.id, 'validated'); status = 'validated'; validated_at = new Date().toISOString(); }
-        updated.push({ ...w, correction: corr, advice: advice || null, skills, total_points: total, corrected_by: 'prof', corrected_at: new Date().toISOString(), status, validated_at, modified_after_correction: false });
+        updated.push({ ...w, correction: corr, advice: advice || null, skills: savedSkills, total_points: total, corrected_by: 'prof', corrected_at: new Date().toISOString(), status, validated_at, modified_after_correction: false });
       }
       onSaved(updated);
       setDirty(false);
-      toast(validate ? `Validée${targets.length > 1 ? ` pour ${targets.length} élèves` : ''} : ${fmtPts(total)} / ${activity.bareme_total}.` : 'Correction enregistrée.', 'success');
+      const forWho = targets.length > 1 ? ` pour ${targets.length} élèves` : group.length > 1 ? ` pour ${pseudo(targets[0])}` : '';
+      toast(validate ? `Validée${forWho} : ${fmtPts(total)} / ${activity.bareme_total}.` : `Correction enregistrée${forWho}.`, 'success');
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
@@ -151,30 +167,41 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
   };
 
   const reopen = async () => {
+    const targets = scope.filter((w) => w.status === 'validated');
     try {
-      await setWorkStatus(work.id, 'corrected');
-      onSaved([{ ...work, status: 'corrected', validated_at: null }]);
-      toast('Copie rouverte : l’élève peut renvoyer, et tu peux modifier la correction.', 'info');
+      for (const w of targets) await setWorkStatus(w.id, 'corrected');
+      onSaved(targets.map((w) => ({ ...w, status: 'corrected', validated_at: null })));
+      toast(targets.length > 1 ? `Copies rouvertes (${targets.length} élèves) : ils peuvent renvoyer, et tu peux modifier la correction.` : 'Copie rouverte : l’élève peut renvoyer, et tu peux modifier la correction.', 'info');
     } catch (e) {
       toast((e as Error).message, 'error');
     }
   };
 
+  // Suppression d'un seul élève à la fois : dans un groupe, il faut d'abord le choisir dans « Corriger pour ».
+  // (onDeleted laisse la page décider : la fenêtre reste ouverte sur le reste du groupe.)
+  const removable = member ?? (group.length === 1 ? group[0] : null);
   const remove = async () => {
-    const who = work.students?.pseudo ?? 'cet élève';
-    if (!window.confirm(`Supprimer définitivement la copie de ${who} (et son historique) ? Le prochain envoi de l’élève repartira de zéro.`)) return;
+    if (!removable) return;
+    if (!window.confirm(`Supprimer définitivement la copie de ${pseudo(removable)} (et son historique) ? Le prochain envoi de l’élève repartira de zéro.`)) return;
     try {
-      await deleteWork(work.id);
-      onDeleted(work.id);
+      await deleteWork(removable.id);
+      onDeleted(removable.id);
       toast('Copie supprimée.', 'info');
-      onClose();
     } catch (e) {
       toast((e as Error).message, 'error');
     }
   };
 
-  const sameContent = groupMates.filter((m) => JSON.stringify(m.content) === JSON.stringify(work.content));
-  const locked = work.status === 'validated';
+  const chooseTarget = (t: 'group' | string) => {
+    const next = t === 'group' ? group[0] : group.find((w) => w.id === t);
+    // Garder la même copie à l'écran garde les modifications ; en changer recharge sa correction enregistrée.
+    if (dirty && next && next.id !== work.id && !window.confirm('Modifications non enregistrées : les abandonner pour afficher la correction de cet élève ?')) return;
+    setTarget(t);
+  };
+
+  const locked = editable.length === 0;
+  const validatedApart = !member && !locked ? group.filter((w) => w.status === 'validated') : [];
+  const correctedApart = !member && group.length > 1 && group.some((w) => w.correction) && !sameCorrection(group);
 
   const renderAnswer = (q: ActivityQuestion) => {
     const v = content[q.id];
@@ -246,11 +273,10 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 700 }}>
-              {work.students?.pseudo ?? 'Élève'} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {work.classes?.name ?? ''}{position && ` · ${position.index + 1}/${position.total}`}</span>
+              {group.map(pseudo).join(', ')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {work.classes?.name ?? ''}{position && ` · ${position.index + 1}/${position.total}`}</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {WORK_STATUS_LABEL[work.status]}{work.corrected_by === 'claude' && ' par Claude'} · envoi n°{work.version} le {fmtDate(work.submitted_at)}
-              {work.group_pseudos.length > 1 && ` · binôme : ${work.group_pseudos.join(', ')}`}
               {work.modified_after_correction && <span style={{ color: 'var(--warn, #b45309)', fontWeight: 600 }}> · renvoyée après correction</span>}
             </div>
           </div>
@@ -262,12 +288,41 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
           <button onClick={onClose} style={btnGhost}>Fermer</button>
         </div>
 
+        {group.length > 1 && (
+          <div role="radiogroup" aria-label="Corriger pour" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '8px 18px', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+            <span style={{ fontWeight: 600, marginRight: 4 }}>Corriger pour :</span>
+            {[{ id: 'group', label: `tout le groupe (${group.length})` }, ...group.map((w) => ({ id: w.id, label: `${pseudo(w)} uniquement${w.status === 'validated' ? ' · validée' : ''}` }))].map((o) => {
+              const on = target === o.id;
+              return (
+                <button key={o.id} role="radio" aria-checked={on} onClick={() => chooseTarget(o.id)}
+                  style={{ ...btnGhost, padding: '3px 10px', fontSize: 12, background: on ? 'var(--indigo)' : 'var(--surface-3)', color: on ? '#fff' : 'var(--text)' }}>
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Corps */}
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: showExpected ? '1fr 340px' : '1fr' }}>
           <div style={{ overflow: 'auto', padding: 18 }}>
             {locked && (
               <div style={{ ...note, background: 'var(--pos-soft, rgba(16,185,129,.14))', color: 'var(--pos, #047857)' }}>
-                Copie validée le {fmtDate(work.validated_at)} : l’élève ne peut plus la renvoyer. <button onClick={reopen} style={{ ...btnGhost, padding: '2px 8px', fontSize: 12, marginLeft: 8 }}>Rouvrir</button>
+                {scope.length > 1
+                  ? <>Copie validée le {fmtDate(work.validated_at)} pour tout le groupe : plus personne ne peut la renvoyer.</>
+                  : <>Copie validée le {fmtDate(work.validated_at)} : l’élève ne peut plus la renvoyer.</>}
+                <button onClick={reopen} style={{ ...btnGhost, padding: '2px 8px', fontSize: 12, marginLeft: 8 }}>{scope.length > 1 ? `Rouvrir pour le groupe (${scope.length})` : 'Rouvrir'}</button>
+              </div>
+            )}
+            {validatedApart.length > 0 && (
+              <div style={{ ...note, background: 'var(--surface-3)', color: 'var(--text-muted)' }}>
+                {validatedApart.map(pseudo).join(', ')} : copie déjà validée, elle ne sera pas modifiée. Pour la rouvrir, choisis cet élève dans « Corriger pour ».
+              </div>
+            )}
+            {correctedApart && (
+              <div style={{ ...note, background: 'var(--warn-soft, rgba(245,158,11,.14))', color: 'var(--warn, #b45309)' }}>
+                Les membres ont été corrigés à part ({group.map((w) => `${pseudo(w)} ${w.total_points != null ? `${fmtPts(Number(w.total_points))} / ${activity.bareme_total}` : 'pas corrigé'}`).join(' · ')}).
+                {' '}Correction affichée : {pseudo(work)}. L’enregistrer ici la donnera à {editable.map(pseudo).join(', ')}.
               </div>
             )}
             {autoPrefilled && !locked && (
@@ -376,16 +431,19 @@ export function WorkCorrection({ work, activity, groupMates, onClose, onSaved, o
           <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>
             {dirty ? 'Modifications non enregistrées.' : work.corrected_at ? `Corrigée le ${fmtDate(work.corrected_at)}${work.corrected_by === 'claude' ? ' par Claude' : ''}.` : 'Pas encore corrigée.'}
           </span>
-          <button onClick={remove} disabled={saving} style={{ ...btnGhost, color: 'var(--neg)' }}>Supprimer cette copie</button>
-          {!locked && sameContent.length > 0 && (
-            <button onClick={() => persist([work, ...sameContent], false)} disabled={saving} style={btnGhost} title={sameContent.map((m) => m.students?.pseudo).join(', ')}>
-              Enregistrer pour le binôme ({sameContent.length + 1})
+          {removable && (
+            <button onClick={remove} disabled={saving} style={{ ...btnGhost, color: 'var(--neg)' }}>
+              {group.length > 1 ? `Supprimer la copie de ${pseudo(removable)}` : 'Supprimer cette copie'}
             </button>
           )}
-          {!locked && <button onClick={() => persist([work], false)} disabled={saving} style={btnGhost}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>}
           {!locked && (
-            <button onClick={() => persist(sameContent.length ? [work, ...sameContent] : [work], true)} disabled={saving} style={btnPrimary}>
-              Valider{sameContent.length ? ` (binôme, ${sameContent.length + 1})` : ''} · {fmtPts(total)} / {activity.bareme_total}
+            <button onClick={() => persist(false)} disabled={saving} style={btnGhost} title={editable.map(pseudo).join(', ')}>
+              {saving ? 'Enregistrement…' : editable.length > 1 ? `Enregistrer pour le groupe (${editable.length})` : group.length > 1 ? `Enregistrer pour ${pseudo(editable[0])}` : 'Enregistrer'}
+            </button>
+          )}
+          {!locked && (
+            <button onClick={() => persist(true)} disabled={saving} style={btnPrimary} title={editable.map(pseudo).join(', ')}>
+              Valider{editable.length > 1 ? ` le groupe (${editable.length})` : group.length > 1 ? ` pour ${pseudo(editable[0])}` : ''} · {fmtPts(total)} / {activity.bareme_total}
             </button>
           )}
         </div>

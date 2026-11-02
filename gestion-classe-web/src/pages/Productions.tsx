@@ -11,11 +11,14 @@ import {
   fetchWorks,
   fetchClassStudents,
   gradableWorks,
+  groupWorks,
+  sameCorrection,
   sendGradesToCarnet,
   updateActivity,
   WORK_STATUS_LABEL,
   type ActivityAssessmentRow,
   type ActivityRow,
+  type WorkGroup,
   type WorkRow,
   type WorkStatus,
 } from '../lib/productionsQueries';
@@ -32,7 +35,19 @@ import { buildClaudeExport, downloadText, importClaudeCorrections, parseClaudeCo
  * « Importer la correction Claude » (JSON renvoyé), voir lib/productionsExport.ts.
  * Le bouton de ligne s'appelle « Ouvrir » : la fenêtre dit elle-même s'il reste à corriger (« Corriger » est
  * réservé, dans Évaluations, à la correction d'une copie par l'API Claude).
+ * Une ligne par production : les élèves qui ont envoyé ensemble depuis un poste (groupWorks) n'en font qu'une,
+ * et la correction part pour tout le groupe sauf si le prof choisit un membre seul dans la fenêtre.
+ * Les élèves qui n'ont rien envoyé gardent chacun leur ligne, à leur place dans l'ordre alphabétique.
  */
+
+const STATUS_ORDER: WorkStatus[] = ['draft', 'submitted', 'corrected', 'validated'];
+
+/** Statut d'un groupe : celui de tous ses membres, ou le moins avancé s'ils diffèrent (il reste du travail). */
+function groupStatus(g: WorkGroup): WorkStatus {
+  return g.works.reduce<WorkStatus>((s, w) => (STATUS_ORDER.indexOf(w.status) < STATUS_ORDER.indexOf(s) ? w.status : s), 'validated');
+}
+
+const groupNames = (g: WorkGroup): string => g.works.map((w) => w.students?.pseudo ?? 'Élève').join(', ');
 
 const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
   draft: { bg: 'var(--surface-3)', fg: 'var(--text-muted)' },
@@ -114,24 +129,33 @@ export function Productions() {
     fetchClassStudents(classId).then(setClassStudents).catch(() => setClassStudents([]));
   }, [classId]);
 
-  const rows = useMemo(() => {
-    const byStudent = new Map(works.filter((w) => w.class_id === classId).map((w) => [w.student_id, w]));
-    return classStudents.map((s) => ({ student: s, work: byStudent.get(s.id) ?? null }));
-  }, [works, classStudents, classId]);
+  const classWorks = useMemo(() => works.filter((w) => w.class_id === classId), [works, classId]);
+  const groups = useMemo(() => groupWorks(classWorks), [classWorks]);
 
-  // Copies de la classe dans l'ordre du tableau, pour passer de l'une à l'autre.
-  const ordered = useMemo(() => rows.map((r) => r.work).filter((w): w is WorkRow => !!w), [rows]);
-  const openWork = useMemo(() => works.find((w) => w.id === openId) ?? null, [works, openId]);
-  const openIndex = openWork ? ordered.findIndex((w) => w.id === openWork.id) : -1;
+  // Une ligne par production, plus une par élève qui n'a rien envoyé, dans l'ordre alphabétique.
+  const rows = useMemo(() => {
+    const sent = new Set(classWorks.map((w) => w.student_id));
+    const out: ({ group: WorkGroup; student?: undefined } | { group?: undefined; student: { id: string; pseudo: string } })[] = [
+      ...groups.map((group) => ({ group })),
+      ...classStudents.filter((s) => !sent.has(s.id)).map((student) => ({ student })),
+    ];
+    const name = (r: (typeof out)[number]) => (r.group ? r.group.works[0].students?.pseudo ?? '' : r.student.pseudo);
+    return out.sort((a, b) => name(a).localeCompare(name(b)));
+  }, [groups, classStudents, classWorks]);
+
+  // Productions de la classe dans l'ordre du tableau, pour passer de l'une à l'autre.
+  const ordered = useMemo(() => rows.flatMap((r) => (r.group ? [r.group] : [])), [rows]);
+  const openIndex = openId ? ordered.findIndex((g) => g.works.some((w) => w.id === openId)) : -1;
+  const openGroup = openIndex >= 0 ? ordered[openIndex] : null;
 
   const counts = useMemo(() => {
     const c = { draft: 0, submitted: 0, corrected: 0, validated: 0, none: 0 };
-    for (const r of rows) { if (r.work) c[r.work.status]++; else c.none++; }
+    for (const r of rows) { if (r.group) c[groupStatus(r.group)]++; else c.none++; }
     return c;
   }, [rows]);
 
-  const classWorks = useMemo(() => works.filter((w) => w.class_id === classId), [works, classId]);
   const gradable = useMemo(() => gradableWorks(classWorks), [classWorks]);
+  const correctedGroups = useMemo(() => groups.filter((g) => g.works.every((w) => gradable.includes(w))).length, [groups, gradable]);
   const className = classOptions.find(([id]) => id === classId)?.[1] ?? '';
   const carnetLink = links.find((l) => l.class_id === classId && !l.written_assessments?.is_deleted) ?? null;
 
@@ -154,6 +178,7 @@ export function Productions() {
   };
 
   const exportable = useMemo(() => classWorks.filter((w) => w.status !== 'draft'), [classWorks]);
+  const exportableCopies = useMemo(() => groupWorks(exportable).length, [exportable]);   // une copie par groupe
 
   const exportClaude = () => {
     if (!activity) return;
@@ -161,7 +186,7 @@ export function Productions() {
     const md = buildClaudeExport(activity, exportable, className);
     const slug = `${activity.key}_${className}`.replace(/[^A-Za-z0-9_-]+/g, '-');
     downloadText(`correction-claude_${slug}.md`, md);
-    showToast(`${exportable.length} copie${exportable.length > 1 ? 's' : ''} exportée${exportable.length > 1 ? 's' : ''}. Donne ce fichier à Claude, puis importe sa réponse JSON ici.`, 'success');
+    showToast(`${exportableCopies} copie${exportableCopies > 1 ? 's' : ''} exportée${exportableCopies > 1 ? 's' : ''} (une par groupe). Donne ce fichier à Claude, puis importe sa réponse JSON ici.`, 'success');
   };
 
   const importClaude = async (file: File) => {
@@ -306,7 +331,7 @@ export function Productions() {
                 {classId && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                     <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: 'var(--text-muted)' }}>
-                      {gradable.length} fiche{gradable.length > 1 ? 's' : ''} corrigée{gradable.length > 1 ? 's' : ''} sur {classWorks.length} reçue{classWorks.length > 1 ? 's' : ''}.
+                      {correctedGroups} production{correctedGroups > 1 ? 's' : ''} corrigée{correctedGroups > 1 ? 's' : ''} sur {groups.length} reçue{groups.length > 1 ? 's' : ''} ({classWorks.length} élève{classWorks.length > 1 ? 's' : ''}).
                       {carnetLink
                         ? <> Carnet : évaluation « {carnetLink.written_assessments?.name ?? activity.title} » liée, les envois suivants mettent les notes à jour.</>
                         : <> Pas encore d’évaluation au carnet pour cette classe : elle sera créée au premier envoi (TP, coefficient 1, /{activity.bareme_total}).</>}
@@ -322,7 +347,7 @@ export function Productions() {
                       title="Actualiser, correction par Claude (fichier)"
                       items={[
                         { label: loadingWorks ? 'Actualisation…' : 'Actualiser les envois', onClick: () => { void loadWorks(activity.id); }, disabled: loadingWorks },
-                        { label: `Exporter pour Claude (${exportable.length})`, onClick: exportClaude, disabled: exportable.length === 0, title: 'Fichier Markdown à donner à un Claude correcteur : consignes, barème, corrigé attendu et les fiches envoyées' },
+                        { label: `Exporter pour Claude (${exportableCopies})`, onClick: exportClaude, disabled: exportable.length === 0, title: 'Fichier Markdown à donner à un Claude correcteur : consignes, barème, corrigé attendu et les fiches envoyées' },
                         { label: importing ? 'Import…' : 'Importer la correction Claude', onClick: () => fileInput.current?.click(), disabled: importing || exportable.length === 0, title: 'Fichier JSON (ou texte contenant le bloc JSON) renvoyé par Claude : critères, remarques, compétences, conseils' },
                       ]}
                     />
@@ -336,9 +361,8 @@ export function Productions() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: 'var(--surface-3)', textAlign: 'left' }}>
-                      <th style={th}>Élève</th>
+                      <th style={th}>Élèves</th>
                       <th style={th}>Statut</th>
-                      <th style={th}>Binôme</th>
                       <th style={th}>Dernier envoi</th>
                       <th style={th}>Envois</th>
                       <th style={th}>Note</th>
@@ -347,41 +371,65 @@ export function Productions() {
                   </thead>
                   <tbody>
                     {rows.length === 0 && (
-                      <tr><td colSpan={7} style={{ padding: 20, color: 'var(--text-dim)', textAlign: 'center' }}>Aucun élève pour cette classe.</td></tr>
+                      <tr><td colSpan={6} style={{ padding: 20, color: 'var(--text-dim)', textAlign: 'center' }}>Aucun élève pour cette classe.</td></tr>
                     )}
-                    {rows.map(({ student, work }) => (
-                      <tr key={student.id} style={{ borderTop: '1px solid var(--border)' }}>
-                        <td style={td}><strong>{student.pseudo}</strong></td>
-                        <td style={td}>
-                          {work ? (
-                            <span style={{ ...pill, background: STATUS_COLOR[work.status].bg, color: STATUS_COLOR[work.status].fg }}>
-                              {WORK_STATUS_LABEL[work.status]}{work.modified_after_correction && ' · modifiée après correction'}
+                    {rows.map((r) => {
+                      if (!r.group) return (
+                        <tr key={r.student.id} style={{ borderTop: '1px solid var(--border)' }}>
+                          <td style={td}><strong>{r.student.pseudo}</strong></td>
+                          <td style={td}><span style={{ color: 'var(--text-dim)' }}>Rien reçu</span></td>
+                          <td style={td}>—</td>
+                          <td style={td}>—</td>
+                          <td style={td}>—</td>
+                          <td style={td}></td>
+                        </tr>
+                      );
+                      const g = r.group;
+                      const lead = g.works[0];
+                      const status = groupStatus(g);
+                      const mixedStatus = g.works.some((w) => w.status !== lead.status);
+                      const fmtNote = (w: WorkRow) => (w.total_points != null ? `${String(w.total_points).replace('.', ',')} / ${activity.bareme_total}` : '—');
+                      return (
+                        <tr key={g.key} style={{ borderTop: '1px solid var(--border)' }}>
+                          <td style={td}>
+                            <strong>{groupNames(g)}</strong>
+                            {g.works.length === 1 && <span style={{ color: 'var(--text-dim)', marginLeft: 6 }}>seul</span>}
+                          </td>
+                          <td style={td}>
+                            <span style={{ ...pill, background: STATUS_COLOR[status].bg, color: STATUS_COLOR[status].fg }}>
+                              {WORK_STATUS_LABEL[status]}{g.works.some((w) => w.modified_after_correction) && ' · modifiée après correction'}
                             </span>
-                          ) : <span style={{ color: 'var(--text-dim)' }}>Rien reçu</span>}
-                        </td>
-                        <td style={td}>{work && work.group_pseudos.length > 1 ? work.group_pseudos.filter((p) => p !== student.pseudo).join(', ') : <span style={{ color: 'var(--text-dim)' }}>seul</span>}</td>
-                        <td style={td}>{work ? fmtDate(work.submitted_at ?? work.updated_at) : '—'}</td>
-                        <td style={td}>{work ? work.version : '—'}</td>
-                        <td style={td}>
-                          {work?.total_points != null ? `${work.total_points} / ${activity.bareme_total}` : work && work.status !== 'draft' ? (() => {
-                            // Pas encore corrigée : aperçu des points des réponses à choix (correction automatique).
-                            const a = autoPoints(activity.definition, work.content);
-                            return a ? <span style={{ color: 'var(--text-muted)' }} title="Réponses à choix corrigées automatiquement, questions ouvertes à corriger">auto {String(a.points).replace('.', ',')} / {String(a.max).replace('.', ',')}</span> : '—';
-                          })() : '—'}
-                        </td>
-                        <td style={{ ...td, textAlign: 'right' }}>
-                          {work && (
+                            {mixedStatus && (
+                              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>
+                                {g.works.map((w) => `${w.students?.pseudo ?? 'Élève'} : ${WORK_STATUS_LABEL[w.status].toLowerCase()}`).join(' · ')}
+                              </div>
+                            )}
+                          </td>
+                          <td style={td}>{fmtDate(lead.submitted_at ?? lead.updated_at)}</td>
+                          <td style={td}>{lead.version}</td>
+                          <td style={td}>
+                            {g.works.some((w) => w.total_points != null) ? (
+                              sameCorrection(g.works)
+                                ? fmtNote(lead)
+                                : <span title="Membres corrigés à part">{g.works.map((w) => `${w.students?.pseudo ?? 'Élève'} ${fmtNote(w)}`).join(' · ')}</span>
+                            ) : lead.status !== 'draft' ? (() => {
+                              // Pas encore corrigée : aperçu des points des réponses à choix (correction automatique).
+                              const a = autoPoints(activity.definition, lead.content);
+                              return a ? <span style={{ color: 'var(--text-muted)' }} title="Réponses à choix corrigées automatiquement, questions ouvertes à corriger">auto {String(a.points).replace('.', ',')} / {String(a.max).replace('.', ',')}</span> : '—';
+                            })() : '—'}
+                          </td>
+                          <td style={{ ...td, textAlign: 'right' }}>
                             <button
-                              onClick={() => setOpenId(work.id)}
+                              onClick={() => setOpenId(lead.id)}
                               style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}
-                              title={work.status === 'draft' ? 'Brouillon de l’élève : lecture seule' : work.correction ? 'Revoir la correction' : 'Corriger cette fiche'}
+                              title={status === 'draft' ? 'Brouillon : lecture seule' : lead.correction ? 'Revoir la correction' : g.works.length > 1 ? 'Corriger cette production pour tout le groupe' : 'Corriger cette fiche'}
                             >
                               Ouvrir
                             </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -390,16 +438,20 @@ export function Productions() {
         </div>
       )}
 
-      {openWork && activity && (
+      {openGroup && activity && (
         <WorkCorrection
-          work={openWork}
+          group={openGroup.works}
           activity={activity}
-          groupMates={works.filter((w) => w.id !== openWork.id && w.group_key && w.group_key === openWork.group_key)}
           onClose={() => setOpenId(null)}
           onSaved={(updated) => setWorks((ws) => ws.map((w) => updated.find((u) => u.id === w.id) ?? w))}
-          onDeleted={(id) => setWorks((ws) => ws.filter((w) => w.id !== id))}
-          onPrev={openIndex > 0 ? () => setOpenId(ordered[openIndex - 1].id) : undefined}
-          onNext={openIndex >= 0 && openIndex < ordered.length - 1 ? () => setOpenId(ordered[openIndex + 1].id) : undefined}
+          onDeleted={(id) => {
+            // La fenêtre reste sur ce qui reste du groupe ; si c'était le dernier membre, elle se ferme.
+            const rest = openGroup.works.find((w) => w.id !== id);
+            setOpenId(rest ? rest.id : null);
+            setWorks((ws) => ws.filter((w) => w.id !== id));
+          }}
+          onPrev={openIndex > 0 ? () => setOpenId(ordered[openIndex - 1].works[0].id) : undefined}
+          onNext={openIndex >= 0 && openIndex < ordered.length - 1 ? () => setOpenId(ordered[openIndex + 1].works[0].id) : undefined}
           position={openIndex >= 0 ? { index: openIndex, total: ordered.length } : undefined}
           toast={showToast}
         />
