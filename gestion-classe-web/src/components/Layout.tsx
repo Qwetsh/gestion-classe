@@ -27,12 +27,15 @@ const primaryNavItems = [
   { path: '/analytics', label: 'Analyses', icon: 'analytics' },
 ];
 
-/** Vie de classe — le quotidien avec les élèves */
+/**
+ * Vie de classe — le quotidien avec les élèves.
+ * Groupes et Productions ne sont plus ici (hub Évaluations, phase 6) : TP de groupe et
+ * productions numériques se retrouvent dans Évaluations (carnet et fiche de l'éval). Leurs
+ * pages restent joignables (/group-sessions, /productions).
+ */
 const classLifeItems = [
   { path: '/rewards', label: 'Récompenses', icon: 'star' },
-  { path: '/group-sessions', label: 'Groupes', icon: 'group' },
   { path: '/evaluations', label: 'Évaluations', icon: 'evaluations' },
-  { path: '/productions', label: 'Productions', icon: 'productions' },
   { path: '/academy', label: 'Académie', icon: 'academy' },
 ];
 

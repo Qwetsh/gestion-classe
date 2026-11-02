@@ -71,6 +71,19 @@
 >   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : PR #26 fusionnée, déploiement OK, vérifié sur le site
 >   publié (« Exporter… » et ses trois formats sur la fiche de 4D, console sans erreur, rien téléchargé). Le lot
 >   n'a pas encore tourné en vrai (aucune copie scannée sans note). Prochaine étape : phase 6.
+> - Phase 6 **codée le 02/11/2026** (branche `feat/hub-phase6`), **sans migration ni changement serveur** :
+>   « + Évaluation » demande d'abord le type (`NewAssessmentChooser`) : Évaluation (formulaire habituel),
+>   Production numérique (choisir une activité existante : « Ouvrir sa fiche » si la classe en a déjà une,
+>   sinon l'éval est créée et reçoit les notes déjà corrigées), TP de groupe (lance la séance au téléphone,
+>   l'explique sur ordinateur, où la séance ne s'affiche pas). Panneau « activité × classe » extrait de la
+>   page Productions (`components/productions/ActivityClassPanel.tsx`) et affiché dans la fiche de l'éval liée
+>   (section Activité numérique : envois, corrigé attendu, correction, impression, Claude par fichier). Q5 :
+>   dans la fiche, la note suit la correction (chaque correction enregistrée ou importée part au carnet ; à
+>   l'ouverture, rattrapage des notes plus anciennes que la correction, `lib/productionSync.ts`, une retouche
+>   faite à la main après la correction n'est pas écrasée). Modale du carnet : section Production (statut,
+>   note, binôme, lien « Corriger / Revoir sa production » vers la fiche, qui l'ouvre). Menu : Groupes et
+>   Productions retirés, pages conservées et joignables ; raccourci « Groupes » de l'Accueil remplacé par
+>   Évaluations. La fiche n'ouvre plus d'office la visionneuse pour une éval sans copies.
 
 ---
 

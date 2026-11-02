@@ -9,11 +9,11 @@ export function QuickActionsModule() {
     <div className="dash__quick-block">
       <div className="dash__eyebrow">Raccourcis</div>
       <div className="dash__quick">
-        <Link to="/group-sessions" className="dash__quick-card">
+        <Link to="/evaluations" className="dash__quick-card">
           <span className="dash__quick-ic dash__quick-ic--indigo"><QuickIcon name="group" /></span>
           <span className="dash__quick-text">
-            <span className="dash__quick-title">Groupes</span>
-            <span className="dash__quick-sub">Sessions de groupe</span>
+            <span className="dash__quick-title">Évaluations</span>
+            <span className="dash__quick-sub">Carnet, TP de groupe, productions</span>
           </span>
         </Link>
 
