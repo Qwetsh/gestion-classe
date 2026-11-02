@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import { Modal } from './Modal';
 import { ImportTab, WebcamTab } from './AddCopyDialog';
-import { draftToUpload, filesToCompactDrafts, saveCopyInfo, uploadPagesAsTeacher, type DraftPage } from '../lib/copyUpload';
-import { saveGrade, type AssessmentRow, type GradeRow } from '../lib/evaluationQueries';
+import {
+  createDepotToken,
+  depotUrl,
+  draftToUpload,
+  fetchUnnamedCopies,
+  filesToCompactDrafts,
+  revokeDepotToken,
+  saveCopyInfo,
+  uploadPagesAsTeacher,
+  uploadUnnamedAsTeacher,
+  type DepotToken,
+  type DraftPage,
+} from '../lib/copyUpload';
+import { fetchAssessmentCopies, saveGrade, type AssessmentRow, type GradeRow } from '../lib/evaluationQueries';
 import {
   addPagesToStudent,
   assignBundle,
+  bundleId,
   assignInOrder,
   checkBeforeSend,
   mergeWithNext,
@@ -16,6 +30,7 @@ import {
   splitIntoBundles,
   suggestPagesPerCopy,
   updatePages,
+  UNNAMED,
   type Bundle,
 } from '../lib/classCopies';
 
@@ -38,15 +53,20 @@ interface ClassCopiesDialogProps {
   onError: (message: string) => void;
 }
 
-type Tab = 'import' | 'webcam';
+type Tab = 'import' | 'webcam' | 'qr';
 type Page = DraftPage;
+/** Webcam : l'élève en cours, ou une copie « Pas de nom » (créée à la première page). */
+type WebTarget = { kind: 'student'; id: string } | { kind: 'unnamed'; bundleId: string | null };
 
 /**
  * « Ajouter les copies de la classe » : le paquet entier (PDF du photocopieur, dossier de
  * photos, ou webcam élève par élève), découpé en copies de N pages et attribué dans l'ordre
  * de la liste. On corrige à la main (glisser une copie sur un élève, couper, fusionner,
- * tourner, marquer un absent) ; rien ne part avant « Envoyer ».
- * Les pages arrivent comme celles du scan mobile (assessment_copy_pages), élève par élève.
+ * tourner, marquer un absent, « Pas de nom ») ; rien ne part avant « Envoyer ».
+ * Les pages arrivent comme celles du scan mobile (assessment_copy_pages), élève par élève ; une
+ * copie « Pas de nom » va dans assessment_unnamed_pages (migration 060), à identifier ensuite.
+ * QR code : un seul jeton pour l'éval, le téléphone enchaîne les élèves (page /depot) et les
+ * pages arrivent directement en base.
  */
 export function ClassCopiesDialog({ assessment, students, knownVersions, onClose, onError }: ClassCopiesDialogProps) {
   const [tab, setTab] = useState<Tab>('import');
@@ -60,7 +80,10 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
   const [adapted, setAdapted] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(students.map((s) => [s.id, !!s.grade?.is_adapted])),
   );
-  const [current, setCurrent] = useState<string | null>(null);
+  const [webTarget, setWebTarget] = useState<WebTarget | null>(null);
+  // QR code : monté à la première ouverture de l'onglet et gardé (un jeton par fenêtre).
+  const [qrOpened, setQrOpened] = useState(false);
+  const [arrivals, setArrivals] = useState<Record<string, number>>({});
   const [hasCamera, setHasCamera] = useState(false);
   const [dropOn, setDropOn] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
@@ -81,7 +104,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
   useEffect(() => () => bundlesRef.current.forEach((b) => b.pages.forEach((p) => URL.revokeObjectURL(p.preview))), []);
 
   const byId = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
-  const pseudo = (id: string | null) => (id ? byId.get(id)?.pseudo ?? '?' : '');
+  const pseudo = (id: string | null) => (id === UNNAMED ? 'Pas de nom' : id ? byId.get(id)?.pseudo ?? '?' : '');
   // L'ordre de la liste, sans les absents ni ceux qui ont déjà une copie.
   const order = useMemo(
     () => students.filter((s) => !s.absent && !marked.has(s.id) && s.existingPages === 0).map((s) => s.id),
@@ -89,14 +112,17 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
   );
   const bundleOf = useMemo(() => {
     const m = new Map<string, number>();
-    bundles.forEach((b, i) => b.studentId && m.set(b.studentId, i));
+    bundles.forEach((b, i) => b.studentId && b.studentId !== UNNAMED && m.set(b.studentId, i));
     return m;
   }, [bundles]);
 
   // Webcam : l'élève en cours, par défaut le premier de la liste sans copie.
   useEffect(() => {
-    if (tab === 'webcam' && current === null) setCurrent(nextStudentWithout(bundles, order, null));
-  }, [tab, current, bundles, order]);
+    if (tab !== 'webcam' || webTarget !== null) return;
+    const first = nextStudentWithout(bundles, order, null);
+    if (first) setWebTarget({ kind: 'student', id: first });
+  }, [tab, webTarget, bundles, order]);
+  const currentStudent = webTarget?.kind === 'student' ? webTarget.id : null;
 
   const pageCount = bundles.reduce((n, b) => n + b.pages.length, 0);
 
@@ -148,10 +174,25 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
   };
 
   const capture = (drafts: Page[]) => {
-    if (!current) return;
+    if (!webTarget) return;
     setReport(null);
-    setBundles((prev) => addPagesToStudent(prev, current, drafts));
+    if (webTarget.kind === 'student') {
+      setBundles((prev) => addPagesToStudent(prev, webTarget.id, drafts));
+      return;
+    }
+    const existing = webTarget.bundleId && bundles.some((b) => b.id === webTarget.bundleId) ? webTarget.bundleId : null;
+    if (existing) {
+      setBundles((prev) => updatePages(prev, existing, (pages) => [...pages, ...drafts]));
+    } else {
+      const id = bundleId();
+      setBundles((prev) => [...prev, { id, pages: drafts, studentId: UNNAMED }]);
+      setWebTarget({ kind: 'unnamed', bundleId: id });
+    }
   };
+  const webUnnamedPages =
+    webTarget?.kind === 'unnamed' && webTarget.bundleId
+      ? bundles.find((b) => b.id === webTarget.bundleId)?.pages.length ?? 0
+      : 0;
 
   /* ---------- envoi ---------- */
 
@@ -181,8 +222,11 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
       return;
     }
     const appended = bundles.filter((b) => b.studentId && (byId.get(b.studentId)?.existingPages ?? 0) > 0);
+    const unnamedCount = bundles.filter((b) => b.studentId === UNNAMED).length;
     const lines = [
-      check.ready > 0 && `${check.ready} copie(s) vont partir, ${bundles.filter((b) => b.studentId).reduce((n, b) => n + b.pages.length, 0)} pages.`,
+      check.ready > 0 &&
+        `${check.ready} copie(s) vont partir, ${bundles.filter((b) => b.studentId).reduce((n, b) => n + b.pages.length, 0)} pages` +
+          (unnamedCount > 0 ? `, dont ${unnamedCount} « Pas de nom » à identifier ensuite.` : '.'),
       check.unassigned > 0 && `${check.unassigned} copie(s) sans élève resteront ici.`,
       appended.length > 0 && `Pages ajoutées après celles déjà rangées pour : ${appended.map((b) => pseudo(b.studentId)).join(', ')}.`,
       absentsToSave.length > 0 && `${absentsToSave.length} élève(s) noté(s) absent(s) dans le carnet : ${absentsToSave.map((s) => s.pseudo).join(', ')}.`,
@@ -196,24 +240,29 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
     let inARow = 0;
     for (let i = 0; i < ready.length && inARow < 3; i++) {
       const b = ready[i];
-      const s = byId.get(b.studentId!)!;
+      const name = pseudo(b.studentId);
       try {
-        setSending(`Copie ${i + 1}/${ready.length} · ${s.pseudo} · préparation`);
+        setSending(`Copie ${i + 1}/${ready.length} · ${name} · préparation`);
         const pages: Blob[] = [];
         for (const p of b.pages) pages.push(await draftToUpload(p));
-        await uploadPagesAsTeacher({
-          userId: assessment.user_id,
-          assessmentId: assessment.id,
-          studentId: s.id,
-          pages,
-          replace: false,
-          onProgress: (n) => setSending(`Copie ${i + 1}/${ready.length} · ${s.pseudo} · page ${n}/${pages.length}`),
-        });
+        const onProgress = (n: number) => setSending(`Copie ${i + 1}/${ready.length} · ${name} · page ${n}/${pages.length}`);
+        if (b.studentId === UNNAMED) {
+          await uploadUnnamedAsTeacher({ userId: assessment.user_id, assessmentId: assessment.id, pages, onProgress });
+        } else {
+          await uploadPagesAsTeacher({
+            userId: assessment.user_id,
+            assessmentId: assessment.id,
+            studentId: b.studentId!,
+            pages,
+            replace: false,
+            onProgress,
+          });
+        }
         sentIds.add(b.id);
         setChanged(true);
         inARow = 0;
       } catch (e) {
-        failed.push(`${s.pseudo} (${errorText(e)})`);
+        failed.push(`${name} (${errorText(e)})`);
         inARow += 1;
       }
     }
@@ -257,7 +306,11 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
 
   /* ---------- rendu ---------- */
 
-  const tabs: [Tab, string][] = [['import', 'Importer le paquet'], ...(hasCamera ? ([['webcam', 'Webcam, élève par élève']] as [Tab, string][]) : [])];
+  const tabs: [Tab, string][] = [
+    ['import', 'Importer le paquet'],
+    ...(hasCamera ? ([['webcam', 'Webcam, élève par élève']] as [Tab, string][]) : []),
+    ['qr', 'QR code (téléphone)'],
+  ];
   const versionRequired = knownVersions.length >= 2;
 
   return (
@@ -280,7 +333,8 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
                 onClick={() =>
                   setVersions((prev) => {
                     const next = { ...prev };
-                    for (const b of bundles) if (b.studentId && !(next[b.studentId] ?? '').trim()) next[b.studentId] = bulkVersion;
+                    for (const b of bundles) if (b.studentId && b.studentId !== UNNAMED && !(next[b.studentId] ?? '').trim()) next[b.studentId] = bulkVersion;
+                    for (const id of Object.keys(arrivals)) if (!(next[id] ?? '').trim()) next[id] = bulkVersion;
                     return next;
                   })
                 }
@@ -296,8 +350,8 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
             {students.map((s) => {
               const k = bundleOf.get(s.id);
               const isMarked = marked.has(s.id);
-              const isCurrent = tab === 'webcam' && current === s.id;
-              const missingVersion = versionRequired && k !== undefined && !(versions[s.id] ?? '').trim();
+              const isCurrent = tab === 'webcam' && currentStudent === s.id;
+              const missingVersion = versionRequired && (k !== undefined || !!arrivals[s.id]) && !(versions[s.id] ?? '').trim();
               return (
                 <div
                   key={s.id}
@@ -310,7 +364,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
                     if (id) dropBundle(id, s.id);
                   }}
                   onClick={() => {
-                    if (tab === 'webcam') setCurrent(s.id);
+                    if (tab === 'webcam') setWebTarget({ kind: 'student', id: s.id });
                     else if (k !== undefined) document.getElementById(`class-copy-${bundles[k].id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                   }}
                   style={{
@@ -321,6 +375,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: s.absent || isMarked ? 'var(--text-dim)' : 'var(--text)' }}>
                     {s.pseudo}
                   </span>
+                  {arrivals[s.id] > 0 && <Badge tone="ok">reçu {arrivals[s.id]} p.</Badge>}
                   {k !== undefined ? (
                     <Badge tone="ok">copie {k + 1} · {bundles[k].pages.length} p.</Badge>
                   ) : s.existingPages > 0 ? (
@@ -374,7 +429,10 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
             {tabs.map(([id, label]) => (
               <button
                 key={id}
-                onClick={() => setTab(id)}
+                onClick={() => {
+                  setTab(id);
+                  if (id === 'qr') setQrOpened(true);
+                }}
                 style={{ ...chip, background: tab === id ? 'var(--text)' : 'var(--surface-3)', color: tab === id ? 'var(--surface)' : 'var(--text-muted)' }}
               >
                 {label}
@@ -393,14 +451,46 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
             />
           )}
           {tab === 'webcam' && (
-            <WebcamTab onAdd={capture} onError={onError} compact disabled={!current}>
+            <WebcamTab onAdd={capture} onError={onError} compact disabled={!webTarget}>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
-                {current ? `${pseudo(current)}${bundleOf.has(current) ? ` · ${bundles[bundleOf.get(current)!].pages.length} p.` : ''}` : 'Choisis un élève à gauche'}
+                {webTarget?.kind === 'unnamed'
+                  ? `Pas de nom${webUnnamedPages ? ` · ${webUnnamedPages} p.` : ''}`
+                  : currentStudent
+                    ? `${pseudo(currentStudent)}${bundleOf.has(currentStudent) ? ` · ${bundles[bundleOf.get(currentStudent)!].pages.length} p.` : ''}`
+                    : 'Choisis un élève à gauche'}
               </span>
-              <button style={btn} onClick={() => setCurrent(nextStudentWithout(bundles, order, current))}>
+              <button
+                style={btn}
+                onClick={() => {
+                  const next = nextStudentWithout(bundles, order, currentStudent);
+                  setWebTarget(next ? { kind: 'student', id: next } : null);
+                }}
+              >
                 Élève suivant →
               </button>
+              <button
+                style={btn}
+                onClick={() => setWebTarget({ kind: 'unnamed', bundleId: null })}
+                title="Nouvelle copie sans nom lisible, à identifier plus tard"
+              >
+                Pas de nom
+              </button>
             </WebcamTab>
+          )}
+          {qrOpened && (
+            <div style={{ display: tab === 'qr' ? 'block' : 'none' }}>
+              <ClassQrTab
+                assessment={assessment}
+                students={students}
+                versionRequired={versionRequired}
+                onArrivals={(next) => {
+                  setArrivals(next);
+                  if (Object.keys(next).length > 0) setChanged(true);
+                }}
+                onUnnamedArrived={() => setChanged(true)}
+                onError={onError}
+              />
+            </div>
           )}
 
           {tab === 'import' && (
@@ -441,8 +531,8 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
                   e.dataTransfer.effectAllowed = 'move';
                 }}
                 style={{
-                  border: `1px solid ${b.studentId ? 'var(--border)' : 'var(--warn)'}`, borderRadius: 10, padding: 8,
-                  background: b.studentId ? 'var(--surface)' : 'var(--warn-soft)', cursor: 'grab',
+                  border: `1px ${b.studentId === UNNAMED ? 'dashed' : 'solid'} ${b.studentId ? 'var(--border)' : 'var(--warn)'}`, borderRadius: 10, padding: 8,
+                  background: b.studentId === UNNAMED ? 'var(--surface-3)' : b.studentId ? 'var(--surface)' : 'var(--warn-soft)', cursor: 'grab',
                 }}
               >
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
@@ -457,6 +547,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
                     style={{ ...input, fontWeight: 600, maxWidth: 220 }}
                   >
                     <option value="">— à attribuer —</option>
+                    <option value={UNNAMED}>Pas de nom (à identifier plus tard)</option>
                     {students.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.pseudo}
@@ -529,6 +620,132 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * QR code pour toute l'éval (migration 060) : le téléphone ouvre /depot, choisit l'élève (ou
+ * « Pas de nom »), photographie, « Élève suivant ». Les pages arrivent directement en base ;
+ * on suit les arrivées toutes les 3 s. Le jeton est révoqué à la fermeture de la fenêtre.
+ */
+function ClassQrTab({
+  assessment,
+  students,
+  versionRequired,
+  onArrivals,
+  onUnnamedArrived,
+  onError,
+}: {
+  assessment: AssessmentRow;
+  students: ClassCopyStudent[];
+  versionRequired: boolean;
+  onArrivals: (arrivals: Record<string, number>) => void;
+  onUnnamedArrived: () => void;
+  onError: (m: string) => void;
+}) {
+  const [token, setToken] = useState<DepotToken | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [received, setReceived] = useState<Record<string, number>>({});
+  const [unnamedNew, setUnnamedNew] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const callbacks = useRef({ onArrivals, onUnnamedArrived, onError });
+  useEffect(() => {
+    callbacks.current = { onArrivals, onUnnamedArrived, onError };
+  });
+
+  // Un jeton par fenêtre ; révoqué en la fermant.
+  useEffect(() => {
+    let current: DepotToken | null = null;
+    let cancelled = false;
+    createDepotToken(assessment.id, null)
+      .then(async (t) => {
+        if (cancelled) {
+          revokeDepotToken(t.token).catch(() => undefined);
+          return;
+        }
+        current = t;
+        setToken(t);
+        setQr(await QRCode.toDataURL(depotUrl(t.token), { width: 320, margin: 1, errorCorrectionLevel: 'M' }));
+      })
+      .catch((e) => callbacks.current.onError(e instanceof Error ? `QR code indisponible (${e.message})` : 'QR code indisponible'));
+    return () => {
+      cancelled = true;
+      if (current) revokeDepotToken(current.token).catch(() => undefined);
+    };
+  }, [assessment.id]);
+
+  // Les copies qui arrivent du téléphone, comparées à l'ouverture.
+  const initialUnnamed = useRef<number | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    const before = new Map(students.map((s) => [s.id, s.existingPages]));
+    let stop = false;
+    const tick = async () => {
+      setNow(Date.now());
+      try {
+        const [pages, unnamed] = await Promise.all([fetchAssessmentCopies(assessment.id), fetchUnnamedCopies(assessment.id)]);
+        if (stop) return;
+        const count = new Map<string, number>();
+        for (const p of pages) count.set(p.student_id, (count.get(p.student_id) ?? 0) + 1);
+        const next: Record<string, number> = {};
+        for (const [id, n] of count) {
+          const extra = n - (before.get(id) ?? 0);
+          if (extra > 0 && before.has(id)) next[id] = extra;
+        }
+        setReceived(next);
+        callbacks.current.onArrivals(next);
+        if (initialUnnamed.current === null) initialUnnamed.current = unnamed.length;
+        const extraUnnamed = Math.max(0, unnamed.length - initialUnnamed.current);
+        setUnnamedNew(extraUnnamed);
+        if (extraUnnamed > 0) callbacks.current.onUnnamedArrived();
+      } catch {
+        // réseau : prochain tour
+      }
+    };
+    tick();
+    const timer = window.setInterval(tick, 3000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, [token, assessment.id, students]);
+
+  const left = token ? Math.max(0, Math.round((new Date(token.expires_at).getTime() - now) / 60000)) : null;
+  const names = new Map(students.map((s) => [s.id, s.pseudo]));
+  const got = Object.entries(received);
+  return (
+    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div style={{ width: 240, height: 240, display: 'grid', placeItems: 'center', background: '#fff', borderRadius: 10, border: '1px solid var(--border)' }}>
+        {qr ? <img src={qr} alt="QR code d'envoi de la classe" style={{ width: 228, height: 228 }} /> : <span style={{ color: '#666', fontSize: 12 }}>Création du QR code…</span>}
+      </div>
+      <div style={{ flex: 1, minWidth: 240, fontSize: 13, color: 'var(--text)' }}>
+        <ol style={{ margin: '0 0 10px', paddingLeft: 18, lineHeight: 1.6 }}>
+          <li>Scanne ce QR code avec l’appareil photo du téléphone.</li>
+          <li>Choisis l’élève (ceux sans copie sont en haut), photographie ses pages, « Envoyer », puis « Élève suivant ».</li>
+          <li>Copie sans nom lisible : « Pas de nom », à identifier ensuite dans « Voir les copies ».</li>
+        </ol>
+        <div style={{ fontWeight: 700, color: got.length || unnamedNew ? 'var(--pos)' : 'var(--text-muted)' }}>
+          {got.length || unnamedNew
+            ? `Reçu : ${got.length} élève(s)${unnamedNew ? `, ${unnamedNew} page(s) sans nom` : ''}`
+            : 'En attente des copies…'}
+        </div>
+        {got.length > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            {got.map(([id, n]) => `${names.get(id) ?? '?'} (${n} p.)`).join(' · ')}
+          </div>
+        )}
+        {versionRequired && got.length > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--warn)', marginTop: 6 }}>
+            Indique la version du sujet de ces élèves dans la liste, puis « Enregistrer ».
+          </div>
+        )}
+        {token && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>
+            Valable encore {left} min, {token.max_pages} pages au plus pour la classe. Fermer la fenêtre désactive le QR code.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -9,9 +9,15 @@
 export interface Bundle<P> {
   id: string;
   pages: P[];
-  /** Élève qui reçoit la copie ; `null` : copie à attribuer à la main. */
+  /** Élève qui reçoit la copie ; `null` : copie à attribuer à la main ; UNNAMED : « Pas de nom ». */
   studentId: string | null;
 }
+
+/**
+ * Copie rangée sans élève (« Pas de nom », migration 060), à identifier plus tard dans l'app.
+ * Plusieurs copies peuvent l'être ; l'attribution dans l'ordre les laisse où elles sont.
+ */
+export const UNNAMED = '__pas_de_nom__';
 
 let seq = 0;
 export function bundleId(): string {
@@ -50,7 +56,8 @@ export function splitIntoBundles<P>(pages: P[], perCopy: number, makeId: () => s
  * ceux qui ont déjà une copie). Les copies en trop restent sans élève.
  */
 export function assignInOrder<P>(bundles: Bundle<P>[], order: string[]): Bundle<P>[] {
-  return bundles.map((b, i) => ({ ...b, studentId: order[i] ?? null }));
+  let k = 0;
+  return bundles.map((b) => (b.studentId === UNNAMED ? b : { ...b, studentId: order[k++] ?? null }));
 }
 
 /**
@@ -58,11 +65,15 @@ export function assignInOrder<P>(bundles: Bundle<P>[], order: string[]): Bundle<
  * dernier élève attribué avant elles (un absent retiré décale toute la suite d'un cran).
  */
 export function reassignFrom<P>(bundles: Bundle<P>[], index: number, order: string[]): Bundle<P>[] {
-  const before = bundles.slice(0, index).map((b) => b.studentId).filter((id): id is string => !!id);
+  const before = bundles
+    .slice(0, index)
+    .map((b) => b.studentId)
+    .filter((id): id is string => !!id && id !== UNNAMED);
   const taken = new Set(before);
   const last = before.length ? order.indexOf(before[before.length - 1]) : -1;
   const free = order.slice(last + 1).filter((id) => !taken.has(id));
-  return bundles.map((b, i) => (i < index ? b : { ...b, studentId: free[i - index] ?? null }));
+  let k = 0;
+  return bundles.map((b, i) => (i < index || b.studentId === UNNAMED ? b : { ...b, studentId: free[k++] ?? null }));
 }
 
 /**
@@ -72,10 +83,11 @@ export function reassignFrom<P>(bundles: Bundle<P>[], index: number, order: stri
 export function assignBundle<P>(bundles: Bundle<P>[], id: string, studentId: string | null): Bundle<P>[] {
   const moving = bundles.find((b) => b.id === id);
   if (!moving) return bundles;
-  const previous = moving.studentId;
+  // Une copie « Pas de nom » qui prend la place d'un élève lui laisse une copie à attribuer.
+  const previous = moving.studentId === UNNAMED ? null : moving.studentId;
   return bundles.map((b) => {
     if (b.id === id) return { ...b, studentId };
-    if (studentId !== null && b.studentId === studentId) return { ...b, studentId: previous };
+    if (studentId !== null && studentId !== UNNAMED && b.studentId === studentId) return { ...b, studentId: previous };
     return b;
   });
 }
@@ -152,7 +164,7 @@ export function nextStudentWithout<P>(bundles: Bundle<P>[], order: string[], cur
 }
 
 export interface SendCheck {
-  /** Copies prêtes à partir (avec un élève). */
+  /** Copies prêtes à partir (avec un élève, ou « Pas de nom »). */
   ready: number;
   /** Copies sans élève : elles ne partiront pas. */
   unassigned: number;
@@ -172,7 +184,7 @@ export function checkBeforeSend<P>(
   const assigned = bundles.filter((b) => b.studentId !== null);
   const missingVersion =
     knownVersions.length >= 2
-      ? assigned.map((b) => b.studentId as string).filter((id) => !versionOf(id).trim())
+      ? assigned.map((b) => b.studentId as string).filter((id) => id !== UNNAMED && !versionOf(id).trim())
       : [];
   return { ready: assigned.length, unassigned: bundles.length - assigned.length, missingVersion };
 }

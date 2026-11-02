@@ -228,6 +228,86 @@ export async function uploadPagesAsTeacher(params: {
   }
 }
 
+/* ---------- copies « Pas de nom » (migration 060) ---------- */
+
+/** Une copie rangée sans élève, à identifier plus tard. */
+export interface UnnamedCopy {
+  copyId: string;
+  createdAt: string;
+  pages: { id: string; page_order: number; storage_path: string }[];
+}
+
+/** Regroupe les pages sans nom par copie, de la plus ancienne à la plus récente. */
+export function groupUnnamed(
+  rows: { id: string; copy_id: string; page_order: number; storage_path: string; created_at: string }[],
+): UnnamedCopy[] {
+  const by = new Map<string, UnnamedCopy>();
+  for (const r of rows) {
+    const c = by.get(r.copy_id) ?? { copyId: r.copy_id, createdAt: r.created_at, pages: [] };
+    if (r.created_at < c.createdAt) c.createdAt = r.created_at;
+    c.pages.push({ id: r.id, page_order: r.page_order, storage_path: r.storage_path });
+    by.set(r.copy_id, c);
+  }
+  const out = [...by.values()];
+  for (const c of out) c.pages.sort((a, b) => a.page_order - b.page_order);
+  return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.copyId.localeCompare(b.copyId));
+}
+
+/** Copies sans nom d'une éval ; vide si la migration 060 n'est pas passée. */
+export async function fetchUnnamedCopies(assessmentId: string): Promise<UnnamedCopy[]> {
+  const { data, error } = await supabase
+    .from('assessment_unnamed_pages')
+    .select('id, copy_id, page_order, storage_path, created_at')
+    .eq('assessment_id', assessmentId);
+  if (error) return [];
+  return groupUnnamed(data || []);
+}
+
+/** Range une copie sans élève : fichiers sous `<user>/<éval>/sans-nom/`. */
+export async function uploadUnnamedAsTeacher(params: {
+  userId: string;
+  assessmentId: string;
+  pages: Blob[];
+  onProgress?: (done: number) => void;
+}): Promise<string> {
+  const copyId = crypto.randomUUID();
+  for (let i = 0; i < params.pages.length; i++) {
+    const id = crypto.randomUUID();
+    const path = `${params.userId}/${params.assessmentId}/sans-nom/${id}.jpg`;
+    const { error: upError } = await supabase.storage.from(BUCKET).upload(path, params.pages[i], { contentType: 'image/jpeg' });
+    if (upError) throw upError;
+    const { error } = await supabase.from('assessment_unnamed_pages').insert({
+      id,
+      user_id: params.userId,
+      assessment_id: params.assessmentId,
+      copy_id: copyId,
+      page_order: i + 1,
+      storage_path: path,
+    });
+    if (error) {
+      await supabase.storage.from(BUCKET).remove([path]);
+      throw error;
+    }
+    params.onProgress?.(i + 1);
+  }
+  return copyId;
+}
+
+/** Donne une copie sans nom à un élève : ses pages passent après les siennes. */
+export async function assignUnnamedCopy(copyId: string, studentId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('assign_unnamed_copy', { p_copy_id: copyId, p_student_id: studentId });
+  if (error) throw error;
+  return data as number;
+}
+
+/** Supprime une copie sans nom (lignes puis fichiers). */
+export async function deleteUnnamedCopy(copy: UnnamedCopy): Promise<void> {
+  const { error } = await supabase.from('assessment_unnamed_pages').delete().eq('copy_id', copy.copyId);
+  if (error) throw error;
+  const { error: rmError } = await supabase.storage.from(BUCKET).remove(copy.pages.map((p) => p.storage_path));
+  if (rmError) throw rmError;
+}
+
 /**
  * Version du sujet et copie adaptée, comme au scan mobile (assessment_grades, seules ces
  * colonnes : la note et le détail éventuels ne bougent pas).
@@ -258,16 +338,25 @@ export interface DepotToken {
   token: string;
   expires_at: string;
   max_pages: number;
+  mode?: 'student' | 'class';
 }
 
 export interface DepotInfo {
+  /** Jeton d'un élève, ou de toute l'éval (migration 060). Absent : ancienne fonction (élève). */
+  mode?: 'student' | 'class';
   pseudo: string;
   class_name: string;
   assessment_name: string;
   pages_uploaded: number;
   max_pages: number;
   expires_at: string;
+  /** Jeton de classe : élèves attendus et pages déjà rangées. */
+  students?: { id: string; pseudo: string; pages: number }[];
+  unnamed_copies?: number;
 }
+
+/** À qui va une page envoyée avec un jeton de classe. */
+export type DepotTarget = { student_id: string } | { unnamed: true; copy_id?: string };
 
 async function invokeDepot<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('depot-copie', { body });
@@ -286,8 +375,9 @@ async function invokeDepot<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-export const createDepotToken = (assessmentId: string, studentId: string) =>
-  invokeDepot<DepotToken>({ action: 'create', assessment_id: assessmentId, student_id: studentId });
+/** Sans élève : jeton pour toute l'éval (« Ajouter les copies de la classe »). */
+export const createDepotToken = (assessmentId: string, studentId: string | null) =>
+  invokeDepot<DepotToken>({ action: 'create', assessment_id: assessmentId, ...(studentId ? { student_id: studentId } : {}) });
 
 export const revokeDepotToken = (token: string) => invokeDepot<{ ok: true }>({ action: 'revoke', token });
 
@@ -302,8 +392,12 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-export async function uploadDepotPage(token: string, page: Blob): Promise<{ page_order: number; pages_uploaded: number }> {
-  return invokeDepot({ action: 'upload', token, image: await blobToBase64(page) });
+export async function uploadDepotPage(
+  token: string,
+  page: Blob,
+  target?: DepotTarget,
+): Promise<{ page_order: number; pages_uploaded: number; copy_id?: string }> {
+  return invokeDepot({ action: 'upload', token, image: await blobToBase64(page), ...(target ?? {}) });
 }
 
 /** Lien du QR code : le jeton est dans le fragment (#), qui ne part jamais vers le serveur web. */
@@ -316,6 +410,8 @@ const DEPOT_ERRORS: Record<string, string> = {
   expired_or_full: 'Ce QR code a expiré, a été fermé, ou a reçu le nombre maximum de pages.',
   too_large: 'Image trop lourde (5 Mo au plus).',
   bad_image: 'Image illisible : reprends la photo.',
+  bad_student: 'Cet élève ne fait pas partie de cette éval.',
+  bad_copy: 'Copie sans nom introuvable : recommence « Pas de nom ».',
 };
 
 export function describeDepotError(code: string): string {

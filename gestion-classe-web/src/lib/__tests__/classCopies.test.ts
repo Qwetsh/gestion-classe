@@ -12,6 +12,7 @@ import {
   splitIntoBundles,
   suggestPagesPerCopy,
   updatePages,
+  UNNAMED,
   type Bundle,
 } from '../classCopies';
 
@@ -114,6 +115,36 @@ describe('webcam en file', () => {
     expect(nextStudentWithout(bs, ['s1', 's2', 's3'], 's3')).toBe('s1');
     expect(nextStudentWithout(bs, ['s1', 's2', 's3'], null)).toBe('s1');
     expect(nextStudentWithout(bs, ['s2'], 's2')).toBeNull();
+  });
+});
+
+describe('Pas de nom', () => {
+  const mixed = (): Bundle<string>[] => [
+    { id: '1', pages: ['a'], studentId: null },
+    { id: '2', pages: ['b'], studentId: UNNAMED },
+    { id: '3', pages: ['c'], studentId: null },
+  ];
+  it('l’attribution dans l’ordre laisse les copies sans nom à leur place', () => {
+    expect(studentsOf(assignInOrder(mixed(), ['s1', 's2']))).toEqual(['s1', UNNAMED, 's2']);
+  });
+  it('réattribuer d’ici saute les copies sans nom', () => {
+    const bs = assignInOrder(mixed(), ['s1', 's2', 's3']);
+    expect(studentsOf(reassignFrom(bs, 1, ['s1', 's3']))).toEqual(['s1', UNNAMED, 's3']);
+  });
+  it('plusieurs copies peuvent être sans nom, sans échange', () => {
+    const bs = mixed();
+    expect(studentsOf(assignBundle(bs, '1', UNNAMED))).toEqual([UNNAMED, UNNAMED, null]);
+  });
+  it('une copie sans nom posée sur un élève laisse l’autre copie à attribuer', () => {
+    const bs: Bundle<string>[] = [
+      { id: '1', pages: ['a'], studentId: UNNAMED },
+      { id: '2', pages: ['b'], studentId: 's1' },
+    ];
+    expect(studentsOf(assignBundle(bs, '1', 's1'))).toEqual(['s1', null]);
+  });
+  it('part à l’envoi sans demander de version', () => {
+    const check = checkBeforeSend(mixed(), () => '', ['v4', 'v5']);
+    expect(check).toEqual({ ready: 1, unassigned: 2, missingVersion: [] });
   });
 });
 
