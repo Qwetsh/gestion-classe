@@ -101,7 +101,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
   const [addingId, setAddingId] = useState<string | null>(null);
   // « Ajouter les copies de la classe » : le paquet entier d'un coup.
   const [addingClass, setAddingClass] = useState(false);
-  // Copies « Pas de nom » (migration 061), à identifier : celle qu'on regarde.
+  // Copies « Pas de nom » (migration 062), à identifier : celle qu'on regarde.
   const [unnamed, setUnnamed] = useState<UnnamedCopy[]>([]);
   const [unnamedId, setUnnamedId] = useState<string | null>(null);
 

@@ -64,7 +64,7 @@ type WebTarget = { kind: 'student'; id: string } | { kind: 'unnamed'; bundleId: 
  * de la liste. On corrige à la main (glisser une copie sur un élève, couper, fusionner,
  * tourner, marquer un absent, « Pas de nom ») ; rien ne part avant « Envoyer ».
  * Les pages arrivent comme celles du scan mobile (assessment_copy_pages), élève par élève ; une
- * copie « Pas de nom » va dans assessment_unnamed_pages (migration 061), à identifier ensuite.
+ * copie « Pas de nom » va dans assessment_unnamed_pages (migration 062), à identifier ensuite.
  * QR code : un seul jeton pour l'éval, le téléphone enchaîne les élèves (page /depot) et les
  * pages arrivent directement en base.
  */
@@ -624,7 +624,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
 }
 
 /**
- * QR code pour toute l'éval (migration 061) : le téléphone ouvre /depot, choisit l'élève (ou
+ * QR code pour toute l'éval (migration 062) : le téléphone ouvre /depot, choisit l'élève (ou
  * « Pas de nom »), photographie, « Élève suivant ». Les pages arrivent directement en base ;
  * on suit les arrivées toutes les 3 s. Le jeton est révoqué à la fermeture de la fenêtre.
  */

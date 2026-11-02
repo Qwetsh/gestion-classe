@@ -235,7 +235,7 @@ Le cas « pas le temps de scanner en classe » : le paquet entier d'un coup. Bra
   bandeau du haut de page, soit 1 à 2 centimes pour une classe — à décider avec Thomas.
 
 ### Ajout — QR code pour toute la classe et copies « Pas de nom » (02/11/2026, demande de Thomas)
-Branche `feat/copies-qr-classe`. Migration 061 + Edge Functions `depot-copie` et
+Branche `feat/copies-qr-classe`. Migration 062 + Edge Functions `depot-copie` et
 `purge-assessment-copies` à redéployer (**pas encore en prod**).
 - **QR code (téléphone)**, 3e onglet de « Ajouter les copies de la classe » : un jeton pour toute
   l'éval (`assessment_upload_tokens.student_id` NULL ; 60 min, 200 pages, révoqué à la fermeture de

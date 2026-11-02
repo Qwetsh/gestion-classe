@@ -19,7 +19,7 @@ type Target = { kind: 'student'; id: string; pseudo: string } | { kind: 'unnamed
  * envoyé au serveur web). Pas de connexion.
  *
  * Jeton d'un élève : on ne voit que son pseudo, la classe et le nom de l'éval.
- * Jeton de classe (migration 061, « Ajouter les copies de la classe ») : la liste des élèves de
+ * Jeton de classe (migration 062, « Ajouter les copies de la classe ») : la liste des élèves de
  * l'éval (sans copie d'abord) ; on choisit l'élève, on photographie, « Élève suivant ». Une copie
  * sans nom lisible part en « Pas de nom », à identifier ensuite sur l'ordinateur.
  */
