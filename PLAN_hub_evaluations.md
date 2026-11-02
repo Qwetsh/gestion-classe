@@ -89,6 +89,12 @@
 >   trois types dans le carnet, console sans erreur ; rien créé ni modifié). **Les six phases du hub sont en
 >   ligne.** Restent à observer en vrai : la correction en lot, la création d'une éval de production, le
 >   collage d'une colonne dans Pronote.
+> - **En-têtes des colonnes du carnet** (03/11/2026, PR #28, en ligne) : maquettes Claude Design
+>   (https://claude.ai/artifact/71CyBC3CxivKLuPXkQtFQ7), variante B retenue. Titre sur deux lignes, TP de
+>   groupe raccourcis et numérotés, ligne d'infos courte, pastilles ; menu ▾ par colonne (fiche, sujet et
+>   corrigé, scanner = fenêtre de la classe, corrections, notes Excel, Pronote, relier) ; relier ou détacher
+>   une série, suggestion « même nom ». Sans migration. Reste : ouvrir la fenêtre de classe sur l'onglet QR
+>   code une fois la PR #21 en ligne.
 
 ---
 
