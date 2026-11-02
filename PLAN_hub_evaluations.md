@@ -84,6 +84,11 @@
 >   note, binôme, lien « Corriger / Revoir sa production » vers la fiche, qui l'ouvre). Menu : Groupes et
 >   Productions retirés, pages conservées et joignables ; raccourci « Groupes » de l'Accueil remplacé par
 >   Évaluations. La fiche n'ouvre plus d'office la visionneuse pour une éval sans copies.
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : PR #27 fusionnée, déploiement OK, vérifié sur le site
+>   publié (menu sans Groupes ni Productions, fiche de la production de 4B avec sa section Activité, choix des
+>   trois types dans le carnet, console sans erreur ; rien créé ni modifié). **Les six phases du hub sont en
+>   ligne.** Restent à observer en vrai : la correction en lot, la création d'une éval de production, le
+>   collage d'une colonne dans Pronote.
 
 ---
 
