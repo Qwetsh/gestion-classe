@@ -122,6 +122,12 @@ export interface AssessmentRow {
   published_at: string | null;
   copies_purge_at: string | null;
   copies_purged_at: string | null;
+  /**
+   * Migration 060 (hub Évaluations, phase 1) : titre court de l'en-tête de colonne et séquence
+   * du programme. Facultatifs : absents tant que la migration n'est pas appliquée.
+   */
+  short_name?: string | null;
+  sequence?: string | null;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
@@ -220,6 +226,9 @@ export interface CreateAssessmentInput {
   /** Demi-classe concernee (NULL = classe entiere). */
   groupId?: string | null;
   countsInAverage?: boolean;
+  /** Migration 060 : envoyes seulement s'ils sont renseignes (une base sans la migration accepte le reste). */
+  shortName?: string | null;
+  sequence?: string | null;
 }
 
 /** Cree une evaluation depuis le web. Renvoie la ligne creee. */
@@ -241,11 +250,28 @@ export async function createAssessment(input: CreateAssessmentInput): Promise<As
       series_id: input.seriesId ?? null,
       group_id: input.groupId ?? null,
       counts_in_average: input.countsInAverage ?? true,
+      ...optionalLabels(input),
     })
     .select(ASSESSMENT_SELECT)
     .single();
   if (error) throw error;
   return data as AssessmentRow;
+}
+
+/**
+ * Titre court et séquence (migration 060) pour un insert ou un update. À la création, on ne les
+ * envoie que s'ils sont renseignés : une base sans la migration accepte alors l'insert. En
+ * modification (`clear` vrai), une chaîne vide efface la valeur.
+ */
+export function optionalLabels(
+  input: { shortName?: string | null; sequence?: string | null },
+  clear = false,
+): { short_name?: string | null; sequence?: string | null } {
+  const out: { short_name?: string | null; sequence?: string | null } = {};
+  const norm = (v: string | null | undefined) => (v == null ? null : v.trim() || null);
+  if (input.shortName !== undefined && (clear || norm(input.shortName))) out.short_name = norm(input.shortName);
+  if (input.sequence !== undefined && (clear || norm(input.sequence))) out.sequence = norm(input.sequence);
+  return out;
 }
 
 /** Liste des evals (non supprimees) de l'utilisateur, classe incluse, recentes d'abord. */
@@ -337,11 +363,13 @@ export interface CopyOverviewData {
   overviews: Record<string, CopyOverview>;
   /** Début de la séance liée, par éval. */
   sessionStarts: Record<string, string>;
+  /** Élèves qui ont une copie (pages scannées ou transcription), par éval. */
+  copyKeys: Record<string, Set<string>>;
 }
 
 /** État des copies de plusieurs évals (une ligne par classe) en quatre requêtes. */
 export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOverviewData> {
-  if (items.length === 0) return { overviews: {}, sessionStarts: {} };
+  if (items.length === 0) return { overviews: {}, sessionStarts: {}, copyKeys: {} };
   const ids = items.map((a) => a.id);
   const sessionIds = [...new Set(items.map((a) => a.session_id).filter((s): s is string => !!s))];
 
@@ -372,6 +400,9 @@ export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOv
   const startById = new Map((sessionsRes.data || []).map((s) => [s.id, s.started_at]));
   const overviews: Record<string, CopyOverview> = {};
   const sessionStarts: Record<string, string> = {};
+  const copyKeys: Record<string, Set<string>> = {};
+  for (const p of pages) (copyKeys[p.assessment_id] ??= new Set()).add(p.student_id);
+  for (const [id, keys] of Object.entries(transcripts)) for (const k of keys) (copyKeys[id] ??= new Set()).add(k);
   for (const a of items) {
     overviews[a.id] = computeCopyOverview(
       expected[a.id] ?? [],
@@ -383,7 +414,7 @@ export async function fetchCopyOverviews(items: AssessmentRow[]): Promise<CopyOv
     const start = a.session_id ? startById.get(a.session_id) : undefined;
     if (start) sessionStarts[a.id] = start;
   }
-  return { overviews, sessionStarts };
+  return { overviews, sessionStarts, copyKeys };
 }
 
 /** Signed URL d'une page de copie (bucket prive assessment-copies). */
@@ -1003,6 +1034,9 @@ export interface UpdateAssessmentInput {
   kind?: AssessmentKind;
   countsInAverage?: boolean;
   publishedToStudents?: boolean;
+  /** Migration 060. Chaîne vide = effacer. */
+  shortName?: string | null;
+  sequence?: string | null;
 }
 
 /** Modifie une évaluation. Ne propage rien à sa série : la propagation est un geste explicite. */
@@ -1017,6 +1051,7 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
   if (patch.publishedToStudents !== undefined) row.published_to_students = patch.publishedToStudents;
+  Object.assign(row, optionalLabels(patch, true));
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from('written_assessments').update(row).eq('id', assessmentId);
@@ -1047,6 +1082,8 @@ export interface CreateSeriesInput {
   coefficient?: number;
   kind?: AssessmentKind;
   countsInAverage?: boolean;
+  shortName?: string | null;
+  sequence?: string | null;
 }
 
 /**
@@ -1093,6 +1130,7 @@ export async function createAssessmentSeries(input: CreateSeriesInput): Promise<
         kind: input.kind ?? 'ecrit',
         series_id: series.id,
         counts_in_average: input.countsInAverage ?? true,
+        ...optionalLabels(input),
       })),
     )
     .select(ASSESSMENT_SELECT);
@@ -1413,6 +1451,7 @@ export async function updateSeriesAssessments(
   if (patch.coefficient !== undefined) row.coefficient = patch.coefficient;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
+  Object.assign(row, optionalLabels(patch, true));
   // La date n'est jamais propagée : chaque classe passe l'évaluation son jour.
   if (Object.keys(row).length === 0) return;
 

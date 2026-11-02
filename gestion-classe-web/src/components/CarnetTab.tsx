@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
+  ASSESSMENT_KIND_LABEL,
   createAssessment,
   fetchCarnet,
   fetchClasses,
@@ -16,7 +17,26 @@ import {
   setGradeAdapted,
 } from '../lib/evaluationQueries';
 import type { CopyOverview } from '../lib/copyStatus';
-import { carnetHeaderChip, type HeaderChip } from '../lib/assessmentGroups';
+import { carnetHeaderChip, hasCopies, neverScanned, type HeaderChip } from '../lib/assessmentGroups';
+import {
+  CELL_MARK_LABEL,
+  cellMark,
+  DEFAULT_PREFS,
+  filterAssessments,
+  hasUnsequenced,
+  headerTitle,
+  isFiltered,
+  kindsPresent,
+  NO_FILTERS,
+  parsePrefs,
+  sequenceOf,
+  sequencesPresent,
+  shortDate,
+  type CarnetPrefs,
+  type CellMark,
+} from '../lib/carnetView';
+import { KindIcon } from './KindIcon';
+import { CellDetailDialog } from './CellDetailDialog';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentModal } from './AssessmentModal';
 import { MoreMenu } from './MoreMenu';
@@ -46,6 +66,19 @@ import {
  */
 
 const PERIODS = [1, 2, 3];
+
+/** Préférences d'affichage (filtres, colonne Moyenne) : dans ce navigateur seulement. */
+const PREFS_KEY = 'gc-carnet-prefs';
+
+function readPrefs(): CarnetPrefs {
+  try { return parsePrefs(window.localStorage.getItem(PREFS_KEY)); } catch { return DEFAULT_PREFS; }
+}
+
+const MARK_STYLE: Record<Exclude<CellMark, null>, { glyph: string; color: string }> = {
+  draft: { glyph: '*', color: 'var(--warn)' },
+  to_grade: { glyph: '●', color: 'var(--indigo)' },
+  missing_copy: { glyph: '○', color: 'var(--text-dim)' },
+};
 
 const CHIP_COLORS: Record<HeaderChip['tone'], [string, string]> = {
   warn: ['var(--warn-soft)', 'var(--warn)'],
@@ -98,7 +131,20 @@ export function CarnetTab({ userId, account, onError }: {
   const [grades, setGrades] = useState<Map<string, GradeRow>>(new Map());
   /** État des copies et des brouillons par éval : la pastille sous le nom de la colonne. */
   const [overviews, setOverviews] = useState<Record<string, CopyOverview>>({});
+  /** Élèves qui ont une copie (pages ou transcription), par éval : l'indicateur « copie manquante ». */
+  const [copyKeys, setCopyKeys] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
+
+  const [prefs, setPrefs] = useState<CarnetPrefs>(readPrefs);
+  useEffect(() => {
+    try { window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* navigation privée */ }
+  }, [prefs]);
+  const filters = prefs.filters;
+  const setFilter = <K extends keyof CarnetPrefs['filters']>(k: K, v: CarnetPrefs['filters'][K]) =>
+    setPrefs((p) => ({ ...p, filters: { ...p.filters, [k]: v } }));
+
+  /** Bouton « i » d'une cellule : la visionneuse ouverte sur cet élève. */
+  const [detail, setDetail] = useState<{ assessment: AssessmentRow; studentId: string } | null>(null);
 
   /** Texte en cours de frappe, par cellule. Absent = on affiche la valeur enregistrée. */
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -154,8 +200,8 @@ export function CarnetTab({ userId, account, onError }: {
       setInvalid({});
       // L'état des copies n'empêche pas d'afficher la grille : il arrive après.
       fetchCopyOverviews(data.assessments)
-        .then((d) => setOverviews(d.overviews))
-        .catch(() => setOverviews({}));
+        .then((d) => { setOverviews(d.overviews); setCopyKeys(d.copyKeys); })
+        .catch(() => { setOverviews({}); setCopyKeys({}); });
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Chargement du carnet impossible');
     } finally {
@@ -164,6 +210,10 @@ export function CarnetTab({ userId, account, onError }: {
   }, [userId, classId, period, schoolYear, onError]);
 
   useEffect(() => { load(); }, [load]);
+
+  /** Les colonnes affichées : les évals du trimestre, moins celles écartées par les filtres. */
+  const visible = useMemo(() => filterAssessments(assessments, filters), [assessments, filters]);
+  const filtered = isFiltered(filters);
 
   // ----------------------------------------------------------
   // Écriture différée — et son filet de sécurité
@@ -286,7 +336,7 @@ export function CarnetTab({ userId, account, onError }: {
   // ----------------------------------------------------------
 
   const focusCell = (assessmentIndex: number, studentIndex: number) => {
-    const a = assessments[assessmentIndex];
+    const a = visible[assessmentIndex];
     const s = students[studentIndex];
     if (!a || !s) return;
     const el = inputsRef.current.get(cellKey(a.id, s.id));
@@ -308,13 +358,13 @@ export function CarnetTab({ userId, account, onError }: {
     } else if (e.key === '*') {
       // Aménagement : marqué au clavier, sans quitter la colonne en cours de saisie.
       e.preventDefault();
-      const a = assessments[assessmentIndex];
+      const a = visible[assessmentIndex];
       const st = students[studentIndex];
       if (a && st) void toggleAdapted(a.id, st.id);
     } else if (e.key === 'Escape') {
       // Abandon : on oublie la frappe en cours et on réaffiche la valeur enregistrée.
       e.preventDefault();
-      const a = assessments[assessmentIndex];
+      const a = visible[assessmentIndex];
       const st = students[studentIndex];
       // La colonne a pu disparaître pendant la frappe (suppression d'une évaluation).
       if (!a || !st) return;
@@ -351,7 +401,7 @@ export function CarnetTab({ userId, account, onError }: {
   const averageFor = useCallback(
     (studentId: string) =>
       studentAverage(
-        assessments.map((a) => {
+        visible.map((a) => {
           const row = grades.get(cellKey(a.id, studentId));
           return {
             entry: {
@@ -363,7 +413,7 @@ export function CarnetTab({ userId, account, onError }: {
           };
         }),
       ),
-    [assessments, grades],
+    [visible, grades],
   );
 
   /** Moyenne de classe : moyenne des moyennes d'élèves qui en ont une. */
@@ -401,10 +451,11 @@ export function CarnetTab({ userId, account, onError }: {
   const className = classes.find((c) => c.id === classId)?.name ?? '';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 190px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
-      {/* Menu des classes : une classe est un lieu, pas une option de liste déroulante. */}
-      <nav style={sidebar}>
-        <div style={sidebarTitle}>Classes</div>
+    <div className="gc-carnet">
+      {/* Menu des classes : une classe est un lieu, pas une option de liste déroulante.
+          Sur téléphone, il devient une rangée qui défile (index.css, .gc-carnet). */}
+      <nav className="gc-carnet__classes" aria-label="Classes">
+        <div className="gc-carnet__classes-title">Classes</div>
         {classes.length === 0 ? (
           <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-dim)' }}>Aucune classe</div>
         ) : (
@@ -415,13 +466,7 @@ export function CarnetTab({ userId, account, onError }: {
                 key={c.id}
                 onClick={() => { void flush(); setClassId(c.id); }}
                 aria-current={on ? 'page' : undefined}
-                style={{
-                  ...classBtn,
-                  background: on ? 'var(--indigo-soft)' : 'transparent',
-                  color: on ? 'var(--indigo)' : 'var(--text)',
-                  borderLeftColor: on ? 'var(--indigo)' : 'transparent',
-                  fontWeight: on ? 700 : 500,
-                }}
+                className={`gc-carnet__class${on ? ' is-on' : ''}`}
               >
                 {c.name}
               </button>
@@ -474,6 +519,56 @@ export function CarnetTab({ userId, account, onError }: {
         </button>
       </div>
 
+      {/* Filtres des colonnes : type, séquence, publication ; colonne Moyenne facultative. */}
+      {assessments.length > 0 && (() => {
+        const kinds = kindsPresent(assessments);
+        const sequences = sequencesPresent(assessments);
+        const noSeq = hasUnsequenced(assessments);
+        return (
+          <div className="gc-carnet__filters" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, fontSize: 12.5, color: 'var(--text-muted)' }}>
+            {kinds.length > 1 && (
+              <label style={filterLabel}>
+                Type
+                <select value={filters.kind} onChange={(e) => setFilter('kind', e.target.value as CarnetPrefs['filters']['kind'])} style={filterSelect}>
+                  <option value="all">Tous</option>
+                  {kinds.map((k) => <option key={k} value={k}>{ASSESSMENT_KIND_LABEL[k]}</option>)}
+                </select>
+              </label>
+            )}
+            {(sequences.length > 0 || filters.sequence !== 'all') && (
+              <label style={filterLabel}>
+                Séquence
+                <select value={filters.sequence} onChange={(e) => setFilter('sequence', e.target.value)} style={filterSelect}>
+                  <option value="all">Toutes</option>
+                  {sequences.map((q) => <option key={q} value={q}>{q}</option>)}
+                  {noSeq && sequences.length > 0 && <option value="">Sans séquence</option>}
+                  {filters.sequence !== 'all' && filters.sequence !== '' && !sequences.includes(filters.sequence) && (
+                    <option value={filters.sequence}>{filters.sequence}</option>
+                  )}
+                </select>
+              </label>
+            )}
+            <label style={filterLabel}>
+              Publication
+              <select value={filters.published} onChange={(e) => setFilter('published', e.target.value as CarnetPrefs['filters']['published'])} style={filterSelect}>
+                <option value="all">Toutes</option>
+                <option value="yes">Publiées</option>
+                <option value="no">Non publiées</option>
+              </select>
+            </label>
+            <label style={{ ...filterLabel, cursor: 'pointer' }}>
+              <input type="checkbox" checked={prefs.showAverage} onChange={(e) => setPrefs((p) => ({ ...p, showAverage: e.target.checked }))} />
+              Colonne moyenne
+            </label>
+            {filtered && (
+              <button onClick={() => setPrefs((p) => ({ ...p, filters: NO_FILTERS }))} style={linkBtn}>
+                Tout afficher ({visible.length}/{assessments.length})
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {showExport && (
         <div onClick={() => !exporting && setShowExport(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'grid', placeItems: 'center', zIndex: 100 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: 460, maxWidth: '92vw', boxShadow: 'var(--shadow-2)' }}>
@@ -519,26 +614,35 @@ export function CarnetTab({ userId, account, onError }: {
         <div style={emptyBox}>
           Aucune évaluation au trimestre {period}. Clique « + Évaluation » pour créer la première.
         </div>
+      ) : visible.length === 0 ? (
+        <div style={emptyBox}>
+          Aucune évaluation du trimestre {period} ne correspond aux filtres.{' '}
+          <button onClick={() => setPrefs((p) => ({ ...p, filters: NO_FILTERS }))} style={linkBtn}>Tout afficher</button>
+        </div>
       ) : (
         <div style={{ overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
             <thead>
               <tr>
-                <th style={{ ...th, ...stickyCol, textAlign: 'left', minWidth: 180 }}>Élève</th>
-                {assessments.map((a) => {
+                <th className="gc-carnet__name-col" style={{ ...th, ...stickyCol, textAlign: 'left' }}>Élève</th>
+                {visible.map((a) => {
                   const chip = carnetHeaderChip(overviews[a.id], columnStats.get(a.id)?.pending ?? 0);
+                  const title = headerTitle(a);
+                  const date = shortDate(a.date);
+                  const seq = sequenceOf(a);
                   return (
-                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 110 }}>
+                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 84, maxWidth: 150 }}>
                       <Link
                         to={`/evaluations/${a.id}`}
                         onClick={() => { void flush(); }}
-                        style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3, fontSize: 12 }}
-                        title="Fiche de l’évaluation : sujet, corrigé, copies, validation, publication, réglages, statistiques"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%', fontWeight: 600, color: 'var(--text)', textDecoration: 'none', fontSize: 12 }}
+                        title={`${a.name}${seq ? ` · ${seq}` : ''} — ouvrir la fiche : sujet, corrigé, copies, validation, publication, réglages, statistiques`}
                       >
-                        {a.name} ↗
+                        <span style={{ color: 'var(--text-muted)', flexShrink: 0, display: 'inline-flex' }}><KindIcon kind={a.kind} /></span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>{title}</span>
                       </Link>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 400 }}>
-                        coef {showNum(Number(a.coefficient))} · /{showNum(Number(a.bareme_total ?? 20))}
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                        {date && `${date} · `}coef {showNum(Number(a.coefficient))} · /{showNum(Number(a.bareme_total ?? 20))}
                         {!a.counts_in_average && ' · hors moy.'}
                       </div>
                       {chip && (
@@ -551,7 +655,11 @@ export function CarnetTab({ userId, account, onError }: {
                     </th>
                   );
                 })}
-                <th style={{ ...th, minWidth: 90, background: 'var(--surface-3)' }}>Moyenne</th>
+                {prefs.showAverage && (
+                  <th style={{ ...th, minWidth: 72, background: 'var(--surface-3)' }} title={filtered ? 'Moyenne pondérée des colonnes affichées seulement' : 'Moyenne pondérée du trimestre'}>
+                    {filtered ? 'Moy. (filtre)' : 'Moyenne'}
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -560,13 +668,13 @@ export function CarnetTab({ userId, account, onError }: {
                 const avg = averageFor(s.id);
                 return (
                   <tr key={s.id}>
-                    <td style={{ ...td, ...stickyCol, textAlign: 'left', fontWeight: 500 }}>
-                      {s.pseudo}
+                    <td className="gc-carnet__name-col" style={{ ...td, ...stickyCol, textAlign: 'left', fontWeight: 500 }} title={s.pseudo}>
+                      <span className="gc-carnet__name">{s.pseudo}</span>
                       {accommodationTags(s).map((tag) => (
                         <span key={tag} title={accommodationTitle(s)} style={tagStyle}>{tag}</span>
                       ))}
                     </td>
-                    {assessments.map((a, ai) => {
+                    {visible.map((a, ai) => {
                       const key = cellKey(a.id, s.id);
                       const row = grades.get(key);
                       const draft = drafts[key];
@@ -574,10 +682,12 @@ export function CarnetTab({ userId, account, onError }: {
                       const isStatus = draft === undefined && row && row.status !== 'noted';
                       const bad = invalid[key];
                       const adapted = !!row?.is_adapted;
-                      // Brouillon du Correcteur : compte pour le prof, invisible pour l'élève (053).
+                      // Brouillon du Correcteur ou de Claude : compte pour le prof, invisible pour l'élève (053).
                       const pending = draft === undefined && !!row && row.grade != null && !row.is_validated;
+                      const mark = draft === undefined ? cellMark(a, row, !!copyKeys[a.id]?.has(s.id), overviews[a.id]) : null;
+                      const withDetail = hasCopies(a);
                       return (
-                        <td key={a.id} style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
+                        <td key={a.id} className="gc-cell" style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
                           <input
                             ref={(el) => {
                               if (el) inputsRef.current.set(key, el);
@@ -589,8 +699,10 @@ export function CarnetTab({ userId, account, onError }: {
                             onBlur={() => { void flush(); }}
                             onKeyDown={(e) => handleKeyDown(e, ai, si)}
                             inputMode="decimal"
-                            aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}${pending ? ' (brouillon à valider)' : ''}`}
-                            title={pending ? 'Brouillon du Correcteur : à valider dans la fiche de l’évaluation (nom de la colonne) pour que l’élève le voie. Le modifier ici le valide.' : undefined}
+                            aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}${mark ? ` (${CELL_MARK_LABEL[mark]})` : ''}`}
+                            title={pending
+                              ? 'Brouillon du Correcteur ou de Claude : à valider (bouton « i » ou fiche de l’éval) pour que l’élève le voie. Le modifier ici le valide.'
+                              : mark ? CELL_MARK_LABEL[mark].replace(/^./, (c) => c.toUpperCase()) : undefined}
                             style={{
                               width: '100%', boxSizing: 'border-box', textAlign: 'center',
                               padding: '8px 4px', border: 'none', outline: 'none',
@@ -604,13 +716,26 @@ export function CarnetTab({ userId, account, onError }: {
                               fontStyle: isStatus ? 'italic' : 'normal',
                             }}
                           />
-                          {pending && (
+                          {mark && (
                             <span
                               aria-hidden
-                              style={{ position: 'absolute', top: 1, left: 3, fontSize: 10, color: 'var(--warn)', pointerEvents: 'none' }}
+                              style={{ position: 'absolute', top: 1, left: 3, fontSize: mark === 'draft' ? 10 : 8, color: MARK_STYLE[mark].color, pointerEvents: 'none' }}
                             >
-                              *
+                              {MARK_STYLE[mark].glyph}
                             </span>
+                          )}
+                          {withDetail && (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="gc-cell__info"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={(e) => { e.currentTarget.blur(); void flush(); setDetail({ assessment: a, studentId: s.id }); }}
+                              aria-label={`Détail : ${s.pseudo}, ${a.name}`}
+                              title="Détail : copie, correction, transcription"
+                            >
+                              i
+                            </button>
                           )}
                           {adapted && (
                             <span
@@ -623,9 +748,11 @@ export function CarnetTab({ userId, account, onError }: {
                         </td>
                       );
                     })}
-                    <td style={{ ...td, background: 'var(--surface-3)', fontWeight: 700 }}>
-                      {formatGrade(avg)}
-                    </td>
+                    {prefs.showAverage && (
+                      <td style={{ ...td, background: 'var(--surface-3)', fontWeight: 700 }}>
+                        {formatGrade(avg)}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -634,22 +761,39 @@ export function CarnetTab({ userId, account, onError }: {
             <tfoot>
               <tr>
                 <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left' }}>Moyenne classe</td>
-                {assessments.map((a) => (
+                {visible.map((a) => (
                   <td key={a.id} style={{ ...tdFoot, ...colSep }}>
                     {formatGrade(columnStats.get(a.id)?.mean ?? null)}
                   </td>
                 ))}
-                <td style={{ ...tdFoot, background: 'var(--surface-3)' }}>{formatGrade(classAverage)}</td>
+                {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }}>{formatGrade(classAverage)}</td>}
               </tr>
               <tr>
                 <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left', fontWeight: 400 }}>Médiane</td>
-                {assessments.map((a) => (
+                {visible.map((a) => (
                   <td key={a.id} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>
                     {formatGrade(columnStats.get(a.id)?.median ?? null)}
                   </td>
                 ))}
-                <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />
+                {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />}
               </tr>
+              {visible.some((a) => hasCopies(a) && overviews[a.id] && !neverScanned(overviews[a.id])) && (
+                <tr>
+                  <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left', fontWeight: 400 }} title="Élèves présents dont la copie n’est ni scannée ni transcrite">
+                    Copies manquantes
+                  </td>
+                  {visible.map((a) => {
+                    const o = overviews[a.id];
+                    const counted = hasCopies(a) && o && !neverScanned(o);
+                    return (
+                      <td key={a.id} style={{ ...tdFoot, ...colSep, fontWeight: 400, color: counted && o.missing > 0 ? 'var(--warn)' : undefined }}>
+                        {counted ? o.missing : '—'}
+                      </td>
+                    );
+                  })}
+                  {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />}
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>
@@ -662,8 +806,20 @@ export function CarnetTab({ userId, account, onError }: {
           {' '}<strong>a</strong> absent · <strong>d</strong> dispensé · <strong>n</strong> non rendu ·
           {' '}<strong>z</strong> non rendu comptant 0 · <strong>*</strong> évaluation adaptée (✻) ·
           {' '}<strong>Échap</strong> : annuler la frappe ·
-          {' '}<strong style={{ color: 'var(--warn)' }}>*</strong> orange : brouillon du Correcteur, à valider dans la fiche
+          {' '}<strong style={{ color: 'var(--warn)' }}>*</strong> brouillon à valider ·
+          {' '}<strong style={{ color: 'var(--indigo)' }}>●</strong> copie à corriger ·
+          {' '}<strong>○</strong> copie manquante ·
+          {' '}<strong>i</strong> (au survol d’une note) : détail de la copie
         </p>
+      )}
+
+      {detail && (
+        <CellDetailDialog
+          assessment={detail.assessment}
+          studentId={detail.studentId}
+          onError={onError}
+          onClose={(changed) => { setDetail(null); if (changed) void load(); }}
+        />
       )}
 
       {showPronote && (
@@ -687,6 +843,8 @@ export function CarnetTab({ userId, account, onError }: {
           className={className}
           classes={classes}
           currentClassId={classId}
+          sequences={sequencesPresent(assessments)}
+          defaultSequence={filters.sequence !== 'all' ? filters.sequence : ''}
           onClose={() => setShowCreate(false)}
           onSubmit={async (values) => {
             const targets = values.classIds ?? [classId];
@@ -704,6 +862,8 @@ export function CarnetTab({ userId, account, onError }: {
                 period,
                 schoolYear,
                 countsInAverage: values.countsInAverage,
+                shortName: values.shortName,
+                sequence: values.sequence,
               });
             } else {
               await createAssessment({
@@ -717,6 +877,8 @@ export function CarnetTab({ userId, account, onError }: {
                 period,
                 schoolYear,
                 countsInAverage: values.countsInAverage,
+                shortName: values.shortName,
+                sequence: values.sequence,
               });
             }
             setShowCreate(false);
@@ -758,18 +920,14 @@ const emptyBox: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
   padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14,
 };
-const sidebar: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-  overflow: 'hidden', position: 'sticky', top: 12,
+const filterLabel: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6 };
+const filterSelect: React.CSSProperties = {
+  padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
+  color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
 };
-const sidebarTitle: React.CSSProperties = {
-  padding: '10px 14px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
-  borderBottom: '1px solid var(--border)', textTransform: 'uppercase', letterSpacing: '0.04em',
-};
-const classBtn: React.CSSProperties = {
-  display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px',
-  border: 'none', borderLeft: '3px solid transparent', cursor: 'pointer',
-  fontSize: 13, fontFamily: 'inherit',
+const linkBtn: React.CSSProperties = {
+  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
+  color: 'var(--indigo)', fontFamily: 'inherit',
 };
 /** Petite pastille PAP / PPRE / PAI à côté d'un nom d'élève. */
 const tagStyle: React.CSSProperties = {
