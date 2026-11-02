@@ -11,6 +11,9 @@
 >   cellule (brouillon *, copie à corriger ●, copie manquante ○), bouton « i » → visionneuse ouverte sur l'élève,
 >   pied « Copies manquantes », rendu téléphone (classes en rangée, noms étroits). Titre court et séquence dans le
 >   formulaire de l'éval. Vérifié dans Chrome sur la 4D, et à 390 px.
+>   **En ligne le 02/11/2026** (« Oui, mets en ligne ») : migration 060 appliquée (2 colonnes vides, 27 évals
+>   intactes), PR #22 fusionnée, déploiement Pages OK, vérifié sur le site publié (grille 4D, formulaire avec titre
+>   court et séquence, « i » sur Ayaz). Prochaine étape : phase 2, modale élève × éval.
 
 ---
 
