@@ -308,6 +308,92 @@ export async function deleteUnnamedCopy(copy: UnnamedCopy): Promise<void> {
   if (rmError) throw rmError;
 }
 
+/* ---------- retouche d'une copie d'élève : une page en moins, ou chez un autre élève ---------- */
+
+interface CopyPageRef {
+  id: string;
+  assessment_id: string;
+  student_id: string;
+  page_order: number;
+  storage_path: string;
+}
+
+/**
+ * Numéros à changer pour que les pages restantes aillent de 1 à n, sans trou (sync_copies.py
+ * numérote d'après l'ordre). Dans l'ordre croissant, chaque numéro visé est libre au moment de
+ * l'écrire : la contrainte UNIQUE (éval, élève, page_order) tient d'une mise à jour à l'autre.
+ */
+export function renumberPlan(pages: { id: string; page_order: number }[]): { id: string; page_order: number }[] {
+  return [...pages]
+    .sort((a, b) => a.page_order - b.page_order)
+    .map((p, i) => ({ id: p.id, page_order: i + 1, from: p.page_order }))
+    .filter((p) => p.page_order !== p.from)
+    .map(({ id, page_order }) => ({ id, page_order }));
+}
+
+/**
+ * Le chemin du fichier rangé chez un autre élève (`<user>/<éval>/<élève>/<page>.jpg`) ; null si
+ * le chemin n'a pas cette forme.
+ */
+export function pathForStudent(path: string, studentId: string): string | null {
+  const parts = path.split('/');
+  if (parts.length !== 4) return null;
+  parts[2] = studentId;
+  return parts.join('/');
+}
+
+async function renumberPages(pages: { id: string; page_order: number }[]): Promise<void> {
+  for (const p of renumberPlan(pages)) {
+    const { error } = await supabase.from('assessment_copy_pages').update({ page_order: p.page_order }).eq('id', p.id);
+    if (error) throw error;
+  }
+}
+
+/** Supprime une page d'une copie (ligne puis fichier) ; `others` : les autres pages de l'élève, renumérotées. */
+export async function deleteCopyPage(page: CopyPageRef, others: { id: string; page_order: number }[]): Promise<void> {
+  const { error } = await supabase.from('assessment_copy_pages').delete().eq('id', page.id);
+  if (error) throw error;
+  await renumberPages(others.filter((p) => p.id !== page.id));
+  const { error: rmError } = await supabase.storage.from(BUCKET).remove([page.storage_path]);
+  if (rmError) throw rmError;
+}
+
+/**
+ * Range une page chez un autre élève, après ses pages ; `others` : les autres pages de l'élève
+ * d'origine, renumérotées. Le fichier suit, dans le dossier du nouvel élève : la purge range les
+ * scans d'après ce dossier.
+ */
+export async function moveCopyPage(
+  page: CopyPageRef,
+  others: { id: string; page_order: number }[],
+  toStudentId: string,
+): Promise<void> {
+  const { data: last, error: lastError } = await supabase
+    .from('assessment_copy_pages')
+    .select('page_order')
+    .eq('assessment_id', page.assessment_id)
+    .eq('student_id', toStudentId)
+    .order('page_order', { ascending: false })
+    .limit(1);
+  if (lastError) throw lastError;
+  const pageOrder = ((last?.[0]?.page_order as number | undefined) ?? 0) + 1;
+
+  const newPath = pathForStudent(page.storage_path, toStudentId);
+  if (newPath) {
+    const { error: mvError } = await supabase.storage.from(BUCKET).move(page.storage_path, newPath);
+    if (mvError) throw mvError;
+  }
+  const { error } = await supabase
+    .from('assessment_copy_pages')
+    .update({ student_id: toStudentId, page_order: pageOrder, storage_path: newPath ?? page.storage_path })
+    .eq('id', page.id);
+  if (error) {
+    if (newPath) await supabase.storage.from(BUCKET).move(newPath, page.storage_path);
+    throw error;
+  }
+  await renumberPages(others.filter((p) => p.id !== page.id));
+}
+
 /**
  * Version du sujet et copie adaptée, comme au scan mobile (assessment_grades, seules ces
  * colonnes : la note et le détail éventuels ne bougent pas).
