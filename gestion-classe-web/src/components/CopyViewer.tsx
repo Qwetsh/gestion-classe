@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getCopyUrls, type AssessmentRow } from '../lib/evaluationQueries';
-import { assignUnnamedCopy, deleteUnnamedCopy, fetchUnnamedCopies, type UnnamedCopy } from '../lib/copyUpload';
+import { assignUnnamedCopy, deleteCopyPage, deleteUnnamedCopy, fetchUnnamedCopies, moveCopyPage, type UnnamedCopy } from '../lib/copyUpload';
 import { parseGradeDetails } from '../lib/gradeDetails';
 import { alignTranscript } from '../lib/copyTranscript';
 import { GradeDetailsView } from './GradeDetailsView';
@@ -180,6 +180,55 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
       onChanged?.();
     } catch (e) {
       onError(e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Suppression impossible');
+    }
+  };
+
+  // Une page de la copie affichée : supprimée, ou rangée chez un autre élève (scan en double, mauvais élève).
+  const [pageBusy, setPageBusy] = useState(false);
+  /** Ce que dit la correction déjà faite, si la copie change. */
+  const staleNote = (r: CopyRow) =>
+    r.grade?.details || r.transcript ? '\n\nLa correction et la transcription déjà faites ne changent pas : relance-les si besoin.' : '';
+
+  const afterPageChange = async (remaining: number) => {
+    setPageIndex((i) => Math.max(0, Math.min(i, remaining - 1)));
+    setZoom(false);
+    await load();
+    onChanged?.();
+  };
+
+  const handleDeletePage = async (r: CopyRow, index: number) => {
+    const p = r.pages[index];
+    if (!p) return;
+    const question = `Supprimer la page ${index + 1}/${r.pages.length} de ${r.student.pseudo} ? Le scan est effacé, les pages suivantes remontent.${staleNote(r)}`;
+    if (!window.confirm(question)) return;
+    setPageBusy(true);
+    try {
+      await deleteCopyPage(p, r.pages);
+      await afterPageChange(r.pages.length - 1);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Suppression impossible');
+      load();
+    } finally {
+      setPageBusy(false);
+    }
+  };
+
+  const handleMovePage = async (r: CopyRow, index: number, toStudentId: string) => {
+    const p = r.pages[index];
+    const to = rows.find((x) => x.student.id === toStudentId);
+    if (!p || !to) return;
+    const after = to.pages.length > 0 ? `, après ses ${to.pages.length} page(s)` : '';
+    const question = `Ranger la page ${index + 1}/${r.pages.length} de ${r.student.pseudo} chez ${to.student.pseudo}${after} ?${staleNote(r)}`;
+    if (!window.confirm(question)) return;
+    setPageBusy(true);
+    try {
+      await moveCopyPage(p, r.pages, toStudentId);
+      await afterPageChange(r.pages.length - 1);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Déplacement impossible');
+      load();
+    } finally {
+      setPageBusy(false);
     }
   };
 
@@ -420,6 +469,37 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                     </button>
                   ))}
                 </div>
+                {page && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Page {pageIndex + 1} :</span>
+                    <select
+                      key={page.id}
+                      value=""
+                      disabled={pageBusy}
+                      onChange={(e) => e.target.value && handleMovePage(selected, pageIndex, e.target.value)}
+                      title="Page rangée chez le mauvais élève"
+                      style={{ padding: '4px 6px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                    >
+                      <option value="">Déplacer vers…</option>
+                      {rows
+                        .filter((x) => x.student.id !== selected.student.id)
+                        .map((x) => (
+                          <option key={x.student.id} value={x.student.id}>
+                            {x.student.pseudo}
+                            {x.pages.length > 0 ? ` (${x.pages.length} p.)` : x.state === 'absent' ? ' (absent)' : ''}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      onClick={() => handleDeletePage(selected, pageIndex)}
+                      disabled={pageBusy}
+                      style={{ ...btn, color: 'var(--neg)', opacity: pageBusy ? 0.55 : 1 }}
+                      title="Scan en double ou raté : la page part, les suivantes remontent"
+                    >
+                      {pageBusy ? '…' : 'Supprimer cette page'}
+                    </button>
+                  </div>
+                )}
 
                 <div
                   style={{
