@@ -3,15 +3,17 @@
  * Extraits de l'ancien Dashboard.tsx (lot 0 de PLAN_accueil_modulaire.md).
  */
 
+import { classColor } from '../../lib/classColors';
+
 export const COLOR_PALETTE = ['#6366F1','#EC4899','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EF4444','#14B8A6','#F97316','#06B6D4','#84CC16','#E879F9','#FB923C'];
 
 export function getClassLabel(name: string): string {
   return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
 }
 
-export function getClassColor(className: string, allClassNames: string[]): string {
-  const idx = allClassNames.indexOf(className);
-  return COLOR_PALETTE[(idx >= 0 ? idx : 0) % COLOR_PALETTE.length];
+/** Teinte du niveau de la classe (direction C) ; la liste des classes n'influe plus sur la couleur. */
+export function getClassColor(className: string, _allClassNames?: string[]): string {
+  return classColor(className);
 }
 
 /** « Groupe 1 » → « G1 » : la place est comptée dans une case de cours. */

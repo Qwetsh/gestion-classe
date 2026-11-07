@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction C — maquette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FFFFFF; --bg-2: #F6F6F7; --line: #E6E6E9; --line-2: #D4D4D8;
+    --text: #18181B; --muted: #6B6B74; --dim: #9A9AA3;
+    --accent: #4F46E5; --accent-soft: #EEF0FF;
+    --pos: #15803D; --pos-soft: #EAF6EE; --neg: #B91C1C; --neg-soft: #FBEAEA; --warn: #B45309; --warn-soft: #FDF1E3;
+    --r: 6px; --row: 40px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E9E9EC; font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.4; color: var(--text); -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 1, "cv11" 1; }
+  .page { max-width: 1480px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lead { color: var(--muted); max-width: 70ch; margin: 0 0 24px; font-size: 14px; }
+  .tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 36px; }
+  .tok { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+  .tok b { display: block; font-weight: 600; margin-bottom: 6px; }
+  .tok span { color: var(--muted); font-size: 12px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.08); }
+  .frame-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 28px 0 10px; }
+  .frames { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* ===== frames ===== */
+  .desktop { width: 1180px; height: 720px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; display: grid; grid-template-columns: 220px 1fr; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
+  .mobile { width: 375px; height: 760px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
+
+  /* ===== sidebar ===== */
+  .side { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; background: var(--bg-2); }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 4px 8px 14px; font-weight: 600; font-size: 14px; }
+  .brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--text); color: #fff; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 600; }
+  .sec { font-size: 11px; font-weight: 500; color: var(--dim); padding: 12px 8px 4px; }
+  .nav { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 8px; border-radius: var(--r); color: var(--muted); font-weight: 500; }
+  .nav svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .nav.on { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+  .side .foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 8px; color: var(--muted); }
+  .side .foot i { width: 24px; height: 24px; border-radius: 50%; background: var(--text); color: #fff; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 600; }
+
+  /* ===== content ===== */
+  .main { overflow: hidden; }
+  .top { height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--line); }
+  .top h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .top .meta { color: var(--muted); margin-left: 10px; font-weight: 400; }
+  .body { padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; }
+  .btn { height: 32px; padding: 0 12px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--bg); font: inherit; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.sm { height: 28px; padding: 0 10px; font-size: 12px; }
+  .h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
+  .h3 b { font-size: 14px; font-weight: 600; }
+  .h3 a { color: var(--muted); font-size: 12px; text-decoration: none; }
+  .chip { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line-2); font-size: 11.5px; font-weight: 600; color: var(--text); background: var(--bg); letter-spacing: .01em; }
+  .chip.lvl3 { border-color: #C7D2FE; background: #F3F4FF; }
+  .chip.lvl4 { border-color: #BBF0DC; background: #EEFBF5; }
+  .chip.lvl5 { border-color: #FBD9A5; background: #FFF6E8; }
+  .badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; }
+  .badge.pos { color: var(--pos); background: var(--pos-soft); } .badge.neg { color: var(--neg); background: var(--neg-soft); } .badge.abs { color: var(--muted); background: var(--bg-2); }
+  .row { display: grid; align-items: center; height: var(--row); border-bottom: 1px solid var(--line); gap: 12px; }
+  .row:last-child { border-bottom: 0; }
+  .row .t { font-weight: 500; }
+  .row .m { color: var(--muted); }
+  .row .num { text-align: right; font-weight: 500; }
+  .row.head { height: 28px; font-size: 11.5px; color: var(--dim); font-weight: 500; border-bottom: 1px solid var(--line); }
+  .cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; }
+
+  /* timetable */
+  .tt { display: grid; grid-template-columns: 40px repeat(5, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .tt > div { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-height: 34px; padding: 4px 6px; font-size: 12px; }
+  .tt .hd { font-weight: 600; color: var(--text); background: var(--bg-2); min-height: 30px; }
+  .tt .hd.today { color: var(--accent); }
+  .tt .hr { color: var(--dim); font-size: 11px; background: var(--bg-2); }
+  .tt .ls { display: flex; flex-direction: column; gap: 2px; }
+  .tt .ls .lsn { display: flex; align-items: center; gap: 6px; }
+  .tt .ls .ti { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tt .now { box-shadow: inset 3px 0 0 var(--accent); }
+  .tt .empty { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--bg-2) 6px 7px); }
+
+  /* bars */
+  .bar { height: 4px; background: var(--bg-2); border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--text); opacity: .75; }
+
+  /* mobile */
+  .mtop { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .mtop b { font-size: 16px; font-weight: 600; }
+  .mbody { flex: 1; overflow: hidden; }
+  .mfilters { display: flex; gap: 6px; padding: 10px 16px; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .mfilters .chip { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 14px; font-weight: 500; }
+  .mfilters .chip.on { background: var(--text); color: #fff; border-color: var(--text); }
+  .mday { font-size: 11.5px; font-weight: 500; color: var(--dim); padding: 14px 16px 4px; }
+  .mrow { display: grid; grid-template-columns: 44px 36px 1fr auto; gap: 10px; align-items: center; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .mrow .time { font-weight: 500; }
+  .mrow .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mrow .b { display: flex; gap: 4px; }
+  .tab { height: 56px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line); background: var(--bg); }
+  .tab div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 500; color: var(--muted); }
+  .tab div.on { color: var(--text); }
+  .tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+  .seg span { height: 28px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .seg span.on { background: var(--bg-2); color: var(--text); }
+  .mcard { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .mcard .big { font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .mlist .mrow { grid-template-columns: 36px 1fr auto; }
+  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .kpi > div { padding: 10px 12px; border-right: 1px solid var(--line); }
+  .kpi > div:last-child { border-right: 0; }
+  .kpi small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 2px; }
+  .kpi b { font-size: 18px; font-weight: 600; }
+  .note { margin-top: 36px; padding: 16px 18px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); max-width: 80ch; }
+  .note b { display: block; margin-bottom: 6px; }
+  .note p { margin: 4px 0; color: var(--muted); }
+
+  /* ===== Variante B : couleur mesurée ===== */
+  body.c2 .brand i { background: var(--accent); }
+  body.c2 .nav.on { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+  body.c2 .side { background: var(--bg); }
+  body.c2 .chip.lvl3 { border-color: transparent; background: #E0E5FF; color: #3730A3; }
+  body.c2 .chip.lvl4 { border-color: transparent; background: #D6F3E4; color: #065F46; }
+  body.c2 .chip.lvl5 { border-color: transparent; background: #FDE9C9; color: #92400E; }
+  body.c2 .tt .hd.today { background: var(--accent-soft); color: var(--accent); }
+  body.c2 .tt .now { background: #F8F8FF; }
+  body.c2 .bar i { background: var(--accent); opacity: 1; }
+  body.c2 .mfilters .chip.on, body.c2 .seg span.on { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  body.c2 .tab div.on { color: var(--accent); }
+  body.c2 .mday { color: var(--muted); }
+  body.c2 .top h2 .meta { color: var(--muted); }
+  body.c2 .side .foot i { background: var(--accent); }
+  .switch { position: sticky; top: 12px; z-index: 5; display: inline-flex; gap: 0; border: 1px solid var(--line-2); border-radius: 999px; background: #fff; padding: 3px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+  .switch button { border: 0; background: none; font: inherit; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted); cursor: pointer; }
+  .switch button.on { background: var(--text); color: #fff; }
+
+  /* ===== Séances / Évaluations ===== */
+  .filters { display: flex; align-items: center; gap: 8px; padding: 10px 24px; border-bottom: 1px solid var(--line); }
+  .filters .chip { height: 26px; padding: 0 9px; font-weight: 500; cursor: pointer; }
+  .filters .chip.on { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .dayhead { height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--bg-2); border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); }
+  .dayhead span { font-weight: 400; color: var(--dim); }
+  .srow { display: grid; grid-template-columns: 56px 56px 1fr 180px 24px; align-items: center; gap: 12px; height: 40px; padding: 0 24px; border-bottom: 1px solid var(--line); }
+  .srow:hover { background: var(--bg-2); }
+  .srow .time { font-weight: 500; }
+  .srow .t { font-weight: 500; }
+  .srow .b { display: flex; gap: 4px; justify-content: flex-end; }
+  .srow .more { color: var(--dim); text-align: right; }
+  .grid { display: grid; grid-template-columns: 150px repeat(7, 1fr) 76px; font-size: 12.5px; }
+  .grid > div { height: 36px; display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); min-width: 0; }
+  .grid > div:nth-child(9n) { border-right: 0; }
+  .grid .gh { height: 62px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; background: var(--bg-2); font-weight: 600; line-height: 1.2; overflow: hidden; }
+  .grid .gh > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
+  .grid .gh small { font-weight: 400; color: var(--muted); font-size: 11px; }
+  .grid .gh.avg, .grid .avg { background: var(--accent-soft); color: var(--accent); font-weight: 600; justify-content: flex-end; }
+  .grid .name { font-weight: 500; }
+  .grid .n { justify-content: flex-end; font-weight: 500; }
+  .grid .n.abs { color: var(--dim); font-weight: 400; }
+  .grid .n.empty { color: var(--line-2); }
+  .grid .n.low { color: var(--neg); }
+</style>
+</head>
+<body class="c2">
+<div class="page">
+  <div class="switch"><button id="bA" onclick="document.body.classList.remove('c2');bA.classList.add('on');bB.classList.remove('on')">A · Sobre</button><button id="bB" class="on" onclick="document.body.classList.add('c2');bB.classList.add('on');bA.classList.remove('on')">B · Couleur mesurée</button></div>
+  <h1>Direction C — « fonctionnel »</h1>
+  <p class="lead">Deux variantes de la même structure : <b>A</b> presque sans couleur, <b>B</b> avec la couleur là où elle code une information (niveau de classe, aujourd'hui, sélection, action, statut) et nulle part ailleurs. Une seule police, des surfaces plates séparées par des traits, même navigation qu'aujourd'hui.</p>
+
+  <div class="tokens">
+    <div class="tok"><b>Police</b><span>Inter seule, 13 px, titres 14–16 px en 600. Aucun italique, aucun serif. Chiffres tabulaires.</span></div>
+    <div class="tok"><b>Surfaces</b><span><i class="sw" style="background:#fff"></i>page blanche, <i class="sw" style="background:#F6F6F7"></i>bandeaux gris, traits <i class="sw" style="background:#E6E6E9"></i> 1 px. Plus de carte dans une carte.</span></div>
+    <div class="tok"><b>Texte</b><span><i class="sw" style="background:#18181B"></i>texte, <i class="sw" style="background:#6B6B74"></i>secondaire, <i class="sw" style="background:#9A9AA3"></i>discret.</span></div>
+    <div class="tok"><b>Action</b><span><i class="sw" style="background:#4F46E5"></i>une seule couleur, un seul bouton plein par écran.</span></div>
+    <div class="tok"><b>Statuts</b><span><i class="sw" style="background:#15803D"></i>bonus, <i class="sw" style="background:#B91C1C"></i>malus, <i class="sw" style="background:#B45309"></i>à traiter — uniquement en badge.</span></div>
+    <div class="tok"><b>Classes</b><span>chip texte neutre « 3A ». Option : une teinte très pâle par niveau (3e / 4e / 5e), jamais par classe.</span></div>
+    <div class="tok"><b>Rythme</b><span>grille 4 px ; lignes de 40 px bureau, 44 px téléphone ; marges 16 / 24 ; rayon 6 px.</span></div>
+  </div>
+
+  <div class="frame-title">Bureau — Accueil</div>
+  <div class="frames">
+    <div class="desktop">
+      <aside class="side">
+        <div class="brand"><i>GC</i>Gestion Classe</div>
+        <div class="nav on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>Accueil</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Classes</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/></svg>Élèves</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Séances</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>Analyses</div>
+        <div class="sec">Vie de classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/></svg>Récompenses</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12l2.2 2.2 4.5-4.5"/></svg>Évaluations</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v5h5"/></svg>Productions</div>
+        <div class="sec">Ressources</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M9.5 3v6L4.8 17.4A2 2 0 006.55 20.5h10.9a2 2 0 001.75-3.1L14.5 9V3"/></svg>Mes TP</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 015.5 3H19v16H5.5A1.5 1.5 0 004 20.5V4.5z"/></svg>Annales</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M15.5 3.5a5 5 0 00-6.1 6.4l-6 6a2 2 0 102.8 2.8l6-6a5 5 0 006.4-6.1l-3 3-2.8-.3-.3-2.8 3-3z"/></svg>Outils</div>
+        <div class="foot"><i>T</i>thomas · <span style="color:var(--dim)">Réglages</span></div>
+      </aside>
+      <div class="main">
+        <div class="top"><h2>Samedi 7 novembre <span class="meta">semaine du 2 au 6</span></h2><div style="display:flex;gap:8px"><button class="btn">Travail de groupe</button><button class="btn pri">▶ Démarrer une séance</button></div></div>
+        <div class="body">
+          <div>
+            <div class="h3"><b>Cette semaine</b><a>‹ &nbsp; aujourd'hui &nbsp; ›</a></div>
+            <div class="tt">
+              <div class="hr"></div><div class="hd">Lun 2</div><div class="hd">Mar 3</div><div class="hd">Mer 4</div><div class="hd">Jeu 5</div><div class="hd">Ven 6</div>
+              <div class="hr">8h</div><div class="ls"><div class="lsn"><span class="chip lvl4">4B</span><span class="badge pos">+3</span><span class="badge neg">−2</span><span class="badge abs">10</span></div><div class="ti">Séquence 2 · 1</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl4">4A</span></div><div class="ti">Sciences</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl4">4B</span><span class="badge pos">+9</span><span class="badge neg">−5</span></div><div class="ti">Activité 2 seq 2</div></div>
+              <div class="hr">9h</div><div class="ls"><div class="lsn"><span class="chip lvl3">3D</span><span class="badge neg">−1</span><span class="badge abs">2</span></div><div class="ti">Séquence 2</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl5">5E</span><span class="badge pos">+5</span></div><div class="ti">Séquence 2 activité 1</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl5">5E</span><span class="badge abs">1</span></div><div class="ti">Expérience act 3</div></div>
+              <div class="hr">10h</div><div class="ls"><div class="lsn"><span class="chip lvl4">4C</span><span class="badge pos">+15</span><span class="badge neg">−12</span><span class="badge abs">8</span></div><div class="ti">Séquence 2 act 2</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl4">4D</span><span class="badge pos">+14</span><span class="badge abs">9</span></div><div class="ti">Séquence je sais pas</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl3">3E</span></div><div class="ti">Séquence 2 patent 1</div></div>
+              <div class="hr">11h</div><div class="ls"><div class="lsn"><span class="chip lvl5">5D</span><span class="badge pos">+4</span></div><div class="ti">Activité 3</div></div><div class="empty"></div><div class="empty"></div><div class="empty"></div><div class="empty"></div>
+              <div class="hr">14h</div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl3">3A · G2</span><span class="badge abs" style="color:var(--pos)">✓ faite</span></div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl3">3C</span></div><div class="ti">Sciences</div></div><div class="ls"><div class="lsn"><span class="chip lvl3">3A</span><span class="badge abs">1</span></div><div class="ti">Évaluation</div></div>
+              <div class="hr">15h</div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl3">3A · G1</span></div><div class="ti">Sciences</div></div><div class="empty"></div><div class="ls"><div class="lsn"><span class="chip lvl3">3B</span></div><div class="ti">Sciences</div></div><div class="ls"><div class="lsn"><span class="chip lvl3">3B</span><span class="badge pos">+1</span><span class="badge abs">3</span></div><div class="ti">Évaluation</div></div>
+            </div>
+          </div>
+          <div class="cols">
+            <div>
+              <div class="h3"><b>Séances récentes</b><a>Tout l'historique →</a></div>
+              <div class="row head" style="grid-template-columns:90px 48px 1fr auto"><div>Date</div><div>Classe</div><div>Séance</div><div style="text-align:right">Bilan</div></div>
+              <div class="row" style="grid-template-columns:90px 48px 1fr auto"><div class="m">6 nov. 15:28</div><div><span class="chip lvl3">3B</span></div><div class="t">Évaluation</div><div><span class="badge pos">+1</span> <span class="badge abs">3 abs</span></div></div>
+              <div class="row" style="grid-template-columns:90px 48px 1fr auto"><div class="m">6 nov. 13:47</div><div><span class="chip lvl3">3A</span></div><div class="t">Évaluation</div><div><span class="badge abs">1 abs</span></div></div>
+              <div class="row" style="grid-template-columns:90px 48px 1fr auto"><div class="m">6 nov. 10:31</div><div><span class="chip lvl3">3E</span></div><div class="t">Séquence 2 patent 1</div><div></div></div>
+              <div class="row" style="grid-template-columns:90px 48px 1fr auto"><div class="m">6 nov. 09:13</div><div><span class="chip lvl5">5E</span></div><div class="t">Expérience act 3</div><div><span class="badge abs">1 abs</span></div></div>
+              <div class="row" style="grid-template-columns:90px 48px 1fr auto"><div class="m">6 nov. 08:18</div><div><span class="chip lvl4">4B</span></div><div class="t">Activité 2 seq 2</div><div><span class="badge pos">+9</span> <span class="badge neg">−5</span> <span class="badge abs">8 abs</span></div></div>
+            </div>
+            <div>
+              <div class="h3"><b>Moyenne par classe</b><a>T1 · 11,7 / 20</a></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl5">5E</span><div class="bar"><i style="width:77%"></i></div><div class="num">13,4</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl5">5D</span><div class="bar"><i style="width:75%"></i></div><div class="num">13,0</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl4">4B</span><div class="bar"><i style="width:71%"></i></div><div class="num">12,8</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl4">4A</span><div class="bar"><i style="width:66%"></i></div><div class="num">12,2</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl4">4D</span><div class="bar"><i style="width:63%"></i></div><div class="num">11,9</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl5">5B</span><div class="bar"><i style="width:63%"></i></div><div class="num">11,9</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl3">3E</span><div class="bar"><i style="width:60%"></i></div><div class="num">11,5</div></div>
+              <div class="row" style="grid-template-columns:48px 1fr 44px;height:32px"><span class="chip lvl4">4C</span><div class="bar"><i style="width:57%"></i></div><div class="num">11,2</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-title">Bureau — Suivi élèves</div>
+  <div class="frames">
+    <div class="desktop" style="grid-template-columns:220px 1fr">
+      <aside class="side">
+        <div class="brand"><i>GC</i>Gestion Classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>Accueil</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Classes</div>
+        <div class="nav on"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/></svg>Élèves</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Séances</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>Analyses</div>
+        <div class="sec">Vie de classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/></svg>Récompenses</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12l2.2 2.2 4.5-4.5"/></svg>Évaluations</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v5h5"/></svg>Productions</div>
+        <div class="foot"><i>T</i>thomas · <span style="color:var(--dim)">Réglages</span></div>
+      </aside>
+      <div class="main" style="display:grid;grid-template-columns:200px 1fr">
+        <div style="border-right:1px solid var(--line);padding:12px 8px">
+          <div class="sec" style="padding-top:4px">Classes</div>
+          <div class="nav on" style="justify-content:space-between"><span><span class="chip lvl3" style="margin-right:8px">3A</span>30</span><b style="font-weight:500">11,0</b></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl3" style="margin-right:8px">3B</span>31</span><span>12,5</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl3" style="margin-right:8px">3C</span>29</span><span>11,2</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl3" style="margin-right:8px">3D</span>30</span><span>9,7</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl3" style="margin-right:8px">3E</span>29</span><span>11,2</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl4" style="margin-right:8px">4A</span>27</span><span>13,1</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl4" style="margin-right:8px">4B</span>29</span><span>13,1</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl4" style="margin-right:8px">4C</span>29</span><span>11,2</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl4" style="margin-right:8px">4D</span>26</span><span>12,9</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl5" style="margin-right:8px">5D</span>26</span><span>13,7</span></div>
+          <div class="nav" style="justify-content:space-between"><span><span class="chip lvl5" style="margin-right:8px">5E</span>26</span><span>15,2</span></div>
+        </div>
+        <div>
+          <div class="top"><h2>3A <span class="meta">30 élèves · moyenne 11,0 / 20 · oral fait 12 / 30</span></h2><div style="display:flex;gap:8px"><button class="btn sm">Bulletin IA</button><button class="btn sm">QR</button><button class="btn sm">Codes</button><button class="btn sm">⋯</button></div></div>
+          <div class="body" style="gap:12px">
+            <div style="display:flex;gap:8px;align-items:center"><input class="btn" style="width:260px;font-weight:400;color:var(--dim)" value="Rechercher un élève…" readonly><div class="seg"><span class="on">Tous 30</span><span>À suivre 3</span><span>En tête 7</span></div><div class="seg" style="margin-left:auto"><span class="on">A–Z</span><span>Note</span><span>Tendance</span><span>Absences</span></div></div>
+            <div>
+              <div class="row head" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div>Élève</div><div style="text-align:right">Note</div><div style="text-align:right">Bonus</div><div style="text-align:right">Malus</div><div style="text-align:right">Tendance</div><div style="text-align:right">Oral</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Alyssa BA.</div><div class="num">10,0</div><div class="num m">3</div><div class="num" style="color:var(--neg)">1</div><div class="num m">—</div><div class="num" style="color:var(--pos)">✓</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Aymen BO.</div><div class="num">11,0</div><div class="num m">2</div><div class="num" style="color:var(--neg)">9</div><div class="num" style="color:var(--neg)">↘ 1,0</div><div class="num m">·</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Bryanna BO.</div><div class="num">10,0</div><div class="num m">4</div><div class="num m">—</div><div class="num" style="color:var(--pos)">↗ 0,5</div><div class="num" style="color:var(--pos)">✓</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Cléo CI.</div><div class="num">12,0</div><div class="num m">6</div><div class="num m">—</div><div class="num" style="color:var(--neg)">↘ 0,5</div><div class="num" style="color:var(--pos)">✓</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Inaya BE.</div><div class="num">11,0</div><div class="num m">1</div><div class="num m">—</div><div class="num m">—</div><div class="num m">·</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Lina AB.</div><div class="num">10,0</div><div class="num m">—</div><div class="num" style="color:var(--neg)">1</div><div class="num m">—</div><div class="num" style="color:var(--pos)">✓</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Loane BL.</div><div class="num">11,0</div><div class="num m">2</div><div class="num" style="color:var(--neg)">1</div><div class="num" style="color:var(--neg)">↘ 2,0</div><div class="num m">·</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Nassera BO.</div><div class="num">11,0</div><div class="num m">5</div><div class="num" style="color:var(--neg)">7</div><div class="num" style="color:var(--neg)">↘ 0,5</div><div class="num" style="color:var(--pos)">✓</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Phinées BA.</div><div class="num">11,0</div><div class="num m">2</div><div class="num m">—</div><div class="num m">—</div><div class="num m">·</div></div>
+              <div class="row" style="grid-template-columns:1fr 70px 70px 70px 90px 60px"><div class="t">Zaidden CO.</div><div class="num">10,0</div><div class="num m">—</div><div class="num" style="color:var(--neg)">1</div><div class="num m">—</div><div class="num" style="color:var(--pos)">✓</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-title">Téléphone — Séances et Accueil</div>
+  <div class="frames">
+    <div class="mobile">
+      <div class="mtop"><b>Séances</b><button class="btn pri sm">+ Nouvelle</button></div>
+      <div class="mbody">
+        <div class="mfilters"><span class="chip on">Toutes</span><span class="chip">3A</span><span class="chip">3B</span><span class="chip">3C</span><span class="chip">3D</span><span class="chip">3E</span><span class="chip">4A</span></div>
+        <div class="mday">Vendredi 6 novembre</div>
+        <div class="mrow"><div class="time">15:28</div><span class="chip lvl3">3B</span><div class="t">Évaluation</div><div class="b"><span class="badge pos">+1</span><span class="badge abs">3 abs</span></div></div>
+        <div class="mrow"><div class="time">13:47</div><span class="chip lvl3">3A</span><div class="t">Évaluation</div><div class="b"><span class="badge abs">1 abs</span></div></div>
+        <div class="mrow"><div class="time">10:31</div><span class="chip lvl3">3E</span><div class="t">Séquence 2 patent 1</div><div class="b"></div></div>
+        <div class="mrow"><div class="time">09:13</div><span class="chip lvl5">5E</span><div class="t">Expérience act 3</div><div class="b"><span class="badge abs">1 abs</span></div></div>
+        <div class="mrow"><div class="time">08:18</div><span class="chip lvl4">4B</span><div class="t">Activité 2 seq 2</div><div class="b"><span class="badge pos">+9</span><span class="badge neg">−5</span><span class="badge abs">8</span></div></div>
+        <div class="mday">Mercredi 4 novembre</div>
+        <div class="mrow"><div class="time">10:23</div><span class="chip lvl4">4D</span><div class="t">Séquence je sais pas</div><div class="b"><span class="badge pos">+14</span><span class="badge abs">9</span></div></div>
+        <div class="mrow"><div class="time">09:21</div><span class="chip lvl5">5E</span><div class="t">Séquence 2 activité 1</div><div class="b"><span class="badge pos">+5</span></div></div>
+        <div class="mday">Mardi 3 novembre</div>
+        <div class="mrow"><div class="time">15:45</div><span class="chip lvl4">4C</span><div class="t">Activité 2 séquence 2</div><div class="b"><span class="badge pos">+4</span><span class="badge abs">7</span></div></div>
+        <div class="mrow"><div class="time">13:50</div><span class="chip lvl3">3A</span><div class="t">Sciences</div><div class="b"></div></div>
+      </div>
+      <div class="tab"><div><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>Accueil</div><div><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Classes</div><div class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Séances</div><div><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/></svg>Élèves</div><div><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Plus</div></div>
+    </div>
+
+    <div class="mobile">
+      <div class="mtop"><b>Samedi 7 novembre</b><span class="chip" style="border:0;background:var(--bg-2)">T1</span></div>
+      <div class="mbody">
+        <div class="mcard"><div class="big"><span>▶ Démarrer une séance</span><span style="color:var(--dim)">›</span></div></div>
+        <div class="mcard" style="padding:8px 16px;display:flex;gap:8px"><button class="btn" style="flex:1;justify-content:center">Travail de groupe</button><button class="btn" style="flex:1;justify-content:center">Épreuve</button></div>
+        <div class="mday" style="display:flex;justify-content:space-between;align-items:center"><span>Lundi 2 · cette semaine</span><span class="seg"><span>L</span><span class="on">M</span><span>M</span><span>J</span><span>V</span></span></div>
+        <div class="mlist">
+          <div class="mrow" style="grid-template-columns:36px 36px 1fr auto"><div class="m">8h</div><span class="chip lvl4">4B</span><div class="t">Séquence 2 · 1</div><div class="b"><span class="badge pos">+3</span><span class="badge neg">−2</span><span class="badge abs">10</span></div></div>
+          <div class="mrow" style="grid-template-columns:36px 36px 1fr auto"><div class="m">9h</div><span class="chip lvl3">3D</span><div class="t">Séquence 2</div><div class="b"><span class="badge neg">−1</span><span class="badge abs">2</span></div></div>
+          <div class="mrow" style="grid-template-columns:36px 36px 1fr auto"><div class="m">10h</div><span class="chip lvl4">4C</span><div class="t">Séquence 2 act 2</div><div class="b"><span class="badge pos">+15</span><span class="badge neg">−12</span></div></div>
+          <div class="mrow" style="grid-template-columns:36px 36px 1fr auto"><div class="m">11h</div><span class="chip lvl5">5D</span><div class="t">Activité 3</div><div class="b"><span class="badge pos">+4</span></div></div>
+        </div>
+        <div class="mday">Classes</div>
+        <div class="mlist">
+          <div class="mrow" style="height:36px"><span class="chip lvl5">5E</span><div class="bar" style="width:100%"><i style="width:77%"></i></div><div class="num">13,4</div></div>
+          <div class="mrow" style="height:36px"><span class="chip lvl5">5D</span><div class="bar"><i style="width:75%"></i></div><div class="num">13,0</div></div>
+          <div class="mrow" style="height:36px"><span class="chip lvl4">4B</span><div class="bar"><i style="width:71%"></i></div><div class="num">12,8</div></div>
+          <div class="mrow" style="height:36px"><span class="chip lvl4">4A</span><div class="bar"><i style="width:66%"></i></div><div class="num">12,2</div></div>
+        </div>
+      </div>
+      <div class="tab"><div class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>Accueil</div><div><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Classes</div><div><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Séances</div><div><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/></svg>Élèves</div><div><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Plus</div></div>
+    </div>
+  </div>
+
+  
+  <div class="frame-title">Bureau — Séances</div>
+  <div class="frames">
+    <div class="desktop">
+      <aside class="side">
+        <div class="brand"><i>GC</i>Gestion Classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>Accueil</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Classes</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/></svg>Élèves</div>
+        <div class="nav on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Séances</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>Analyses</div>
+        <div class="sec">Vie de classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/></svg>Récompenses</div>
+        <div class="nav "><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12l2.2 2.2 4.5-4.5"/></svg>Évaluations</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v5h5"/></svg>Productions</div>
+        <div class="sec">Ressources</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M9.5 3v6L4.8 17.4A2 2 0 006.55 20.5h10.9a2 2 0 001.75-3.1L14.5 9V3"/></svg>Mes TP</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 015.5 3H19v16H5.5A1.5 1.5 0 004 20.5V4.5z"/></svg>Annales</div>
+        <div class="foot"><i>T</i>thomas · <span style="color:var(--dim)">Réglages</span></div>
+      </aside>
+      <div class="main">
+        <div class="top"><h2>Séances <span class="meta">127 cette année</span></h2><div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Liste</span><span>Semaine</span><span>Mois</span></div><button class="btn pri">+ Nouvelle séance</button></div></div>
+        <div class="filters"><span class="chip on">Toutes</span><span class="chip lvl3">3A</span><span class="chip lvl3">3B</span><span class="chip lvl3">3C</span><span class="chip lvl3">3D</span><span class="chip lvl3">3E</span><span class="chip lvl4">4A</span><span class="chip lvl4">4B</span><span class="chip lvl4">4C</span><span class="chip lvl4">4D</span><span class="chip lvl5">5D</span><span class="chip lvl5">5E</span><span style="margin-left:auto;color:var(--dim);font-size:12px">Rechercher…</span></div>
+        <div class="dayhead">Vendredi 6 novembre <span>5 séances</span></div>
+        <div class="srow"><div class="time">15:28</div><span class="chip lvl3">3B</span><div class="t">Évaluation</div><div class="b"><span class="badge pos">+1</span><span class="badge abs">3 abs</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">13:47</div><span class="chip lvl3">3A</span><div class="t">Évaluation</div><div class="b"><span class="badge abs">1 abs</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">10:31</div><span class="chip lvl3">3E</span><div class="t">Séquence 2 patent 1</div><div class="b"></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">09:13</div><span class="chip lvl5">5E</span><div class="t">Expérience act 3</div><div class="b"><span class="badge abs">1 abs</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">08:18</div><span class="chip lvl4">4B</span><div class="t">Activité 2 seq 2</div><div class="b"><span class="badge pos">+9</span><span class="badge neg">−5</span><span class="badge abs">8 abs</span></div><div class="more">⋯</div></div>
+        <div class="dayhead">Mercredi 4 novembre <span>2 séances</span></div>
+        <div class="srow"><div class="time">10:23</div><span class="chip lvl4">4D</span><div class="t">Séquence je sais pas</div><div class="b"><span class="badge pos">+14</span><span class="badge abs">9 abs</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">09:21</div><span class="chip lvl5">5E</span><div class="t">Séquence 2 activité 1</div><div class="b"><span class="badge pos">+5</span></div><div class="more">⋯</div></div>
+        <div class="dayhead">Mardi 3 novembre <span>4 séances</span></div>
+        <div class="srow"><div class="time">15:45</div><span class="chip lvl4">4C</span><div class="t">Activité 2 séquence 2</div><div class="b"><span class="badge pos">+4</span><span class="badge abs">7 abs</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">13:50</div><span class="chip lvl3">3A</span><div class="t">Sciences</div><div class="b"></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">10:05</div><span class="chip lvl3">3D</span><div class="t">Séquence 2</div><div class="b"><span class="badge neg">−1</span><span class="badge abs">2 abs</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">08:10</div><span class="chip lvl4">4A</span><div class="t">Sciences</div><div class="b"><span class="badge pos">+2</span></div><div class="more">⋯</div></div>
+        <div class="dayhead">Lundi 2 novembre <span>3 séances</span></div>
+        <div class="srow"><div class="time">11:00</div><span class="chip lvl5">5D</span><div class="t">Activité 3</div><div class="b"><span class="badge pos">+4</span></div><div class="more">⋯</div></div>
+        <div class="srow"><div class="time">10:00</div><span class="chip lvl4">4C</span><div class="t">Séquence 2 act 2</div><div class="b"><span class="badge pos">+15</span><span class="badge neg">−12</span><span class="badge abs">8 abs</span></div><div class="more">⋯</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-title">Bureau — Évaluations</div>
+  <div class="frames">
+    <div class="desktop">
+      <aside class="side">
+        <div class="brand"><i>GC</i>Gestion Classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>Accueil</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Classes</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/></svg>Élèves</div>
+        <div class="nav "><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Séances</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>Analyses</div>
+        <div class="sec">Vie de classe</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/></svg>Récompenses</div>
+        <div class="nav on"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12l2.2 2.2 4.5-4.5"/></svg>Évaluations</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v5h5"/></svg>Productions</div>
+        <div class="sec">Ressources</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M9.5 3v6L4.8 17.4A2 2 0 006.55 20.5h10.9a2 2 0 001.75-3.1L14.5 9V3"/></svg>Mes TP</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 015.5 3H19v16H5.5A1.5 1.5 0 004 20.5V4.5z"/></svg>Annales</div>
+        <div class="foot"><i>T</i>thomas · <span style="color:var(--dim)">Réglages</span></div>
+      </aside>
+      <div class="main" style="display:grid;grid-template-columns:150px 1fr">
+        <div style="border-right:1px solid var(--line);padding:12px 8px">
+          <div class="sec" style="padding-top:4px">Classes</div>
+          <div class="nav on"><span class="chip lvl3">3A</span></div>
+          <div class="nav"><span class="chip lvl3">3B</span></div>
+          <div class="nav"><span class="chip lvl3">3C</span></div>
+          <div class="nav"><span class="chip lvl3">3D</span></div>
+          <div class="nav"><span class="chip lvl3">3E</span></div>
+          <div class="nav"><span class="chip lvl4">4A</span></div>
+          <div class="nav"><span class="chip lvl4">4B</span></div>
+          <div class="nav"><span class="chip lvl4">4C</span></div>
+          <div class="nav"><span class="chip lvl4">4D</span></div>
+          <div class="nav"><span class="chip lvl5">5D</span></div>
+          <div class="nav"><span class="chip lvl5">5E</span></div>
+        </div>
+        <div style="min-width:0;overflow:hidden">
+          <div class="top"><h2>3A <span class="meta">7 évaluations · moyenne 10,1 / 20</span></h2><div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">T1</span><span>T2</span><span>T3</span></div><button class="btn sm">Filtres</button><button class="btn sm">⋯</button><button class="btn pri sm">+ Évaluation</button></div></div>
+          <div class="grid">
+            <div class="gh" style="justify-content:flex-end">Élève</div><div class="gh"><span>Évaluation du 11/09</span><small>/8</small></div><div class="gh"><span>TP de groupe 1</span><small>22/09 · /10</small></div><div class="gh"><span>TP de groupe 2</span><small>22/09 · /10</small></div><div class="gh"><span>Expérience microbiote</span><small>02/10 · /10</small></div><div class="gh"><span>TP de groupe 1</span><small>06/10 · /5</small></div><div class="gh"><span>TP de groupe 2</span><small>08/10 · /5</small></div><div class="gh"><span>Hôpital virtuel</span><small>03/11 · /20</small></div><div class="gh avg">Moy.</div>
+            <div class="name">Alisia ZH.</div><div class="n ">5,5</div><div class="n ">9</div><div class="n empty">·</div><div class="n ">8,5</div><div class="n low">0,5</div><div class="n empty">·</div><div class="n ">12,75</div><div class="avg">9,9</div><div class="name">Alyssa BA.</div><div class="n ">6</div><div class="n empty">·</div><div class="n ">8</div><div class="n ">9,5</div><div class="n empty">·</div><div class="n ">4</div><div class="n ">12</div><div class="avg">10,6</div><div class="name">Amina DU.</div><div class="n abs">abs</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="avg">—</div><div class="name">Axel XU.</div><div class="n ">6,5</div><div class="n ">9</div><div class="n empty">·</div><div class="n ">7,5</div><div class="n low">0,5</div><div class="n empty">·</div><div class="n ">13</div><div class="avg">10,2</div><div class="name">Aymen BO.</div><div class="n ">6,5</div><div class="n empty">·</div><div class="n empty">·</div><div class="n ">5</div><div class="n empty">·</div><div class="n ">4</div><div class="n ">11,25</div><div class="avg">8,9</div><div class="name">Baptiste RO.</div><div class="n ">8</div><div class="n ">9</div><div class="n empty">·</div><div class="n ">7,5</div><div class="n low">0,5</div><div class="n empty">·</div><div class="n ">19,75</div><div class="avg">12,3</div><div class="name">Baptiste ST.</div><div class="n low">2</div><div class="n ">8</div><div class="n empty">·</div><div class="n ">5</div><div class="n low">0,5</div><div class="n empty">·</div><div class="n ">8</div><div class="avg">6,4</div><div class="name">Bryanna BO.</div><div class="n abs">abs</div><div class="n empty">·</div><div class="n ">9</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n ">8,75</div><div class="avg">8,9</div><div class="name">Cécilia SC.</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="n empty">·</div><div class="avg">—</div><div class="name">Cléo CI.</div><div class="n ">7</div><div class="n empty">·</div><div class="n ">8,5</div><div class="n ">10</div><div class="n empty">·</div><div class="n ">5</div><div class="n ">15,25</div><div class="avg">12,4</div><div class="name">Dajlan MU.</div><div class="n ">7,5</div><div class="n ">9</div><div class="n empty">·</div><div class="n ">4,5</div><div class="n empty">·</div><div class="n empty">·</div><div class="n ">10</div><div class="avg">9,1</div><div class="name">Elsa DE.</div><div class="n low">2,5</div><div class="n empty">·</div><div class="n ">8,5</div><div class="n ">10</div><div class="n empty">·</div><div class="n ">5</div><div class="n ">15,25</div><div class="avg">11,0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="note">
+    <b>Ce que la maquette tranche, et ce qu'elle laisse ouvert</b>
+    <p>Tranché : Inter seule ; page blanche et traits au lieu de cartes ; une couleur d'action ; statuts en badges ; lignes de 40 / 44 px ; marges 16 / 24.</p>
+    <p>Ouvert : les classes. Ici elles portent une teinte très pâle <b style="display:inline">par niveau</b> (3e bleuté, 4e verdâtre, 5e sable) pour balayer un emploi du temps d'un coup d'œil. L'autre option est un chip entièrement neutre partout.</p>
+    <p>Hors maquette, inchangé : l'espace élève et l'Académie gardent leur univers ; la navigation et la liste des pages restent celles d'aujourd'hui.</p>
+  </div>
+</div>
+</body>
+</html>

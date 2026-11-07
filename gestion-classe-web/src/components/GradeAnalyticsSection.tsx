@@ -1,3 +1,4 @@
+import { classColor as levelColor } from '../lib/classColors';
 import { useEffect, useMemo, useState } from 'react';
 import {
   LineChart,
@@ -57,11 +58,7 @@ interface Props {
   events: BehaviourEvent[];
 }
 
-/** Une teinte par classe, réutilisée dans toutes les vues du bloc. */
-const CLASS_COLORS = [
-  '#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4',
-  '#8b5cf6', '#ec4899', '#84cc16', '#0ea5e9', '#f97316',
-];
+/** Teinte du niveau de chaque classe (lib/classColors), réutilisée dans toutes les vues du bloc. */
 
 const CARD = 'bg-[var(--surface)] p-5';
 const CARD_STYLE = { borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' } as const;
@@ -135,7 +132,7 @@ export function GradeAnalyticsSection({ userId, classes, selectedClasses, studen
 
   const classColor = useMemo(() => {
     const map = new Map<string, string>();
-    classes.forEach((c, i) => map.set(c.id, CLASS_COLORS[i % CLASS_COLORS.length]));
+    classes.forEach((c) => map.set(c.id, levelColor(c.name)));
     return map;
   }, [classes]);
 

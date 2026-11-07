@@ -1,0 +1,170 @@
+/* ============================================================
+   Refonte direction C (« couleur mesurée ») — page Séances
+   Maquette : design_handoff_direction_c/direction-c.html, frames
+   « Bureau — Séances » et « Téléphone — Séances » (variante B).
+   Tous les sélecteurs passent par .rf-seances pour l'emporter sur index.css.
+   ============================================================ */
+
+.rf-seances { display: flex; flex-direction: column; }
+
+/* ---- En-tête compact : titre + méta, actions à droite, trait dessous ---- */
+.rf-seances .rf-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.rf-seances .rf-head__title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.rf-seances .rf-head__title .page-title { margin: 0; }
+.rf-seances .rf-head__meta { font-size: 13px; font-weight: 400; color: var(--text-muted); white-space: nowrap; }
+.rf-seances .rf-head__actions { display: flex; align-items: center; gap: 8px; }
+.rf-seances .breadcrumb { margin-bottom: 4px; }
+
+/* Segmenté Liste / Semaine / Mois */
+.rf-seances .segbtn {
+  background: var(--surface); border: 1px solid var(--border-strong);
+  padding: 2px; border-radius: 6px;
+}
+.rf-seances .segbtn__b {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 26px; padding: 0 10px; font-size: 12px; font-weight: 500;
+  color: var(--text-muted);
+}
+.rf-seances .segbtn__b.is-on { background: var(--indigo-soft); color: var(--indigo); box-shadow: none; }
+
+/* ---- Barre de filtres : puces de classes teintées par niveau ---- */
+.rf-seances .rf-filters { padding: 10px 0; border-bottom: 1px solid var(--border); margin: 0; }
+.rf-seances .ses-filter {
+  height: 26px; padding: 0 9px; border-radius: 5px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+  background: var(--rf-soft, var(--surface)); color: var(--rf-ink, var(--text-muted));
+  border: 1.5px solid transparent;
+  transition: border-color 0.12s, filter 0.12s;
+}
+.rf-seances .ses-filter:hover { background: var(--rf-soft, var(--surface-3)); filter: brightness(0.97); }
+.rf-seances .ses-filter.is-on { border-color: var(--rf-solid, transparent); }
+.rf-seances .ses-filter--all {
+  background: var(--surface); color: var(--text-muted); font-weight: 500;
+  border: 1px solid var(--border-strong);
+}
+.rf-seances .ses-filter--all:hover { background: var(--surface-3); filter: none; }
+.rf-seances .ses-filter--all.is-on { background: var(--indigo-soft); color: var(--indigo); border-color: transparent; }
+
+/* ---- Liste : bandeaux de jour + lignes séparées par un trait ---- */
+.rf-seances .rf-list { display: flex; flex-direction: column; }
+.rf-seances .rf-day {
+  height: 30px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; background: var(--bg-alt); border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+}
+.rf-seances .rf-day__label { display: inline-block; }
+.rf-seances .rf-day__label::first-letter { text-transform: uppercase; }
+.rf-seances .rf-day__count { font-weight: 400; color: var(--text-dim); }
+
+.rf-seances .rf-row {
+  display: grid; grid-template-columns: 48px auto minmax(0, 1fr) auto;
+  align-items: center; gap: 12px;
+  height: 40px; padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; color: inherit;
+  transition: background 0.12s;
+}
+.rf-seances .rf-row:hover { background: var(--bg-alt); }
+.rf-seances .rf-row__time { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
+.rf-seances .rf-row__title { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 500; color: var(--text); }
+.rf-seances .rf-row__title > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-seances .rf-row__note { color: var(--text-dim); display: inline-flex; flex-shrink: 0; }
+.rf-seances .rf-row__badges { display: flex; gap: 4px; justify-content: flex-end; }
+
+/* Badges : 20 px, rayon 4 */
+.rf-seances .break { height: 20px; padding: 0 6px; border-radius: 4px; font-size: 11px; }
+
+.rf-seances .rf-empty {
+  text-align: center; padding: 48px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rf-seances .rf-empty h2 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text); }
+.rf-seances .rf-empty p { margin: 6px 0 0; color: var(--text-muted); }
+
+/* ---- Vues Semaine / Mois : grille à traits fins ---- */
+.rf-seances .rf-calnav { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+.rf-seances .rf-calnav__label { font-size: 14px; font-weight: 600; color: var(--text); }
+.rf-seances .rf-calnav__label--month::first-letter { text-transform: uppercase; }
+.rf-seances .rf-calnav__label--month { display: inline-block; }
+
+.rf-seances .rf-cal { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.rf-seances .rf-cal__rail { background: var(--bg-alt); border-right: 1px solid var(--border); }
+.rf-seances .rf-cal__hour { height: 56px; padding: 4px 8px 0; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--border); }
+.rf-seances .rf-cal__corner { height: 40px; border-bottom: 1px solid var(--border); }
+.rf-seances .rf-cal__col { position: relative; }
+.rf-seances .rf-cal__col + .rf-cal__col { border-left: 1px solid var(--border); }
+.rf-seances .rf-cal__col.is-today { background: color-mix(in srgb, var(--indigo-soft) 45%, transparent); }
+.rf-seances .rf-cal__dayhead {
+  height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--bg-alt); border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+}
+.rf-seances .rf-cal__dayhead b { font-size: 14px; font-weight: 600; color: var(--text); }
+.rf-seances .rf-cal__col.is-today .rf-cal__dayhead { background: var(--indigo-soft); color: var(--indigo); }
+.rf-seances .rf-cal__col.is-today .rf-cal__dayhead b { color: var(--indigo); }
+.rf-seances .rf-cal__slot { height: 56px; border-bottom: 1px solid var(--border); }
+
+.rf-seances .rf-cal__ev {
+  position: absolute; left: 3px; right: 3px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 4px 6px; overflow: hidden; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  font-size: 11px; color: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.rf-seances .rf-cal__ev:hover { border-color: var(--border-strong); box-shadow: 0 2px 6px rgba(20, 25, 40, 0.08); z-index: 2; }
+.rf-seances .rf-cal__ev.is-upcoming { border-style: dashed; opacity: 0.72; }
+.rf-seances .rf-cal__ev-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.rf-seances .rf-cal__ev-time { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; }
+.rf-seances .rf-cal__ev-title { font-weight: 500; font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rf-seances .rf-month__head {
+  padding: 8px 0; text-align: center; font-size: 12px; font-weight: 600;
+  color: var(--text-muted); background: var(--bg-alt); border-bottom: 1px solid var(--border);
+}
+.rf-seances .rf-month__cell { min-height: 90px; padding: 4px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+.rf-seances .rf-month__cell:nth-child(7n) { border-right: 0; }
+.rf-seances .rf-month__cell--out { background: var(--bg-alt); }
+.rf-seances .rf-month__num {
+  display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--text-muted); border-radius: 50%;
+}
+.rf-seances .rf-month__num.is-today { background: var(--indigo); color: #fff; font-weight: 600; }
+.rf-seances .rf-month__chips { display: flex; gap: 3px; flex-wrap: wrap; }
+
+/* ---- Feuille de détail : en-tête sobre, sections séparées par des traits ---- */
+.rf-sheet .rf-sheet__head { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); }
+.rf-sheet .rf-sheet__class { font-weight: 600; font-size: 14px; color: var(--text); }
+.rf-sheet .rf-sheet__meta { font-size: 12px; color: var(--text-muted); }
+.rf-sheet .rf-sheet__topic { font-family: var(--font-sans); font-weight: 600; font-size: 16px; letter-spacing: 0; margin: 12px 0 0; color: var(--text); }
+.rf-sheet .rf-sheet__label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+.rf-sheet .rf-sheet__notes {
+  margin: 0; padding: 2px 0 2px 10px; border-left: 2px solid var(--border-strong);
+  font-size: 13px; line-height: 1.45; color: var(--text); white-space: pre-wrap;
+}
+.rf-sheet .rf-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
+.rf-sheet .rf-stats > div { padding: 12px 8px; text-align: center; }
+.rf-sheet .rf-stats > div + div { border-left: 1px solid var(--border); }
+.rf-sheet .rf-stats b { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+.rf-sheet .rf-stats small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.rf-sheet .rf-stats .is-pos b { color: var(--pos); }
+.rf-sheet .rf-stats .is-neg b { color: var(--neg); }
+
+/* ---- Téléphone ---- */
+@media (max-width: 767px) {
+  .rf-seances .ses-filter { height: 36px; padding: 0 12px; font-size: 13px; }
+  .rf-seances .rf-row { height: 44px; gap: 10px; padding: 0 4px; grid-template-columns: 44px auto minmax(0, 1fr) auto; }
+  .rf-seances .rf-day { padding: 0 4px; }
+  .rf-seances .rf-head__meta { display: none; }
+}
+
+/* Téléphone : le bouton principal reste sur une ligne, le segmenté se resserre */
+@media (max-width: 767px) {
+  .rf-seances .rf-head__actions { flex-wrap: nowrap; gap: 6px; }
+  .rf-seances .rf-head__actions .btn { white-space: nowrap; padding: 10px 12px; }
+  .rf-seances .rf-head__actions svg { display: none; }
+}

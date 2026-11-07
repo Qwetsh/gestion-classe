@@ -1,0 +1,203 @@
+/* ============================================================
+   Refonte Direction C — Accueil (07/11/2026)
+   Maquette : design_handoff_direction_c/direction-c.html, variante B.
+   Tous les sélecteurs sont préfixés par .rf-accueil (posé sur .dash
+   dans Dashboard.tsx) pour passer devant index.css sans !important.
+   ============================================================ */
+
+/* ---- En-tête : la date est le titre, la phrase « prochaine séance » suit ---- */
+.rf-accueil .dash__head {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.rf-accueil .dash__title { margin: 0; }
+.rf-accueil .dash__title::first-letter { text-transform: uppercase; }
+.rf-accueil .dash__subtitle { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+/* ---- Lanceurs (téléphone seulement) ---- */
+.rf-accueil .rf-launchers { display: flex; flex-direction: column; gap: 8px; }
+.rf-accueil .rf-launchers:empty { display: none; }
+.rf-accueil .rf-launch-group { display: flex; flex-direction: column; gap: 8px; }
+.rf-accueil .rf-launch-row { display: flex; gap: 8px; }
+.rf-accueil .rf-launch {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 0 14px; width: 100%;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.rf-accueil .rf-launch:active { transform: translateY(1px); }
+.rf-accueil .rf-launch__text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.rf-accueil .rf-launch__title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-accueil .rf-launch__meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Démarrer une séance : la seule action pleine de l'écran */
+.rf-accueil .rf-launch--primary {
+  min-height: 48px; justify-content: center;
+  background: var(--indigo); border-color: var(--indigo); color: #fff; font-size: 15px;
+}
+.rf-accueil .rf-launch--ghost { flex: 1; justify-content: center; }
+.rf-accueil .rf-launch--ghost svg { color: var(--text-muted); flex-shrink: 0; }
+.rf-accueil .rf-launch--resume { min-height: 52px; border-color: var(--indigo); color: var(--indigo-ink); }
+.rf-accueil .rf-launch--resume .rf-launch__title { color: var(--text); }
+.rf-accueil .rf-launch__live {
+  flex-shrink: 0; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 4px; background: var(--indigo-soft); color: var(--indigo-ink);
+}
+.rf-accueil .rf-launch--resume-warn { border-color: var(--warn); color: var(--warn); }
+
+/* ---- Modules aplatis : un titre de section, un trait, le contenu ---- */
+.rf-accueil .home-module .dash__card,
+.rf-accueil .home-grid--flat .dash__card {
+  border: 0; border-radius: 0; background: transparent; overflow: visible;
+}
+.rf-accueil .dash__card-head {
+  align-items: baseline; gap: 12px;
+  padding: 2px 8px 8px; border-bottom: 1px solid var(--border);
+}
+.rf-accueil .dash__card-title { font-size: 14px; font-weight: 600; }
+.rf-accueil .dash__card-sub { display: none; }
+.rf-accueil .dash__card-link { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.rf-accueil .dash__card-link:hover { color: var(--indigo-ink); }
+.rf-accueil .rf-card-meta { font-size: 12px; color: var(--text-muted); }
+.rf-accueil .dash__chevron { display: none; }
+
+/* Lignes : 40 px, traits fins, 8 px de marge intérieure pour le survol */
+.rf-accueil .dash__srow,
+.rf-accueil .dash__alert-row,
+.rf-accueil .dash__tomorrow-row,
+.rf-accueil .dash__tt-row,
+.rf-accueil .dash__week-day {
+  min-height: 40px; padding: 6px 8px;
+  border-top: 0; border-bottom: 1px solid var(--border);
+}
+.rf-accueil .dash__srow:hover,
+.rf-accueil .dash__alert-row:hover { background: var(--surface-2); }
+
+/* Séances récentes : date · classe · séance · bilan */
+.rf-accueil .rf-srow { grid-template-columns: 96px 52px minmax(0, 1fr) auto; gap: 12px; }
+.rf-accueil .dash__srow--head.rf-srow {
+  min-height: 28px; padding-top: 4px; padding-bottom: 4px;
+  background: transparent; font-size: 11px; color: var(--text-dim); font-weight: 500;
+}
+.rf-accueil .rf-srow .dash__srow-date { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.rf-accueil .rf-srow__topic { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-accueil .rf-srow__right { justify-content: flex-end; text-align: right; }
+.rf-accueil .dash__evt-badge { height: 20px; padding: 0 6px; border-radius: 4px; }
+@media (max-width: 640px) {
+  .rf-accueil .rf-srow { grid-template-columns: 52px minmax(0, 1fr) auto; }
+  .rf-accueil .rf-srow > :first-child { display: none; }
+}
+
+/* Moyenne par classe : rail gris de 4 px, barre indigo */
+.rf-accueil .dash__class-avgs { padding: 0; }
+.rf-accueil .dash__class-avg-row {
+  min-height: 32px; padding: 4px 8px; gap: 12px; border-bottom: 1px solid var(--border);
+}
+.rf-accueil .dash__class-avg-bar { height: 4px; border-radius: 2px; background: var(--bg-alt); }
+.rf-accueil .dash__class-avg-fill { border-radius: 2px; }
+.rf-accueil .dash__class-avg-val { font-family: var(--font-sans); font-weight: 500; font-size: 13px; width: 40px; }
+
+/* Élèves à suivre */
+.rf-accueil .dash__avatar { width: 28px; height: 28px; background: var(--bg-alt); }
+.rf-accueil .dash__alert-name { font-size: 13px; }
+.rf-accueil .dash__alert-grade { font-family: var(--font-sans); font-size: 15px; font-weight: 600; }
+
+/* Prochaine séance */
+.rf-accueil .dash__next-card { padding: 2px 8px 12px; }
+.rf-accueil .dash__eyebrow { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; }
+.rf-accueil .dash__eyebrow--indigo { color: var(--text); }
+.rf-accueil .dash__next-btn { border-radius: var(--radius-sm); min-height: 32px; display: inline-flex; align-items: center; }
+.rf-accueil .dash__next-btn--primary { background: var(--indigo); border-color: var(--indigo); }
+
+/* Chiffres (implication, élèves à suivre, séances de la semaine) : bloc bordé, sans fond */
+.rf-accueil .dash__kpi,
+.rf-accueil .dash__kpi--warn {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+}
+.rf-accueil .dash__kpi-label { font-size: 12px; margin-bottom: 4px; }
+.rf-accueil .dash__kpi-bar { height: 4px; background: var(--bg-alt); }
+
+/* Raccourcis : tuiles neutres, icône grise, plus de tuile noire ni de pastilles colorées */
+.rf-accueil .dash__quick-block .dash__eyebrow { padding: 0 8px; }
+.rf-accueil .dash__quick { gap: 8px; }
+.rf-accueil .dash__quick-card,
+.rf-accueil .dash__quick-card--dark {
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--surface); border-color: var(--border); color: var(--text);
+}
+.rf-accueil .dash__quick-card:hover { border-color: var(--border-strong); box-shadow: none; background: var(--surface-2); }
+.rf-accueil .dash__quick-ic,
+.rf-accueil .dash__quick-ic--light {
+  width: 28px; height: 28px; border-radius: var(--radius-xs);
+  background: var(--bg-alt); color: var(--text-muted);
+}
+.rf-accueil .dash__quick-card--dark .dash__quick-sub { color: var(--text-muted); }
+
+/* Mes tableaux (BoardsPanel) : rangées plates */
+.rf-accueil .dash__shortcuts > * { box-shadow: none; border-bottom: 1px solid var(--border); }
+.rf-accueil .dash__shortcut { padding: 8px; min-height: 40px; }
+
+/* ---- Emploi du temps : grille à traits fins ---- */
+.rf-accueil .wtt__head { padding: 2px 8px 10px; border-bottom: 0; }
+.rf-accueil .wtt__grid {
+  padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;
+}
+.rf-accueil .wtt__grid > div:first-child { background: var(--bg-alt); border-bottom: 1px solid var(--border); }
+.rf-accueil .wtt__day-head {
+  justify-content: flex-start; padding: 6px 8px; border-radius: 0;
+  background: var(--bg-alt); border-left: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.rf-accueil .wtt__day-name { font-size: 12px; font-weight: 600; }
+.rf-accueil .wtt__day-num { font-size: 13px; font-weight: 600; }
+.rf-accueil .wtt__day-head--today,
+.rf-accueil .wtt__day-head--today .wtt__day-num { background: var(--indigo-soft); color: var(--indigo); }
+.rf-accueil .wtt__hours { background: var(--bg-alt); }
+.rf-accueil .wtt__hour { font-size: 11px; color: var(--text-dim); right: 6px; }
+.rf-accueil .wtt__col--today { background: color-mix(in srgb, var(--indigo-soft) 40%, transparent); }
+.rf-accueil .wtt__line { border-top-style: solid; }
+.rf-accueil .wtt__now { border-top-color: var(--indigo); }
+.rf-accueil .wtt__now::before { background: var(--indigo); }
+
+/* Cours : fond blanc, trait 1 px, la classe en puce de niveau */
+.rf-accueil .wtt__lesson {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); padding: 3px 6px; gap: 2px;
+}
+.rf-accueil .wtt__lesson:hover { border-color: var(--border-strong); box-shadow: none; }
+.rf-accueil .wtt__lesson-name { font-size: 12px; font-weight: 600; gap: 4px; }
+.rf-accueil .wtt__lesson-chip {
+  display: inline-flex; align-items: center; height: 18px; padding: 0 5px;
+  border-radius: 4px; font-size: 11px; font-weight: 600; line-height: 1; white-space: nowrap;
+}
+.rf-accueil .wtt__lesson-session,
+.rf-accueil .wtt__lesson-sub { font-size: 11px; color: var(--text-muted); margin-top: 0; }
+.rf-accueil .wtt__lesson--current { background: var(--surface); box-shadow: 0 0 0 2px var(--indigo); border-color: transparent; z-index: 2; }
+.rf-accueil .wtt__lesson--selected { box-shadow: 0 0 0 2px var(--indigo); border-color: transparent; }
+.rf-accueil .wtt__lesson--past { opacity: 0.6; }
+.rf-accueil .wtt__lesson--other { background: var(--bg-alt); }
+.rf-accueil .wtt__lesson--canceled { background: var(--bg-alt); opacity: 0.75; }
+.rf-accueil .wtt__lesson--canceled .wtt__lesson-chip,
+.rf-accueil .wtt__lesson--canceled .wtt__lesson-name { text-decoration: line-through; }
+/* Note écrite sur un cours : liseré ambre à gauche à la place du double trait */
+.rf-accueil .wtt__lesson--noted { border-left: 1px solid var(--border); box-shadow: inset 3px 0 0 var(--warn); }
+.rf-accueil .wtt__lesson--noted.wtt__lesson--current { box-shadow: 0 0 0 2px var(--indigo), inset 3px 0 0 var(--warn); }
+
+/* Vue « un jour » sous 640 px : pastille active en indigo pâle */
+.rf-accueil .wtt__daychip { border-radius: var(--radius-sm); }
+.rf-accueil .wtt__daychip.is-on { background: var(--indigo-soft); border-color: transparent; color: var(--indigo); }
+.rf-accueil .wtt__daychip.is-on .wtt__daychip-num { color: var(--indigo); }
+@media (max-width: 640px) {
+  .rf-accueil .wtt__head { padding: 2px 0 8px; }
+  .rf-accueil .wtt__daychips { padding: 0 0 8px; }
+  .rf-accueil .dash__card-head { padding-left: 0; padding-right: 0; }
+}
+
+/* ---- Mode édition : le module garde un contour pour rester saisissable ---- */
+.rf-accueil .home-module--editing .dash__card { background: var(--surface); }
+
+/* Vue « un jour » (< 640 px) : une heure doit contenir la puce de classe ET le titre */
+@media (max-width: 640px) {
+  .rf-accueil .wtt--day .wtt__grid { min-height: 600px; }
+}

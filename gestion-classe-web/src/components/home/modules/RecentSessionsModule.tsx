@@ -20,35 +20,32 @@ export function RecentSessionsModule() {
           <p style={{ fontSize: 13 }}>Aucune séance récente</p>
         </div>
       ) : (
+        // Direction C : date · classe · séance · bilan, une ligne de 40 px, la classe n'est plus écrite deux fois
         <div className="home-card__body dash__sessions">
-          <div className="dash__srow dash__srow--head">
+          <div className="dash__srow dash__srow--head rf-srow">
+            <span>Date</span>
             <span>Classe</span>
-            <span>Bonus · malus · absences</span>
-            <span />
+            <span>Séance</span>
+            <span className="rf-srow__right">Bilan</span>
           </div>
           {recentSessions.map((session) => {
             const color = getClassColor(session.class_name, classNames);
             return (
-              <Link key={session.id} to={`/sessions/${session.id}`} className="dash__srow">
-                <span className="dash__srow-class">
-                  <ClassChip label={getClassLabel(session.class_name)} color={color} size={30} />
-                  <span style={{ minWidth: 0 }}>
-                    <span className="dash__srow-name">{session.class_name}</span>
-                    <span className="dash__srow-date">{formatDate(session.started_at)}</span>
-                  </span>
-                </span>
-                <span className="dash__srow-badges">
+              <Link key={session.id} to={`/sessions/${session.id}`} className="dash__srow rf-srow">
+                <span className="dash__srow-date">{formatDate(session.started_at)}</span>
+                <span><ClassChip label={getClassLabel(session.class_name)} color={color} size={26} /></span>
+                <span className="rf-srow__topic">{session.topic || session.class_name}</span>
+                <span className="dash__srow-badges rf-srow__right">
                   {session.pos_count > 0 && (
                     <span className="dash__evt-badge dash__evt-badge--pos">+{session.pos_count}</span>
                   )}
                   {session.neg_count > 0 && (
-                    <span className="dash__evt-badge dash__evt-badge--neg">-{session.neg_count}</span>
+                    <span className="dash__evt-badge dash__evt-badge--neg">−{session.neg_count}</span>
                   )}
                   {session.abs_count > 0 && (
-                    <span className="dash__evt-badge dash__evt-badge--abs">{session.abs_count}abs</span>
+                    <span className="dash__evt-badge dash__evt-badge--abs">{session.abs_count} abs</span>
                   )}
                 </span>
-                <span className="dash__chevron">›</span>
               </Link>
             );
           })}

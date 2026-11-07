@@ -1,3 +1,5 @@
+import { classColor, classTone } from '../lib/classColors';
+import '../styles/refonte-seances.css';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -49,7 +51,6 @@ interface ClassFilter {
 
 type ViewMode = 'list' | 'week' | 'month';
 
-const COLOR_PALETTE = ['#6366F1','#EC4899','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EF4444','#14B8A6','#F97316','#06B6D4','#84CC16','#E879F9','#FB923C'];
 
 function getClassLabel(name: string): string {
   return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
@@ -478,12 +479,12 @@ export function Sessions() {
 
   return (
     <Layout fluid>
-      <div className="space-y-6">
+      <div className="rf-seances">
         {/* Error banner */}
         {error && (
           <div
             className="bg-[var(--neg-soft)] text-[var(--neg)] p-4 flex items-center justify-between"
-            style={{ borderRadius: 'var(--radius)' }}
+            style={{ borderRadius: 'var(--radius)', marginBottom: 12 }}
           >
             <span>{error}</span>
             <button
@@ -495,18 +496,23 @@ export function Sessions() {
           </div>
         )}
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' as const }}>
-          <div>
-            <div className="breadcrumb" style={{ marginBottom: 6 }}>
-              <Link to="/" style={{ color: 'var(--text-muted)', fontSize: 13 }}>Accueil</Link>
+        {/* Header compact : titre + méta, actions à droite (direction C) */}
+        <div className="rf-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="breadcrumb">
+              <Link to="/" style={{ color: 'var(--text-muted)', fontSize: 12 }}>Accueil</Link>
               <span style={{ margin: '0 6px', color: 'var(--text-dim)' }}>›</span>
-              <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 500 }}>Séances</span>
+              <span style={{ color: 'var(--text)', fontSize: 12, fontWeight: 500 }}>Séances</span>
             </div>
-            <h1 className="page-title">Séances</h1>
+            <div className="rf-head__title">
+              <h1 className="page-title">Séances</h1>
+              {sessions.length > 0 && (
+                <span className="rf-head__meta">{sessions.length} cette année</span>
+              )}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="rf-head__actions">
             <div className="segbtn">
               {([['list', 'Liste', 'list'], ['week', 'Semaine', 'calendar-plus'], ['month', 'Mois', 'grid']] as [ViewMode, string, string][]).map(([mode, label, icon]) => (
                 <button key={mode} className={`segbtn__b ${viewMode === mode ? 'is-on' : ''}`} onClick={() => setViewMode(mode)}>
@@ -515,23 +521,22 @@ export function Sessions() {
                 </button>
               ))}
             </div>
-            <Link to="/sessions" className="btn btn--primary" style={{ fontSize: 13 }}>
+            <Link to="/sessions" className="btn btn--primary">
               <Icon name="plus" size={14} /> Nouvelle séance
             </Link>
           </div>
         </div>
 
-        {/* Class filter chips */}
-        <div className="ses-filters filter-strip" style={{ marginTop: 14 }}>
+        {/* Class filter chips : puces teintées par niveau, une classe choisie = contour plein */}
+        <div className="ses-filters filter-strip rf-filters">
           <button
             onClick={() => setSelectedClassId(null)}
-            className={`ses-filter ${selectedClassId === null ? 'is-on' : ''}`}
-            style={selectedClassId === null ? { background: 'var(--text)', color: 'var(--surface)' } : undefined}
+            className={`ses-filter ses-filter--all ${selectedClassId === null ? 'is-on' : ''}`}
           >
             Toutes
           </button>
-          {classes.map((cls, i) => {
-            const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
+          {classes.map((cls) => {
+            const tone = classTone(cls.name);
             const count = classCounts[cls.id] || 0;
             if (count === 0) return null;
             return (
@@ -539,9 +544,8 @@ export function Sessions() {
                 key={cls.id}
                 onClick={() => setSelectedClassId(selectedClassId === cls.id ? null : cls.id)}
                 className={`ses-filter ${selectedClassId === cls.id ? 'is-on' : ''}`}
-                style={selectedClassId === cls.id ? { background: color, color: '#fff' } : undefined}
+                style={{ '--rf-soft': tone.soft, '--rf-ink': tone.ink, '--rf-solid': tone.solid } as React.CSSProperties}
               >
-                <span className="ses-filter__dot" style={{ background: color }} />
                 {cls.name}
               </button>
             );
@@ -551,14 +555,14 @@ export function Sessions() {
         {/* ====== LIST VIEW ====== */}
         {viewMode === 'list' && (
           sessions.length === 0 ? (
-            <div className="gc-card" style={{ textAlign: 'center', padding: 48 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>Aucune séance</h2>
-              <p style={{ color: 'var(--text-dim)', marginTop: 8 }}>
+            <div className="rf-empty">
+              <h2>Aucune séance</h2>
+              <p>
                 {selectedClassId ? 'Aucune séance pour cette classe' : 'Démarrez une séance depuis l\'application mobile'}
               </p>
             </div>
           ) : (
-            <div className="listview" style={{ marginTop: 14 }}>
+            <div className="rf-list">
               {(() => {
                 const groups: { date: string; sessions: Session[] }[] = [];
                 sessions.forEach(s => {
@@ -572,27 +576,30 @@ export function Sessions() {
                   }
                 });
                 return groups.map((group) => (
-                  <div key={group.date} className="gc-card listview__day">
-                    <div style={{ padding: '10px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', fontStyle: 'italic', fontFamily: 'var(--font-display)', borderBottom: '1px solid var(--border)', textTransform: 'capitalize' }}>
-                      {new Date(group.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  <div key={group.date}>
+                    {/* Bandeau de jour pleine largeur, nombre de séances à droite */}
+                    <div className="rf-day">
+                      <span className="rf-day__label">
+                        {new Date(group.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </span>
+                      <span className="rf-day__count">
+                        {group.sessions.length} séance{group.sessions.length > 1 ? 's' : ''}
+                      </span>
                     </div>
                     {group.sessions.map((session) => {
-                      const classIdx = classes.findIndex(c => c.id === session.class_id);
-                      const color = COLOR_PALETTE[classIdx >= 0 ? classIdx % COLOR_PALETTE.length : 0];
+                      const color = classColor(session.class_name);
                       return (
-                        <div key={session.id} onClick={() => handleOpenSessionModal(session)} style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 16, borderBottom: '1px solid var(--border)', color: 'inherit', transition: 'background 0.12s', cursor: 'pointer' }} className="lsession">
+                        <div key={session.id} onClick={() => handleOpenSessionModal(session)} className="rf-row">
                           {/* Heure (la durée n'aide pas à retrouver une séance) */}
-                          <div style={{ width: 56, flexShrink: 0, textAlign: 'right', fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
-                            {formatTime(session.started_at)}
-                          </div>
-                          {/* La pastille porte la classe ; le texte est le titre (ou la classe s'il n'y en a pas) */}
+                          <div className="rf-row__time">{formatTime(session.started_at)}</div>
+                          {/* La puce porte la classe ; le texte est le titre (ou la classe s'il n'y en a pas) */}
                           <ClassChip label={getClassLabel(session.class_name)} color={color} size={28} />
-                          <div style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.topic || session.class_name}</span>
-                            {session.notes && <span title="Cette séance a une note" style={{ color: 'var(--text-dim)', display: 'inline-flex', flexShrink: 0 }}><Icon name="note" size={13} /></span>}
+                          <div className="rf-row__title">
+                            <span>{session.topic || session.class_name}</span>
+                            {session.notes && <span title="Cette séance a une note" className="rf-row__note"><Icon name="note" size={13} /></span>}
                           </div>
                           {/* Badges : seulement les valeurs non nulles */}
-                          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          <div className="rf-row__badges">
                             {session.participations > 0 && <span className="break break--pos">+{session.participations}</span>}
                             {session.malus > 0 && <span className="break break--neg">−{session.malus}</span>}
                             {session.absences > 0 && <span className="break break--abs">{session.absences} abs</span>}
@@ -609,22 +616,22 @@ export function Sessions() {
 
         {/* ====== WEEK VIEW ====== */}
         {viewMode === 'week' && (
-          <div style={{ marginTop: 14 }}>
+          <div>
             {/* Week navigation */}
-            <div className="ses-weekbar" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <button onClick={() => navigateWeek('prev')} className="iconbtn iconbtn--flip"><Icon name="chevron-right" size={16} stroke={2} /></button>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 500 }}>{formatWeekLabel(weekDays)}</span>
-              <button onClick={() => navigateWeek('next')} className="iconbtn"><Icon name="chevron-right" size={16} stroke={2} /></button>
-              <button onClick={() => setCurrentWeek(new Date())} className="btn btn--ghost" style={{ fontSize: 12, marginLeft: 8 }}>Cette semaine</button>
+            <div className="ses-weekbar rf-calnav">
+              <button onClick={() => navigateWeek('prev')} className="iconbtn iconbtn--flip" aria-label="Semaine précédente"><Icon name="chevron-right" size={16} stroke={2} /></button>
+              <span className="rf-calnav__label">{formatWeekLabel(weekDays)}</span>
+              <button onClick={() => navigateWeek('next')} className="iconbtn" aria-label="Semaine suivante"><Icon name="chevron-right" size={16} stroke={2} /></button>
+              <button onClick={() => setCurrentWeek(new Date())} className="btn btn--ghost" style={{ marginLeft: 8 }}>Cette semaine</button>
             </div>
 
-            <div className="gc-card" style={{ overflow: 'hidden' }}>
+            <div className="rf-cal">
               <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(5, 1fr)', minHeight: 560 }}>
                 {/* Hour rail */}
-                <div style={{ borderRight: '1px solid var(--border)' }}>
-                  <div style={{ height: 48, borderBottom: '1px solid var(--border)' }} />
+                <div className="rf-cal__rail">
+                  <div className="rf-cal__corner" />
                   {Array.from({ length: 10 }, (_, i) => (
-                    <div key={i} style={{ height: 56, padding: '4px 8px 0', fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }}>
+                    <div key={i} className="rf-cal__hour">
                       {String(8 + i).padStart(2, '0')}:00
                     </div>
                   ))}
@@ -635,19 +642,18 @@ export function Sessions() {
                   const dateKey = day.toISOString().split('T')[0];
                   const isToday = dateKey === todayStr;
                   const daySessions = weekSessions[dateKey] || [];
-                  const dayNames = ['LUN', 'MAR', 'MER', 'JEU', 'VEN'];
+                  const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
                   return (
-                    <div key={dayIdx} style={{ borderRight: dayIdx < 4 ? '1px solid var(--border)' : 'none', position: 'relative', background: isToday ? 'var(--accent-soft)' : undefined }}>
-                      {/* Day header */}
-                      <div style={{ height: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', gap: 0 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: isToday ? 'var(--accent)' : 'var(--text-dim)', letterSpacing: '0.04em' }}>{dayNames[dayIdx]}</span>
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500, color: isToday ? 'var(--accent)' : 'var(--text)' }}>{day.getDate()}</span>
-                        {isToday && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aujourd'hui</span>}
+                    <div key={dayIdx} className={`rf-cal__col ${isToday ? 'is-today' : ''}`}>
+                      {/* Day header (jour courant en indigo) */}
+                      <div className="rf-cal__dayhead" title={isToday ? "Aujourd'hui" : undefined}>
+                        <span>{dayNames[dayIdx]}</span>
+                        <b>{day.getDate()}</b>
                       </div>
                       {/* Time grid background */}
                       <div style={{ position: 'relative', height: 560 }}>
                         {Array.from({ length: 10 }, (_, i) => (
-                          <div key={i} style={{ height: 56, borderBottom: '1px solid var(--border)' }} />
+                          <div key={i} className="rf-cal__slot" />
                         ))}
                         {/* Session blocks */}
                         {daySessions.map((session) => {
@@ -657,8 +663,7 @@ export function Sessions() {
                           const durMin = Math.round((endD.getTime() - startD.getTime()) / 60000);
                           const top = (startMin / 60) * 56;
                           const height = Math.max(28, (durMin / 60) * 56);
-                          const classIdx = classes.findIndex(c => c.id === session.class_id);
-                          const color = COLOR_PALETTE[classIdx >= 0 ? classIdx % COLOR_PALETTE.length : 0];
+                          const color = classColor(session.class_name);
                           const isUpcoming = !session.ended_at && new Date(session.started_at) > new Date();
                           // Les compteurs ne s'affichent plus dans la case : ils passent dans l'infobulle
                           const counters = [
@@ -668,23 +673,21 @@ export function Sessions() {
                           ].filter(Boolean).join(' · ');
                           const tooltip = [session.class_name, session.topic, counters].filter(Boolean).join(' — ');
                           return (
-                            <div key={session.id} onClick={() => handleOpenSessionModal(session)} title={tooltip} style={{
-                              position: 'absolute', top, left: 3, right: 3, height, borderRadius: 6,
-                              borderLeft: `3px solid ${color}`,
-                              background: isUpcoming ? 'var(--surface-3)' : `${color}1A`,
-                              padding: '4px 6px', overflow: 'hidden', color: 'inherit', cursor: 'pointer',
-                              fontSize: 11, display: 'flex', flexDirection: 'column', gap: 1,
-                              opacity: isUpcoming ? 0.72 : 1,
-                              transition: 'opacity 0.12s',
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div
+                              key={session.id}
+                              onClick={() => handleOpenSessionModal(session)}
+                              title={tooltip}
+                              className={`rf-cal__ev ${isUpcoming ? 'is-upcoming' : ''}`}
+                              style={{ top, height }}
+                            >
+                              <div className="rf-cal__ev-top">
                                 <ClassChip label={getClassLabel(session.class_name)} color={color} size={18} />
-                                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                <span className="rf-cal__ev-time">
                                   {session.notes && <span title="Cette séance a une note" style={{ display: 'inline-flex' }}><Icon name="note" size={11} /></span>}
                                   {formatTime(session.started_at)}
                                 </span>
                               </div>
-                              {session.topic && <div style={{ fontWeight: 500, fontSize: 11, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.topic}</div>}
+                              {session.topic && <div className="rf-cal__ev-title">{session.topic}</div>}
                             </div>
                           );
                         })}
@@ -699,19 +702,17 @@ export function Sessions() {
 
         {/* ====== MONTH VIEW ====== */}
         {viewMode === 'month' && (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={() => navigateMonth('prev')} className="iconbtn iconbtn--flip"><Icon name="chevron-right" size={16} stroke={2} /></button>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, textTransform: 'capitalize' }}>{getMonthName(currentMonth)}</h2>
-                <button onClick={() => navigateMonth('next')} className="iconbtn"><Icon name="chevron-right" size={16} stroke={2} /></button>
-                <button onClick={() => setCurrentMonth(new Date())} className="btn btn--ghost" style={{ fontSize: 12, marginLeft: 8 }}>Aujourd'hui</button>
-              </div>
+          <div>
+            <div className="rf-calnav">
+              <button onClick={() => navigateMonth('prev')} className="iconbtn iconbtn--flip" aria-label="Mois précédent"><Icon name="chevron-right" size={16} stroke={2} /></button>
+              <h2 className="rf-calnav__label rf-calnav__label--month" style={{ margin: 0 }}>{getMonthName(currentMonth)}</h2>
+              <button onClick={() => navigateMonth('next')} className="iconbtn" aria-label="Mois suivant"><Icon name="chevron-right" size={16} stroke={2} /></button>
+              <button onClick={() => setCurrentMonth(new Date())} className="btn btn--ghost" style={{ marginLeft: 8 }}>Aujourd'hui</button>
             </div>
-            <div className="gc-card" style={{ overflow: 'hidden' }}>
+            <div className="rf-cal">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
                 {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => (
-                  <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface-3)', borderBottom: '1px solid var(--border)' }}>{d}</div>
+                  <div key={d} className="rf-month__head">{d}</div>
                 ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
@@ -721,23 +722,24 @@ export function Sessions() {
                   const today = new Date();
                   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
                   for (let i = 0; i < startDayOfWeek; i++) {
-                    cells.push(<div key={`e-${i}`} style={{ minHeight: 90, borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', background: 'var(--surface-3)', opacity: 0.3 }} />);
+                    cells.push(<div key={`e-${i}`} className="rf-month__cell rf-month__cell--out" />);
                   }
                   for (let day = 1; day <= daysInMonth; day++) {
                     const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     const daySessions = sessionsByDate.get(dateKey) || [];
                     const isToday = isCurrentMonth && today.getDate() === day;
                     cells.push(
-                      <div key={day} style={{ minHeight: 90, borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', padding: 4 }}>
+                      <div key={day} className="rf-month__cell">
                         <div style={{ textAlign: 'right', marginBottom: 4 }}>
-                          <span style={{ display: 'inline-flex', width: 24, height: 24, alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: isToday ? 700 : 400, fontFamily: 'var(--font-display)', borderRadius: '50%', background: isToday ? 'var(--indigo)' : 'transparent', color: isToday ? '#fff' : 'var(--text-muted)' }}>{day}</span>
+                          <span className={`rf-month__num ${isToday ? 'is-today' : ''}`}>{day}</span>
                         </div>
                         {daySessions.length > 0 && (
-                          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                            {daySessions.map(s => {
-                              const ci = classes.findIndex(c => c.id === s.class_id);
-                              return <span key={s.id} title={[s.class_name, s.topic].filter(Boolean).join(' — ')} style={{ width: 7, height: 7, borderRadius: '50%', background: COLOR_PALETTE[ci >= 0 ? ci % COLOR_PALETTE.length : 0] }} />;
-                            })}
+                          <div className="rf-month__chips">
+                            {daySessions.map(s => (
+                              <span key={s.id} title={[s.class_name, s.topic].filter(Boolean).join(' — ')} style={{ display: 'inline-flex' }}>
+                                <ClassChip label={getClassLabel(s.class_name)} color={classColor(s.class_name)} size={18} />
+                              </span>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -745,7 +747,7 @@ export function Sessions() {
                   }
                   const rem = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
                   for (let i = 0; i < rem; i++) {
-                    cells.push(<div key={`ee-${i}`} style={{ minHeight: 90, borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', background: 'var(--surface-3)', opacity: 0.3 }} />);
+                    cells.push(<div key={`ee-${i}`} className="rf-month__cell rf-month__cell--out" />);
                   }
                   return cells;
                 })()}
@@ -803,15 +805,15 @@ export function Sessions() {
       {showSessionModal && selectedSession && (
         <>
           <div className="sheet-backdrop" onClick={handleCloseSessionModal} />
-          <div className="sheet">
+          <div className="sheet rf-sheet">
             {/* Header */}
-            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
+            <div className="rf-sheet__head">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <ClassChip label={getClassLabel(selectedSession.class_name)} color={COLOR_PALETTE[classes.findIndex(c => c.id === selectedSession.class_id) % COLOR_PALETTE.length]} size={36} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <ClassChip label={getClassLabel(selectedSession.class_name)} color={classColor(selectedSession.class_name)} size={28} />
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{selectedSession.class_name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    <div className="rf-sheet__class">{selectedSession.class_name}</div>
+                    <div className="rf-sheet__meta">
                       {formatDate(selectedSession.started_at)} · {formatTime(selectedSession.started_at)}
                       {selectedSession.ended_at && ` (${getDuration(selectedSession.started_at, selectedSession.ended_at)})`}
                     </div>
@@ -821,44 +823,44 @@ export function Sessions() {
               </div>
               {/* Topic */}
               {selectedSession.topic && (
-                <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontStyle: 'italic', fontSize: 22, letterSpacing: '-0.01em', marginTop: 12 }}>
+                <h2 className="rf-sheet__topic">
                   {selectedSession.topic}
                 </h2>
               )}
               {/* Notes générales de la séance (saisies depuis le mobile) */}
               {selectedSession.notes && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 6 }}>Notes de séance</div>
-                  <p style={{ margin: 0, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-3)', fontSize: 13, lineHeight: 1.45, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                  <div className="rf-sheet__label">Notes de séance</div>
+                  <p className="rf-sheet__notes">
                     {selectedSession.notes}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--surface-3)' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>{selectedSession.events_count}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Événements</div>
+            {/* Stats row : quatre cases séparées par des traits, sans fond coloré */}
+            <div className="rf-stats">
+              <div>
+                <b>{selectedSession.events_count}</b>
+                <small>Événements</small>
               </div>
-              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--pos-soft)' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--pos)' }}>+{selectedSession.participations}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--pos)', marginTop: 2 }}>Positifs</div>
+              <div className={selectedSession.participations > 0 ? 'is-pos' : undefined}>
+                <b>{selectedSession.participations > 0 ? `+${selectedSession.participations}` : '—'}</b>
+                <small>Positifs</small>
               </div>
-              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--neg-soft)' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--neg)' }}>−{selectedSession.malus}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--neg)', marginTop: 2 }}>Malus</div>
+              <div className={selectedSession.malus > 0 ? 'is-neg' : undefined}>
+                <b>{selectedSession.malus > 0 ? `−${selectedSession.malus}` : '—'}</b>
+                <small>Malus</small>
               </div>
-              <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--surface-3)' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>{selectedSession.absences}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Absents</div>
+              <div>
+                <b>{selectedSession.absences > 0 ? selectedSession.absences : '—'}</b>
+                <small>Absents</small>
               </div>
             </div>
 
             {/* Event timeline (DÉROULÉ) */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 16 }}>Déroulé</div>
+              <div className="rf-sheet__label" style={{ marginBottom: 12 }}>Déroulé</div>
               {isLoadingClassroom ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
                   <div style={{ width: 28, height: 28, border: '3px solid var(--indigo)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -920,7 +922,7 @@ export function Sessions() {
             {/* Add event form */}
             {showAddEvent && classroomData && (
               <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 10 }}>
+                <div className="rf-sheet__label" style={{ marginBottom: 10 }}>
                   {editingEventId ? 'Modifier l’événement' : 'Nouvel événement'}
                 </div>
                 {/* Student select */}

@@ -8,6 +8,7 @@ import { assignSessions, percentOfDay, sameDay, type PlacedLesson } from '../../
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
 import { noteForLesson, type LessonNote } from '../../../lib/timetable/lessonNotesQueries';
 import { LessonPopover } from './LessonPopover';
+import { classTone } from '../../../lib/classColors';
 
 /**
  * Grand emploi du temps de la semaine, en haut de l'accueil (lot 2 de PLAN_accueil_v2.md).
@@ -242,6 +243,7 @@ function LessonBlock({
     : lesson.label;
   const canceled = lesson.status === 'canceled';
   const time = `${formatTime(lesson.start)} – ${formatTime(lesson.end)}`;
+  const tone = classTone(lesson.className);
 
   return (
     <button
@@ -267,7 +269,10 @@ function LessonBlock({
       title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null, note ? `Note : ${note.content}` : null].filter(Boolean).join(' · ')}
     >
       <div className="wtt__lesson-name">
-        {name}
+        {/* Direction C : la classe en puce teintée par niveau ; un cours sans classe garde son libellé neutre */}
+        {lesson.className ? (
+          <span className="wtt__lesson-chip" style={{ background: tone.soft, color: tone.ink }}>{name}</span>
+        ) : name}
         {canceled && <span className="wtt__badge wtt__badge--neg">Annulé</span>}
         {lesson.status === 'modified' && <span className="wtt__badge">Modifié</span>}
         {lesson.status === 'exceptional' && <span className="wtt__badge">Except.</span>}

@@ -27,61 +27,61 @@
 
 :root {
   /* Typography */
-  --font-display: 'Fraunces', 'Playfair Display', Georgia, serif;
+  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; /* direction C : une seule police */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* ---- Core palette ---- */
-  --bg: #F6F7F9;
-  --bg-alt: #EFF1F5;
+  --bg: #FFFFFF;
+  --bg-alt: #F6F6F7;
   --surface: #FFFFFF;
-  --surface-2: #FAFBFC;
-  --surface-3: #F3F4F7;
-  --border: #E6E8EE;
-  --border-strong: #D4D8E1;
-  --text: #1A1D2E;
-  --text-muted: #4B5563;
-  --text-dim: #6B7280;
-  --muted-2: #CBD0DB;
+  --surface-2: #F7F7F8;
+  --surface-3: #F0F0F2;
+  --border: #E6E6E9;
+  --border-strong: #D4D4D8;
+  --text: #18181B;
+  --text-muted: #52525B;
+  --text-dim: #71717A;
+  --muted-2: #D4D4D8;
 
   --accent: #F97316;
   --accent-ink: #9A3412;
   --accent-soft: #FFE8D4;
   --accent-strong: #C2410C; /* fond de bouton : texte blanc lisible (5,2:1) */
 
-  --indigo: #6366F1;
+  --indigo: #4F46E5;
   --indigo-ink: #4F46E5; /* indigo pour le texte et les liens (6,3:1 sur blanc) */
   --indigo-soft: #EEF0FF;
 
-  --pos: #047857;
-  --pos-soft: #E4F6ED;
-  --neg: #DC2626;
-  --neg-soft: #FDE8E8;
+  --pos: #15803D;
+  --pos-soft: #EAF6EE;
+  --neg: #B91C1C;
+  --neg-soft: #FBEAEA;
   --warn: #B45309;
-  --warn-soft: #FEF1D8;
+  --warn-soft: #FDF1E3;
 
   /* ---- Spacing & Shape ---- */
-  --radius: 14px;
-  --radius-sm: 10px;
-  --radius-xs: 6px;
-  --gap: 14px;
-  --density-row: 52px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+  --gap: 16px;
+  --density-row: 40px;
 
   /* ---- Shadows ---- */
-  --shadow-1: 0 1px 2px rgba(20, 25, 40, 0.04), 0 1px 3px rgba(20, 25, 40, 0.02);
+  --shadow-1: none; /* direction C : surfaces plates, l'ombre est réservée aux couches flottantes */
   --shadow-2: 0 6px 20px rgba(20, 25, 40, 0.06), 0 2px 6px rgba(20, 25, 40, 0.04);
 
   /* ---- Legacy aliases (backward compat with existing Tailwind usage) ---- */
-  --color-primary: #6366F1;
-  --color-primary-dark: #4F46E5;
+  --color-primary: #4F46E5;
+  --color-primary-dark: #4338CA;
   --color-primary-soft: #EEF0FF;
 
-  --color-participation: #047857;
-  --color-bavardage: #DC2626;
-  --color-absence: #9CA3AF;
+  --color-participation: #15803D;
+  --color-bavardage: #B91C1C;
+  --color-absence: #71717A;
   --color-remarque: #B45309;
-  --color-sortie: #6366F1;
-  --color-error: #DC2626;
-  --color-success: #047857;
+  --color-sortie: #4F46E5;
+  --color-error: #B91C1C;
+  --color-success: #15803D;
   --color-warning: #B45309;
 
   --color-participation-soft: rgba(5, 150, 105, 0.12);
@@ -104,21 +104,21 @@
   --color-border-light: var(--surface-3);
 
   --gradient-primary: var(--indigo-ink); /* ex-dégradé indigo → violet, aplati (audit I1/K3) */
-  --gradient-success: linear-gradient(135deg, #059669 0%, #34D399 100%);
-  --gradient-error: linear-gradient(135deg, #DC2626 0%, #F87171 100%);
-  --gradient-header: linear-gradient(135deg, #6366F1 0%, #818CF8 50%, #8B5CF6 100%);
+  --gradient-success: var(--pos);
+  --gradient-error: var(--neg);
+  --gradient-header: var(--indigo);
 
-  --shadow-xs: 0 1px 2px rgba(20, 25, 40, 0.04);
+  --shadow-xs: none;
   --shadow-sm: var(--shadow-1);
   --shadow-md: var(--shadow-2);
   --shadow-lg: 0 8px 32px rgba(20, 25, 40, 0.1);
-  --shadow-glow: 0 4px 20px rgba(99, 102, 241, 0.25);
+  --shadow-glow: none;
 
-  --radius-sm: 10px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 14px;
-  --radius-2xl: 14px;
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
   --radius-full: 9999px;
 }
 
@@ -130,7 +130,7 @@ body {
   font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
@@ -2364,3 +2364,62 @@ button.gc-colhead__title { background: none; border: none; padding: 0; text-alig
 }
 /* Marque sans la ligne trimestre : le texte se centre sur le logo */
 .gc-brand__text { align-self: center; }
+
+/* ============================================================
+   Direction C — « couleur mesurée » (refonte du 07/11/2026)
+   Maquette : design_handoff_direction_c/direction-c.html (variante B).
+   Une police (Inter), surfaces plates séparées par des traits de 1 px,
+   une couleur d'action (indigo), classes teintées par NIVEAU
+   (lib/classColors.ts), statuts uniquement en badges.
+   ============================================================ */
+body { font-variant-numeric: tabular-nums; }
+
+/* Titres : Inter semi-gras, plus d'italique ni de serif, tailles d'outil */
+.page-title, .track-header h1, .dash__title {
+  font-family: var(--font-sans); font-style: normal; font-weight: 600;
+  font-size: 22px; line-height: 1.2; letter-spacing: -0.01em;
+}
+@media (max-width: 640px) { .page-title, .track-header h1, .dash__title { font-size: 20px; } }
+.gc-card__title, .pool__title { font-family: var(--font-sans); font-weight: 600; font-size: 14px; letter-spacing: 0; }
+.class-detail__title h2 { font-family: var(--font-sans); font-weight: 600; font-size: 16px; letter-spacing: 0; }
+.dash__card-title { font-size: 14px; font-weight: 600; }
+
+/* Chiffres clés : même police, taille ramenée */
+.class-detail__score-val { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+.scard__mark { font-size: 20px; font-weight: 600; letter-spacing: 0; }
+.indic__value { font-size: 18px; font-weight: 600; letter-spacing: 0; }
+.srow__mark { font-size: 15px; font-weight: 600; letter-spacing: 0; }
+.dash__kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+
+/* Marges de page : 24 px bureau, 16–20 px portable */
+.gc-main--padded { padding: 24px; }
+@media (max-width: 1439px) { .gc-main--padded { padding: 16px 20px; } }
+.dash { gap: 16px; }
+
+/* Barre latérale : fond gris clair, libellés de section discrets, entrée active indigo pâle */
+.gc-sidebar { background: var(--bg-alt); }
+.gc-sidenav__section {
+  text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 11px;
+  color: var(--text-dim); margin: 14px 0 4px;
+}
+.gc-sidenav__item { min-height: 32px; padding: 0 10px; border-radius: 6px; }
+.gc-sidenav__item:hover { background: var(--surface-3); }
+.gc-sidenav__item--active,
+.gc-sidenav__item--active:hover { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+.gc-topbar { padding: 8px 16px; }
+
+/* Boutons : 32 px, rayon 6 (44 px sous 768 px, cible tactile) */
+.btn { min-height: 32px; padding: 0 12px; border-radius: 6px; font-size: 13px; }
+@media (max-width: 767px) { .btn, .track-header__actions .btn { min-height: 44px; padding: 10px 16px; font-size: 14px; } }
+
+/* Puces, segmentés : rayon 6 / 4, sans ombre */
+.gc-chip, .toolbar .chip { border-radius: 6px; }
+.gc-chip.is-on, .toolbar .chip.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.segbtn { border-radius: 6px; padding: 2px; }
+.segbtn__b { border-radius: 4px; }
+.segbtn__b.is-on { box-shadow: none; color: var(--indigo); background: var(--surface); }
+
+/* Surfaces plates : plus d'ombre sur les blocs posés dans la page */
+.gc-card, .dash__card, .classes-pane, .pool, .toolbar, .distrib, .indic, .scard,
+.class-detail__head, .home-card { box-shadow: none !important; }
+.gc-card__head { padding: 14px 16px 8px; }
