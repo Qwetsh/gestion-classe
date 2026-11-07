@@ -54,7 +54,7 @@ function scoreColor(got: number, max: number): string {
 function Mark({ ok }: { ok: boolean | null }) {
   if (ok === null) return null;
   return (
-    <span style={{ color: ok ? T.pos : T.neg, fontWeight: 800, marginRight: 6 }} aria-label={ok ? 'juste' : 'faux'}>
+    <span style={{ color: ok ? T.pos : T.neg, fontWeight: 700, marginRight: 6 }} aria-label={ok ? 'juste' : 'faux'}>
       {ok ? '✓' : '✗'}
     </span>
   );
@@ -131,10 +131,10 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
       <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <span style={{
           flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center',
-          background: T.inset, border: `1px solid ${T.cardBorder}`, color: T.text, fontWeight: 800, fontSize: 13,
+          background: T.inset, border: `1px solid ${T.cardBorder}`, color: T.text, fontWeight: 700, fontSize: 13,
         }}>{q.num}</span>
         <span style={{ flex: 1, minWidth: 0, color: T.text, fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{q.titre}</span>
-        <span style={{ flexShrink: 0, color, fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>
+        <span style={{ flexShrink: 0, color, fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap' }}>
           {q.bonus ? '★ bonus' : `${pts(got)} / ${pts(q.points)}`}
         </span>
       </header>
@@ -151,7 +151,7 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
               display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px', borderRadius: 10,
               background: on ? T.posSoft : T.inset, border: `1px solid ${on ? T.pos + '44' : T.cardBorder}`,
             }}>
-              <span style={{ color: on ? T.pos : T.textDim, fontWeight: 800, flexShrink: 0 }}>{on ? '✓' : '✗'}</span>
+              <span style={{ color: on ? T.pos : T.textDim, fontWeight: 700, flexShrink: 0 }}>{on ? '✓' : '✗'}</span>
               <span style={{ flex: 1, color: on ? T.text : T.textMuted, fontSize: 13, lineHeight: 1.4 }}>{cr.nom}</span>
               <span style={{ color: T.textDim, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>{q.bonus ? '★' : `${pts(cr.points)} pt`}</span>
             </li>
@@ -222,7 +222,7 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
         </div>
         {total !== null && (
           <div style={{ flexShrink: 0, textAlign: 'right', background: T.indigoSoft, border: `1px solid ${T.indigo}55`, borderRadius: 12, padding: '6px 10px' }}>
-            <span style={{ color: T.indigo, fontWeight: 800, fontSize: 18 }}>{total}</span>
+            <span style={{ color: T.indigo, fontWeight: 700, fontSize: 18 }}>{total}</span>
             <span style={{ color: T.textMuted, fontSize: 12 }}> / {bareme}</span>
           </div>
         )}

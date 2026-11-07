@@ -338,7 +338,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
       >
         <span style={{ width: 8, height: 8, borderRadius: 4, background: groupId ? main : 'var(--text-dim)', flexShrink: 0 }} />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.pseudo}</span>
-        {conflict && <span style={{ color: 'var(--warn)', fontWeight: 800 }}>!</span>}
+        {conflict && <span style={{ color: 'var(--warn)', fontWeight: 700 }}>!</span>}
       </div>
     );
   };

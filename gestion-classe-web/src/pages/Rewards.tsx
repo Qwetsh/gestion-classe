@@ -429,7 +429,7 @@ export function Rewards() {
     <Layout fluid>
       <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 md:mb-4">
           <div>
             <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Récompenses</h1>
             <p className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Carte à tampons et bonus</p>

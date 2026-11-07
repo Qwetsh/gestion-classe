@@ -629,7 +629,7 @@ const CSS = `
 }
 .seat__flash {
   position: absolute; left: 50%; top: 6px; transform: translateX(-50%);
-  font-size: clamp(12px, 1.3vw, 20px); font-weight: 800; pointer-events: none;
+  font-size: clamp(12px, 1.3vw, 20px); font-weight: 700; pointer-events: none;
   animation: cr-rise 2.4s ease-out forwards; text-shadow: 0 2px 8px rgba(0,0,0,0.6);
 }
 @keyframes cr-rise {
@@ -661,11 +661,11 @@ const CSS = `
   animation: cr-fade .25s ease-out;
 }
 @keyframes cr-fade { from { opacity: 0; } to { opacity: 1; } }
-.classroom__done { font-size: clamp(48px, 8vw, 120px); font-weight: 800; color: #FCA5A5; animation: cr-blink 1s ease-in-out infinite; }
+.classroom__done { font-size: clamp(48px, 8vw, 120px); font-weight: 700; color: #FCA5A5; animation: cr-blink 1s ease-in-out infinite; }
 @keyframes cr-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
 .classroom__pick-label { font-size: clamp(16px, 2vw, 28px); color: #A5B4FC; text-transform: uppercase; letter-spacing: 0.25em; }
 .classroom__pick-name {
-  font-size: clamp(56px, 10vw, 150px); font-weight: 800; letter-spacing: -0.02em; line-height: 1;
+  font-size: clamp(56px, 10vw, 150px); font-weight: 700; letter-spacing: -0.02em; line-height: 1;
   color: #FFFFFF; text-shadow: 0 0 60px rgba(99,102,241,0.55);
   animation: cr-pop .45s cubic-bezier(.2,1.4,.4,1);
 }

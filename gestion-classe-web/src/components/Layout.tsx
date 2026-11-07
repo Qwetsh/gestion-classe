@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSettings } from '../contexts/SettingsContext';
 import SettingsModal from './SettingsModal';
-import { FeedbackButton } from './FeedbackButton';
+import { FeedbackDialog } from './FeedbackDialog';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { HeldWorksAlert } from './productions/HeldWorksAlert';
 import { supabase } from '../lib/supabase';
@@ -76,6 +76,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
     case 'settings': return <svg {...common}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>;
     case 'plus': return <svg {...common}><path d="M12 5v14M5 12h14"/></svg>;
     case 'info': return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>;
+    case 'message': return <svg {...common}><path d="M4 5.5A1.5 1.5 0 015.5 4h13A1.5 1.5 0 0120 5.5v9a1.5 1.5 0 01-1.5 1.5H9l-5 4V5.5z"/></svg>;
     default: return null;
   }
 }
@@ -244,12 +245,14 @@ function AccountRow({
   email,
   onSignOut,
   onOpenSettings,
+  onOpenFeedback,
   placement,
 }: {
   notifs: NotifData;
   email: string | undefined;
   onSignOut: () => void;
   onOpenSettings: () => void;
+  onOpenFeedback: () => void;
   placement: 'up' | 'down';
 }) {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -326,6 +329,19 @@ function AccountRow({
               <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Connecté en tant que</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</div>
             </div>
+            <button
+              onClick={() => { setIsUserMenuOpen(false); onOpenFeedback(); }}
+              style={{
+                width: '100%', padding: '8px 14px', textAlign: 'left',
+                fontSize: 12.5, fontWeight: 500, color: 'var(--text)',
+                background: 'none', border: 'none', borderRadius: 7,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              }}
+              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'}
+              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'none'}
+            >
+              <NavIcon name="message" size={14} /> Envoyer un retour
+            </button>
             <button
               onClick={() => { setIsUserMenuOpen(false); onSignOut(); }}
               style={{
@@ -406,6 +422,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const { settings, isTabVisible } = useSettings();
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const notifs = useNotifications(user?.id, user?.email);
   const [rail, toggleRail] = useSidebarRail();
   const isDev = user?.email === DEV_EMAIL;
@@ -496,6 +513,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
               email={user?.email}
               onSignOut={signOut}
               onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenFeedback={() => setIsFeedbackOpen(true)}
               placement="up"
             />
           </div>
@@ -512,6 +530,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
             email={user?.email}
             onSignOut={signOut}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenFeedback={() => setIsFeedbackOpen(true)}
             placement="down"
           />
         </header>
@@ -535,9 +554,10 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
         items={allNavItems}
         currentPath={location.pathname}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenFeedback={() => setIsFeedbackOpen(true)}
       />
 
-      <FeedbackButton />
+      <FeedbackDialog open={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
@@ -560,10 +580,12 @@ function MobileTabBar({
   items,
   currentPath,
   onOpenSettings,
+  onOpenFeedback,
 }: {
   items: { path: string; label: string; icon: string }[];
   currentPath: string;
   onOpenSettings: () => void;
+  onOpenFeedback: () => void;
 }) {
   const [showMore, setShowMore] = useState(false);
   const tabs = TAB_BAR_PATHS.map(path => items.find(i => i.path === path)).filter(Boolean) as typeof items;
@@ -580,8 +602,8 @@ function MobileTabBar({
           right: 0,
           bottom: 0,
           zIndex: 60,
-          background: '#FFFFFF',
-          borderTop: '1px solid #E5E7EB',
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
@@ -599,7 +621,7 @@ function MobileTabBar({
                 gap: 3,
                 padding: '8px 2px 7px',
                 textDecoration: 'none',
-                color: isActive ? '#4F46E5' : '#9CA3AF',
+                color: isActive ? 'var(--indigo-ink)' : 'var(--text-muted)',
               }}
             >
               <NavIcon name={item.icon} size={22} />
@@ -620,7 +642,7 @@ function MobileTabBar({
             padding: '8px 2px 7px',
             background: 'none',
             border: 'none',
-            color: isMoreActive ? '#4F46E5' : '#9CA3AF',
+            color: isMoreActive ? 'var(--indigo-ink)' : 'var(--text-muted)',
           }}
         >
           <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round">
@@ -647,7 +669,7 @@ function MobileTabBar({
           <div
             style={{
               width: '100%',
-              background: '#FFFFFF',
+              background: 'var(--surface)',
               borderRadius: '20px 20px 0 0',
               padding: '10px 20px 20px',
               paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
@@ -656,7 +678,7 @@ function MobileTabBar({
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ width: 38, height: 4, borderRadius: 2, background: '#E5E7EB', margin: '0 auto 16px' }} />
+            <div style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto 16px' }} />
             {moreItems.map(item => {
               const isActive = currentPath === item.path;
               return (
@@ -671,8 +693,8 @@ function MobileTabBar({
                     padding: '13px 12px',
                     borderRadius: 12,
                     textDecoration: 'none',
-                    color: isActive ? '#4F46E5' : '#1F2433',
-                    background: isActive ? '#EEF0FF' : 'transparent',
+                    color: isActive ? 'var(--indigo-ink)' : 'var(--text)',
+                    background: isActive ? 'var(--indigo-soft)' : 'transparent',
                     fontSize: 15,
                     fontWeight: 500,
                   }}
@@ -696,7 +718,7 @@ function MobileTabBar({
                 borderRadius: 12,
                 border: 'none',
                 background: 'transparent',
-                color: '#1F2433',
+                color: 'var(--text)',
                 fontSize: 15,
                 fontWeight: 500,
                 textAlign: 'left',
@@ -706,6 +728,28 @@ function MobileTabBar({
                 <NavIcon name="settings" size={18} />
               </span>
               Réglages
+            </button>
+            <button
+              onClick={() => { setShowMore(false); onOpenFeedback(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                width: '100%',
+                padding: '13px 12px',
+                borderRadius: 12,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text)',
+                fontSize: 15,
+                fontWeight: 500,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ width: 24, display: 'grid', placeItems: 'center' }}>
+                <NavIcon name="message" size={18} />
+              </span>
+              Envoyer un retour
             </button>
           </div>
         </div>

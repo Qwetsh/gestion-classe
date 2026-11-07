@@ -106,7 +106,7 @@ export function ClassroomTimer() {
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
-            fontSize: isFinished ? 28 : 36, fontWeight: 800,
+            fontSize: isFinished ? 28 : 36, fontWeight: 700,
             fontFamily: "'Cormorant Garamond', Georgia, serif",
             color: isFinished ? '#d4a843' : isLow ? '#f87171' : '#e8dcc8',
             letterSpacing: '0.05em',

@@ -1267,7 +1267,7 @@ export function Classes() {
           <h1 className="page-title">Plan de salle</h1>
           <p className="page-subtitle">Glissez-déposez les élèves depuis le panneau latéral. Survolez un bureau pour voir la fiche.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="plan-toolbar">
           <button onClick={() => setShowStudentsPanel(!showStudentsPanel)} className="btn btn--ghost" style={{ fontSize: 13 }}>
             <Icon name="grid" size={14} /> Vue tableau
           </button>

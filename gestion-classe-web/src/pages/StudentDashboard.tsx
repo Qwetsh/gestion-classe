@@ -608,7 +608,7 @@ export function StudentDashboard() {
           marginBottom: '12px', border: `1px solid ${T.cardBorder}`, textAlign: 'center',
         }}>
           <p style={{ color: T.textMuted, fontSize: '13px', marginBottom: '8px' }}>Ma note actuelle</p>
-          <div style={{ fontSize: '56px', fontWeight: 800, color: gradeColor(data.grade), lineHeight: 1 }}>
+          <div style={{ fontSize: '56px', fontWeight: 700, color: gradeColor(data.grade), lineHeight: 1 }}>
             {data.grade.toFixed(1)}
             <span style={{ fontSize: '24px', color: T.textDim }}>/20</span>
           </div>

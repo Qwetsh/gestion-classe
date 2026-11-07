@@ -85,7 +85,7 @@ export function GroupGrading() {
         {/* Score badge */}
         <div style={{
           display: 'flex', alignItems: 'baseline', gap: 4,
-          fontSize: 16, fontWeight: 800,
+          fontSize: 16, fontWeight: 700,
           color: textMain, fontFamily: fontDisplay,
         }}>
           {hp ? '⚔ ' : ''}{totalScore}<span style={{ fontSize: 12, fontWeight: 500, color: textDim }}>/{maxScore}</span>
@@ -368,7 +368,7 @@ export function GroupGrading() {
                 onClick={() => { setShowEndConfirm(false); finishSession(); }}
                 disabled={loading}
                 style={{
-                  flex: 1, padding: '14px 0', fontWeight: 800, fontSize: 15,
+                  flex: 1, padding: '14px 0', fontWeight: 700, fontSize: 15,
                   color: hp ? '#1a1410' : '#fff',
                   background: hp ? 'linear-gradient(135deg, #d4a843, #b8860b)' : '#059669',
                   borderRadius: 12, border: 'none', cursor: 'pointer',
@@ -424,7 +424,7 @@ function CriteriaStepper({ label, maxPoints, value, onChange, accent, bgCard, bg
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: textMain, fontFamily: fontDisplay }}>{label}</span>
-        <span style={{ fontSize: 15, fontWeight: 800, color: barColor, fontFamily: fontDisplay }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: barColor, fontFamily: fontDisplay }}>
           {value}<span style={{ fontWeight: 500, color: textDim }}>/{maxPoints}</span>
         </span>
       </div>
