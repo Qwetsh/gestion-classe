@@ -65,7 +65,7 @@ export function Login() {
   const passwordTooShort = mode === 'signup' && password.length > 0 && password.length < 6;
 
   const titles: Record<Mode, string> = {
-    login: 'Connectez-vous à votre compte',
+    login: '',
     signup: 'Créer un compte',
     reset: 'Réinitialiser le mot de passe',
   };
@@ -96,9 +96,11 @@ export function Login() {
             <h1 className="page-title">
               Gestion Classe
             </h1>
-            <p className="text-[var(--text-muted)] mt-2">
-              {titles[mode]}
-            </p>
+            {titles[mode] && (
+              <p className="text-[var(--text-muted)] mt-2">
+                {titles[mode]}
+              </p>
+            )}
           </div>
 
           {/* Success messages */}
@@ -342,11 +344,6 @@ export function Login() {
               )}
             </div>
           )}
-        </div>
-
-        {/* Bottom */}
-        <div className="mt-8 text-center text-xs text-[var(--text-dim)]">
-          Gestion Classe v1.0
         </div>
       </div>
     </div>

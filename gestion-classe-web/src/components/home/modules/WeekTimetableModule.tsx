@@ -80,6 +80,7 @@ export function WeekTimetableModule() {
   const friday = days[days.length - 1]?.date ?? monday;
   const rangeLabel = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: monday.getMonth() === friday.getMonth() ? undefined : 'long' })} – ${friday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
 
+  // La source n'est plus affichée en permanence : elle est dans l'infobulle du bouton « Gérer »
   const sourceLabel = weekSource === 'pronote'
     ? 'Pronote · en direct'
     : timetableImport
@@ -94,17 +95,20 @@ export function WeekTimetableModule() {
             {isCurrentWeek ? 'Cette semaine' : weekOffset === 1 ? 'Semaine prochaine' : weekOffset === -1 ? 'Semaine dernière' : 'Semaine'}
             <span className="wtt__range">{rangeLabel}</span>
           </h2>
-          <p className="dash__card-sub">
-            {sourceLabel}
-            {weekSource === 'stored' && (
-              <>
-                {' · '}
-                <button type="button" className="wtt__link" onClick={() => setImportOpen(true)}>Gérer</button>
-              </>
-            )}
-          </p>
         </div>
         <div className="wtt__nav">
+          <button
+            type="button"
+            className="dash__tt-nav"
+            onClick={() => setImportOpen(true)}
+            title={`Gérer l'emploi du temps · ${sourceLabel}`}
+            aria-label="Gérer l'emploi du temps"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+            </svg>
+          </button>
           <button type="button" className="dash__tt-nav" onClick={() => loadWeek(weekOffset - 1)} disabled={weekLoading} title="Semaine précédente">‹</button>
           {!isCurrentWeek && (
             <button type="button" className="dash__tt-nav dash__tt-nav--today" onClick={() => loadWeek(0)} disabled={weekLoading}>
@@ -269,20 +273,12 @@ function LessonBlock({
         {lesson.status === 'exceptional' && <span className="wtt__badge">Except.</span>}
       </div>
       {showSubject && <div className="wtt__lesson-sub">{lesson.subject?.toLowerCase()}</div>}
-      {session ? (
-        // Séance faite : son bilan remplace l'heure et la salle (l'axe donne déjà l'heure)
+      {session && (
+        // Séance faite : un point et son titre. Les compteurs +/−/abs sont dans le popover, au tap.
+        // Pas d'heure ni de salle : l'axe donne l'heure, la salle est dans l'infobulle.
         <div className="wtt__lesson-session" title="Séance enregistrée">
-          {session.pos > 0 && <span className="wtt__count wtt__count--pos">+{session.pos}</span>}
-          {session.neg > 0 && <span className="wtt__count wtt__count--neg">−{session.neg}</span>}
-          {session.abs > 0 && <span className="wtt__count">{session.abs} abs</span>}
-          {session.topic
-            ? <span className="wtt__lesson-topic">{session.topic}</span>
-            : session.pos + session.neg + session.abs === 0 && <span className="wtt__lesson-topic">✓ faite</span>}
-        </div>
-      ) : (
-        <div className="wtt__lesson-meta">
-          {formatTime(lesson.start)}
-          {lesson.room && <> · {lesson.room.replace(/^salle\s+(?=\d)/i, '')}</>}
+          <span className="wtt__session-dot" aria-hidden="true" />
+          <span className="wtt__lesson-topic">{session.topic || 'faite'}</span>
         </div>
       )}
       {note && !session && (

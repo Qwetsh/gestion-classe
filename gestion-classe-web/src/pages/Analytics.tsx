@@ -512,9 +512,6 @@ export function Analytics() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="page-title">Analyses</h1>
-            <p className="text-[var(--text-muted)] mt-1">
-              Statistiques detaillees de vos classes
-            </p>
           </div>
           {selectedClasses.length > 0 && (
             <button

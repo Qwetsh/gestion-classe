@@ -1455,7 +1455,7 @@ a.dash__card-link:hover { text-decoration: underline; }
 .dash__sessions { padding: 0; }
 .dash__srow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 190px 78px 14px;
+  grid-template-columns: minmax(0, 1fr) 190px 14px;
   align-items: center; gap: 12px;
   padding: 10px 22px; border-top: 1px solid var(--border);
   text-decoration: none; color: inherit;
@@ -2349,3 +2349,18 @@ button.gc-colhead__title { background: none; border: none; padding: 0; text-alig
     border-radius: 0 !important; overflow-y: auto;
   }
 }
+
+/* ---- Densité (agent A) ---- */
+/* Fil d'Ariane inutile sur téléphone : la tab bar dit où l'on est */
+@media (max-width: 767px) {
+  .breadcrumb { display: none; }
+}
+/* Sous-titres explicatifs de page : lus une fois, jamais relus */
+.page-subtitle { display: none; }
+/* EDT : un cours fait porte un point, pas ses compteurs (ils sont dans le popover) */
+.wtt__session-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--pos); flex-shrink: 0;
+}
+/* Marque sans la ligne trimestre : le texte se centre sur le logo */
+.gc-brand__text { align-self: center; }

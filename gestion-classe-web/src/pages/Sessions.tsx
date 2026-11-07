@@ -504,9 +504,6 @@ export function Sessions() {
               <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 500 }}>Séances</span>
             </div>
             <h1 className="page-title">Séances</h1>
-            <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 13 }}>
-              {sessions.length} séance{sessions.length > 1 ? 's' : ''} cette année · {selectedClassId ? sessions.length : sessions.length} visibles
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -531,7 +528,7 @@ export function Sessions() {
             className={`ses-filter ${selectedClassId === null ? 'is-on' : ''}`}
             style={selectedClassId === null ? { background: 'var(--text)', color: 'var(--surface)' } : undefined}
           >
-            Toutes <span className="chip__count">{sessions.length}</span>
+            Toutes
           </button>
           {classes.map((cls, i) => {
             const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
@@ -545,7 +542,7 @@ export function Sessions() {
                 style={selectedClassId === cls.id ? { background: color, color: '#fff' } : undefined}
               >
                 <span className="ses-filter__dot" style={{ background: color }} />
-                {cls.name} <span className="chip__count">{count}</span>
+                {cls.name}
               </button>
             );
           })}
@@ -582,46 +579,24 @@ export function Sessions() {
                     {group.sessions.map((session) => {
                       const classIdx = classes.findIndex(c => c.id === session.class_id);
                       const color = COLOR_PALETTE[classIdx >= 0 ? classIdx % COLOR_PALETTE.length : 0];
-                      const total = session.participations + session.malus + session.absences;
-                      const durMin = session.ended_at ? Math.round((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) : 0;
                       return (
                         <div key={session.id} onClick={() => handleOpenSessionModal(session)} style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 16, borderBottom: '1px solid var(--border)', color: 'inherit', transition: 'background 0.12s', cursor: 'pointer' }} className="lsession">
-                          {/* Time */}
-                          <div style={{ width: 56, flexShrink: 0, textAlign: 'right' }}>
-                            <div style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(session.started_at)}</div>
-                            {durMin > 0 && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{durMin}'</div>}
+                          {/* Heure (la durée n'aide pas à retrouver une séance) */}
+                          <div style={{ width: 56, flexShrink: 0, textAlign: 'right', fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
+                            {formatTime(session.started_at)}
                           </div>
-                          {/* Class chip */}
+                          {/* La pastille porte la classe ; le texte est le titre (ou la classe s'il n'y en a pas) */}
                           <ClassChip label={getClassLabel(session.class_name)} color={color} size={28} />
-                          {/* Main */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              {session.class_name}
-                              {session.notes && <span title="Cette séance a une note" style={{ color: 'var(--text-dim)', display: 'inline-flex' }}><Icon name="note" size={13} /></span>}
-                            </div>
-                            {session.topic && <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.topic}</div>}
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.topic || session.class_name}</span>
+                            {session.notes && <span title="Cette séance a une note" style={{ color: 'var(--text-dim)', display: 'inline-flex', flexShrink: 0 }}><Icon name="note" size={13} /></span>}
                           </div>
-                          {/* Events count */}
-                          <div style={{ width: 80, textAlign: 'center', flexShrink: 0 }}>
-                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500 }}>{session.events_count}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 3 }}>évts</span>
-                            {/* Event bar */}
-                            {total > 0 && (
-                              <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 4, background: 'var(--surface-3)' }}>
-                                <div style={{ width: `${(session.participations / total) * 100}%`, background: 'var(--pos)' }} />
-                                <div style={{ width: `${(session.malus / total) * 100}%`, background: 'var(--neg)' }} />
-                                <div style={{ width: `${(session.absences / total) * 100}%`, background: 'var(--text-dim)' }} />
-                              </div>
-                            )}
-                          </div>
-                          {/* Breakdown */}
+                          {/* Badges : seulement les valeurs non nulles */}
                           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                            <span className="break break--pos">+{session.participations}</span>
-                            <span className="break break--neg">−{session.malus}</span>
-                            <span className="break break--abs">{session.absences} abs</span>
+                            {session.participations > 0 && <span className="break break--pos">+{session.participations}</span>}
+                            {session.malus > 0 && <span className="break break--neg">−{session.malus}</span>}
+                            {session.absences > 0 && <span className="break break--abs">{session.absences} abs</span>}
                           </div>
-                          {/* Chevron */}
-                          <Icon name="chevron-right" size={14} stroke={1.5} />
                         </div>
                       );
                     })}
@@ -641,12 +616,6 @@ export function Sessions() {
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 500 }}>{formatWeekLabel(weekDays)}</span>
               <button onClick={() => navigateWeek('next')} className="iconbtn"><Icon name="chevron-right" size={16} stroke={2} /></button>
               <button onClick={() => setCurrentWeek(new Date())} className="btn btn--ghost" style={{ fontSize: 12, marginLeft: 8 }}>Cette semaine</button>
-              <div style={{ flex: 1 }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-dim)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--pos)', display: 'inline-block' }} /> Séance riche ({'>'} 10 évts)</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--warn)', display: 'inline-block' }} /> À compléter</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--muted-2)', display: 'inline-block' }} /> Pas encore eue</span>
-              </div>
             </div>
 
             <div className="gc-card" style={{ overflow: 'hidden' }}>
@@ -691,8 +660,15 @@ export function Sessions() {
                           const classIdx = classes.findIndex(c => c.id === session.class_id);
                           const color = COLOR_PALETTE[classIdx >= 0 ? classIdx % COLOR_PALETTE.length : 0];
                           const isUpcoming = !session.ended_at && new Date(session.started_at) > new Date();
+                          // Les compteurs ne s'affichent plus dans la case : ils passent dans l'infobulle
+                          const counters = [
+                            session.participations > 0 ? `+${session.participations}` : null,
+                            session.malus > 0 ? `−${session.malus}` : null,
+                            session.absences > 0 ? `${session.absences} abs` : null,
+                          ].filter(Boolean).join(' · ');
+                          const tooltip = [session.class_name, session.topic, counters].filter(Boolean).join(' — ');
                           return (
-                            <div key={session.id} onClick={() => handleOpenSessionModal(session)} style={{
+                            <div key={session.id} onClick={() => handleOpenSessionModal(session)} title={tooltip} style={{
                               position: 'absolute', top, left: 3, right: 3, height, borderRadius: 6,
                               borderLeft: `3px solid ${color}`,
                               background: isUpcoming ? 'var(--surface-3)' : `${color}1A`,
@@ -709,13 +685,6 @@ export function Sessions() {
                                 </span>
                               </div>
                               {session.topic && <div style={{ fontWeight: 500, fontSize: 11, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.topic}</div>}
-                              {height > 45 && session.events_count > 0 && (
-                                <div style={{ display: 'flex', gap: 4, marginTop: 'auto', fontSize: 11 }}>
-                                  <span style={{ color: 'var(--pos)', fontWeight: 600 }}>+{session.participations}</span>
-                                  <span style={{ color: 'var(--neg)', fontWeight: 600 }}>−{session.malus}</span>
-                                  {session.absences > 0 && <span style={{ color: 'var(--text-dim)' }}>{session.absences} abs</span>}
-                                </div>
-                              )}
                             </div>
                           );
                         })}
@@ -767,7 +736,7 @@ export function Sessions() {
                           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                             {daySessions.map(s => {
                               const ci = classes.findIndex(c => c.id === s.class_id);
-                              return <span key={s.id} style={{ width: 7, height: 7, borderRadius: '50%', background: COLOR_PALETTE[ci >= 0 ? ci % COLOR_PALETTE.length : 0] }} />;
+                              return <span key={s.id} title={[s.class_name, s.topic].filter(Boolean).join(' — ')} style={{ width: 7, height: 7, borderRadius: '50%', background: COLOR_PALETTE[ci >= 0 ? ci % COLOR_PALETTE.length : 0] }} />;
                             })}
                           </div>
                         )}
