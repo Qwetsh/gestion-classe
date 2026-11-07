@@ -211,7 +211,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
               <Badge tone={publicationState(assessment) === 'all' ? 'ok' : publicationState(assessment) === 'notes' ? 'warn' : 'neutral'}>{PUBLICATION_LABEL[publicationState(assessment)]}</Badge>
             </div>
           </div>
-          <Link to={`/evaluations/${assessment.id}`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--indigo)' }}>Fiche de l’éval ↗</Link>
+          <Link to={`/evaluations/${assessment.id}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--indigo)' }}>Fiche de l’éval ↗</Link>
           <button onClick={close} style={btn}>Fermer</button>
         </div>
 
@@ -239,7 +239,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
               {noteText !== null && noteText !== editableText(grade) && (
                 <button onClick={() => { void saveNote(); }} disabled={savingNote} style={btnPrimary}>{savingNote ? 'Enregistrement…' : 'Enregistrer'}</button>
               )}
-              {twenty != null && bareme !== 20 && <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>= {String(Math.round(twenty * 100) / 100).replace('.', ',')}/20</span>}
+              {twenty != null && bareme !== 20 && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>= {String(Math.round(twenty * 100) / 100).replace('.', ',')}/20</span>}
               {grade && grade.status !== 'noted' && <Badge tone="neg">{STATUS_LABEL[grade.status as GradeStatus]}</Badge>}
               {grade && grade.grade != null && (isDraft
                 ? <Badge tone="warn">Brouillon : invisible pour l’élève</Badge>
@@ -280,7 +280,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
             </div>
             {noteError && <div style={{ fontSize: 12, color: 'var(--neg)', margin: '-4px 0 10px' }}>{noteError}</div>}
             {withCopies && !hasKit && mode === 'corriger' && (
-              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
                 {NO_KIT_MESSAGE} : « Corriger avec Claude » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
               </div>
             )}
@@ -359,11 +359,11 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                       Production · {linkedActivity.title}
                     </div>
                     {work === undefined ? (
-                      <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Chargement…</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
                     ) : work === null ? (
-                      <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Rien reçu de cet élève.</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Rien reçu de cet élève.</div>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13 }}>
                         <Badge tone={work.status === 'validated' ? 'ok' : work.status === 'corrected' ? 'warn' : 'info'}>{WORK_STATUS_LABEL[work.status]}</Badge>
                         {work.total_points != null && <span style={{ fontWeight: 700 }}>{String(work.total_points).replace('.', ',')}/{linkedActivity.bareme_total}</span>}
                         <span style={{ color: 'var(--text-muted)' }}>envoi n°{work.version}{work.group_pseudos.length > 1 ? ` · avec ${work.group_pseudos.filter((p) => p !== row.student.pseudo).join(', ')}` : ''}</span>
@@ -380,7 +380,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                       {groupInfo.nom || 'Groupe'}
                       {groupInfo.membres.length > 0 && <span style={{ fontWeight: 500 }}> · {groupInfo.membres.join(', ')}</span>}
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
                         <tr style={{ color: 'var(--text-dim)', textAlign: 'left' }}>
                           <th style={{ padding: '4px 6px', fontWeight: 600 }}>Critère</th>
@@ -410,7 +410,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                         </tr>
                       </tfoot>
                     </table>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10, fontSize: 12.5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10, fontSize: 13 }}>
                       {groupAdjusted ? (
                         <>
                           <Badge tone="warn">Note ajustée pour {row.student.pseudo}</Badge>
@@ -433,7 +433,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                       Correction{details?.version ? ` · sujet ${details.version}` : ''} · {SOURCE_LABEL[gradeSource(grade?.details, grade)]}
                       {isDraft && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · brouillon</span>}
                     </div>
-                    {details ? <GradeDetailsView details={details} /> : <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>{grade?.comment}</p>}
+                    {details ? <GradeDetailsView details={details} /> : <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{grade?.comment}</p>}
                     {details && (
                       <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 10 }}>
                         Une retouche du détail se fait dans le Correcteur (JSON), puis push_grades.py ; la note seule se change ici.
@@ -463,7 +463,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                               {!v.was_validated && v.grade != null && <span style={{ color: 'var(--warn)' }}> · brouillon</span>}
                             </span>
                             {(vDetails || v.comment) && (
-                              <button onClick={() => setOpenVersion(open ? null : v.id)} style={{ ...btn, padding: '2px 8px', fontSize: 11.5 }} aria-expanded={open}>
+                              <button onClick={() => setOpenVersion(open ? null : v.id)} style={{ ...btn, padding: '2px 8px', fontSize: 12 }} aria-expanded={open}>
                                 {open ? 'Masquer' : 'Voir'}
                               </button>
                             )}
@@ -477,14 +477,14 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                       })}
                     </ol>
                     {revisions && revisions.length === 0 && (
-                      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
                         Chaque correction remplacée (recorrection, renvoi du Correcteur, note retapée) sera gardée ici.
                       </div>
                     )}
                   </section>
                 )}
                 {!showLeft && !(withCopies && anyScanned) && !details && !groupInfo && !linkedActivity && !grade?.comment && (revisions == null || revisions.length === 0) && (
-                  <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-dim)', fontSize: 12.5 }}>
+                  <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
                     {grade ? 'Pas de copie ni de correction détaillée pour cette note.' : 'Pas encore de note : tape-la ci-dessus.'}
                   </div>
                 )}
@@ -515,15 +515,15 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
 }
 
 const chip: React.CSSProperties = {
-  border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+  border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
 };
 const btn: React.CSSProperties = {
-  padding: '5px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  padding: '5px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit',
 };
 const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--indigo-ink)', color: '#fff', borderColor: 'var(--indigo-ink)' };
 const panel: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: 'var(--surface)' };
 const versionRow: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text)',
+  display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)',
   padding: '6px 8px', borderRadius: 8, background: 'var(--surface-3)',
 };

@@ -79,7 +79,7 @@ export function NewAssessmentChooser({
 
         {step === 'production' && (
           <>
-            <div style={{ color: 'var(--text-muted)', fontSize: 12.5 }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
               Choisis l’activité. Les activités se créent dans l’application élève ; elles apparaissent ici dès le premier envoi.
             </div>
             {!activities && !error && <div style={{ color: 'var(--text-dim)' }}>Chargement…</div>}
@@ -99,7 +99,7 @@ export function NewAssessmentChooser({
                 </span>
               </button>
             ))}
-            {error && <div style={{ color: 'var(--neg)', fontSize: 12.5 }}>{error}</div>}
+            {error && <div style={{ color: 'var(--neg)', fontSize: 13 }}>{error}</div>}
             <div><button onClick={() => setStep('type')} style={btn}>← Retour</button></div>
           </>
         )}
@@ -137,6 +137,6 @@ const row: React.CSSProperties = {
   fontFamily: 'inherit', fontSize: 13,
 };
 const btn: React.CSSProperties = {
-  padding: '6px 11px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  padding: '6px 11px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
 };

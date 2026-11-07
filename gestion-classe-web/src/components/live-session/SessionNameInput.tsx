@@ -47,7 +47,7 @@ export function SessionNameInput() {
             background: DB.surface,
             color: DB.text,
             border: `1px solid ${DB.border}`,
-            borderRadius: 12,
+            borderRadius: 10,
             outline: 'none',
           }}
         />
@@ -81,7 +81,7 @@ export function SessionNameInput() {
             color: '#fff',
             fontSize: 16,
             fontWeight: 600,
-            borderRadius: 12,
+            borderRadius: 10,
             border: 'none',
           }}
         >

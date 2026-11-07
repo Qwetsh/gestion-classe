@@ -638,7 +638,7 @@ export function CarnetTab({ userId, account, onError }: {
         const sequences = sequencesPresent(assessments);
         const noSeq = hasUnsequenced(assessments);
         return (
-          <div className="gc-carnet__filters" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, fontSize: 12.5, color: 'var(--text-muted)' }}>
+          <div className="gc-carnet__filters" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>
             {kinds.length > 1 && (
               <label style={filterLabel}>
                 Type
@@ -737,7 +737,7 @@ export function CarnetTab({ userId, account, onError }: {
           <button onClick={() => setPrefs((p) => ({ ...p, filters: NO_FILTERS }))} style={linkBtn}>Tout afficher</button>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+        <div style={{ overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
             <thead>
               <tr>
@@ -906,7 +906,7 @@ export function CarnetTab({ userId, account, onError }: {
                           {adapted && (
                             <span
                               title={`Évaluation adaptée pour ${s.pseudo}`}
-                              style={{ position: 'absolute', top: 1, right: 3, fontSize: 10, color: 'var(--indigo)', pointerEvents: 'none' }}
+                              style={{ position: 'absolute', top: 1, right: 3, fontSize: 11, color: 'var(--indigo)', pointerEvents: 'none' }}
                             >
                               ✻
                             </span>
@@ -1128,21 +1128,21 @@ const stickyCol: React.CSSProperties = {
   position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1,
 };
 const emptyBox: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
   padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14,
 };
 const filterLabel: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6 };
 const filterSelect: React.CSSProperties = {
   padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
-  color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+  color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
 };
 const linkBtn: React.CSSProperties = {
-  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
+  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600,
   color: 'var(--indigo)', fontFamily: 'inherit',
 };
 /** Petite pastille PAP / PPRE / PAI à côté d'un nom d'élève. */
 const tagStyle: React.CSSProperties = {
-  marginLeft: 6, fontSize: 10, fontWeight: 700, color: 'var(--indigo)',
+  marginLeft: 6, fontSize: 11, fontWeight: 700, color: 'var(--indigo)',
   background: 'var(--indigo-soft)', borderRadius: 999, padding: '1px 6px',
 };
 const btnBase: React.CSSProperties = {

@@ -444,7 +444,7 @@ export function Rewards() {
             </button>
             <button
               onClick={doResetAll}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--neg)] border border-[var(--neg)] hover:bg-red-50 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--neg)] border border-[var(--neg)] hover:bg-[var(--neg-soft)] transition-colors"
             >
               <span className="hidden md:inline">Reinitialiser les cartes</span>
               <span className="md:hidden">Reset</span>
@@ -460,7 +460,7 @@ export function Rewards() {
           </div>
         )}
         {successMsg && (
-          <div className="p-3 rounded-xl bg-green-50 text-green-700 text-sm mb-2">{successMsg}</div>
+          <div className="p-3 rounded-xl bg-[var(--pos-soft)] text-[var(--pos)] text-sm mb-2">{successMsg}</div>
         )}
 
         {/* Main content area - Two column layout */}
@@ -844,7 +844,7 @@ export function Rewards() {
                         {stamp && (
                           <button
                             onClick={() => doRemoveStamp(stamp.id)}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md"
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[var(--neg)] text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--neg)] shadow-md"
                             title="Retirer ce tampon"
                           >
                             x
@@ -871,7 +871,7 @@ export function Rewards() {
                       </span>
                       <button
                         onClick={() => doRemoveStamp(s.id)}
-                        className="text-xs px-1.5 py-0.5 rounded text-red-500 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                        className="text-xs px-1.5 py-0.5 rounded text-[var(--neg)] hover:bg-[var(--neg-soft)] opacity-0 group-hover/row:opacity-100 transition-opacity"
                       >
                         Retirer
                       </button>
@@ -967,7 +967,8 @@ function OverviewTab({
                     <td className="px-4 py-3">
                       <button
                         onClick={() => onStudentClick(s)}
-                        className="font-medium text-[var(--indigo)] hover:underline"
+                        className="font-semibold text-[var(--text)] hover:text-[var(--indigo-ink)] text-left"
+                        title="Ouvrir la carte"
                       >
                         {s.pseudo}
                       </button>
@@ -983,7 +984,7 @@ function OverviewTab({
                             className="h-full rounded-full transition-all"
                             style={{
                               width: `${(s.stamp_count / 10) * 100}%`,
-                              background: s.stamp_count === 10 ? '#22c55e' : 'var(--indigo-ink)',
+                              background: s.stamp_count === 10 ? 'var(--pos)' : 'var(--indigo-ink)',
                             }}
                           />
                         </div>
@@ -994,13 +995,13 @@ function OverviewTab({
                       {s.bonus_label ? (
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
                           s.bonus_used
-                            ? 'bg-green-50 text-green-700'
-                            : 'bg-amber-50 text-amber-700'
+                            ? 'bg-[var(--pos-soft)] text-[var(--pos)]'
+                            : 'bg-[var(--warn-soft)] text-[var(--warn)]'
                         }`}>
                           🎁 {s.bonus_label} {s.bonus_used ? '✓' : '⏳'}
                         </span>
                       ) : s.stamp_count === 10 ? (
-                        <span className="text-xs text-amber-600 font-medium">En attente de choix</span>
+                        <span className="text-xs text-[var(--warn)] font-medium">En attente de choix</span>
                       ) : null}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -1008,16 +1009,16 @@ function OverviewTab({
                         {s.stamp_count < 10 && (
                           <button
                             onClick={() => onAwardStamp(s)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
-                            style={{ background: 'var(--indigo-ink)' }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-[var(--border-strong)] text-[var(--text)] bg-[var(--surface)] hover:bg-[var(--indigo-soft)] hover:border-[var(--indigo)] hover:text-[var(--indigo-ink)] transition-colors"
+                            title={`Attribuer un tampon à ${s.pseudo}`}
                           >
-                            + Tampon
+                            <Plus size={14} strokeWidth={1.75} /> Tampon
                           </button>
                         )}
                         {s.stamp_count >= 10 && !s.bonus_selection_id && (
                           <button
                             onClick={() => onChooseBonus(s)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--warn)] bg-[var(--warn-soft)] hover:bg-[var(--warn-soft)] transition-colors"
                             title="Choisir le bonus avec l'élève"
                           >
                             🎁 Choisir le bonus
@@ -1026,14 +1027,14 @@ function OverviewTab({
                         {s.bonus_selection_id && !s.bonus_used && (
                           <button
                             onClick={() => onMarkBonusUsed(s.bonus_selection_id!)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--pos)] bg-[var(--pos-soft)] hover:bg-[var(--pos-soft)] transition-colors"
                           >
                             Valider bonus
                           </button>
                         )}
                         <button
                           onClick={() => onResetStudent(s)}
-                          className="px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--neg)] hover:bg-red-50 transition-colors"
+                          className="px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-colors"
                           title={`Réinitialiser ${s.pseudo}`}
                         >
                           ↺

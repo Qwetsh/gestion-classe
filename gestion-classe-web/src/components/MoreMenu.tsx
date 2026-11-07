@@ -75,7 +75,7 @@ export function MoreMenu({ items, label = '⋯', title, align = 'right', compact
               title={it.title}
               style={{
                 display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none',
-                background: 'none', cursor: it.disabled ? 'default' : 'pointer', fontFamily: 'inherit', fontSize: 12.5,
+                background: 'none', cursor: it.disabled ? 'default' : 'pointer', fontFamily: 'inherit', fontSize: 13,
                 borderRadius: 6, color: it.danger ? 'var(--neg)' : 'var(--text)', opacity: it.disabled ? 0.5 : 1,
               }}
             >

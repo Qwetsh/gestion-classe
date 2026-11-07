@@ -323,7 +323,7 @@ export function AssessmentModal({
 
 /** Petite pastille PAP / PPRE / PAI à côté d'un nom d'élève. */
 const tagStyle: React.CSSProperties = {
-  marginLeft: 6, fontSize: 10, fontWeight: 700, color: 'var(--indigo)',
+  marginLeft: 6, fontSize: 11, fontWeight: 700, color: 'var(--indigo)',
   background: 'var(--indigo-soft)', borderRadius: 999, padding: '1px 6px',
 };
 const lbl: React.CSSProperties = {

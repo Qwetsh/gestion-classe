@@ -121,7 +121,7 @@ export function CopyDepot() {
       <button
         onClick={() => input.current?.click()}
         disabled={left - drafts.length <= 0 || sending !== null}
-        style={{ ...big, background: 'var(--indigo, #4f46e5)', color: '#fff', opacity: left - drafts.length <= 0 ? 0.5 : 1 }}
+        style={{ ...big, background: 'var(--indigo, var(--indigo-ink))', color: '#fff', opacity: left - drafts.length <= 0 ? 0.5 : 1 }}
       >
         📷 Photographier une page
       </button>
@@ -183,7 +183,7 @@ export function CopyDepot() {
         </div>
 
         {info && (
-          <div style={{ padding: 14, borderRadius: 12, background: 'var(--surface, #fff)', border: '1px solid var(--border, #ddd)' }}>
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--surface, #fff)', border: '1px solid var(--border, #ddd)' }}>
             <div style={{ fontSize: 18, fontWeight: 700 }}>
               {!isClass
                 ? `Copie de ${info.pseudo}`
@@ -200,7 +200,7 @@ export function CopyDepot() {
         )}
 
         {error && (
-          <div style={{ padding: 12, borderRadius: 10, background: 'var(--neg-soft, #fde8e8)', color: 'var(--neg, #b42318)', fontSize: 14 }}>{error}</div>
+          <div style={{ padding: 12, borderRadius: 10, background: 'var(--neg-soft)', color: 'var(--neg, #b42318)', fontSize: 14 }}>{error}</div>
         )}
 
         {info && !isClass && (
@@ -222,7 +222,7 @@ export function CopyDepot() {
             >
               Pas de nom (copie à identifier plus tard)
             </button>
-            <div style={{ borderRadius: 12, border: '1px solid var(--border, #ddd)', background: 'var(--surface, #fff)', overflow: 'hidden' }}>
+            <div style={{ borderRadius: 10, border: '1px solid var(--border, #ddd)', background: 'var(--surface, #fff)', overflow: 'hidden' }}>
               {students.map((s) => (
                 <button
                   key={s.id}
@@ -280,7 +280,7 @@ export function CopyDepot() {
 }
 
 const big: React.CSSProperties = {
-  width: '100%', padding: '14px 16px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  width: '100%', padding: '14px 16px', borderRadius: 10, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
 };
 const small: React.CSSProperties = {
   padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border, #ddd)', background: 'var(--surface, #fff)', fontSize: 14, cursor: 'pointer',

@@ -417,7 +417,7 @@ export function ActivityClassPanel({
                     {groupNames(g)}
                   </span>
                   {graded && (
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: status === 'validated' ? 'var(--pos)' : 'var(--warn)' }}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: status === 'validated' ? 'var(--pos)' : 'var(--warn)' }}
                       title={status === 'validated' ? 'Correction validée' : 'Corrigée, pas encore validée'}>
                       {String(graded.total_points).replace('.', ',')}{status === 'validated' ? '' : '*'}
                     </span>
@@ -484,15 +484,15 @@ export function ActivityClassPanel({
 
 /* ---------- styles ---------- */
 
-const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 };
-const chip: React.CSSProperties = { border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
+const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 };
+const chip: React.CSSProperties = { border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
 const listItem: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', padding: '7px 10px',
   border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit',
 };
 const pill: React.CSSProperties = { display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 600 };
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };
-const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, color: 'var(--text)' };
+const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, color: 'var(--text)' };
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14 };
 const btnBase: React.CSSProperties = { padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid transparent', fontFamily: 'inherit' };
 const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo)', color: '#fff' };

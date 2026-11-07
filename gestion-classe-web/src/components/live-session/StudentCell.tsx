@@ -117,7 +117,7 @@ export const StudentCell = memo(function StudentCell({
         <span
           className="mt-0.5"
           style={{
-            fontSize: 7.5,
+            fontSize: 11,
             fontWeight: 700,
             color: '#fff',
             background: DB.absentBadge,
@@ -131,7 +131,7 @@ export const StudentCell = memo(function StudentCell({
         <span
           className="mt-0.5"
           style={{
-            fontSize: 7.5,
+            fontSize: 11,
             fontWeight: 700,
             color: DB.sortieText,
             background: DB.sortieBorder,
@@ -160,7 +160,7 @@ function Pill({ text, bg, fg }: { text: string; bg: string; fg: string }) {
     <span
       className="flex items-center justify-center"
       style={{
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: 700,
         color: fg,
         background: bg,

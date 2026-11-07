@@ -56,7 +56,7 @@ export function StudentPickerSheet({ title, subtitle, students, onSelect, onClos
                   fontSize: 12,
                   fontWeight: 600,
                   color: DB.textSecondary,
-                  background: '#F3F4F7',
+                  background: 'var(--surface-3)',
                   borderRadius: 999,
                   padding: '3px 8px',
                 }}

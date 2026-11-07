@@ -679,7 +679,7 @@ export function Analytics() {
                           <span
                             className="w-5 h-5 flex items-center justify-center text-xs font-bold text-white shrink-0"
                             style={{
-                              backgroundColor: idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#cd7f32' : COLORS.oral,
+                              backgroundColor: idx === 0 ? 'var(--warn)' : idx === 1 ? 'var(--text-dim)' : idx === 2 ? '#cd7f32' : COLORS.oral,
                               borderRadius: 'var(--radius-sm)',
                             }}
                           >
@@ -959,7 +959,7 @@ export function Analytics() {
                             <span
                               className="w-6 h-6 flex items-center justify-center text-xs font-bold text-white"
                               style={{
-                                backgroundColor: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : index === 2 ? '#cd7f32' : 'var(--indigo)',
+                                backgroundColor: index === 0 ? 'var(--warn)' : index === 1 ? 'var(--text-dim)' : index === 2 ? '#cd7f32' : 'var(--indigo)',
                                 borderRadius: 'var(--radius-md)',
                               }}
                             >

@@ -82,7 +82,7 @@ export function RelinkDialog({
   return (
     <Modal isOpen onClose={onClose} title={`Relier ${cls} à une autre classe`} size="xl">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12.5 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           La même éval passée par plusieurs classes : les notes se comparent, le sujet et le corrigé se partagent.
         </div>
 
@@ -123,7 +123,7 @@ export function RelinkDialog({
         )}
 
         {target && (
-          <div style={{ borderRadius: 10, background: 'var(--surface-3)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, lineHeight: 1.45 }}>
+          <div style={{ borderRadius: 10, background: 'var(--surface-3)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13, lineHeight: 1.45 }}>
             <div style={{ fontWeight: 700 }}>Ce qui se passe</div>
             <div>✓ Les notes de {cls} restent telles quelles ; seule la comparaison entre classes change.</div>
             {target.bareme === bareme && target.coefficient === coef
@@ -139,7 +139,7 @@ export function RelinkDialog({
           </div>
         )}
 
-        {error && <div style={{ color: 'var(--neg)', fontSize: 12.5 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--neg)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
           {onDismissSuggestion && (
             <button onClick={onDismissSuggestion} style={{ ...btn, marginRight: 'auto', background: 'transparent' }}>

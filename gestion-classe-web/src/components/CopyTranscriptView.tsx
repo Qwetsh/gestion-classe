@@ -24,7 +24,7 @@ export function CopyTranscriptView({ blocks }: { blocks: TranscriptBlock[] }) {
         return (
           <div key={`${b.q}-${i}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', flex: 1 }}>
                 {b.q}
                 {!several && b.questions[0] && b.questions[0].label !== b.q && (
                   <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {b.questions[0].label}</span>
@@ -39,7 +39,7 @@ export function CopyTranscriptView({ blocks }: { blocks: TranscriptBlock[] }) {
 
             {b.questions.map((q) =>
               several || q.commentaire ? (
-                <div key={q.label} style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3, display: 'flex', gap: 6 }}>
+                <div key={q.label} style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, display: 'flex', gap: 6 }}>
                   {several && (
                     <span style={{ fontWeight: 600, color: rateColor(questionRate(q)), whiteSpace: 'nowrap' }}>
                       {q.label} {fmt(q.points)}/{fmt(q.bareme)}

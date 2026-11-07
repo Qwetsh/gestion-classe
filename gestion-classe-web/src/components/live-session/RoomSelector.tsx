@@ -22,7 +22,7 @@ export function RoomSelector() {
         {error && (
           <div
             className="p-3 text-sm mb-3"
-            style={{ background: DB.errorSoft, color: DB.error, borderRadius: 12 }}
+            style={{ background: DB.errorSoft, color: DB.error, borderRadius: 10 }}
           >
             {error}
           </div>
@@ -45,7 +45,7 @@ export function RoomSelector() {
             style={{
               background: DB.surface,
               border: `1px solid ${DB.border}`,
-              borderRadius: 16,
+              borderRadius: 14,
               overflow: 'hidden',
             }}
           >
@@ -74,7 +74,7 @@ export function RoomSelector() {
                     >
                       {room.name}
                     </span>
-                    <span style={{ fontSize: 12.5, color: DB.textTertiary }}>
+                    <span style={{ fontSize: 13, color: DB.textTertiary }}>
                       {room.grid_rows} × {room.grid_cols} places
                     </span>
                   </div>

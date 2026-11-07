@@ -17,7 +17,7 @@ export function LiveSessionLauncher() {
         className="w-full p-4 text-left flex items-center gap-4 active:scale-[0.98] transition-all"
         style={{
           background: DB.surface,
-          borderRadius: 16,
+          borderRadius: 14,
           border: `1.5px solid ${DB.action}`,
         }}
       >
@@ -54,7 +54,7 @@ export function LiveSessionLauncher() {
       className="w-full p-4 text-left flex items-center gap-4 active:scale-[0.98] transition-all"
       style={{
         background: DB.surface,
-        borderRadius: 16,
+        borderRadius: 14,
         border: `1px solid ${DB.border}`,
       }}
     >

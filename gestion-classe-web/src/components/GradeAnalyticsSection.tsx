@@ -232,7 +232,7 @@ export function GradeAnalyticsSection({ userId, classes, selectedClasses, studen
             )}
           </div>
         </div>
-        {error && <p className="mt-3 text-sm text-[#ef4444]">{error}</p>}
+        {error && <p className="mt-3 text-sm text-[var(--neg)]">{error}</p>}
       </div>
 
       {isLoading ? (
@@ -274,7 +274,7 @@ export function GradeAnalyticsSection({ userId, classes, selectedClasses, studen
                   <XAxis dataKey="name" stroke="var(--text-dim)" fontSize={11} />
                   <YAxis stroke="var(--text-dim)" fontSize={12} allowDecimals={false} />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} élève(s)`, 'Effectif']} />
-                  <Bar dataKey="eleves" name="Élèves" fill="#6366f1" />
+                  <Bar dataKey="eleves" name="Élèves" fill="var(--indigo)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -383,7 +383,7 @@ export function GradeAnalyticsSection({ userId, classes, selectedClasses, studen
                         <div className="flex items-center gap-2">
                           <span
                             className="w-3 h-3 rounded-full shrink-0"
-                            style={{ backgroundColor: classColor.get(c.classId) ?? '#6366f1' }}
+                            style={{ backgroundColor: classColor.get(c.classId) ?? 'var(--indigo)' }}
                           />
                           <span className="font-medium text-[var(--text)]">{c.className}</span>
                         </div>
@@ -451,7 +451,7 @@ export function GradeAnalyticsSection({ userId, classes, selectedClasses, studen
                               <span
                                 className="px-2 py-1 font-medium"
                                 style={{
-                                  color: v === null ? 'var(--text-dim)' : isBest ? '#22c55e' : isWorst ? '#ef4444' : 'var(--text)',
+                                  color: v === null ? 'var(--text-dim)' : isBest ? 'var(--pos)' : isWorst ? 'var(--neg)' : 'var(--text)',
                                   backgroundColor: v === null ? 'transparent' : isBest ? '#22c55e20' : isWorst ? '#ef444420' : 'transparent',
                                   borderRadius: 'var(--radius-md)',
                                 }}

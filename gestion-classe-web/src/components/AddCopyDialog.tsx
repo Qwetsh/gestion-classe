@@ -200,7 +200,7 @@ export function AddCopyDialog({
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'var(--text-muted)' }}>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             Version du sujet
             <input
@@ -233,7 +233,7 @@ export function AddCopyDialog({
         </div>
 
         {done && (
-          <div style={{ fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: 'var(--pos-soft)', color: 'var(--pos)' }}>
+          <div style={{ fontSize: 13, padding: '8px 10px', borderRadius: 8, background: 'var(--pos-soft)', color: 'var(--pos)' }}>
             Pages ajoutées.
             {graded && ' La copie était déjà corrigée : pense à « Recorriger ».'}
           </div>
@@ -458,7 +458,7 @@ function QrTab({
           {received > 0 ? `${received} page(s) reçue(s)` : 'En attente des pages…'}
         </div>
         {token && (
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>
             Valable encore {left} min, {token.max_pages} pages au plus, pour cet élève seulement. Fermer la fenêtre désactive le QR code.
           </div>
         )}
@@ -471,7 +471,7 @@ const chip: React.CSSProperties = {
   border: 'none', borderRadius: 999, padding: '4px 11px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
 };
 const btn: React.CSSProperties = {
-  padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
 };
 const mini: React.CSSProperties = {

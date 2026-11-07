@@ -440,7 +440,7 @@ export function Academy() {
                 {/* Right: summary + buttons */}
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div style={{ padding: 16, background: 'oklch(0.06 0 0 / 0.6)', border: '1px solid var(--gold-shadow)' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.25em', color: 'var(--gold-deep)', textTransform: 'uppercase' }}>Bonus cachés en attente</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.25em', color: 'var(--gold-deep)', textTransform: 'uppercase' }}>Bonus cachés en attente</div>
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {HOUSE_LIST.map(h => (
                         <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 14 }}>
@@ -489,7 +489,7 @@ export function Academy() {
                           }}>
                             {b.label || 'Bonus'}
                           </div>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--parchment-dark)', marginTop: 1 }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--parchment-dark)', marginTop: 1 }}>
                             {new Date(b.created_at).toLocaleDateString('fr-FR')}
                             {!b.visible && ' · caché'}
                           </div>
@@ -540,7 +540,7 @@ export function Academy() {
                             <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 18, color: 'var(--parchment)' }}>
                               {gs.name || `Épreuve du ${new Date(gs.created_at).toLocaleDateString('fr-FR')}`}
                             </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold-deep)', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 2 }}>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gold-deep)', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 2 }}>
                               {new Date(gs.created_at).toLocaleDateString('fr-FR')} · {gs.status === 'completed' ? 'terminée' : gs.status === 'active' ? 'en cours' : gs.status}
                             </div>
                           </div>
@@ -661,7 +661,7 @@ export function Academy() {
               <HouseCrest house={HOUSE_DATA[modal.houseId]} size={100} />
               <div style={{ fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 15, lineHeight: 1.6 }}>
                 {HOUSE_DATA[modal.houseId].description}
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', marginTop: 8, color: 'var(--ink-line)' }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.2em', marginTop: 8, color: 'var(--ink-line)' }}>
                   « {HOUSE_DATA[modal.houseId].motto} »
                 </div>
               </div>
@@ -723,7 +723,7 @@ export function Academy() {
                   <div key={h.id} style={{ textAlign: 'center', padding: 12, border: '1px solid var(--ink-line)' }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 18 }}>{h.name}</div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', color: 'var(--ink-deep)' }}>{count}</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--parchment-dark)' }}>apprenti·es</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--parchment-dark)' }}>apprenti·es</div>
                   </div>
                 );
               })}
@@ -816,7 +816,7 @@ function HousePanel({ house, points, hiddenBonus, rank, revealing, studentCount,
         onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-3px)')}
         onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
       >
-        <div style={{ position: 'absolute', top: 10, right: 10, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>
+        <div style={{ position: 'absolute', top: 10, right: 10, fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>
           {['1er', '2e', '3e', '4e'][rank - 1]} · {studentCount} él.
         </div>
         <div style={{ marginTop: 6 }}><HouseCrest house={house} size={100} glow={isLeader} /></div>
@@ -824,7 +824,7 @@ function HousePanel({ house, points, hiddenBonus, rank, revealing, studentCount,
         <div style={{ fontFamily: 'var(--font-body)', fontStyle: 'italic', fontSize: 11, color: 'var(--ink-line)', marginTop: 2 }}>« {house.mottoFr} »</div>
         <div style={{ marginTop: 10 }}><Ornament variant="diamond" color="var(--ink-line)" width={120} /></div>
         <div style={{ marginTop: 10, textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.3em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>Points</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.3em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>Points</div>
           <div style={{
             fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 500, lineHeight: 1, marginTop: 2,
             textShadow: isLeader ? '0 0 20px var(--gold)' : 'none',
@@ -835,7 +835,7 @@ function HousePanel({ house, points, hiddenBonus, rank, revealing, studentCount,
             <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 13, color: 'oklch(0.42 0.08 30)', marginTop: 4 }}>+ ? · caché</div>
           )}
         </div>
-        <div style={{ marginTop: 'auto', paddingTop: 12, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.15em', color: 'var(--ink-line)', textTransform: 'uppercase', opacity: 0.7 }}>
+        <div style={{ marginTop: 'auto', paddingTop: 12, fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.15em', color: 'var(--ink-line)', textTransform: 'uppercase', opacity: 0.7 }}>
           Cliquer pour voir les élèves
         </div>
       </div>
@@ -881,7 +881,7 @@ function Podium({ leaderboard }: { leaderboard: HousePoints[] }) {
 function SidePanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ border: '1px solid var(--ink-line)', background: 'oklch(0.12 0.02 55 / 0.7)', padding: '18px 20px' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.3em', color: 'var(--gold-deep)', textTransform: 'uppercase', marginBottom: 4 }}>{title}</div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.3em', color: 'var(--gold-deep)', textTransform: 'uppercase', marginBottom: 4 }}>{title}</div>
       <div style={{ height: 1, background: 'var(--ink-line)', marginBottom: 14 }} />
       {children}
     </div>
@@ -937,7 +937,7 @@ function ModalShell({ title, subtitle, onClose, children, width = 720 }: {
           border: '1px solid var(--ink-line)', background: 'transparent',
           fontFamily: 'var(--font-display)', fontSize: 18, cursor: 'pointer', color: 'var(--ink-warm)',
         }}>×</button>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.3em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>{subtitle}</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.3em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>{subtitle}</div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontStyle: 'italic', fontWeight: 500, margin: '4px 0 0' }}>{title}</h2>
         <Ornament variant="diamond" color="var(--ink-line)" width={200} />
         <div style={{ marginTop: 16 }}>{children}</div>
@@ -980,7 +980,7 @@ function RawResponsesModal({ students, classId, onClose }: { students: { id: str
                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {selected.responses.map((r: any, i: number) => (
                     <div key={i}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-line)' }}>Q{i + 1}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-line)' }}>Q{i + 1}</div>
                       <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, marginTop: 4, padding: '4px 8px', background: 'oklch(0.82 0.04 80 / 0.5)', borderLeft: '2px solid var(--gold-shadow)' }}>
                         → Réponse sélectionnée
                         {r.academy_answers && (
@@ -993,7 +993,7 @@ function RawResponsesModal({ students, classId, onClose }: { students: { id: str
                   ))}
                   {selected.preferences.length > 0 && (
                     <div style={{ marginTop: 8 }}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-line)' }}>PRÉFÉRENCES</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-line)' }}>PRÉFÉRENCES</div>
                       {selected.preferences.map((p: any, i: number) => (
                         <div key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 13, marginTop: 2 }}>
                           {['I', 'II', 'III', 'IV'][i]}. {HOUSE_DATA[p.house as HouseId]?.name || p.house}
@@ -1147,7 +1147,7 @@ function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
                 fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-warm)',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRadius: 2,
               }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-line)', marginRight: 6 }}>Q{q.question_order}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-line)', marginRight: 6 }}>Q{q.question_order}</span>
                 {q.question_text.slice(0, 50)}{q.question_text.length > 50 ? '…' : ''}
               </button>
             ))}
@@ -1157,7 +1157,7 @@ function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
         {/* Right: editor */}
         <div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase' }}>
               {editId ? `Modifier Q${questions.find(q => q.id === editId)?.question_order}` : 'Nouvelle question'}
             </label>
             <textarea
@@ -1168,7 +1168,7 @@ function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-line)', textTransform: 'uppercase', marginBottom: 8 }}>
             Réponses & poids par maison
           </div>
 
@@ -1187,7 +1187,7 @@ function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
               />
               {HOUSE_LABELS.map(h => (
                 <div key={h.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: h.color, fontWeight: 600 }}>{h.label}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: h.color, fontWeight: 600 }}>{h.label}</span>
                   <input
                     type="number" min="0" max="5" step="1"
                     value={a[h.key] as number}

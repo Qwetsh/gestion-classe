@@ -17,7 +17,7 @@ export function ClassSelector() {
         {error && (
           <div
             className="p-3 text-sm mb-3"
-            style={{ background: DB.errorSoft, color: DB.error, borderRadius: 12 }}
+            style={{ background: DB.errorSoft, color: DB.error, borderRadius: 10 }}
           >
             {error}
           </div>
@@ -52,7 +52,7 @@ export function ClassSelector() {
                   padding: '14px 8px',
                   background: DB.surface,
                   border: `1px solid ${DB.border}`,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   fontSize: 15,
                   fontWeight: 600,
                   color: DB.text,

@@ -125,7 +125,7 @@ export function GroupSummary() {
                       fontWeight: 600, color: hp && hs ? hs.c2 : textMain,
                       fontFamily: fontDisplay, fontSize: 15,
                     }}>{g.name}</span>
-                    <div style={{ fontSize: 10, color: textDim }}>
+                    <div style={{ fontSize: 11, color: textDim }}>
                       {g.members.map(m => m.pseudo).join(', ')}
                     </div>
                   </div>
@@ -152,14 +152,14 @@ export function GroupSummary() {
                   {sessionData.criteria.map(c => {
                     const grade = g.grades.find(gr => gr.criteria_id === c.id);
                     return (
-                      <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: textMuted, fontFamily: fontDisplay }}>
+                      <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: textMuted, fontFamily: fontDisplay }}>
                         <span>{c.label}</span>
                         <span style={{ fontWeight: 600 }}>{grade?.points_awarded || 0}/{c.max_points}</span>
                       </div>
                     );
                   })}
                   {g.conduct_malus > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#dc2626' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--neg)' }}>
                       <span>Malus</span>
                       <span style={{ fontWeight: 600 }}>-{g.conduct_malus}</span>
                     </div>
@@ -209,7 +209,7 @@ function StatBox({ label, value, bg, border, text, sub, font }: {
       border: border ? `1px solid ${border}` : undefined,
     }}>
       <div style={{ fontWeight: 700, fontSize: 18, color: text, fontFamily: font }}>{value}</div>
-      <div style={{ fontSize: 10, color: sub, fontFamily: font }}>{label}</div>
+      <div style={{ fontSize: 11, color: sub, fontFamily: font }}>{label}</div>
     </div>
   );
 }

@@ -54,7 +54,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+      className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center p-4"
       style={{ zIndex }}
       onClick={onClose}
       role="dialog"
@@ -62,7 +62,7 @@ export function Modal({
       aria-labelledby="modal-title"
     >
       <div
-        className={`bg-[var(--surface)] w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`gc-modal__panel bg-[var(--surface)] w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
         style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
         onClick={(e) => e.stopPropagation()}
       >

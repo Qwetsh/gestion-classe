@@ -110,7 +110,7 @@ export function DuplicateAssessmentDialog({
   return (
     <Modal isOpen onClose={onClose} title={`Dupliquer « ${source.name} »`} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.5 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
           {ASSESSMENT_KIND_LABEL[source.kind]} · /{Number(source.bareme_total ?? 20)} · coef {Number(source.coefficient)}
           {source.sequence ? ` · ${source.sequence}` : ''}{!source.counts_in_average ? ' · hors moyenne' : ''}.
           La copie arrive au trimestre en cours, sans notes, sans copies, non publiée.
@@ -136,12 +136,12 @@ export function DuplicateAssessmentDialog({
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...input, width: 180 }} />
         </label>
         {hasDocs && (
-          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 }}>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
             <input type="checkbox" checked={withDocs} onChange={(e) => setWithDocs(e.target.checked)} />
             Recopier {subjectPath && correctionPath ? 'le sujet et le corrigé' : subjectPath ? 'le sujet' : 'le corrigé'}
           </label>
         )}
-        {error && <div style={{ color: 'var(--neg)', fontSize: 12.5 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--neg)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={btn}>Annuler</button>
           <button
@@ -164,7 +164,7 @@ const input: React.CSSProperties = {
   color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
 };
 const chip = (on: boolean): React.CSSProperties => ({
-  position: 'relative', padding: '4px 10px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  position: 'relative', padding: '4px 10px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: `1px solid ${on ? 'var(--indigo)' : 'var(--border)'}`,
   background: on ? 'var(--indigo)' : 'var(--surface-3)', color: on ? '#fff' : 'var(--text)',
 });

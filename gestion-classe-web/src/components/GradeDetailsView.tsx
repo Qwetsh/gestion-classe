@@ -70,7 +70,7 @@ export function GradeDetailsView({ details, palette = LIGHT_PALETTE }: { details
           {details.competences.map((c) => {
             const score = levelScore(c.niveau);
             return (
-              <div key={c.nom} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+              <div key={c.nom} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                 <span style={{ flex: 1, color: p.text }}>{c.nom}</span>
                 <span style={{ display: 'flex', gap: 2 }} aria-hidden>
                   {COMPETENCE_LEVELS.map((_, i) => (
@@ -96,20 +96,20 @@ export function GradeDetailsView({ details, palette = LIGHT_PALETTE }: { details
           {details.forces && (
             <div style={{ borderLeft: `3px solid ${p.pos}`, paddingLeft: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: p.pos, marginBottom: 2 }}>Points forts</div>
-              <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{details.forces}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.45 }}>{details.forces}</div>
             </div>
           )}
           {details.faiblesses && (
             <div style={{ borderLeft: `3px solid ${p.warn}`, paddingLeft: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: p.warn, marginBottom: 2 }}>Pour progresser</div>
-              <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{details.faiblesses}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.45 }}>{details.faiblesses}</div>
             </div>
           )}
         </div>
       )}
 
       {details.questions.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ color: p.dim, textAlign: 'left' }}>
               <th style={{ padding: '4px 6px', fontWeight: 600 }}>Question</th>

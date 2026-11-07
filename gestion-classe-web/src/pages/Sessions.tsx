@@ -595,7 +595,7 @@ export function Sessions() {
                           <ClassChip label={getClassLabel(session.class_name)} color={color} size={28} />
                           {/* Main */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                               {session.class_name}
                               {session.notes && <span title="Cette séance a une note" style={{ color: 'var(--text-dim)', display: 'inline-flex' }}><Icon name="note" size={13} /></span>}
                             </div>
@@ -604,7 +604,7 @@ export function Sessions() {
                           {/* Events count */}
                           <div style={{ width: 80, textAlign: 'center', flexShrink: 0 }}>
                             <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500 }}>{session.events_count}</span>
-                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>évts</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 3 }}>évts</span>
                             {/* Event bar */}
                             {total > 0 && (
                               <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 4, background: 'var(--surface-3)' }}>
@@ -655,7 +655,7 @@ export function Sessions() {
                 <div style={{ borderRight: '1px solid var(--border)' }}>
                   <div style={{ height: 48, borderBottom: '1px solid var(--border)' }} />
                   {Array.from({ length: 10 }, (_, i) => (
-                    <div key={i} style={{ height: 56, padding: '4px 8px 0', fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }}>
+                    <div key={i} style={{ height: 56, padding: '4px 8px 0', fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }}>
                       {String(8 + i).padStart(2, '0')}:00
                     </div>
                   ))}
@@ -671,9 +671,9 @@ export function Sessions() {
                     <div key={dayIdx} style={{ borderRight: dayIdx < 4 ? '1px solid var(--border)' : 'none', position: 'relative', background: isToday ? 'var(--accent-soft)' : undefined }}>
                       {/* Day header */}
                       <div style={{ height: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', gap: 0 }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: isToday ? 'var(--accent)' : 'var(--text-dim)', letterSpacing: '0.04em' }}>{dayNames[dayIdx]}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: isToday ? 'var(--accent)' : 'var(--text-dim)', letterSpacing: '0.04em' }}>{dayNames[dayIdx]}</span>
                         <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500, color: isToday ? 'var(--accent)' : 'var(--text)' }}>{day.getDate()}</span>
-                        {isToday && <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aujourd'hui</span>}
+                        {isToday && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aujourd'hui</span>}
                       </div>
                       {/* Time grid background */}
                       <div style={{ position: 'relative', height: 560 }}>
@@ -703,14 +703,14 @@ export function Sessions() {
                             }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <ClassChip label={getClassLabel(session.class_name)} color={color} size={18} />
-                                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                                   {session.notes && <span title="Cette séance a une note" style={{ display: 'inline-flex' }}><Icon name="note" size={11} /></span>}
                                   {formatTime(session.started_at)}
                                 </span>
                               </div>
                               {session.topic && <div style={{ fontWeight: 500, fontSize: 11, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.topic}</div>}
                               {height > 45 && session.events_count > 0 && (
-                                <div style={{ display: 'flex', gap: 4, marginTop: 'auto', fontSize: 10 }}>
+                                <div style={{ display: 'flex', gap: 4, marginTop: 'auto', fontSize: 11 }}>
                                   <span style={{ color: 'var(--pos)', fontWeight: 600 }}>+{session.participations}</span>
                                   <span style={{ color: 'var(--neg)', fontWeight: 600 }}>−{session.malus}</span>
                                   {session.absences > 0 && <span style={{ color: 'var(--text-dim)' }}>{session.absences} abs</span>}
@@ -859,7 +859,7 @@ export function Sessions() {
               {/* Notes générales de la séance (saisies depuis le mobile) */}
               {selectedSession.notes && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 6 }}>Notes de séance</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 6 }}>Notes de séance</div>
                   <p style={{ margin: 0, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-3)', fontSize: 13, lineHeight: 1.45, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
                     {selectedSession.notes}
                   </p>
@@ -871,25 +871,25 @@ export function Sessions() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--surface-3)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>{selectedSession.events_count}</div>
-                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Événements</div>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Événements</div>
               </div>
               <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--pos-soft)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--pos)' }}>+{selectedSession.participations}</div>
-                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--pos)', marginTop: 2 }}>Positifs</div>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--pos)', marginTop: 2 }}>Positifs</div>
               </div>
               <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--neg-soft)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--neg)' }}>−{selectedSession.malus}</div>
-                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--neg)', marginTop: 2 }}>Malus</div>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--neg)', marginTop: 2 }}>Malus</div>
               </div>
               <div style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'var(--surface-3)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>{selectedSession.absences}</div>
-                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Absents</div>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 2 }}>Absents</div>
               </div>
             </div>
 
             {/* Event timeline (DÉROULÉ) */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
-              <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 16 }}>Déroulé</div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 16 }}>Déroulé</div>
               {isLoadingClassroom ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
                   <div style={{ width: 28, height: 28, border: '3px solid var(--indigo)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -913,7 +913,7 @@ export function Sessions() {
                           {!isLast && <div style={{ width: 1.5, flex: 1, minHeight: 28, background: 'var(--border)' }} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13.5 }}>{student?.pseudo || '?'}</div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{student?.pseudo || '?'}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{label}</div>
                           {event.note && <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', marginTop: 2 }}>« {event.note} »</div>}
                         </div>
@@ -923,7 +923,7 @@ export function Sessions() {
                             disabled={deletingEventId === event.id}
                             title="Modifier l'événement"
                             aria-label="Modifier l'événement"
-                            style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 7, border: 'none', background: 'none', color: isEditing ? 'var(--indigo)' : 'var(--text-dim)', cursor: 'pointer' }}
+                            style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 6, border: 'none', background: 'none', color: isEditing ? 'var(--indigo)' : 'var(--text-dim)', cursor: 'pointer' }}
                           >
                             <Icon name="pencil" size={14} />
                           </button>
@@ -932,7 +932,7 @@ export function Sessions() {
                             disabled={deletingEventId === event.id}
                             title="Supprimer l'événement"
                             aria-label="Supprimer l'événement"
-                            style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 7, border: 'none', background: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+                            style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 6, border: 'none', background: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
                           >
                             <Icon name="trash" size={14} />
                           </button>
@@ -972,7 +972,7 @@ export function Sessions() {
                       key={type}
                       onClick={() => { setAddEventType(type); setAddEventSubtype(''); }}
                       style={{
-                        padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500, border: '1.5px solid',
+                        padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: '1.5px solid',
                         borderColor: addEventType === type ? cfg.color : 'var(--border)',
                         background: addEventType === type ? cfg.softColor : 'var(--surface)',
                         color: addEventType === type ? cfg.color : 'var(--text-muted)',

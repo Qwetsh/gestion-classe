@@ -185,7 +185,7 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             <div className="flex-1 min-w-0">
               <div
-                className="grid gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-800 p-3 sm:p-4 rounded-xl"
+                className="grid gap-1.5 sm:gap-2 bg-[var(--surface-3)] dark:bg-slate-800 p-3 sm:p-4 rounded-xl"
                 style={{ gridTemplateColumns: `repeat(${roomColumns}, 1fr)` }}
               >
                 {Array.from({ length: roomRows * roomColumns }).map((_, i) => {
@@ -231,7 +231,7 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
           </div>
         </div>
 
-        {formError && <p className="text-red-500 text-sm mb-4">{formError}</p>}
+        {formError && <p className="text-[var(--neg)] text-sm mb-4">{formError}</p>}
 
         <div className="flex gap-3 justify-end">
           <button

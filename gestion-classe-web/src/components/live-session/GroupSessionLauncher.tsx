@@ -24,7 +24,7 @@ export function GroupSessionLauncher() {
             gap: 12,
             padding: 14,
             background: DB.surface,
-            borderRadius: 16,
+            borderRadius: 14,
             border: '1.5px solid #d4a843',
             textAlign: 'left',
             cursor: 'pointer',
@@ -32,7 +32,7 @@ export function GroupSessionLauncher() {
         >
           <div style={{
             width: 44, height: 44, background: '#FDF6E3',
-            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
             <Play size={19} color="#b8860b" fill="#b8860b" strokeWidth={0} style={{ marginLeft: 2 }} />
@@ -57,7 +57,7 @@ export function GroupSessionLauncher() {
             gap: 10,
             padding: 14,
             background: DB.surface,
-            borderRadius: 16,
+            borderRadius: 14,
             border: `1px solid ${DB.border}`,
             textAlign: 'left',
             cursor: 'pointer',
@@ -65,7 +65,7 @@ export function GroupSessionLauncher() {
         >
           <div style={{
             width: 40, height: 40, background: DB.primarySoft,
-            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
             <Users size={19} color={DB.primary} strokeWidth={1.8} />
@@ -86,7 +86,7 @@ export function GroupSessionLauncher() {
             gap: 10,
             padding: 14,
             background: DB.surface,
-            borderRadius: 16,
+            borderRadius: 14,
             border: `1px solid ${DB.border}`,
             textAlign: 'left',
             cursor: 'pointer',
@@ -94,7 +94,7 @@ export function GroupSessionLauncher() {
         >
           <div style={{
             width: 40, height: 40, background: '#F5F3FF',
-            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
             <Castle size={19} color="#7c3aed" strokeWidth={1.8} />

@@ -186,7 +186,7 @@ export function AssessmentSheet() {
       {rows === null ? (
         <div style={{ padding: 24, color: 'var(--text-dim)', fontSize: 13 }}>Chargement…</div>
       ) : !group || !focus || !user ? (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>
           Cette évaluation n’existe plus (ou a été supprimée).
         </div>
       ) : (
@@ -251,7 +251,7 @@ export function AssessmentSheet() {
 
           {/* TP de groupe (migration 063) : la séance elle-même, ses critères, groupes, matériel et photos. */}
           {focus.kind === 'groupe' && focus.group_session_id && (
-            <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }} aria-label="Séance de groupe">
+            <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }} aria-label="Séance de groupe">
               <div style={{ padding: '14px 16px 0', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Séance de groupe</div>
               <GroupSessionDetail
                 sessionId={focus.group_session_id}
@@ -262,7 +262,7 @@ export function AssessmentSheet() {
           )}
 
           {/* Statistiques de la classe en cours, repliées par défaut */}
-          <details style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+          <details style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
             <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
               Statistiques{group.items.length > 1 ? ` · ${focus.classes?.name ?? ''}` : ''}
               <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>

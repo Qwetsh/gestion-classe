@@ -318,11 +318,11 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
       <div style={{ display: 'grid', gridTemplateColumns: '330px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
         {/* ---- Élèves ---- */}
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
             Glisse une copie sur un élève pour la lui donner.{versionRequired && ` Version du sujet obligatoire (${knownVersions.join(', ')}).`}
           </div>
           {versionRequired && (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>
               <select value={bulkVersion} onChange={(e) => setBulkVersion(e.target.value)} style={input}>
                 <option value="">version…</option>
                 {knownVersions.map((v) => <option key={v} value={v}>{v}</option>)}
@@ -372,7 +372,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
                     background: dropOn === s.id ? 'var(--indigo-soft)' : isCurrent ? 'var(--warn-soft)' : 'transparent', cursor: 'pointer',
                   }}
                 >
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: s.absent || isMarked ? 'var(--text-dim)' : 'var(--text)' }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: s.absent || isMarked ? 'var(--text-dim)' : 'var(--text)' }}>
                     {s.pseudo}
                   </span>
                   {arrivals[s.id] > 0 && <Badge tone="ok">reçu {arrivals[s.id]} p.</Badge>}
@@ -452,7 +452,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
           )}
           {tab === 'webcam' && (
             <WebcamTab onAdd={capture} onError={onError} compact disabled={!webTarget}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                 {webTarget?.kind === 'unnamed'
                   ? `Pas de nom${webUnnamedPages ? ` · ${webUnnamedPages} p.` : ''}`
                   : currentStudent
@@ -494,7 +494,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
           )}
 
           {tab === 'import' && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'var(--text-muted)' }}>
               <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 Pages par copie
                 <input
@@ -599,7 +599,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
           </div>
 
           {report && (
-            <div style={{ fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: report.failed.length ? 'var(--neg-soft)' : 'var(--pos-soft)', color: report.failed.length ? 'var(--neg)' : 'var(--pos)' }}>
+            <div style={{ fontSize: 13, padding: '8px 10px', borderRadius: 8, background: report.failed.length ? 'var(--neg-soft)' : 'var(--pos-soft)', color: report.failed.length ? 'var(--neg)' : 'var(--pos)' }}>
               {report.sent} copie(s) envoyée(s).
               {report.failed.length > 0 && <> Échecs, à renvoyer : {report.failed.join(' ; ')}.</>}
             </div>
@@ -740,7 +740,7 @@ function ClassQrTab({
           </div>
         )}
         {token && (
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
             Valable encore {left} min, {token.max_pages} pages au plus pour la classe. Fermer la fenêtre désactive le QR code.
           </div>
         )}
@@ -763,7 +763,7 @@ function Badge({ children, tone = 'neutral' }: { children: React.ReactNode; tone
     neg: ['var(--neg-soft)', 'var(--neg)'],
   }[tone];
   return (
-    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: colors[0], color: colors[1], whiteSpace: 'nowrap' }}>
+    <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: colors[0], color: colors[1], whiteSpace: 'nowrap' }}>
       {children}
     </span>
   );
@@ -773,7 +773,7 @@ const chip: React.CSSProperties = {
   border: 'none', borderRadius: 999, padding: '4px 11px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
 };
 const btn: React.CSSProperties = {
-  padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
 };
 const mini: React.CSSProperties = {

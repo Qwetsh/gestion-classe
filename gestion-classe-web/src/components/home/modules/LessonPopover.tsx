@@ -239,7 +239,7 @@ export function LessonPopover({
               </div>
               {alerts.map(a => (
                 <Link key={a.id} to={`/students?class=${lesson.classId}&student=${a.id}`} className="wtt-pop__student">
-                  <span className="dash__avatar" style={{ width: 26, height: 26, fontSize: 10.5 }}>{getInitials(a.pseudo)}</span>
+                  <span className="dash__avatar" style={{ width: 26, height: 26, fontSize: 11 }}>{getInitials(a.pseudo)}</span>
                   <span style={{ minWidth: 0 }}>
                     <span className="wtt-pop__student-name">{a.pseudo}</span>
                     <span className="wtt-pop__muted">{a.reason}</span>
