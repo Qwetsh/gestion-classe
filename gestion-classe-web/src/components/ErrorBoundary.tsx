@@ -89,13 +89,13 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {isDev && error && (
               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 mb-6 text-left overflow-auto max-h-48">
-                <p className="text-sm font-semibold text-red-500 mb-2">Erreur:</p>
+                <p className="text-sm font-semibold text-[var(--neg)] mb-2">Erreur:</p>
                 <p className="text-xs font-mono text-[var(--text)] mb-3">
                   {error.message}
                 </p>
                 {errorInfo?.componentStack && (
                   <>
-                    <p className="text-sm font-semibold text-red-500 mb-2">Stack:</p>
+                    <p className="text-sm font-semibold text-[var(--neg)] mb-2">Stack:</p>
                     <pre className="text-xs font-mono text-[var(--text-dim)] whitespace-pre-wrap">
                       {errorInfo.componentStack.slice(0, 500)}
                     </pre>

@@ -52,7 +52,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={close}>
+    <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4" onClick={close}>
       <div
         className="bg-[var(--surface)] w-full max-w-md overflow-hidden"
         style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}

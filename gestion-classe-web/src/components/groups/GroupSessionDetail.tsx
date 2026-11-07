@@ -326,7 +326,7 @@ export function GroupSessionDetail({ sessionId, onDeleted, onChanged }: {
         startY: yOffset + 37,
         margin: { left: marginLeft },
         tableWidth: cardWidth,
-        styles: { fontSize: 8, cellPadding: 1.5 },
+        styles: { fontSize: 11, cellPadding: 1.5 },
         columnStyles: { 0: { cellWidth: cardWidth - 30 }, 1: { cellWidth: 30, halign: 'right', fontStyle: 'bold' } },
         bodyStyles: { lineColor: [220, 220, 220], lineWidth: 0.1 },
         didParseCell: (data) => {

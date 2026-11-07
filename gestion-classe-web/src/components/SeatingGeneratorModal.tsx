@@ -171,7 +171,7 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
   return (
     <Modal isOpen onClose={onClose} title="Générer le plan de classe" icon={<span>✨</span>} size="xl">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
           {students.length} élèves · {seatsAvailable} places dans « {room.name} ». Le plan généré remplace celui de l'éditeur :
           retouchez-le à la main si besoin, puis cliquez « Sauvegarder ».
         </p>
@@ -206,7 +206,7 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
               + Ajouter
             </button>
           </div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4 }}>{KINDS.find((k) => k.kind === kind)?.help}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{KINDS.find((k) => k.kind === kind)?.help}</div>
 
           {loading ? (
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>Chargement…</div>
@@ -222,7 +222,7 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999,
                       background: violated ? 'var(--neg-soft)' : 'var(--surface-2)', color: violated ? 'var(--neg)' : 'var(--text)',
-                      fontSize: 12.5, border: '1px solid var(--border)',
+                      fontSize: 13, border: '1px solid var(--border)',
                     }}
                     title={violated ? 'Non respectée sur le dernier plan généré' : undefined}
                   >
@@ -257,7 +257,7 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
                 />
                 <span>
                   <span style={{ display: 'block', fontWeight: 600 }}>{r.label}</span>
-                  <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)' }}>{r.help}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)' }}>{r.help}</span>
                 </span>
               </label>
             ))}
@@ -269,20 +269,20 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
           <section>
             <SectionTitle>Résultat</SectionTitle>
             {result.unplaced.length > 0 && (
-              <p style={{ fontSize: 12.5, color: 'var(--neg)', margin: '0 0 6px' }}>
+              <p style={{ fontSize: 13, color: 'var(--neg)', margin: '0 0 6px' }}>
                 {result.unplaced.length} élève{result.unplaced.length > 1 ? 's' : ''} sans place (salle trop petite) :{' '}
                 {result.unplaced.map((id) => byId.get(id)?.pseudo ?? '?').join(', ')}
               </p>
             )}
             {result.violations.length === 0 ? (
-              <p style={{ fontSize: 12.5, color: 'var(--pos)', margin: 0 }}>✓ Toutes les contraintes et règles sont respectées.</p>
+              <p style={{ fontSize: 13, color: 'var(--pos)', margin: 0 }}>✓ Toutes les contraintes et règles sont respectées.</p>
             ) : (
               <>
-                <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 6px' }}>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 6px' }}>
                   {result.violations.length} point{result.violations.length > 1 ? 's' : ''} non respecté{result.violations.length > 1 ? 's' : ''} :
                   relancez avec « Autre proposition » ou retouchez à la main.
                 </p>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {result.violations.slice(0, 12).map((v, i) => (
                     <li key={i} style={{ color: v.constraintId.startsWith('rule:') ? 'var(--text-muted)' : 'var(--neg)' }}>{v.message}</li>
                   ))}
@@ -311,7 +311,7 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>
+    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>
       {children}
     </div>
   );

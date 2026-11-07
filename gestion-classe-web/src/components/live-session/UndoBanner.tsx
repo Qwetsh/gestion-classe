@@ -38,7 +38,7 @@ export function UndoBanner({ banner, onDismiss }: UndoBannerProps) {
       style={{
         top: 'calc(8px + env(safe-area-inset-top))',
         background: isError ? DB.error : DB.action,
-        borderRadius: 12,
+        borderRadius: 10,
         padding: '11px 16px',
         boxShadow: '0 6px 20px rgba(20, 25, 40, 0.15)',
         animation: 'fadeIn 0.18s ease-out',
@@ -51,7 +51,7 @@ export function UndoBanner({ banner, onDismiss }: UndoBannerProps) {
       )}
       <span
         className="flex-1 truncate"
-        style={{ color: '#fff', fontSize: 13.5, fontWeight: 600 }}
+        style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}
       >
         {banner.message}
       </span>
@@ -65,7 +65,7 @@ export function UndoBanner({ banner, onDismiss }: UndoBannerProps) {
             background: 'none',
             border: 'none',
             color: '#fff',
-            fontSize: 13.5,
+            fontSize: 14,
             fontWeight: 700,
             textDecoration: 'underline',
             padding: 0,

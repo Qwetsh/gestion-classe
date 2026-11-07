@@ -737,7 +737,7 @@ export function TpTemplates() {
                         </button>
                         <button
                           onClick={() => handleDeleteClick(selectedTemplate)}
-                          className="p-2 bg-white/20 hover:bg-red-500/80 transition-colors text-white"
+                          className="p-2 bg-white/20 hover:bg-[var(--neg)]/80 transition-colors text-white"
                           style={{ borderRadius: 'var(--radius-md)' }}
                           title="Supprimer"
                         >
@@ -1049,7 +1049,7 @@ export function TpTemplates() {
                             )}
                             <button
                               onClick={() => handleDeletePhoto(photo)}
-                              className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-[var(--neg)] text-white text-xs flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity"
                               style={{ borderRadius: 'var(--radius-full)' }}
                             >
                               ×

@@ -75,7 +75,7 @@ export function GroupGrading() {
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 12px',
             fontSize: 14, fontWeight: 600,
-            color: hp ? goldAccent : '#059669',
+            color: hp ? goldAccent : 'var(--pos)',
             background: 'none', border: 'none', cursor: 'pointer',
             fontFamily: fontDisplay,
           }}
@@ -135,7 +135,7 @@ export function GroupGrading() {
               }}
             >
               <div>{g.name}</div>
-              <div style={{ fontSize: 10, marginTop: 2, opacity: 0.7 }}>
+              <div style={{ fontSize: 11, marginTop: 2, opacity: 0.7 }}>
                 {Math.max(0, gScore)} pts
               </div>
             </button>
@@ -200,7 +200,7 @@ export function GroupGrading() {
           background: group.conduct_malus > 0
             ? (hp ? '#3a1515' : '#FEF2F2')
             : bgMuted,
-          borderRadius: 12,
+          borderRadius: 10,
           border: group.conduct_malus > 0 && !hp
             ? '1px solid #FECACA'
             : (hp ? `1px solid ${bgCardBorder}` : 'none'),
@@ -209,7 +209,7 @@ export function GroupGrading() {
             <div style={{ fontSize: 14, fontWeight: 600, color: hp ? textMain : '#B91C1C', fontFamily: fontDisplay }}>
               Malus conduite
             </div>
-            <div style={{ fontSize: 12.5, color: hp ? textMuted : '#B91C1C', marginTop: 1 }}>
+            <div style={{ fontSize: 13, color: hp ? textMuted : '#B91C1C', marginTop: 1 }}>
               {group.conduct_malus > 0
                 ? `−${group.conduct_malus} pt${group.conduct_malus > 1 ? 's' : ''}`
                 : 'Aucun'
@@ -225,8 +225,8 @@ export function GroupGrading() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 20, fontWeight: 700,
                 background: hp ? '#1e1712' : '#fff',
-                color: group.conduct_malus <= 0 ? textDim : (hp ? textMain : '#1F2433'),
-                border: `1px solid ${hp ? bgCardBorder : '#E5E7EB'}`,
+                color: group.conduct_malus <= 0 ? textDim : (hp ? textMain : 'var(--text)'),
+                border: `1px solid ${hp ? bgCardBorder : 'var(--border)'}`,
                 cursor: group.conduct_malus <= 0 ? 'default' : 'pointer',
                 opacity: group.conduct_malus <= 0 ? 0.45 : 1,
               }}
@@ -245,7 +245,7 @@ export function GroupGrading() {
                 width: 38, height: 38, borderRadius: 10,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 20, fontWeight: 700,
-                background: '#EF4444', color: '#fff',
+                background: 'var(--neg)', color: '#fff',
                 border: 'none', cursor: 'pointer',
               }}
             >+</button>
@@ -292,7 +292,7 @@ export function GroupGrading() {
             color: isLastGroup && hp ? '#1a1410' : '#fff',
             fontWeight: 600, fontSize: 15,
             fontFamily: fontDisplay,
-            borderRadius: 12,
+            borderRadius: 10,
             border: !isLastGroup && hp ? `1px solid ${goldAccent}` : 'none',
             cursor: 'pointer',
           }}
@@ -319,7 +319,7 @@ export function GroupGrading() {
               background: hp ? '#251c15' : 'var(--surface)',
               padding: 24, margin: '0 20px',
               maxWidth: 340, width: '100%',
-              borderRadius: 16,
+              borderRadius: 14,
               boxShadow: hp
                 ? '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,168,67,0.2)'
                 : '0 20px 60px rgba(0,0,0,0.3)',
@@ -358,7 +358,7 @@ export function GroupGrading() {
                   flex: 1, padding: '14px 0', fontWeight: 600, fontSize: 15,
                   color: hp ? '#8a7a66' : 'var(--text-muted)',
                   background: hp ? '#1e1712' : 'var(--surface-3)',
-                  borderRadius: 12, border: hp ? '1px solid #3a2e22' : 'none', cursor: 'pointer',
+                  borderRadius: 10, border: hp ? '1px solid #3a2e22' : 'none', cursor: 'pointer',
                   fontFamily: fontDisplay,
                 }}
               >
@@ -370,8 +370,8 @@ export function GroupGrading() {
                 style={{
                   flex: 1, padding: '14px 0', fontWeight: 700, fontSize: 15,
                   color: hp ? '#1a1410' : '#fff',
-                  background: hp ? 'linear-gradient(135deg, #d4a843, #b8860b)' : '#059669',
-                  borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: hp ? 'linear-gradient(135deg, #d4a843, #b8860b)' : 'var(--pos)',
+                  borderRadius: 10, border: 'none', cursor: 'pointer',
                   fontFamily: fontDisplay,
                   opacity: loading ? 0.6 : 1,
                   boxShadow: hp ? '0 2px 8px rgba(180,130,50,0.3)' : 'none',
@@ -418,7 +418,7 @@ function CriteriaStepper({ label, maxPoints, value, onChange, accent, bgCard, bg
 
   return (
     <div style={{
-      background: bgCard, borderRadius: 12, padding: 12,
+      background: bgCard, borderRadius: 10, padding: 12,
       boxShadow: hp ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
       border: `1px solid ${bgCardBorder}`,
     }}>
@@ -442,7 +442,7 @@ function CriteriaStepper({ label, maxPoints, value, onChange, accent, bgCard, bg
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 22, fontWeight: 700,
             background: value <= 0 ? bgMuted : (hp ? '#3a1515' : '#fef2f2'),
-            color: value <= 0 ? textDim : '#dc2626',
+            color: value <= 0 ? textDim : 'var(--neg)',
             border: hp ? `1px solid ${bgCardBorder}` : 'none',
             cursor: value <= 0 ? 'default' : 'pointer',
           }}
@@ -481,7 +481,7 @@ function CriteriaStepper({ label, maxPoints, value, onChange, accent, bgCard, bg
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 22, fontWeight: 700,
             background: value >= maxPoints ? bgMuted : (hp ? '#1a2e1a' : '#ecfdf5'),
-            color: value >= maxPoints ? textDim : (hp ? '#4ade80' : '#059669'),
+            color: value >= maxPoints ? textDim : (hp ? '#4ade80' : 'var(--pos)'),
             border: hp ? `1px solid ${bgCardBorder}` : 'none',
             cursor: value >= maxPoints ? 'default' : 'pointer',
           }}

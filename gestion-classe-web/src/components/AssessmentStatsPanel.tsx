@@ -59,7 +59,7 @@ function HistogramChart({ buckets, total }: { buckets: Histogram[]; total: numbe
               aria-label={label}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', cursor: 'default' }}
             >
-              <span style={{ fontSize: 10, color: b.count ? 'var(--text-muted)' : 'transparent', marginBottom: 2 }}>
+              <span style={{ fontSize: 11, color: b.count ? 'var(--text-muted)' : 'transparent', marginBottom: 2 }}>
                 {b.count || 0}
               </span>
               <div
@@ -78,7 +78,7 @@ function HistogramChart({ buckets, total }: { buckets: Histogram[]; total: numbe
       </div>
       <div style={{ display: 'flex', gap: 2, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
         {buckets.map((b) => (
-          <div key={b.from} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text-dim)' }}>
+          <div key={b.from} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--text-dim)' }}>
             {b.from}
           </div>
         ))}

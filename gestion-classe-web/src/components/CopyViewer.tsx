@@ -279,7 +279,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
         </div>
         {unnamed.length > 0 && (
           <div style={{ border: '1px dashed var(--warn)', borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
-            <div style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--warn)', background: 'var(--warn-soft)' }}>
+            <div style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: 'var(--warn)', background: 'var(--warn-soft)' }}>
               Pas de nom · {unnamed.length} copie(s) à identifier
             </div>
             {unnamed.map((c, i) => (
@@ -321,7 +321,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                 {r.grade && r.grade.grade != null && (
                   <span
                     title={r.grade.is_validated ? 'Note validée' : 'Brouillon du correcteur, invisible pour l’élève'}
-                    style={{ fontSize: 11.5, fontWeight: 700, color: r.grade.is_validated ? 'var(--pos)' : 'var(--warn)' }}
+                    style={{ fontSize: 12, fontWeight: 700, color: r.grade.is_validated ? 'var(--pos)' : 'var(--warn)' }}
                   >
                     {r.grade.grade}{r.grade.is_validated ? '' : '*'}
                   </span>
@@ -431,7 +431,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
               )}
             </div>
             {!hasKit && correctionMode({ pages: selected.pages.length, grade: selected.grade }) === 'corriger' && (
-              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
                 {NO_KIT_MESSAGE} : le bouton « Corriger avec Claude » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
               </div>
             )}
@@ -575,7 +575,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                   )}
                   {transcriptBlocks && selected.pages.length > 0 && (!details || sideTab === 'transcription') ? (
                     <>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
                         Transcription du correcteur, gardée après la suppression des scans. Visible par toi seul.
                       </div>
                       <CopyTranscriptView blocks={transcriptBlocks} />
@@ -676,7 +676,7 @@ function UnnamedCopyPanel({
         <select
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
-          style={{ padding: '4px 6px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit' }}
+          style={{ padding: '4px 6px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
         >
           <option value="">C’est la copie de…</option>
           {sorted.map((r) => (
@@ -695,7 +695,7 @@ function UnnamedCopyPanel({
         </button>
         <button onClick={onDelete} style={btn} title="Supprimer cette copie et ses scans">Supprimer</button>
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
         Rangée sans élève (nom illisible ou absent). Une fois attribuée, elle rejoint les copies de l’élève.
       </div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -725,7 +725,7 @@ function UnnamedCopyPanel({
 }
 
 const chip: React.CSSProperties = {
-  border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 11.5, fontWeight: 600,
+  border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 12, fontWeight: 600,
   cursor: 'pointer', fontFamily: 'inherit',
 };
 const btn: React.CSSProperties = {

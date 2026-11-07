@@ -53,7 +53,7 @@ export function AiBatchPanel({
   const handled = progress.done + progress.errors.length;
   const pct = batch.total > 0 ? Math.round((handled / batch.total) * 100) : 100;
   return (
-    <div style={{ border: '1px solid var(--indigo)', borderRadius: 10, padding: 10, marginBottom: 8, background: 'var(--indigo-soft)', fontSize: 12.5 }} role="status">
+    <div style={{ border: '1px solid var(--indigo)', borderRadius: 10, padding: 10, marginBottom: 8, background: 'var(--indigo-soft)', fontSize: 13 }} role="status">
       <div style={{ fontWeight: 700, color: 'var(--indigo)', marginBottom: 6 }}>
         {progress.finished ? 'Correction en lot terminée' : batch.stopping ? 'Arrêt après les copies en cours…' : 'Correction en lot…'}
       </div>
@@ -87,6 +87,6 @@ export function AiBatchPanel({
 }
 
 const btn: React.CSSProperties = {
-  padding: '6px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  padding: '6px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
 };

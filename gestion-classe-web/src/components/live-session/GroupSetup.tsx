@@ -154,7 +154,7 @@ export function GroupSetup() {
                 <span style={{ flex: 1, fontSize: 13, color: textMain, fontFamily: fontDisplay }}>{c.label}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: accentColor, fontFamily: fontDisplay }}>{c.max_points}pts</span>
                 <button onClick={() => removeCriteria(i)} style={{
-                  color: '#dc2626', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--neg)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer',
                 }}>✕</button>
               </div>
             ))}
@@ -318,7 +318,7 @@ export function GroupSetup() {
                   {!academyMode && (
                     <button
                       onClick={() => { removeGroup(activeGroupId); setActiveGroupId(null); }}
-                      style={{ fontSize: 12, color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer' }}
+                      style={{ fontSize: 12, color: 'var(--neg)', border: 'none', background: 'none', cursor: 'pointer' }}
                     >Supprimer</button>
                   )}
                 </div>
@@ -387,7 +387,7 @@ export function GroupSetup() {
             background: hp
               ? `linear-gradient(135deg, ${goldAccent}, #b8860b)`
               : 'var(--gradient-success)',
-            borderRadius: 12, border: 'none', cursor: 'pointer',
+            borderRadius: 10, border: 'none', cursor: 'pointer',
             opacity: (!canStart || loading) ? 0.5 : 1,
             boxShadow: hp ? '0 4px 16px rgba(180,130,50,0.3)' : 'none',
           }}

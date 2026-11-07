@@ -332,7 +332,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
           background: isSel ? 'var(--indigo-soft)' : 'var(--surface)',
           border: `1px solid ${isSel ? 'var(--indigo)' : 'var(--border)'}`,
           boxShadow: isSel ? 'none' : '0 1px 2px rgba(20,25,40,0.06)',
-          cursor: busy ? 'wait' : 'grab', userSelect: 'none', fontSize: 12.5, fontWeight: 600, color: 'var(--text)',
+          cursor: busy ? 'wait' : 'grab', userSelect: 'none', fontSize: 13, fontWeight: 600, color: 'var(--text)',
           maxWidth: '100%',
         }}
       >
@@ -357,7 +357,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
           flex: '1 1 220px', minWidth: 200, display: 'flex', flexDirection: 'column', gap: 10,
           background: isOver ? (color?.soft ?? 'var(--surface-3)') : 'var(--surface-2)',
           border: `1px ${groupId ? 'solid' : 'dashed'} ${isOver ? main : 'var(--border)'}`,
-          borderLeft: `4px solid ${main}`, borderRadius: 12, padding: 12, transition: 'background 0.15s, border-color 0.15s',
+          borderLeft: `4px solid ${main}`, borderRadius: 10, padding: 12, transition: 'background 0.15s, border-color 0.15s',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -437,7 +437,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
       title = 'Répartir automatiquement';
       body = (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
             Remplace la répartition actuelle des {groups.length} groupe(s) avec les {students.length} élèves de la classe.
           </p>
           {([['alphabetical', 'Moitié alphabétique', 'A–L / M–Z'], ['alternate', 'Alternée', `1 sur ${groups.length}`], ['random', 'Aléatoire', '']] as [AutoSplitMode, string, string][]).map(([mode, label, hint]) => (
@@ -453,7 +453,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
       title = 'Depuis quel plan de salle ?';
       body = (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
             Les élèves placés dans le plan de cette classe pour la salle choisie rejoignent
             {panel.groupId ? ` « ${groupName(panel.groupId)} »` : ' un nouveau groupe au nom de la salle'}.
           </p>
@@ -481,7 +481,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          position: 'relative', background: 'var(--bg)', borderRadius: 16, width: 'min(1100px, 96vw)', height: 'min(760px, 92vh)',
+          position: 'relative', background: 'var(--bg)', borderRadius: 14, width: 'min(1100px, 96vw)', height: 'min(760px, 92vh)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)',
         }}
       >
@@ -528,7 +528,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {hasConflicts && (
-                <div style={{ background: 'var(--warn-soft)', color: 'var(--warn)', borderRadius: 10, padding: '8px 12px', fontSize: 12.5 }}>
+                <div style={{ background: 'var(--warn-soft)', color: 'var(--warn)', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}>
                   Certains élèves (marqués « ! ») sont dans plusieurs groupes après une synchronisation. Cliquez-les dans la colonne à garder.
                 </div>
               )}
@@ -544,7 +544,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
         {(selected.size > 0 || undo) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap' }}>
             {undo && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)' }}>
                 <span>✓ {undo.label}</span>
                 <button className="btn btn--ghost" style={{ fontSize: 12, padding: '2px 8px' }} onClick={handleUndo} disabled={busy}>Annuler</button>
               </div>
@@ -552,7 +552,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
             <div style={{ flex: 1 }} />
             {selected.size > 0 && (
               <>
-                <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{selected.size} sélectionné(s) · déplacer vers</span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{selected.size} sélectionné(s) · déplacer vers</span>
                 {groups.map((g, i) => (
                   <button key={g.id} className="btn btn--ghost" style={{ fontSize: 12, borderColor: classGroupColor(g.color, i).main }} onClick={() => doMove(selectedList, g.id)} disabled={busy}>{g.name}</button>
                 ))}

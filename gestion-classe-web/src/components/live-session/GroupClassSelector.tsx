@@ -66,7 +66,7 @@ export function GroupClassSelector() {
       <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {error && (
           <div style={{
-            padding: 12, borderRadius: 12, fontSize: 13,
+            padding: 12, borderRadius: 10, fontSize: 13,
             background: hp ? '#3a1515' : 'var(--neg-soft)',
             color: hp ? '#f87171' : 'var(--neg)',
           }}>{error}</div>
@@ -90,7 +90,7 @@ export function GroupClassSelector() {
                 width: '100%', padding: 16,
                 display: 'flex', alignItems: 'center', gap: 14,
                 background: bgCard,
-                borderRadius: 12,
+                borderRadius: 10,
                 boxShadow: hp ? 'none' : 'var(--shadow-1)',
                 border: `1px solid ${bgCardBorder}`,
                 cursor: 'pointer',
@@ -100,7 +100,7 @@ export function GroupClassSelector() {
               <div style={{
                 width: 48, height: 48,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontWeight: 700, borderRadius: 12,
+                color: '#fff', fontWeight: 700, borderRadius: 10,
                 background: hp
                   ? `linear-gradient(135deg, ${goldAccent}, #b8860b)`
                   : CLASS_COLORS[i % CLASS_COLORS.length],

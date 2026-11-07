@@ -98,7 +98,7 @@ function VisibilityToggle({ icon, label, enabled, disabled, onToggle, accent }: 
     <label
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 8, padding: '4px 6px', borderRadius: 7,
+        gap: 8, padding: '4px 6px', borderRadius: 6,
         background: enabled ? 'var(--surface-3)' : 'transparent',
         cursor: disabled ? 'wait' : 'pointer', transition: 'background 0.2s',
         fontSize: 12, color: 'var(--text)',
@@ -204,7 +204,7 @@ export function Classes() {
       title={`${count} malus ce trimestre`}
       style={{
         display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 999,
-        fontSize: 9.5, fontWeight: 700, lineHeight: 1.3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        fontSize: 11, fontWeight: 700, lineHeight: 1.3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
         background: count > 0 ? 'var(--neg-soft)' : 'var(--surface-3)',
         color: count > 0 ? 'var(--neg)' : 'var(--text-dim)',
       }}
@@ -1410,7 +1410,7 @@ export function Classes() {
                 </button>
                 <button
                   onClick={() => handleOpenDeleteModal('class', selectedClass)}
-                  className="p-2 border border-[var(--border)] rounded-lg text-red-500"
+                  className="p-2 border border-[var(--border)] rounded-lg text-[var(--neg)]"
                   title="Supprimer la classe"
                   aria-label="Supprimer la classe"
                 >
@@ -1460,7 +1460,7 @@ export function Classes() {
                         key={room.id}
                         onClick={() => setSelectedRoom(room)}
                         style={{
-                          padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500,
+                          padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500,
                           color: selectedRoom?.id === room.id ? 'var(--text)' : 'var(--text-muted)',
                           background: selectedRoom?.id === room.id ? 'var(--surface)' : 'transparent',
                           boxShadow: selectedRoom?.id === room.id ? 'var(--shadow-1)' : 'none',
@@ -1473,7 +1473,7 @@ export function Classes() {
                     ))}
                     <button
                       onClick={() => handleOpenRoomModal()}
-                      style={{ padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: 'var(--indigo)', background: 'none', border: 'none', cursor: 'pointer' }}
+                      style={{ padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500, color: 'var(--indigo)', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       + Salle
                     </button>
@@ -1482,7 +1482,7 @@ export function Classes() {
                   {/* Meta info + actions */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {selectedRoom && selectedClass && (
-                      <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                         <span style={{ marginRight: 6, verticalAlign: 'middle', display: 'inline-flex' }}>
                           <ClassChip label={getClassLabel(selectedClass.name)} color={COLOR_PALETTE[classes.indexOf(selectedClass) % COLOR_PALETTE.length]} size={22} />
                         </span>
@@ -1542,7 +1542,7 @@ export function Classes() {
                     <span className="leg"><i style={{ background: 'var(--indigo)' }} /> 12-16</span>
                     <span className="leg"><i style={{ background: 'var(--warn)' }} /> 8-12</span>
                     <span className="leg"><i style={{ background: 'var(--neg)' }} /> &lt;8</span>
-                    <span className="leg" style={{ marginLeft: 12, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.04em', fontWeight: 600 }}>Tendance</span>
+                    <span className="leg" style={{ marginLeft: 12, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.04em', fontWeight: 600 }}>Tendance</span>
                     <span className="leg"><span style={{ color: 'var(--pos)', fontWeight: 700, marginRight: 3 }}>↗</span> en hausse</span>
                     <span className="leg"><span style={{ color: 'var(--neg)', fontWeight: 700, marginRight: 3 }}>↘</span> en baisse</span>
                   </div>
@@ -1607,23 +1607,23 @@ export function Classes() {
                                     <div className="student-pill__bar" style={{ background: barColor }} />
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+                                        <span style={{ fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
                                           {student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase()}
                                         </span>
                                         <AccommodationBadges student={student} size="xs" bg="var(--indigo-soft)" fg="var(--indigo)" style={{ marginLeft: 'auto', marginRight: gradeData ? 4 : 0 }} />
                                         {gradeData && (
-                                          <span style={{ fontSize: 10, fontWeight: 700, color: gradeData.trend === 'up' ? 'var(--pos)' : gradeData.trend === 'down' ? 'var(--neg)' : 'var(--text-dim)' }}>
+                                          <span style={{ fontSize: 11, fontWeight: 700, color: gradeData.trend === 'up' ? 'var(--pos)' : gradeData.trend === 'down' ? 'var(--neg)' : 'var(--text-dim)' }}>
                                             {gradeData.trend === 'up' ? '↗' : gradeData.trend === 'down' ? '↘' : '→'}
                                           </span>
                                         )}
                                       </div>
-                                      <div style={{ fontWeight: 600, fontSize: 11.5, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '1px 0' }}>
+                                      <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '1px 0' }}>
                                         {student.pseudo}
                                       </div>
                                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
                                         {gradeData && (
                                           <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/20</span>
                                           </span>
                                         )}
                                         {gradeData && showMalus && <MalusBadge count={gradeData.malus} />}
@@ -1642,7 +1642,7 @@ export function Classes() {
 
                   {/* Teacher desk */}
                   <div style={{ margin: '18px auto 0', width: 70, height: 24, borderRadius: 3, background: 'linear-gradient(180deg, #D4B089, #B68E67)', boxShadow: '0 2px 0 0 #8B6B51, 0 4px 8px rgba(0,0,0,0.12)', position: 'relative' }}>
-                    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>PROF</div>
+                    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, color: 'rgba(0,0,0,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>PROF</div>
                   </div>
 
                   {/* Chalkboard */}
@@ -1667,7 +1667,7 @@ export function Classes() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div className="pool__title">Non placés</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                   {unplacedStudents.length} sur {students.length}
                 </div>
               </div>
@@ -1703,7 +1703,7 @@ export function Classes() {
                         <>
                           {showMalus && <MalusBadge count={gradeData.malus} />}
                           <span className="pool-pill__grade">
-                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/20</span>
+                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/20</span>
                           </span>
                         </>
                       )}
@@ -1717,7 +1717,7 @@ export function Classes() {
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {/* Ce que voient les élèves (espace /eleve) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '0 8px 2px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '0 8px 2px' }}>
                   Ce que voient les élèves
                 </div>
                 <VisibilityToggle icon="⭐" label="Tampons" enabled={showStampsTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('stamps')} accent="var(--warn)" />
@@ -1729,7 +1729,7 @@ export function Classes() {
                     onClick={handleApplyTabsToAll}
                     disabled={tabsLoading}
                     style={{
-                      marginTop: 2, padding: '4px 8px', borderRadius: 7, border: 'none',
+                      marginTop: 2, padding: '4px 8px', borderRadius: 6, border: 'none',
                       background: 'transparent', color: 'var(--text-muted)', fontSize: 11,
                       cursor: tabsLoading ? 'wait' : 'pointer', textAlign: 'left',
                     }}
@@ -1841,7 +1841,7 @@ export function Classes() {
                       </button>
                       <button
                         onClick={() => handleOpenDeleteModal('student', student)}
-                        className="p-2 text-red-500 hover:bg-red-500/10 rounded"
+                        className="p-2 text-[var(--neg)] hover:bg-[var(--neg)]/10 rounded"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1907,7 +1907,7 @@ export function Classes() {
               </button>
               <button
                 onClick={handleDeleteRoom}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--neg)] text-white rounded-lg hover:bg-[var(--neg)] disabled:opacity-50"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Suppression...' : 'Supprimer'}
@@ -1932,7 +1932,7 @@ export function Classes() {
               className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)] mb-4"
               autoFocus
             />
-            {formError && <p className="text-red-500 text-sm mb-4">{formError}</p>}
+            {formError && <p className="text-[var(--neg)] text-sm mb-4">{formError}</p>}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowClassModal(false)}
@@ -2006,7 +2006,7 @@ export function Classes() {
                 </div>
               )}
             </div>
-            {formError && <p className="text-red-500 text-sm mb-4">{formError}</p>}
+            {formError && <p className="text-[var(--neg)] text-sm mb-4">{formError}</p>}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowStudentModal(false)}
@@ -2130,7 +2130,7 @@ export function Classes() {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50"
+                className="px-4 py-2 bg-[var(--neg)] text-white rounded-lg hover:bg-[var(--neg)] disabled:opacity-50"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Suppression...' : 'Supprimer'}

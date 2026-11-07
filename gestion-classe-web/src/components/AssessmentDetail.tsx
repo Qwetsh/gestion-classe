@@ -348,7 +348,7 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
           <div style={cardTitle}>{withCopies ? 'Copies et notes' : 'Notes'}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             {withCopies
               ? 'scan au téléphone → correction sur le PC (Correcteur) → valider → publier'
               : group.items.some((a) => a.kind === 'groupe')
@@ -416,7 +416,7 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                   <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>
                     {o ? describeClassRow(o, hasCopies(a)) : '…'}
                     {o && r && r.kind !== 'none' && (
-                      <div style={{ fontSize: 11.5, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
+                      <div style={{ fontSize: 12, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
                         {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
                         {r.kind === 'scheduled' && (r.days <= 0
                           ? (o.untranscribed > 0 ? describeKeptCopies(o.untranscribed) : 'Scans supprimés cette nuit')
@@ -426,7 +426,7 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                       </div>
                     )}
                     {pub === 'notes' && (
-                      <div style={{ fontSize: 11.5, marginTop: 3, color: 'var(--warn)' }}>
+                      <div style={{ fontSize: 12, marginTop: 3, color: 'var(--warn)' }}>
                         Notes publiées · corrections retenues
                       </div>
                     )}
@@ -494,7 +494,7 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
   );
 }
 
-const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 };
+const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 };
 const cardTitle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: 'var(--text)' };
 const btnBase: React.CSSProperties = {
   padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,

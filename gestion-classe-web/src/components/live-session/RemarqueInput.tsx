@@ -73,7 +73,7 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
           background: DB.background,
           color: DB.text,
           border: `1px solid ${DB.border}`,
-          borderRadius: 12,
+          borderRadius: 10,
           outline: 'none',
         }}
         onKeyDown={(e) => {
@@ -83,7 +83,7 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
           }
         }}
       />
-      <p className="text-right" style={{ fontSize: 11.5, color: DB.textTertiary, margin: '4px 0 12px' }}>
+      <p className="text-right" style={{ fontSize: 12, color: DB.textTertiary, margin: '4px 0 12px' }}>
         {text.length}/{MAX_LENGTH}
       </p>
 
@@ -94,7 +94,7 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
             src={preview}
             alt="Photo jointe"
             className="h-20 w-20 object-cover"
-            style={{ borderRadius: 12 }}
+            style={{ borderRadius: 10 }}
           />
           <button
             onClick={removePhoto}
@@ -123,7 +123,7 @@ export function RemarqueInput({ studentPseudo, onSubmit, onCancel }: RemarqueInp
           className="flex items-center justify-center active:scale-[0.97] transition-transform"
           style={{
             width: 52,
-            borderRadius: 12,
+            borderRadius: 10,
             border: `1px solid ${DB.border}`,
             background: DB.surface,
           }}

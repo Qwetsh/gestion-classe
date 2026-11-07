@@ -51,7 +51,7 @@ export function PublishDialog({
           </span>
         </label>
         {drafts > 0 && (
-          <div style={{ fontSize: 12.5, color: 'var(--warn)' }}>
+          <div style={{ fontSize: 13, color: 'var(--warn)' }}>
             {drafts} note{drafts > 1 ? 's sont' : ' est'} encore en brouillon : {drafts > 1 ? 'ces élèves ne verront pas leur note' : 'cet élève ne verra pas sa note'} tant qu’elle n’est pas validée.
           </div>
         )}

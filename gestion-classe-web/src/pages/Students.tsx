@@ -1574,17 +1574,17 @@ export function Students() {
   };
 
   const getGradeColor = (grade: number) => {
-    if (grade >= 16) return 'text-green-600';
-    if (grade >= 12) return 'text-blue-600';
-    if (grade >= 8) return 'text-orange-600';
-    return 'text-red-600';
+    if (grade >= 16) return 'text-[var(--pos)]';
+    if (grade >= 12) return 'text-[var(--indigo-ink)]';
+    if (grade >= 8) return 'text-[var(--warn)]';
+    return 'text-[var(--neg)]';
   };
 
   const getGradeBgColor = (grade: number) => {
-    if (grade >= 16) return 'bg-green-100';
-    if (grade >= 12) return 'bg-blue-100';
-    if (grade >= 8) return 'bg-orange-100';
-    return 'bg-red-100';
+    if (grade >= 16) return 'bg-[var(--pos-soft)]';
+    if (grade >= 12) return 'bg-[var(--indigo-soft)]';
+    if (grade >= 8) return 'bg-[var(--warn-soft)]';
+    return 'bg-[var(--neg-soft)]';
   };
 
   const getEventTypeLabel = (type: string, subtype: string | null) => {
@@ -1610,13 +1610,13 @@ export function Students() {
 
   const getEventTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      participation: 'bg-green-100 text-green-700',
-      bavardage: 'bg-orange-100 text-orange-700',
-      absence: 'bg-red-100 text-red-700',
-      remarque: 'bg-blue-100 text-blue-700',
+      participation: 'bg-[var(--pos-soft)] text-[var(--pos)]',
+      bavardage: 'bg-[var(--warn-soft)] text-[var(--warn)]',
+      absence: 'bg-[var(--neg-soft)] text-[var(--neg)]',
+      remarque: 'bg-[var(--indigo-soft)] text-[var(--indigo-ink)]',
       sortie: 'bg-purple-100 text-purple-700',
     };
-    return colors[type] || 'bg-gray-100 text-gray-700';
+    return colors[type] || 'bg-[var(--surface-3)] text-[var(--text-muted)]';
   };
 
   // Compute sparkline history (last 10 sessions) for a student
@@ -1990,7 +1990,7 @@ export function Students() {
                 </div>
                 <div className="class-detail__score" onClick={() => openConfigModal(selectedClassId)} style={{ cursor: 'pointer' }} title="Configurer">
                   <div className="class-detail__score-label">Moyenne de classe</div>
-                  <div className="class-detail__score-val" style={{ color: CLASS_COLORS[selectedClassId] || '#6366F1' }}>
+                  <div className="class-detail__score-val" style={{ color: CLASS_COLORS[selectedClassId] || 'var(--indigo)' }}>
                     {selectedClassStats.averageGrade.toFixed(1)}<span>/20</span>
                   </div>
                 </div>
@@ -2202,7 +2202,7 @@ export function Students() {
                   type="button"
                   onClick={() => setConfigMalusPenalty(!configMalusPenalty)}
                   className={`relative w-12 h-6 rounded-full transition-colors ${
-                    configMalusPenalty ? 'bg-[var(--indigo)]' : 'bg-gray-300'
+                    configMalusPenalty ? 'bg-[var(--indigo)]' : 'bg-[var(--border-strong)]'
                   }`}
                 >
                   <span
@@ -2214,13 +2214,13 @@ export function Students() {
               </div>
 
               {/* Note de base */}
-              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="p-3 bg-[var(--indigo-soft)] rounded-lg border border-[var(--indigo)]">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <label className="block text-sm font-medium text-indigo-900">
+                    <label className="block text-sm font-medium text-[var(--indigo-ink)]">
                       Mode "Note de base"
                     </label>
-                    <p className="text-xs text-indigo-600">
+                    <p className="text-xs text-[var(--indigo-ink)]">
                       Chaque eleve commence avec cette note
                     </p>
                   </div>
@@ -2228,7 +2228,7 @@ export function Students() {
                     type="button"
                     onClick={() => setConfigBaseGrade(configBaseGrade === null ? 10 : null)}
                     className={`relative w-12 h-6 rounded-full transition-colors ${
-                      configBaseGrade !== null ? 'bg-indigo-500' : 'bg-gray-300'
+                      configBaseGrade !== null ? 'bg-[var(--indigo)]' : 'bg-[var(--border-strong)]'
                     }`}
                   >
                     <span
@@ -2240,7 +2240,7 @@ export function Students() {
                 </div>
                 {configBaseGrade !== null && (
                   <div className="mt-3">
-                    <label className="block text-xs font-medium text-indigo-700 mb-1">
+                    <label className="block text-xs font-medium text-[var(--indigo-ink)] mb-1">
                       Note de depart (/20)
                     </label>
                     <input
@@ -2250,9 +2250,9 @@ export function Students() {
                       step="0.5"
                       value={configBaseGrade}
                       onChange={(e) => setConfigBaseGrade(parseFloat(e.target.value) || 10)}
-                      className="w-full px-3 py-2 border border-indigo-300 rounded-lg bg-white text-[var(--text)] text-sm"
+                      className="w-full px-3 py-2 border border-[var(--indigo)] rounded-lg bg-white text-[var(--text)] text-sm"
                     />
-                    <p className="text-xs text-indigo-600 mt-2">
+                    <p className="text-xs text-[var(--indigo-ink)] mt-2">
                       Note = {configBaseGrade} + participations {configMalusPenalty ? '- malus' : ''}
                     </p>
                   </div>
@@ -2287,8 +2287,8 @@ export function Students() {
               Passer au trimestre suivant
             </h3>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
+            <div className="bg-[var(--warn-soft)] border border-[var(--warn)] rounded-lg p-4 mb-4">
+              <p className="text-sm text-[var(--warn)]">
                 <strong>Attention :</strong> Cette action va archiver les notes actuelles
                 et reinitialiser les compteurs d'implication pour le nouveau trimestre.
               </p>
@@ -2312,7 +2312,7 @@ export function Students() {
             </p>
 
             {/* Generate report option */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="bg-[var(--indigo-soft)] border border-[var(--indigo)] rounded-lg p-4 mb-6">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -2321,10 +2321,10 @@ export function Students() {
                   className="mt-1 w-4 h-4 text-[var(--indigo)] rounded"
                 />
                 <div>
-                  <span className="text-sm font-medium text-blue-900">
+                  <span className="text-sm font-medium text-[var(--indigo-ink)]">
                     Generer un rapport PDF du trimestre
                   </span>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-[var(--indigo-ink)] mt-1">
                     Inclut l'analyse par classe, par niveau, l'equilibre filles/garcons et les points forts/faibles.
                   </p>
                 </div>
@@ -2358,8 +2358,8 @@ export function Students() {
               Finir l'annee scolaire
             </h3>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-red-800">
+            <div className="bg-[var(--neg-soft)] border border-[var(--neg)] rounded-lg p-4 mb-4">
+              <p className="text-sm text-[var(--neg)]">
                 <strong>Coche les classes qui partent</strong> (les 3e). Leurs élèves seront
                 <strong> supprimés définitivement</strong>. Les autres sont conservés (notes + tampons)
                 et réattachés à leurs nouvelles classes à la rentrée, par rapprochement du pseudo.
@@ -2369,7 +2369,7 @@ export function Students() {
                   const count = studentGrades.filter(sg => sg.student.class_id === c.id && !sg.student.is_witness).length;
                   const leaving = leavingClassIds.has(c.id);
                   return (
-                    <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer px-2 py-1 rounded hover:bg-red-100/60">
+                    <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer px-2 py-1 rounded hover:bg-[var(--neg-soft)]/60">
                       <input
                         type="checkbox"
                         checked={leaving}
@@ -2380,7 +2380,7 @@ export function Students() {
                         })}
                         className="w-4 h-4"
                       />
-                      <span className={leaving ? 'text-red-700 font-medium' : 'text-[var(--text)]'}>{c.name}</span>
+                      <span className={leaving ? 'text-[var(--neg)] font-medium' : 'text-[var(--text)]'}>{c.name}</span>
                       <span className="text-xs text-[var(--text-dim)]">· {count} él.</span>
                       <span className="ml-auto text-xs">{leaving ? '🗑️ supprimée' : '↪ conservée'}</span>
                     </label>
@@ -2408,7 +2408,7 @@ export function Students() {
             })()}
 
             {/* Generate report option */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="bg-[var(--indigo-soft)] border border-[var(--indigo)] rounded-lg p-4 mb-4">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -2417,10 +2417,10 @@ export function Students() {
                   className="mt-1 w-4 h-4 text-[var(--indigo)] rounded"
                 />
                 <div>
-                  <span className="text-sm font-medium text-blue-900">
+                  <span className="text-sm font-medium text-[var(--indigo-ink)]">
                     Generer un rapport PDF de fin d'annee
                   </span>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-[var(--indigo-ink)] mt-1">
                     Rapport complet du T3 avec analyse par classe et par niveau.
                   </p>
                 </div>
@@ -2430,14 +2430,14 @@ export function Students() {
             {/* Confirmation input */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
-                Pour confirmer, tapez <strong className="text-red-600">VACANCES</strong> :
+                Pour confirmer, tapez <strong className="text-[var(--neg)]">VACANCES</strong> :
               </label>
               <input
                 type="text"
                 value={endYearConfirmText}
                 onChange={(e) => setEndYearConfirmText(e.target.value.toUpperCase())}
                 placeholder="VACANCES"
-                className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:border-red-500"
+                className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:border-[var(--neg)]"
               />
             </div>
 
@@ -2454,7 +2454,7 @@ export function Students() {
               <button
                 onClick={handleEndYear}
                 disabled={endYearConfirmText !== 'VACANCES' || isEndingYear || isGeneratingReport}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[var(--neg)] text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isGeneratingReport ? 'Generation rapport...' : isEndingYear ? 'Cloture en cours...' : 'Terminer l\'annee'}
               </button>
@@ -2507,7 +2507,7 @@ export function Students() {
                     onClick={toggleWitness}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                       selectedStudentForDetail.student.is_witness
-                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        ? 'bg-[var(--warn-soft)] text-[var(--warn)] hover:bg-amber-200'
                         : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
                     }`}
                     title="Élève témoin : voit tous les onglets, exclu des classements et des métriques de connexion. Son code sert de code admin pour prévisualiser l'espace élève."
@@ -2557,14 +2557,14 @@ export function Students() {
                       {selectedStudentForDetail.grade.toFixed(2)}/20
                     </p>
                     {selectedStudentForDetail.bonus > 0 && (
-                      <p className="text-sm text-yellow-700 mt-1">
+                      <p className="text-sm text-[var(--warn)] mt-1">
                         +{selectedStudentForDetail.bonus.toFixed(1)} points bonus a redistribuer
                       </p>
                     )}
                   </div>
                   <div className="text-right space-y-1">
                     <p className="text-sm">
-                      <span className="text-green-600 font-semibold">{selectedStudentForDetail.totalParticipations}</span>
+                      <span className="text-[var(--pos)] font-semibold">{selectedStudentForDetail.totalParticipations}</span>
                       <span className="text-[var(--text-dim)]"> implications totales</span>
                     </p>
                     <p className="text-xs text-[var(--text-dim)]">
@@ -2572,15 +2572,15 @@ export function Students() {
                     </p>
                     {selectedStudentForDetail.malus > 0 && (
                       <p className="text-sm">
-                        <span className="text-orange-600 font-semibold">{selectedStudentForDetail.malus}</span>
+                        <span className="text-[var(--warn)] font-semibold">{selectedStudentForDetail.malus}</span>
                         <span className="text-[var(--text-dim)]"> malus</span>
                         {selectedStudentForDetail.malusPenalty && (
-                          <span className="text-orange-600"> (-{selectedStudentForDetail.malus})</span>
+                          <span className="text-[var(--warn)]"> (-{selectedStudentForDetail.malus})</span>
                         )}
                       </p>
                     )}
                     <p className="text-sm">
-                      <span className="text-red-600 font-semibold">{selectedStudentForDetail.absences}</span>
+                      <span className="text-[var(--neg)] font-semibold">{selectedStudentForDetail.absences}</span>
                       <span className="text-[var(--text-dim)]"> absences</span>
                     </p>
                     {selectedStudentForDetail.baseGrade === null && (
@@ -2633,27 +2633,27 @@ export function Students() {
 
               {/* Statistics Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-green-50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-green-600">+{selectedStudentForDetail.participations}</div>
-                  <div className="text-xs text-green-700">Participations</div>
+                <div className="bg-[var(--pos-soft)] rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-[var(--pos)]">+{selectedStudentForDetail.participations}</div>
+                  <div className="text-xs text-[var(--pos)]">Participations</div>
                 </div>
-                <div className="bg-orange-50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-orange-600">-{selectedStudentForDetail.malus}</div>
-                  <div className="text-xs text-orange-700">Malus</div>
+                <div className="bg-[var(--warn-soft)] rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-[var(--warn)]">-{selectedStudentForDetail.malus}</div>
+                  <div className="text-xs text-[var(--warn)]">Malus</div>
                 </div>
-                <div className="bg-red-50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-red-600">{selectedStudentForDetail.absences}</div>
-                  <div className="text-xs text-red-700">Absences</div>
+                <div className="bg-[var(--neg-soft)] rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-[var(--neg)]">{selectedStudentForDetail.absences}</div>
+                  <div className="text-xs text-[var(--neg)]">Absences</div>
                 </div>
                 <div className={`rounded-xl p-4 text-center ${
                   (selectedStudentForDetail.participations - selectedStudentForDetail.malus) >= 0
-                    ? 'bg-green-100'
-                    : 'bg-orange-100'
+                    ? 'bg-[var(--pos-soft)]'
+                    : 'bg-[var(--warn-soft)]'
                 }`}>
                   <div className={`text-2xl font-bold ${
                     (selectedStudentForDetail.participations - selectedStudentForDetail.malus) >= 0
-                      ? 'text-green-700'
-                      : 'text-orange-700'
+                      ? 'text-[var(--pos)]'
+                      : 'text-[var(--warn)]'
                   }`}>
                     {selectedStudentForDetail.participations - selectedStudentForDetail.malus >= 0 ? '+' : ''}
                     {selectedStudentForDetail.participations - selectedStudentForDetail.malus}
@@ -2702,18 +2702,18 @@ export function Students() {
                         type="monotone"
                         dataKey="participation"
                         name="Participation"
-                        stroke="#22c55e"
+                        stroke="var(--pos)"
                         strokeWidth={2}
-                        dot={{ r: 4, fill: '#22c55e' }}
+                        dot={{ r: 4, fill: 'var(--pos)' }}
                         activeDot={{ r: 6 }}
                       />
                       <Line
                         type="monotone"
                         dataKey="malus"
                         name="Malus"
-                        stroke="#f97316"
+                        stroke="var(--accent)"
                         strokeWidth={2}
-                        dot={{ r: 4, fill: '#f97316' }}
+                        dot={{ r: 4, fill: 'var(--accent)' }}
                         activeDot={{ r: 6 }}
                       />
                     </LineChart>
@@ -2792,7 +2792,7 @@ export function Students() {
               </div>
 
               {/* Group Session Grades Section */}
-              <div className="bg-amber-50 rounded-xl p-4">
+              <div className="bg-[var(--warn-soft)] rounded-xl p-4">
                 <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
                   <span>👥</span> Notes de groupe ({groupSessionGrades.length})
                 </h4>
@@ -2801,7 +2801,7 @@ export function Students() {
                     <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : groupSessionGrades.length === 0 ? (
-                  <p className="text-amber-600 text-sm">
+                  <p className="text-[var(--warn)] text-sm">
                     Aucune note de groupe pour cet eleve
                   </p>
                 ) : (
@@ -2818,7 +2818,7 @@ export function Students() {
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className={`font-bold ${percentage >= 70 ? 'text-green-600' : percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                              <span className={`font-bold ${percentage >= 70 ? 'text-[var(--pos)]' : percentage >= 50 ? 'text-[var(--warn)]' : 'text-[var(--neg)]'}`}>
                                 {grade.score.toFixed(1)}/{grade.max_points}
                               </span>
                               <span className="text-xs text-[var(--text-dim)] ml-1">
@@ -2826,12 +2826,12 @@ export function Students() {
                               </span>
                             </div>
                           </div>
-                          <div className="h-1.5 bg-amber-100 rounded-full">
+                          <div className="h-1.5 bg-[var(--warn-soft)] rounded-full">
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
                                 width: `${Math.min(100, Math.max(0, percentage))}%`,
-                                backgroundColor: percentage >= 70 ? '#22c55e' : percentage >= 50 ? '#f59e0b' : '#ef4444',
+                                backgroundColor: percentage >= 70 ? 'var(--pos)' : percentage >= 50 ? 'var(--warn)' : 'var(--neg)',
                               }}
                             />
                           </div>
@@ -2897,7 +2897,7 @@ export function Students() {
                                 </span>
                                 {fromOtherClass && (
                                   <span
-                                    className="text-xs text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 ml-2 whitespace-nowrap"
+                                    className="text-xs text-[var(--warn)] bg-[var(--warn-soft)] rounded px-1.5 py-0.5 ml-2 whitespace-nowrap"
                                     title="Évaluation passée dans une autre classe : l’élève a changé de classe depuis."
                                   >
                                     {className}
@@ -2905,7 +2905,7 @@ export function Students() {
                                 )}
                               </div>
                               {hasGrade ? (
-                                <span className={`font-bold whitespace-nowrap ${pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                <span className={`font-bold whitespace-nowrap ${pct >= 70 ? 'text-[var(--pos)]' : pct >= 50 ? 'text-[var(--warn)]' : 'text-[var(--neg)]'}`}>
                                   {formatGrade(grade!.grade!)}/20
                                 </span>
                               ) : (
@@ -2926,7 +2926,7 @@ export function Students() {
                                   : ''}
                                 moyenne classe {formatGrade(classMean)}
                                 {gap !== null && (
-                                  <span className={gap >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                  <span className={gap >= 0 ? 'text-[var(--pos)]' : 'text-[var(--neg)]'}>
                                     {' '}({gap >= 0 ? '+' : '−'}{formatGrade(Math.abs(gap))})
                                   </span>
                                 )}
@@ -2948,14 +2948,14 @@ export function Students() {
                 const remarks = getRemarks(selectedStudentForDetail.events);
                 if (remarks.length === 0) return null;
                 return (
-                  <div className="bg-blue-50 rounded-xl p-4">
-                    <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                  <div className="bg-[var(--indigo-soft)] rounded-xl p-4">
+                    <h4 className="font-medium text-[var(--indigo-ink)] mb-3 flex items-center gap-2">
                       <span>📝</span> Remarques ({remarks.length})
                     </h4>
                     <div className="space-y-3">
                       {remarks.map((remark) => (
-                        <div key={remark.id} className="bg-white rounded-lg p-3 border border-blue-100">
-                          <div className="text-xs text-blue-600 font-medium mb-1">
+                        <div key={remark.id} className="bg-white rounded-lg p-3 border border-[var(--indigo)]">
+                          <div className="text-xs text-[var(--indigo-ink)] font-medium mb-1">
                             {formatDate(remark.timestamp)}
                           </div>
                           {remark.note && (
@@ -3002,7 +3002,7 @@ export function Students() {
                     {selectedStudentForDetail.manualParticipationsList.map((mp) => (
                       <div key={mp.id} className="flex items-center justify-between bg-[var(--bg)] rounded-lg p-3">
                         <div className="flex items-center gap-3">
-                          <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">
+                          <span className="bg-[var(--pos-soft)] text-[var(--pos)] px-2 py-1 rounded text-sm font-medium">
                             +{mp.count}
                           </span>
                           <div>
@@ -3016,7 +3016,7 @@ export function Students() {
                         </div>
                         <button
                           onClick={() => deleteManualParticipation(mp.id)}
-                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg"
+                          className="text-[var(--neg)] hover:text-[var(--neg)] p-2 hover:bg-[var(--neg-soft)] rounded-lg"
                           title="Supprimer"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3064,7 +3064,7 @@ export function Students() {
                                 <div key={idx} className="flex items-center gap-1.5 text-sm bg-[var(--surface)] rounded px-2 py-1 border border-[var(--border)]">
                                   <span className="text-[var(--text-dim)]">T{ag.trimester}</span>
                                   <span className={`font-semibold ${getGradeColor(ag.grade)}`}>{ag.grade.toFixed(1)}</span>
-                                  {ag.bonus > 0 && <span className="text-xs text-yellow-600">+{ag.bonus.toFixed(1)}</span>}
+                                  {ag.bonus > 0 && <span className="text-xs text-[var(--warn)]">+{ag.bonus.toFixed(1)}</span>}
                                 </div>
                               ))}
                             </div>

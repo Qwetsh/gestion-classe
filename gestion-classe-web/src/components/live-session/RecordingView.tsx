@@ -327,7 +327,7 @@ export function RecordingView() {
       </div>
 
       {/* Hint */}
-      <p className="text-center shrink-0" style={{ fontSize: 12.5, color: DB.textTertiary, margin: '8px 0 0' }}>
+      <p className="text-center shrink-0" style={{ fontSize: 13, color: DB.textTertiary, margin: '8px 0 0' }}>
         Appuyer sur un élève
       </p>
 
@@ -439,7 +439,7 @@ export function RecordingView() {
           </div>
           <div
             className="text-center mb-4"
-            style={{ background: DB.primarySoft, borderRadius: 16, padding: 24 }}
+            style={{ background: DB.primarySoft, borderRadius: 14, padding: 24 }}
           >
             <p style={{ fontSize: 12, fontWeight: 600, color: DB.primary, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
               Élève tiré
@@ -447,7 +447,7 @@ export function RecordingView() {
             <p style={{ fontSize: 28, fontWeight: 700, color: DB.text, margin: '6px 0' }}>
               {randomPicked ?? '—'}
             </p>
-            <p style={{ fontSize: 13.5, color: DB.textSecondary, margin: 0 }}>
+            <p style={{ fontSize: 14, color: DB.textSecondary, margin: 0 }}>
               Parmi les élèves présents
             </p>
           </div>
@@ -529,7 +529,7 @@ export function RecordingView() {
                 onClick={() => { setOralGrade(grade); if (navigator.vibrate) navigator.vibrate(8); }}
                 style={{
                   height: 52,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   fontSize: 17,
                   fontWeight: 700,
                   border: oralGrade === grade ? 'none' : `1px solid ${DB.border}`,
@@ -589,12 +589,12 @@ export function RecordingView() {
               background: DB.background,
               color: DB.text,
               border: `1px solid ${DB.border}`,
-              borderRadius: 12,
+              borderRadius: 10,
               outline: 'none',
               minHeight: 110,
             }}
           />
-          <p className="text-right" style={{ fontSize: 11.5, color: DB.textTertiary, margin: '4px 0 14px' }}>
+          <p className="text-right" style={{ fontSize: 12, color: DB.textTertiary, margin: '4px 0 14px' }}>
             {notesText.length}/500
           </p>
           <div className="flex gap-3">
@@ -678,7 +678,7 @@ export function RecordingView() {
       {showEndConfirm && (
         <MobileSheet onClose={() => setShowEndConfirm(false)}>
           <SheetTitle>Terminer la séance ?</SheetTitle>
-          <p style={{ fontSize: 13.5, color: DB.textSecondary, margin: '0 0 16px' }}>
+          <p style={{ fontSize: 14, color: DB.textSecondary, margin: '0 0 16px' }}>
             {totalEvents} événement{totalEvents !== 1 ? 's' : ''} enregistré{totalEvents !== 1 ? 's' : ''}
           </p>
           <div className="flex gap-3">
@@ -698,7 +698,7 @@ export function RecordingView() {
       {showCancelConfirm && (
         <MobileSheet onClose={() => setShowCancelConfirm(false)}>
           <SheetTitle>Annuler la séance ?</SheetTitle>
-          <p style={{ fontSize: 13.5, color: DB.textSecondary, margin: '0 0 16px' }}>
+          <p style={{ fontSize: 14, color: DB.textSecondary, margin: '0 0 16px' }}>
             La séance sera supprimée et aucun événement ne sera conservé.
           </p>
           <div className="flex gap-3">
@@ -748,14 +748,14 @@ function ToolbarButton({
       }}
     >
       {icon}
-      <span style={{ fontSize: 10.5, fontWeight: 600, color: DB.text }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: DB.text }}>{label}</span>
       {badge && (
         <span
           className="absolute"
           style={{
             top: 3,
             right: 3,
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 600,
             color: DB.primary,
             background: DB.primarySoft,

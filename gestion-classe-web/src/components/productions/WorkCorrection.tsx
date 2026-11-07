@@ -219,7 +219,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
     if (q.type === 'tableau') {
       const lignes = (v ?? {}) as Record<string, Q1Row>;
       return (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <tbody>
             {(def.lignes_q1 ?? []).map((l, i) => {
               const row = lignes[l.id] ?? {};
@@ -236,7 +236,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
                         <div key={col.id} style={{ marginBottom: 2 }}>
                           <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 400 }}>{col.nom} : </span>
                           {texte
-                            ? <span style={{ color: auto === true ? 'var(--pos, #047857)' : auto === false ? 'var(--neg)' : undefined }}>{auto === true ? '✓ ' : auto === false ? '✗ ' : ''}{texte}</span>
+                            ? <span style={{ color: auto === true ? 'var(--pos)' : auto === false ? 'var(--neg)' : undefined }}>{auto === true ? '✓ ' : auto === false ? '✗ ' : ''}{texte}</span>
                             : <span style={{ color: 'var(--text-dim)' }}>—</span>}
                         </div>
                       );
@@ -255,7 +255,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {(q.champs ?? []).map((ch) => (
             <div key={ch.id}>
-              <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{ch.nom}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{ch.nom}</div>
               <div style={{ whiteSpace: 'pre-wrap' }}>{o[ch.id] || noAnswer}</div>
             </div>
           ))}
@@ -284,7 +284,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
             {position && ` · ${position.index + 1}/${position.total}`}
           </span>
           {work.modified_after_correction && (
-            <span style={{ fontSize: 12, color: 'var(--warn, #b45309)', fontWeight: 600 }}> · renvoyée après correction</span>
+            <span style={{ fontSize: 12, color: 'var(--warn)', fontWeight: 600 }}> · renvoyée après correction</span>
           )}
         </div>
         <span style={{ flex: 1 }} />
@@ -309,7 +309,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
       </div>
 
       {group.length > 1 && (
-        <div role="radiogroup" aria-label="Corriger pour" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 12.5 }}>
+        <div role="radiogroup" aria-label="Corriger pour" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 13 }}>
           <span style={{ fontWeight: 600, marginRight: 4 }}>Corriger pour :</span>
           {[{ id: 'group', label: `tout le groupe (${group.length})` }, ...group.map((w) => ({ id: w.id, label: `${pseudo(w)} uniquement${w.status === 'validated' ? ' · validée' : ''}` }))].map((o) => {
             const on = target === o.id;
@@ -324,7 +324,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
       )}
 
       {locked && (
-        <div style={{ ...note, background: 'var(--pos-soft, rgba(16,185,129,.14))', color: 'var(--pos, #047857)' }}>
+        <div style={{ ...note, background: 'var(--pos-soft, rgba(16,185,129,.14))', color: 'var(--pos)' }}>
           {scope.length > 1
             ? <>Copie validée le {fmtDate(work.validated_at)} pour tout le groupe : plus personne ne peut la renvoyer.</>
             : <>Copie validée le {fmtDate(work.validated_at)} : l’élève ne peut plus la renvoyer.</>}
@@ -336,7 +336,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
         </div>
       )}
       {correctedApart && (
-        <div style={{ ...note, background: 'var(--warn-soft, rgba(245,158,11,.14))', color: 'var(--warn, #b45309)' }}>
+        <div style={{ ...note, background: 'var(--warn-soft, rgba(245,158,11,.14))', color: 'var(--warn)' }}>
           Les membres ont été corrigés à part ({group.map((w) => `${pseudo(w)} ${w.total_points != null ? `${fmtPts(Number(w.total_points))} / ${activity.bareme_total}` : 'pas corrigé'}`).join(' · ')}).
           {' '}Correction affichée : {pseudo(work)}. L’enregistrer ici la donnera à {editable.map(pseudo).join(', ')}.
         </div>
@@ -347,7 +347,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
         </div>
       )}
       {!autoPrefilled && !locked && work.modified_after_correction && hasAuto(def) && (
-        <div style={{ ...note, background: 'var(--warn-soft, rgba(245,158,11,.14))', color: 'var(--warn, #b45309)' }}>
+        <div style={{ ...note, background: 'var(--warn-soft, rgba(245,158,11,.14))', color: 'var(--warn)' }}>
           Copie renvoyée après correction : le bouton « Auto » d’une question refait la correction automatique sur le nouvel envoi.
         </div>
       )}
@@ -363,14 +363,14 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
             return (
               <section key={q.id} id={answerId(q.id)} style={{ padding: '10px 0', borderTop: qi ? '1px solid var(--border)' : undefined, scrollMarginTop: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1.35 }}>{q.num}. {q.titre}</div>
+                  <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1.35 }}>{q.num}. {q.titre}</div>
                   {!q.bonus && touched && (
                     <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: rateColor(q.points > 0 ? pts / q.points : 0) }}>
                       {fmtPts(pts)}/{fmtPts(q.points)}
                     </span>
                   )}
                 </div>
-                {consigne && <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>{consigne}</div>}
+                {consigne && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>{consigne}</div>}
                 <div className="gc-wc__answer">{renderAnswer(q)}</div>
               </section>
             );
@@ -426,7 +426,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
                       <button onClick={() => showAnswer(q.id)} style={qLink} title="Voir la réponse dans la copie">
                         {q.num}. {q.titre}
                       </button>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', color: full ? 'var(--pos, #047857)' : 'var(--text)' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: full ? 'var(--pos)' : 'var(--text)' }}>
                         {q.bonus ? 'Bonus ★' : <>{fmtPts(pts)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>/ {fmtPts(q.points)}</span></>}
                       </span>
                     </div>
@@ -444,7 +444,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
                       return (
                         <label key={cr.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, lineHeight: 1.35, cursor: locked ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 5, background: on ? 'var(--pos-soft, rgba(16,185,129,.12))' : 'transparent', color: on ? 'var(--text)' : 'var(--text-muted)' }}>
                           <input type="checkbox" checked={on} disabled={locked} onChange={() => toggle(q.id, cr.id)} style={{ marginTop: 1 }} />
-                          <span style={{ flex: 1 }}>{cr.nom}{cr.auto && <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--text-dim)' }}>auto</span>}</span>
+                          <span style={{ flex: 1 }}>{cr.nom}{cr.auto && <span style={{ marginLeft: 5, fontSize: 11, color: 'var(--text-dim)' }}>auto</span>}</span>
                           <span style={{ color: 'var(--text-dim)', whiteSpace: 'nowrap', fontSize: 11 }}>{q.bonus ? '★' : `${fmtPts(cr.points)}`}</span>
                         </label>
                       );
@@ -468,7 +468,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
 
               {/* Compétences + conseils */}
               <section style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>Compétences et conseils</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Compétences et conseils</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
                   {(def.competences ?? []).map((comp) => (
                     <div key={comp.id}>
@@ -489,7 +489,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
                     </div>
                   ))}
                 </div>
-                <textarea value={advice} onChange={(e) => { setAdvice(e.target.value); setDirty(true); }} disabled={locked} rows={2} placeholder="Conseils pour la prochaine fois (imprimés sur la copie)" style={{ ...inp, fontSize: 12.5, padding: '6px 8px', resize: 'vertical' }} />
+                <textarea value={advice} onChange={(e) => { setAdvice(e.target.value); setDirty(true); }} disabled={locked} rows={2} placeholder="Conseils pour la prochaine fois (imprimés sur la copie)" style={{ ...inp, fontSize: 13, padding: '6px 8px', resize: 'vertical' }} />
               </section>
             </>
           )}
@@ -520,7 +520,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
 const tdSmall: React.CSSProperties = { padding: '4px 6px', verticalAlign: 'top' };
 const note: React.CSSProperties = { padding: '6px 10px', borderRadius: 8, fontSize: 12, marginBottom: 8 };
 const miniBtn: React.CSSProperties = {
-  padding: '1px 6px', borderRadius: 5, fontSize: 10.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+  padding: '1px 6px', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
   border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
 };
 const linkMini: React.CSSProperties = {
@@ -533,10 +533,10 @@ const btnSm: React.CSSProperties = {
   border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
 };
 const chip: React.CSSProperties = {
-  border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 11.5, fontWeight: 600,
+  border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 12, fontWeight: 600,
   cursor: 'pointer', fontFamily: 'inherit',
 };
 const qLink: React.CSSProperties = {
   flex: 1, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-  fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1.35,
+  fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1.35,
 };

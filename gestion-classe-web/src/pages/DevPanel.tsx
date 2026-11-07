@@ -313,7 +313,7 @@ function UsersTab() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-3 h-3 rounded-full ${isRecent ? 'bg-green-500' : days <= 30 ? 'bg-yellow-500' : 'bg-gray-400'}`}
+                      className={`w-3 h-3 rounded-full ${isRecent ? 'bg-[var(--pos)]' : days <= 30 ? 'bg-[var(--warn)]' : 'bg-[var(--border-strong)]'}`}
                     />
                     <div>
                       <div className="flex items-center gap-2">
@@ -699,7 +699,7 @@ function AnnouncementsTab() {
 
   const typeOptions = [
     { value: 'info' as const, label: 'ℹ️ Info', color: 'var(--indigo)' },
-    { value: 'warning' as const, label: '⚠️ Alerte', color: '#d97706' },
+    { value: 'warning' as const, label: '⚠️ Alerte', color: 'var(--warn)' },
     { value: 'success' as const, label: '✅ Succes', color: 'var(--pos)' },
   ];
 
@@ -759,7 +759,7 @@ function AnnouncementsTab() {
             <Card key={a.id}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 flex-1">
-                  <span className={`w-2.5 h-2.5 rounded-full ${a.active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${a.active ? 'bg-[var(--pos)]' : 'bg-[var(--border-strong)]'}`} />
                   <span className={`text-sm ${a.active ? 'text-[var(--text)]' : 'text-[var(--text-dim)] line-through'}`}>
                     {a.type === 'info' ? 'ℹ️' : a.type === 'warning' ? '⚠️' : '✅'} {a.message}
                   </span>
@@ -1176,7 +1176,7 @@ function PronoteTab() {
       <Card>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
+            <div className="w-3 h-3 rounded-full bg-[var(--pos)]" />
             <span className="text-sm font-medium text-[var(--text)]">Pronote connecté</span>
             {periods.length > 0 ? (
               <select

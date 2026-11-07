@@ -29,6 +29,16 @@ export function WeekTimetableModule() {
     return () => clearInterval(t);
   }, []);
 
+  // Téléphone : un seul jour à la fois, choisi par des pastilles (audit V4).
+  // Jour initial : aujourd'hui si la semaine le contient, sinon le premier jour.
+  // Le choix est mémorisé avec la semaine à laquelle il s'applique : changer de semaine revient au jour par défaut.
+  const narrow = useNarrow();
+  const weekKey = week?.monday.getTime() ?? 0;
+  const [dayChoice, setDayChoice] = useState<{ weekKey: number; index: number } | null>(null);
+  const todayIndex = week ? week.days.findIndex(d => sameDay(d.date, now)) : -1;
+  const dayIndex = dayChoice && dayChoice.weekKey === weekKey ? dayChoice.index : Math.max(todayIndex, 0);
+  const setDayIndex = (index: number) => setDayChoice({ weekKey, index });
+
   const importModal = (
     <Modal isOpen={importOpen} onClose={() => setImportOpen(false)} title="Emploi du temps" size="xl">
       <TimetableImportPanel onImported={reloadTimetableImport} />
@@ -54,6 +64,7 @@ export function WeekTimetableModule() {
   }
 
   const { days, startHour, endHour } = week;
+  const shownDays = narrow && days.length > 0 ? [days[Math.min(dayIndex, days.length - 1)]] : days;
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
   const nowPct = percentOfDay(now, startHour, endHour);
   const nowVisible = now.getHours() >= startHour && now.getHours() < endHour;
@@ -76,7 +87,7 @@ export function WeekTimetableModule() {
       : 'Emploi du temps enregistré';
 
   return (
-    <div className="dash__card home-card wtt">
+    <div className={`dash__card home-card wtt ${narrow ? 'wtt--day' : ''}`}>
       <div className="wtt__head">
         <div style={{ minWidth: 0 }}>
           <h2 className="dash__card-title">
@@ -104,10 +115,32 @@ export function WeekTimetableModule() {
         </div>
       </div>
 
-      <div className={`wtt__grid ${weekLoading ? 'wtt__grid--loading' : ''}`} style={{ ['--wtt-days' as string]: days.length }}>
+      {narrow && days.length > 1 && (
+        <div className="wtt__daychips" role="tablist" aria-label="Jour affiché">
+          {days.map((d, i) => {
+            const today = sameDay(d.date, now);
+            return (
+              <button
+                key={d.date.toISOString()}
+                type="button"
+                role="tab"
+                aria-selected={i === dayIndex}
+                className={`wtt__daychip ${i === dayIndex ? 'is-on' : ''} ${today ? 'is-today' : ''}`}
+                onClick={() => setDayIndex(i)}
+              >
+                <span className="wtt__daychip-name">{d.date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span>
+                <span className="wtt__daychip-num">{d.date.getDate()}</span>
+                {d.lessons.length > 0 && <span className="wtt__daychip-dot" aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className={`wtt__grid ${weekLoading ? 'wtt__grid--loading' : ''}`} style={{ ['--wtt-days' as string]: shownDays.length }}>
         {/* En-têtes des jours */}
         <div />
-        {days.map(d => {
+        {shownDays.map(d => {
           const today = sameDay(d.date, now);
           return (
             <div key={d.date.toISOString()} className={`wtt__day-head ${today ? 'wtt__day-head--today' : ''}`}>
@@ -125,7 +158,7 @@ export function WeekTimetableModule() {
         </div>
 
         {/* Colonnes */}
-        {days.map(d => {
+        {shownDays.map(d => {
           const today = sameDay(d.date, now);
           return (
             <div key={d.date.toISOString()} className={`wtt__col ${today ? 'wtt__col--today' : ''}`}>
@@ -260,4 +293,16 @@ function LessonBlock({
       )}
     </button>
   );
+}
+
+/** Vrai sous 640 px (vue « un jour » de l'emploi du temps). */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = () => setNarrow(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return narrow;
 }

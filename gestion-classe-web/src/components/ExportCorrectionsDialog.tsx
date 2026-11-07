@@ -165,7 +165,7 @@ export function ExportCorrectionsDialog({
             </button>
           ))}
         </div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12.5 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           {FORMATS.find(([id]) => id === format)![2]}
           {format !== 'md' && ' Ni la transcription ni les points à arbitrer.'}
         </div>
@@ -192,7 +192,7 @@ export function ExportCorrectionsDialog({
           </div>
         )}
         {format !== 'md' && (
-          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 }}>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
             <input type="checkbox" checked={summary} onChange={(e) => setSummary(e.target.checked)} />
             Récapitulatif de la classe en première page (notes et réussite par question)
           </label>
@@ -200,12 +200,12 @@ export function ExportCorrectionsDialog({
         {format === 'md' && (
           <>
             {hasTranscripts && (
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 }}>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
                 <input type="checkbox" checked={withTranscripts} onChange={(e) => setWithTranscripts(e.target.checked)} />
                 Inclure la transcription des copies
               </label>
             )}
-            <details style={{ fontSize: 12.5 }}>
+            <details style={{ fontSize: 13 }}>
               <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Correspondance des numéros (reste dans l’app)</summary>
               <div style={{ columns: 2, marginTop: 6, color: 'var(--text-muted)' }}>
                 {rows.map((r) => <div key={r.student.id}><strong>{labels.get(r.student.id)}</strong> · {r.student.pseudo}</div>)}
@@ -216,7 +216,7 @@ export function ExportCorrectionsDialog({
             </div>
           </>
         )}
-        {error && <div style={{ fontSize: 12.5, color: 'var(--neg)' }}>{error}</div>}
+        {error && <div style={{ fontSize: 13, color: 'var(--neg)' }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={btn}>Annuler</button>
           <button
@@ -233,6 +233,6 @@ export function ExportCorrectionsDialog({
 }
 
 const btn: React.CSSProperties = {
-  padding: '5px 11px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+  padding: '5px 11px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
 };

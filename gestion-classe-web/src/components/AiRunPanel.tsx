@@ -9,7 +9,7 @@ import {
 /** État du dernier appel « Corriger » de l'élève : en cours, erreur, ou points à arbitrer et coût. */
 export function AiRunPanel({ run, apiGrade }: { run: AiCorrectionRun | undefined; apiGrade: boolean }) {
   if (!run) return null;
-  const box: React.CSSProperties = { borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12.5 };
+  const box: React.CSSProperties = { borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 13 };
   const when = new Date(run.finished_at ?? run.started_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   const cost = run.cost_usd != null ? ` · coût estimé ${formatCost(run.cost_usd)}` : '';
   if (isRunActive(run)) {
@@ -77,7 +77,7 @@ export function Badge({ children, tone = 'neutral' }: { children: React.ReactNod
     info: ['var(--indigo-soft)', 'var(--indigo)'],
   }[tone];
   return (
-    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: colors[0], color: colors[1], whiteSpace: 'nowrap' }}>
+    <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: colors[0], color: colors[1], whiteSpace: 'nowrap' }}>
       {children}
     </span>
   );

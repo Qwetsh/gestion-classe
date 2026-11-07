@@ -89,7 +89,7 @@ export function SheetButton({
       className="flex-1 active:scale-[0.98] transition-transform"
       style={{
         padding: '14px 16px',
-        borderRadius: 12,
+        borderRadius: 10,
         border: 'none',
         background: disabled ? DB.segmentTrack : color,
         color: disabled ? DB.textTertiary : '#FFFFFF',
@@ -110,7 +110,7 @@ export function SheetGhostButton({ children, onClick }: { children: ReactNode; o
       className="flex-1 active:scale-[0.98] transition-transform"
       style={{
         padding: '14px 16px',
-        borderRadius: 12,
+        borderRadius: 10,
         border: `1px solid ${DB.border}`,
         background: DB.surface,
         color: DB.text,

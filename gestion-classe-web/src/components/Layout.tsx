@@ -146,7 +146,7 @@ function NotifPanel({ data, placement }: { data: NotifData; placement: 'up' | 'd
       ...(placement === 'up' ? { bottom: '100%', left: 0, marginBottom: 8 } : { top: '100%', right: 0, marginTop: 8 }),
       width: 340, maxHeight: 480, overflowY: 'auto',
       background: 'var(--surface)',
-      border: '1px solid var(--border)', borderRadius: 12,
+      border: '1px solid var(--border)', borderRadius: 10,
       padding: 0, boxShadow: 'var(--shadow-2)', zIndex: 90,
     }}>
       <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -164,7 +164,7 @@ function NotifPanel({ data, placement }: { data: NotifData; placement: 'up' | 'd
         <div>
           {announcements.length > 0 && (
             <>
-              <div style={{ padding: '8px 16px', fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+              <div style={{ padding: '8px 16px', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
                 Annonces
               </div>
               {announcements.map(a => {
@@ -200,7 +200,7 @@ function NotifPanel({ data, placement }: { data: NotifData; placement: 'up' | 'd
 
           {isDev && feedbacks.length > 0 && (
             <>
-              <div style={{ padding: '8px 16px', fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', borderTop: announcements.length > 0 ? '2px solid var(--border)' : 'none' }}>
+              <div style={{ padding: '8px 16px', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', borderTop: announcements.length > 0 ? '2px solid var(--border)' : 'none' }}>
                 Retours utilisateurs
               </div>
               {feedbacks.map(f => {
@@ -291,7 +291,7 @@ function AccountRow({
               position: 'absolute', top: 2, right: 2,
               width: 16, height: 16, borderRadius: '50%',
               background: 'var(--neg)', color: '#fff',
-              fontSize: 10, fontWeight: 700,
+              fontSize: 11, fontWeight: 700,
               display: 'grid', placeItems: 'center', lineHeight: 1,
             }}>
               {notifs.unreadCount > 9 ? '9+' : notifs.unreadCount}
@@ -312,7 +312,7 @@ function AccountRow({
             width: 30, height: 30, borderRadius: '50%',
             background: 'var(--indigo-ink)',
             color: '#fff', display: 'grid', placeItems: 'center',
-            fontWeight: 600, fontSize: 12.5, border: 'none', cursor: 'pointer',
+            fontWeight: 600, fontSize: 13, border: 'none', cursor: 'pointer',
           }}
           title={email}
         >
@@ -323,7 +323,7 @@ function AccountRow({
             position: 'absolute',
             ...(placement === 'up' ? { bottom: '100%', left: 0, marginBottom: 8 } : { top: '100%', right: 0, marginTop: 8 }),
             width: 240, background: 'var(--surface)',
-            border: '1px solid var(--border)', borderRadius: 12,
+            border: '1px solid var(--border)', borderRadius: 10,
             padding: 4, boxShadow: 'var(--shadow-2)', zIndex: 90,
           }}>
             <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
@@ -407,8 +407,16 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const devItems = isDev ? [{ path: '/dev', label: 'Dev', icon: 'dev' }] : [];
   const allNavItems = [...primaryNavItems, ...visibleClassLife, ...visibleResources, ...devItems];
 
-  // État Pronote (encart bas de sidebar) — même clé que le Dashboard
+  // État Pronote (encart bas de sidebar) — même clé que le Dashboard.
+  // L'encart « non connecté » se ferme pour la session de navigation (audit V8).
   const pronoteConnected = typeof window !== 'undefined' && !!localStorage.getItem('pronote_session');
+  const [pronoteHintHidden, setPronoteHintHidden] = useState(() => {
+    try { return sessionStorage.getItem('gc_pronote_hint_hidden') === '1'; } catch { return false; }
+  });
+  const hidePronoteHint = () => {
+    setPronoteHintHidden(true);
+    try { sessionStorage.setItem('gc_pronote_hint_hidden', '1'); } catch { /* stockage indisponible */ }
+  };
 
   const renderNavLink = (item: { path: string; label: string; icon: string }) => {
     const isActive = location.pathname === item.path;
@@ -459,14 +467,23 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
         </nav>
 
         <div className="gc-sidebar__foot">
-          {!pronoteConnected && (
-            <Link to="/pronote" className="gc-pronote-card" title={rail ? 'Pronote non connecté — Connecter' : undefined}>
+          {!pronoteConnected && !pronoteHintHidden && (
+            <div className="gc-pronote-card" title={rail ? 'Pronote non connecté — Connecter' : undefined}>
               <span style={{ flexShrink: 0, marginTop: 1 }}>
                 <NavIcon name="info" size={14} />
               </span>
               <span className="gc-pronote-card__text" style={{ flex: 1, minWidth: 0 }}>Pronote non connecté</span>
-              <span className="gc-pronote-card__cta">Connecter</span>
-            </Link>
+              <Link to="/pronote" className="gc-pronote-card__cta">Connecter</Link>
+              <button
+                type="button"
+                className="gc-pronote-card__close"
+                onClick={hidePronoteHint}
+                title="Masquer pour cette session"
+                aria-label="Masquer le rappel Pronote"
+              >
+                ×
+              </button>
+            </div>
           )}
 
           <button
@@ -666,7 +683,7 @@ function MobileTabBar({
                     alignItems: 'center',
                     gap: 12,
                     padding: '13px 12px',
-                    borderRadius: 12,
+                    borderRadius: 10,
                     textDecoration: 'none',
                     color: isActive ? 'var(--indigo-ink)' : 'var(--text)',
                     background: isActive ? 'var(--indigo-soft)' : 'transparent',
@@ -690,7 +707,7 @@ function MobileTabBar({
                 width: '100%',
                 padding: '13px 12px',
                 marginTop: 4,
-                borderRadius: 12,
+                borderRadius: 10,
                 border: 'none',
                 background: 'transparent',
                 color: 'var(--text)',
@@ -712,7 +729,7 @@ function MobileTabBar({
                 gap: 12,
                 width: '100%',
                 padding: '13px 12px',
-                borderRadius: 12,
+                borderRadius: 10,
                 border: 'none',
                 background: 'transparent',
                 color: 'var(--text)',

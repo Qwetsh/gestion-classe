@@ -43,17 +43,17 @@ export function PronoteColumnDialog({ assessment, onClose }: { assessment: Asses
   return (
     <Modal isOpen onClose={onClose} title={`Copier pour Pronote · ${assessment.classes?.name ?? ''}`} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.5 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
           Notes sur {String(bareme).replace('.', ',')}, une par ligne, dans l’ordre alphabétique des noms.
           Dans Pronote, ouvre la saisie du devoir, clique la case du premier élève et colle (Ctrl+V).
           Vérifie ensuite la première et la dernière ligne.
         </div>
-        {error && <div style={{ color: 'var(--neg)', fontSize: 12.5 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--neg)', fontSize: 13 }}>{error}</div>}
         {!rows && !error && <div style={{ color: 'var(--text-dim)' }}>Chargement…</div>}
         {rows && (
           <>
             <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={r.studentId} style={{ borderTop: i ? '1px solid var(--border)' : undefined, background: r.orderToCheck ? 'var(--warn-soft)' : undefined }}>
