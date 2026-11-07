@@ -40,6 +40,7 @@ export function ColumnHeader({
   showDetails,
   seriesSize,
   suggestion,
+  toCorrect,
   all,
   userId,
   onOpen,
@@ -57,6 +58,8 @@ export function ColumnHeader({
   seriesSize: number;
   /** Même nom dans d'autres classes, pas encore reliée. */
   suggestion: RelinkTarget | null;
+  /** Production numérique : envois pas encore corrigés (pastille toujours visible, elle ouvre la correction). */
+  toCorrect?: { count: number; onOpen: () => void } | null;
   all: AssessmentRow[];
   userId: string;
   /** Avant de quitter le carnet : enregistre les saisies en attente. */
@@ -208,7 +211,7 @@ export function ColumnHeader({
   const details = columnDetailsSummary({
     chip: chip?.label ?? null, countsInAverage: assessment.counts_in_average, coefficient: coef, seriesSize,
   });
-  const pills = showDetails || !!suggestion;
+  const pills = showDetails || !!suggestion || !!toCorrect;
 
   return (
     <>
@@ -240,6 +243,16 @@ export function ColumnHeader({
         {showDetails && coef !== null && <> · <strong>{coefLabel(coef)}</strong></>}
       </div>
       {pills && <div className="gc-colhead__pills">
+        {toCorrect && (
+          <button
+            type="button"
+            className="gc-pill gc-pill--todo"
+            onClick={() => { onOpen(); toCorrect.onOpen(); }}
+            title="Productions envoyées par les élèves, pas encore corrigées : ouvrir la correction"
+          >
+            À corriger · {toCorrect.count}
+          </button>
+        )}
         {showDetails && chip && <span className="gc-pill" style={{ background: chip.background, color: chip.color }}>{chip.label}</span>}
         {showDetails && !assessment.counts_in_average && <span className="gc-pill gc-pill--outline">hors moy.</span>}
         {showDetails && seriesSize > 1 && <span className="gc-pill gc-pill--indigo" title="Même éval dans plusieurs classes">{seriesSize} classes</span>}

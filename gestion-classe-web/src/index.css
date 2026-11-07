@@ -2146,6 +2146,29 @@ a.dash__card-link:hover { text-decoration: underline; }
 .gc-pill--indigo { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
 .gc-pill--warn { background: var(--warn-soft); color: var(--warn); cursor: pointer; white-space: normal; text-align: left; }
 .gc-pill--warn:hover { border-color: var(--warn); }
+.gc-pill--todo { background: var(--indigo); color: #fff; cursor: pointer; }
+.gc-pill--todo:hover, .gc-pill--todo:focus-visible { background: var(--indigo-hover, var(--indigo)); box-shadow: 0 0 0 2px var(--indigo-soft); }
+.gc-pill--pending { border-color: var(--border); border-style: dashed; color: var(--text-muted); font-weight: 600; background: transparent; }
+/* Titre d'une colonne de production pas encore au carnet : un bouton qui ressemble au lien des autres colonnes. */
+button.gc-colhead__title { background: none; border: none; padding: 0; text-align: left; cursor: pointer; font-family: inherit; }
+/* Colonne de production pas encore au carnet : fond hachuré léger. */
+.gc-carnet__pending-col { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--surface-3) 6px 7px); }
+
+/* « À corriger » : une production envoyée, pas encore corrigée. Le clic ouvre sa correction ;
+   au clavier, la cellule garde sa saisie (le bouton s'efface quand la note a le focus). */
+.gc-cell__todo {
+  position: absolute; inset: 3px; display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--indigo); border-radius: 6px; background: var(--indigo-soft); color: var(--indigo);
+  font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer; padding: 0 2px; white-space: nowrap;
+}
+.gc-cell__todo:hover { background: var(--indigo); color: #fff; border-style: solid; }
+.gc-cell--todo:focus-within .gc-cell__todo { display: none; }
+/* Production corrigée mais pas encore au carnet : ses points, en retrait. */
+.gc-cell__pending {
+  width: 100%; border: none; background: none; padding: 8px 4px; cursor: pointer; font-family: inherit;
+  font-size: 13px; font-style: italic; color: var(--text-muted);
+}
+.gc-cell__pending:hover { color: var(--indigo); text-decoration: underline; }
 
 .gc-colmenu {
   position: fixed; z-index: 60; width: 300px; box-sizing: border-box;
@@ -2180,3 +2203,17 @@ a.dash__card-link:hover { text-decoration: underline; }
 .gc-colmenu__btn:hover, .gc-colmenu__btn:focus-visible { border-color: var(--indigo); color: var(--indigo); }
 .gc-colmenu__btn--icon { width: 28px; padding: 0; }
 .gc-colmenu__btn--add { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+
+/* Correction d'une production (WorkCorrection) : une question par rangée, la réponse de l'élève en avant. */
+.gc-wc__q {
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(190px, 1fr); gap: 12px;
+  padding: 10px 2px;
+}
+.gc-wc__answer {
+  margin-top: 5px; padding: 7px 10px; border-left: 3px solid var(--indigo); border-radius: 0 6px 6px 0;
+  background: var(--indigo-soft); color: var(--text); font-size: 15px; line-height: 1.45; font-weight: 500;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+  .gc-wc__q { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}

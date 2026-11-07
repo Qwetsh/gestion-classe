@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { createAssessment, saveGrade } from './evaluationQueries';
 import { toTwenty } from './gradeStats';
+import type { ClassWorkLite } from './carnetProductions';
 
 /**
  * Productions numériques : fiches d'activité remplies par les élèves dans une application
@@ -160,6 +161,33 @@ export async function fetchClassActivityLinks(classId: string): Promise<Record<s
     if (l.written_assessments && !l.written_assessments.is_deleted) out[l.activity_id] = l.assessment_id;
   }
   return out;
+}
+
+/**
+ * Productions envoyées par les élèves d'une classe (brouillons exclus), les activités concernées
+ * et leurs évals liées : les colonnes de productions du carnet, même sans éval (lib/carnetProductions.ts).
+ */
+export async function fetchClassProductions(classId: string): Promise<{
+  activities: ActivityRow[];
+  works: ClassWorkLite[];
+  links: Record<string, string>;
+}> {
+  const { data, error } = await supabase
+    .from('student_works')
+    .select('activity_id, student_id, status, total_points, submitted_at')
+    .eq('class_id', classId)
+    .eq('is_deleted', false)
+    .neq('status', 'draft');
+  if (error) throw error;
+  const works = (data ?? []) as ClassWorkLite[];
+  const ids = [...new Set(works.map((w) => w.activity_id))];
+  if (ids.length === 0) return { activities: [], works: [], links: {} };
+  const [acts, links] = await Promise.all([
+    supabase.from('activities').select('*').in('id', ids).eq('is_deleted', false),
+    fetchClassActivityLinks(classId),
+  ]);
+  if (acts.error) throw acts.error;
+  return { activities: (acts.data ?? []) as ActivityRow[], works, links };
 }
 
 /** Production d'un élève pour une activité (la plus récente), ou null. */

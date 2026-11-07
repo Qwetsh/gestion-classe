@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ASSESSMENT_KIND_LABEL,
   createAssessment,
@@ -34,6 +34,9 @@ import {
   type CellMark,
 } from '../lib/carnetView';
 import { ColumnHeader } from './carnet/ColumnHeader';
+import { KindIcon } from './KindIcon';
+import { fetchClassProductions, linkActivityToClass, type ActivityRow } from '../lib/productionsQueries';
+import { cellToCorrect, firstToCorrect, productionColumns, type ProductionColumn } from '../lib/carnetProductions';
 import { columnLabels, sameNameTarget } from '../lib/columnHeader';
 import { StudentGradeModal } from './StudentGradeModal';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
@@ -129,6 +132,7 @@ export function CarnetTab({ userId, account, onError }: {
 }) {
   // Retour depuis la fiche d'une éval : on rouvre la même classe et le même trimestre.
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const requestedClassId = searchParams.get('classe');
   const requestedPeriod = Number(searchParams.get('t'));
 
@@ -136,6 +140,8 @@ export function CarnetTab({ userId, account, onError }: {
   const [classId, setClassId] = useState(requestedClassId ?? '');
   const [period, setPeriod] = useState(PERIODS.includes(requestedPeriod) ? requestedPeriod : 1);
   const [schoolYear, setSchoolYear] = useState('');
+  /** Trimestre en cours (réglages) : celui où une production pas encore au carnet entrera. */
+  const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
 
   const [students, setStudents] = useState<CarnetStudent[]>([]);
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
@@ -145,6 +151,12 @@ export function CarnetTab({ userId, account, onError }: {
   /** Élèves qui ont une copie (pages ou transcription), par éval : l'indicateur « copie manquante ». */
   const [copyKeys, setCopyKeys] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
+  /** Productions numériques envoyées par la classe : colonnes « À corriger », même sans éval au carnet. */
+  const [productions, setProductions] = useState<(Awaited<ReturnType<typeof fetchClassProductions>> & { classId: string }) | null>(null);
+  const classIdRef = useRef(classId);
+  classIdRef.current = classId;
+  /** Création de l'éval d'une production avant d'ouvrir sa correction. */
+  const [openingProduction, setOpeningProduction] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<CarnetPrefs>(readPrefs);
   useEffect(() => {
@@ -203,6 +215,7 @@ export function CarnetTab({ userId, account, onError }: {
         setClassId((prev) => (prev && rows.some((c) => c.id === prev) ? prev : rows[0]?.id || ''));
         if (!PERIODS.includes(requestedPeriod)) setPeriod(current.period);
         setSchoolYear(current.schoolYear);
+        setCurrentPeriod(current.period);
       } catch (e) {
         onError(e instanceof Error ? e.message : 'Chargement impossible');
       }
@@ -223,6 +236,12 @@ export function CarnetTab({ userId, account, onError }: {
       setInvalid({});
       // Les séries et les suggestions de rattachement n'empêchent pas d'afficher la grille.
       fetchAssessments(userId).then(setAllAssessments).catch(() => setAllAssessments([]));
+      // Les productions envoyées non plus : leurs colonnes arrivent après. Une réponse arrivée
+      // après un changement de classe est ignorée (sinon les productions d'une autre classe s'affichent).
+      const forClass = classId;
+      fetchClassProductions(classId)
+        .then((p) => { if (classIdRef.current === forClass) setProductions({ ...p, classId: forClass }); })
+        .catch(() => { if (classIdRef.current === forClass) setProductions(null); });
       // L'état des copies n'empêche pas d'afficher la grille : il arrive après.
       fetchCopyOverviews(data.assessments)
         .then((d) => { setOverviews(d.overviews); setCopyKeys(d.copyKeys); })
@@ -350,6 +369,58 @@ export function CarnetTab({ userId, account, onError }: {
     });
     scheduleFlush();
   };
+
+  // ----------------------------------------------------------
+  // Productions numériques : « À corriger » dès le premier envoi
+  // ----------------------------------------------------------
+
+  const prodColumns = useMemo(
+    () => (productions && productions.classId === classId
+      ? productionColumns(productions.activities, productions.works, productions.links)
+      : []),
+    [productions, classId],
+  );
+  /** Éval liée → sa colonne de production (cellules « À corriger »). */
+  const prodByAssessment = useMemo(() => {
+    const m = new Map<string, ProductionColumn<ActivityRow>>();
+    for (const c of prodColumns) if (c.assessmentId) m.set(c.assessmentId, c);
+    return m;
+  }, [prodColumns]);
+  /**
+   * Activités envoyées par la classe mais sans éval au carnet : une colonne « en attente », au
+   * trimestre en cours (celui où l'éval sera créée), sauf si les filtres l'écartent.
+   */
+  const pendingColumns = useMemo(() => {
+    if (currentPeriod === null || period !== currentPeriod) return [];
+    if (filters.kind !== 'all' && filters.kind !== 'tp') return [];
+    if (filters.published === 'yes') return [];
+    return prodColumns.filter((c) => {
+      if (c.assessmentId) return false;
+      // Aucune ligne du carnet concernée (élève parti de la classe) : pas de colonne vide.
+      if (!students.some((st) => c.works.has(st.id))) return false;
+      if (filters.sequence === 'all') return true;
+      return (c.activity.sequence ?? '') === filters.sequence;
+    });
+  }, [prodColumns, currentPeriod, period, filters, students]);
+
+  /**
+   * Ouvre la correction d'une production (celle d'un élève, sinon la liste) dans la fiche de son éval.
+   * Une activité pas encore au carnet y entre d'abord, comme avec « + Évaluation → Production
+   * numérique » : TP, coefficient 1, barème de l'activité, notes des productions déjà corrigées.
+   */
+  const openProduction = useCallback(async (column: ProductionColumn<ActivityRow>, studentId: string | null) => {
+    await flush();
+    const query = studentId ? `?eleve=${encodeURIComponent(studentId)}` : '';
+    if (column.assessmentId) { navigate(`/evaluations/${column.assessmentId}${query}`); return; }
+    setOpeningProduction(column.activity.id);
+    try {
+      const r = await linkActivityToClass({ userId, activity: column.activity, classId });
+      navigate(`/evaluations/${r.assessmentId}${query}`);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Impossible d’ouvrir la production');
+      setOpeningProduction(null);
+    }
+  }, [flush, navigate, userId, classId, onError]);
 
   // ----------------------------------------------------------
   // Évaluation adaptée (migration 041)
@@ -656,11 +727,11 @@ export function CarnetTab({ userId, account, onError }: {
         <div style={emptyBox}>
           Aucun élève dans {className || 'cette classe'}. Importe la liste depuis l’onglet Classes.
         </div>
-      ) : assessments.length === 0 ? (
+      ) : assessments.length === 0 && pendingColumns.length === 0 ? (
         <div style={emptyBox}>
           Aucune évaluation au trimestre {period}. Clique « + Évaluation » pour créer la première.
         </div>
-      ) : visible.length === 0 ? (
+      ) : visible.length === 0 && pendingColumns.length === 0 ? (
         <div style={emptyBox}>
           Aucune évaluation du trimestre {period} ne correspond aux filtres.{' '}
           <button onClick={() => setPrefs((p) => ({ ...p, filters: NO_FILTERS }))} style={linkBtn}>Tout afficher</button>
@@ -684,6 +755,14 @@ export function CarnetTab({ userId, account, onError }: {
                         showDetails={prefs.showColumnDetails}
                         seriesSize={a.series_id ? seriesSize.get(a.series_id) ?? 1 : 0}
                         suggestion={suggestions.get(a.id) ?? null}
+                        toCorrect={(() => {
+                          const col = prodByAssessment.get(a.id);
+                          if (!col) return null;
+                          const gradeOf = (sid: string) => grades.get(cellKey(a.id, sid));
+                          const count = students.filter((st) => cellToCorrect(col.works.get(st.id), gradeOf(st.id))).length;
+                          if (count === 0) return null;
+                          return { count, onOpen: () => { void openProduction(col, firstToCorrect(col, students, gradeOf)); } };
+                        })()}
                         all={allAssessments}
                         userId={userId}
                         onOpen={() => { void flush(); }}
@@ -691,6 +770,41 @@ export function CarnetTab({ userId, account, onError }: {
                         onChanged={() => { void load(); }}
                         onError={onError}
                       />
+                    </th>
+                  );
+                })}
+                {pendingColumns.map((c) => {
+                  const busy = openingProduction === c.activity.id;
+                  const first = firstToCorrect(c, students);
+                  // Compteurs sur les lignes affichées : un élève parti de la classe garde sa production
+                  // (visible dans la fiche) mais n'a pas de ligne ici.
+                  const sent = students.filter((st) => c.works.has(st.id)).length;
+                  const todoCount = students.filter((st) => c.works.get(st.id)?.status === 'submitted').length;
+                  return (
+                    <th key={`prod-${c.activity.id}`} className="gc-carnet__pending-col" style={{ ...th, ...colSep, minWidth: 112, maxWidth: 168, textAlign: 'left', verticalAlign: 'top', fontWeight: 400 }}>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                        <span style={{ color: 'var(--text-muted)', display: 'flex', marginTop: 1 }}><KindIcon kind="tp" size={13} /></span>
+                        <button
+                          type="button"
+                          className="gc-colhead__title"
+                          disabled={busy}
+                          onClick={() => { void openProduction(c, first); }}
+                          title={`${c.activity.title} — productions envoyées, pas encore au carnet.\nOuvrir la correction : l’éval entre au carnet (TP, coef. 1, /${c.activity.bareme_total}).`}
+                        >
+                          {c.activity.title}
+                        </button>
+                      </div>
+                      <div className="gc-colhead__meta">
+                        Production · /{showNum(Number(c.activity.bareme_total))} · {sent} envoi{sent > 1 ? 's' : ''}
+                      </div>
+                      <div className="gc-colhead__pills">
+                        {todoCount > 0 && (
+                          <button type="button" className="gc-pill gc-pill--todo" disabled={busy} onClick={() => { void openProduction(c, first); }} title="Ouvrir la correction des productions">
+                            {busy ? 'Ouverture…' : `À corriger · ${todoCount}`}
+                          </button>
+                        )}
+                        <span className="gc-pill gc-pill--pending" title="Aucune éval au carnet pour cette activité : elle sera créée à l’ouverture de la correction">pas au carnet</span>
+                      </div>
                     </th>
                   );
                 })}
@@ -724,8 +838,10 @@ export function CarnetTab({ userId, account, onError }: {
                       // Brouillon du Correcteur ou de Claude : compte pour le prof, invisible pour l'élève (053).
                       const pending = draft === undefined && !!row && row.grade != null && !row.is_validated;
                       const mark = draft === undefined ? cellMark(a, row, !!copyKeys[a.id]?.has(s.id), overviews[a.id]) : null;
+                      const prodCol = prodByAssessment.get(a.id);
+                      const todo = draft === undefined && !!prodCol && cellToCorrect(prodCol.works.get(s.id), row);
                       return (
-                        <td key={a.id} className="gc-cell" style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
+                        <td key={a.id} className={`gc-cell${todo ? ' gc-cell--todo' : ''}`} style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
                           <input
                             ref={(el) => {
                               if (el) inputsRef.current.set(key, el);
@@ -754,7 +870,19 @@ export function CarnetTab({ userId, account, onError }: {
                               fontStyle: isStatus ? 'italic' : 'normal',
                             }}
                           />
-                          {mark && (
+                          {todo && prodCol && (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="gc-cell__todo"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => { void openProduction(prodCol, s.id); }}
+                              title={`Production de ${s.pseudo} envoyée, pas encore corrigée : ouvrir sa correction`}
+                            >
+                              À corriger
+                            </button>
+                          )}
+                          {mark && !todo && (
                             <span
                               aria-hidden
                               style={{ position: 'absolute', top: 1, left: 3, fontSize: mark === 'draft' ? 10 : 8, color: MARK_STYLE[mark].color, pointerEvents: 'none' }}
@@ -786,6 +914,37 @@ export function CarnetTab({ userId, account, onError }: {
                         </td>
                       );
                     })}
+                    {pendingColumns.map((c) => {
+                      const w = c.works.get(s.id);
+                      const busy = openingProduction === c.activity.id;
+                      return (
+                        <td key={`prod-${c.activity.id}`} className="gc-cell gc-carnet__pending-col" style={{ ...td, ...colSep, padding: 0, position: 'relative', height: 33 }}>
+                          {w?.status === 'submitted' ? (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="gc-cell__todo"
+                              disabled={busy}
+                              onClick={() => { void openProduction(c, s.id); }}
+                              title={`Production de ${s.pseudo} envoyée, pas encore corrigée : ouvrir sa correction`}
+                            >
+                              À corriger
+                            </button>
+                          ) : w ? (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="gc-cell__pending"
+                              disabled={busy}
+                              onClick={() => { void openProduction(c, s.id); }}
+                              title={`Production de ${s.pseudo} corrigée, note pas encore au carnet : ouvrir sa correction`}
+                            >
+                              {w.total_points != null ? showNum(Number(w.total_points)) : 'corrigée'}
+                            </button>
+                          ) : null}
+                        </td>
+                      );
+                    })}
                     {prefs.showAverage && (
                       <td style={{ ...td, background: 'var(--surface-3)', fontWeight: 700 }}>
                         {formatGrade(avg)}
@@ -804,6 +963,7 @@ export function CarnetTab({ userId, account, onError }: {
                     {formatGrade(columnStats.get(a.id)?.mean ?? null)}
                   </td>
                 ))}
+                {pendingColumns.map((c) => <td key={`prod-${c.activity.id}`} style={{ ...tdFoot, ...colSep }}>—</td>)}
                 {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }}>{formatGrade(classAverage)}</td>}
               </tr>
               <tr>
@@ -813,6 +973,7 @@ export function CarnetTab({ userId, account, onError }: {
                     {formatGrade(columnStats.get(a.id)?.median ?? null)}
                   </td>
                 ))}
+                {pendingColumns.map((c) => <td key={`prod-${c.activity.id}`} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>—</td>)}
                 {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />}
               </tr>
               {visible.some((a) => hasCopies(a) && overviews[a.id] && !neverScanned(overviews[a.id])) && (
@@ -829,6 +990,7 @@ export function CarnetTab({ userId, account, onError }: {
                       </td>
                     );
                   })}
+                  {pendingColumns.map((c) => <td key={`prod-${c.activity.id}`} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>—</td>)}
                   {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />}
                 </tr>
               )}
@@ -838,7 +1000,7 @@ export function CarnetTab({ userId, account, onError }: {
       )}
 
       {/* Aide-mémoire de saisie */}
-      {assessments.length > 0 && students.length > 0 && (
+      {(assessments.length > 0 || pendingColumns.length > 0) && students.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 10 }}>
           <strong>Entrée</strong> ou <strong>↓</strong> : élève suivant · <strong>Tab</strong> : évaluation suivante ·
           {' '}<strong>a</strong> absent · <strong>d</strong> dispensé · <strong>n</strong> non rendu ·
@@ -847,6 +1009,7 @@ export function CarnetTab({ userId, account, onError }: {
           {' '}<strong style={{ color: 'var(--warn)' }}>*</strong> brouillon à valider ·
           {' '}<strong style={{ color: 'var(--indigo)' }}>●</strong> copie à corriger ·
           {' '}<strong>○</strong> copie manquante ·
+          {' '}<strong style={{ color: 'var(--indigo)' }}>À corriger</strong> : production envoyée, un clic ouvre sa correction ·
           {' '}<strong>i</strong> (au survol d’une note) : détail de l’élève (copie, correction, historique)
         </p>
       )}
