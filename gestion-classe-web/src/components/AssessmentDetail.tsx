@@ -364,13 +364,46 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
               const drafts = pendingDrafts(o);
               const r = o ? retentionState(a, o.pages) : null;
               const pub = publicationState(a);
+              // Une seule action principale par ligne, celle de l'étape en cours ; le reste passe dans « ⋯ ».
+              // Toutes les lignes gardent ainsi la même forme : Voir · action · ⋯.
+              const canAddCopies = !!o && hasCopies(a) && o.scanned === 0 && o.transcribed === 0 && !a.copies_purged_at;
+              const addCopies = {
+                label: 'Ajouter les copies',
+                onClick: () => { setClassAddFor(a.id); onOpen(a.id); },
+                title: 'Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste',
+              };
+              // Déjà des notes sans scan (saisies au carnet) : la suite logique est de publier, pas d'ajouter des copies.
+              const addFirst = canAddCopies && o!.graded + o!.absent === 0;
+              const primary: { label: string; onClick: () => void; title: string; busy?: boolean } | null =
+                addFirst
+                  ? addCopies
+                  : drafts > 0
+                    ? { label: validating === a.id ? 'Validation…' : `Valider (${drafts})`, onClick: () => handleValidateClass(a), busy: validating === a.id, title: 'Les brouillons du Correcteur deviennent des notes validées, visibles à la publication' }
+                    : pub === 'none'
+                      ? { label: 'Publier…', onClick: () => setPublishing(a), title: 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' }
+                      : pub === 'notes'
+                        ? { label: 'Publier les corrections', onClick: () => setCorrections(a, true), title: 'Le détail, le commentaire, le corrigé et la copie corrigée deviennent visibles' }
+                        : null;
               const menu: MoreMenuItem[] = [];
+              if (canAddCopies && !addFirst) menu.push(addCopies);
+              if (pub === 'none' && (addFirst || drafts > 0)) {
+                menu.push({ label: 'Publier…', onClick: () => setPublishing(a), title: 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' });
+              }
+              if (o && o.graded > 0 && hasCopies(a)) {
+                menu.push({
+                  label: exportLoading === a.id ? 'Préparation…' : 'Exporter…',
+                  onClick: () => handleExport(a),
+                  disabled: exportLoading === a.id,
+                  title: 'Fiches de correction : PDF à imprimer, Word modifiable, ou Markdown sans nom pour Claude',
+                });
+              }
               if (o && o.graded + o.absent > 0) {
                 menu.push({ label: 'Copier pour Pronote', onClick: () => setPronoteFor(a), title: 'La colonne des notes, dans l’ordre de la liste Pronote' });
               }
               if (pub === 'all') menu.push({ label: 'Retenir les corrections', onClick: () => setCorrections(a, false), title: 'Les élèves gardent leur note, sans le détail ni le corrigé' });
               if (r?.kind === 'scheduled') menu.push({ label: `Garder les scans ${COPY_RETENTION_DAYS} j de plus`, onClick: () => handleExtend(a), title: 'En cas de contestation' });
               if (r?.kind === 'scheduled' || r?.kind === 'kept') menu.push({ label: 'Supprimer les scans maintenant', onClick: () => handlePurgeNow(a), danger: true });
+              if (pub !== 'none') menu.push({ label: 'Dépublier', onClick: () => unpublish(a), title: 'Retirer de l’espace élève' });
               return (
                 <tr key={a.id} style={{ borderTop: '1px solid var(--border)', background: on ? 'var(--indigo-soft)' : undefined }}>
                   <td style={{ padding: '8px 6px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>
@@ -398,67 +431,28 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '8px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button
-                      onClick={() => onOpen(on ? null : a.id)}
-                      disabled={!hasCopyContent(o)}
-                      style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, opacity: hasCopyContent(o) ? 1 : 0.5 }}
-                    >
-                      {on ? 'Fermer' : o && o.scanned === 0 && o.transcribed === 0 ? 'Voir les notes' : 'Voir les copies'}
-                    </button>
-                    {o && hasCopies(a) && o.scanned === 0 && o.transcribed === 0 && !a.copies_purged_at && (
+                  <td style={{ padding: '8px 6px', whiteSpace: 'nowrap', width: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
                       <button
-                        onClick={() => { setClassAddFor(a.id); onOpen(a.id); }}
-                        style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
-                        title="Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste"
+                        onClick={() => onOpen(on ? null : a.id)}
+                        disabled={!hasCopyContent(o)}
+                        style={{ ...btnGhost, ...rowBtn, opacity: hasCopyContent(o) ? 1 : 0.5 }}
                       >
-                        Ajouter les copies
+                        {on ? 'Fermer' : o && o.scanned === 0 && o.transcribed === 0 ? 'Voir les notes' : 'Voir les copies'}
                       </button>
-                    )}
-                    {drafts > 0 && (
-                      <button
-                        onClick={() => handleValidateClass(a)}
-                        disabled={validating === a.id}
-                        style={{ ...btnPrimary, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
-                        title="Les brouillons du Correcteur deviennent des notes validées, visibles à la publication"
-                      >
-                        {validating === a.id ? 'Validation…' : `Valider la classe (${drafts})`}
-                      </button>
-                    )}
-                    {pub === 'notes' && (
-                      <button
-                        onClick={() => setCorrections(a, true)}
-                        style={{ ...btnPrimary, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
-                        title="Le détail, le commentaire, le corrigé et la copie corrigée deviennent visibles"
-                      >
-                        Publier les corrections
-                      </button>
-                    )}
-                    <button
-                      onClick={() => (pub === 'none' ? setPublishing(a) : unpublish(a))}
-                      style={{
-                        ...(pub !== 'none' || drafts > 0 ? btnGhost : btnPrimary),
-                        padding: '4px 10px', fontSize: 12, marginLeft: 6,
-                      }}
-                      title={pub === 'none' ? 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' : 'Visible dans l’espace élève'}
-                    >
-                      {pub === 'none' ? 'Publier…' : 'Dépublier'}
-                    </button>
-                    {o && o.graded > 0 && hasCopies(a) && (
-                      <button
-                        onClick={() => handleExport(a)}
-                        disabled={exportLoading === a.id}
-                        style={{ ...btnGhost, padding: '4px 10px', fontSize: 12, marginLeft: 6 }}
-                        title="Fiches de correction : PDF à imprimer, Word modifiable, ou Markdown sans nom pour Claude"
-                      >
-                        {exportLoading === a.id ? 'Préparation…' : 'Exporter…'}
-                      </button>
-                    )}
-                    {menu.length > 0 && (
-                      <span style={{ marginLeft: 6 }}>
-                        <MoreMenu items={menu} compact title="Plus d’actions : Pronote, corrections, scans" />
+                      {primary ? (
+                        <button onClick={primary.onClick} disabled={primary.busy} style={{ ...btnPrimary, ...rowBtn, width: 168 }} title={primary.title}>
+                          {primary.label}
+                        </button>
+                      ) : (
+                        <span style={{ ...rowBtn, width: 168, color: 'var(--pos)', fontWeight: 700, textAlign: 'center' }} title="Notes et corrections visibles dans l’espace élève">
+                          ✓ Publiée
+                        </span>
+                      )}
+                      <span style={{ width: 30, display: 'inline-flex', justifyContent: 'center' }}>
+                        {menu.length > 0 && <MoreMenu items={menu} compact title="Plus d’actions : export, Pronote, scans, dépublier" />}
                       </span>
-                    )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -509,3 +503,5 @@ const btnBase: React.CSSProperties = {
 const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo)', color: '#fff' };
 const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };
 const btnDanger: React.CSSProperties = { ...btnBase, background: 'var(--neg-soft)', color: 'var(--neg)' };
+/** Boutons d'une ligne de classe : largeur fixe pour que les colonnes s'alignent d'une classe à l'autre. */
+const rowBtn: React.CSSProperties = { padding: '4px 10px', fontSize: 12, width: 120, boxSizing: 'border-box', display: 'inline-block' };
