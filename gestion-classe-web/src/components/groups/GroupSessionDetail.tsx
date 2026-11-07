@@ -575,7 +575,7 @@ export function GroupSessionDetail({ sessionId, onDeleted, onChanged }: {
       </div>
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[120] p-4" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-[120] p-4" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
           <div className="bg-[var(--surface)] w-full max-w-md p-6" style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Supprimer cette séance">
             <h3 className="text-lg font-semibold text-[var(--text)] text-center">Supprimer cette séance ?</h3>
             <p className="text-[var(--text-muted)] mt-2 text-center">
@@ -598,7 +598,7 @@ export function GroupSessionDetail({ sessionId, onDeleted, onChanged }: {
       )}
 
       {viewingPhoto && photoUrls[viewingPhoto.id] && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4" style={{ zIndex: 130 }} onClick={() => { setViewingPhoto(null); setEditingCaption(null); }}>
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 130 }} onClick={() => { setViewingPhoto(null); setEditingCaption(null); }}>
           <div className="relative max-w-3xl w-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
             <img src={photoUrls[viewingPhoto.id]} alt={viewingPhoto.caption || 'Photo TP'} style={{ maxHeight: '75vh', maxWidth: '100%', objectFit: 'contain', borderRadius: 'var(--radius)' }} />
             <div className="mt-3 w-full max-w-md text-center">

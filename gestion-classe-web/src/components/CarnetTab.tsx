@@ -687,7 +687,7 @@ export function CarnetTab({ userId, account, onError }: {
       })()}
 
       {showExport && (
-        <div onClick={() => !exporting && setShowExport(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'grid', placeItems: 'center', zIndex: 100 }}>
+        <div className="gc-overlay gc-modal" onClick={() => !exporting && setShowExport(false)} style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', zIndex: 100 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: 460, maxWidth: '92vw', boxShadow: 'var(--shadow-2)' }}>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
               Sauvegarder les notes

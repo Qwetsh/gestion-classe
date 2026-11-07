@@ -701,7 +701,7 @@ export function TpTemplates() {
 
         {/* ─── Detail Modal ─────────────────────── */}
         {selectedTemplate && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleCloseDetail}>
+          <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4" onClick={handleCloseDetail}>
             <div
               className="bg-[var(--surface)] w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
               style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
@@ -878,7 +878,7 @@ export function TpTemplates() {
 
         {/* ─── Create/Edit Modal ────────────────── */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-[60] p-4">
             <div
               className="bg-[var(--surface)] w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
               style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}
@@ -1095,7 +1095,7 @@ export function TpTemplates() {
 
         {/* ─── Delete Confirmation ──────────────── */}
         {showDeleteConfirm && templateToDelete && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-[70] p-4">
             <div className="bg-[var(--surface)] w-full max-w-md p-6" style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}>
               <div className="text-center mb-6">
                 <div className="w-16 h-16 mx-auto mb-4 bg-[var(--neg-soft)] flex items-center justify-center" style={{ borderRadius: 'var(--radius-full)' }}>

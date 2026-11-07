@@ -477,7 +477,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
   };
 
   return (
-    <div className="fixed inset-0 z-50" style={{ background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+    <div className="gc-overlay gc-modal fixed inset-0 z-50" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div
         onClick={e => e.stopPropagation()}
         style={{

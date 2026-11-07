@@ -153,7 +153,7 @@ export function RoomModal({ isOpen, onClose, onSaved, editingRoom, userId }: Roo
   const activePlaces = totalCells - disabledCells.size;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
           {editingRoom ? 'Modifier la salle' : 'Nouvelle salle'}

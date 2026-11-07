@@ -1506,9 +1506,11 @@ a.dash__card-link:hover { text-decoration: underline; }
 
 /* Shortcuts grid */
 .dash__shortcuts {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
-  background: var(--border);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  background: var(--surface);
 }
+/* Séparateurs tracés sur chaque case (audit V5) : plus de fond gris quand la grille est vide ou plus haute que son contenu */
+.dash__shortcuts > * { box-shadow: 0 -1px 0 var(--border), -1px 0 0 var(--border); }
 .dash__shortcut {
   display: flex; align-items: center; gap: 10px;
   padding: 14px 16px; text-decoration: none; color: var(--text);
@@ -2338,3 +2340,12 @@ button.gc-colhead__title { background: none; border: none; padding: 0; text-alig
 }
 .gc-pronote-card__close:hover { opacity: 1; background: rgba(154, 52, 18, 0.1); }
 .gc-sidebar--rail .gc-pronote-card__close { display: none; }
+
+/* ---- Audit design, suite (I9) : tous les overlays passent par .gc-overlay / .gc-modal ----
+   Le panneau est le premier enfant du voile : sous 640 px il occupe tout l'écran. */
+@media (max-width: 640px) {
+  .gc-modal > *:first-child {
+    max-height: 100dvh !important; height: 100dvh; max-width: none !important; width: 100% !important;
+    border-radius: 0 !important; overflow-y: auto;
+  }
+}
