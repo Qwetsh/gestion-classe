@@ -3,14 +3,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { WorkCorrection } from './WorkCorrection';
 import { MoreMenu } from '../MoreMenu';
+import { Badge } from '../AiRunPanel';
 import {
-  autoPoints,
   fetchActivityAssessments,
   fetchClassStudents,
   fetchWorks,
   gradableWorks,
   groupWorks,
-  sameCorrection,
   sendGradesToCarnet,
   updateActivity,
   WORK_STATUS_LABEL,
@@ -27,8 +26,9 @@ import { buildClaudeExport, downloadText, importClaudeCorrections, parseClaudeCo
 
 /**
  * Une activité numérique pour une classe : en-tête (corrigé attendu, envois ouverts ou fermés),
- * compteurs, gestes (imprimer, notes au carnet, correction par Claude par fichier), tableau des
- * productions et fenêtre de correction (WorkCorrection). Partagé par la page Productions et la
+ * compteurs, gestes (imprimer, notes au carnet, correction par Claude par fichier), puis la même
+ * mise en page que les copies d'éval (CopyViewer) : élèves à gauche, copie au centre, correction
+ * et analyse à droite (WorkCorrection). Partagé par la page Productions et la
  * fiche d'une éval liée à une activité (hub Évaluations, phase 6).
  *
  * Dans la fiche (`assessmentId` fourni), la note suit la correction (Q5 du plan) : chaque
@@ -46,6 +46,11 @@ function groupStatus(g: WorkGroup): WorkStatus {
 
 const groupNames = (g: WorkGroup): string => g.works.map((w) => w.students?.pseudo ?? 'Élève').join(', ');
 
+type Filter = 'all' | 'todo' | 'done' | 'none';
+const FILTERS: [Filter, string][] = [['all', 'Tous'], ['todo', 'À corriger'], ['done', 'Corrigées'], ['none', 'Rien reçu']];
+/** À corriger : envoyée sans correction, ou renvoyée après correction. */
+const needsCorrection = (g: WorkGroup) => g.works.some((w) => w.status === 'submitted' || (w.modified_after_correction && w.status !== 'validated'));
+
 const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
   draft: { bg: 'var(--surface-3)', fg: 'var(--text-muted)' },
   submitted: { bg: 'var(--indigo-soft, rgba(99,102,241,.12))', fg: 'var(--indigo)' },
@@ -53,11 +58,6 @@ const STATUS_COLOR: Record<WorkStatus, { bg: string; fg: string }> = {
   validated: { bg: 'var(--pos-soft, rgba(16,185,129,.14))', fg: 'var(--pos, #047857)' },
 };
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
 
 export function ActivityClassPanel({
   activity,
@@ -94,6 +94,8 @@ export function ActivityClassPanel({
   const [sending, setSending] = useState(false);
   const [importing, setImporting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Élève sélectionné qui n'a rien envoyé. */
+  const [emptyStudentId, setEmptyStudentId] = useState<string | null>(null);
   const [showExpected, setShowExpected] = useState(false);
   const [expectedDraft, setExpectedDraft] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
@@ -145,8 +147,45 @@ export function ActivityClassPanel({
     const w = classWorks.find((x) => x.student_id === initialStudentId);
     if (w) setOpenId(w.id);
   }
+  // Rien d'ouvert : la première production à corriger, sinon la première reçue (comme la première copie scannée).
   const openIndex = openId ? ordered.findIndex((g) => g.works.some((w) => w.id === openId)) : -1;
   const openGroup = openIndex >= 0 ? ordered[openIndex] : null;
+  const emptyStudent = emptyStudentId ? classStudents.find((s) => s.id === emptyStudentId) ?? null : null;
+  const firstPick = ordered.find(needsCorrection) ?? ordered[0];
+  if (openIndex < 0 && !emptyStudent && firstPick && !loadingWorks && !(initialStudentId && !initialDone)) setOpenId(firstPick.works[0].id);
+
+  const [filter, setFilter] = useState<Filter>('all');
+  const rowFilter = (r: (typeof rows)[number], f: Filter) =>
+    f === 'all' ? true : f === 'none' ? !r.group : !!r.group && r.group.works[0].status !== 'draft' && (f === 'todo' ? needsCorrection(r.group) : !needsCorrection(r.group));
+  const visible = useMemo(() => rows.filter((r) => rowFilter(r, filter)), [rows, filter]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Changer d'élève avec une correction non enregistrée : on demande, comme pour « Corriger pour ».
+  const dirtyRef = useRef(false);
+  const onDirtyChange = useCallback((d: boolean) => { dirtyRef.current = d; }, []);
+  const canLeave = () => !dirtyRef.current || window.confirm('Modifications non enregistrées : les abandonner pour passer à un autre élève ?');
+  const selectGroup = (g: WorkGroup) => { if (g.works.some((w) => w.id === openId) || !canLeave()) return; setEmptyStudentId(null); setOpenId(g.works[0].id); };
+  const selectEmpty = (id: string) => { if (!canLeave()) return; setOpenId(null); setEmptyStudentId(id); };
+
+  // ↑ ↓ : élève précédent ou suivant parmi ceux qui ont envoyé quelque chose (comme les copies d'éval).
+  const moveRef = useRef<(d: 1 | -1) => void>(() => {});
+  moveRef.current = (d) => {
+    const cands = visible.flatMap((r) => (r.group ? [r.group] : []));
+    if (cands.length === 0) return;
+    const i = cands.findIndex((g) => g.works.some((w) => w.id === openId));
+    selectGroup(cands[(i + d + cands.length) % cands.length]);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+      if (e.key === 'ArrowDown') moveRef.current(1);
+      else if (e.key === 'ArrowUp') moveRef.current(-1);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const counts = useMemo(() => {
     const c = { draft: 0, submitted: 0, corrected: 0, validated: 0, none: 0 };
@@ -338,104 +377,91 @@ export function ActivityClassPanel({
         )}
       </div>
 
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface-3)', textAlign: 'left' }}>
-              <th style={th}>Élèves</th>
-              <th style={th}>Statut</th>
-              <th style={th}>Dernier envoi</th>
-              <th style={th}>Envois</th>
-              <th style={th}>Note</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 20, color: 'var(--text-dim)', textAlign: 'center' }}>Aucun élève pour cette classe.</td></tr>
+      {/* Élèves à gauche, copie et correction à droite : la mise en page des copies d'éval (CopyViewer). */}
+      <div style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+        <div>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+            {FILTERS.map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setFilter(id)}
+                style={{ ...chip, background: filter === id ? 'var(--text)' : 'var(--surface-3)', color: filter === id ? 'var(--surface)' : 'var(--text-muted)' }}
+              >
+                {label} {rows.filter((r) => rowFilter(r, id)).length}
+              </button>
+            ))}
+          </div>
+          <div style={{ maxHeight: 640, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
+            {visible.length === 0 && (
+              <div style={{ padding: 12, fontSize: 12, color: 'var(--text-dim)' }}>{rows.length === 0 ? 'Aucun élève pour cette classe.' : 'Personne ici.'}</div>
             )}
-            {rows.map((r) => {
-              if (!r.group) return (
-                <tr key={r.student.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={td}><strong>{r.student.pseudo}</strong></td>
-                  <td style={td}><span style={{ color: 'var(--text-dim)' }}>Rien reçu</span></td>
-                  <td style={td}>—</td>
-                  <td style={td}>—</td>
-                  <td style={td}>—</td>
-                  <td style={td}></td>
-                </tr>
-              );
+            {visible.map((r) => {
+              if (!r.group) {
+                const on = r.student.id === emptyStudentId && !openGroup;
+                return (
+                  <button key={r.student.id} onClick={() => selectEmpty(r.student.id)} style={{ ...listItem, background: on ? 'var(--indigo-soft)' : 'transparent' }}>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>{r.student.pseudo}</span>
+                    <Badge tone="warn">Rien reçu</Badge>
+                  </button>
+                );
+              }
               const g = r.group;
               const lead = g.works[0];
               const status = groupStatus(g);
-              const mixedStatus = g.works.some((w) => w.status !== lead.status);
-              const fmtNote = (w: WorkRow) => (w.total_points != null ? `${String(w.total_points).replace('.', ',')} / ${activity.bareme_total}` : '—');
+              const on = g.works.some((w) => w.id === openId);
+              const graded = g.works.find((w) => w.total_points != null);
               return (
-                <tr key={g.key} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={td}>
-                    <strong>{groupNames(g)}</strong>
-                    {g.works.length === 1 && <span style={{ color: 'var(--text-dim)', marginLeft: 6 }}>seul</span>}
-                  </td>
-                  <td style={td}>
-                    <span style={{ ...pill, background: STATUS_COLOR[status].bg, color: STATUS_COLOR[status].fg }}>
-                      {WORK_STATUS_LABEL[status]}{g.works.some((w) => w.modified_after_correction) && ' · modifiée après correction'}
+                <button key={g.key} onClick={() => selectGroup(g)} style={{ ...listItem, background: on ? 'var(--indigo-soft)' : 'transparent' }}
+                  title={g.works.length > 1 ? `Production de groupe : ${groupNames(g)}` : undefined}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: status === 'draft' ? 'var(--text-dim)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {groupNames(g)}
+                  </span>
+                  {graded && (
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: status === 'validated' ? 'var(--pos)' : 'var(--warn)' }}
+                      title={status === 'validated' ? 'Correction validée' : 'Corrigée, pas encore validée'}>
+                      {String(graded.total_points).replace('.', ',')}{status === 'validated' ? '' : '*'}
                     </span>
-                    {mixedStatus && (
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>
-                        {g.works.map((w) => `${w.students?.pseudo ?? 'Élève'} : ${WORK_STATUS_LABEL[w.status].toLowerCase()}`).join(' · ')}
-                      </div>
-                    )}
-                  </td>
-                  <td style={td}>{fmtDate(lead.submitted_at ?? lead.updated_at)}</td>
-                  <td style={td}>{lead.version}</td>
-                  <td style={td}>
-                    {g.works.some((w) => w.total_points != null) ? (
-                      sameCorrection(g.works)
-                        ? fmtNote(lead)
-                        : <span title="Membres corrigés à part">{g.works.map((w) => `${w.students?.pseudo ?? 'Élève'} ${fmtNote(w)}`).join(' · ')}</span>
-                    ) : lead.status !== 'draft' ? (() => {
-                      // Pas encore corrigée : aperçu des points des réponses à choix (correction automatique).
-                      const a = autoPoints(activity.definition, lead.content);
-                      return a ? <span style={{ color: 'var(--text-muted)' }} title="Réponses à choix corrigées automatiquement, questions ouvertes à corriger">auto {String(a.points).replace('.', ',')} / {String(a.max).replace('.', ',')}</span> : '—';
-                    })() : '—'}
-                  </td>
-                  <td style={{ ...td, textAlign: 'right' }}>
-                    <button
-                      onClick={() => setOpenId(lead.id)}
-                      style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }}
-                      title={status === 'draft' ? 'Brouillon : lecture seule' : lead.correction ? 'Revoir la correction' : g.works.length > 1 ? 'Corriger cette production pour tout le groupe' : 'Corriger cette fiche'}
-                    >
-                      Ouvrir
-                    </button>
-                  </td>
-                </tr>
+                  )}
+                  {g.works.length > 1 && <Badge>{g.works.length}</Badge>}
+                  {status === 'draft' ? <Badge>Brouillon</Badge>
+                    : needsCorrection(g) ? <Badge tone="info">{lead.modified_after_correction ? 'Renvoyée' : 'À corriger'}</Badge>
+                    : status === 'validated' ? <Badge tone="ok">Validée</Badge>
+                    : <Badge tone="warn">Corrigée</Badge>}
+                </button>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
 
-      {openGroup && (
-        <WorkCorrection
-          group={openGroup.works}
-          activity={activity}
-          onClose={() => setOpenId(null)}
-          onSaved={(updated) => {
-            setWorks((ws) => ws.map((w) => updated.find((u) => u.id === w.id) ?? w));
-            void syncGrades(updated);
-          }}
-          onDeleted={(id) => {
-            // La fenêtre reste sur ce qui reste du groupe ; si c'était le dernier membre, elle se ferme.
-            const rest = openGroup.works.find((w) => w.id !== id);
-            setOpenId(rest ? rest.id : null);
-            setWorks((ws) => ws.filter((w) => w.id !== id));
-          }}
-          onPrev={openIndex > 0 ? () => setOpenId(ordered[openIndex - 1].works[0].id) : undefined}
-          onNext={openIndex >= 0 && openIndex < ordered.length - 1 ? () => setOpenId(ordered[openIndex + 1].works[0].id) : undefined}
-          position={openIndex >= 0 ? { index: openIndex, total: ordered.length } : undefined}
-          toast={showToast}
-        />
-      )}
+        <div style={{ minWidth: 0 }}>
+          {openGroup ? (
+            <WorkCorrection
+              group={openGroup.works}
+              activity={activity}
+              onSaved={(updated) => {
+                setWorks((ws) => ws.map((w) => updated.find((u) => u.id === w.id) ?? w));
+                void syncGrades(updated);
+              }}
+              onDeleted={(id) => {
+                // La vue reste sur ce qui reste du groupe ; si c'était le dernier membre, on passe à la suivante.
+                const rest = openGroup.works.find((w) => w.id !== id);
+                dirtyRef.current = false;
+                setOpenId(rest ? rest.id : null);
+                setWorks((ws) => ws.filter((w) => w.id !== id));
+              }}
+              onDirtyChange={onDirtyChange}
+              position={{ index: openIndex, total: ordered.length }}
+              toast={showToast}
+            />
+          ) : (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 10 }}>
+              {loadingWorks ? 'Chargement des productions…'
+                : emptyStudent ? `${emptyStudent.pseudo} n’a rien envoyé pour cette activité.`
+                : 'Aucune production reçue dans cette classe.'}
+            </div>
+          )}
+        </div>
+      </div>
 
       {showExpected && (
         <div style={overlay} onClick={() => setShowExpected(false)}>
@@ -459,9 +485,12 @@ export function ActivityClassPanel({
 /* ---------- styles ---------- */
 
 const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 };
+const chip: React.CSSProperties = { border: 'none', borderRadius: 999, padding: '3px 9px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
+const listItem: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', padding: '7px 10px',
+  border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit',
+};
 const pill: React.CSSProperties = { display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 600 };
-const th: React.CSSProperties = { padding: '8px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' };
-const td: React.CSSProperties = { padding: '8px 12px', verticalAlign: 'top' };
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };
 const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, color: 'var(--text)' };
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14 };
