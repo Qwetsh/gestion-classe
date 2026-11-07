@@ -123,7 +123,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="text-[var(--indigo)] font-semibold hover:underline"
+                className="text-[var(--indigo-ink)] font-semibold hover:underline"
               >
                 Retour à la connexion
               </button>
@@ -152,7 +152,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="text-[var(--indigo)] font-semibold hover:underline"
+                className="text-[var(--indigo-ink)] font-semibold hover:underline"
               >
                 Retour à la connexion
               </button>
@@ -215,7 +215,7 @@ export function Login() {
                       <button
                         type="button"
                         onClick={() => switchMode('reset')}
-                        className="text-xs text-[var(--text-dim)] hover:text-[var(--indigo)] hover:underline"
+                        className="text-xs text-[var(--text-dim)] hover:text-[var(--indigo-ink)] hover:underline"
                       >
                         Mot de passe oublié ?
                       </button>
@@ -310,7 +310,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => switchMode('signup')}
-                    className="text-[var(--indigo)] font-semibold hover:underline"
+                    className="text-[var(--indigo-ink)] font-semibold hover:underline"
                   >
                     Créer un compte
                   </button>
@@ -322,7 +322,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-[var(--indigo)] font-semibold hover:underline"
+                    className="text-[var(--indigo-ink)] font-semibold hover:underline"
                   >
                     Se connecter
                   </button>
@@ -333,7 +333,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-[var(--indigo)] font-semibold hover:underline"
+                    className="text-[var(--indigo-ink)] font-semibold hover:underline"
                   >
                     Retour à la connexion
                   </button>

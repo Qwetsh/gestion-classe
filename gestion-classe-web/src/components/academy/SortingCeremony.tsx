@@ -302,7 +302,7 @@ export function SortingCeremony({ students, assignments, onClose }: Props) {
                 {currentStudent.pseudo} rejoint...
               </div>
               <div style={{
-                fontSize: 42, fontWeight: 800, marginBottom: 20,
+                fontSize: 42, fontWeight: 700, marginBottom: 20,
                 color: houseData.cInkLight,
                 textShadow: `0 0 30px ${houseData.c1}`,
               }}>

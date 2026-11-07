@@ -130,7 +130,7 @@ export function StudentGrades({ code }: { code: string }) {
         ))}
         <div style={{ background: T.indigoSoft, border: `1px solid ${T.indigo}55`, borderRadius: 12, padding: '10px 6px', textAlign: 'center' }}>
           <div style={{ color: T.indigo, fontSize: 11 }}>Année</div>
-          <div style={{ color: T.indigo, fontWeight: 800, fontSize: 18 }}>{formatGrade(year)}</div>
+          <div style={{ color: T.indigo, fontWeight: 700, fontSize: 18 }}>{formatGrade(year)}</div>
         </div>
       </div>
 
@@ -158,7 +158,7 @@ export function StudentGrades({ code }: { code: string }) {
                 </div>
                 {hasGrade ? (
                   <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: gradeColor(a.grade!), fontWeight: 800, fontSize: 22 }}>
+                    <span style={{ color: gradeColor(a.grade!), fontWeight: 700, fontSize: 22 }}>
                       {formatGrade(a.grade!)}
                     </span>
                     <span style={{ color: T.textDim, fontSize: 13 }}>/20</span>

@@ -618,7 +618,7 @@ const styles: Record<string, CSSProperties> = {
   thumbOverlay: {
     position: 'absolute' as const, inset: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 24, fontWeight: 900, color: '#FFF',
+    fontSize: 24, fontWeight: 700, color: '#FFF',
   },
   resultsSection: {
     padding: 12, backgroundColor: '#F0FDF4', borderRadius: 8, border: '1px solid #A7F3D0',

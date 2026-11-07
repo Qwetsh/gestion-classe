@@ -375,7 +375,7 @@
 .wbx.wbx .wbx__page.is-on { border-color: var(--wb-select); }
 .wbx.wbx .wbx__page span { font: 600 14px/1.3 var(--wb-font-num); }
 .wbx.wbx .wbx__btn { height: 76px; padding: 0 32px; border-radius: 20px; background: var(--wb-chrome-sunk); font: 700 22px/1 var(--wb-font-ui); }
-.wbx.wbx .wbx__btn--primary { background: var(--wb-accent); color: #140A02; font-weight: 800; }
+.wbx.wbx .wbx__btn--primary { background: var(--wb-accent); color: #140A02; font-weight: 700; }
 .wbx.wbx .wbx__foot { border-top-color: var(--wb-chrome-line); }
 
 /* Recherche : champ 88 px / 34 px, dictée en rouge, action unique par résultat */
@@ -418,7 +418,7 @@
 /* Caméra */
 .wbcam.wbcam .wbcam__bar { background: var(--wb-chrome); gap: 12px; padding: 14px; }
 .wbcam.wbcam .wbcam__bar button { height: 60px; padding: 0 24px; border-radius: 16px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 600 19px/1 var(--wb-font-ui); }
-.wbcam.wbcam .wbcam__bar button.is-primary { background: var(--wb-accent); color: #140A02; font-weight: 800; }
+.wbcam.wbcam .wbcam__bar button.is-primary { background: var(--wb-accent); color: #140A02; font-weight: 700; }
 
 /* Clavier : touches 120 × 88, accents en rangée principale (liste côté TSX) */
 .wbk.wbk { padding: 22px; border-radius: var(--wb-r-panel); background: var(--wb-chrome); border: 1px solid var(--wb-chrome-line); box-shadow: var(--wb-e3); gap: 12px; }

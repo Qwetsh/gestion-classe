@@ -251,7 +251,7 @@ export function ClassroomDisplay({ classId, userId, housePoints, bonuses, assign
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Hourglass pct={pct} color={hc.c1} colorLight={hc.c1Light} size={180} />
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 800, color: '#e8dcc8', lineHeight: 1, marginTop: 8 }}>
+                <div style={{ fontSize: 36, fontWeight: 700, color: '#e8dcc8', lineHeight: 1, marginTop: 8 }}>
                   <RollingNumber value={h.points} duration={2000} />
                 </div>
                 <div style={{ fontSize: 13, color: '#6a5c4e' }}>points</div>
@@ -288,7 +288,7 @@ export function ClassroomDisplay({ classId, userId, housePoints, bonuses, assign
                     }}>
                       {h.name}
                     </div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#e8dcc8', lineHeight: 1 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#e8dcc8', lineHeight: 1 }}>
                       <RollingNumber value={h.points} duration={2000} />
                       <span style={{ fontSize: 11, color: '#6a5c4e', marginLeft: 4 }}>pts</span>
                     </div>
