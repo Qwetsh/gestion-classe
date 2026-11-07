@@ -941,7 +941,7 @@ export function SessionDetail() {
       {/* Photo/Note Modal */}
       {selectedEvent && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+ className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4"
           onClick={closeModal}
         >
           <div
@@ -1038,7 +1038,7 @@ export function SessionDetail() {
       {/* Group Event Modal */}
       {selectedGroupEvent && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+ className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4"
           onClick={closeModal}
         >
           <div
@@ -1138,7 +1138,7 @@ export function SessionDetail() {
       {/* Add Event Modal */}
       {showAddEvent && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+ className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4"
           onClick={() => setShowAddEvent(false)}
         >
           <div

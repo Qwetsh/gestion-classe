@@ -228,7 +228,7 @@ export function GroupSessions() {
       </div>
 
       {openSession && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setOpenSession(null)}>
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4" onClick={() => setOpenSession(null)}>
           <div
             className="bg-[var(--surface)] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
             style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2)' }}

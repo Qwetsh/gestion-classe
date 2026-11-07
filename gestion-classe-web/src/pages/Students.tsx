@@ -2151,7 +2151,7 @@ export function Students() {
 
       {/* Config Modal */}
       {showConfigModal && configClassId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Configuration - {classes.find(c => c.id === configClassId)?.name}
@@ -2281,7 +2281,7 @@ export function Students() {
 
       {/* Next Trimester Modal */}
       {showNextTrimesterModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Passer au trimestre suivant
@@ -2352,7 +2352,7 @@ export function Students() {
 
       {/* End Year Modal */}
       {showEndYearModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Finir l'annee scolaire
@@ -2465,7 +2465,7 @@ export function Students() {
 
       {/* Student Detail Modal */}
       {showStudentDetailModal && selectedStudentForDetail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--surface)] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-[var(--border)]">
@@ -3202,7 +3202,7 @@ export function Students() {
 
       {/* Add Manual Implication Modal */}
       {showAddManualModal && selectedStudentForDetail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-[60] p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
               Ajouter une implication manuelle
@@ -3261,7 +3261,7 @@ export function Students() {
       )}
       {/* Student Codes Modal */}
       {showQrModal && qrDataUrl && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-[60] p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-sm flex flex-col items-center">
             <h3 className="text-lg font-semibold text-[var(--text)] mb-2">Acces eleve</h3>
             <p className="text-sm text-[var(--text-muted)] mb-4 text-center">
@@ -3284,7 +3284,7 @@ export function Students() {
       )}
 
       {showCodesModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-[60] p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-[var(--text)]">
