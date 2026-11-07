@@ -549,7 +549,13 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                 </div>
               ) : null}
               {(details || (transcriptBlocks && selected.pages.length > 0)) && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: 'var(--surface)' }}>
+                <div
+                  style={{
+                    border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: 'var(--surface)',
+                    // Défilement propre et colonne collée : on fait défiler la correction en gardant la copie sous les yeux.
+                    position: 'sticky', top: 16, maxHeight: 'min(840px, calc(100vh - 32px))', overflowY: 'auto',
+                  }}
+                >
                   {transcriptBlocks && selected.pages.length > 0 && details && (
                     <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
                       {(['correction', 'transcription'] as const).map((t) => (
@@ -572,9 +578,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 8 }}>
                         Transcription du correcteur, gardée après la suppression des scans. Visible par toi seul.
                       </div>
-                      <div style={{ maxHeight: 700, overflowY: 'auto' }}>
-                        <CopyTranscriptView blocks={transcriptBlocks} />
-                      </div>
+                      <CopyTranscriptView blocks={transcriptBlocks} />
                     </>
                   ) : details ? (
                     <>
