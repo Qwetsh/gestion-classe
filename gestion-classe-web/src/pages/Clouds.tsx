@@ -246,7 +246,7 @@ export function Clouds() {
       <div className={`clouds ${dragging ? 'is-dragging' : ''}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => void onDrop(e)}>
         <div className="clouds__top">
           <div>
-            <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Mes clouds</h1>
+            <h1 className="page-title">Mes clouds</h1>
             <p className="text-[var(--text-muted)] mt-1">Parcourir OneDrive et Google Drive, ouvrir PDF, Word, images, vidéos et liens sans quitter Gestion Classe.</p>
           </div>
           <form className="clouds__link" onSubmit={(e) => { e.preventDefault(); openLink(); }}>

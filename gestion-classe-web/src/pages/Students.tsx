@@ -18,6 +18,8 @@ import { generateStudentQrCardsPdf } from '../lib/generateStudentQrCards';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
 import { AccommodationBadges } from '../components/AccommodationBadges';
+import { MoreMenu } from '../components/MoreMenu';
+import { useIsNarrowViewport } from '../hooks/useIsMobile';
 import { ACCOMMODATION_DEFS, type AccommodationKey, type StudentAccommodations } from '../lib/accommodations';
 
 // Seuil de malus a partir duquel un eleve est signale dans le filtre "A suivre"
@@ -193,6 +195,7 @@ function weeklyBuckets(timestamps: string[], weeks = 10): number[] {
 export function Students() {
   const { user } = useAuth();
   const { toast, confirm: showConfirm } = useUIFeedback();
+  const isNarrow = useIsNarrowViewport();
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
   const [classes, setClasses] = useState<ClassFilter[]>([]);
   const [classConfigs, setClassConfigs] = useState<Map<string, ClassConfig>>(new Map());
@@ -1887,21 +1890,36 @@ export function Students() {
             </div>
           </div>
           <div className="track-header__actions">
-            <button className="btn btn--ghost" onClick={exportBulletinContext} disabled={!selectedClassId} title="Exporter les donnees pour generer les appreciations de bulletin avec Claude">
-              <Icon name="download" size={14} /> Bulletin IA
-            </button>
-            <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
-              <Icon name="qr" size={14} /> QR
-            </button>
-            <button className="btn btn--ghost" onClick={exportQrCardsPdf} disabled={isExportingQrCards || classes.length === 0} title="PDF à imprimer : une carte par élève (QR code + code d'accès), classées par classe">
-              <Icon name="download" size={14} /> {isExportingQrCards ? 'Export…' : 'Cartes QR'}
-            </button>
-            <button className="btn btn--ghost" onClick={loadStudentCodes} disabled={isLoadingCodes || !selectedClassId}>
-              Codes élèves
-            </button>
-            <button className="btn btn--accent" onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}>
+            <button className="btn btn--danger" onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}>
               {trimesterSettings.current_trimester === 3 ? "Finir l'année scolaire" : 'Passer au trimestre suivant'}
             </button>
+            {isNarrow ? (
+              <MoreMenu
+                touch
+                title="Autres actions"
+                items={[
+                  { label: 'Bulletin IA', onClick: exportBulletinContext, disabled: !selectedClassId, title: 'Exporter les données pour générer les appréciations de bulletin avec Claude' },
+                  { label: 'QR code de la classe', onClick: openQrModal, disabled: !selectedClassId },
+                  { label: isExportingQrCards ? 'Export…' : 'Cartes QR (PDF)', onClick: () => { void exportQrCardsPdf(); }, disabled: isExportingQrCards || classes.length === 0 },
+                  { label: 'Codes élèves', onClick: () => { void loadStudentCodes(); }, disabled: isLoadingCodes || !selectedClassId },
+                ]}
+              />
+            ) : (
+              <>
+                <button className="btn btn--ghost" onClick={exportBulletinContext} disabled={!selectedClassId} title="Exporter les données pour générer les appréciations de bulletin avec Claude">
+                  <Icon name="download" size={14} /> Bulletin IA
+                </button>
+                <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
+                  <Icon name="qr" size={14} /> QR
+                </button>
+                <button className="btn btn--ghost" onClick={exportQrCardsPdf} disabled={isExportingQrCards || classes.length === 0} title="PDF à imprimer : une carte par élève (QR code + code d'accès), classées par classe">
+                  <Icon name="download" size={14} /> {isExportingQrCards ? 'Export…' : 'Cartes QR'}
+                </button>
+                <button className="btn btn--ghost" onClick={loadStudentCodes} disabled={isLoadingCodes || !selectedClassId}>
+                  Codes élèves
+                </button>
+              </>
+            )}
           </div>
         </header>
 

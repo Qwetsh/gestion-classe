@@ -16,6 +16,7 @@ import { transferStudent, describeTransfer } from '../lib/studentTransferQueries
 import { GroupSplitter } from '../components/class-groups/GroupSplitter';
 import { AccommodationBadges } from '../components/AccommodationBadges';
 import { SeatingGeneratorModal } from '../components/SeatingGeneratorModal';
+import { Sparkles, X } from 'lucide-react';
 
 interface Class {
   id: string;
@@ -1252,7 +1253,7 @@ export function Classes() {
       {loadError && (
         <div style={{ background: 'var(--neg-soft)', color: 'var(--neg)', padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
           <span>{loadError}</span>
-          <button onClick={() => setLoadError(null)} style={{ color: 'var(--neg)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+          <button onClick={() => setLoadError(null)} aria-label="Fermer" style={{ color: 'var(--neg)', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex' }}><X size={16} strokeWidth={1.75} /></button>
         </div>
       )}
 
@@ -1305,10 +1306,10 @@ export function Classes() {
               onClick={() => setShowGenerator(true)}
               title="Placer automatiquement les élèves selon des contraintes (devant, à côté de, éloigné de…)"
             >
-              ✨ Générer
+              <Sparkles size={16} strokeWidth={1.75} /> Générer
             </button>
           )}
-          <button onClick={handleSavePlan} disabled={isSaving || !hasChanges} className="btn btn--accent" style={{ opacity: hasChanges ? 1 : 0.5 }}>
+          <button onClick={handleSavePlan} disabled={isSaving || !hasChanges} className="btn btn--primary">
             {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
           </button>
         </div>
@@ -1758,7 +1759,7 @@ export function Classes() {
                   Importer
                 </button>
               </div>
-              <button onClick={() => handleOpenStudentModal()} className="btn btn--accent" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
+              <button onClick={() => handleOpenStudentModal()} className="btn btn--ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
                 + Ajouter un élève
               </button>
             </div>

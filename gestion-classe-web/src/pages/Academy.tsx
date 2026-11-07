@@ -271,7 +271,7 @@ export function Academy() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.35em', color: 'var(--gold-deep)', textTransform: 'uppercase' }}>
                   Académie des Quatre Lumières
                 </div>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontStyle: 'italic', margin: 0, fontWeight: 500 }}>
+                <h1 className="page-title" style={{ color: 'inherit' }}>
                   Registre du Professeur
                 </h1>
               </div>

@@ -298,6 +298,6 @@ const btnGhost: React.CSSProperties = {
   color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
 };
 const btnPrimary: React.CSSProperties = {
-  padding: '8px 16px', borderRadius: 8, border: '1px solid transparent', background: 'var(--indigo)',
+  padding: '8px 16px', borderRadius: 8, border: '1px solid transparent', background: 'var(--indigo-ink)',
   color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
 };

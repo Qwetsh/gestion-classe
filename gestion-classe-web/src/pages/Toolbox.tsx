@@ -8,7 +8,7 @@ function ToolGrid() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Boite a outils</h1>
+          <h1 className="page-title">Boite a outils</h1>
           <p className="text-[var(--text-muted)] mt-1">
             {tools.length} outils disponibles
           </p>
@@ -81,7 +81,7 @@ function ToolView() {
             {tool.icon}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[var(--text)]">{tool.name}</h1>
+            <h1 className="page-title">{tool.name}</h1>
             <p className="text-sm text-[var(--text-dim)]">{tool.description}</p>
           </div>
         </div>

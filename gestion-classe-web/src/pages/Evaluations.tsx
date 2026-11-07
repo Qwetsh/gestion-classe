@@ -16,7 +16,7 @@ export function Evaluations() {
   return (
     <Layout fluid>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+        <h1 className="page-title">
           Évaluations
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>

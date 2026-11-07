@@ -103,7 +103,7 @@
   --color-border: var(--border);
   --color-border-light: var(--surface-3);
 
-  --gradient-primary: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  --gradient-primary: var(--indigo-ink); /* ex-dégradé indigo → violet, aplati (audit I1/K3) */
   --gradient-success: linear-gradient(135deg, #059669 0%, #34D399 100%);
   --gradient-error: linear-gradient(135deg, #DC2626 0%, #F87171 100%);
   --gradient-header: linear-gradient(135deg, #6366F1 0%, #818CF8 50%, #8B5CF6 100%);
@@ -157,8 +157,10 @@ button:disabled,
 input:disabled,
 select:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
 }
+/* Boutons hors design system (styles en ligne) : atténuation conservée en attendant I3.
+   Les .btn ont leur propre état désactivé (fond + texte), sans opacité. */
+button:disabled:not(.btn) { opacity: 0.6; }
 
 button,
 a,
@@ -229,6 +231,10 @@ textarea:focus-visible {
   line-height: 1;
   letter-spacing: -0.02em;
   margin: 0;
+  color: var(--text);
+}
+@media (max-width: 640px) {
+  .page-title { font-size: 28px; }
 }
 
 .page-subtitle {
@@ -260,16 +266,35 @@ textarea:focus-visible {
   font-size: 13px;
   font-weight: 500;
   border: 1px solid transparent;
-  transition: all 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
   font-family: var(--font-sans);
   cursor: pointer;
+  text-decoration: none;
 }
-.btn--primary { background: var(--text); color: var(--surface); }
-.btn--primary:hover { opacity: 0.88; }
-.btn--ghost { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
+
+/* Hiérarchie à trois niveaux (audit I1) : un seul .btn--primary par écran. */
+.btn--primary { background: var(--indigo-ink); color: #fff; border-color: var(--indigo-ink); }
+.btn--primary:hover { background: #4338CA; border-color: #4338CA; }
+.btn--ghost { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
 .btn--ghost:hover { background: var(--surface-3); }
-.btn--accent { background: var(--accent-strong); color: #fff; border: none; }
+/* Destructif : ghost rouge. */
+.btn--danger { background: var(--surface); color: var(--neg); border-color: var(--neg); }
+.btn--danger:hover { background: var(--neg-soft); }
+/* Accent orange : réservé aux bascules « : ON » du plan de salle, jamais une action principale. */
+.btn--accent { background: var(--accent-strong); color: #fff; border-color: var(--accent-strong); }
 .btn--accent:hover { filter: brightness(0.95); }
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  background: var(--surface-3);
+  color: var(--text-dim);
+  border-color: var(--border);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  filter: none;
+}
 
 /* ---- Card ---- */
 .gc-card {
@@ -643,7 +668,7 @@ textarea:focus-visible {
 }
 .track-header__eyebrow { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; margin-bottom: 6px; }
 .track-header__eyebrow .is-current { color: var(--text); font-weight: 500; }
-.track-header h1 { font-family: var(--font-display); font-weight: 400; font-style: italic; font-size: 42px; line-height: 1; letter-spacing: -0.02em; margin: 0; }
+.track-header h1 { font-family: var(--font-display); font-weight: 400; font-style: italic; font-size: 40px; line-height: 1; letter-spacing: -0.02em; margin: 0; }
 .track-header__sub { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
 .track-header__actions { display: flex; gap: 8px; align-items: center; }
 
@@ -861,6 +886,47 @@ textarea:focus-visible {
 }
 .ses-filter:hover { background: var(--surface-3); color: var(--text); }
 .ses-filter.is-on { border-color: transparent; }
+.ses-filter { white-space: nowrap; }
+
+/* ---- Bande de chips (Séances, Analyses) : retour à la ligne sur bureau,
+   une seule ligne défilante avec fondu de bord droit sous 768 px (audit V3) ---- */
+.filter-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+@media (max-width: 767px) {
+  .filter-strip {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-right: 36px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  }
+  .filter-strip::-webkit-scrollbar { display: none; }
+  .filter-strip > * { flex-shrink: 0; }
+}
+
+/* ---- Entrées du menu du compte (Layout) : survol en CSS, pas en JS ---- */
+.menu-item {
+  width: 100%; padding: 8px 14px; text-align: left;
+  font-size: 12.5px; font-weight: 500; color: var(--text);
+  background: none; border: none; border-radius: 7px;
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  font-family: inherit;
+}
+.menu-item:hover { background: var(--surface-3); }
+.menu-item--danger { color: var(--neg); }
+.menu-item--danger:hover { background: var(--neg-soft); }
+
+/* ---- Modèles de frise (outil Frise) : survol en CSS ---- */
+.tl-template {
+  padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); cursor: pointer; text-align: left;
+  display: flex; align-items: center; gap: 10px; font-family: inherit; color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.tl-template:hover { background: var(--indigo-soft); border-color: var(--indigo); }
 .ses-filter__dot {
   width: 8px; height: 8px; border-radius: 50%;
   flex-shrink: 0;
@@ -886,11 +952,10 @@ textarea:focus-visible {
 
   /* Header: compact */
   .track-header { gap: 8px; margin-bottom: 10px; }
-  .track-header h1 { font-size: 24px; }
+  .track-header h1 { font-size: 28px; }
   .track-header__eyebrow { display: none; }
   .track-header__sub { font-size: 11px; }
   .track-header__actions { width: 100%; flex-wrap: wrap; gap: 6px; }
-  .track-header__actions .btn { font-size: 11px; padding: 6px 10px; }
 
   /* Classes pane → horizontal scrollable strip */
   .classes-pane {

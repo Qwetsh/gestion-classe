@@ -194,7 +194,7 @@ export function AssessmentSheet() {
           {/* En-tête : l'éval, ses classes, ses réglages */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 240 }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+              <h1 className="page-title">
                 {group.name}
               </h1>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>

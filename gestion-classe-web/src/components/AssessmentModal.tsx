@@ -337,6 +337,6 @@ const btnBase: React.CSSProperties = {
   padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
   cursor: 'pointer', border: '1px solid transparent',
 };
-const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo)', color: '#fff' };
+const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo-ink)', color: '#fff' };
 const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };
 const btnDanger: React.CSSProperties = { ...btnBase, background: 'var(--neg-soft)', color: 'var(--neg)' };

@@ -419,7 +419,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
         ) : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn--ghost" style={{ fontSize: 12 }} onClick={() => setPanel({ kind: 'none' })}>Annuler</button>
-          <button className="btn btn--accent" style={{ fontSize: 12 }} onClick={panel.kind === 'create' ? handleCreate : handleSaveEdit} disabled={busy || !draftName.trim()}>
+          <button className="btn btn--primary" style={{ fontSize: 12 }} onClick={panel.kind === 'create' ? handleCreate : handleSaveEdit} disabled={busy || !draftName.trim()}>
             {panel.kind === 'create' ? 'Créer' : 'Enregistrer'}
           </button>
         </div>
@@ -501,7 +501,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
               )}
             </>
           )}
-          <button className="btn btn--accent" style={{ fontSize: 12 }} onClick={openCreate} disabled={busy}>+ Groupe</button>
+          <button className="btn btn--ghost" style={{ fontSize: 12 }} onClick={openCreate} disabled={busy}>+ Groupe</button>
           <button onClick={onClose} className="p-2 rounded" style={{ color: 'var(--text-dim)' }} title="Fermer (Échap)">
             <svg width={18} height={18} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -519,7 +519,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
                 Des groupes durables pour cette classe : demi-classe une semaine sur deux, latinistes, groupe de besoin…
                 Ce ne sont pas les groupes de TP d'une séance.
               </p>
-              <button className="btn btn--accent" onClick={handleCreateDefaultPair} disabled={busy || students.length === 0}>Créer des demi-groupes (G1 / G2)</button>
+              <button className="btn btn--primary" onClick={handleCreateDefaultPair} disabled={busy || students.length === 0}>Créer des demi-groupes (G1 / G2)</button>
               <button className="btn btn--ghost" onClick={openCreate} disabled={busy}>Créer un groupe vide</button>
               {rooms.length > 0 && (
                 <button className="btn btn--ghost" onClick={() => setPanel({ kind: 'fromRoom', groupId: null })} disabled={busy}>Créer depuis un plan de salle</button>

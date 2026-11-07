@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { Mail, MailCheck, AlertTriangle } from 'lucide-react';
 
 type Mode = 'login' | 'signup' | 'reset';
 
@@ -13,6 +14,7 @@ export function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Redirect if already logged in
   if (user && !isLoading) {
@@ -23,6 +25,7 @@ export function Login() {
     setMode(newMode);
     setSuccessMessage(null);
     setConfirmPassword('');
+    setFormError(null);
     clearError();
   };
 
@@ -33,9 +36,10 @@ export function Login() {
     if (mode !== 'reset' && !password) return;
 
     if (mode === 'signup') {
-      if (password !== confirmPassword) return;
-      if (password.length < 6) return;
+      if (password !== confirmPassword) { setFormError('Les mots de passe ne correspondent pas.'); return; }
+      if (password.length < 6) { setFormError('Le mot de passe doit contenir au moins 6 caractères.'); return; }
     }
+    setFormError(null);
 
     setIsSubmitting(true);
     clearError();
@@ -82,14 +86,14 @@ export function Login() {
             <div
               className="w-20 h-20 mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold"
               style={{
-                background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                background: 'var(--indigo-ink)',
                 borderRadius: 'var(--radius)',
-                boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)'
+                boxShadow: '0 4px 16px rgba(79, 70, 229, 0.12)'
               }}
             >
               GC
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 28, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+            <h1 className="page-title">
               Gestion Classe
             </h1>
             <p className="text-[var(--text-muted)] mt-2">
@@ -108,7 +112,7 @@ export function Login() {
                   color: '#2E7D32',
                 }}
               >
-                <div className="text-3xl mb-3">✉️</div>
+                <div className="mb-3 flex justify-center"><Mail size={32} strokeWidth={1.5} /></div>
                 <p className="font-semibold text-base mb-2">Compte créé !</p>
                 <p className="mb-2">
                   Un email de confirmation a été envoyé à <strong>{email}</strong>.
@@ -140,7 +144,7 @@ export function Login() {
                   color: '#1565C0',
                 }}
               >
-                <div className="text-3xl mb-3">📧</div>
+                <div className="mb-3 flex justify-center"><MailCheck size={32} strokeWidth={1.5} /></div>
                 <p className="font-semibold text-base mb-2">Email envoyé !</p>
                 <p className="mb-2">
                   Si un compte existe pour <strong>{email}</strong>, vous recevrez un lien pour réinitialiser votre mot de passe.
@@ -257,30 +261,27 @@ export function Login() {
               )}
 
               {/* Error message */}
-              {error && (
+              {(error || formError) && (
                 <div
                   className="bg-[var(--neg-soft)] text-[var(--neg)] px-4 py-3 text-sm flex items-center gap-2"
                   style={{ borderRadius: 'var(--radius)' }}
                 >
-                  <span>⚠️</span>
-                  {error}
+                  <AlertTriangle size={16} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                  {error || formError}
                 </div>
               )}
 
               {/* Submit button */}
               <button
                 type="submit"
-                disabled={
-                  isSubmitting ||
-                  !email ||
-                  (mode !== 'reset' && !password) ||
-                  (mode === 'signup' && (passwordMismatch || passwordTooShort || !confirmPassword))
-                }
-                className="w-full text-white py-3.5 px-4 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:opacity-90 hover:translate-y-[-1px] active:translate-y-0"
+                disabled={isSubmitting}
+                className="btn btn--primary w-full justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  padding: '14px 16px',
+                  fontSize: 15,
+                  fontWeight: 600,
                   borderRadius: 'var(--radius)',
-                  boxShadow: isSubmitting ? 'none' : '0 4px 20px rgba(99, 102, 241, 0.25)'
+                  boxShadow: isSubmitting ? 'none' : '0 4px 16px rgba(79, 70, 229, 0.12)'
                 }}
               >
                 {isSubmitting ? (

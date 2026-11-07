@@ -84,7 +84,7 @@ export function DevPanel() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Panel Dev</h1>
+          <h1 className="page-title">Panel Dev</h1>
           <p style={{ color: 'var(--text-muted)' }} className="mt-1">Outils d'administration</p>
         </div>
 
@@ -101,7 +101,7 @@ export function DevPanel() {
               }`}
               style={{
                 borderRadius: 'var(--radius)',
-                ...(tab === t.key ? { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' } : {}),
+                ...(tab === t.key ? { background: 'var(--indigo-ink)' } : {}),
               }}
             >
               {t.icon} {t.label}
@@ -458,7 +458,7 @@ function DevicesTab() {
                       className="h-full transition-all flex items-center pl-2"
                       style={{
                         width: `${Math.max(pct, 3)}%`,
-                        background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                        background: 'var(--indigo-ink)',
                         borderRadius: 'var(--radius-md)',
                       }}
                     >
@@ -554,7 +554,7 @@ function StatsTab() {
                 <div className="flex-1 h-5 bg-[var(--surface-3)] overflow-hidden" style={{ borderRadius: 'var(--radius-md)' }}>
                   <div
                     className="h-full transition-all"
-                    style={{ width: `${Math.max(pct, 1)}%`, background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
+                    style={{ width: `${Math.max(pct, 1)}%`, background: 'var(--indigo-ink)', borderRadius: 'var(--radius-md)' }}
                   />
                 </div>
                 <span className="text-sm font-semibold text-[var(--text)] w-16 text-right">{t.row_count}</span>
@@ -574,7 +574,7 @@ function StatsTab() {
             className="h-full"
             style={{
               width: `${Math.min((totalRows * 0.5 / 1024 / 500) * 100, 100)}%`,
-              background: (totalRows * 0.5 / 1024) > 400 ? 'var(--neg)' : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+              background: (totalRows * 0.5 / 1024) > 400 ? 'var(--neg)' : 'var(--indigo-ink)',
               borderRadius: 'var(--radius-md)',
             }}
           />
@@ -742,7 +742,7 @@ function AnnouncementsTab() {
               onClick={handleCreate}
               disabled={isSaving || !newMessage.trim()}
               className="px-4 py-2 text-white text-sm font-medium transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+              style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
             >
               Publier
             </button>
@@ -1160,7 +1160,7 @@ function PronoteTab() {
               onClick={handleConnect}
               disabled={connecting}
               className="px-6 py-2.5 text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+              style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
             >
               {connecting ? 'Connexion...' : 'Se connecter à Pronote'}
             </button>
@@ -1206,7 +1206,7 @@ function PronoteTab() {
             <button
               onClick={runAll}
               className="px-4 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
+              style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius-md)' }}
             >
               Tout tester
             </button>
@@ -1279,7 +1279,7 @@ function PronoteTab() {
                         onClick={() => runEndpoint(ep)}
                         disabled={result?.loading}
                         className="px-3 py-1 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-md)' }}
+                        style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius-md)' }}
                       >
                         {result?.data ? 'Relancer' : 'Tester'}
                       </button>

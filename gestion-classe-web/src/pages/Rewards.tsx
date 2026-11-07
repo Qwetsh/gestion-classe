@@ -431,7 +431,7 @@ export function Rewards() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2 md:mb-4">
           <div>
-            <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Récompenses</h1>
+            <h1 className="page-title">Récompenses</h1>
             <p className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Carte à tampons et bonus</p>
           </div>
           <div className="flex items-center gap-2">
@@ -574,7 +574,7 @@ export function Rewards() {
                 onClick={saveCategory}
                 disabled={isSaving || !catLabel.trim() || !!duplicateCategory}
                 className="px-4 py-2 text-sm rounded-xl text-white font-medium disabled:opacity-50"
-                style={{ background: 'var(--gradient-primary, linear-gradient(135deg, #6366F1, #8B5CF6))' }}
+                style={{ background: 'var(--indigo-ink)' }}
               >
                 {isSaving ? 'Enregistrement…' : editingCategory ? 'Enregistrer' : 'Créer la catégorie'}
               </button>
@@ -662,7 +662,7 @@ export function Rewards() {
                 onClick={saveBonus}
                 disabled={isSaving || !bonusLabel.trim()}
                 className="px-4 py-2 text-sm rounded-xl text-white font-medium disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                style={{ background: 'var(--indigo-ink)' }}
               >
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
@@ -912,7 +912,7 @@ export function Rewards() {
                     openStampModal(detailTarget);
                   }}
                   className="w-full py-2.5 rounded-xl text-sm font-medium text-white"
-                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                  style={{ background: 'var(--indigo-ink)' }}
                 >
                   + Attribuer un tampon
                 </button>
@@ -983,7 +983,7 @@ function OverviewTab({
                             className="h-full rounded-full transition-all"
                             style={{
                               width: `${(s.stamp_count / 10) * 100}%`,
-                              background: s.stamp_count === 10 ? '#22c55e' : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                              background: s.stamp_count === 10 ? '#22c55e' : 'var(--indigo-ink)',
                             }}
                           />
                         </div>
@@ -1009,7 +1009,7 @@ function OverviewTab({
                           <button
                             onClick={() => onAwardStamp(s)}
                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
-                            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                            style={{ background: 'var(--indigo-ink)' }}
                           >
                             + Tampon
                           </button>
@@ -1112,7 +1112,7 @@ function CategoriesTab({
               <RotateCcw size={13} /> Repartir de zéro
             </button>
           )}
-          <button onClick={onAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--gradient-primary, linear-gradient(135deg, #6366F1, #8B5CF6))' }}>
+          <button onClick={onAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--indigo-ink)' }}>
             <Plus size={15} /> Nouvelle catégorie
           </button>
         </div>
@@ -1180,7 +1180,7 @@ function BonusesTab({
         <p className="text-sm text-[var(--text-muted)] leading-snug">
           Ce que l’élève peut choisir quand sa carte est complète. <b className="text-[var(--text)] font-medium">{active}</b> proposé{active > 1 ? 's' : ''} sur {bonuses.length}.
         </p>
-        <button onClick={onAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white shrink-0" style={{ background: 'var(--gradient-primary, linear-gradient(135deg, #6366F1, #8B5CF6))' }}>
+        <button onClick={onAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white shrink-0" style={{ background: 'var(--indigo-ink)' }}>
           <Plus size={15} /> Nouveau bonus
         </button>
       </div>
