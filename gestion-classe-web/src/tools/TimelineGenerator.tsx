@@ -1584,13 +1584,7 @@ render();
                 {templates.filter(t => t.category === cat).map(t => (
                   <button
                     key={t.id}
-                    style={{
-                      padding: '12px 14px', borderRadius: 8, border: '1px solid #E5E7EB',
-                      backgroundColor: '#FAFAFA', cursor: 'pointer', textAlign: 'left',
-                      display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.borderColor = '#3B82F6'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FAFAFA'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
+                    className="tl-template"
                     onClick={() => {
                       setConfig({ ...defaultConfig, ...t.config, categories: [], zoomLevel: 1 });
                       setShowTemplates(false);

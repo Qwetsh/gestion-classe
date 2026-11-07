@@ -516,7 +516,7 @@ export function TpTemplates() {
         {/* ─── Header ───────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>
+            <h1 className="page-title">
               Mes TP
             </h1>
             <p className="text-[var(--text-muted)] mt-1">
@@ -527,7 +527,7 @@ export function TpTemplates() {
           <button
             onClick={handleOpenCreate}
             className="px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+            style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
           >
             + Nouveau TP
           </button>
@@ -536,12 +536,12 @@ export function TpTemplates() {
         {/* ─── Empty state ──────────────────────── */}
         {templates.length === 0 ? (
           <div className="bg-[var(--surface)] p-12 text-center border border-[var(--border)]" style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-1)' }}>
-            <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-full)' }}>
+            <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center" style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius-full)' }}>
               <span className="text-4xl">📋</span>
             </div>
             <h2 className="text-lg font-semibold text-[var(--text)]">Aucun modele de TP</h2>
             <p className="text-[var(--text-dim)] mt-2">Creez des modeles de TP avec leurs criteres de notation</p>
-            <button onClick={handleOpenCreate} className="mt-5 px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg" style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}>
+            <button onClick={handleOpenCreate} className="mt-5 px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg" style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}>
               Creer mon premier TP
             </button>
           </div>

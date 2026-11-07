@@ -495,12 +495,12 @@ export function SessionDetail() {
             <div className="flex items-start gap-4">
               <div
                 className="w-14 h-14 flex items-center justify-center text-white font-bold text-xl"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+                style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
               >
                 {session.class_name.substring(0, 2).toUpperCase()}
               </div>
               <div>
-                <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>
+                <h1 className="page-title">
                   {session.class_name}
                 </h1>
                 <p className="mt-1 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
@@ -564,7 +564,7 @@ export function SessionDetail() {
                       <button
                         onClick={handleSaveTopic}
                         className="px-3 py-1.5 text-sm text-white hover:opacity-90 transition-colors disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+                        style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
                         disabled={isSavingTopic}
                       >
                         {isSavingTopic ? 'Sauvegarde...' : 'Enregistrer'}
@@ -650,7 +650,7 @@ export function SessionDetail() {
               onClick={openAddEventModal}
               className="flex items-center gap-2 px-5 py-2.5 text-white font-medium transition-all duration-200 hover:opacity-90 hover:translate-y-[-1px] active:translate-y-0"
               style={{
-                background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                background: 'var(--indigo-ink)',
                 borderRadius: 'var(--radius)',
                 boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
               }}
@@ -1275,7 +1275,7 @@ export function SessionDetail() {
                 disabled={isAddingEvent || !addEventStudent || !addEventType || (addEventType === 'sortie' && !addEventSubtype)}
                 className="px-5 py-2.5 text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:opacity-90"
                 style={{
-                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  background: 'var(--indigo-ink)',
                   borderRadius: 'var(--radius)',
                 }}
               >

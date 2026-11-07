@@ -187,7 +187,7 @@ export function GroupSummary() {
             color: hp ? '#1a1410' : '#fff',
             fontWeight: 700, fontSize: 16,
             fontFamily: fontDisplay,
-            background: hp ? `linear-gradient(135deg, ${goldAccent}, #b8860b)` : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+            background: hp ? `linear-gradient(135deg, ${goldAccent}, #b8860b)` : 'var(--indigo-ink)',
             borderRadius: 'var(--radius)', border: 'none', cursor: 'pointer',
             boxShadow: hp ? '0 4px 16px rgba(180,130,50,0.3)' : 'none',
           }}

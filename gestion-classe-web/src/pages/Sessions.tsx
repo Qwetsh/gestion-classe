@@ -503,7 +503,7 @@ export function Sessions() {
               <span style={{ margin: '0 6px', color: 'var(--text-dim)' }}>›</span>
               <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 500 }}>Séances</span>
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontStyle: 'italic', fontSize: 40, lineHeight: 1, letterSpacing: '-0.02em' }}>Séances</h1>
+            <h1 className="page-title">Séances</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 13 }}>
               {sessions.length} séance{sessions.length > 1 ? 's' : ''} cette année · {selectedClassId ? sessions.length : sessions.length} visibles
             </p>
@@ -518,14 +518,14 @@ export function Sessions() {
                 </button>
               ))}
             </div>
-            <Link to="/sessions" className="btn btn--accent" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+            <Link to="/sessions" className="btn btn--primary" style={{ fontSize: 13 }}>
               <Icon name="plus" size={14} /> Nouvelle séance
             </Link>
           </div>
         </div>
 
         {/* Class filter chips */}
-        <div className="ses-filters" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+        <div className="ses-filters filter-strip" style={{ marginTop: 14 }}>
           <button
             onClick={() => setSelectedClassId(null)}
             className={`ses-filter ${selectedClassId === null ? 'is-on' : ''}`}
@@ -1019,8 +1019,8 @@ export function Sessions() {
                   <button
                     onClick={handleSubmitEvent}
                     disabled={isAddingEvent || !addEventStudent || !addEventType || (addEventType === 'sortie' && !addEventSubtype)}
-                    className="btn btn--accent"
-                    style={{ fontSize: 12, padding: '6px 14px', opacity: (isAddingEvent || !addEventStudent || !addEventType) ? 0.5 : 1 }}
+                    className="btn btn--primary"
+                    style={{ fontSize: 12, padding: '6px 14px' }}
                   >
                     {isAddingEvent ? '...' : editingEventId ? 'Enregistrer' : 'Ajouter'}
                   </button>
@@ -1052,7 +1052,7 @@ export function Sessions() {
                   setAddEventNote('');
                   setShowAddEvent(true);
                 }}
-                className="btn btn--primary"
+                className={`btn ${showAddEvent && !editingEventId ? 'btn--ghost' : 'btn--primary'}`}
                 style={{ flex: 1, justifyContent: 'center' }}
               >
                 <Icon name="plus" size={14} /> Ajouter un événement

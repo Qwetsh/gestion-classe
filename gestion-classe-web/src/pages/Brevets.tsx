@@ -109,10 +109,7 @@ export function Brevets() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1
-              className="text-[var(--text)]"
-              style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}
-            >
+            <h1 className="page-title">
               Annales Brevet
             </h1>
             <p className="text-[var(--text-muted)] mt-1">

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { FileText } from 'lucide-react';
 import { generateAnalysisReport, prepareReportData } from '../lib/generateReport';
 import { GradeAnalyticsSection } from '../components/GradeAnalyticsSection';
 import type { AnalyticsStudent } from '../lib/gradeAnalytics';
@@ -510,7 +511,7 @@ export function Analytics() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Analyses</h1>
+            <h1 className="page-title">Analyses</h1>
             <p className="text-[var(--text-muted)] mt-1">
               Statistiques detaillees de vos classes
             </p>
@@ -519,11 +520,10 @@ export function Analytics() {
             <button
               onClick={handleGenerateReport}
               disabled={isGeneratingReport}
-              className="flex items-center gap-2 px-5 py-2.5 text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+              className="btn btn--primary"
             >
-              <span>📄</span>
-              {isGeneratingReport ? 'Generation...' : 'Generer rapport PDF'}
+              <FileText size={16} strokeWidth={1.75} />
+              {isGeneratingReport ? 'Génération…' : 'Générer rapport PDF'}
             </button>
           )}
         </div>
@@ -537,21 +537,13 @@ export function Analytics() {
             {/* Date range */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-[var(--text-muted)]">Periode:</span>
-              <div className="flex gap-1">
+              <div className="filter-strip" style={{ gap: 4 }}>
                 {(['7d', '30d', '90d', 'all'] as const).map((range) => (
                   <button
                     key={range}
                     onClick={() => setDateRange(range)}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      dateRange === range
-                        ? 'text-white'
-                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)]'
-                    }`}
-                    style={
-                      dateRange === range
-                        ? { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-lg)' }
-                        : { borderRadius: 'var(--radius-lg)' }
-                    }
+                    className={`ses-filter ${dateRange === range ? 'is-on' : ''}`}
+                    style={dateRange === range ? { background: 'var(--indigo-ink)', color: '#fff' } : undefined}
                   >
                     {range === '7d' ? '7 jours' : range === '30d' ? '30 jours' : range === '90d' ? '90 jours' : 'Tout'}
                   </button>
@@ -565,32 +557,24 @@ export function Analytics() {
                 <span className="text-sm font-medium text-[var(--text-muted)]">Classes:</span>
                 <button
                   onClick={selectAllClasses}
-                  className="text-xs text-[var(--indigo)] hover:underline"
+                  className="text-xs text-[var(--indigo-ink)] hover:underline"
                 >
                   Toutes
                 </button>
                 <span className="text-[var(--text-dim)]">|</span>
                 <button
                   onClick={deselectAllClasses}
-                  className="text-xs text-[var(--indigo)] hover:underline"
+                  className="text-xs text-[var(--indigo-ink)] hover:underline"
                 >
                   Aucune
                 </button>
-                <div className="flex gap-2 flex-wrap">
+                <div className="filter-strip">
                   {classes.map((cls) => (
                     <button
                       key={cls.id}
                       onClick={() => toggleClass(cls.id)}
-                      className={`px-3 py-1 text-sm font-medium transition-colors ${
-                        selectedClasses.includes(cls.id)
-                          ? 'text-white'
-                          : 'text-[var(--text-muted)] bg-[var(--surface-3)]'
-                      }`}
-                      style={
-                        selectedClasses.includes(cls.id)
-                          ? { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius-lg)' }
-                          : { borderRadius: 'var(--radius-lg)' }
-                      }
+                      className={`ses-filter ${selectedClasses.includes(cls.id) ? 'is-on' : ''}`}
+                      style={selectedClasses.includes(cls.id) ? { background: 'var(--indigo-ink)', color: '#fff' } : undefined}
                     >
                       {cls.name}
                     </button>

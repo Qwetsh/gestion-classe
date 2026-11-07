@@ -13,13 +13,15 @@ export interface MoreMenuItem {
  * import Pronote, rétention des scans, export pour Claude…). Un bouton, une liste, fermée
  * au clic ailleurs ou sur Échap.
  */
-export function MoreMenu({ items, label = '⋯', title, align = 'right', compact }: {
+export function MoreMenu({ items, label = '⋯', title, align = 'right', compact, touch }: {
   items: MoreMenuItem[];
   label?: string;
   title?: string;
   align?: 'left' | 'right';
   /** Bouton plus petit, pour une ligne de tableau. */
   compact?: boolean;
+  /** Cible tactile de 44 px (en-têtes de page sur téléphone). */
+  touch?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -47,8 +49,10 @@ export function MoreMenu({ items, label = '⋯', title, align = 'right', compact
         aria-haspopup="menu"
         aria-expanded={open}
         style={{
-          padding: compact ? '4px 8px' : '7px 12px', borderRadius: 8, fontSize: compact ? 12 : 13, fontWeight: 600,
-          cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface-3)', color: 'var(--text)', fontFamily: 'inherit',
+          padding: compact ? '4px 8px' : touch ? '0 12px' : '7px 12px', borderRadius: touch ? 10 : 8,
+          fontSize: compact ? 12 : touch ? 20 : 13, fontWeight: 600, lineHeight: 1,
+          minWidth: touch ? 44 : undefined, minHeight: touch ? 44 : undefined,
+          cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit',
         }}
       >
         {label}

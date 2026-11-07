@@ -414,7 +414,7 @@ export function Pronote() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Pronote</h1>
+          <h1 className="page-title">Pronote</h1>
           <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
             Emploi du temps et import de classes
           </p>
@@ -534,7 +534,7 @@ export function Pronote() {
                   onClick={handleConnectQr}
                   disabled={isConnecting || !qrData || qrPin.length !== 4}
                   className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+                  style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
                 >
                   {isConnecting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -609,7 +609,7 @@ export function Pronote() {
                   onClick={handleConnect}
                   disabled={isConnecting || !pronoteUrl || !username || !password}
                   className="w-full py-3 text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: 'var(--radius)' }}
+                  style={{ background: 'var(--indigo-ink)', borderRadius: 'var(--radius)' }}
                 >
                   {isConnecting ? (
                     <span className="flex items-center justify-center gap-2">

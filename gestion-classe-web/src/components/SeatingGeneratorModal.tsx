@@ -301,7 +301,7 @@ export function SeatingGeneratorModal({ userId, classId, students, room, current
             Autre proposition
           </button>
         )}
-        <button type="button" className="btn btn--accent" onClick={() => run()} disabled={students.length === 0 || loading}>
+        <button type="button" className="btn btn--primary" onClick={() => run()} disabled={students.length === 0 || loading}>
           {result ? 'Regénérer' : 'Générer'}
         </button>
       </div>

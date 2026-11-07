@@ -521,7 +521,7 @@ const btn: React.CSSProperties = {
   padding: '5px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
   border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit',
 };
-const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--indigo)', color: '#fff', borderColor: 'var(--indigo)' };
+const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--indigo-ink)', color: '#fff', borderColor: 'var(--indigo-ink)' };
 const panel: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: 'var(--surface)' };
 const versionRow: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text)',

@@ -145,7 +145,7 @@ export function GroupSessions() {
 
       <div className="flex gap-6" style={{ minHeight: 'calc(100vh - 220px)' }}>
         <aside className="w-64 shrink-0 flex flex-col">
-          <h1 className="text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 40, letterSpacing: '-0.02em', fontStyle: 'italic' }}>Groupes</h1>
+          <h1 className="page-title">Groupes</h1>
           <p className="text-[var(--text-muted)] mt-1 mb-4 text-sm">{sessions.length} séance{sessions.length > 1 ? 's' : ''}</p>
           <div className="flex-1 overflow-y-auto space-y-1">
             <button

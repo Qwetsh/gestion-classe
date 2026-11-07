@@ -8,6 +8,7 @@ import { FeedbackDialog } from './FeedbackDialog';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { HeldWorksAlert } from './productions/HeldWorksAlert';
 import { supabase } from '../lib/supabase';
+import { LogOut, Info, AlertTriangle, CheckCircle2, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
 
@@ -178,8 +179,8 @@ function NotifPanel({ data, placement }: { data: NotifData; placement: 'up' | 'd
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      <span style={{ fontSize: 14, marginTop: 1 }}>
-                        {a.type === 'info' ? 'ℹ️' : a.type === 'warning' ? '⚠️' : '✅'}
+                      <span style={{ display: 'inline-flex', marginTop: 1, color: a.type === 'warning' ? 'var(--warn)' : a.type === 'success' ? 'var(--pos)' : 'var(--indigo-ink)' }}>
+                        {a.type === 'info' ? <Info size={16} strokeWidth={1.75} /> : a.type === 'warning' ? <AlertTriangle size={16} strokeWidth={1.75} /> : <CheckCircle2 size={16} strokeWidth={1.75} />}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4 }}>{a.message}</div>
@@ -204,7 +205,7 @@ function NotifPanel({ data, placement }: { data: NotifData; placement: 'up' | 'd
               </div>
               {feedbacks.map(f => {
                 const isNew = !lastRead || f.created_at > lastRead;
-                const typeIcon = f.type === 'bug' ? '🐛' : f.type === 'suggestion' ? '💡' : '💬';
+                const typeIcon = f.type === 'bug' ? <Bug size={16} strokeWidth={1.75} /> : f.type === 'suggestion' ? <Lightbulb size={16} strokeWidth={1.75} /> : <MessageSquare size={16} strokeWidth={1.75} />;
                 return (
                   <div
                     key={f.id}
@@ -215,7 +216,7 @@ function NotifPanel({ data, placement }: { data: NotifData; placement: 'up' | 'd
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      <span style={{ fontSize: 14, marginTop: 1 }}>{typeIcon}</span>
+                      <span style={{ display: 'inline-flex', marginTop: 1, color: 'var(--text-muted)' }}>{typeIcon}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{f.user_email}</div>
                         <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as any}>{f.message}</div>
@@ -309,7 +310,7 @@ function AccountRow({
           onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
           style={{
             width: 30, height: 30, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+            background: 'var(--indigo-ink)',
             color: '#fff', display: 'grid', placeItems: 'center',
             fontWeight: 600, fontSize: 12.5, border: 'none', cursor: 'pointer',
           }}
@@ -329,31 +330,11 @@ function AccountRow({
               <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Connecté en tant que</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</div>
             </div>
-            <button
-              onClick={() => { setIsUserMenuOpen(false); onOpenFeedback(); }}
-              style={{
-                width: '100%', padding: '8px 14px', textAlign: 'left',
-                fontSize: 12.5, fontWeight: 500, color: 'var(--text)',
-                background: 'none', border: 'none', borderRadius: 7,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-              }}
-              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'}
-              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'none'}
-            >
+            <button className="menu-item" onClick={() => { setIsUserMenuOpen(false); onOpenFeedback(); }}>
               <NavIcon name="message" size={14} /> Envoyer un retour
             </button>
-            <button
-              onClick={() => { setIsUserMenuOpen(false); onSignOut(); }}
-              style={{
-                width: '100%', padding: '8px 14px', textAlign: 'left',
-                fontSize: 12.5, fontWeight: 500, color: 'var(--neg)',
-                background: 'none', border: 'none', borderRadius: 7,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-              }}
-              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--neg-soft)'}
-              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'none'}
-            >
-              🚪 Déconnexion
+            <button className="menu-item menu-item--danger" onClick={() => { setIsUserMenuOpen(false); onSignOut(); }}>
+              <LogOut size={16} strokeWidth={1.75} /> Déconnexion
             </button>
           </div>
         )}
@@ -396,13 +377,7 @@ function Brand({ trimestre, year }: { trimestre: number | string; year: string }
   return (
     <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
       <svg width="32" height="32" viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
-        <defs>
-          <linearGradient id="gc-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#6366F1" />
-            <stop offset="1" stopColor="#8B5CF6" />
-          </linearGradient>
-        </defs>
-        <rect x="0" y="0" width="32" height="32" rx="9" fill="url(#gc-grad)" />
+        <rect x="0" y="0" width="32" height="32" rx="9" fill="var(--indigo-ink)" />
         <text x="16" y="21" textAnchor="middle" fontFamily="var(--font-display)" fontSize="13" fontWeight="700" fill="#fff">GC</text>
       </svg>
       <div className="gc-brand__text" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, minWidth: 0 }}>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
+import { X, CheckCircle2, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 
 type FeedbackType = 'bug' | 'suggestion' | 'autre';
 
@@ -60,7 +61,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
         {/* Header */}
         <div
           className="p-5"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+          style={{ background: 'var(--indigo-ink)' }}
         >
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-white">Votre retour</h3>
@@ -70,7 +71,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
               style={{ borderRadius: 'var(--radius)' }}
               aria-label="Fermer"
             >
-              ✕
+              <X size={18} strokeWidth={1.75} />
             </button>
           </div>
           <p className="text-white/70 text-sm mt-1">Aidez-nous à améliorer l'application</p>
@@ -78,7 +79,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
 
         {sent ? (
           <div className="p-8 text-center">
-            <div className="text-5xl mb-3">✅</div>
+            <div className="mb-3 flex justify-center" style={{ color: 'var(--pos)' }}><CheckCircle2 size={44} strokeWidth={1.5} /></div>
             <p className="text-lg font-semibold text-[var(--text)]">Merci pour votre retour !</p>
           </div>
         ) : (
@@ -89,14 +90,14 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
                 <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">Type</label>
                 <div className="flex gap-2">
                   {([
-                    { value: 'bug' as FeedbackType, label: '🐛 Bug', color: 'var(--neg)' },
-                    { value: 'suggestion' as FeedbackType, label: '💡 Suggestion', color: 'var(--indigo)' },
-                    { value: 'autre' as FeedbackType, label: '💬 Autre', color: 'var(--text-muted)' },
+                    { value: 'bug' as FeedbackType, label: 'Bug', icon: <Bug size={16} strokeWidth={1.75} />, color: 'var(--neg)' },
+                    { value: 'suggestion' as FeedbackType, label: 'Suggestion', icon: <Lightbulb size={16} strokeWidth={1.75} />, color: 'var(--indigo-ink)' },
+                    { value: 'autre' as FeedbackType, label: 'Autre', icon: <MessageSquare size={16} strokeWidth={1.75} />, color: 'var(--text-muted)' },
                   ]).map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => setType(opt.value)}
-                      className={`flex-1 py-2 px-3 text-sm font-medium border-2 transition-all ${
+                      className={`flex-1 py-2 px-3 text-sm font-medium border-2 transition-all inline-flex items-center justify-center gap-1.5 ${
                         type === opt.value
                           ? 'text-white'
                           : 'text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--indigo)]'
@@ -106,7 +107,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
                         ...(type === opt.value ? { background: opt.color, borderColor: opt.color } : {}),
                       }}
                     >
-                      {opt.label}
+                      {opt.icon}{opt.label}
                     </button>
                   ))}
                 </div>
