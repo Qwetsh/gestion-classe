@@ -17,6 +17,7 @@ import { GroupSplitter } from '../components/class-groups/GroupSplitter';
 import { AccommodationBadges } from '../components/AccommodationBadges';
 import { SeatingGeneratorModal } from '../components/SeatingGeneratorModal';
 import { Sparkles, X } from 'lucide-react';
+import { MoreMenu } from '../components/MoreMenu';
 
 interface Class {
   id: string;
@@ -178,6 +179,8 @@ export function Classes() {
   // Student grades for visual display
   const [studentGrades, setStudentGrades] = useState<Map<string, StudentGradeData>>(new Map());
   const [showGrades] = useState(true);
+  // Bloc « Ce que voient les élèves » replié par défaut (densité)
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
   // Option « Couleur de table » : teinte le bureau selon la note de comportement (persistée par navigateur)
   const [deskColorByGrade, setDeskColorByGrade] = useState<boolean>(() => {
     try { return localStorage.getItem('gc_plan_desk_color') === '1'; } catch { return false; }
@@ -1266,39 +1269,34 @@ export function Classes() {
             <span className="current">Plans de classe</span>
           </div>
           <h1 className="page-title">Plan de salle</h1>
-          <p className="page-subtitle">Glissez-déposez les élèves depuis le panneau latéral. Survolez un bureau pour voir la fiche.</p>
         </div>
         <div className="plan-toolbar">
           <button onClick={() => setShowStudentsPanel(!showStudentsPanel)} className="btn btn--ghost" style={{ fontSize: 13 }}>
             <Icon name="grid" size={14} /> Vue tableau
           </button>
-          <button
-            onClick={() => { setLinkMode((m) => !m); setLinkSel(null); }}
-            className={`btn ${linkMode ? 'btn--accent' : 'btn--ghost'}`}
-            style={{ fontSize: 13 }}
-            title="Cliquer deux tables adjacentes pour les rapprocher (re-cliquer pour délier)"
-          >
-            {linkMode ? 'Liaison : ON' : 'Lier les tables'}
-          </button>
-          <button
-            onClick={toggleDeskColor}
-            className={`btn ${deskColorByGrade ? 'btn--accent' : 'btn--ghost'}`}
-            style={{ fontSize: 13 }}
-            title="Colorer chaque table selon la note de comportement de l'élève (vert ≥ 16, bleu ≥ 12, orange ≥ 8, rouge < 8)"
-          >
-            {deskColorByGrade ? 'Couleur de table : ON' : 'Couleur de table'}
-          </button>
-          <button
-            onClick={toggleShowMalus}
-            className={`btn ${showMalus ? 'btn--accent' : 'btn--ghost'}`}
-            style={{ fontSize: 13 }}
-            title="Afficher le nombre de malus (bavardages) du trimestre sur chaque élève"
-          >
-            {showMalus ? 'Malus : ON' : 'Malus'}
-          </button>
-          <button className="btn btn--ghost" style={{ fontSize: 13 }} onClick={() => window.print()}>
-            Imprimer le plan
-          </button>
+          {/* Options occasionnelles (densité) : bascules et impression dans un menu ⋯ */}
+          <MoreMenu
+            touch={isMobile}
+            title="Options du plan : liaison des tables, couleur, malus, impression"
+            items={[
+              {
+                label: `${linkMode ? '✓ ' : ''}Lier les tables${linkMode ? ' (activé)' : ''}`,
+                onClick: () => { setLinkMode((m) => !m); setLinkSel(null); },
+                title: 'Cliquer deux tables adjacentes pour les rapprocher (re-cliquer pour délier)',
+              },
+              {
+                label: `${deskColorByGrade ? '✓ ' : ''}Couleur de table${deskColorByGrade ? ' (activée)' : ''}`,
+                onClick: toggleDeskColor,
+                title: "Colorer chaque table selon la note de comportement de l'élève (vert ≥ 16, bleu ≥ 12, orange ≥ 8, rouge < 8)",
+              },
+              {
+                label: `${showMalus ? '✓ ' : ''}Malus${showMalus ? ' (affichés)' : ''}`,
+                onClick: toggleShowMalus,
+                title: 'Afficher le nombre de malus (bavardages) du trimestre sur chaque élève',
+              },
+              { label: 'Imprimer le plan', onClick: () => window.print() },
+            ]}
+          />
           {selectedClass && selectedRoom && (
             <button
               className="btn btn--ghost"
@@ -1536,16 +1534,18 @@ export function Classes() {
                 </div>
               ) : (
                 <div className="room-canvas" style={{ flex: 1, minHeight: 0 }}>
-                  {/* Legend */}
-                  <div className="room-legend" style={{ marginBottom: 12 }}>
-                    <span className="leg"><i style={{ background: 'var(--pos)' }} /> 16-20</span>
-                    <span className="leg"><i style={{ background: 'var(--indigo)' }} /> 12-16</span>
-                    <span className="leg"><i style={{ background: 'var(--warn)' }} /> 8-12</span>
-                    <span className="leg"><i style={{ background: 'var(--neg)' }} /> &lt;8</span>
-                    <span className="leg" style={{ marginLeft: 12, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.04em', fontWeight: 600 }}>Tendance</span>
-                    <span className="leg"><span style={{ color: 'var(--pos)', fontWeight: 700, marginRight: 3 }}>↗</span> en hausse</span>
-                    <span className="leg"><span style={{ color: 'var(--neg)', fontWeight: 700, marginRight: 3 }}>↘</span> en baisse</span>
-                  </div>
+                  {/* Légende : seulement quand les tables sont colorées par note (densité) */}
+                  {deskColorByGrade && (
+                    <div className="room-legend" style={{ marginBottom: 12 }}>
+                      <span className="leg"><i style={{ background: 'var(--pos)' }} /> 16-20</span>
+                      <span className="leg"><i style={{ background: 'var(--indigo)' }} /> 12-16</span>
+                      <span className="leg"><i style={{ background: 'var(--warn)' }} /> 8-12</span>
+                      <span className="leg"><i style={{ background: 'var(--neg)' }} /> &lt;8</span>
+                      <span className="leg" style={{ marginLeft: 12, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.04em', fontWeight: 600 }}>Tendance</span>
+                      <span className="leg"><span style={{ color: 'var(--pos)', fontWeight: 700, marginRight: 3 }}>↗</span> en hausse</span>
+                      <span className="leg"><span style={{ color: 'var(--neg)', fontWeight: 700, marginRight: 3 }}>↘</span> en baisse</span>
+                    </div>
+                  )}
 
                   {/* Seat grid */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: 'relative', zIndex: 1 }}>
@@ -1694,7 +1694,7 @@ export function Classes() {
                       draggable
                       onDragStart={() => handleDragStart(student.id)}
                       className="student-pill pool-pill"
-                      title={student.pseudo}
+                      title={gradeData && showGrades ? `${student.pseudo} · ${gradeData.grade.toFixed(0)}/20` : student.pseudo}
                     >
                       <div className="student-pill__bar" style={{ background: barColor }} />
                       <span className="pool-pill__name">{student.pseudo}</span>
@@ -1702,9 +1702,12 @@ export function Classes() {
                       {gradeData && showGrades && (
                         <>
                           {showMalus && <MalusBadge count={gradeData.malus} />}
-                          <span className="pool-pill__grade">
-                            {gradeData.grade.toFixed(0)}<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/20</span>
-                          </span>
+                          {/* La note reste en infobulle ; visible seulement avec « Couleur de table » (densité) */}
+                          {deskColorByGrade && (
+                            <span className="pool-pill__grade">
+                              {gradeData.grade.toFixed(0)}<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/20</span>
+                            </span>
+                          )}
                         </>
                       )}
                     </div>
@@ -1715,11 +1718,23 @@ export function Classes() {
 
             {/* Footer actions */}
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Ce que voient les élèves (espace /eleve) */}
+              {/* Ce que voient les élèves (espace /eleve) — replié par défaut (densité) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '0 8px 2px' }}>
-                  Ce que voient les élèves
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setVisibilityOpen((o) => !o)}
+                  aria-expanded={visibilityOpen}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 32,
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)',
+                    padding: '4px 8px', background: 'none', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                  }}
+                  title="Onglets visibles dans l'espace élève de cette classe"
+                >
+                  <span aria-hidden="true" style={{ display: 'inline-block', transform: visibilityOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }}>▸</span>
+                  Visibilité élèves
+                </button>
+                {visibilityOpen && (<>
                 <VisibilityToggle icon="⭐" label="Tampons" enabled={showStampsTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('stamps')} accent="var(--warn)" />
                 <VisibilityToggle icon="🏰" label="Maison" enabled={academyEnabled} disabled={academyLoading} onToggle={handleToggleAcademy} />
                 <VisibilityToggle icon="📚" label="Annales" enabled={showAnnalesTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('annales')} accent="var(--pos)" />
@@ -1738,6 +1753,7 @@ export function Classes() {
                     ↳ Appliquer à toutes les classes
                   </button>
                 )}
+                </>)}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>

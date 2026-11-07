@@ -30,6 +30,7 @@ import {
   NO_FILTERS,
   parsePrefs,
   sequencesPresent,
+  shortDate,
   type CarnetPrefs,
   type CellMark,
 } from '../lib/carnetView';
@@ -37,7 +38,7 @@ import { ColumnHeader } from './carnet/ColumnHeader';
 import { KindIcon } from './KindIcon';
 import { fetchClassProductions, linkActivityToClass, type ActivityRow } from '../lib/productionsQueries';
 import { cellToCorrect, firstToCorrect, productionColumns, type ProductionColumn } from '../lib/carnetProductions';
-import { columnLabels, sameNameTarget } from '../lib/columnHeader';
+import { columnLabels, sameNameTarget, type ColumnLabel } from '../lib/columnHeader';
 import { StudentGradeModal } from './StudentGradeModal';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
 import { AssessmentModal } from './AssessmentModal';
@@ -259,6 +260,25 @@ export function CarnetTab({ userId, account, onError }: {
   const visible = useMemo(() => filterAssessments(assessments, filters), [assessments, filters]);
   const filtered = isFiltered(filters);
   const labels = useMemo(() => columnLabels(visible), [visible]);
+  /** Ligne d'infos allégée (densité) : la date seulement si le nom ne la porte pas déjà, puis le
+   *  barème ; le type passe en infobulle de l'en-tête. */
+  const displayLabels = useMemo(() => {
+    const m = new Map<string, ColumnLabel>();
+    for (const a of visible) {
+      const l = labels.get(a.id);
+      if (!l) continue;
+      const date = shortDate(a.date);
+      const parts: string[] = [];
+      if (date && !l.title.includes(date)) parts.push(date);
+      parts.push(`/${String(Number(a.bareme_total ?? 20)).replace('.', ',')}`);
+      m.set(a.id, { ...l, meta: parts.join(' · ') });
+    }
+    return m;
+  }, [visible, labels]);
+  /** Barre de filtres repliée tant qu'aucun filtre n'est actif (densité) ; le bouton « Filtres » la déplie. */
+  const [filtersToggled, setFiltersToggled] = useState<boolean | null>(null);
+  const filtersOpen = filtersToggled ?? filtered;
+  const activeFilterCount = (filters.kind !== 'all' ? 1 : 0) + (filters.sequence !== 'all' ? 1 : 0) + (filters.published !== 'all' ? 1 : 0);
   const seriesSize = useMemo(() => {
     const m = new Map<string, number>();
     for (const a of allAssessments) if (a.series_id) m.set(a.series_id, (m.get(a.series_id) ?? 0) + 1);
@@ -608,9 +628,19 @@ export function CarnetTab({ userId, account, onError }: {
           ))}
         </div>
 
-        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{schoolYear}</span>
-
         <div style={{ flex: 1 }} />
+
+        {assessments.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setFiltersToggled(!filtersOpen)}
+            style={{ ...btnGhost, ...(filtersOpen ? { borderColor: 'var(--indigo)', color: 'var(--indigo-ink)' } : {}) }}
+            aria-expanded={filtersOpen}
+            title="Type, séquence, publication, colonne moyenne, détails des colonnes"
+          >
+            Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+          </button>
+        )}
 
         <span style={{ fontSize: 12, color: saveState === 'error' ? 'var(--neg)' : 'var(--text-dim)', minWidth: 92, textAlign: 'right' }}>
           {saveState === 'saving' ? 'Enregistrement…'
@@ -633,7 +663,7 @@ export function CarnetTab({ userId, account, onError }: {
       </div>
 
       {/* Filtres des colonnes : type, séquence, publication ; colonne Moyenne facultative. */}
-      {assessments.length > 0 && (() => {
+      {assessments.length > 0 && filtersOpen && (() => {
         const kinds = kindsPresent(assessments);
         const sequences = sequencesPresent(assessments);
         const noSeq = hasUnsequenced(assessments);
@@ -744,10 +774,10 @@ export function CarnetTab({ userId, account, onError }: {
                 <th className="gc-carnet__name-col" style={{ ...th, ...stickyCol, textAlign: 'left' }}>Élève</th>
                 {visible.map((a) => {
                   const chip = carnetHeaderChip(overviews[a.id], columnStats.get(a.id)?.pending ?? 0);
-                  const label = labels.get(a.id);
+                  const label = displayLabels.get(a.id);
                   if (!label) return null;
                   return (
-                    <th key={a.id} style={{ ...th, ...colSep, minWidth: 112, maxWidth: 168, textAlign: 'left', verticalAlign: 'top', fontWeight: 400 }}>
+                    <th key={a.id} title={ASSESSMENT_KIND_LABEL[a.kind]} style={{ ...th, ...colSep, minWidth: 112, maxWidth: 168, textAlign: 'left', verticalAlign: 'top', fontWeight: 400 }}>
                       <ColumnHeader
                         assessment={a}
                         label={label}

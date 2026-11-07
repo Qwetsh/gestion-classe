@@ -380,12 +380,10 @@ function Brand({ trimestre, year }: { trimestre: number | string; year: string }
         <rect x="0" y="0" width="32" height="32" rx="9" fill="var(--indigo-ink)" />
         <text x="16" y="21" textAnchor="middle" fontFamily="var(--font-display)" fontSize="13" fontWeight="700" fill="#fff">GC</text>
       </svg>
-      <div className="gc-brand__text" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, minWidth: 0 }}>
+      {/* Pas de ligne trimestre · année : l'année ne change pas en cours de route, le trimestre est dans Réglages */}
+      <div className="gc-brand__text" style={{ display: 'flex', alignItems: 'center', lineHeight: 1.15, minWidth: 0 }} title={`T${trimestre} · ${year}`}>
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.01em', color: 'var(--text)' }}>
           Gestion Classe
-        </span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-          T{trimestre} · {year}
         </span>
       </div>
     </Link>

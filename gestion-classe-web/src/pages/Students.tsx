@@ -1833,6 +1833,14 @@ export function Students() {
 
   // Élèves détachés (class_id NULL) : conservés d'une année mais pas encore réaffectés.
   const detachedStudents = studentGrades.filter(sg => !sg.student.class_id);
+  // Rappel « anciens élèves non réaffectés » : masquable pour la session de navigation
+  const [detachedHintHidden, setDetachedHintHidden] = useState(() => {
+    try { return sessionStorage.getItem('gc_detached_hint_hidden') === '1'; } catch { return false; }
+  });
+  const hideDetachedHint = () => {
+    setDetachedHintHidden(true);
+    try { sessionStorage.setItem('gc_detached_hint_hidden', '1'); } catch { /* stockage indisponible */ }
+  };
 
   const handlePurgeDetached = async () => {
     if (!user || detachedStudents.length === 0) return;
@@ -1885,9 +1893,6 @@ export function Students() {
               <span className="is-current">Notes d'implication</span>
             </div>
             <h1>Notes d'implication</h1>
-            <div className="track-header__sub">
-              T{trimesterSettings.current_trimester} · {trimesterSettings.school_year} · <b>Note de base {classConfigs.get(selectedClassId || '')?.base_grade ?? 10}/20</b>
-            </div>
           </div>
           <div className="track-header__actions">
             <button className="btn btn--danger" onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}>
@@ -1923,17 +1928,6 @@ export function Students() {
           </div>
         </header>
 
-        {detachedStudents.length > 0 && (
-          <div style={{ background: 'var(--warn-soft)', border: '1px solid var(--warn)', borderRadius: 'var(--radius)', padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: 'var(--text)' }}>
-              👤 <strong>{detachedStudents.length}</strong> ancien(s) élève(s) non réaffecté(s) à une classe — conservés de l'an dernier, ils seront repris automatiquement à l'import s'ils reviennent.
-            </span>
-            <button className="btn btn--ghost" style={{ fontSize: 12 }} onClick={handlePurgeDetached}>
-              Supprimer définitivement
-            </button>
-          </div>
-        )}
-
         <div className="track-body">
           {/* Sidebar: classes */}
           <aside className="classes-pane">
@@ -1949,19 +1943,35 @@ export function Students() {
                   <ClassChip label={cls.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3)} color={CLASS_COLORS[cls.id] || '#6366F1'} size={26} muted={cls.id !== selectedClassId} />
                   <div className="class-row__main" style={{ minWidth: 0 }}>
                     <div className="class-row__name">{cls.name}</div>
-                    <div className="class-row__meta">
-                      <span>{cls.studentCount} élèves</span>
-                      <span style={{ color: 'var(--text-dim)' }}>·</span>
-                      <span>Moy. <b>{cls.averageGrade.toFixed(1)}</b></span>
-                    </div>
                   </div>
+                  {/* La pastille porte la moyenne ; l'effectif n'aide pas à choisir une classe */}
                   <AvgRing value={cls.averageGrade} color={CLASS_COLORS[cls.id] || '#6366F1'} />
                 </button>
               ))}
             </div>
-            <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)' }}>
-              {studentGrades.length} élèves au total · {classes.length} classes
-            </div>
+            {detachedStudents.length > 0 && !detachedHintHidden && (
+              <div
+                style={{ padding: '8px 10px 8px 14px', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}
+                title="Anciens élèves conservés de l'an dernier ; repris automatiquement à l'import s'ils reviennent."
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {detachedStudents.length} ancien{detachedStudents.length > 1 ? 's' : ''} élève{detachedStudents.length > 1 ? 's' : ''} non réaffecté{detachedStudents.length > 1 ? 's' : ''}
+                  {' · '}
+                  <button type="button" onClick={handlePurgeDetached} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: 'var(--neg)', fontWeight: 600, cursor: 'pointer' }}>
+                    Supprimer
+                  </button>
+                </span>
+                <button
+                  type="button"
+                  onClick={hideDetachedHint}
+                  aria-label="Masquer pour cette session"
+                  title="Masquer pour cette session"
+                  style={{ background: 'none', border: 0, padding: '2px 4px', font: 'inherit', fontSize: 14, lineHeight: 1, color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
           </aside>
 
           {/* Main: class detail */}
@@ -1981,11 +1991,12 @@ export function Students() {
                         <Icon name="settings" size={14} />
                       </button>
                     </h2>
-                    <div className="class-detail__meta">
-                      <span>{selectedClassStats.studentCount} élèves</span>
-                      <span>·</span>
-                      <span>{filteredAndSortedGrades.length > 0 ? `${filteredAndSortedGrades.length} affichés` : '0 séances'}</span>
-                    </div>
+                    {/* Effectif seulement quand un filtre ou une recherche réduit la liste */}
+                    {filteredAndSortedGrades.length !== selectedClassStats.studentCount && (
+                      <div className="class-detail__meta">
+                        <span>{filteredAndSortedGrades.length} affiché{filteredAndSortedGrades.length > 1 ? 's' : ''} sur {selectedClassStats.studentCount}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="class-detail__score" onClick={() => openConfigModal(selectedClassId)} style={{ cursor: 'pointer' }} title="Configurer">
@@ -2024,11 +2035,9 @@ export function Students() {
               {/* Class strip: distribution + indicators */}
               <div className="class-strip">
                 <Distribution grades={filteredAndSortedGrades.map(s => s.grade)} color={CLASS_COLORS[selectedClassId] || '#6366F1'} />
-                <div className="class-strip__indicators">
+                {/* Seul indicateur qui appelle une décision (il reste des oraux à faire) ; les cumuls sont dans Analyses */}
+                <div className="class-strip__indicators" style={{ gridTemplateColumns: '1fr' }}>
                   <Indic label="Oral fait" value={`${filteredAndSortedGrades.filter(s => s.oralEvaluation).length}/${filteredAndSortedGrades.length}`} hint="ce trimestre" />
-                  <Indic label="Participation" value={filteredAndSortedGrades.reduce((sum, s) => sum + s.totalParticipations, 0)} hint="événements cumulés" />
-                  <Indic label="Absences" value={filteredAndSortedGrades.reduce((sum, s) => sum + s.absences, 0)} tone="warn" hint={`dont ${filteredAndSortedGrades.reduce((sum, s) => sum + s.malus, 0)} malus`} />
-                  <Indic label="Bonus" value={filteredAndSortedGrades.reduce((sum, s) => sum + s.bonus, 0).toFixed(0)} hint="à redistribuer" />
                 </div>
               </div>
 
@@ -2042,7 +2051,6 @@ export function Students() {
                     const classColor = CLASS_COLORS[sg.student.class_id] || '#6366F1';
                     const history = getSparklineHistory(sg.events);
                     const delta = getSparklineDelta(history);
-                    const totalSessions = new Set(sg.events.map(e => e.session_id)).size;
                     return (
                       <div key={sg.student.id} className={`scard scard--${tone}`} onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="scard__head">
@@ -2056,9 +2064,6 @@ export function Students() {
                                 {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ marginLeft: 6, fontSize: 11 }}>👁️</span>}
                                 <AccommodationBadges student={sg.student} bg="var(--indigo-soft)" fg="var(--indigo)" style={{ marginLeft: 6, verticalAlign: 'middle' }} />
                               </div>
-                              <div className="scard__meta">
-                                {totalSessions}/25 sessions
-                              </div>
                             </div>
                           </div>
                           <div className="scard__markbox">
@@ -2066,18 +2071,22 @@ export function Students() {
                               <span>{sg.grade.toFixed(1)}</span>
                               <small>/20</small>
                             </div>
-                            <div className={`scard__malus ${sg.malus >= 5 ? 'is-high' : ''}`} title="Malus (bavardages) ce trimestre">
-                              {sg.malus > 0 ? `−${sg.malus}` : '0'} malus
-                            </div>
+                            {sg.malus > 0 && (
+                              <div className={`scard__malus ${sg.malus >= 5 ? 'is-high' : ''}`} title="Malus (bavardages) ce trimestre">
+                                −{sg.malus} malus
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="scard__trend">
+                        {/* Sparkline des 10 dernières séances ; le delta n'apparaît que s'il est significatif */}
+                        <div className="scard__trend" title="Évolution sur les 10 dernières séances">
                           <Sparkline history={history} w={168} h={28} color="var(--text)" />
-                          <div className="scard__trend-meta">
-                            <span className="scard__trend-label">10 dernières séances</span>
-                            <TrendBadge delta={delta} />
-                          </div>
+                          {Math.abs(delta) >= 0.15 && (
+                            <div className="scard__trend-meta">
+                              <TrendBadge delta={delta} />
+                            </div>
+                          )}
                         </div>
 
                       </div>
@@ -2114,13 +2123,14 @@ export function Students() {
                           </div>
                         </div>
                         <div className="srow__mark" style={{ color: sg.grade < 8 ? 'var(--neg)' : sg.grade >= 12 ? 'var(--pos)' : 'var(--text)' }}>{sg.grade.toFixed(1)}</div>
-                        <div className="srow__spark" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="srow__spark" style={{ display: 'flex', alignItems: 'center', gap: 8 }} title="Évolution sur les 10 dernières séances">
                           <Sparkline history={history} w={64} h={20} color={classColor} />
-                          <TrendBadge delta={delta} />
+                          {Math.abs(delta) >= 0.15 && <TrendBadge delta={delta} />}
                         </div>
-                        <div className="srow__n srow__n--pos">+{sg.totalParticipations}</div>
-                        <div className="srow__n srow__n--neg">{sg.malus > 0 ? `−${sg.malus}` : '0'}</div>
-                        <div className="srow__n">{sg.absences}</div>
+                        {/* Pas de « 0 » affiché : la case reste vide */}
+                        <div className="srow__n srow__n--pos">{sg.totalParticipations > 0 ? `+${sg.totalParticipations}` : ''}</div>
+                        <div className="srow__n srow__n--neg">{sg.malus > 0 ? `−${sg.malus}` : ''}</div>
+                        <div className="srow__n">{sg.absences > 0 ? sg.absences : ''}</div>
                         <div className="srow__n">{sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'}</div>
                       </div>
                     );

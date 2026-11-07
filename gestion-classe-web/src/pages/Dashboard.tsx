@@ -10,7 +10,7 @@ import { HomeGrid } from '../components/home/HomeGrid';
 import { HomeEditBar } from '../components/home/HomeEditBar';
 import { HOME_MODULE_IDS } from '../components/home/homeModules';
 import { initHomeLayout, setEditing, useHomeLayoutStore } from '../components/home/homeLayoutStore';
-import { formatDayFr, formatTime, getTimeOfDay, isSameDay } from '../components/home/homeHelpers';
+import { formatDayFr, formatTime, isSameDay } from '../components/home/homeHelpers';
 
 /**
  * Page d'accueil : en-tête + grille de modules personnalisable.
@@ -59,7 +59,7 @@ function HomeContent() {
   return (
     <div className={`dash ${editing ? 'dash--editing' : ''}`}>
       <div className="dash__head">
-        <div className="dash__date">{formatDayFr(now)} · {getTimeOfDay()}</div>
+        <div className="dash__date">{formatDayFr(now)}</div>
         <h1 className="dash__title">Accueil</h1>
         {pronoteConnected && nextLesson && !editing && (
           <p className="dash__subtitle">

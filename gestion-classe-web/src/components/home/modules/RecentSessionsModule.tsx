@@ -11,7 +11,6 @@ export function RecentSessionsModule() {
       <div className="dash__card-head">
         <div>
           <h2 className="dash__card-title">Séances récentes</h2>
-          <p className="dash__card-sub">10 derniers jours · {recentSessions.length} séances</p>
         </div>
         <Link to="/sessions" className="dash__card-link">Tout l'historique →</Link>
       </div>
@@ -25,7 +24,6 @@ export function RecentSessionsModule() {
           <div className="dash__srow dash__srow--head">
             <span>Classe</span>
             <span>Bonus · malus · absences</span>
-            <span style={{ textAlign: 'right' }}>Événements</span>
             <span />
           </div>
           {recentSessions.map((session) => {
@@ -50,7 +48,6 @@ export function RecentSessionsModule() {
                     <span className="dash__evt-badge dash__evt-badge--abs">{session.abs_count}abs</span>
                   )}
                 </span>
-                <span className="dash__srow-count">{session.events_count}</span>
                 <span className="dash__chevron">›</span>
               </Link>
             );

@@ -72,7 +72,6 @@ export function GroupSessionLauncher() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, color: DB.text, fontSize: 14 }}>Travail de groupe</div>
-            <div style={{ color: DB.textSecondary, fontSize: 12, marginTop: 1 }}>Noter un TP</div>
           </div>
         </button>
 
@@ -101,7 +100,6 @@ export function GroupSessionLauncher() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, color: DB.text, fontSize: 14 }}>Épreuve</div>
-            <div style={{ color: DB.textSecondary, fontSize: 12, marginTop: 1 }}>Points de maison</div>
           </div>
         </button>
       </div>

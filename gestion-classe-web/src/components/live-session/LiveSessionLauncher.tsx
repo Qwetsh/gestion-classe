@@ -71,9 +71,6 @@ export function LiveSessionLauncher() {
         <h3 style={{ fontSize: 16, fontWeight: 600, color: DB.text, margin: 0 }}>
           Démarrer une séance
         </h3>
-        <p style={{ fontSize: 13, color: DB.textSecondary, margin: '1px 0 0' }}>
-          Suivre la participation en classe
-        </p>
       </div>
       <span style={{ color: DB.textTertiary, fontSize: 20 }}>›</span>
     </button>

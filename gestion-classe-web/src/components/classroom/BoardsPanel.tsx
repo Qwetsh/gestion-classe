@@ -4,7 +4,6 @@
  * (table `session_boards`) ; le « Brouillon » local (sans compte ni migration) reste disponible.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   BOARD_LEVELS,
   NO_LEVEL,
@@ -104,8 +103,7 @@ export function BoardsPanel({ userId }: Props) {
     <div className="dash__card">
       <div className="dash__card-head">
         <div>
-          <h2 className="dash__card-title">Mes tableaux</h2>
-          <p className="dash__card-sub">Cours préparés à l'avance, rangés par niveau et chapitre ; à ouvrir en classe depuis Plus ⋯ › Fichier.</p>
+          <h2 className="dash__card-title" title="Tableaux préparés à l'avance, rangés par niveau et chapitre ; à ouvrir en classe depuis Plus ⋯ › Fichier">Mes tableaux</h2>
         </div>
         <button type="button" className="btn btn--ghost" onClick={() => setEditing('new')} disabled={boardsUnavailable()} title={boardsUnavailable() ? 'Migration add_boards.sql à appliquer' : 'Nouveau tableau préparé'}>
           + Nouveau
@@ -140,23 +138,18 @@ export function BoardsPanel({ userId }: Props) {
                 <div key={chapter || '—'}>
                   {chapter && <div className="dash__shortcut-sub" style={{ padding: '8px 16px 0 40px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10 }}>{chapter}</div>}
                   {list.map((b) => {
+                    // Date de modification et séances d'utilisation : dans l'infobulle, pas dans la liste
                     const used = usages.get(b.id) ?? [];
+                    const hint = [
+                      `modifié le ${fmtDate(b.updated_at)}`,
+                      used.length > 0 ? `utilisé dans ${used.length} séance${used.length > 1 ? 's' : ''}` : null,
+                      ...used.map((u) => `${u.class_name} · ${fmtDate(u.started_at)}`),
+                    ].filter(Boolean).join('\n');
                     return (
                       <div key={b.id} className="dash__shortcut" style={{ alignItems: 'center', paddingLeft: 40 }}>
                         <span className="dash__shortcut-icon">📋</span>
-                        <button type="button" onClick={() => setOpen(b)} style={rowButton} title="Ouvrir dans l'éditeur">
+                        <button type="button" onClick={() => setOpen(b)} style={rowButton} title={hint}>
                           <div className="dash__shortcut-title">{b.title}</div>
-                          <div className="dash__shortcut-sub">
-                            modifié le {fmtDate(b.updated_at)}
-                            {used.length > 0 && (
-                              <>
-                                {' · '}
-                                <Link to={`/sessions/${used[0].session_id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit' }} title={used.map((u) => `${u.class_name} · ${fmtDate(u.started_at)}`).join('\n')}>
-                                  utilisé dans {used.length} séance{used.length > 1 ? 's' : ''}
-                                </Link>
-                              </>
-                            )}
-                          </div>
                         </button>
                         <button type="button" className="btn btn--ghost" onClick={() => setEditing(b)} title="Titre, niveau, chapitre" style={iconButton}>✎</button>
                         <button type="button" className="btn btn--ghost" onClick={() => void remove(b)} title="Supprimer" style={iconButton}>🗑</button>

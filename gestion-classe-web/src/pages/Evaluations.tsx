@@ -19,9 +19,6 @@ export function Evaluations() {
         <h1 className="page-title">
           Évaluations
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-          Toutes les notes d’une classe sur un trimestre, saisie au clavier. Le nom d’une colonne ouvre la fiche de l’éval.
-        </p>
       </div>
 
       {error && (

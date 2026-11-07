@@ -5,6 +5,7 @@ import { Modal } from '../components/Modal';
 import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { IconPicker } from '../components/rewards/IconPicker';
 import { ChevronDown, ChevronUp, Gift, Pencil, Plus, RotateCcw, Settings2, Stamp, Trash2 } from 'lucide-react';
+import { MoreMenu } from '../components/MoreMenu';
 import {
   fetchCategories,
   fetchBonuses,
@@ -432,7 +433,6 @@ export function Rewards() {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2 md:mb-4">
           <div>
             <h1 className="page-title">Récompenses</h1>
-            <p className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Carte à tampons et bonus</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -544,6 +544,7 @@ export function Rewards() {
               ) : (
                 <OverviewTab
                   overview={filteredOverview}
+                  hideClass={!!classFilter}
                   onAwardStamp={openStampModal}
                   onChooseBonus={setBonusTarget}
                   onMarkBonusUsed={doMarkBonusUsed}
@@ -931,15 +932,19 @@ export function Rewards() {
 // ============================================
 
 function OverviewTab({
-  overview, onAwardStamp, onChooseBonus, onMarkBonusUsed, onStudentClick, onResetStudent,
+  overview, hideClass, onAwardStamp, onChooseBonus, onMarkBonusUsed, onStudentClick, onResetStudent,
 }: {
   overview: StudentStampOverview[];
+  /** Une classe est sélectionnée : la colonne Classe répéterait la même valeur (densité). */
+  hideClass: boolean;
   onAwardStamp: (s: StudentStampOverview) => void;
   onChooseBonus: (s: StudentStampOverview) => void;
   onMarkBonusUsed: (id: string) => void;
   onStudentClick: (s: StudentStampOverview) => void;
   onResetStudent: (s: StudentStampOverview) => void;
 }) {
+  // Colonne Bonus seulement si elle a quelque chose à dire pour au moins un élève affiché
+  const showBonus = overview.some(s => s.stamp_count >= 10 || !!s.bonus_label || !!s.bonus_selection_id);
   return (
     <div className="space-y-4">
       {overview.length === 0 ? (
@@ -954,10 +959,9 @@ function OverviewTab({
               <thead>
                 <tr className="bg-[var(--surface-3)]">
                   <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Élève</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Classe</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Carte</th>
+                  {!hideClass && <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Classe</th>}
                   <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Progression</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Bonus</th>
+                  {showBonus && <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Bonus</th>}
                   <th className="text-right px-4 py-3 font-medium text-[var(--text-muted)]">Actions</th>
                 </tr>
               </thead>
@@ -968,15 +972,12 @@ function OverviewTab({
                       <button
                         onClick={() => onStudentClick(s)}
                         className="font-semibold text-[var(--text)] hover:text-[var(--indigo-ink)] text-left"
-                        title="Ouvrir la carte"
+                        title={`Carte n°${s.card_number} ${getCardTier(s.card_number).emoji} — ouvrir`}
                       >
                         {s.pseudo}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">{s.class_name}</td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">
-                      {getCardTier(s.card_number).emoji} n°{s.card_number}
-                    </td>
+                    {!hideClass && <td className="px-4 py-3 text-[var(--text-muted)]">{s.class_name}</td>}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 bg-[var(--surface-3)] rounded-full overflow-hidden max-w-[120px]">
@@ -988,10 +989,12 @@ function OverviewTab({
                             }}
                           />
                         </div>
-                        <span className="text-xs font-medium text-[var(--text-muted)]">{s.stamp_count}/10</span>
+                        {s.stamp_count > 0 && (
+                          <span className="text-xs font-medium text-[var(--text-muted)]">{s.stamp_count}/10</span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    {showBonus && <td className="px-4 py-3">
                       {s.bonus_label ? (
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
                           s.bonus_used
@@ -1003,7 +1006,7 @@ function OverviewTab({
                       ) : s.stamp_count === 10 ? (
                         <span className="text-xs text-[var(--warn)] font-medium">En attente de choix</span>
                       ) : null}
-                    </td>
+                    </td>}
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {s.stamp_count < 10 && (
@@ -1032,13 +1035,12 @@ function OverviewTab({
                             Valider bonus
                           </button>
                         )}
-                        <button
-                          onClick={() => onResetStudent(s)}
-                          className="px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--neg)] hover:bg-[var(--neg-soft)] transition-colors"
-                          title={`Réinitialiser ${s.pseudo}`}
-                        >
-                          ↺
-                        </button>
+                        {/* Action rare et destructive : dans un menu ⋯ (densité) */}
+                        <MoreMenu
+                          compact
+                          title={`Autres actions pour ${s.pseudo}`}
+                          items={[{ label: 'Réinitialiser la carte', onClick: () => onResetStudent(s), danger: true, title: 'Remet les tampons à zéro' }]}
+                        />
                       </div>
                     </td>
                   </tr>
