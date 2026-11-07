@@ -43,6 +43,9 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 const fmtPts = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
+/** Comparaison titre / consigne : sans casse, ponctuation finale ni espaces. */
+const norm = (s: string) => s.toLowerCase().replace(/[\s.:…?!]+/g, ' ').trim();
+const noAnswer = <span style={{ color: 'var(--neg)', fontSize: 13, fontStyle: 'italic', fontWeight: 500 }}>pas de réponse</span>;
 
 function emptyCorrection(): Correction { return { questions: {} }; }
 
@@ -88,6 +91,8 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
   const [dirty, setDirty] = useState(false);
   const [showExpected, setShowExpected] = useState(false);
   const [versions, setVersions] = useState<WorkVersionRow[] | null>(null);
+  /** Questions dont la remarque (vide) a été ouverte : repliée sinon, pour garder la vue compacte. */
+  const [openRemarks, setOpenRemarks] = useState<Set<string>>(new Set());
 
   // Nouvelle copie ouverte (navigation) : repartir de sa correction.
   useEffect(() => {
@@ -98,7 +103,15 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
     setSkills(work.skills ?? {});
     setDirty(false);
     setVersions(null);
+    setOpenRemarks(new Set());
   }, [work, activity]);
+
+  // La page derrière ne défile pas tant que la correction est ouverte (comme Modal.tsx).
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -208,13 +221,13 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
     if (q.type === 'tableau') {
       const lignes = (v ?? {}) as Record<string, Q1Row>;
       return (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
           <tbody>
             {(def.lignes_q1 ?? []).map((l, i) => {
               const row = lignes[l.id] ?? {};
               return (
                 <tr key={l.id} style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
-                  <td style={{ ...tdSmall, width: 90 }}><strong>Ligne {i + 1}</strong><br />{ZONE_NAMES[String(row.zone ?? '')] ?? String(row.zone ?? '—')}</td>
+                  <td style={{ ...tdSmall, width: 84 }}><span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Ligne {i + 1}</span><br /><strong>{ZONE_NAMES[String(row.zone ?? '')] ?? String(row.zone ?? '—')}</strong></td>
                   <td style={tdSmall}>
                     {(def.colonnes_q1 ?? []).map((col) => {
                       // Définition v2 : cases listées par `champs` (menus, nombre) ; v1 : un texte libre par colonne.
@@ -222,8 +235,8 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
                       const auto = q.criteres.some((cr) => cr.auto?.colonne === col.id) ? checkQ1Cell(def, row, col.id) : null;
                       const texte = champs.map((ch) => q1Label(def, ch, row[ch.id])).filter(Boolean).join(' · ');
                       return (
-                        <div key={col.id} style={{ marginBottom: 3 }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{col.nom} : </span>
+                        <div key={col.id} style={{ marginBottom: 2 }}>
+                          <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 400 }}>{col.nom} : </span>
                           {texte
                             ? <span style={{ color: auto === true ? 'var(--pos, #047857)' : auto === false ? 'var(--neg)' : undefined }}>{auto === true ? '✓ ' : auto === false ? '✗ ' : ''}{texte}</span>
                             : <span style={{ color: 'var(--text-dim)' }}>—</span>}
@@ -241,18 +254,18 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
     if (q.type === 'deductive') {
       const o = (v ?? {}) as Record<string, string>;
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {(q.champs ?? []).map((ch) => (
             <div key={ch.id}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{ch.nom}</div>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{o[ch.id] || <span style={{ color: 'var(--text-dim)' }}>—</span>}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{ch.nom}</div>
+              <div style={{ whiteSpace: 'pre-wrap' }}>{o[ch.id] || noAnswer}</div>
             </div>
           ))}
         </div>
       );
     }
     const t = v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v);
-    return <div style={{ whiteSpace: 'pre-wrap' }}>{t || <span style={{ color: 'var(--text-dim)' }}>— (pas de réponse)</span>}</div>;
+    return <div style={{ whiteSpace: 'pre-wrap' }}>{t || noAnswer}</div>;
   };
 
   const questionPoints = (q: ActivityQuestion) => {
@@ -264,15 +277,16 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
 
   return (
     <div style={overlay} onClick={onClose}>
-      <div style={{ ...modal, width: 'min(1240px, 97vw)', height: '94vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+      {/* Fenêtre centrée, assez étroite pour garder l'œil près des réponses ; le corrigé attendu l'élargit de sa colonne. */}
+      <div style={{ ...modal, width: showExpected ? 'min(1108px, 97vw)' : 'min(768px, 97vw)', height: 'min(84vh, 900px)', boxShadow: '0 18px 48px rgba(17, 24, 39, 0.28)', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={(e) => e.stopPropagation()}>
         {/* En-tête */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', gap: 4 }}>
             <button onClick={onPrev} disabled={!onPrev} style={{ ...btnGhost, padding: '4px 10px' }} title="Copie précédente (Alt + ←)">←</button>
             <button onClick={onNext} disabled={!onNext} style={{ ...btnGhost, padding: '4px 10px' }} title="Copie suivante (Alt + →)">→</button>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>
               {group.map(pseudo).join(', ')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {work.classes?.name ?? ''}{position && ` · ${position.index + 1}/${position.total}`}</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -289,7 +303,7 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
         </div>
 
         {group.length > 1 && (
-          <div role="radiogroup" aria-label="Corriger pour" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '8px 18px', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+          <div role="radiogroup" aria-label="Corriger pour" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '5px 14px', borderBottom: '1px solid var(--border)', fontSize: 12.5 }}>
             <span style={{ fontWeight: 600, marginRight: 4 }}>Corriger pour :</span>
             {[{ id: 'group', label: `tout le groupe (${group.length})` }, ...group.map((w) => ({ id: w.id, label: `${pseudo(w)} uniquement${w.status === 'validated' ? ' · validée' : ''}` }))].map((o) => {
               const on = target === o.id;
@@ -304,8 +318,8 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
         )}
 
         {/* Corps */}
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: showExpected ? '1fr 340px' : '1fr' }}>
-          <div style={{ overflow: 'auto', padding: 18 }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: showExpected ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)' }}>
+          <div style={{ overflow: 'auto', overscrollBehavior: 'contain', padding: '10px 14px' }}>
             {locked && (
               <div style={{ ...note, background: 'var(--pos-soft, rgba(16,185,129,.14))', color: 'var(--pos, #047857)' }}>
                 {scope.length > 1
@@ -336,58 +350,72 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
               </div>
             )}
 
-            {def.questions.map((q) => {
+            {def.questions.map((q, qi) => {
               const c = corr.questions[q.id];
               const pts = questionPoints(q);
+              const full = !q.bonus && pts >= q.points && q.points > 0;
+              // La consigne répète souvent le titre (« Les 4 symptômes… sont : ») : on ne l'affiche que si elle apporte quelque chose.
+              const consigne = q.consigne && norm(q.consigne) !== norm(q.titre) ? q.consigne : '';
+              const remarkOpen = !!c?.remarque || openRemarks.has(q.id);
               return (
-                <section key={q.id} style={{ marginBottom: 18, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '8px 12px', background: 'var(--surface-3)' }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{q.num}. {q.titre}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{q.bonus ? 'bonus, non compté' : `${fmtPts(pts)} / ${fmtPts(q.points)}`}{q.auto && ' · corrigée automatiquement'}</span>
-                    {!locked && (
-                      <>
-                        {q.criteres.some((cr) => cr.auto) && (
-                          <button onClick={() => redoAuto(q)} style={{ ...btnGhost, padding: '2px 8px', fontSize: 11 }} title="Refaire la correction automatique d’après les réponses de l’élève">Auto</button>
-                        )}
-                        <button onClick={() => setAll(q, true)} style={{ ...btnGhost, padding: '2px 8px', fontSize: 11 }}>Tout</button>
-                        <button onClick={() => setAll(q, false)} style={{ ...btnGhost, padding: '2px 8px', fontSize: 11 }}>Rien</button>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: 0 }}>
-                    <div style={{ padding: 12, borderRight: '1px solid var(--border)', fontSize: 13 }}>
-                      <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--text-muted)' }}>{q.consigne}</p>
-                      {renderAnswer(q)}
+                <section key={q.id} className="gc-wc__q" style={{ borderTop: qi ? '1px solid var(--border)' : undefined }}>
+                  {/* Gauche : la question en une ligne, puis la réponse de l'élève, mise en avant. */}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                      {q.num}. {q.titre}
                     </div>
-                    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {q.criteres.map((cr) => {
-                        const on = !!c?.criteres?.[cr.id];
-                        return (
-                          <label key={cr.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, cursor: locked ? 'default' : 'pointer', padding: '4px 6px', borderRadius: 6, background: on ? 'var(--pos-soft, rgba(16,185,129,.12))' : 'transparent' }}>
-                            <input type="checkbox" checked={on} disabled={locked} onChange={() => toggle(q.id, cr.id)} style={{ marginTop: 2 }} />
-                            <span style={{ flex: 1 }}>{cr.nom}{cr.auto && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-dim)' }}>auto</span>}</span>
-                            <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{q.bonus ? '★' : `${fmtPts(cr.points)} pt`}</span>
-                          </label>
-                        );
-                      })}
+                    {consigne && <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>{consigne}</div>}
+                    <div className="gc-wc__answer">{renderAnswer(q)}</div>
+                  </div>
+                  {/* Droite : points, critères, remarque (repliée tant qu'elle est vide). */}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: full ? 'var(--pos, #047857)' : 'var(--text)', flex: 1 }}>
+                        {q.bonus ? 'Bonus ★' : <>{fmtPts(pts)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>/ {fmtPts(q.points)}</span></>}
+                        {q.auto && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 500, color: 'var(--text-dim)' }}>auto</span>}
+                      </span>
+                      {!locked && (
+                        <>
+                          {q.criteres.some((cr) => cr.auto) && (
+                            <button onClick={() => redoAuto(q)} style={miniBtn} title="Refaire la correction automatique d’après les réponses de l’élève">Auto</button>
+                          )}
+                          <button onClick={() => setAll(q, true)} style={miniBtn} title="Cocher tous les critères">Tout</button>
+                          <button onClick={() => setAll(q, false)} style={miniBtn} title="Décocher tous les critères">Rien</button>
+                        </>
+                      )}
+                    </div>
+                    {q.criteres.map((cr) => {
+                      const on = !!c?.criteres?.[cr.id];
+                      return (
+                        <label key={cr.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, lineHeight: 1.35, cursor: locked ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 5, background: on ? 'var(--pos-soft, rgba(16,185,129,.12))' : 'transparent', color: on ? 'var(--text)' : 'var(--text-muted)' }}>
+                          <input type="checkbox" checked={on} disabled={locked} onChange={() => toggle(q.id, cr.id)} style={{ marginTop: 1 }} />
+                          <span style={{ flex: 1 }}>{cr.nom}{cr.auto && <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--text-dim)' }}>auto</span>}</span>
+                          <span style={{ color: 'var(--text-dim)', whiteSpace: 'nowrap', fontSize: 11 }}>{q.bonus ? '★' : `${fmtPts(cr.points)}`}</span>
+                        </label>
+                      );
+                    })}
+                    {remarkOpen ? (
                       <textarea
                         value={c?.remarque ?? ''}
                         onChange={(e) => setRemark(q.id, e.target.value)}
                         disabled={locked}
-                        placeholder="Remarque pour l’élève (facultatif)"
-                        rows={2}
-                        style={{ ...inp, marginTop: 4, fontSize: 12.5, resize: 'vertical' }}
+                        placeholder="Remarque pour l’élève"
+                        rows={1}
+                        autoFocus={!c?.remarque}
+                        style={{ ...inp, marginTop: 4, padding: '4px 8px', fontSize: 12, resize: 'vertical', minHeight: 28 }}
                       />
-                    </div>
+                    ) : !locked && (
+                      <button onClick={() => setOpenRemarks((s) => new Set(s).add(q.id))} style={{ ...linkMini, marginTop: 2 }}>+ remarque</button>
+                    )}
                   </div>
                 </section>
               );
             })}
 
             {/* Compétences + conseils */}
-            <section style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, marginBottom: 18 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Compétences et conseils</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10, marginBottom: 10 }}>
+            <section style={{ borderTop: '1px solid var(--border)', padding: '10px 0', marginBottom: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>Compétences et conseils</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8, marginBottom: 8 }}>
                 {(def.competences ?? []).map((comp) => (
                   <div key={comp.id}>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{comp.nom}</div>
@@ -407,7 +435,7 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
                   </div>
                 ))}
               </div>
-              <textarea value={advice} onChange={(e) => { setAdvice(e.target.value); setDirty(true); }} disabled={locked} rows={3} placeholder="Conseils pour la prochaine fois (imprimés sur la copie)" style={{ ...inp, resize: 'vertical' }} />
+              <textarea value={advice} onChange={(e) => { setAdvice(e.target.value); setDirty(true); }} disabled={locked} rows={2} placeholder="Conseils pour la prochaine fois (imprimés sur la copie)" style={{ ...inp, fontSize: 12.5, padding: '6px 8px', resize: 'vertical' }} />
             </section>
 
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -427,7 +455,7 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
         </div>
 
         {/* Pied */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>
             {dirty ? 'Modifications non enregistrées.' : work.corrected_at ? `Corrigée le ${fmtDate(work.corrected_at)}${work.corrected_by === 'claude' ? ' par Claude' : ''}.` : 'Pas encore corrigée.'}
           </span>
@@ -452,8 +480,16 @@ export function WorkCorrection({ group, activity, onClose, onSaved, onDeleted, o
   );
 }
 
-const tdSmall: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'top' };
-const note: React.CSSProperties = { padding: '8px 12px', borderRadius: 8, fontSize: 13, marginBottom: 14 };
+const tdSmall: React.CSSProperties = { padding: '4px 6px', verticalAlign: 'top' };
+const note: React.CSSProperties = { padding: '6px 10px', borderRadius: 8, fontSize: 12, marginBottom: 8 };
+const miniBtn: React.CSSProperties = {
+  padding: '1px 6px', borderRadius: 5, fontSize: 10.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+  border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
+};
+const linkMini: React.CSSProperties = {
+  background: 'none', border: 'none', padding: '0 4px', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+  color: 'var(--indigo)', fontFamily: 'inherit',
+};
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 };
 const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, color: 'var(--text)' };
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit' };
