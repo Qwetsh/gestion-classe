@@ -15,7 +15,7 @@ export function Evaluations() {
 
   return (
     <Layout fluid>
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <h1 className="page-title">
           Évaluations
         </h1>

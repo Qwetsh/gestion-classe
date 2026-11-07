@@ -1,3 +1,4 @@
+import { classColor } from '../lib/classColors';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -16,7 +17,8 @@ import { transferStudent, describeTransfer } from '../lib/studentTransferQueries
 import QRCode from 'qrcode';
 import { generateStudentQrCardsPdf } from '../lib/generateStudentQrCards';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
-import { ClassChip, Sparkline, TrendBadge, AvgRing, Distribution, Indic, Icon } from '../components/design-system';
+import { ClassChip, Sparkline, TrendBadge, Distribution, Icon } from '../components/design-system';
+import '../styles/refonte-eleves.css';
 import { AccommodationBadges } from '../components/AccommodationBadges';
 import { MoreMenu } from '../components/MoreMenu';
 import { useIsNarrowViewport } from '../hooks/useIsMobile';
@@ -293,7 +295,14 @@ export function Students() {
   // Sidebar collapsed state for mobile
 
   // Layout and filter state
-  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  // Vue liste par défaut (direction C) ; le choix de l'enseignant est mémorisé sur cet appareil.
+  const [layout, setLayoutState] = useState<'grid' | 'list'>(() => {
+    try { return localStorage.getItem('gc-students-layout') === 'grid' ? 'grid' : 'list'; } catch { return 'list'; }
+  });
+  const setLayout = (next: 'grid' | 'list') => {
+    setLayoutState(next);
+    try { localStorage.setItem('gc-students-layout', next); } catch { /* stockage indisponible */ }
+  };
   const [filter, setFilter] = useState<'all' | 'attention' | 'top'>('all');
 
   function getCurrentSchoolYear(): string {
@@ -636,9 +645,6 @@ export function Students() {
   }, [showEndYearModal, classes]);
 
   // Class colors for visual identification
-  const CLASS_COLORS: Record<string, string> = {};
-  const COLOR_PALETTE = ['#6366F1', '#3B82F6', '#059669', '#D97706', '#DC2626', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6B7280', '#EF4444', '#10B981', '#F59E0B'];
-  classes.forEach((cls, i) => { CLASS_COLORS[cls.id] = COLOR_PALETTE[i % COLOR_PALETTE.length]; });
 
   // Calculate stats for each class
   const classStats = useMemo((): ClassStats[] => {
@@ -1881,8 +1887,8 @@ export function Students() {
         </div>
       )}
 
-      <main className="page--tracking">
-        {/* Header */}
+      <main className="page--tracking rf-eleves">
+        {/* Header : titre de page + action globale (le trimestre concerne toutes les classes) */}
         <header className="track-header">
           <div>
             <div className="track-header__eyebrow">
@@ -1898,56 +1904,34 @@ export function Students() {
             <button className="btn btn--danger" onClick={() => trimesterSettings.current_trimester === 3 ? setShowEndYearModal(true) : setShowNextTrimesterModal(true)}>
               {trimesterSettings.current_trimester === 3 ? "Finir l'année scolaire" : 'Passer au trimestre suivant'}
             </button>
-            {isNarrow ? (
-              <MoreMenu
-                touch
-                title="Autres actions"
-                items={[
-                  { label: 'Bulletin IA', onClick: exportBulletinContext, disabled: !selectedClassId, title: 'Exporter les données pour générer les appréciations de bulletin avec Claude' },
-                  { label: 'QR code de la classe', onClick: openQrModal, disabled: !selectedClassId },
-                  { label: isExportingQrCards ? 'Export…' : 'Cartes QR (PDF)', onClick: () => { void exportQrCardsPdf(); }, disabled: isExportingQrCards || classes.length === 0 },
-                  { label: 'Codes élèves', onClick: () => { void loadStudentCodes(); }, disabled: isLoadingCodes || !selectedClassId },
-                ]}
-              />
-            ) : (
-              <>
-                <button className="btn btn--ghost" onClick={exportBulletinContext} disabled={!selectedClassId} title="Exporter les données pour générer les appréciations de bulletin avec Claude">
-                  <Icon name="download" size={14} /> Bulletin IA
-                </button>
-                <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
-                  <Icon name="qr" size={14} /> QR
-                </button>
-                <button className="btn btn--ghost" onClick={exportQrCardsPdf} disabled={isExportingQrCards || classes.length === 0} title="PDF à imprimer : une carte par élève (QR code + code d'accès), classées par classe">
-                  <Icon name="download" size={14} /> {isExportingQrCards ? 'Export…' : 'Cartes QR'}
-                </button>
-                <button className="btn btn--ghost" onClick={loadStudentCodes} disabled={isLoadingCodes || !selectedClassId}>
-                  Codes élèves
-                </button>
-              </>
-            )}
           </div>
         </header>
 
         <div className="track-body">
-          {/* Sidebar: classes */}
+          {/* Sidebar: classes — puce de niveau + moyenne en texte (direction C) */}
           <aside className="classes-pane">
             <div className="classes-pane__head">
               <span>Classes</span>
-              <span style={{ background: 'var(--surface-3)', color: 'var(--text)', padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>{classes.length}</span>
             </div>
             <div className="classes-pane__list">
-              {classStats.map(cls => (
-                <button key={cls.id}
-                  className={`class-row ${cls.id === selectedClassId ? 'is-active' : ''}`}
-                  onClick={() => setSelectedClassId(cls.id)}>
-                  <ClassChip label={cls.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3)} color={CLASS_COLORS[cls.id] || '#6366F1'} size={26} muted={cls.id !== selectedClassId} />
-                  <div className="class-row__main" style={{ minWidth: 0 }}>
-                    <div className="class-row__name">{cls.name}</div>
-                  </div>
-                  {/* La pastille porte la moyenne ; l'effectif n'aide pas à choisir une classe */}
-                  <AvgRing value={cls.averageGrade} color={CLASS_COLORS[cls.id] || '#6366F1'} />
-                </button>
-              ))}
+              {classStats.map(cls => {
+                const label = cls.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
+                return (
+                  <button key={cls.id}
+                    className={`class-row ${cls.id === selectedClassId ? 'is-active' : ''}`}
+                    onClick={() => setSelectedClassId(cls.id)}>
+                    <ClassChip label={label} color={classColor(cls.name)} size={26} />
+                    <div className="class-row__main" style={{ minWidth: 0 }}>
+                      {/* Le nom complet seulement s'il dit plus que la puce (« 3ème groupe 1 ») */}
+                      {cls.name !== label && <div className="class-row__name">{cls.name}</div>}
+                    </div>
+                    {/* La moyenne aide à choisir ; l'effectif non */}
+                    <span className="class-row__avg">
+                      {cls.studentCount > 0 ? cls.averageGrade.toFixed(1).replace('.', ',') : '—'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             {detachedStudents.length > 0 && !detachedHintHidden && (
               <div
@@ -1977,33 +1961,53 @@ export function Students() {
           {/* Main: class detail */}
           {selectedClassId && selectedClassStats ? (
             <section className="class-detail">
-              {/* Class header */}
+              {/* En-tête de classe compact sur une ligne : nom + méta, actions de la classe à droite (direction C) */}
               <div className="class-detail__head">
                 <div className="class-detail__title">
-                  <ClassChip label={selectedClassStats.name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3)} color={CLASS_COLORS[selectedClassId] || '#6366F1'} size={44} />
-                  <div>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {selectedClassStats.name}
-                      <button onClick={() => openConfigModal(selectedClassId)} title="Paramètres de la classe" style={{
-                        background: 'var(--surface-3)', border: 'none', borderRadius: 6, padding: '4px 7px',
-                        cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center',
-                      }}>
-                        <Icon name="settings" size={14} />
-                      </button>
-                    </h2>
+                  <h2>
+                    {selectedClassStats.name}
+                    <button className="rf-eleves__config" onClick={() => openConfigModal(selectedClassId)} title="Paramètres de la classe" aria-label="Paramètres de la classe">
+                      <Icon name="settings" size={14} />
+                    </button>
+                  </h2>
+                  <div className="class-detail__meta">
+                    <span>moyenne {selectedClassStats.averageGrade.toFixed(1).replace('.', ',')} / 20</span>
+                    {/* Seul indicateur qui appelle une décision (il reste des oraux à faire) ; les cumuls sont dans Analyses */}
+                    <span>· oral fait {filteredAndSortedGrades.filter(s => s.oralEvaluation).length} / {filteredAndSortedGrades.length}</span>
                     {/* Effectif seulement quand un filtre ou une recherche réduit la liste */}
                     {filteredAndSortedGrades.length !== selectedClassStats.studentCount && (
-                      <div className="class-detail__meta">
-                        <span>{filteredAndSortedGrades.length} affiché{filteredAndSortedGrades.length > 1 ? 's' : ''} sur {selectedClassStats.studentCount}</span>
-                      </div>
+                      <span>· {filteredAndSortedGrades.length} affiché{filteredAndSortedGrades.length > 1 ? 's' : ''} sur {selectedClassStats.studentCount}</span>
                     )}
                   </div>
                 </div>
-                <div className="class-detail__score" onClick={() => openConfigModal(selectedClassId)} style={{ cursor: 'pointer' }} title="Configurer">
-                  <div className="class-detail__score-label">Moyenne de classe</div>
-                  <div className="class-detail__score-val" style={{ color: CLASS_COLORS[selectedClassId] || 'var(--indigo)' }}>
-                    {selectedClassStats.averageGrade.toFixed(1)}<span>/20</span>
-                  </div>
+                <div className="class-detail__actions">
+                  {isNarrow ? (
+                    <MoreMenu
+                      touch
+                      title="Autres actions"
+                      items={[
+                        { label: 'Bulletin IA', onClick: exportBulletinContext, disabled: !selectedClassId, title: 'Exporter les données pour générer les appréciations de bulletin avec Claude' },
+                        { label: 'QR code de la classe', onClick: openQrModal, disabled: !selectedClassId },
+                        { label: isExportingQrCards ? 'Export…' : 'Cartes QR (PDF)', onClick: () => { void exportQrCardsPdf(); }, disabled: isExportingQrCards || classes.length === 0 },
+                        { label: 'Codes élèves', onClick: () => { void loadStudentCodes(); }, disabled: isLoadingCodes || !selectedClassId },
+                      ]}
+                    />
+                  ) : (
+                    <>
+                      <button className="btn btn--ghost" onClick={exportBulletinContext} disabled={!selectedClassId} title="Exporter les données pour générer les appréciations de bulletin avec Claude">
+                        <Icon name="download" size={14} /> Bulletin IA
+                      </button>
+                      <button className="btn btn--ghost" onClick={openQrModal} disabled={!selectedClassId}>
+                        <Icon name="qr" size={14} /> QR
+                      </button>
+                      <button className="btn btn--ghost" onClick={exportQrCardsPdf} disabled={isExportingQrCards || classes.length === 0} title="PDF à imprimer : une carte par élève (QR code + code d'accès), classées par classe">
+                        <Icon name="download" size={14} /> {isExportingQrCards ? 'Export…' : 'Cartes QR'}
+                      </button>
+                      <button className="btn btn--ghost" onClick={loadStudentCodes} disabled={isLoadingCodes || !selectedClassId}>
+                        Codes élèves
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -2032,13 +2036,9 @@ export function Students() {
                 </div>
               </div>
 
-              {/* Class strip: distribution + indicators */}
+              {/* Distribution des notes, aplatie (l'« Oral fait » est passé dans la méta de l'en-tête) */}
               <div className="class-strip">
-                <Distribution grades={filteredAndSortedGrades.map(s => s.grade)} color={CLASS_COLORS[selectedClassId] || '#6366F1'} />
-                {/* Seul indicateur qui appelle une décision (il reste des oraux à faire) ; les cumuls sont dans Analyses */}
-                <div className="class-strip__indicators" style={{ gridTemplateColumns: '1fr' }}>
-                  <Indic label="Oral fait" value={`${filteredAndSortedGrades.filter(s => s.oralEvaluation).length}/${filteredAndSortedGrades.length}`} hint="ce trimestre" />
-                </div>
+                <Distribution grades={filteredAndSortedGrades.map(s => s.grade)} color="var(--indigo)" />
               </div>
 
               {/* Student grid or list */}
@@ -2048,14 +2048,14 @@ export function Students() {
                     const mk = sg.grade;
                     const tone = mk < 6 ? 'crit' : mk < 8 ? 'warn' : mk < 12 ? 'neutral' : 'good';
                     const initials = sg.student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
-                    const classColor = CLASS_COLORS[sg.student.class_id] || '#6366F1';
                     const history = getSparklineHistory(sg.events);
                     const delta = getSparklineDelta(history);
                     return (
                       <div key={sg.student.id} className={`scard scard--${tone}`} onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="scard__head">
                           <div className="scard__id">
-                            <div className="scard__avatar" style={{ background: classColor + '22', color: classColor }}>
+                            {/* Avatar neutre : la couleur de classe n'apporte rien dans une classe déjà choisie */}
+                            <div className="scard__avatar">
                               {initials}
                             </div>
                             <div>
@@ -2096,45 +2096,44 @@ export function Students() {
                 </div>
               ) : (
                 <div className="slist">
+                  {/* Tableau façon maquette : Élève · Note · Bonus · Malus · Abs · Tendance · Oral */}
                   <div className="slist__head">
                     <span>Élève</span>
                     <span>Note</span>
-                    <span>Détails</span>
-                    <span>+</span>
-                    <span>−</span>
-                    <span>Abs</span>
+                    <span>Bonus</span>
+                    <span>Malus</span>
+                    <span>Abs.</span>
+                    <span>Tendance</span>
                     <span>Oral</span>
                   </div>
                   {paginatedGrades.map(sg => {
-                    const initials = sg.student.pseudo.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
-                    const classColor = CLASS_COLORS[sg.student.class_id] || '#6366F1';
                     const history = getSparklineHistory(sg.events);
                     const delta = getSparklineDelta(history);
+                    const significant = Math.abs(delta) >= 0.15;
                     const eng = engagementInfo(connectionStats.get(sg.student.id)?.last ?? null);
                     return (
                       <div key={sg.student.id} className="srow" onClick={() => openStudentDetail(sg)} style={{ cursor: 'pointer' }}>
                         <div className="srow__id">
-                          <div className="srow__avatar" style={{ background: classColor + '22', color: classColor }}>{initials}</div>
-                          <div className="srow__name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: eng.color, flexShrink: 0 }} title={`Connexion espace élève : ${eng.label}`} />
-                            {sg.student.pseudo}
+                          <div className="srow__name">
+                            <span className="srow__dot" style={{ background: eng.color }} title={`Connexion espace élève : ${eng.label}`} />
+                            <span className="srow__pseudo">{sg.student.pseudo}</span>
                             {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ fontSize: 11 }}>👁️</span>}
-                            <AccommodationBadges student={sg.student} bg="var(--indigo-soft)" fg="var(--indigo)" />
+                            <AccommodationBadges student={sg.student} bg="var(--indigo-soft)" fg="var(--indigo-ink)" />
                           </div>
                         </div>
-                        <div className="srow__mark" style={{ color: sg.grade < 8 ? 'var(--neg)' : sg.grade >= 12 ? 'var(--pos)' : 'var(--text)' }}>{sg.grade.toFixed(1)}</div>
-                        <div className="srow__spark" style={{ display: 'flex', alignItems: 'center', gap: 8 }} title="Évolution sur les 10 dernières séances">
-                          <Sparkline history={history} w={64} h={20} color={classColor} />
-                          {Math.abs(delta) >= 0.15 && <TrendBadge delta={delta} />}
+                        <div className={`srow__n srow__note ${sg.grade < 8 ? 'is-low' : ''}`}>{sg.grade.toFixed(1).replace('.', ',')}</div>
+                        {/* « — » pour vide, jamais de « 0 » */}
+                        <div className={`srow__n ${sg.totalParticipations > 0 ? '' : 'is-empty'}`}>{sg.totalParticipations > 0 ? sg.totalParticipations : '—'}</div>
+                        <div className={`srow__n ${sg.malus > 0 ? 'srow__n--neg' : 'is-empty'}`}>{sg.malus > 0 ? sg.malus : '—'}</div>
+                        <div className={`srow__n ${sg.absences > 0 ? '' : 'is-empty'}`}>{sg.absences > 0 ? sg.absences : '—'}</div>
+                        <div className={`srow__n ${significant ? (delta > 0 ? 'srow__n--pos' : 'srow__n--neg') : 'is-empty'}`} title="Évolution sur les 10 dernières séances">
+                          {significant ? `${delta > 0 ? '↗' : '↘'} ${Math.abs(delta).toFixed(1).replace('.', ',')}` : '—'}
                         </div>
-                        {/* Pas de « 0 » affiché : la case reste vide */}
-                        <div className="srow__n srow__n--pos">{sg.totalParticipations > 0 ? `+${sg.totalParticipations}` : ''}</div>
-                        <div className="srow__n srow__n--neg">{sg.malus > 0 ? `−${sg.malus}` : ''}</div>
-                        <div className="srow__n">{sg.absences > 0 ? sg.absences : ''}</div>
-                        <div className="srow__n">{sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'}</div>
+                        <div className={`srow__n ${sg.oralEvaluation ? '' : 'is-empty'}`}>{sg.oralEvaluation ? `${sg.oralEvaluation.grade}/5` : '—'}</div>
                       </div>
                     );
                   })}
+                  {filteredAndSortedGrades.length === 0 && <div className="empty">Aucun élève avec ces filtres.</div>}
                 </div>
               )}
 

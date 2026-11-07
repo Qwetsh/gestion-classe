@@ -1,3 +1,4 @@
+import { classColor } from '../lib/classColors';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -85,7 +86,6 @@ interface ImportPreview {
   newPseudos: string[];
 }
 
-const COLOR_PALETTE = ['#6366F1','#EC4899','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EF4444','#14B8A6','#F97316','#06B6D4','#84CC16','#E879F9','#FB923C'];
 
 function getClassLabel(name: string): string {
   return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
@@ -1348,7 +1348,7 @@ export function Classes() {
                         }}
                         className={`class-row ${isActive ? 'is-active' : ''}`}
                       >
-                        <ClassChip label={getClassLabel(cls.name)} color={COLOR_PALETTE[classes.indexOf(cls) % COLOR_PALETTE.length]} size={22} muted={!isActive} />
+                        <ClassChip label={getClassLabel(cls.name)} color={classColor(cls.name)} size={22} muted={!isActive} />
                         <div className="class-row__name">{cls.name}</div>
                         <span className="class-row__count" title={`${cls.students_count} élèves`}>
                           {cls.students_count}
@@ -1482,7 +1482,7 @@ export function Classes() {
                     {selectedRoom && selectedClass && (
                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                         <span style={{ marginRight: 6, verticalAlign: 'middle', display: 'inline-flex' }}>
-                          <ClassChip label={getClassLabel(selectedClass.name)} color={COLOR_PALETTE[classes.indexOf(selectedClass) % COLOR_PALETTE.length]} size={22} />
+                          <ClassChip label={getClassLabel(selectedClass.name)} color={classColor(selectedClass.name)} size={22} />
                         </span>
                         {selectedClass.name} · <b>{students.length - unplacedStudents.length}/{students.length}</b> placés · {selectedRoom.name}
                       </span>

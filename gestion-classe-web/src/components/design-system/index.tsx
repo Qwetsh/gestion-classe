@@ -1,21 +1,31 @@
 import { useMemo } from 'react';
+import { classLevel, classTone } from '../../lib/classColors';
 
 // ---- ClassChip ----
+/**
+ * Puce de classe (direction C) : fond pâle + texte foncé de la teinte du NIVEAU,
+ * lue depuis le libellé (« 3A » → 3e). `color` ne sert plus que de repli quand
+ * le libellé n'a pas de niveau. `muted` : contour seul, fond transparent.
+ */
 export function ClassChip({ label, color, size = 28, muted = false }: {
   label: string;
   color: string;
   size?: number;
   muted?: boolean;
 }) {
+  const tone = classLevel(label)
+    ? classTone(label)
+    : { solid: color, soft: `color-mix(in srgb, ${color} 16%, white)`, ink: color };
+  const height = Math.max(20, Math.round(size * 0.72));
   const style: React.CSSProperties = {
-    width: size, height: size, borderRadius: size * 0.3,
-    background: muted ? 'transparent' : color,
-    color: muted ? color : '#fff',
-    border: muted ? `1.5px solid ${color}` : 'none',
+    minWidth: size, height, padding: '0 6px', borderRadius: 5,
+    background: muted ? 'transparent' : tone.soft,
+    color: tone.ink,
+    border: muted ? `1px solid ${tone.solid}` : '1px solid transparent',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    fontWeight: 700, fontSize: size * 0.38, letterSpacing: '-0.02em',
-    fontFamily: 'var(--font-display)',
-    flexShrink: 0,
+    fontWeight: 600, fontSize: Math.max(11, Math.round(size * 0.42)), letterSpacing: '0.01em',
+    fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+    flexShrink: 0, boxSizing: 'border-box',
   };
   return <span style={style}>{label}</span>;
 }

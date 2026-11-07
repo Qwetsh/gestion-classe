@@ -1,0 +1,219 @@
+/* ============================================================
+   Suivi élèves — refonte « Direction C, couleur mesurée »
+   Maquette : design_handoff_direction_c/direction-c.html (frame « Bureau — Suivi élèves »).
+   Toutes les règles sont préfixées par .rf-eleves pour l'emporter sur index.css
+   (.track-*, .classes-pane*, .class-detail*, .toolbar*, .distrib*, .slist/.srow, .scard*).
+   ============================================================ */
+
+/* ---- Structure : panneau classes | contenu, séparés par un trait ---- */
+.rf-eleves .track-header {
+  align-items: center;
+  margin-bottom: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.rf-eleves .track-header__actions .btn { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.rf-eleves .track-body { grid-template-columns: 200px minmax(0, 1fr); gap: 0; }
+
+/* ---- 1. Panneau Classes : plus de carte, liste plate ---- */
+.rf-eleves .classes-pane {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  top: 0;
+  max-height: calc(100vh - 60px);
+  padding: 12px 8px 12px 0;
+}
+.rf-eleves .classes-pane__head {
+  border-bottom: 0;
+  padding: 0 8px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+}
+.rf-eleves .classes-pane__list { padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.rf-eleves .class-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  gap: 8px;
+}
+.rf-eleves .class-row:hover { background: var(--surface-3); }
+.rf-eleves .class-row.is-active { background: var(--indigo-soft); }
+.rf-eleves .class-row__name { font-weight: 500; font-size: 13px; color: var(--text-muted); }
+.rf-eleves .class-row__avg {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rf-eleves .class-row.is-active .class-row__avg { color: var(--indigo-ink); font-weight: 600; }
+
+/* ---- Colonne de contenu ---- */
+.rf-eleves .class-detail { gap: 12px; padding: 12px 0 0 20px; }
+
+/* ---- 2. En-tête de classe compact sur une ligne ---- */
+.rf-eleves .class-detail__head {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rf-eleves .class-detail__title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.rf-eleves .class-detail__title h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.rf-eleves .class-detail__meta { display: flex; gap: 4px; flex-wrap: wrap; margin: 0; font-size: 13px; color: var(--text-muted); }
+.rf-eleves__config {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.rf-eleves__config:hover { background: var(--surface-3); color: var(--text); }
+.rf-eleves .class-detail__actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.rf-eleves .class-detail__actions .btn { min-height: 28px; padding: 0 10px; font-size: 12px; }
+
+/* ---- 3. Barre d'outils : sans carte, sur une ligne ---- */
+.rf-eleves .toolbar {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.rf-eleves .toolbar .search {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  max-width: 260px;
+}
+.rf-eleves .toolbar .search:focus-within { border-color: var(--indigo); }
+.rf-eleves .toolbar .chips {
+  display: inline-flex;
+  gap: 0;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+}
+.rf-eleves .toolbar .chip { border-radius: 4px; padding: 4px 10px; font-size: 12px; }
+.rf-eleves .toolbar .chip.is-on,
+.rf-eleves .toolbar .chip--warn.is-on,
+.rf-eleves .toolbar .chip--good.is-on { background: var(--indigo-soft); color: var(--indigo-ink); }
+.rf-eleves .toolbar .chip__count { opacity: 0.7; }
+.rf-eleves .segbtn { background: transparent; border: 1px solid var(--border-strong); padding: 2px; }
+.rf-eleves .segbtn__b { font-size: 12px; padding: 4px 10px; color: var(--text-muted); }
+.rf-eleves .segbtn__b.is-on { background: var(--indigo-soft); color: var(--indigo-ink); box-shadow: none; }
+
+/* ---- 4. Distribution aplatie ---- */
+.rf-eleves .class-strip { grid-template-columns: minmax(0, 520px); }
+.rf-eleves .distrib { background: transparent; border: 0; border-radius: 0; padding: 0; }
+.rf-eleves .distrib__label { font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-dim); margin-bottom: 6px; }
+.rf-eleves .distrib__bars { height: 44px; }
+.rf-eleves .distrib__f { background: var(--indigo) !important; opacity: 0.85; }
+.rf-eleves .distrib__axis { color: var(--text-dim); }
+
+/* ---- 5. Vue liste façon maquette ---- */
+.rf-eleves .slist { background: transparent; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+.rf-eleves .slist__head,
+.rf-eleves .srow {
+  grid-template-columns: minmax(180px, 1fr) 64px 64px 64px 56px 88px 56px;
+  gap: 12px;
+  padding: 0 8px;
+}
+.rf-eleves .slist__head {
+  height: 30px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+}
+.rf-eleves .slist__head span:nth-child(n+2) { text-align: right; }
+.rf-eleves .srow { height: 40px; border-top: 0; border-bottom: 1px solid var(--border); }
+.rf-eleves .srow:hover { background: var(--surface-2); }
+.rf-eleves .srow__name { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 500; font-size: 13px; }
+.rf-eleves .srow__pseudo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-eleves .srow__dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.rf-eleves .srow__n { font-weight: 500; font-size: 13px; text-align: right; color: var(--text); }
+.rf-eleves .srow__note { font-weight: 600; }
+.rf-eleves .srow__note.is-low { color: var(--neg); }
+.rf-eleves .srow__n--pos { color: var(--pos); }
+.rf-eleves .srow__n--neg { color: var(--neg); }
+.rf-eleves .srow__n.is-empty { color: var(--text-dim); font-weight: 400; }
+
+/* ---- Vue cartes, aplatie ---- */
+.rf-eleves .scard,
+.rf-eleves .scard--crit,
+.rf-eleves .scard--warn,
+.rf-eleves .scard--good {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.rf-eleves .scard--crit { border-left: 2px solid var(--neg); }
+.rf-eleves .scard--warn { border-left: 2px solid var(--warn); }
+.rf-eleves .scard:hover { transform: none; box-shadow: none; border-color: var(--border-strong); }
+.rf-eleves .scard__avatar { background: var(--surface-3); color: var(--text-muted); }
+
+/* ---- 6. Téléphone : bande de classes horizontale, menu ⋯ conservés ---- */
+@media (max-width: 1100px) {
+  .rf-eleves .track-body { grid-template-columns: minmax(0, 1fr); }
+  .rf-eleves .classes-pane { border-right: 0; border-bottom: 1px solid var(--border); padding: 8px 0; max-height: none; position: static; }
+  .rf-eleves .class-detail { padding-left: 0; }
+}
+@media (max-width: 640px) {
+  .rf-eleves .classes-pane { margin: 0 -12px; padding: 0; }
+  .rf-eleves .classes-pane__list { flex-direction: row; gap: 6px; padding: 8px 12px; }
+  .rf-eleves .class-row {
+    min-height: 36px;
+    padding: 0 8px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    gap: 6px;
+  }
+  .rf-eleves .class-row .class-row__main { display: none; }
+  .rf-eleves .class-row__avg { font-size: 12px; }
+  .rf-eleves .class-row.is-active { border-color: var(--indigo); }
+
+  .rf-eleves .class-detail__head { flex-direction: row; align-items: center; padding: 0; }
+  .rf-eleves .class-detail__meta { font-size: 12px; }
+
+  .rf-eleves .toolbar { flex-direction: column; align-items: stretch; flex-wrap: wrap; gap: 6px; padding: 0; }
+  .rf-eleves .toolbar .search { max-width: none; width: 100%; }
+  .rf-eleves .toolbar .chips { align-self: flex-start; }
+
+  .rf-eleves .slist__head,
+  .rf-eleves .srow { grid-template-columns: minmax(0, 1fr) 44px 36px 36px 36px; gap: 6px; padding: 0 4px; }
+  .rf-eleves .srow { height: 44px; }
+  /* Sur téléphone : Élève · Note · Bonus · Malus · Abs. (Tendance et Oral dans la fiche) */
+  .rf-eleves .slist__head span:nth-child(3),
+  .rf-eleves .srow > *:nth-child(3) { display: block; }
+  .rf-eleves .slist__head span:nth-child(6),
+  .rf-eleves .srow > *:nth-child(6),
+  .rf-eleves .slist__head span:nth-child(7),
+  .rf-eleves .srow > *:nth-child(7) { display: none; }
+
+  .rf-eleves .sgrid { border-radius: 8px; }
+}

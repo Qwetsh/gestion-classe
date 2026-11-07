@@ -47,6 +47,10 @@ import { MoreMenu } from './MoreMenu';
 import { PronoteImportModal } from './PronoteImportModal';
 import { levelFromClassName } from '../lib/boardsQueries';
 import { exportGradeBookPdf, exportGradeBookXlsx } from '../lib/gradeExport';
+import { ClassChip } from './design-system';
+import { getClassLabel } from './home/homeHelpers';
+import { classColor } from '../lib/classColors';
+import '../styles/refonte-evaluations.css';
 import {
   describeGrades,
   formatGrade,
@@ -86,7 +90,7 @@ const MARK_STYLE: Record<Exclude<CellMark, null>, { glyph: string; color: string
 
 const CHIP_COLORS: Record<HeaderChip['tone'], [string, string]> = {
   warn: ['var(--warn-soft)', 'var(--warn)'],
-  info: ['var(--indigo-soft)', 'var(--indigo)'],
+  info: ['var(--indigo-soft)', 'var(--indigo-ink)'],
   ok: ['var(--pos-soft)', 'var(--pos)'],
   published: ['var(--pos)', '#fff'],
   neutral: ['var(--surface-3)', 'var(--text-muted)'],
@@ -583,8 +587,14 @@ export function CarnetTab({ userId, account, onError }: {
 
   const className = classes.find((c) => c.id === classId)?.name ?? '';
 
+  // En-tête compact (direction C) : « n évaluations · moyenne x / 20 », rien quand c'est vide.
+  const headerMeta = [
+    assessments.length > 0 ? `${assessments.length} évaluation${assessments.length > 1 ? 's' : ''}` : null,
+    classAverage !== null ? `moyenne ${formatGrade(classAverage)} / 20` : null,
+  ].filter(Boolean).join(' · ');
+
   return (
-    <div className="gc-carnet">
+    <div className="gc-carnet rf-evals">
       {/* Menu des classes : une classe est un lieu, pas une option de liste déroulante.
           Sur téléphone, il devient une rangée qui défile (index.css, .gc-carnet). */}
       <nav className="gc-carnet__classes" aria-label="Classes">
@@ -594,14 +604,17 @@ export function CarnetTab({ userId, account, onError }: {
         ) : (
           classes.map((c) => {
             const on = c.id === classId;
+            const label = getClassLabel(c.name);
             return (
               <button
                 key={c.id}
                 onClick={() => { void flush(); setClassId(c.id); }}
                 aria-current={on ? 'page' : undefined}
                 className={`gc-carnet__class${on ? ' is-on' : ''}`}
+                title={c.name}
               >
-                {c.name}
+                <ClassChip label={label} color={classColor(c.name)} size={24} />
+                {label !== c.name && <span className="rf-evals__class-name">{c.name}</span>}
               </button>
             );
           })
@@ -609,32 +622,34 @@ export function CarnetTab({ userId, account, onError }: {
       </nav>
 
       <div style={{ minWidth: 0 }}>
-      {/* Barre d'outils */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+      {/* En-tête compact : classe + méta à gauche, trimestre et actions à droite */}
+      <div className="rf-evals__head">
+        <div className="rf-evals__title">
+          <h2>{className}</h2>
+          {headerMeta && <span className="rf-evals__meta">{headerMeta}</span>}
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <div className="segbtn" role="group" aria-label="Trimestre">
           {PERIODS.map((p) => (
             <button
               key={p}
+              type="button"
               onClick={() => { void flush(); setPeriod(p); }}
-              style={{
-                ...btnBase,
-                background: p === period ? 'var(--indigo)' : 'var(--surface-3)',
-                color: p === period ? '#fff' : 'var(--text)',
-                border: p === period ? '1px solid transparent' : '1px solid var(--border)',
-              }}
+              className={`segbtn__b${p === period ? ' is-on' : ''}`}
+              aria-pressed={p === period}
             >
               T{p}
             </button>
           ))}
         </div>
 
-        <div style={{ flex: 1 }} />
-
         {assessments.length > 0 && (
           <button
             type="button"
             onClick={() => setFiltersToggled(!filtersOpen)}
-            style={{ ...btnGhost, ...(filtersOpen ? { borderColor: 'var(--indigo)', color: 'var(--indigo-ink)' } : {}) }}
+            className={`btn btn--ghost${filtersOpen ? ' rf-evals__filters-on' : ''}`}
             aria-expanded={filtersOpen}
             title="Type, séquence, publication, colonne moyenne, détails des colonnes"
           >
@@ -657,7 +672,7 @@ export function CarnetTab({ userId, account, onError }: {
           ]}
         />
 
-        <button onClick={() => setChoosingType(true)} style={btnPrimary} disabled={!classId}>
+        <button type="button" onClick={() => setChoosingType(true)} className="btn btn--primary" disabled={!classId}>
           + Évaluation
         </button>
       </div>
@@ -767,11 +782,11 @@ export function CarnetTab({ userId, account, onError }: {
           <button onClick={() => setPrefs((p) => ({ ...p, filters: NO_FILTERS }))} style={linkBtn}>Tout afficher</button>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+        <div className="rf-evals__table" style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
             <thead>
               <tr>
-                <th className="gc-carnet__name-col" style={{ ...th, ...stickyCol, textAlign: 'left' }}>Élève</th>
+                <th className="gc-carnet__name-col" style={{ ...th, ...stickyCol, background: 'var(--bg-alt)', textAlign: 'left' }}>Élève</th>
                 {visible.map((a) => {
                   const chip = carnetHeaderChip(overviews[a.id], columnStats.get(a.id)?.pending ?? 0);
                   const label = displayLabels.get(a.id);
@@ -839,7 +854,7 @@ export function CarnetTab({ userId, account, onError }: {
                   );
                 })}
                 {prefs.showAverage && (
-                  <th style={{ ...th, minWidth: 72, background: 'var(--surface-3)' }} title={filtered ? 'Moyenne pondérée des colonnes affichées seulement' : 'Moyenne pondérée du trimestre'}>
+                  <th style={{ ...th, ...avgCol, minWidth: 72, textAlign: 'right' }} title={filtered ? 'Moyenne pondérée des colonnes affichées seulement' : 'Moyenne pondérée du trimestre'}>
                     {filtered ? 'Moy. (filtre)' : 'Moyenne'}
                   </th>
                 )}
@@ -870,6 +885,8 @@ export function CarnetTab({ userId, account, onError }: {
                       const mark = draft === undefined ? cellMark(a, row, !!copyKeys[a.id]?.has(s.id), overviews[a.id]) : null;
                       const prodCol = prodByAssessment.get(a.id);
                       const todo = draft === undefined && !!prodCol && cellToCorrect(prodCol.works.get(s.id), row);
+                      // Note sous 40 % du barème (notes stockées sur 20) : en rouge, pour repérer qui décroche.
+                      const low = draft === undefined && !!row && row.status === 'noted' && row.grade != null && Number(row.grade) < 8;
                       return (
                         <td key={a.id} className={`gc-cell${todo ? ' gc-cell--todo' : ''}`} style={{ ...td, ...colSep, padding: 0, position: 'relative' }}>
                           <input
@@ -883,21 +900,23 @@ export function CarnetTab({ userId, account, onError }: {
                             onBlur={() => { void flush(); }}
                             onKeyDown={(e) => handleKeyDown(e, ai, si)}
                             inputMode="decimal"
+                            placeholder="·"
                             aria-label={`${s.pseudo} — ${a.name}${adapted ? ' (évaluation adaptée)' : ''}${mark ? ` (${CELL_MARK_LABEL[mark]})` : ''}`}
                             title={pending
                               ? 'Brouillon du Correcteur ou de Claude : à valider (bouton « i » ou fiche de l’éval) pour que l’élève le voie. Le modifier ici le valide.'
                               : mark ? CELL_MARK_LABEL[mark].replace(/^./, (c) => c.toUpperCase()) : undefined}
                             style={{
-                              width: '100%', boxSizing: 'border-box', textAlign: 'center',
-                              padding: '8px 4px', border: 'none', outline: 'none',
+                              width: '100%', boxSizing: 'border-box', textAlign: 'right',
+                              padding: '0 10px', height: 35, border: 'none', outline: 'none',
                               background: bad ? 'var(--neg-soft)' : 'transparent',
                               color: bad ? 'var(--neg)'
                                 : isStatus ? 'var(--text-dim)'
                                 : pending ? 'var(--warn)'
+                                : low ? 'var(--neg)'
                                 : 'var(--text)',
                               fontSize: 13,
-                              fontWeight: isStatus ? 400 : 600,
-                              fontStyle: isStatus ? 'italic' : 'normal',
+                              fontWeight: isStatus ? 400 : 500,
+                              fontVariantNumeric: 'tabular-nums',
                             }}
                           />
                           {todo && prodCol && (
@@ -936,7 +955,7 @@ export function CarnetTab({ userId, account, onError }: {
                           {adapted && (
                             <span
                               title={`Évaluation adaptée pour ${s.pseudo}`}
-                              style={{ position: 'absolute', top: 1, right: 3, fontSize: 11, color: 'var(--indigo)', pointerEvents: 'none' }}
+                              style={{ position: 'absolute', top: 1, right: 3, fontSize: 11, color: 'var(--indigo-ink)', pointerEvents: 'none' }}
                             >
                               ✻
                             </span>
@@ -948,7 +967,7 @@ export function CarnetTab({ userId, account, onError }: {
                       const w = c.works.get(s.id);
                       const busy = openingProduction === c.activity.id;
                       return (
-                        <td key={`prod-${c.activity.id}`} className="gc-cell gc-carnet__pending-col" style={{ ...td, ...colSep, padding: 0, position: 'relative', height: 33 }}>
+                        <td key={`prod-${c.activity.id}`} className="gc-cell gc-carnet__pending-col" style={{ ...td, ...colSep, padding: 0, position: 'relative', height: 36 }}>
                           {w?.status === 'submitted' ? (
                             <button
                               type="button"
@@ -976,7 +995,7 @@ export function CarnetTab({ userId, account, onError }: {
                       );
                     })}
                     {prefs.showAverage && (
-                      <td style={{ ...td, background: 'var(--surface-3)', fontWeight: 700 }}>
+                      <td style={{ ...td, ...avgCol, textAlign: 'right', padding: '0 10px' }}>
                         {formatGrade(avg)}
                       </td>
                     )}
@@ -987,28 +1006,28 @@ export function CarnetTab({ userId, account, onError }: {
 
             <tfoot>
               <tr>
-                <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left' }}>Moyenne classe</td>
+                <td style={{ ...tdFoot, ...stickyCol, background: 'var(--bg-alt)', textAlign: 'left' }}>Moyenne classe</td>
                 {visible.map((a) => (
                   <td key={a.id} style={{ ...tdFoot, ...colSep }}>
                     {formatGrade(columnStats.get(a.id)?.mean ?? null)}
                   </td>
                 ))}
                 {pendingColumns.map((c) => <td key={`prod-${c.activity.id}`} style={{ ...tdFoot, ...colSep }}>—</td>)}
-                {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }}>{formatGrade(classAverage)}</td>}
+                {prefs.showAverage && <td style={{ ...tdFoot, ...avgCol, textAlign: 'right' }}>{formatGrade(classAverage)}</td>}
               </tr>
               <tr>
-                <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left', fontWeight: 400 }}>Médiane</td>
+                <td style={{ ...tdFoot, ...stickyCol, background: 'var(--bg-alt)', textAlign: 'left', fontWeight: 400 }}>Médiane</td>
                 {visible.map((a) => (
                   <td key={a.id} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>
                     {formatGrade(columnStats.get(a.id)?.median ?? null)}
                   </td>
                 ))}
                 {pendingColumns.map((c) => <td key={`prod-${c.activity.id}`} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>—</td>)}
-                {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />}
+                {prefs.showAverage && <td style={{ ...tdFoot, ...avgCol }} />}
               </tr>
               {visible.some((a) => hasCopies(a) && overviews[a.id] && !neverScanned(overviews[a.id])) && (
                 <tr>
-                  <td style={{ ...tdFoot, ...stickyCol, textAlign: 'left', fontWeight: 400 }} title="Élèves présents dont la copie n’est ni scannée ni transcrite">
+                  <td style={{ ...tdFoot, ...stickyCol, background: 'var(--bg-alt)', textAlign: 'left', fontWeight: 400 }} title="Élèves présents dont la copie n’est ni scannée ni transcrite">
                     Copies manquantes
                   </td>
                   {visible.map((a) => {
@@ -1021,7 +1040,7 @@ export function CarnetTab({ userId, account, onError }: {
                     );
                   })}
                   {pendingColumns.map((c) => <td key={`prod-${c.activity.id}`} style={{ ...tdFoot, ...colSep, fontWeight: 400 }}>—</td>)}
-                  {prefs.showAverage && <td style={{ ...tdFoot, background: 'var(--surface-3)' }} />}
+                  {prefs.showAverage && <td style={{ ...tdFoot, ...avgCol }} />}
                 </tr>
               )}
             </tfoot>
@@ -1137,17 +1156,22 @@ export function CarnetTab({ userId, account, onError }: {
 // Styles (alignés sur le reste de la page Évaluations)
 // ============================================================
 
+/* Direction C : en-têtes sur bandeau gris, lignes de 36 px séparées par des traits, chiffres à droite. */
 const th: React.CSSProperties = {
-  padding: '8px 6px', textAlign: 'center', fontSize: 12, fontWeight: 600,
+  padding: '8px 10px', textAlign: 'right', fontSize: 12, fontWeight: 600,
   color: 'var(--text-muted)', borderBottom: '1px solid var(--border)',
-  background: 'var(--surface)', verticalAlign: 'bottom',
+  background: 'var(--bg-alt)', verticalAlign: 'bottom',
 };
 const td: React.CSSProperties = {
-  padding: '6px', textAlign: 'center', borderBottom: '1px solid var(--border)', color: 'var(--text)',
+  padding: '0 10px', height: 36, textAlign: 'right', borderBottom: '1px solid var(--border)', color: 'var(--text)',
 };
 const tdFoot: React.CSSProperties = {
-  padding: '8px 6px', textAlign: 'center', borderTop: '2px solid var(--border)',
-  fontWeight: 600, color: 'var(--text-muted)', fontSize: 12,
+  padding: '8px 10px', textAlign: 'right', borderTop: '1px solid var(--border-strong)',
+  fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, background: 'var(--bg-alt)',
+};
+/** Colonne Moyenne : la seule couleur du tableau hors alertes. */
+const avgCol: React.CSSProperties = {
+  background: 'var(--indigo-soft)', color: 'var(--indigo-ink)', fontWeight: 600,
 };
 /** Filet vertical entre deux évaluations : assez présent pour guider l'œil le long
  *  d'une colonne, assez discret pour ne pas quadriller le tableau. */
@@ -1158,8 +1182,8 @@ const stickyCol: React.CSSProperties = {
   position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1,
 };
 const emptyBox: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
-  padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14,
+  background: 'var(--bg-alt)', borderRadius: 8,
+  padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14,
 };
 const filterLabel: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6 };
 const filterSelect: React.CSSProperties = {
@@ -1168,16 +1192,16 @@ const filterSelect: React.CSSProperties = {
 };
 const linkBtn: React.CSSProperties = {
   background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600,
-  color: 'var(--indigo)', fontFamily: 'inherit',
+  color: 'var(--indigo-ink)', fontFamily: 'inherit',
 };
 /** Petite pastille PAP / PPRE / PAI à côté d'un nom d'élève. */
 const tagStyle: React.CSSProperties = {
-  marginLeft: 6, fontSize: 11, fontWeight: 700, color: 'var(--indigo)',
+  marginLeft: 6, fontSize: 11, fontWeight: 600, color: 'var(--indigo-ink)',
   background: 'var(--indigo-soft)', borderRadius: 999, padding: '1px 6px',
 };
 const btnBase: React.CSSProperties = {
-  padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+  padding: '7px 12px', borderRadius: 6, fontSize: 13, fontWeight: 600,
   cursor: 'pointer', border: '1px solid transparent',
 };
 const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo-ink)', color: '#fff' };
-const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };
+const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-strong)' };

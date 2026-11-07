@@ -1031,7 +1031,7 @@ export function Analytics() {
             <div className="pt-2">
               <h2
                 className="text-[var(--text)] mb-4"
-                style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 28, fontStyle: 'italic' }}
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 28 }}
               >
                 Notes
               </h2>

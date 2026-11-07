@@ -1,7 +1,6 @@
 import { Users, Castle, Play } from 'lucide-react';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useGroupSession } from '../../contexts/GroupSessionContext';
-import { DB } from './directionB';
 
 export function GroupSessionLauncher() {
   const isMobile = useIsMobile();
@@ -11,96 +10,28 @@ export function GroupSessionLauncher() {
 
   const hasSuspended = !!(sessionId && sessionData);
 
+  // Direction C : boutons ghost compacts côte à côte (classes rf-launch* dans styles/refonte-accueil.css).
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="rf-launch-group">
       {/* Resume button if session suspended */}
       {hasSuspended && (
-        <button
-          onClick={resumeFlow}
-          className="active:scale-[0.98] transition-transform"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: 14,
-            background: DB.surface,
-            borderRadius: 14,
-            border: '1.5px solid #d4a843',
-            textAlign: 'left',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{
-            width: 44, height: 44, background: '#FDF6E3',
-            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <Play size={19} color="#b8860b" fill="#b8860b" strokeWidth={0} style={{ marginLeft: 2 }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, color: DB.text, fontSize: 16 }}>Reprendre la notation</div>
-            <div style={{ color: DB.textSecondary, fontSize: 13, marginTop: 1 }}>
-              {sessionData?.name || 'Session en cours'}
-            </div>
-          </div>
+        <button type="button" onClick={resumeFlow} className="rf-launch rf-launch--resume rf-launch--resume-warn">
+          <Play size={16} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+          <span className="rf-launch__text">
+            <span className="rf-launch__title">Reprendre la notation</span>
+            <span className="rf-launch__meta">{sessionData?.name || 'Session en cours'}</span>
+          </span>
         </button>
       )}
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={startFlow}
-          className="active:scale-[0.98] transition-transform"
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: 14,
-            background: DB.surface,
-            borderRadius: 14,
-            border: `1px solid ${DB.border}`,
-            textAlign: 'left',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{
-            width: 40, height: 40, background: DB.primarySoft,
-            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <Users size={19} color={DB.primary} strokeWidth={1.8} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, color: DB.text, fontSize: 14 }}>Travail de groupe</div>
-          </div>
+      <div className="rf-launch-row">
+        <button type="button" onClick={startFlow} className="rf-launch rf-launch--ghost">
+          <Users size={16} strokeWidth={1.75} aria-hidden="true" />
+          <span className="rf-launch__title">Travail de groupe</span>
         </button>
-
-        <button
-          onClick={startEpreuveFlow}
-          className="active:scale-[0.98] transition-transform"
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: 14,
-            background: DB.surface,
-            borderRadius: 14,
-            border: `1px solid ${DB.border}`,
-            textAlign: 'left',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{
-            width: 40, height: 40, background: '#F5F3FF',
-            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <Castle size={19} color="#7c3aed" strokeWidth={1.8} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, color: DB.text, fontSize: 14 }}>Épreuve</div>
-          </div>
+        <button type="button" onClick={startEpreuveFlow} className="rf-launch rf-launch--ghost">
+          <Castle size={16} strokeWidth={1.75} aria-hidden="true" />
+          <span className="rf-launch__title">Épreuve</span>
         </button>
       </div>
     </div>

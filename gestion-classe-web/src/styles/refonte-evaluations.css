@@ -1,0 +1,78 @@
+/* ============================================================
+   Refonte direction C — Évaluations (carnet de notes)
+   Maquette : design_handoff_direction_c/direction-c.html, frame « Bureau — Évaluations ».
+   Sélecteurs préfixés .rf-evals pour l'emporter sur les règles .gc-carnet* de index.css.
+   ============================================================ */
+
+/* ---- Colonne des classes : puces de niveau, pas de carte autour ---- */
+.rf-evals.gc-carnet { grid-template-columns: minmax(120px, 170px) minmax(0, 1fr); gap: 20px; }
+.rf-evals .gc-carnet__classes {
+  background: transparent; border: 0; border-right: 1px solid var(--border); border-radius: 0;
+  padding: 0 12px 0 0; display: flex; flex-direction: column; gap: 2px;
+}
+.rf-evals .gc-carnet__classes-title {
+  padding: 4px 8px 6px; border: 0; text-transform: none; letter-spacing: 0;
+  font-size: 11px; font-weight: 500; color: var(--text-dim);
+}
+.rf-evals .gc-carnet__class {
+  display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px;
+  border: 0; border-radius: 6px; font-weight: 500; color: var(--text-muted);
+}
+.rf-evals .gc-carnet__class:hover { background: var(--surface-3); }
+.rf-evals .gc-carnet__class.is-on { background: var(--indigo-soft); color: var(--indigo-ink); font-weight: 600; border: 0; }
+.rf-evals__class-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- En-tête compact ---- */
+.rf-evals__head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding-bottom: 12px; margin-bottom: 12px;
+}
+.rf-evals__title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.rf-evals__title h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.rf-evals__meta { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-evals .segbtn { background: var(--surface); border: 1px solid var(--border-strong); }
+.rf-evals .segbtn__b { min-height: 26px; padding: 0 10px; font-size: 12px; }
+.rf-evals .segbtn__b.is-on { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+.rf-evals__filters-on { border-color: var(--indigo); color: var(--indigo-ink); background: var(--indigo-soft); }
+
+/* ---- Tableau pleine largeur, sans carte ---- */
+.rf-evals__table { border-top: 1px solid var(--border); }
+.rf-evals__table thead th { background: var(--bg-alt); }
+.rf-evals__table tbody tr:hover td { background-color: var(--surface-2); }
+.rf-evals__table tbody tr:hover td.gc-carnet__name-col { background-color: var(--surface-2); }
+.rf-evals .gc-cell input::placeholder { color: var(--border-strong); opacity: 1; }
+.rf-evals .gc-carnet__name-col { font-weight: 500; }
+
+/* En-têtes de colonne : nom sur 2 lignes, puis date/barème en petit gris */
+.rf-evals .gc-colhead__title { font-size: 12px; font-weight: 600; line-height: 1.25; }
+.rf-evals .gc-colhead__meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.rf-evals .gc-colhead__meta strong { font-weight: 500; color: var(--text-muted); }
+.rf-evals .gc-pill { border-radius: 4px; }
+.rf-evals .gc-carnet__pending-col { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--bg-alt) 6px 7px); }
+
+/* « i » de détail : Inter, coin bas-gauche (les chiffres sont alignés à droite) */
+.rf-evals .gc-cell__info {
+  left: 3px; right: auto; bottom: 3px; width: 16px; height: 16px; border-radius: 4px;
+  font-family: var(--font-sans); font-style: normal; font-weight: 600; font-size: 11px; line-height: 14px;
+  color: var(--indigo-ink); border-color: var(--border-strong); background: var(--surface);
+}
+/* Note de production corrigée, pas encore au carnet */
+.rf-evals .gc-cell__pending { font-style: normal; color: var(--text-muted); text-align: right; padding: 0 10px; }
+.rf-evals .gc-cell__todo { border-radius: 4px; font-family: var(--font-sans); }
+
+/* ---- Téléphone : la colonne des classes redevient une bande qui défile ---- */
+@media (max-width: 767px) {
+  .rf-evals.gc-carnet { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .rf-evals .gc-carnet__classes {
+    flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border);
+    padding: 0 0 8px; gap: 6px; scrollbar-width: none;
+  }
+  .rf-evals .gc-carnet__classes::-webkit-scrollbar { display: none; }
+  .rf-evals .gc-carnet__classes-title { display: none; }
+  .rf-evals .gc-carnet__class { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; }
+  .rf-evals .gc-carnet__class.is-on { border: 0; }
+  .rf-evals__head { gap: 6px; }
+  .rf-evals__title { flex-basis: 100%; }
+  .rf-evals .segbtn__b { min-height: 40px; }
+  .rf-evals .gc-cell__info { opacity: .55; }
+}

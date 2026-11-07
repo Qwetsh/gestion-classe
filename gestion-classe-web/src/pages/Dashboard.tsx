@@ -11,6 +11,7 @@ import { HomeEditBar } from '../components/home/HomeEditBar';
 import { HOME_MODULE_IDS } from '../components/home/homeModules';
 import { initHomeLayout, setEditing, useHomeLayoutStore } from '../components/home/homeLayoutStore';
 import { formatDayFr, formatTime, isSameDay } from '../components/home/homeHelpers';
+import '../styles/refonte-accueil.css';
 
 /**
  * Page d'accueil : en-tête + grille de modules personnalisable.
@@ -57,10 +58,11 @@ function HomeContent() {
   }
 
   return (
-    <div className={`dash ${editing ? 'dash--editing' : ''}`}>
+    // Direction C : la date EST le titre de la page (plus de « Accueil » répété sous la date) ;
+    // la phrase « prochaine séance » suit en texte secondaire sur la même ligne.
+    <div className={`dash rf-accueil ${editing ? 'dash--editing' : ''}`}>
       <div className="dash__head">
-        <div className="dash__date">{formatDayFr(now)}</div>
-        <h1 className="dash__title">Accueil</h1>
+        <h1 className="dash__title">{formatDayFr(now)}</h1>
         {pronoteConnected && nextLesson && !editing && (
           <p className="dash__subtitle">
             {isSameDay(nextLesson.startDate, tomorrow) ? 'Demain' : 'Prochaine séance'},{' '}
@@ -76,10 +78,11 @@ function HomeContent() {
       {editing && <HomeEditBar layout={layout} />}
 
       {!editing && (
-        <>
+        // Les lanceurs ne s'affichent que sur téléphone (garde isMobile dans chaque composant)
+        <div className="rf-launchers">
           <LiveSessionLauncher />
           <GroupSessionLauncher />
-        </>
+        </div>
       )}
 
       <HomeGrid layout={layout} editing={editing} />
