@@ -5,17 +5,17 @@ vi.mock('../pdfjs', () => ({ getPdfjs: vi.fn() }));
 
 import { COPY_PROFILE, depotUrl, describeDepotError, fitSize, groupUnnamed, movePage, rotatedSize, sortFilesByName } from '../copyUpload';
 
-describe('fitSize (même profil que le scan mobile)', () => {
-  it('ramène le grand côté à 2000 px', () => {
-    expect(fitSize(2800, 3800)).toEqual({ width: 1474, height: 2000 });
-    expect(fitSize(4000, 3000)).toEqual({ width: 2000, height: 1500 });
+describe('fitSize (profil d\'envoi)', () => {
+  it('ramène le grand côté à 1600 px', () => {
+    expect(fitSize(2800, 3800)).toEqual({ width: 1179, height: 1600 });
+    expect(fitSize(4000, 3000)).toEqual({ width: 1600, height: 1200 });
   });
   it('n\'agrandit jamais', () => {
     expect(fitSize(1200, 1600)).toEqual({ width: 1200, height: 1600 });
-    expect(fitSize(2000, 1000)).toEqual({ width: 2000, height: 1000 });
+    expect(fitSize(1600, 800)).toEqual({ width: 1600, height: 800 });
   });
   it('garde le profil JPEG 0,75 et le plafond de 4,5 Mo', () => {
-    expect(COPY_PROFILE).toMatchObject({ maxLongEdge: 2000, jpegQuality: 0.75, fallbackQuality: 0.5 });
+    expect(COPY_PROFILE).toMatchObject({ maxLongEdge: 1600, jpegQuality: 0.75, fallbackQuality: 0.5 });
     expect(COPY_PROFILE.maxBytes).toBeLessThan(5 * 1024 * 1024); // limite du bucket
   });
 });

@@ -447,7 +447,7 @@ export function ClassCopiesDialog({ assessment, students, knownVersions, onClose
               convert={filesToCompactDrafts}
               compact={bundles.length > 0}
               label={bundles.length > 0 ? 'Ajouter d’autres pages (à la suite)' : 'Glisse ici le PDF du paquet ou les photos des copies, ou clique pour les choisir.'}
-              hint="Pages prises dans l’ordre (fichiers par nom), découpées en copies et attribuées dans l’ordre de la liste. Réduites à 2000 px."
+              hint="Pages prises dans l’ordre (fichiers par nom), découpées en copies et attribuées dans l’ordre de la liste. Réduites à 1600 px."
             />
           )}
           {tab === 'webcam' && (

@@ -262,7 +262,7 @@ export function ImportTab({
   onError,
   convert = filesToDrafts,
   label = 'Glisse ici les photos ou le PDF de la copie, ou clique pour les choisir.',
-  hint = 'Un PDF donne une page par page. Réduites à 2000 px avant l’envoi.',
+  hint = 'Un PDF donne une page par page. Réduites à 1600 px avant l’envoi.',
   compact = false,
 }: {
   onAdd: (d: DraftPage[]) => void;
