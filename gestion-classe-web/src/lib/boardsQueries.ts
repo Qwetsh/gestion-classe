@@ -63,20 +63,29 @@ export const boardsUnavailable = () => tableMissing;
 
 const clean = (s: string | null | undefined) => { const t = (s ?? '').trim(); return t ? t : null; };
 
+/**
+ * Tableaux de la bibliothèque (« Mes tableaux »). Les tableaux reliés à un cours de l'emploi du
+ * temps (migration 065, lesson_boards) en sont écartés : ils se retrouvent sur l'accueil.
+ */
 export async function listBoards(userId: string): Promise<Board[]> {
   if (tableMissing) return [];
-  const { data, error } = await supabase
-    .from('boards')
-    .select(COLUMNS)
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+  const [{ data, error }, lessonLinks] = await Promise.all([
+    supabase
+      .from('boards')
+      .select(COLUMNS)
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false }),
+    // Table absente ou erreur : rien à écarter
+    supabase.from('lesson_boards').select('board_id').eq('user_id', userId),
+  ]);
   if (isMissingTable(error)) {
     tableMissing = true;
     console.warn('[boardsQueries] table « boards » absente : migration add_boards.sql à appliquer');
     return [];
   }
   if (error) throw error;
-  return (data || []) as Board[];
+  const lessonBoardIds = new Set(((lessonLinks.error ? [] : lessonLinks.data) ?? []).map((r: { board_id: string }) => r.board_id));
+  return ((data || []) as Board[]).filter((b) => !lessonBoardIds.has(b.id));
 }
 
 export async function createBoard(userId: string, meta: BoardMeta, classId: string | null = null): Promise<Board> {

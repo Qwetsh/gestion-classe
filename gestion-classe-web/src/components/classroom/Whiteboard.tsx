@@ -68,7 +68,7 @@ import { BoardKeyboard } from './BoardKeyboard';
 import { BoardLibraryPanel, type LibraryTab } from './BoardLibraryPanel';
 import { pullEvents, saveEvent, setEventsOwner, type EventInsert, type EventPending } from '../../lib/boardEvents';
 import { BoardLibraryDialog } from './BoardLibraryDialog';
-import { copyBoardPages, createBoardFromPages, levelFromClassName, linkSessionBoard, type Board, type BoardMeta, FREE_BOARD_ID } from '../../lib/boardsQueries';
+import { copyBoardPages, createBoardFromPages, fetchSessionSourceBoard, levelFromClassName, linkSessionBoard, type Board, type BoardMeta, FREE_BOARD_ID } from '../../lib/boardsQueries';
 import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
@@ -156,6 +156,12 @@ export interface WhiteboardProps {
   onOpenInTab?: (board: Board) => void;
   /** Espace de travail : ouvrir le brouillon local dans un nouvel onglet. */
   onOpenDraftTab?: () => void;
+  /**
+   * Tableau préparé pour ce cours (« Lancer la séance », migration 065) : copié dans le tableau
+   * de la séance s'il est encore vide et qu'aucun tableau préparé n'y a déjà été versé.
+   * Remplace la proposition « partir d'un tableau préparé » du début de séance.
+   */
+  seedBoard?: Pick<Board, 'id' | 'title'>;
   onClose: () => void;
 }
 
@@ -351,7 +357,7 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onClose }: WhiteboardProps) {
   const activeRef = useRef(active);
   useEffect(() => { activeRef.current = active; }, [active]);
   /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
@@ -792,8 +798,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           setPageIndex(0);
           loaded = remotePages;
         }
+        // Séance lancée depuis le tableau préparé du cours : on le verse une seule fois
+        // (session_boards garde la trace : un tableau effacé en classe n'est pas re-rempli)
+        if (isSessionBoard && seedBoard && !hasInk(loaded)) {
+          const alreadyLinked = await fetchSessionSourceBoard(sessionId);
+          if (cancelled) return;
+          try { localStorage.setItem(START_PROMPT_PREFIX + sessionId, '1'); } catch { /* stockage indisponible */ }
+          if (!alreadyLinked) setPendingSeed(seedBoard);
         // Début de séance sur un tableau vide : proposer une seule fois de partir d'un tableau préparé
-        if (classroom && !hasInk(loaded)) {
+        } else if (classroom && !hasInk(loaded)) {
           let seen = false;
           try { seen = localStorage.getItem(START_PROMPT_PREFIX + sessionId) === '1'; } catch { /* stockage indisponible */ }
           if (!seen) {
@@ -1327,7 +1340,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
    * encore vide elles remplacent la page blanche ; sinon elles s'insèrent après la page courante.
    * Pour une séance, on retient l'origine (session_boards) — l'original n'est jamais modifié.
    */
-  const insertPreparedBoard = useCallback(async (board: Board) => {
+  const insertPreparedBoard = useCallback(async (board: Pick<Board, 'id' | 'title'>) => {
     setLibraryDialog(null);
     setImporting({ done: 0, total: 1, label: `Ouverture de « ${board.title} »…` });
     try {
@@ -1350,6 +1363,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       setImporting(null);
     }
   }, [isSessionBoard, sessionId, userId]);
+
+  // Tableau du cours à verser dans la séance (posé par le chargement initial)
+  const [pendingSeed, setPendingSeed] = useState<Pick<Board, 'id' | 'title'> | null>(null);
+  useEffect(() => {
+    if (!pendingSeed) return;
+    setPendingSeed(null);
+    void insertPreparedBoard(pendingSeed);
+  }, [pendingSeed, insertPreparedBoard]);
 
   /** Copie des pages actuelles dans un nouveau tableau préparé (Mes tableaux). */
   const saveToLibrary = useCallback(async (meta: BoardMeta) => {

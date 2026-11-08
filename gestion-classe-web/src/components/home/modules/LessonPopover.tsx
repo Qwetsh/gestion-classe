@@ -1,11 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useHomeData } from '../HomeDataContext';
 import { formatTime, getInitials, shortGroup } from '../homeHelpers';
 import { sameDay, type PlacedLesson } from '../../../lib/timetable/weekView';
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
-import { noteForLesson } from '../../../lib/timetable/lessonNotesQueries';
+import { noteForLesson, lessonNoteKey } from '../../../lib/timetable/lessonNotesQueries';
+import { boardForLesson, lessonDisplayName, type LessonBoard } from '../../../lib/timetable/lessonBoardsQueries';
+import { levelFromClassName } from '../../../lib/boardsQueries';
 import { useUIFeedback } from '../../../contexts/UIFeedbackContext';
 
 const POPOVER_WIDTH = 300;
@@ -28,8 +30,11 @@ export function LessonPopover({
   onClose: () => void;
   onManageLinks: () => void;
 }) {
-  const { lastBoardByClass, alertsByClass, openBoard, lessonNotes, saveNote, setNoteDone } = useHomeData();
-  const { toast } = useUIFeedback();
+  const {
+    lastBoardByClass, alertsByClass, openBoard, lessonNotes, saveNote, setNoteDone,
+    week, lessonBoards, nearbyLessonBoards, createBoardForLesson, duplicateBoardToLessons, removeBoardForLesson,
+  } = useHomeData();
+  const { toast, confirm } = useUIFeedback();
   const ref = useRef<HTMLDivElement>(null);
 
   // Note pour ce cours (indépendante de la séance : rien n'est créé dans sessions)
@@ -48,6 +53,95 @@ export function LessonPopover({
       toast('Impossible d’enregistrer la note.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ---- Tableau préparé pour ce cours (migration 065) ----
+  const lessonBoard = boardForLesson(lessonBoards, lesson);
+  const level = levelFromClassName(lesson.className);
+  const [boardBusy, setBoardBusy] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
+
+  /** Cours à venir de la semaine affichée, même niveau, autres que celui-ci : cibles de duplication. */
+  const dupCandidates = useMemo(() => {
+    if (!level) return [];
+    const selfKey = lessonNoteKey(lesson.start, lesson.label);
+    return week.days
+      .flatMap(d => d.lessons)
+      .filter(l => l.classId && l.status !== 'canceled' && l.start > now
+        && lessonNoteKey(l.start, l.label) !== selfKey
+        && levelFromClassName(l.className) === level)
+      .sort((a, b) => a.start.getTime() - b.start.getTime())
+      .map(l => ({ lesson: l, key: lessonNoteKey(l.start, l.label), existing: boardForLesson(lessonBoards, l) }));
+  }, [week, lessonBoards, level, lesson.start, lesson.label, now]);
+
+  // Cochés d'office : le premier cours à venir de chaque classe (ou demi-groupe) sans tableau
+  const [dupChecked, setDupChecked] = useState<Set<string>>(new Set());
+  const openDuplicate = () => {
+    const seen = new Set<string>([`${lesson.classId}|${lesson.groupId ?? ''}`]);
+    const checked = new Set<string>();
+    for (const c of dupCandidates) {
+      const group = `${c.lesson.classId}|${c.lesson.groupId ?? ''}`;
+      if (seen.has(group)) continue;
+      seen.add(group);
+      if (!c.existing) checked.add(c.key);
+    }
+    setDupChecked(checked);
+    setDupOpen(true);
+  };
+
+  /** Autres tableaux de cours du même niveau, du plus proche au plus lointain : bases à reprendre. */
+  const reuseSources = useMemo(() => {
+    if (!level || lessonBoard) return [];
+    const selfKey = lessonNoteKey(lesson.start, lesson.label);
+    return nearbyLessonBoards
+      .filter(b => b.level === level && lessonNoteKey(b.startsAt, b.label) !== selfKey)
+      .sort((a, b) => Math.abs(a.startsAt.getTime() - lesson.start.getTime()) - Math.abs(b.startsAt.getTime() - lesson.start.getTime()))
+      .slice(0, 3);
+  }, [nearbyLessonBoards, level, lessonBoard, lesson.start, lesson.label]);
+
+  const createBoard = async (source?: LessonBoard) => {
+    setBoardBusy(true);
+    try {
+      const lb = await createBoardForLesson(lesson, source?.boardId);
+      onClose();
+      openBoard({ id: lb.boardId, title: lb.title });
+    } catch (err) {
+      console.error(err);
+      toast(err instanceof Error ? err.message : 'Impossible de créer le tableau.');
+      setBoardBusy(false);
+    }
+  };
+
+  const duplicate = async () => {
+    if (!lessonBoard) return;
+    const targets = dupCandidates.filter(c => dupChecked.has(c.key) && !c.existing).map(c => c.lesson);
+    if (targets.length === 0) return;
+    setBoardBusy(true);
+    try {
+      const { created, failed } = await duplicateBoardToLessons(lessonBoard, targets);
+      if (created.length > 0) toast(`Tableau copié pour ${created.length} cours.`, 'success');
+      if (failed.length > 0) toast(`Copie impossible pour : ${failed.join(', ')}.`);
+      setDupOpen(false);
+    } finally {
+      setBoardBusy(false);
+    }
+  };
+
+  const removeBoard = async () => {
+    if (!lessonBoard) return;
+    const ok = await confirm({
+      title: 'Supprimer le tableau de ce cours ?',
+      message: `« ${lessonBoard.title} » sera supprimé. Les copies faites pour les autres classes ne sont pas touchées.`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await removeBoardForLesson(lessonBoard);
+    } catch (err) {
+      console.error(err);
+      toast('Impossible de supprimer le tableau.');
     }
   };
 
@@ -214,7 +308,88 @@ export function LessonPopover({
             </div>
           )}
 
-          {!past && !canceled && lastBoard && (
+          {/* Tableau préparé pour ce cours : créé ici, copié vers les autres classes du niveau, lancé le jour J */}
+          {lessonBoard ? (
+            <div className="wtt-pop__section">
+              <div className="wtt-pop__label">Tableau du cours</div>
+              <button
+                type="button"
+                className="wtt-pop__board"
+                onClick={() => { onClose(); openBoard({ id: lessonBoard.boardId, title: lessonBoard.title }); }}
+                title={past ? 'Consulter le tableau préparé' : 'Ouvrir et modifier le tableau'}
+              >
+                <span className="wtt-pop__board-title">{lessonBoard.title}</span>
+                <span className="wtt-pop__muted">
+                  modifié le {lessonBoard.updatedAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                </span>
+              </button>
+              {!past && !canceled && !dupOpen && (
+                <div className="wtt-pop__links">
+                  {dupCandidates.length > 0 && (
+                    <button type="button" className="wtt__link" onClick={openDuplicate} disabled={boardBusy}>
+                      Copier pour les autres {level}…
+                    </button>
+                  )}
+                  <button type="button" className="wtt__link wtt__link--muted" onClick={removeBoard} disabled={boardBusy}>
+                    Supprimer
+                  </button>
+                </div>
+              )}
+              {dupOpen && (
+                <div className="wtt-pop__dup">
+                  <span className="wtt-pop__muted">Même base pour ces cours ; chaque copie se modifie ensuite à part.</span>
+                  {dupCandidates.map(c => (
+                    <label key={c.key} className={`wtt-pop__dup-row ${c.existing ? 'is-disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={!c.existing && dupChecked.has(c.key)}
+                        disabled={!!c.existing || boardBusy}
+                        onChange={e => setDupChecked(prev => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(c.key); else next.delete(c.key);
+                          return next;
+                        })}
+                      />
+                      <span className="wtt-pop__dup-name">{lessonDisplayName(c.lesson)}</span>
+                      <span className="wtt-pop__muted">
+                        {c.existing ? 'a déjà un tableau' : `${c.lesson.start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} · ${formatTime(c.lesson.start)}`}
+                      </span>
+                    </label>
+                  ))}
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <button type="button" className="wtt-pop__btn" onClick={() => setDupOpen(false)} disabled={boardBusy}>Annuler</button>
+                    <button
+                      type="button"
+                      className="wtt-pop__btn wtt-pop__btn--primary"
+                      onClick={duplicate}
+                      disabled={boardBusy || !dupCandidates.some(c => !c.existing && dupChecked.has(c.key))}
+                    >
+                      {boardBusy ? 'Copie…' : 'Copier'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : !past && !canceled ? (
+            <div className="wtt-pop__section">
+              <div className="wtt-pop__label">Tableau du cours</div>
+              <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard()} disabled={boardBusy}>
+                {boardBusy ? 'Création…' : '＋ Créer un tableau pour ce cours'}
+              </button>
+              {reuseSources.length > 0 && (
+                <>
+                  <span className="wtt-pop__muted">ou partir d’une copie du tableau de :</span>
+                  {reuseSources.map(b => (
+                    <button key={b.id} type="button" className="wtt__link" style={{ alignSelf: 'flex-start' }} onClick={() => createBoard(b)} disabled={boardBusy}>
+                      {b.title}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {!past && !canceled && lastBoard && !lessonBoard && (
             <div className="wtt-pop__section">
               <div className="wtt-pop__label">Dernier tableau projeté</div>
               <button
@@ -251,7 +426,13 @@ export function LessonPopover({
 
           <div className="wtt-pop__actions">
             {(current || (!past && sameDay(lesson.start, now))) && !canceled && (
-              <Link to="/classe" className="wtt-pop__btn wtt-pop__btn--primary">Mode classe</Link>
+              lessonBoard ? (
+                <Link to={`/classe?board=${lessonBoard.boardId}`} className="wtt-pop__btn wtt-pop__btn--primary" title="Ouvre l’écran de classe ; le tableau s’affiche quand la séance démarre sur le téléphone">
+                  Lancer la séance
+                </Link>
+              ) : (
+                <Link to="/classe" className="wtt-pop__btn wtt-pop__btn--primary">Mode classe</Link>
+              )
             )}
             <Link to={`/classes?class=${lesson.classId}`} className="wtt-pop__btn">Plan de classe</Link>
             <Link to={`/students?class=${lesson.classId}`} className="wtt-pop__btn">Élèves</Link>

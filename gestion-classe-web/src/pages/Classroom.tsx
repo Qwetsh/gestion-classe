@@ -10,6 +10,7 @@
  * Aucune saisie ici : l'écran est un afficheur, jamais une source de données.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import {
@@ -25,11 +26,15 @@ import type { ClassroomCommand } from '../lib/classroomProtocol';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
 import { sessionTab } from '../lib/boardTabs';
 import { createClassroomBus, type ClassroomBus } from '../lib/classroomBus';
+import {
+  fetchLessonBoardByBoardId, findLessonBoardForSession, type LessonBoard,
+} from '../lib/timetable/lessonBoardsQueries';
 
 interface ActiveSession {
   id: string;
   class_id: string;
   room_id: string;
+  group_id?: string | null;
   topic: string | null;
   started_at: string;
   ended_at: string | null;
@@ -44,6 +49,8 @@ interface Flash {
 const FLASH_MS = 2600;
 const POLL_MS = 15000;
 const TIMER_DONE_MS = 8000;
+/** Au-delà, une séance non terminée est considérée comme oubliée (pas comme « en cours »). */
+const MAX_ACTIVE_SESSION_MS = 6 * 60 * 60 * 1000;
 
 const EVENT_STYLE: Record<string, { color: string; label: string }> = {
   participation: { color: '#34D399', label: '+1' },
@@ -123,14 +130,17 @@ export function Classroom() {
     return () => window.clearInterval(t);
   }, []);
 
-  // Séance active : la plus récente non terminée de l'enseignant
+  // Séance active : la plus récente non terminée de l'enseignant, démarrée il y a moins de 6 h.
+  // Des séances jamais terminées (téléphone éteint en cours, synchro perdue) traînent en base :
+  // sans cette borne, l'écran afficherait une séance d'il y a trois semaines au lieu d'attendre.
   const findActiveSession = useCallback(async () => {
     if (!userId) return;
     const { data, error } = await supabase
       .from('sessions')
-      .select('id, class_id, room_id, topic, started_at, ended_at')
+      .select('id, class_id, room_id, group_id, topic, started_at, ended_at')
       .eq('user_id', userId)
       .is('ended_at', null)
+      .gte('started_at', new Date(Date.now() - MAX_ACTIVE_SESSION_MS).toISOString())
       .order('started_at', { ascending: false })
       .limit(1);
     if (error) {
@@ -161,8 +171,9 @@ export function Classroom() {
             if (row.id === sessionIdRef.current) {
               if (row.ended_at) setSession(null);
               else setSession(row as ActiveSession);
-            } else if (!row.ended_at) {
-              // Une autre séance vient d'être (ré)ouverte
+            } else if (!row.ended_at && row.started_at && Date.now() - new Date(row.started_at).getTime() < MAX_ACTIVE_SESSION_MS) {
+              // Une autre séance vient d'être (ré)ouverte (une vieille séance oubliée que la
+              // synchro retouche ne doit pas prendre l'écran)
               setSession(row as ActiveSession);
             }
             return;
@@ -258,6 +269,48 @@ export function Classroom() {
       setFlashes({});
     };
   }, [session]);
+
+  // ---- Tableau préparé du cours (migration 065) ----
+  // « Lancer la séance » depuis l'accueil arrive ici avec ?board=<id> : le tableau est annoncé
+  // sur l'écran d'attente, puis versé dans le tableau de la séance quand le téléphone la démarre.
+  // Sans paramètre, on cherche le tableau du cours de la même classe à l'heure de la séance.
+  const [searchParams] = useSearchParams();
+  const launchBoardId = searchParams.get('board');
+  const [launchBoard, setLaunchBoard] = useState<LessonBoard | null>(null);
+  useEffect(() => {
+    if (!launchBoardId) { setLaunchBoard(null); return; }
+    let cancelled = false;
+    fetchLessonBoardByBoardId(launchBoardId).then((lb) => { if (!cancelled) setLaunchBoard(lb); });
+    return () => { cancelled = true; };
+  }, [launchBoardId]);
+
+  /** Tableau à verser dans la séance (`board` null : aucun), résolu une fois par séance. */
+  const [seed, setSeed] = useState<{ sessionId: string; board: { id: string; title: string } | null } | null>(null);
+  const sessionKey = session?.id ?? null;
+  useEffect(() => {
+    if (!session || !userId) return;
+    let cancelled = false;
+    (async () => {
+      let lb: LessonBoard | null = null;
+      try {
+        if (launchBoardId) {
+          const launched = await fetchLessonBoardByBoardId(launchBoardId);
+          // Le téléphone a démarré une autre classe : on ne verse pas le mauvais tableau
+          if (launched && (!launched.classId || launched.classId === session.class_id)) lb = launched;
+        }
+        if (!lb) lb = await findLessonBoardForSession(userId, session.class_id, new Date(session.started_at), session.group_id ?? null);
+      } catch (err) {
+        console.warn('[Classroom] tableau du cours introuvable :', err);
+      }
+      if (cancelled) return;
+      setSeed({ sessionId: session.id, board: lb ? { id: lb.boardId, title: lb.title } : null });
+      if (lb) setView('board');
+    })();
+    return () => { cancelled = true; };
+  // Une fois par séance (une mise à jour de la séance ne relance pas la recherche)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey, userId, launchBoardId]);
+  const seedReady = !!session && seed?.sessionId === session.id;
 
   // Canal de commandes du téléphone : minuteur, tirage au sort, rideau, photo, caméra
   const [bus, setBus] = useState<ClassroomBus | null>(null);
@@ -415,7 +468,14 @@ export function Classroom() {
         <div className="classroom__waiting">
           <div className="classroom__pulse" />
           <h1>En attente d'une séance</h1>
-          <p>Démarre une séance sur ton téléphone, elle apparaîtra ici.</p>
+          {launchBoard ? (
+            <>
+              <div className="classroom__ready">Tableau prêt : <b>{launchBoard.title}</b></div>
+              <p>Démarre la séance sur ton téléphone : le tableau s'ouvrira tout seul.</p>
+            </>
+          ) : (
+            <p>Démarre une séance sur ton téléphone, elle apparaîtra ici.</p>
+          )}
           <span className={`classroom__rt ${realtimeOk ? 'is-ok' : ''}`}>
             {realtimeOk ? 'Connecté en direct' : 'Connexion au direct…'}
           </span>
@@ -504,9 +564,10 @@ export function Classroom() {
 
           <footer className="classroom__footer">Bureau</footer>
 
-          {view === 'board' && (
+          {view === 'board' && seedReady && (
             <BoardWorkspace
               initial={sessionTab(session.id, className ? `Séance ${className}` : 'Séance')}
+              seedBoard={seed?.board ?? undefined}
               userId={userId ?? ''}
               ticker={tickerText}
               className={className}
@@ -569,6 +630,11 @@ const CSS = `
 }
 .classroom__waiting h1 { font-size: clamp(28px, 4vw, 52px); font-weight: 600; margin: 0; letter-spacing: -0.01em; }
 .classroom__waiting p { font-size: clamp(16px, 1.8vw, 24px); color: #9CA3AF; margin: 0; }
+.classroom__ready {
+  font-size: clamp(16px, 1.8vw, 24px); color: #C7D2FE;
+  background: #1C2130; border: 1px solid #2A3044; border-radius: 12px; padding: 10px 18px;
+}
+.classroom__ready b { color: #FFFFFF; font-weight: 600; }
 .classroom__pulse {
   width: 22px; height: 22px; border-radius: 50%; background: #6366F1;
   box-shadow: 0 0 0 0 rgba(99,102,241,0.6); animation: cr-pulse 2s ease-out infinite;
