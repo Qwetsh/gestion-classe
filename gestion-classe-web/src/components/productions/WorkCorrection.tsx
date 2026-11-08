@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GradeDetailsView } from '../GradeDetailsView';
+import { WorkAnswersView } from './WorkAnswersView';
 import { productionDetails } from '../../lib/productionDetails';
 import {
   applyAuto,
-  checkQ1Cell,
   computeTotal,
   deleteWork,
   hasAuto,
   questionScore,
-  q1Label,
   sameCorrection,
   saveWorkCorrection,
   setWorkStatus,
@@ -19,7 +18,6 @@ import {
   type WorkRow,
   type WorkCorrection as Correction,
   type WorkVersionRow,
-  type Q1Row,
 } from '../../lib/productionsQueries';
 
 /**
@@ -38,9 +36,6 @@ import {
  * et chaque case reste modifiable à la main.
  */
 
-const ZONE_NAMES: Record<string, string> = {
-  islande: 'Islande', atlantique: 'Atlantique', andes: 'Andes', java: 'Java', himalaya: 'Himalaya', rhin: 'Fossé rhénan',
-};
 const SKILL_LEVELS = ['Insuffisante', 'Fragile', 'Satisfaisante', 'Très bonne'];
 
 function fmtDate(iso: string | null): string {
@@ -49,15 +44,11 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 const fmtPts = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
-/** Comparaison titre / consigne : sans casse, ponctuation finale ni espaces. */
-const norm = (s: string) => s.toLowerCase().replace(/[\s.:…?!]+/g, ' ').trim();
-const noAnswer = <span style={{ color: 'var(--neg)', fontSize: 13, fontStyle: 'italic', fontWeight: 500 }}>pas de réponse</span>;
 
 type SideTab = 'corriger' | 'analyse' | 'corrige';
 const SIDE_TABS: [SideTab, string][] = [['corriger', 'Corriger'], ['analyse', 'Analyse'], ['corrige', 'Corrigé attendu']];
 /** Une copie validée s'ouvre sur son analyse ; les autres sur la correction. */
 const defaultTab = (w: WorkRow): SideTab => (w.status === 'validated' ? 'analyse' : 'corriger');
-const rateColor = (r: number) => (r >= 0.75 ? 'var(--pos)' : r >= 0.5 ? 'var(--warn)' : 'var(--neg)');
 
 function emptyCorrection(): Correction { return { questions: {} }; }
 
@@ -214,58 +205,6 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
   const validatedApart = !member && !locked ? group.filter((w) => w.status === 'validated') : [];
   const correctedApart = !member && group.length > 1 && group.some((w) => w.correction) && !sameCorrection(group);
 
-  const renderAnswer = (q: ActivityQuestion) => {
-    const v = content[q.id];
-    if (q.type === 'tableau') {
-      const lignes = (v ?? {}) as Record<string, Q1Row>;
-      return (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <tbody>
-            {(def.lignes_q1 ?? []).map((l, i) => {
-              const row = lignes[l.id] ?? {};
-              return (
-                <tr key={l.id} style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
-                  <td style={{ ...tdSmall, width: 84 }}><span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Ligne {i + 1}</span><br /><strong>{ZONE_NAMES[String(row.zone ?? '')] ?? String(row.zone ?? '—')}</strong></td>
-                  <td style={tdSmall}>
-                    {(def.colonnes_q1 ?? []).map((col) => {
-                      // Définition v2 : cases listées par `champs` (menus, nombre) ; v1 : un texte libre par colonne.
-                      const champs = col.champs ?? [{ id: col.id }];
-                      const auto = q.criteres.some((cr) => cr.auto?.colonne === col.id) ? checkQ1Cell(def, row, col.id) : null;
-                      const texte = champs.map((ch) => q1Label(def, ch, row[ch.id])).filter(Boolean).join(' · ');
-                      return (
-                        <div key={col.id} style={{ marginBottom: 2 }}>
-                          <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 400 }}>{col.nom} : </span>
-                          {texte
-                            ? <span style={{ color: auto === true ? 'var(--pos)' : auto === false ? 'var(--neg)' : undefined }}>{auto === true ? '✓ ' : auto === false ? '✗ ' : ''}{texte}</span>
-                            : <span style={{ color: 'var(--text-dim)' }}>—</span>}
-                        </div>
-                      );
-                    })}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      );
-    }
-    if (q.type === 'deductive') {
-      const o = (v ?? {}) as Record<string, string>;
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {(q.champs ?? []).map((ch) => (
-            <div key={ch.id}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{ch.nom}</div>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{o[ch.id] || noAnswer}</div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    const t = v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v);
-    return <div style={{ whiteSpace: 'pre-wrap' }}>{t || noAnswer}</div>;
-  };
-
   const details = useMemo(
     () => productionDetails(def, corr, skills, advice, total, activity.bareme_total),
     [def, corr, skills, advice, total, activity.bareme_total],
@@ -354,28 +293,7 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: 16, alignItems: 'start' }}>
         {/* ---- Copie de l'élève ---- */}
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '4px 14px' }}>
-          {def.questions.map((q, qi) => {
-            const pts = questionScore(q, corr);
-            const touched = !!corr.questions[q.id];
-            // La consigne répète souvent le titre (« Les 4 symptômes… sont : ») : on ne l'affiche que si elle apporte quelque chose.
-            const consigne = q.consigne && norm(q.consigne) !== norm(q.titre) ? q.consigne : '';
-            return (
-              <section key={q.id} id={answerId(q.id)} style={{ padding: '10px 0', borderTop: qi ? '1px solid var(--border)' : undefined, scrollMarginTop: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1.35 }}>{q.num}. {q.titre}</div>
-                  {!q.bonus && touched && (
-                    <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: rateColor(q.points > 0 ? pts / q.points : 0) }}>
-                      {fmtPts(pts)}/{fmtPts(q.points)}
-                    </span>
-                  )}
-                </div>
-                {consigne && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>{consigne}</div>}
-                <div className="gc-wc__answer">{renderAnswer(q)}</div>
-              </section>
-            );
-          })}
-        </div>
+        <WorkAnswersView activity={activity} content={content} correction={corr} answerId={answerId} />
 
         {/* ---- Correction : colonne collée, qui défile seule (comme pour les copies d'éval) ---- */}
         <div
@@ -517,7 +435,6 @@ export function WorkCorrection({ group, activity, onSaved, onDeleted, onDirtyCha
   );
 }
 
-const tdSmall: React.CSSProperties = { padding: '4px 6px', verticalAlign: 'top' };
 const note: React.CSSProperties = { padding: '6px 10px', borderRadius: 8, fontSize: 12, marginBottom: 8 };
 const miniBtn: React.CSSProperties = {
   padding: '1px 6px', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',

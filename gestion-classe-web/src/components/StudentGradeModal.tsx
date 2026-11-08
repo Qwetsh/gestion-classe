@@ -6,11 +6,13 @@ import { AiRunPanel, Badge } from './AiRunPanel';
 import { AddCopyDialog } from './AddCopyDialog';
 import { CopyTranscriptView } from './CopyTranscriptView';
 import { GradeDetailsView } from './GradeDetailsView';
+import { WorkAnswersView } from './productions/WorkAnswersView';
 import { KindIcon } from './KindIcon';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import { hasCopies, publicationState, PUBLICATION_LABEL } from '../lib/assessmentGroups';
 import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 import { alignTranscript } from '../lib/copyTranscript';
+import { productionDetails } from '../lib/productionDetails';
 import { parseGradeDetails } from '../lib/gradeDetails';
 import { describeGradeValue, formatVersionDate, gradeSource, SOURCE_LABEL } from '../lib/gradeHistory';
 import { isGroupGradeAdjusted, parseGroupDetails } from '../lib/groupDetails';
@@ -32,6 +34,8 @@ import {
  * arbitrer), historique des versions. ← → : élève précédent / suivant sans fermer ; ↑ ↓ : pages.
  * Données et gestes partagés avec la visionneuse de la fiche (hooks/useAssessmentCopies.ts).
  */
+
+type LeftTab = 'copie' | 'transcription' | 'production';
 
 const STATUS_KEY: Partial<Record<GradeStatus, string>> = { absent: 'a', dispense: 'd', non_rendu: 'n', non_rendu_zero: 'z' };
 
@@ -60,7 +64,8 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
   const [currentId, setCurrentId] = useState(studentId);
   const [pageIndex, setPageIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
-  const [leftTab, setLeftTab] = useState<'copie' | 'transcription'>('copie');
+  /** Onglet de gauche choisi ; null = le premier disponible (copie, transcription, puis production). */
+  const [leftTab, setLeftTab] = useState<LeftTab | null>(null);
   /** Note en cours de frappe ; null = on affiche la note enregistrée. */
   const [noteText, setNoteText] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -80,7 +85,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
     setCurrentId(rows[i].student.id);
     setPageIndex(0);
     setZoom(false);
-    setLeftTab('copie');
+    setLeftTab(null);
     setNoteText(null);
     setNoteError(null);
     setOpenVersion(null);
@@ -117,6 +122,10 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
     return () => { alive = false; };
   }, [linkedActivity, currentId]);
   const work = production && production.key === productionKey ? production.work : undefined;
+  /** Correction de la production lue comme celle d'une copie d'éval (radar, niveaux, tableau des questions). */
+  const workDetails = useMemo(() => (linkedActivity && work?.correction
+    ? productionDetails(linkedActivity.definition, work.correction, work.skills ?? {}, work.advice ?? '', Number(work.total_points ?? 0), Number(linkedActivity.bareme_total) || 20)
+    : null), [linkedActivity, work]);
 
   // ---- Clavier : ← → élèves, ↑ ↓ pages, Échap ferme (sauf fenêtre ouverte par-dessus) ----
   useEffect(() => {
@@ -175,7 +184,14 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
 
   const page = row?.pages[pageIndex] ?? null;
   const hasPages = !!row && row.pages.length > 0;
-  const showLeft = withCopies && (hasPages || !!transcriptBlocks);
+  const hasWork = !!linkedActivity && !!work && Object.keys(work.content ?? {}).length > 0;
+  const leftTabs: LeftTab[] = [
+    ...(withCopies && hasPages ? ['copie' as const] : []),
+    ...(withCopies && transcriptBlocks ? ['transcription' as const] : []),
+    ...(hasWork ? ['production' as const] : []),
+  ];
+  const tab: LeftTab | null = leftTab && leftTabs.includes(leftTab) ? leftTab : leftTabs[0] ?? null;
+  const showLeft = tab !== null;
   const mode = row ? correctionMode({ pages: row.pages.length, grade }) : null;
   const busy = !!row && (startingId === row.student.id || isRunActive(aiRuns[row.student.id]));
   const isDraft = !!grade && grade.grade != null && !grade.is_validated;
@@ -184,18 +200,17 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
   return (
     <div
       onClick={close}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 10px', overflowY: 'auto' }}
+      className="gc-sgm-overlay"
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={row ? `${row.student.pseudo} — ${assessment.name}` : assessment.name}
         onClick={(e) => e.stopPropagation()}
-        className="gc-sgm"
-        style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: 'var(--shadow-2)', width: 'min(1320px, 100%)', padding: 16, boxSizing: 'border-box' }}
+        className={`gc-sgm${showLeft ? ' is-full' : ''}`}
       >
         {/* ---- En-tête : élève, éval, navigation ---- */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10, flex: 'none' }}>
           <div style={{ display: 'flex', gap: 4 }}>
             <button onClick={() => move(-1)} style={btn} aria-label="Élève précédent (←)" title="Élève précédent (←)">←</button>
             <button onClick={() => move(1)} style={btn} aria-label="Élève suivant (→)" title="Élève suivant (→)">→</button>
@@ -222,7 +237,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
         ) : (
           <>
             {/* ---- Note, statut, actions ---- */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 10, background: 'var(--surface-3)', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 10, background: 'var(--surface-3)', marginBottom: 10, flex: 'none' }}>
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                 Note
                 <input
@@ -287,21 +302,21 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
             <AiRunPanel run={aiRuns[row.student.id]} apiGrade={isApiGrade(grade?.details)} />
 
             <div className={`gc-sgm__body${showLeft ? '' : ' is-single'}`}>
-              {/* ---- Copie / transcription ---- */}
+              {/* ---- Copie / transcription / production : la colonne défile seule ---- */}
               {showLeft && (
-                <div style={{ minWidth: 0 }}>
-                  {hasPages && transcriptBlocks && (
-                    <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-                      {(['copie', 'transcription'] as const).map((t) => (
-                        <button key={t} onClick={() => setLeftTab(t)} style={{ ...chip, background: leftTab === t ? 'var(--text)' : 'var(--surface-3)', color: leftTab === t ? 'var(--surface)' : 'var(--text-muted)' }}>
-                          {t === 'copie' ? `Copie (${row.pages.length} p.)` : 'Transcription'}
+                <div className="gc-sgm__left">
+                  {leftTabs.length > 1 && (
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 8, flex: 'none' }}>
+                      {leftTabs.map((t) => (
+                        <button key={t} onClick={() => setLeftTab(t)} style={{ ...chip, background: tab === t ? 'var(--text)' : 'var(--surface-3)', color: tab === t ? 'var(--surface)' : 'var(--text-muted)' }}>
+                          {t === 'copie' ? `Copie (${row.pages.length} p.)` : t === 'transcription' ? 'Transcription' : 'Production'}
                         </button>
                       ))}
                     </div>
                   )}
-                  {hasPages && leftTab === 'copie' ? (
+                  {tab === 'copie' ? (
                     <>
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', flex: 'none' }}>
                         {row.pages.map((p, i) => (
                           <button
                             key={p.id}
@@ -318,34 +333,38 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                           <a href={urls[page.storage_path]} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--indigo)', alignSelf: 'center', marginLeft: 6 }}>Ouvrir la page ↗</a>
                         )}
                       </div>
-                      <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-3)', maxHeight: '70vh', overflow: 'auto', textAlign: 'center' }}>
+                      <div className="gc-sgm__page">
                         {page && urls[page.storage_path] ? (
                           <img
                             src={urls[page.storage_path]}
                             alt={`${row.student.pseudo}, page ${page.page_order}`}
                             onClick={() => setZoom((z) => !z)}
-                            style={{ display: 'block', margin: '0 auto', cursor: zoom ? 'zoom-out' : 'zoom-in', width: zoom ? '180%' : 'auto', maxWidth: zoom ? 'none' : '100%', maxHeight: zoom ? 'none' : '68vh' }}
+                            className={zoom ? 'is-zoom' : undefined}
                           />
                         ) : (
                           <div style={{ padding: 60, color: 'var(--text-dim)', fontSize: 13 }}>Chargement de la page…</div>
                         )}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>Clic sur la page : zoom · ↑ ↓ pages · ← → élèves</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6, flex: 'none' }}>Clic sur la page : zoom · ↑ ↓ pages · ← → élèves</div>
                     </>
-                  ) : transcriptBlocks ? (
+                  ) : tab === 'transcription' && transcriptBlocks ? (
                     <>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, flex: 'none' }}>
                         Copie transcrite
                         <span style={{ fontWeight: 500 }}>{hasPages ? '' : assessment.copies_purged_at ? ' · scans supprimés' : ' · pas de scan'}, visible par toi seul</span>
                       </div>
-                      <div style={{ maxHeight: '72vh', overflowY: 'auto' }}><CopyTranscriptView blocks={transcriptBlocks} /></div>
+                      <div className="gc-sgm__scroll"><CopyTranscriptView blocks={transcriptBlocks} /></div>
                     </>
+                  ) : tab === 'production' && linkedActivity && work ? (
+                    <div className="gc-sgm__scroll">
+                      <WorkAnswersView activity={linkedActivity} content={work.content} correction={work.correction} />
+                    </div>
                   ) : null}
                 </div>
               )}
 
               {/* ---- Correction et historique ---- */}
-              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="gc-sgm__right">
                 {/* Des copies ont été scannées pour cette éval, pas celle-ci. Une éval saisie à la main n'en parle pas. */}
                 {withCopies && !showLeft && anyScanned && (
                   <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 10 }}>
@@ -372,6 +391,15 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
                         </Link>
                       </div>
                     )}
+                  </section>
+                )}
+                {workDetails && !details && (
+                  <section style={panel} aria-label="Correction de la production">
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10 }}>
+                      Correction de la production
+                      {work?.status !== 'validated' && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · pas encore validée</span>}
+                    </div>
+                    <GradeDetailsView details={workDetails} />
                   </section>
                 )}
                 {groupInfo && (
