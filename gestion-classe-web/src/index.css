@@ -2174,12 +2174,42 @@ a.dash__card-link:hover { text-decoration: underline; }
   .gc-cell__info { opacity: .55; }
 }
 
-/* Modale élève × éval (hub Évaluations, phase 2) : copie à gauche, correction et historique à droite. */
-.gc-sgm__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 16px; align-items: start; }
+/* Modale élève × éval (hub Évaluations, phase 2) : copie à gauche, correction et historique à droite.
+   Elle tient dans l'écran : en-tête et barre de note fixes, chaque colonne défile seule. */
+.gc-sgm-overlay {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, .45);
+  display: flex; align-items: center; justify-content: center; padding: 20px 10px; overflow-y: auto;
+}
+.gc-sgm {
+  display: flex; flex-direction: column; box-sizing: border-box; width: min(1320px, 100%);
+  max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px);
+  padding: 16px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-2);
+}
+/* Une copie à montrer : la modale prend toute la hauteur, pour que la page scannée s'y ajuste. */
+.gc-sgm.is-full { height: calc(100vh - 40px); height: calc(100dvh - 40px); }
+.gc-sgm__body {
+  flex: 1 1 auto; min-height: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); grid-template-rows: minmax(0, 1fr); gap: 16px;
+}
 .gc-sgm__body.is-single { grid-template-columns: minmax(0, 760px); justify-content: center; }
+.gc-sgm__left { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.gc-sgm__right { min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
+.gc-sgm__right > * { flex: none; }
+.gc-sgm__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.gc-sgm__page {
+  flex: 1 1 auto; min-height: 0; overflow: auto; text-align: center;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-3);
+}
+.gc-sgm__page img { display: block; margin: 0 auto; max-width: 100%; max-height: 100%; cursor: zoom-in; }
+.gc-sgm__page img.is-zoom { width: 180%; max-width: none; max-height: none; cursor: zoom-out; }
 @media (max-width: 900px) {
-  .gc-sgm__body, .gc-sgm__body.is-single { grid-template-columns: minmax(0, 1fr); }
-  .gc-sgm { padding: 12px !important; }
+  /* Une seule colonne : la fenêtre redevient une page qui défile en entier. */
+  .gc-sgm, .gc-sgm.is-full { height: auto; max-height: none; padding: 12px; }
+  .gc-sgm-overlay { align-items: flex-start; }
+  .gc-sgm__body, .gc-sgm__body.is-single { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .gc-sgm__right, .gc-sgm__scroll { overflow: visible; }
+  .gc-sgm__page { max-height: 75vh; }
+  .gc-sgm__page img { max-height: 72vh; }
 }
 
 /* ---------- En-têtes de colonnes du carnet (variante B, 02/11/2026) ---------- */
