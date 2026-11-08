@@ -3,13 +3,15 @@
  * webcam), puis les envoyer, soit avec la session du prof (import, webcam), soit par la page
  * publique /depot ouverte depuis le QR code (Edge Function depot-copie, avec un jeton).
  *
- * Même profil que le scan mobile (gestion-classe-mobile/services/copies/path.ts) : 2000 px au
- * plus sur le grand côté, JPEG 0,75, jamais agrandi, et repli à 0,5 au-delà de 4,5 Mo.
+ * Profil d'envoi : 1600 px au plus sur le grand côté, JPEG 0,75, jamais agrandi, et repli à 0,5
+ * au-delà de 4,5 Mo. 1600 px reste au-dessus des ~1568 px auxquels l'API Claude ramène une image
+ * (« Corriger ») : au-delà, on ne paie que du poids (~300 Ko la page au lieu de ~600 Ko à 2000 px).
+ * Le scan mobile (gestion-classe-mobile/services/copies/path.ts) est encore à 2000 px.
  */
 import { supabase } from './supabase';
 import { getPdfjs } from './pdfjs';
 
-export const COPY_PROFILE = { maxLongEdge: 2000, jpegQuality: 0.75, fallbackQuality: 0.5, maxBytes: 4.5 * 1024 * 1024 };
+export const COPY_PROFILE = { maxLongEdge: 1600, jpegQuality: 0.75, fallbackQuality: 0.5, maxBytes: 4.5 * 1024 * 1024 };
 const BUCKET = 'assessment-copies';
 
 /** Taille de sortie : grand côté ramené à `max`, jamais agrandi. */
@@ -80,7 +82,7 @@ export async function draftToUpload(d: DraftPage): Promise<Blob> {
   return preparePage(d.source, d.turns);
 }
 
-/** Une page par page de PDF, rendue à 2000 px sur le grand côté. */
+/** Une page par page de PDF, rendue au profil d'envoi sur le grand côté. */
 export async function pdfToCanvases(file: File): Promise<HTMLCanvasElement[]> {
   const out: HTMLCanvasElement[] = [];
   await eachPdfPage(file, async (canvas) => {
@@ -89,7 +91,7 @@ export async function pdfToCanvases(file: File): Promise<HTMLCanvasElement[]> {
   return out;
 }
 
-/** Rend les pages d'un PDF une à une (2000 px sur le grand côté). */
+/** Rend les pages d'un PDF une à une (profil d'envoi sur le grand côté). */
 async function eachPdfPage(file: File, onPage: (canvas: HTMLCanvasElement) => Promise<void>): Promise<void> {
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
@@ -133,6 +135,15 @@ export async function filesToDrafts(files: File[]): Promise<DraftPage[]> {
 /** Ordre « naturel » des noms de fichiers : IMG_2 avant IMG_10. */
 export function sortFilesByName<T extends { name: string }>(files: T[]): T[] {
   return [...files].sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+}
+
+/**
+ * Une photo → page au profil d'envoi, tout de suite : la photo d'origine (souvent 3 à 10 Mo) n'est
+ * pas gardée en mémoire, la vignette est légère et l'envoi part sans réencodage.
+ */
+export async function blobToPreparedDraft(blob: Blob): Promise<DraftPage> {
+  const prepared = await preparePage(blob, 0);
+  return { id: draftId(), source: prepared, turns: 0, preview: URL.createObjectURL(prepared), prepared: true };
 }
 
 /** Un canvas → page au profil d'envoi, gardée en JPEG (le canvas est libéré). */

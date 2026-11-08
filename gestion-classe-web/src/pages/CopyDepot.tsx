@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  blobToPreparedDraft,
   describeDepotError,
-  draftId,
+  draftToUpload,
   fetchDepotInfo,
-  preparePage,
   uploadDepotPage,
   type DepotInfo,
   type DepotTarget,
@@ -34,6 +34,10 @@ export function CopyDepot() {
   const [target, setTarget] = useState<Target | null>(null);
   const [sentBy, setSentBy] = useState<Record<string, number>>({});
   const [justSent, setJustSent] = useState(0);
+  // Photos en cours de réduction au profil d'envoi (juste après la prise de vue).
+  const [preparing, setPreparing] = useState(0);
+  // Change à chaque changement de copie : une photo réduite trop tard ne va pas chez le suivant.
+  const generation = useRef(0);
   const input = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(
@@ -61,20 +65,35 @@ export function CopyDepot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [info, sentBy]);
 
-  const add = (files: FileList | null) => {
+  // Chaque photo est réduite dès la prise de vue, une à une (une seule grande photo décodée à la fois).
+  const add = async (files: FileList | null) => {
     if (!files) return;
+    const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (images.length === 0) return;
+    const gen = generation.current;
     setJustSent(0);
-    const more = Array.from(files)
-      .filter((f) => f.type.startsWith('image/'))
-      .map((f) => ({ id: draftId(), source: f, turns: 0, preview: URL.createObjectURL(f) }));
-    setDrafts((prev) => [...prev, ...more]);
+    setError(null);
+    setPreparing((n) => n + images.length);
+    for (const f of images) {
+      try {
+        const draft = await blobToPreparedDraft(f);
+        if (gen === generation.current) setDrafts((prev) => [...prev, draft]);
+        else URL.revokeObjectURL(draft.preview);
+      } catch {
+        if (gen === generation.current) setError(describeDepotError('bad_image'));
+      } finally {
+        if (gen === generation.current) setPreparing((n) => Math.max(0, n - 1));
+      }
+    }
   };
 
   const left = info ? info.max_pages - info.pages_uploaded - sent : 0;
 
   const choose = (t: Target | null) => {
+    generation.current += 1;
     drafts.forEach((d) => URL.revokeObjectURL(d.preview));
     setDrafts([]);
+    setPreparing(0);
     setJustSent(0);
     setError(null);
     setTarget(t);
@@ -96,7 +115,7 @@ export function CopyDepot() {
         let dest: DepotTarget | undefined;
         if (target?.kind === 'student') dest = { student_id: target.id };
         else if (target?.kind === 'unnamed') dest = copyId ? { unnamed: true, copy_id: copyId } : { unnamed: true };
-        const res = await uploadDepotPage(token, await preparePage(d.source, d.turns), dest);
+        const res = await uploadDepotPage(token, await draftToUpload(d), dest);
         if (target?.kind === 'unnamed' && res.copy_id) copyId = res.copy_id;
         ok += 1;
         setSending(ok);
@@ -120,8 +139,8 @@ export function CopyDepot() {
     <>
       <button
         onClick={() => input.current?.click()}
-        disabled={left - drafts.length <= 0 || sending !== null}
-        style={{ ...big, background: 'var(--indigo, var(--indigo-ink))', color: '#fff', opacity: left - drafts.length <= 0 ? 0.5 : 1 }}
+        disabled={left - drafts.length - preparing <= 0 || sending !== null}
+        style={{ ...big, background: 'var(--indigo, var(--indigo-ink))', color: '#fff', opacity: left - drafts.length - preparing <= 0 ? 0.5 : 1 }}
       >
         📷 Photographier une page
       </button>
@@ -135,7 +154,7 @@ export function CopyDepot() {
         onChange={(e) => { add(e.target.files); e.target.value = ''; }}
       />
 
-      {drafts.length > 0 && (
+      {drafts.length + preparing > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {drafts.map((d, i) => (
             <div key={d.id} style={{ textAlign: 'center' }}>
@@ -164,11 +183,18 @@ export function CopyDepot() {
               <div style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>Page {i + 1}</div>
             </div>
           ))}
+          {Array.from({ length: preparing }, (_, i) => (
+            <div key={`prep${i}`} style={{ textAlign: 'center' }}>
+              <div style={{ aspectRatio: '3 / 4', borderRadius: 8, border: '1px dashed var(--border, #ccc)', display: 'grid', placeItems: 'center', background: '#f2f2f0', fontSize: 12, color: 'var(--text-muted, #666)' }}>
+                Préparation…
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {drafts.length > 0 && (
-        <button onClick={send} disabled={sending !== null} style={{ ...big, background: 'var(--pos, #15803d)', color: '#fff' }}>
+        <button onClick={send} disabled={sending !== null || preparing > 0} style={{ ...big, background: 'var(--pos, #15803d)', color: '#fff', opacity: preparing > 0 ? 0.6 : 1 }}>
           {sending !== null ? `Envoi… ${sending}/${drafts.length}` : `Envoyer ${drafts.length} page(s)`}
         </button>
       )}
@@ -206,7 +232,7 @@ export function CopyDepot() {
         {info && !isClass && (
           <>
             {capture}
-            {sent > 0 && drafts.length === 0 && (
+            {sent > 0 && drafts.length + preparing === 0 && (
               <div style={{ padding: 12, borderRadius: 10, background: 'var(--pos-soft, #e7f6ec)', color: 'var(--pos, #15803d)', fontSize: 14 }}>
                 {sent} page(s) envoyée(s). Tu peux en ajouter d’autres, ou fermer cette page.
               </div>
@@ -249,12 +275,12 @@ export function CopyDepot() {
           <>
             <button onClick={() => { choose(null); refresh(); }} style={{ ...small, alignSelf: 'flex-start' }}>← Liste des élèves</button>
             {capture}
-            {justSent > 0 && drafts.length === 0 && (
+            {justSent > 0 && drafts.length + preparing === 0 && (
               <div style={{ padding: 12, borderRadius: 10, background: 'var(--pos-soft, #e7f6ec)', color: 'var(--pos, #15803d)', fontSize: 14 }}>
                 {justSent} page(s) envoyée(s){target.kind === 'unnamed' ? ' dans la copie sans nom' : ''}. Tu peux en ajouter à cette copie, ou passer à la suite.
               </div>
             )}
-            {drafts.length === 0 && (
+            {drafts.length + preparing === 0 && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={nextStudent} style={{ ...big, flex: 2, background: 'var(--text, #1d1d1b)', color: '#fff' }}>
                   Élève suivant →
