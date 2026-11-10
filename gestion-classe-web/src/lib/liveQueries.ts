@@ -31,6 +31,7 @@ export interface LiveSummary {
 export interface LiveWork {
   id: string;
   activity_id: string;
+  student_id: string;
   class_id: string | null;
   group_key: string | null;
   group_pseudos: string[] | null;
@@ -47,11 +48,52 @@ export async function fetchLiveWorks(depuisMinutes: number): Promise<LiveWork[]>
   const depuis = new Date(Date.now() - depuisMinutes * 60_000).toISOString();
   const { data, error } = await supabase
     .from('student_works')
-    .select('id,activity_id,class_id,group_key,group_pseudos,status,updated_at,classes(name),activities(title,key),students(pseudo),direct:content->_direct')
+    .select('id,activity_id,student_id,class_id,group_key,group_pseudos,status,updated_at,classes(name),activities(title,key),students(pseudo),direct:content->_direct')
     .eq('is_deleted', false)
     .gte('updated_at', depuis)
     .order('updated_at', { ascending: false })
     .limit(300);
   if (error) throw error;
   return (data ?? []) as unknown as LiveWork[];
+}
+
+/**
+ * Messages du prof aux élèves (table live_messages, migration 068) : le jeu les affiche en grand, signés par un
+ * personnage de l'hôpital. Portée : l'activité, une classe (facultative), des élèves (facultatifs). Vivent 20 min.
+ */
+export type LiveMessageStyle = 'alerte' | 'info' | 'bravo';
+export interface LiveMessage {
+  id: string;
+  activity_id: string | null;
+  class_id: string | null;
+  student_ids: string[] | null;
+  texte: string;
+  style: LiveMessageStyle;
+  signe: string;
+  created_at: string;
+}
+
+export async function sendLiveMessage(m: { activity_id: string; class_id?: string | null; student_ids?: string[] | null; texte: string; style: LiveMessageStyle; signe: string }) {
+  const { error } = await supabase.from('live_messages').insert({
+    activity_id: m.activity_id,
+    class_id: m.class_id ?? null,
+    student_ids: m.student_ids?.length ? m.student_ids : null,
+    texte: m.texte.trim().slice(0, 300),
+    style: m.style,
+    signe: m.signe,
+  });
+  if (error) throw error;
+}
+
+/** Les messages envoyés depuis `depuisMinutes` (les plus récents d'abord). */
+export async function fetchSentMessages(depuisMinutes = 60): Promise<LiveMessage[]> {
+  const depuis = new Date(Date.now() - depuisMinutes * 60_000).toISOString();
+  const { data, error } = await supabase
+    .from('live_messages')
+    .select('id,activity_id,class_id,student_ids,texte,style,signe,created_at')
+    .gte('created_at', depuis)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return (data ?? []) as LiveMessage[];
 }
