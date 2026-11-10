@@ -70,10 +70,12 @@ export interface LiveMessage {
   texte: string;
   style: LiveMessageStyle;
   signe: string;
+  /** Points en plus (> 0) ou en moins (< 0) pour chaque élève visé (migration 069), null pour un simple message. */
+  points: number | null;
   created_at: string;
 }
 
-export async function sendLiveMessage(m: { activity_id: string; class_id?: string | null; student_ids?: string[] | null; texte: string; style: LiveMessageStyle; signe: string }) {
+export async function sendLiveMessage(m: { activity_id: string; class_id?: string | null; student_ids?: string[] | null; texte: string; style: LiveMessageStyle; signe: string; points?: number | null }) {
   const { error } = await supabase.from('live_messages').insert({
     activity_id: m.activity_id,
     class_id: m.class_id ?? null,
@@ -81,6 +83,7 @@ export async function sendLiveMessage(m: { activity_id: string; class_id?: strin
     texte: m.texte.trim().slice(0, 300),
     style: m.style,
     signe: m.signe,
+    points: m.points ? m.points : null,
   });
   if (error) throw error;
 }
@@ -90,10 +93,32 @@ export async function fetchSentMessages(depuisMinutes = 60): Promise<LiveMessage
   const depuis = new Date(Date.now() - depuisMinutes * 60_000).toISOString();
   const { data, error } = await supabase
     .from('live_messages')
-    .select('id,activity_id,class_id,student_ids,texte,style,signe,created_at')
+    .select('id,activity_id,class_id,student_ids,texte,style,signe,points,created_at')
     .gte('created_at', depuis)
     .order('created_at', { ascending: false })
     .limit(20);
   if (error) throw error;
   return (data ?? []) as LiveMessage[];
 }
+
+/** Tous les points donnés pour une activité (sans limite de durée) : le total de chaque groupe. */
+export async function fetchActivityPoints(activityId: string): Promise<LiveMessage[]> {
+  const { data, error } = await supabase
+    .from('live_messages')
+    .select('id,activity_id,class_id,student_ids,texte,style,signe,points,created_at')
+    .eq('activity_id', activityId)
+    .not('points', 'is', null)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as LiveMessage[];
+}
+
+/** Les points qui reviennent à ces élèves (d'une classe) parmi `points`. */
+export function pointsDe(points: LiveMessage[], eleves: string[], classId: string | null): number {
+  const s = points
+    .filter((p) => (p.student_ids ? p.student_ids.some((id) => eleves.includes(id)) : !p.class_id || p.class_id === classId))
+    .reduce((a, p) => a + Number(p.points ?? 0), 0);
+  return Math.round(s * 10) / 10;
+}
+
+export const ecrirePoints = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${String(Math.abs(n)).replace('.', ',')} pt${Math.abs(n) > 1 ? 's' : ''}`;

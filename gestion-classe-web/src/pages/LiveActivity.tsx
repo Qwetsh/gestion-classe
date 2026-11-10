@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Layout } from '../components/Layout';
-import { fetchLiveWorks, fetchSentMessages, sendLiveMessage, type LiveMessage, type LiveMessageStyle, type LiveMorel, type LiveWork } from '../lib/liveQueries';
+import { ecrirePoints, fetchActivityPoints, fetchLiveWorks, fetchSentMessages, pointsDe, sendLiveMessage, type LiveMessage, type LiveMessageStyle, type LiveMorel, type LiveWork } from '../lib/liveQueries';
 
 /**
  * En direct : pendant le cours, depuis le téléphone, où en sont les groupes d'une activité numérique
@@ -55,7 +55,8 @@ export function LiveActivity() {
   const [classe, setClasse] = useState<string>('');
   const [depuis, setDepuis] = useState(120);
   // à qui écrire : un groupe, ou tous les groupes affichés (null = panneau fermé)
-  const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null } | null>(null);
+  const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null; points?: number } | null>(null);
+  const [pointsActivite, setPointsActivite] = useState<LiveMessage[]>([]);
   const [envoyes, setEnvoyes] = useState<LiveMessage[]>([]);
   const chargerEnvoyes = useCallback(async () => {
     try {
@@ -91,6 +92,17 @@ export function LiveActivity() {
     return [...m.entries()];
   }, [works]);
   const actif = activite || activites[0]?.[0] || '';
+
+  // les points donnés dans cette activité : le total de chaque groupe, rechargé avec la page
+  const chargerPoints = useCallback(async () => {
+    if (!actif) return;
+    try {
+      setPointsActivite(await fetchActivityPoints(actif));
+    } catch {
+      /* colonne absente ou réseau */
+    }
+  }, [actif]);
+  useEffect(() => { void chargerPoints(); }, [chargerPoints, maj]);
 
   const classes = useMemo(
     () => [...new Set(works.filter((w) => w.activity_id === actif).map((w) => w.classes?.name ?? '—'))].sort(),
@@ -172,7 +184,13 @@ export function LiveActivity() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
           {groupes.map((g) => (
-            <CarteGroupe key={g.cle} g={g} maintenant={maintenant} ecrire={() => setCible({ libelle: g.noms.join(', '), eleves: g.eleves })} />
+            <CarteGroupe
+              key={g.cle}
+              g={g}
+              maintenant={maintenant}
+              points={pointsDe(pointsActivite, g.eleves, g.classId)}
+              ecrire={(points) => setCible({ libelle: g.noms.join(', '), eleves: g.eleves, points })}
+            />
           ))}
         </div>
 
@@ -183,7 +201,7 @@ export function LiveActivity() {
               {envoyes.map((m) => (
                 <li key={m.id} style={{ ...ligne, background: STYLES[m.style].fond }}>
                   <span style={{ color: 'var(--text-dim)', fontSize: 12, minWidth: 40 }}>{heure(Date.parse(m.created_at))}</span>
-                  <span style={{ flex: 1 }}>{m.texte} <em style={{ color: 'var(--text-muted)' }}>— {m.signe}</em></span>
+                  <span style={{ flex: 1 }}>{m.points ? <strong>{ecrirePoints(Number(m.points))} · </strong> : null}{m.texte} <em style={{ color: 'var(--text-muted)' }}>— {m.signe}</em></span>
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{m.student_ids ? `${m.student_ids.length} élève(s)` : 'tous'}</span>
                 </li>
               ))}
@@ -194,11 +212,14 @@ export function LiveActivity() {
         {cible && actif && (
           <PanneauMessage
             libelle={cible.libelle}
+            pointsInit={cible.points ?? 0}
+            pourTous={!cible.eleves}
             fermer={() => setCible(null)}
-            envoyer={async (texte, style, signe) => {
-              await sendLiveMessage({ activity_id: actif, class_id: cible.eleves ? null : classeId, student_ids: cible.eleves, texte, style, signe });
+            envoyer={async (texte, style, signe, points) => {
+              await sendLiveMessage({ activity_id: actif, class_id: cible.eleves ? null : classeId, student_ids: cible.eleves, texte, style, signe, points });
               setCible(null);
               void chargerEnvoyes();
+              void chargerPoints();
             }}
           />
         )}
@@ -224,7 +245,7 @@ export function LiveActivity() {
   );
 }
 
-function CarteGroupe({ g, maintenant, ecrire }: { g: Groupe; maintenant: number; ecrire: () => void }) {
+function CarteGroupe({ g, maintenant, points, ecrire }: { g: Groupe; maintenant: number; points: number; ecrire: (points?: number) => void }) {
   const d = g.w.direct;
   const e = etat(g.maj, maintenant);
   const avance = d?.sur ? Math.round((100 * (d.reponses ?? 0)) / d.sur) : null;
@@ -234,8 +255,15 @@ function CarteGroupe({ g, maintenant, ecrire }: { g: Groupe; maintenant: number;
         <span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: e.couleur, flex: 'none' }} />
         <strong style={{ flex: 1, fontSize: 15 }}>{g.noms.join(', ')}</strong>
         <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{g.classe} · {e.texte}</span>
-        <button onClick={ecrire} style={{ ...bouton, padding: '2px 8px', fontSize: 13 }} aria-label={`Envoyer un message à ${g.noms.join(', ')}`}>✉</button>
+        <button onClick={() => ecrire()} style={{ ...bouton, padding: '2px 8px', fontSize: 13 }} aria-label={`Envoyer un message à ${g.noms.join(', ')}`}>✉</button>
+        <button onClick={() => ecrire(-1)} style={{ ...bouton, padding: '2px 7px', fontSize: 13, color: 'var(--neg)', fontWeight: 700 }} aria-label={`Retirer des points à ${g.noms.join(', ')}`}>−1</button>
+        <button onClick={() => ecrire(1)} style={{ ...bouton, padding: '2px 7px', fontSize: 13, color: 'var(--pos)', fontWeight: 700 }} aria-label={`Donner des points à ${g.noms.join(', ')}`}>+1</button>
       </div>
+      {points !== 0 && (
+        <div style={{ ...encart, background: points < 0 ? 'var(--neg-soft)' : 'var(--pos-soft)', color: points < 0 ? 'var(--neg)' : 'var(--pos)', fontWeight: 700 }}>
+          Points du service : {ecrirePoints(points)}
+        </div>
+      )}
       {d ? (
         <>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', margin: '6px 0' }}>
@@ -309,18 +337,36 @@ const MODELES: Record<LiveMessageStyle, string[]> = {
   bravo: ['Excellent travail, docteur !', 'Bravo, continue comme ça !', 'Le service est fier de toi.'],
 };
 
-function PanneauMessage({ libelle, fermer, envoyer }: { libelle: string; fermer: () => void; envoyer: (texte: string, style: LiveMessageStyle, signe: string) => Promise<void> }) {
-  const [style, setStyle] = useState<LiveMessageStyle>('alerte');
-  const [signe, setSigne] = useState(SIGNES[0]);
+const VALEURS = [-2, -1, -0.5, 0, 0.5, 1, 2];
+const MOTIFS_MALUS = ['Bavardage', 'Tu ne travailles pas', 'Téléphone sorti', 'Comportement inadapté dans le service'];
+const MOTIFS_BONUS = ['Excellent travail, docteur !', 'Belle démarche de médecin', 'Belle entraide dans le service'];
+
+function PanneauMessage({ libelle, pointsInit, pourTous, fermer, envoyer }: {
+  libelle: string;
+  pointsInit: number;
+  pourTous: boolean;
+  fermer: () => void;
+  envoyer: (texte: string, style: LiveMessageStyle, signe: string, points: number) => Promise<void>;
+}) {
+  const [points, setPoints] = useState(pointsInit);
+  const [style, setStyle] = useState<LiveMessageStyle>(pointsInit < 0 ? 'alerte' : pointsInit > 0 ? 'bravo' : 'alerte');
+  const [signe, setSigne] = useState(pointsInit ? SIGNES[1] : SIGNES[0]);
   const [texte, setTexte] = useState('');
+  const choisirPoints = (v: number) => {
+    setPoints(v);
+    if (v < 0) setStyle('alerte');
+    if (v > 0) setStyle('bravo');
+  };
+  const modeles = points < 0 ? MOTIFS_MALUS : points > 0 ? MOTIFS_BONUS : MODELES[style];
+  const texteFinal = texte.trim() || (points < 0 ? 'Malus du service' : points > 0 ? 'Bonus du service' : '');
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const partir = async () => {
-    if (!texte.trim()) return;
+    if (!texteFinal) return;
     setEnCours(true);
     setErreur(null);
     try {
-      await envoyer(texte, style, signe);
+      await envoyer(texteFinal, style, signe, points);
     } catch (e) {
       setErreur((e as Error).message);
       setEnCours(false);
@@ -340,8 +386,25 @@ function PanneauMessage({ libelle, fermer, envoyer }: { libelle: string; fermer:
             </button>
           ))}
         </div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 4 }}>Points :</span>
+          {VALEURS.map((v) => (
+            <button
+              key={v}
+              onClick={() => choisirPoints(v)}
+              style={{ ...bouton, padding: '3px 8px', fontSize: 13, fontWeight: points === v ? 800 : 400,
+                background: points === v ? (v < 0 ? 'var(--neg-soft)' : v > 0 ? 'var(--pos-soft)' : 'var(--bg-alt)') : 'var(--surface)',
+                color: v < 0 ? 'var(--neg)' : v > 0 ? 'var(--pos)' : 'var(--text-muted)' }}
+            >
+              {v === 0 ? 'aucun' : ecrirePoints(v)}
+            </button>
+          ))}
+        </div>
+        {points !== 0 && pourTous && (
+          <p style={{ fontSize: 12, color: 'var(--warn)', margin: '0 0 8px' }}>Attention : ces points iront à chaque élève de {libelle}.</p>
+        )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {MODELES[style].map((m) => (
+          {modeles.map((m) => (
             <button key={m} onClick={() => setTexte(m)} style={{ ...bouton, fontSize: 13, textAlign: 'left' }}>{m}</button>
           ))}
         </div>
@@ -354,13 +417,14 @@ function PanneauMessage({ libelle, fermer, envoyer }: { libelle: string; fermer:
             </select>
           </label>
           <span style={{ flex: 1 }} />
-          <button onClick={() => void partir()} disabled={!texte.trim() || enCours} style={{ ...bouton, background: 'var(--accent-strong)', color: '#fff', borderColor: 'var(--accent-strong)', fontWeight: 700, opacity: !texte.trim() || enCours ? 0.6 : 1 }}>
-            {enCours ? 'Envoi…' : 'Envoyer'}
+          <button onClick={() => void partir()} disabled={!texteFinal || enCours} style={{ ...bouton, background: 'var(--accent-strong)', color: '#fff', borderColor: 'var(--accent-strong)', fontWeight: 700, opacity: !texteFinal || enCours ? 0.6 : 1 }}>
+            {enCours ? 'Envoi…' : points ? `Envoyer (${ecrirePoints(points)})` : 'Envoyer'}
           </button>
         </div>
         {erreur && <p style={{ color: 'var(--neg)', fontSize: 13 }}>{erreur}</p>}
         <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '10px 0 0' }}>
           L'élève le voit en grand dans le jeu d'ici 15 s, signé « {signe} ». Le message reste valable 20 minutes.
+          {points !== 0 && ' Les points, eux, restent : ils s\'affichent dans son carnet et comptent dans la note à la correction.'}
         </p>
       </div>
     </div>
