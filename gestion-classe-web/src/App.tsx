@@ -26,6 +26,7 @@ import { Clouds } from './pages/Clouds';
 import { Evaluations } from './pages/Evaluations';
 import { AssessmentSheet } from './pages/AssessmentSheet';
 import { Productions } from './pages/Productions';
+import { LiveActivity } from './pages/LiveActivity';
 import { CopyDepot } from './pages/CopyDepot';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
@@ -137,6 +138,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AssessmentSheet />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/direct"
+          element={
+            <ProtectedRoute>
+              <LiveActivity />
             </ProtectedRoute>
           }
         />

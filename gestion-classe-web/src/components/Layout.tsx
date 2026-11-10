@@ -37,6 +37,7 @@ const primaryNavItems = [
 const classLifeItems = [
   { path: '/rewards', label: 'Récompenses', icon: 'star' },
   { path: '/evaluations', label: 'Évaluations', icon: 'evaluations' },
+  { path: '/direct', label: 'En direct', icon: 'direct' },
   { path: '/academy', label: 'Académie', icon: 'academy' },
 ];
 
@@ -61,6 +62,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
     case 'classes': return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>;
     case 'students': return <svg {...common}><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M15 15c3-.5 6 1.5 7 5"/></svg>;
     case 'sessions': return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>;
+    case 'direct': return <svg {...common}><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"/></svg>;
     case 'analytics': return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>;
     case 'star': return <svg {...common}><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/></svg>;
     case 'group': return <svg {...common}><circle cx="8" cy="9" r="2.8"/><circle cx="16.5" cy="9" r="2.3"/><path d="M3 19c.4-3 2.6-5 5-5s4.6 2 5 5M14.5 16c.6-1.3 1.9-2 3-2 1.8 0 3.2 1.4 3.5 3"/></svg>;
