@@ -100,10 +100,10 @@ export function LessonPopover({
       .slice(0, 3);
   }, [nearbyLessonBoards, level, lessonBoard, lesson.start, lesson.label]);
 
-  const createBoard = async (source?: LessonBoard) => {
+  const createBoard = async (source?: LessonBoard, kind: 'course' | 'board' = 'board') => {
     setBoardBusy(true);
     try {
-      const lb = await createBoardForLesson(lesson, source?.boardId);
+      const lb = await createBoardForLesson(lesson, source?.boardId, kind);
       onClose();
       openBoard({ id: lb.boardId, title: lb.title });
     } catch (err) {
@@ -373,9 +373,14 @@ export function LessonPopover({
           ) : !past && !canceled ? (
             <div className="wtt-pop__section">
               <div className="wtt-pop__label">Tableau du cours</div>
-              <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard()} disabled={boardBusy}>
-                {boardBusy ? 'Création…' : '＋ Créer un tableau pour ce cours'}
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard(undefined, 'course')} disabled={boardBusy} title="Rédigé comme dans Word, imprimable en A4">
+                  {boardBusy ? 'Création…' : '📄 Rédiger un cours'}
+                </button>
+                <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard(undefined, 'board')} disabled={boardBusy} title="Pages 16:9 à dessiner, comme avant">
+                  📋 Tableau blanc
+                </button>
+              </div>
               {reuseSources.length > 0 && (
                 <>
                   <span className="wtt-pop__muted">ou partir d’une copie du tableau de :</span>

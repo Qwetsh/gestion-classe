@@ -19,7 +19,9 @@ import {
   type BoardUsage,
 } from '../../lib/boardsQueries';
 import { BoardWorkspace } from './BoardWorkspace';
-import { boardTab, draftTab } from '../../lib/boardTabs';
+import { draftTab } from '../../lib/boardTabs';
+import { OpenPreparedBoard } from '../course/OpenPreparedBoard';
+import { coursesUnavailable, createCourse } from '../../lib/course/courseDoc';
 
 /** Clé de stockage local du tableau blanc libre (hors séance). */
 
@@ -75,9 +77,9 @@ export function BoardsPanel({ userId }: Props) {
       }));
   }, [boards]);
 
-  const save = async (meta: BoardMeta) => {
+  const save = async (meta: BoardMeta, kind: 'course' | 'board') => {
     if (editing === 'new') {
-      const b = await createBoard(userId, meta);
+      const b = kind === 'course' ? { ...(await createCourse(userId, meta)), is_course: true } : await createBoard(userId, meta);
       setBoards((prev) => [b, ...prev]);
       setEditing(null);
       setOpen(b);
@@ -147,7 +149,7 @@ export function BoardsPanel({ userId }: Props) {
                     ].filter(Boolean).join('\n');
                     return (
                       <div key={b.id} className="dash__shortcut" style={{ alignItems: 'center', paddingLeft: 40 }}>
-                        <span className="dash__shortcut-icon">📋</span>
+                        <span className="dash__shortcut-icon" title={b.is_course ? 'Cours rédigé' : 'Tableau blanc'}>{b.is_course ? '📄' : '📋'}</span>
                         <button type="button" onClick={() => setOpen(b)} style={rowButton} title={hint}>
                           <div className="dash__shortcut-title">{b.title}</div>
                         </button>
@@ -176,7 +178,7 @@ export function BoardsPanel({ userId }: Props) {
         <BoardWorkspace initial={draftTab()} userId={userId} onClose={() => setOpen(null)} />
       )}
       {open && open !== 'draft' && (
-        <BoardWorkspace initial={boardTab(open)} userId={userId} onClose={() => { setOpen(null); void refresh(); }} />
+        <OpenPreparedBoard key={open.id} board={open} kind={open.is_course === undefined ? undefined : open.is_course ? 'course' : 'board'} userId={userId} onClose={() => { setOpen(null); void refresh(); }} />
       )}
     </div>
   );
@@ -187,7 +189,7 @@ export function BoardsPanel({ userId }: Props) {
 interface FormProps {
   initial: BoardMeta;
   isNew: boolean;
-  onSave: (meta: BoardMeta) => Promise<void>;
+  onSave: (meta: BoardMeta, kind: 'course' | 'board') => Promise<void>;
   onClose: () => void;
 }
 
@@ -196,6 +198,7 @@ function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
   const [title, setTitle] = useState(initial.title);
   const [level, setLevel] = useState(initial.level ?? '');
   const [chapter, setChapter] = useState(initial.chapter ?? '');
+  const [kind, setKind] = useState<'course' | 'board'>(coursesUnavailable() ? 'board' : 'course');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -210,7 +213,7 @@ function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
     if (!title.trim()) return;
     setBusy(true);
     setError(null);
-    try { await onSave({ title: title.trim(), level: level || null, chapter: chapter.trim() || null }); }
+    try { await onSave({ title: title.trim(), level: level || null, chapter: chapter.trim() || null }, kind); }
     catch (err) { setError(err instanceof Error ? err.message : 'Enregistrement impossible'); setBusy(false); }
   };
 
@@ -226,6 +229,27 @@ function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
         style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2, var(--shadow-1))' }}
       >
         <h3 className="dash__card-title">{isNew ? 'Nouveau tableau préparé' : 'Modifier le tableau'}</h3>
+        {isNew && (
+          <div role="radiogroup" aria-label="Type" style={{ display: 'flex', gap: 8 }}>
+            {([
+              ['course', '📄 Cours rédigé', 'Rédigé comme dans Word, imprimable en A4'],
+              ['board', '📋 Tableau blanc', 'Pages 16:9 à dessiner, comme avant'],
+            ] as const).map(([k, l, sub]) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={kind === k}
+                onClick={() => setKind(k)}
+                disabled={k === 'course' && coursesUnavailable()}
+                style={{ flex: 1, textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)', border: `1px solid ${kind === k ? 'var(--indigo)' : 'var(--border)'}`, background: kind === k ? 'var(--indigo-soft)' : 'var(--surface)', cursor: 'pointer', font: 'inherit' }}
+              >
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{l}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>
+              </button>
+            ))}
+          </div>
+        )}
         <label style={label}>
           Titre
           <input style={field} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Fractions — introduction" autoFocus required />

@@ -1,0 +1,170 @@
+# Plan — Éditeur de cours : modes Texte, Tableau et En classe
+
+> 12/11/2026 — branche `feat/tableau-retours`. Rien n'est codé. Maquette cliquable :
+> `gestion-classe-web/public/_maquettes/editeur-cours.html` (servie par Vite : `/gestion-classe/_maquettes/editeur-cours.html`).
+
+## 1. Le besoin (Thomas)
+
+- La préparation d'un tableau depuis l'ordinateur est pénible : l'interface est pensée pour
+  le TBI (pastille, gros boutons) et le menu « … » est un fourre-tout où l'on se perd.
+- Il veut **rédiger un cours comme dans Word / LibreOffice**, avec le même ressenti, et
+  pouvoir **imprimer** ce cours (A4).
+- Trois modes sur **le même document** :
+  1. **Texte** : traitement de texte, ruban à la Word.
+  2. **Tableau** : on dessine, on pose formes, flèches, boutons… **par-dessus** le texte.
+     On passe librement de l'un à l'autre.
+  3. **En classe** : plus d'édition ; animations et boutons d'action se jouent ; on écrit au
+     stylet par-dessus ou dans les zones prévues ; le téléphone pilote. Ouvrable **pour tester**
+     chez soi (l'encre est effacée à la sortie) ou **le jour J** depuis le calendrier de
+     l'accueil (on attend toujours que le téléphone démarre la séance).
+- Animations légères pour commencer : paragraphe qui apparaît au clic, mot caché (texte à
+  trous), surlignage au fil du cours, bouton qui ouvre une définition / une image.
+
+## 2. L'idée centrale : « la loupe qui fait la largeur du texte »
+
+Le conflit : un cours imprimable est en **A4 portrait**, l'écran de classe est en **16:9
+paysage**. Faire deux mises en page, c'est travailler deux fois ; projeter la page A4 entière,
+c'est illisible (texte à ~16 px).
+
+**Solution : il n'y a qu'un document, la feuille A4. En classe, l'écran n'affiche pas la page
+entière : il affiche une bande de la largeur exacte de la colonne de texte, qui descend le long
+du cours.**
+
+Le calcul qui rend ça possible (TBI 1280 × 720) :
+
+| | Papier | Écran en classe |
+|---|---|---|
+| Largeur de colonne (A4, marges 2,5 cm) | 16 cm | 1 280 px → **8 px par mm** |
+| Texte 12 pt (≈ 4,2 mm) | lisible | **≈ 34 px** = le minimum « texte de page ≥ 34 px » du handoff TBI |
+| Hauteur visible | — | 720 px = **9 cm de feuille** (≈ 18 lignes) |
+| Un bloc 16:9 de la largeur de colonne | 16 × 9 cm | **exactement un écran** |
+
+D'où trois briques qui s'emboîtent :
+
+1. **La feuille** (mode Texte) : texte qui coule, titres, listes, images, tableaux, comme Word.
+   Pages A4 visibles à l'écran (sauts de page), impression fidèle.
+2. **Les encarts tableau** : un bloc qu'on insère dans le texte comme une image
+   (Insertion › Encart tableau), au format 16:9 de la largeur de colonne. Sur papier c'est une
+   figure (imprimée remplie, ou **vide** pour que l'élève la complète) ; en classe, quand on
+   l'atteint, il **remplit l'écran au pixel près** : c'est un tableau blanc plein écran au
+   milieu du cours. Les anciens tableaux (pages 16:9) deviennent des cours faits uniquement
+   d'encarts : rien n'est perdu.
+3. **Les zones d'écriture** : bloc « lignes Seyès / carreaux / blanc » d'une hauteur choisie.
+   Imprimé, c'est la place laissée à l'élève ; en classe, c'est là qu'on écrit au stylet.
+
+Et le **calque tableau** : tout ce qu'on pose en mode Tableau (encre, formes, flèches,
+boutons, post-it) se place **au-dessus de la feuille**. Chaque élément est **ancré au
+paragraphe** sous lui, comme une image « ancrée au paragraphe » dans Word : si l'on ajoute du
+texte plus haut, la flèche descend avec son paragraphe au lieu de pointer dans le vide.
+
+En classe :
+- l'écran montre la bande de colonne ; **Suivant** (flèche, télécommande, téléphone) joue
+  l'animation suivante visible, sinon descend d'un écran ; les sauts de page n'existent pas
+  (ruban continu, un trait discret les signale) ;
+- un geste « dézoomer » montre la feuille entière posée sur l'ardoise (vue d'ensemble), puis
+  on revient à la bande ;
+- l'encre de la séance est rangée dans la séance (comme aujourd'hui), jamais dans le cours
+  préparé ; en mode test, elle est jetée à la sortie.
+
+## 3. Interface d'édition (ordinateur) — le « feeling Word »
+
+Repris de Word / LibreOffice, parce que c'est ce que la main connaît :
+
+- **Barre de titre** : nom du cours, classe et date du cours (ex. « 5D · ven. 13 nov. »),
+  état d'enregistrement (« Enregistré » automatique, comme Word en ligne), Annuler / Rétablir.
+- **Ruban à onglets** (groupes étiquetés, grandes icônes pour les actions fréquentes) :
+  - **Fichier** : enregistrer comme modèle, exporter PDF, imprimer, version élève (sans
+    corrigé), propriétés.
+  - **Accueil** : Presse-papiers · Police (famille, taille, gras, italique, souligné,
+    couleur, surlignage) · Paragraphe (listes, alignement, retrait, interligne) · **Styles**
+    (galerie : Normal, Titre 1, Titre 2, Définition, À retenir, Consigne, Exemple).
+  - **Insertion** : Image · Tableau · **Encart tableau 16:9** · **Zone d'écriture** ·
+    Équation · Saut de page · Lien.
+  - **Dessin** (actif en mode Tableau) : sélection, stylo, surligneur, gomme, formes,
+    flèches/connecteurs, post-it, widgets, couleurs et épaisseurs — les outils actuels du
+    tableau, enfin rangés et étiquetés.
+  - **Animations** : Apparaître au clic · Mot caché · Surligner au clic · Bouton → fenêtre ;
+    volet **« Ordre des animations »** à droite (comme PowerPoint) pour réordonner les étapes.
+  - **Affichage** : Texte / Tableau / En classe, zoom, règle, afficher les ancres,
+    afficher la bande « écran de classe » (repère de ce qui tiendra à l'écran).
+- **Règle** horizontale avec marges et retraits.
+- **Barre d'état** (en bas, comme Word) : « Page 2 sur 4 · 412 mots · Écran 3 sur 9 »,
+  boutons de mode **Texte | Tableau | ▶ En classe**, curseur de zoom.
+- **Menu contextuel** (clic droit) à la Word : couper, copier, coller, style, animer…
+- **Raccourcis Word** : Ctrl+B/I/U, Ctrl+Alt+1/2 (titres), Ctrl+Entrée (saut de page),
+  Ctrl+Z/Y, Ctrl+P.
+
+Le menu « … » actuel disparaît sur ordinateur : chaque entrée trouve sa place dans un onglet.
+Le mode En classe garde l'interface minimale du TBI (pastille, gros boutons) et n'a pas de ruban.
+
+## 4. Ce qui change dans les données
+
+- Un cours = `boards` (inchangé) + un document : **flux de texte** (JSON ProseMirror :
+  paragraphes, titres, listes, images, tableaux, encarts, zones d'écriture — chaque bloc porte
+  un identifiant stable) + **calque** (objets et encre du tableau actuel, chacun avec son ancre
+  `{ blockId, dx, dy }`).
+- Les encarts tableau réutilisent le modèle de page actuel (`BoardPage` : encre, objets, fond,
+  interactions) : rendu, export et commandes du téléphone restent les mêmes.
+- Les états de séance (révélations, animations jouées) restent dans l'état de séance, jamais
+  dans le cours préparé (règle actuelle).
+- Stockage : une colonne JSONB sur `boards` (ou une table `board_documents`) — à trancher au
+  lot 0 ; migration additive, rien ne casse les tableaux existants.
+
+## 5. Choix technique proposé
+
+- Éditeur de texte : **TipTap** (sur ProseMirror, licence MIT) — le standard pour un
+  traitement de texte web : styles, listes, tableaux, images, raccourcis, collage depuis Word.
+  Les blocs maison (encart, zone d'écriture, animations) sont des extensions TipTap.
+- Pages A4 à l'écran : colonne continue + sauts de page calculés en mesurant les blocs (les
+  extensions de pagination complètes de TipTap sont payantes) ; impression par le navigateur
+  avec une feuille de style `@page A4` identique.
+- Calque tableau : le code actuel (`BoardObjectLayer`, encre, connecteurs) monté par-dessus la
+  colonne, coordonnées converties via l'ancre de bloc.
+
+## 6. Découpage en lots
+
+| Lot | Contenu | Résultat visible |
+|---|---|---|
+| 0 | Modèle de document, stockage, conversion des anciens tableaux en « cours d'encarts » | Un tableau existant s'ouvre toujours |
+| 1 | **Mode Texte** : TipTap, feuille A4, ruban Accueil + Insertion (sans encarts), barre d'état, impression PDF | On rédige et imprime un cours |
+| 2 | **Encarts tableau** et **zones d'écriture** dans le texte | Schémas 16:9 et place pour écrire |
+| 3 | **Mode Tableau** : calque ancré au-dessus du texte, onglet Dessin (outils actuels rangés) | Flèches et annotations sur le cours |
+| 4 | **Mode En classe** : bande de colonne, Suivant, dézoom, encre de séance, test effacé, téléphone, bouton du calendrier | Le cours se joue en classe |
+| 5 | **Animations légères** + volet Ordre des animations | Apparition, mot caché, surlignage, bouton |
+| 6 | Finitions : menu contextuel Word, raccourcis, galerie de styles complète, version élève | Le « feeling Word » complet |
+
+Chaque lot est livrable seul (PR distincte, testée dans le navigateur).
+
+## 7. Questions encore ouvertes
+
+1. Marges et police par défaut : Word (2,5 cm, Calibri/Aptos 11) ou LibreOffice (2 cm,
+   Liberation 12) ? Proposé : marges 2,5 cm, **12 pt** (c'est ce qui donne 34 px en classe),
+   police lisible au TBI (Atkinson Hyperlegible, déjà embarquée).
+2. Un cours préparé à partir d'un modèle (« Enregistrer comme modèle ») : utile dès le lot 1 ?
+3. Version élève à l'impression : masquer le corrigé (mots cachés imprimés en pointillés,
+   encarts imprimés vides) — automatique ou au choix à chaque impression ?
+
+## 8. Avancement
+
+### Étapes 0 et 1 — livrées le 12/11/2026 (branche `feat/tableau-retours`)
+
+- **Migration 071** (`boards.doc` JSONB) appliquée en prod. `doc` NULL = tableau blanc classique.
+- `lib/course/courseDoc.ts` (lecture, écriture, création, copie locale de secours),
+  `lib/course/coursePage.ts` (géométrie A4 : 793,7 × 1122,52 px, marges 94,49 px, colonne 604,7 px).
+- `components/course/` : `CourseEditor` (plein écran, barre de titre, règle, feuilles, barre
+  d'état, enregistrement 1 s après la frappe + nouvel essai 15 s), `CourseRibbon` (Fichier,
+  Accueil, Insertion, Affichage + onglets contextuels Tableau et Image), `coursePagination`
+  (intercalaires avant le premier bloc qui déborde ; positions au sous-pixel ; titres solidaires
+  du suivant), `courseExtensions` (TipTap 3.33 : StarterKit, TextStyleKit, TextAlign, Highlight,
+  TableKit, Image → chemin du bucket `board-assets` + URL signée, encadrés, saut de page,
+  UniqueID `blockId` sur les blocs), `OpenPreparedBoard` (choisit l'éditeur à l'ouverture).
+- Points d'entrée : popover de l'emploi du temps (« 📄 Rédiger un cours » / « 📋 Tableau blanc »),
+  « Mes tableaux » (+ Nouveau demande le type ; icônes 📄 / 📋). Copier un tableau de cours vers
+  une autre classe copie aussi le document.
+- Vérifié dans le navigateur : saisie, styles, pagination (aucun bloc ne déborde, saut de page,
+  titre renvoyé avec son texte), rechargement depuis la base, image collée (envoi, affichage,
+  50 %), tableau (onglet contextuel, ajout de ligne), mise en page d'impression (feuilles
+  collées, intercalaires recalculés).
+- Écarts / limites : pas d'impression réelle testée (seulement la mise en page) ; lien saisi par
+  `window.prompt` ; un paragraphe plus haut qu'une page ne se coupe pas (il déborde) ; « Lancer la
+  séance » d'un cours rédigé ouvre un tableau vide tant que l'étape 4 n'est pas faite.

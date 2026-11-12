@@ -144,7 +144,7 @@ export interface HomeData {
   /** Tableaux de cours de la semaine affichée et des trois semaines autour (pour « reprendre celui de… ») */
   nearbyLessonBoards: LessonBoard[];
   /** Crée le tableau d'un cours (vide ou copie d'un autre tableau) */
-  createBoardForLesson: (lesson: LessonRef, sourceBoardId?: string) => Promise<LessonBoard>;
+  createBoardForLesson: (lesson: LessonRef, sourceBoardId?: string, kind?: 'course' | 'board') => Promise<LessonBoard>;
   /** Copie un tableau de cours vers d'autres cours ; renvoie les cours en échec */
   duplicateBoardToLessons: (source: LessonBoard, targets: LessonRef[]) => Promise<{ created: LessonBoard[]; failed: string[] }>;
   /** Supprime le tableau d'un cours */
@@ -337,9 +337,9 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
     return () => { cancelled = true; };
   }, [user, weekOffset, boardVersion]);
 
-  const createBoardForLesson = useCallback(async (lesson: LessonRef, sourceBoardId?: string) => {
+  const createBoardForLesson = useCallback(async (lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board') => {
     if (!user) throw new Error('Non connecté');
-    const lb = await createLessonBoard(user.id, lesson, sourceBoardId);
+    const lb = await createLessonBoard(user.id, lesson, sourceBoardId, kind);
     setNearbyLessonBoards(prev => [...prev, lb]);
     return lb;
   }, [user]);

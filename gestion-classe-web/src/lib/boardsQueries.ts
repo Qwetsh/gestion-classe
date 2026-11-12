@@ -24,6 +24,8 @@ export interface Board {
   chapter: string | null;
   created_at: string;
   updated_at: string;
+  /** Cours rédigé (éditeur Texte, boards.doc — migration 071) ; absent = inconnu / tableau blanc. */
+  is_course?: boolean;
 }
 
 export interface BoardMeta {
@@ -69,15 +71,22 @@ const clean = (s: string | null | undefined) => { const t = (s ?? '').trim(); re
  */
 export async function listBoards(userId: string): Promise<Board[]> {
   if (tableMissing) return [];
-  const [{ data, error }, lessonLinks] = await Promise.all([
-    supabase
-      .from('boards')
-      .select(COLUMNS)
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false }),
+  const query = (columns: string) => supabase
+    .from('boards')
+    .select(columns)
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+  const [first, lessonLinks] = await Promise.all([
+    // Avec le type (cours rédigé ou tableau blanc) ; sans, si la migration 071 manque
+    query(`${COLUMNS}, doc_version:doc->version`),
     // Table absente ou erreur : rien à écarter
     supabase.from('lesson_boards').select('board_id').eq('user_id', userId),
   ]);
+  let { data, error } = first as { data: unknown[] | null; error: { message?: string; code?: string } | null };
+  // Colonne `doc` absente (migration 071 non appliquée) : même liste, sans le type
+  // (à tester avant isMissingTable, dont le message « boards.doc does not exist » ferait croire la table absente)
+  const docColumnMissing = !!error && error.code !== '42P01' && (error.code === '42703' || /\bdoc\b/i.test(error.message ?? ''));
+  if (docColumnMissing) ({ data, error } = (await query(COLUMNS)) as { data: unknown[] | null; error: { message?: string; code?: string } | null });
   if (isMissingTable(error)) {
     tableMissing = true;
     console.warn('[boardsQueries] table « boards » absente : migration add_boards.sql à appliquer');
@@ -85,7 +94,9 @@ export async function listBoards(userId: string): Promise<Board[]> {
   }
   if (error) throw error;
   const lessonBoardIds = new Set(((lessonLinks.error ? [] : lessonLinks.data) ?? []).map((r: { board_id: string }) => r.board_id));
-  return ((data || []) as Board[]).filter((b) => !lessonBoardIds.has(b.id));
+  return ((data || []) as (Board & { doc_version?: unknown })[])
+    .filter((b) => !lessonBoardIds.has(b.id))
+    .map(({ doc_version, ...b }) => ({ ...b, is_course: doc_version != null }));
 }
 
 export async function createBoard(userId: string, meta: BoardMeta, classId: string | null = null): Promise<Board> {
