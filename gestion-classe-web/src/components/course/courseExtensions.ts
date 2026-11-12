@@ -11,7 +11,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
-import { TableKit } from '@tiptap/extension-table';
+import { courseTableExtensions } from './courseTable';
 import Image from '@tiptap/extension-image';
 import UniqueID from '@tiptap/extension-unique-id';
 import { Placeholder } from '@tiptap/extensions';
@@ -291,7 +291,7 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
     TextStyleKit.configure({ lineHeight: false }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Highlight.configure({ multicolor: true }),
-    TableKit.configure({ table: { resizable: true } }),
+    ...courseTableExtensions,
     CourseImage,
     Callout,
     PageBreak,
