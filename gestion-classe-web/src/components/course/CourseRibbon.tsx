@@ -6,11 +6,12 @@
  * Les boutons ne prennent jamais le focus (mousedown annulé) : la sélection du texte reste en
  * place, comme dans un traitement de texte.
  */
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { Icon, type IconName } from './courseIcons';
 import { CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
+import { CourseSymbolPicker } from './CourseSymbolPicker';
 
 export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'affichage' | 'tableau' | 'image' | 'encart' | 'zone';
 
@@ -79,6 +80,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         italic: e.isActive('italic'),
         underline: e.isActive('underline'),
         strike: e.isActive('strike'),
+        superscript: e.isActive('superscript'),
+        subscript: e.isActive('subscript'),
+        highlight: ((e.getAttributes('highlight') as { color?: string }).color ?? '') as string,
         bullet: e.isActive('bulletList'),
         ordered: e.isActive('orderedList'),
         listItem: e.isActive('listItem'),
@@ -121,6 +125,24 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
   const setTab = (t: RibbonTab) => setView((v) => ({ ...v, tab: t }));
 
   const c = () => editor.chain().focus();
+
+  /** Taille suivante ou précédente dans la liste des tailles (12 pt = taille du style). */
+  const stepFontSize = (dir: 1 | -1) => {
+    const current = s.fontSize.endsWith('pt') ? Number(s.fontSize.slice(0, -2)) : 12;
+    const next = dir > 0 ? FONT_SIZES_PT.find((p) => p > current) : [...FONT_SIZES_PT].reverse().find((p) => p < current);
+    if (!next) return;
+    if (next === 12) c().unsetFontSize().run(); else c().setFontSize(`${next}pt`).run();
+  };
+
+  // Palette de symboles, ancrée sous son bouton
+  const symbolBtnRef = useRef<HTMLSpanElement>(null);
+  const [symbols, setSymbols] = useState<{ left: number; top: number } | null>(null);
+  const toggleSymbols = () => {
+    if (symbols) { setSymbols(null); return; }
+    const btn = symbolBtnRef.current?.querySelector('button');
+    const r = btn?.getBoundingClientRect();
+    setSymbols({ left: r?.left ?? 200, top: (r?.bottom ?? 170) + 6 });
+  };
   /**
    * Réglage d'un bloc insécable (image, encart, zone) : ProseMirror remplace le bloc entier, et la
    * sélection retomberait sur le bloc voisin — on resélectionne le bloc modifié.
@@ -205,12 +227,17 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                     {!sizePt && s.fontSize && <option value="">—</option>}
                     {FONT_SIZES_PT.map((p) => <option key={p} value={String(p)}>{p}</option>)}
                   </select>
+                  <Sm title="Agrandir la police" onClick={() => stepFontSize(1)}><span className="ce-glyph">A<sup>+</sup></span></Sm>
+                  <Sm title="Réduire la police" onClick={() => stepFontSize(-1)}><span className="ce-glyph ce-glyph--small">A<sup>−</sup></span></Sm>
+                  <Sm title="Changer la casse : minuscules, MAJUSCULES, Première lettre (Maj+F3)" onClick={() => c().cycleCase().run()}><span className="ce-glyph">Aa</span></Sm>
                 </div>
                 <div className="ce-row">
                   <Sm title="Gras (Ctrl+B)" on={s.bold} onClick={() => c().toggleBold().run()}><b className="ce-glyph">G</b></Sm>
                   <Sm title="Italique (Ctrl+I)" on={s.italic} onClick={() => c().toggleItalic().run()}><i className="ce-glyph">I</i></Sm>
                   <Sm title="Souligné (Ctrl+U)" on={s.underline} onClick={() => c().toggleUnderline().run()}><u className="ce-glyph">S</u></Sm>
                   <Sm title="Barré" on={s.strike} onClick={() => c().toggleStrike().run()}><s className="ce-glyph">ab</s></Sm>
+                  <Sm title="Indice (Ctrl+,) : H₂O" on={s.subscript} onClick={() => c().unsetSuperscript().toggleSubscript().run()}><span className="ce-glyph">x<sub>2</sub></span></Sm>
+                  <Sm title="Exposant (Ctrl+.) : m²" on={s.superscript} onClick={() => c().unsetSubscript().toggleSuperscript().run()}><span className="ce-glyph">x<sup>2</sup></span></Sm>
                   <span className="ce-sep" />
                   {TEXT_COLORS.map((t) => (
                     <button
@@ -223,6 +250,10 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                       onClick={() => (t.c === '#111827' ? c().unsetColor().run() : c().setColor(t.c).run())}
                     />
                   ))}
+                  <label className="ce-colorpick" title="Autre couleur de texte…">
+                    <span className="ce-colorpick__wheel" />
+                    <input type="color" value={/^#[0-9a-f]{6}$/i.test(s.color) ? s.color : '#111827'} onChange={(e) => c().setColor(e.target.value).run()} aria-label="Autre couleur de texte" />
+                  </label>
                 </div>
                 <div className="ce-row">
                   <span className="ce-minilabel"><Icon name="marker" size={15} /> Surligner</span>
@@ -237,6 +268,10 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                       onClick={() => c().toggleHighlight({ color: h.c }).run()}
                     />
                   ))}
+                  <label className="ce-colorpick" title="Autre couleur de surlignage…">
+                    <span className="ce-colorpick__wheel" />
+                    <input type="color" value={/^#[0-9a-f]{6}$/i.test(s.highlight) ? s.highlight : '#fef08a'} onChange={(e) => c().setHighlight({ color: e.target.value }).run()} aria-label="Autre couleur de surlignage" />
+                  </label>
                   <Sm title="Retirer le surlignage" onClick={() => c().unsetHighlight().run()}><span className="ce-glyph ce-glyph--sm">Aucun</span></Sm>
                 </div>
               </div>
@@ -294,7 +329,10 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <Big icon="zone" label="Zone d'écriture" title="Lignes Seyès, carreaux ou blanc : imprimées vides pour l'élève, on y écrit au stylet en classe" onClick={() => c().insertWritingZone().run()} />
             </Group>
             <Group label="Texte">
-              <Big icon="link" label="Lien" title="Lien vers une page web" on={s.link} onClick={onInsertLink} />
+              <Big icon="link" label="Lien" title="Lien vers une page web ou une adresse e-mail (Ctrl+K)" on={s.link} onClick={onInsertLink} />
+              <span ref={symbolBtnRef} style={{ display: 'contents' }}>
+                <Big icon="sigma" label="Symbole" title="Flèches, signes mathématiques, lettres grecques, majuscules accentuées…" on={!!symbols} onClick={toggleSymbols} />
+              </span>
               <Big icon="hr" label="Trait" title="Trait de séparation" onClick={() => c().setHorizontalRule().run()} />
             </Group>
             <Group label="Pages">
@@ -342,6 +380,10 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <Big icon="trash" label="Supprimer le tableau" onClick={() => c().deleteTable().run()} />
             </Group>
           </>
+        )}
+
+        {symbols && (
+          <CourseSymbolPicker left={symbols.left} top={symbols.top} onInsert={(ch) => c().insertContent(ch).run()} onClose={() => setSymbols(null)} />
         )}
 
         {tab === 'encart' && (

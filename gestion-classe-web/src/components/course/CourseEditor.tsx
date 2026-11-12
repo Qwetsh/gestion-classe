@@ -26,6 +26,7 @@ import { fetchLessonBoardByBoardId } from '../../lib/timetable/lessonBoardsQueri
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { Whiteboard } from '../classroom/Whiteboard';
 import { loadEncartPages } from './encartStore';
+import { CourseLinkDialog } from './CourseLinkDialog';
 import './course.css';
 
 interface Props {
@@ -41,6 +42,8 @@ const SAVE_DELAY_MS = 1000;
 const RETRY_MS = 15000;
 const ZOOM_KEY = 'course-editor-zoom';
 const RULER_KEY = 'course-editor-ruler';
+/** Événement interne : raccourci Ctrl+K frappé dans le texte. */
+const LINK_EVENT = 'course-editor:link';
 
 const readNumber = (key: string, fallback: number) => {
   try { const v = Number(localStorage.getItem(key)); return Number.isFinite(v) && v > 0 ? v : fallback; } catch { return fallback; }
@@ -120,6 +123,8 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   const [scrollbarW, setScrollbarW] = useState(0);
   /** Encart ouvert dans le tableau blanc (identifiant de sa page), ou null. */
   const [editingEncart, setEditingEncart] = useState<string | null>(null);
+  /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
+  const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -210,6 +215,8 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   const extensions = useMemo(() => courseExtensions(
     (layout) => setPages(layout.pages),
     { boardId, onEdit: (pageId) => setEditingEncart(pageId) },
+    // Ctrl+K : l'extension prévient par un événement, l'éditeur ouvre la fenêtre (cf. insertLink)
+    () => { window.dispatchEvent(new Event(LINK_EVENT)); },
   ), [boardId]);
 
   // Pages des encarts (aperçus) ; relues au retour du tableau blanc
@@ -233,6 +240,14 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         const files = imageFiles(event.clipboardData);
         if (files.length === 0) return false;
         void uploadRef.current(files);
+        return true;
+      },
+      // Ctrl + clic sur un lien : l'ouvrir dans un nouvel onglet (un clic simple place le curseur)
+      handleClick: (_view, _pos, event) => {
+        if (!(event.ctrlKey || event.metaKey)) return false;
+        const a = (event.target as HTMLElement).closest('a');
+        if (!a?.href) return false;
+        window.open(a.href, '_blank', 'noopener,noreferrer');
         return true;
       },
       handleDrop: (view, event, _slice, moved) => {
@@ -378,18 +393,52 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 
   const insertLink = () => {
     if (!editor) return;
-    const prev = (editor.getAttributes('link') as { href?: string }).href ?? '';
-    const href = window.prompt('Adresse du lien (laisser vide pour retirer le lien)', prev);
-    if (href === null) return;
-    if (!href.trim()) editor.chain().focus().extendMarkRange('link').unsetLink().run();
-    else editor.chain().focus().extendMarkRange('link').setLink({ href: href.trim() }).run();
+    const inLink = editor.isActive('link');
+    const { from, to, empty } = editor.state.selection;
+    setLinkDialog({
+      href: (editor.getAttributes('link') as { href?: string }).href ?? '',
+      text: empty ? '' : editor.state.doc.textBetween(from, to, ' '),
+      askText: empty && !inLink,
+      inLink,
+    });
+  };
+  useEffect(() => {
+    window.addEventListener(LINK_EVENT, insertLink);
+    return () => window.removeEventListener(LINK_EVENT, insertLink);
+  });
+
+  const applyLink = (href: string, text: string) => {
+    if (!editor || !linkDialog) return;
+    if (linkDialog.askText) {
+      editor.chain().focus().insertContent({ type: 'text', text, marks: [{ type: 'link', attrs: { href } }] }).run();
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    }
+    setLinkDialog(null);
   };
 
+  /** Bouton « Coller » : comme Ctrl+V (mise en forme comprise), si le navigateur donne accès au presse-papiers. */
   const paste = async () => {
     if (!editor) return;
     try {
+      editor.commands.focus();
+      if (typeof navigator.clipboard.read === 'function') {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find((t) => t.startsWith('image/'));
+          if (item.types.includes('text/html')) {
+            editor.view.pasteHTML(await (await item.getType('text/html')).text());
+            return;
+          }
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            void uploadImages([new File([blob], 'image.png', { type: imageType })]);
+            return;
+          }
+        }
+      }
       const text = await navigator.clipboard.readText();
-      if (text) editor.chain().focus().insertContent(text).run();
+      if (text) editor.view.pasteText(text);
     } catch {
       toast('Le navigateur bloque le bouton Coller : utilisez Ctrl+V.', 'info');
     }
@@ -497,6 +546,17 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {linkDialog && (
+        <CourseLinkDialog
+          initialHref={linkDialog.href}
+          initialText={linkDialog.text}
+          askText={linkDialog.askText}
+          onApply={applyLink}
+          onRemove={linkDialog.inLink ? () => editor.chain().focus().extendMarkRange('link').unsetLink().run() : null}
+          onClose={() => { setLinkDialog(null); editor.commands.focus(); }}
+        />
+      )}
 
       {/* Encart ouvert dans le tableau blanc, sur sa seule page ; le cours reste monté dessous (masqué) */}
       {editingEncart && createPortal(
