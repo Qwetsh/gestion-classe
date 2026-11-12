@@ -1132,3 +1132,31 @@ cartouche attend la réponse à la question 9.
 
 **Non fait** : bordures cellule par cellule (épaisseur, couleur) — les styles couvrent les cas
 courants ; tableau qui se coupe entre deux pages (T15).
+
+### T5 — fait le 13/11/2026 (branche `feat/texte-t5`)
+
+- **Collage « Adapter au cours »** (Ctrl+V, `coursePaste.ts`) : depuis Word, Writer, Google Docs
+  ou le web, on garde titres, listes, tableaux, gras, italique, soulignement, couleurs vives,
+  surlignages et liens ; on retire polices, tailles, interlignes, marges, noirs et gris
+  « automatiques », couleurs des titres, balisage de Word (mso-*, o:p, commentaires
+  conditionnels), scripts, boutons, formulaires. Les **listes de Word** (paragraphes
+  « MsoList… ») redeviennent de vraies listes imbriquées, puces ou numéros (1, a, A, i, I). Le
+  piège de Google Docs (tout entouré de `<b>`) est déjoué. Titres 4 à 6 → Titre 3.
+- **Bouton Coller** avec menu : Adapter au cours · Garder la mise en forme · Texte seul
+  (Ctrl+Maj+V reste le texte seul de ProseMirror).
+- **Word + image de la sélection** (F10, défaut trouvé) : Word joint une image du texte copié ;
+  quand le HTML contient du texte, c'est le texte qui est collé.
+- **Images collées** : celles incrustées (data:) deviennent des fichiers locaux, puis toutes sont
+  **rapatriées** dans le stockage du cours (F3) ; un site qui refuse la copie laisse l'image liée
+  et un message le dit ; les images locales de Word (file:///) sont retirées et comptées.
+- **Encart copié-collé** : reçoit sa propre page, copie du dessin de l'original (limite de T2
+  levée).
+- **Pinceau** « Reproduire » (Presse-papiers) : mise en forme du caractère (sauf lien) et du
+  paragraphe (alignement, interligne, espaces, retraits) ; double-clic = plusieurs fois, Échap
+  pour arrêter. « Effacer la mise en forme » passe dans le groupe Police, comme dans Word.
+- Vérifié dans le navigateur, sur des extraits HTML représentatifs de Word, Google Docs et d'une
+  page web : nettoyage, listes, couleurs, modes, images (2 rapatriées, 1 laissée liée), encart
+  copié via de vrais événements copier / coller, pinceau, menu de collage.
+
+**Non vérifié** : un vrai presse-papiers de Word (extraits simulés), Writer, Excel et Pronote ;
+la demande d'autorisation du navigateur pour le bouton Coller.

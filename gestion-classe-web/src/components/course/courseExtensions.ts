@@ -12,6 +12,8 @@ import { TextStyleKit } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import { courseTableExtensions } from './courseTable';
+import { CoursePaste, type PasteMode } from './coursePaste';
+import { FormatPainter } from './courseFormatPainter';
 import Image from '@tiptap/extension-image';
 import UniqueID from '@tiptap/extension-unique-id';
 import { Placeholder } from '@tiptap/extensions';
@@ -278,7 +280,14 @@ export const CourseImage = Image.extend({
 /** Blocs qui reçoivent un identifiant stable (ancrage du calque tableau, animations). */
 const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone', 'taskList'];
 
-export function courseExtensions(onLayout: (layout: PageLayout) => void, encart: EncartOptions, onLink: () => void): Extensions {
+export interface CoursePasteHooks {
+  getMode: () => PasteMode;
+  onDroppedImages: (count: number) => void;
+  onDuplicateEncart: (fromId: string, toId: string) => void;
+  onImageFiles: (files: File[]) => void;
+}
+
+export function courseExtensions(onLayout: (layout: PageLayout) => void, encart: EncartOptions, onLink: () => void, paste: CoursePasteHooks): Extensions {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
@@ -315,6 +324,8 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
       },
     }),
     ...typographyExtensions(onLink),
+    CoursePaste.configure(paste),
+    FormatPainter,
     CoursePagination.configure({ onLayout }),
   ];
 }
