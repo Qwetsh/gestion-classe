@@ -4,7 +4,8 @@ import { Layout } from '../components/Layout';
 import { LiveSessionLauncher } from '../components/live-session/LiveSessionLauncher';
 import { GroupSessionLauncher } from '../components/live-session/GroupSessionLauncher';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
-import { boardTab, draftTab, type BoardTab } from '../lib/boardTabs';
+import { draftTab } from '../lib/boardTabs';
+import { OpenPreparedBoard } from '../components/course/OpenPreparedBoard';
 import { HomeDataProvider, useHomeData } from '../components/home/HomeDataContext';
 import { HomeGrid } from '../components/home/HomeGrid';
 import { HomeEditBar } from '../components/home/HomeEditBar';
@@ -20,7 +21,8 @@ import '../styles/refonte-accueil.css';
  */
 export function Dashboard() {
   const { user } = useAuth();
-  const [boardOpen, setBoardOpen] = useState<BoardTab | null>(null);
+  /** Ardoise libre, ou tableau préparé (cours rédigé ou tableau blanc, choisi à l'ouverture). */
+  const [boardOpen, setBoardOpen] = useState<'draft' | { id: string; title: string } | null>(null);
   const [boardVersion, setBoardVersion] = useState(0);
 
   // Chargement de la disposition enregistrée
@@ -33,11 +35,14 @@ export function Dashboard() {
 
   return (
     <Layout fluid>
-      <HomeDataProvider boardVersion={boardVersion} onOpenBoard={(board) => setBoardOpen(board ? boardTab(board) : draftTab())}>
+      <HomeDataProvider boardVersion={boardVersion} onOpenBoard={(board) => setBoardOpen(board ?? 'draft')}>
         <HomeContent />
       </HomeDataProvider>
-      {boardOpen && (
-        <BoardWorkspace initial={boardOpen} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
+      {boardOpen === 'draft' && (
+        <BoardWorkspace initial={draftTab()} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
+      )}
+      {boardOpen && boardOpen !== 'draft' && (
+        <OpenPreparedBoard key={boardOpen.id} board={boardOpen} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
       )}
     </Layout>
   );

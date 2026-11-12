@@ -12,6 +12,7 @@ import { supabase } from '../supabase';
 import { copyBoardPages, createBoard, deleteBoard, levelFromClassName } from '../boardsQueries';
 import { upsertBoardPages } from '../boardQueries';
 import { lessonNoteKey } from './lessonNotesQueries';
+import { emptyCourseDoc, fetchCourseDoc, saveCourseDoc } from '../course/courseDoc';
 import type { TimetableLesson } from './weekView';
 
 export interface LessonBoard {
@@ -124,17 +125,22 @@ export function lessonBoardTitle(lesson: LessonRef): string {
 }
 
 /**
- * Crée le tableau d'un cours : vide, ou copie des pages d'un autre tableau (`sourceBoardId`).
+ * Crée le tableau d'un cours : vide, ou copie d'un autre tableau (`sourceBoardId` : ses pages et,
+ * s'il en a un, son cours rédigé). `kind` choisit, pour un tableau vide, entre un cours rédigé
+ * (éditeur Texte, migration 071) et un tableau blanc classique.
  * Si le cours a déjà un tableau (autre onglet, double clic), le tableau créé est supprimé.
  */
-export async function createLessonBoard(userId: string, lesson: LessonRef, sourceBoardId?: string): Promise<LessonBoard> {
+export async function createLessonBoard(userId: string, lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board'): Promise<LessonBoard> {
   if (tableMissing) throw new Error('Les tableaux de cours demandent la migration 065');
   const level = levelFromClassName(lesson.className);
   const board = await createBoard(userId, { title: lessonBoardTitle(lesson), level, chapter: null }, lesson.classId ?? null);
   try {
     if (sourceBoardId) {
-      const pages = await copyBoardPages(sourceBoardId);
+      const [pages, doc] = await Promise.all([copyBoardPages(sourceBoardId), fetchCourseDoc(sourceBoardId)]);
       if (pages.length > 0) await upsertBoardPages(userId, { boardId: board.id }, pages.map((page, position) => ({ page, position })));
+      if (doc) await saveCourseDoc(board.id, doc);
+    } else if (kind === 'course') {
+      await saveCourseDoc(board.id, emptyCourseDoc());
     }
     const { data, error } = await supabase
       .from('lesson_boards')

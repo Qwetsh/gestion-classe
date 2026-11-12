@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur de cours — maquette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   Maquette — Éditeur de cours (modes Texte / Tableau / En classe)
+   Voir PLAN_cours_editeur.md. Rien ici n'est branché à l'application.
+   Unités : 96 dpi → A4 = 794 × 1123 px, marges 2,5 cm = 94 px,
+   colonne 16 cm = 605 px, texte 12 pt = 16 px, encart 16:9 = 605 × 340 px.
+   ===================================================================== */
+:root {
+  --ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --doc: 'Atkinson Hyperlegible', 'Segoe UI', sans-serif;
+  --accent: #4F46E5; --accent-soft: #EEF2FF; --accent-ink: #3730A3;
+  --orange: #EA580C;
+  --chrome: #F3F4F6; --chrome-2: #FFFFFF; --line: #E2E4E9; --line-2: #D1D5DB;
+  --text: #1F2937; --muted: #6B7280; --desk: #E7E9EE;
+  --page-w: 794px; --page-h: 1123px; --margin: 94px; --col-w: 605px; --encart-h: 340px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 13px/1.35 var(--ui); color: var(--text); background: var(--desk); display: flex; flex-direction: column; overflow: hidden; }
+button { font: inherit; color: inherit; }
+
+/* ---------- Barre de titre ---------- */
+.titlebar { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--chrome-2); border-bottom: 1px solid var(--line); flex: none; }
+.logo { width: 24px; height: 24px; border-radius: 6px; background: var(--accent); color: #fff; font: 700 11px/24px var(--ui); text-align: center; }
+.qa { display: flex; gap: 2px; }
+.qa button { width: 28px; height: 28px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: var(--muted); }
+.qa button:hover { background: var(--chrome); color: var(--text); }
+.doc-title { font-weight: 600; font-size: 14px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #FEF3C7; color: #92400E; font-weight: 600; }
+.saved { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.saved::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10B981; }
+.spacer { flex: 1; }
+.tb-btn { height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-2); background: #fff; cursor: pointer; font-weight: 600; }
+.tb-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tb-btn:hover { filter: brightness(0.97); }
+
+/* ---------- Onglets + ruban ---------- */
+.tabs { display: flex; gap: 2px; padding: 0 10px; background: var(--chrome-2); flex: none; }
+.tab { border: 0; background: transparent; padding: 8px 14px 7px; cursor: pointer; font-size: 13px; color: #374151; border-bottom: 3px solid transparent; }
+.tab:hover { background: var(--chrome); }
+.tab.is-active { color: var(--accent-ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tab--file { color: #fff; background: var(--accent); border-radius: 6px 6px 0 0; margin-right: 6px; }
+.tab--file:hover { background: #4338CA; }
+.tab--file.is-active { color: #fff; border-bottom-color: #312E81; }
+.tab .ctx { font-size: 10px; font-weight: 700; color: var(--orange); margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+.ribbon { height: 96px; display: flex; align-items: stretch; padding: 4px 8px 0; background: var(--chrome-2); border-bottom: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,.04); flex: none; overflow-x: auto; }
+.group { display: flex; flex-direction: column; padding: 0 8px; border-right: 1px solid var(--line); flex: none; }
+.group:last-child { border-right: 0; }
+.group__body { flex: 1; display: flex; align-items: flex-start; gap: 2px; }
+.group__label { font-size: 11px; color: var(--muted); text-align: center; padding: 2px 0 4px; white-space: nowrap; }
+.big { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; width: 64px; min-height: 64px; padding: 6px 2px 4px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; font-size: 12px; line-height: 1.15; text-align: center; }
+.big svg { width: 28px; height: 28px; }
+.big:hover, .sm:hover { background: var(--accent-soft); border-color: #C7D2FE; }
+.big.is-on, .sm.is-on { background: #E0E7FF; border-color: #A5B4FC; }
+.stack { display: flex; flex-direction: column; gap: 2px; }
+.row { display: flex; gap: 2px; align-items: center; }
+.sm { height: 26px; min-width: 26px; padding: 0 6px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.sm svg { width: 16px; height: 16px; flex: none; }
+.sm b, .sm i, .sm u { font-size: 14px; font-family: Georgia, serif; }
+.select { height: 26px; border: 1px solid var(--line-2); border-radius: 5px; background: #fff; padding: 0 6px; font: 12px var(--ui); }
+.swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; padding: 0; }
+.swatch.is-on { box-shadow: 0 0 0 2px var(--accent); }
+.styles { display: flex; gap: 4px; padding-top: 2px; }
+.style-card { width: 78px; height: 56px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; padding: 4px 6px; text-align: left; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+.style-card:hover { border-color: #A5B4FC; background: var(--accent-soft); }
+.style-card span { font-size: 10px; color: var(--muted); }
+.style-card .s-h1 { font: 700 15px var(--doc); color: #1E3A8A; }
+.style-card .s-h2 { font: 700 13px var(--doc); color: #3730A3; }
+.style-card .s-p { font: 12px var(--doc); }
+.style-card .s-def { font: 12px var(--doc); border-left: 3px solid #10B981; padding-left: 4px; }
+.style-card .s-ret { font: 700 12px var(--doc); background: #FEF3C7; padding: 0 3px; }
+.style-card .s-cons { font: italic 12px var(--doc); color: #1D4ED8; }
+
+/* ---------- Règle ---------- */
+.rulerbar { height: 22px; background: var(--chrome); border-bottom: 1px solid var(--line); flex: none; position: relative; overflow: hidden; }
+.ruler { position: absolute; top: 3px; height: 16px; background: #fff; border: 1px solid var(--line-2); border-radius: 2px; }
+.ruler i { position: absolute; bottom: 0; width: 1px; background: #9CA3AF; }
+.ruler .m { position: absolute; top: 0; bottom: 0; background: #E5E7EB; }
+.ruler .num { position: absolute; top: 0; font-size: 9px; color: #6B7280; transform: translateX(-50%); }
+
+/* ---------- Bureau + feuilles ---------- */
+.main { flex: 1; display: flex; min-height: 0; }
+.desk { flex: 1; overflow: auto; position: relative; }
+.pages { padding: 24px 0 60px; display: flex; flex-direction: column; align-items: center; gap: 20px; transform-origin: top center; }
+.page { width: var(--page-w); min-height: var(--page-h); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06); padding: var(--margin); position: relative; flex: none; }
+.page__num { position: absolute; bottom: 36px; left: 0; right: 0; text-align: center; font: 11px var(--doc); color: #9CA3AF; }
+.col { position: relative; width: var(--col-w); font: 16px/1.45 var(--doc); color: #111827; outline: none; }
+.col h1 { font-size: 30px; line-height: 1.15; color: #1E3A8A; margin: 0 0 4px; }
+.col .subtitle { font-size: 14px; color: #6B7280; margin: 0 0 18px; }
+.col h2 { font-size: 21px; color: #3730A3; margin: 22px 0 8px; }
+.col p { margin: 0 0 10px; }
+.col ul, .col ol { margin: 0 0 10px; padding-left: 26px; }
+.box { border-radius: 6px; padding: 10px 14px; margin: 0 0 12px; }
+.box__tag { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.box--cons { background: #EFF6FF; color: #1E3A8A; font-style: italic; }
+.box--cons .box__tag { color: #2563EB; font-style: normal; }
+.box--def { border-left: 5px solid #10B981; background: #ECFDF5; }
+.box--def .box__tag { color: #047857; }
+.box--ret { background: #FEF3C7; border: 2px solid #F59E0B; }
+.box--ret .box__tag { color: #B45309; }
+
+/* Encart tableau 16:9 : un écran exactement en classe */
+.encart { width: var(--col-w); height: var(--encart-h); position: relative; margin: 6px 0 14px; border-radius: 4px; background: #FBFBF8; outline: 2px solid #CBD5E1; outline-offset: 0; }
+.encart__label { position: absolute; top: -11px; left: 10px; background: #fff; padding: 0 6px; font: 600 11px var(--ui); color: #475569; display: flex; gap: 6px; align-items: center; }
+.encart__label em { font-style: normal; font-weight: 400; color: #94A3B8; }
+.encart svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.print-opt { position: absolute; right: 8px; bottom: -11px; display: flex; gap: 2px; font: 11px var(--ui); background: #fff; border: 1px solid var(--line-2); border-radius: 999px; padding: 1px; }
+.print-opt button { border: 0; background: transparent; border-radius: 999px; padding: 1px 8px; cursor: pointer; color: var(--muted); }
+.print-opt button.is-on { background: var(--accent); color: #fff; }
+
+/* Zone d'écriture : imprimée vide pour l'élève, on y écrit en classe */
+.zone { position: relative; margin: 8px 0 14px; height: 192px; border-radius: 3px;
+  background-color: #fff;
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #93C5FD 31px, #93C5FD 32px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 7px, #E0E7FF 7px, #E0E7FF 8px),
+    linear-gradient(to right, transparent 46px, #F9A8D4 46px, #F9A8D4 47px, transparent 47px);
+  outline: 1px dashed #A5B4FC; }
+.zone__label { position: absolute; top: -10px; right: 10px; background: #fff; padding: 0 6px; font: 600 11px var(--ui); color: #4F46E5; }
+
+/* Animations (repères visibles en édition) */
+[data-step] { position: relative; }
+.anim-badge { position: absolute; left: -40px; top: 2px; min-width: 22px; height: 18px; padding: 0 5px; border-radius: 4px; background: var(--orange); color: #fff; font: 700 11px/18px var(--ui); text-align: center; user-select: none; }
+.cache { border-bottom: 2px dotted var(--orange); background: #FFF7ED; padding: 0 2px; border-radius: 2px; }
+.surl { background: linear-gradient(transparent 55%, #FDE68A 55%); border-bottom: 2px solid #F59E0B; }
+.cache .anim-badge, .surl .anim-badge { position: static; display: inline-block; vertical-align: super; font-size: 9px; height: 14px; line-height: 14px; min-width: 16px; margin-left: 2px; padding: 0 3px; }
+.page.show-anim-badges .anim-badge { display: inline-block; }
+
+/* Calque tableau (au-dessus du texte) */
+.layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.layer svg.ink { position: absolute; left: -94px; top: -94px; width: calc(100% + 188px); height: calc(100% + 188px); overflow: visible; }
+.postit { position: absolute; width: 150px; padding: 10px 12px 12px; background: #FEF08A; box-shadow: 0 6px 14px rgba(0,0,0,.15); transform: rotate(2deg); font: 15px/1.3 'Segoe Print', 'Comic Sans MS', cursive; color: #713F12; }
+.action-btn { position: absolute; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: #fff; font: 600 13px var(--ui); box-shadow: 0 4px 10px rgba(79,70,229,.35); }
+.action-btn::before { content: '⚡'; }
+.anchor-mark { display: none; position: absolute; left: -30px; top: 3px; font-size: 13px; color: var(--accent); }
+
+/* Modes d'édition */
+body.mode-texte .layer { opacity: .5; }
+body.mode-tableau .col > :not(.layer) { opacity: .55; }
+body.mode-tableau .col { cursor: crosshair; }
+body.mode-tableau .layer { pointer-events: auto; }
+body.mode-tableau .layer .postit, body.mode-tableau .layer .action-btn { outline: 2px dashed #A5B4FC; outline-offset: 3px; cursor: move; }
+body.mode-tableau .anchored > .anchor-mark { display: block; }
+body.mode-tableau .page { box-shadow: 0 0 0 3px #C7D2FE, 0 6px 20px rgba(0,0,0,.06); }
+.mode-banner { display: none; position: sticky; top: 0; z-index: 5; margin: 0 auto; width: max-content; padding: 5px 14px; border-radius: 0 0 10px 10px; background: var(--accent); color: #fff; font-weight: 600; font-size: 12px; }
+body.mode-tableau .mode-banner { display: block; }
+
+/* Bandes « écran de classe » (Affichage) */
+.bands { position: absolute; inset: 0; pointer-events: none; display: none; }
+body.show-bands .bands { display: block; }
+.band { position: absolute; left: -6px; width: calc(100% + 12px); border: 2px dashed rgba(234,88,12,.55); border-radius: 4px; }
+.band span { position: absolute; right: -78px; top: 4px; font: 600 11px var(--ui); color: var(--orange); width: 70px; }
+
+/* Volet Ordre des animations */
+.pane { width: 270px; background: #fff; border-left: 1px solid var(--line); display: flex; flex-direction: column; flex: none; }
+.pane[hidden] { display: none; }
+.pane__head { padding: 10px 12px; font-weight: 600; border-bottom: 1px solid var(--line); display: flex; align-items: center; }
+.pane__head button { margin-left: auto; border: 0; background: transparent; cursor: pointer; font-size: 16px; color: var(--muted); }
+.pane__list { padding: 8px; overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.pane__item { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; background: #FAFAFB; font-size: 12px; }
+.pane__item .n { flex: none; width: 22px; height: 18px; border-radius: 4px; background: var(--orange); color: #fff; font-weight: 700; text-align: center; line-height: 18px; }
+.pane__item .k { font-weight: 600; display: block; }
+.pane__item .t { color: var(--muted); }
+.pane__item .grip { margin-left: auto; color: #9CA3AF; cursor: grab; }
+.pane__foot { padding: 10px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+/* ---------- Barre d'état ---------- */
+.status { height: 28px; display: flex; align-items: center; gap: 14px; padding: 0 12px; background: var(--chrome); border-top: 1px solid var(--line); font-size: 12px; color: #4B5563; flex: none; }
+.modes { display: flex; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; background: #fff; }
+.modes button { border: 0; background: transparent; padding: 3px 11px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.modes button + button { border-left: 1px solid var(--line-2); }
+.modes button.is-on { background: var(--accent); color: #fff; }
+.modes .play { color: var(--orange); font-weight: 600; }
+.zoom { display: flex; align-items: center; gap: 6px; }
+.zoom input { width: 110px; accent-color: var(--accent); }
+
+/* ---------- Mode En classe ---------- */
+.classe { position: fixed; inset: 0; z-index: 100; background: #0F1117; display: none; flex-direction: column; align-items: center; justify-content: center; }
+.classe.is-open { display: flex; }
+.vp { position: relative; overflow: hidden; background: #1A1D24; box-shadow: 0 0 0 1px #2A3040; }
+.strip { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .45s cubic-bezier(.3,.7,.2,1); background: #fff; }
+.strip .col { padding: 0; }
+.strip .anim-badge, .strip .anchor-mark, .strip .encart__label, .strip .print-opt, .strip .zone__label { display: none !important; }
+.strip .encart { outline: 0; border-radius: 0; margin-left: 0; }
+.strip .zone { outline: 0; }
+.strip .layer { opacity: 1 !important; pointer-events: auto; }
+.strip .col > * { opacity: 1 !important; }
+.strip .page-sep { height: 0; border-top: 1px dashed #CBD5E1; margin: 18px 0; }
+.strip [data-anim="appear"]:not(.played) { opacity: 0 !important; transform: translateY(8px); }
+.strip [data-anim="appear"] { transition: opacity .5s, transform .5s; }
+.strip .cache:not(.played) { color: transparent; background: #FFF7ED; border-bottom-style: dotted; }
+.strip .cache { transition: color .4s; }
+.strip .surl:not(.played) { background: transparent; border-bottom-color: transparent; }
+.strip .surl { transition: background .6s; }
+.strip .action-btn { cursor: pointer; pointer-events: auto; }
+.strip.overview { transition: transform .45s; }
+.class-ink { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.class-top { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 3; }
+.class-chip { padding: 5px 12px; border-radius: 999px; font: 600 12px var(--ui); background: rgba(17,24,39,.85); color: #E5E7EB; }
+.class-chip--test { background: #92400E; color: #FEF3C7; }
+.class-chip--phone::before { content: '📱 '; }
+.class-bar { position: absolute; right: 18px; bottom: 18px; display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: rgba(17,24,39,.9); z-index: 3; }
+.class-bar button { width: 52px; height: 52px; border-radius: 12px; border: 0; background: #1F2937; color: #F9FAFB; font-size: 20px; cursor: pointer; }
+.class-bar button:hover { background: #374151; }
+.class-bar button.is-on { background: var(--orange); }
+.class-bar .next { background: var(--accent); width: 72px; }
+.class-pos { position: absolute; left: 18px; bottom: 26px; font: 600 13px var(--ui); color: #9CA3AF; z-index: 3; }
+.popwin { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(520px, 80%); background: #fff; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.5); padding: 22px 26px; font: 22px/1.4 var(--doc); color: #111827; display: none; }
+.popwin.is-open { display: block; }
+.popwin h3 { margin: 0 0 8px; font-size: 26px; color: #047857; }
+.popwin button { position: absolute; top: 10px; right: 12px; border: 0; background: transparent; font-size: 22px; cursor: pointer; color: #6B7280; }
+
+/* ---------- Divers ---------- */
+.toast { position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%) translateY(20px); background: #111827; color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: .25s; z-index: 200; pointer-events: none; max-width: 80vw; text-align: center; }
+.toast.is-on { opacity: 1; transform: translateX(-50%); }
+.hint { position: fixed; left: 12px; bottom: 40px; width: 300px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 12px 14px; font-size: 12px; color: #374151; z-index: 50; }
+.hint h4 { margin: 0 0 6px; font-size: 13px; }
+.hint ol { margin: 0; padding-left: 18px; }
+.hint li { margin: 3px 0; }
+.hint button { position: absolute; top: 6px; right: 8px; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 15px; }
+
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: #fff; display: block; overflow: visible; height: auto; }
+  .titlebar, .tabs, .ribbon, .rulerbar, .status, .pane, .hint, .toast, .mode-banner, .bands, .classe { display: none !important; }
+  .main, .desk { display: block; overflow: visible; }
+  .pages { padding: 0; gap: 0; transform: none !important; display: block; }
+  .page { box-shadow: none !important; margin: 0; break-after: page; min-height: 0; height: 297mm; }
+  .anim-badge, .anchor-mark, .encart__label, .print-opt, .zone__label { display: none !important; }
+  .encart, .zone { outline: 1px solid #CBD5E1; }
+  .layer { opacity: 1 !important; }
+  .col > * { opacity: 1 !important; }
+  body.print-eleve .cache { color: transparent; border-bottom: 1px dotted #111; background: none; }
+  body.print-eleve .encart.print-vide svg.scene, body.print-eleve .encart.print-vide .layer-in { visibility: hidden; }
+  .surl { background: none; border: 0; }
+}
+</style>
+</head>
+<body class="mode-texte">
+
+<!-- ================= Barre de titre ================= -->
+<header class="titlebar">
+  <div class="logo">GC</div>
+  <div class="qa">
+    <button title="Annuler (Ctrl+Z)" onclick="toast('Annuler')">↶</button>
+    <button title="Rétablir (Ctrl+Y)" onclick="toast('Rétablir')">↷</button>
+  </div>
+  <span class="doc-title">La digestion — Activité 1</span>
+  <span class="chip" title="Cours de l'emploi du temps auquel ce document est rattaché">5D · ven. 13 nov. · 10:15</span>
+  <span class="saved">Enregistré</span>
+  <span class="spacer"></span>
+  <button class="tb-btn" onclick="openClasse(true)" title="Tester le mode En classe chez soi : l'encre sera effacée en sortant">▶ Tester en classe</button>
+  <button class="tb-btn tb-btn--primary" onclick="toast('Fermer : retour à l\'accueil')">Fermer</button>
+</header>
+
+<!-- ================= Onglets ================= -->
+<nav class="tabs" id="tabs">
+  <button class="tab tab--file" data-tab="fichier">Fichier</button>
+  <button class="tab is-active" data-tab="accueil">Accueil</button>
+  <button class="tab" data-tab="insertion">Insertion</button>
+  <button class="tab" data-tab="dessin">Dessin<span class="ctx" id="dessinCtx" hidden>mode tableau</span></button>
+  <button class="tab" data-tab="animations">Animations</button>
+  <button class="tab" data-tab="affichage">Affichage</button>
+</nav>
+<div class="ribbon" id="ribbon"></div>
+
+<div class="rulerbar"><div class="ruler" id="ruler"></div></div>
+
+<!-- ================= Bureau ================= -->
+<div class="main">
+  <div class="desk" id="desk">
+    <div class="mode-banner">Mode tableau — vous dessinez par-dessus le cours. Le texte est verrouillé.</div>
+    <div class="pages" id="pages">
+
+      <!-- ---------- Page 1 ---------- -->
+      <section class="page">
+        <div class="col" id="col1" contenteditable="true" spellcheck="false">
+          <h1>Chapitre 3 — La digestion</h1>
+          <p class="subtitle">Séquence 2 · Activité 1 · 5<sup>e</sup></p>
+
+          <div class="box box--cons"><span class="box__tag">Consigne</span>Observe le schéma, puis complète la définition et le bilan.</div>
+
+          <p data-anim="appear" data-step="1" class="anchored" data-block="b1"><span class="anchor-mark">⚓</span>Les aliments que nous mangeons sont trop gros pour passer dans le sang. Ils doivent d'abord être <strong>découpés</strong> et <strong>transformés</strong> tout au long du tube digestif.</p>
+
+          <div class="box box--def"><span class="box__tag">Définition</span>La digestion est la transformation des aliments en <span class="cache" data-step="2">nutriments</span>, sous l'action mécanique des dents et chimique des <span class="cache" data-step="3">enzymes</span>.</div>
+
+          <h2>1. Le trajet des aliments</h2>
+
+          <div class="encart print-vide" data-block="enc1">
+            <span class="encart__label">▦ Encart tableau 16:9 <em>= un écran en classe</em></span>
+            <svg class="scene" viewBox="0 0 605 340" aria-label="Schéma du tube digestif">
+              <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+              <g font-family="Atkinson Hyperlegible, Segoe UI, sans-serif" font-size="17" text-anchor="middle" fill="#0F172A">
+                <rect x="30" y="40" width="120" height="54" rx="12" fill="#FDE68A" stroke="#B45309" stroke-width="2"/><text x="90" y="73">Bouche</text>
+                <rect x="30" y="140" width="120" height="54" rx="12" fill="#FBCFE8" stroke="#BE185D" stroke-width="2"/><text x="90" y="173">Œsophage</text>
+                <rect x="30" y="240" width="120" height="54" rx="12" fill="#FECACA" stroke="#B91C1C" stroke-width="2"/><text x="90" y="273">Estomac</text>
+                <rect x="250" y="240" width="150" height="54" rx="12" fill="#BBF7D0" stroke="#15803D" stroke-width="2"/><text x="325" y="273">Intestin grêle</text>
+                <rect x="460" y="240" width="120" height="54" rx="12" fill="#BFDBFE" stroke="#1D4ED8" stroke-width="2"/><text x="520" y="273">Sang</text>
+                <path d="M90 94 V136" stroke="#334155" stroke-width="2.5" marker-end="url(#ah)" fill="none"/>
+                <path d="M90 194 V236" stroke="#334155" stroke-width="2.5" marker-end="url(#ah)" fill="none"/>
+                <path d="M150 267 H246" stroke="#334155" stroke-width="2.5" marker-end="url(#ah)" fill="none"/>
+                <path d="M400 267 H456" stroke="#334155" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#ah)" fill="none"/>
+                <text x="428" y="255" font-size="13" fill="#475569">nutriments</text>
+                <text x="420" y="80" font-size="22" font-weight="700" fill="#1E3A8A">Le tube digestif</text>
+                <text x="420" y="110" font-size="14" fill="#64748B">trajet des aliments → passage dans le sang</text>
+              </g>
+            </svg>
+            <div class="print-opt" title="Comment cet encart s'imprime"><button data-p="rempli">Imprimé rempli</button><button data-p="vide" class="is-on">Imprimé vide</button></div>
+          </div>
+
+          <p data-block="b2" class="anchored"><span class="anchor-mark">⚓</span>Dans l'<span class="surl" data-step="4">intestin grêle</span>, les nutriments traversent la paroi et passent dans le sang, qui les distribue à tous les organes.</p>
+
+          <!-- Calque tableau de la page 1 (mode Tableau) -->
+          <div class="layer" contenteditable="false">
+            <svg class="ink" id="ink1">
+              <path d="M600 215 C 640 200, 700 260, 640 330" stroke="#DC2626" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M632 318 L640 332 L652 322" stroke="#DC2626" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <ellipse cx="420" cy="905" rx="66" ry="20" stroke="#DC2626" stroke-width="3" fill="none" transform="rotate(-3 420 905)"/>
+            </svg>
+            <div class="postit" style="left: 432px; top: 312px;" title="Post-it ancré au paragraphe « Les aliments… »">Montrer la maquette du tube !</div>
+          </div>
+        </div>
+        <div class="bands" id="bands1"></div>
+        <div class="page__num">1</div>
+      </section>
+
+      <!-- ---------- Page 2 ---------- -->
+      <section class="page">
+        <div class="col" id="col2" contenteditable="true" spellcheck="false">
+          <h2>2. Ce que je retiens</h2>
+          <div class="box box--ret" data-anim="appear" data-step="5"><span class="box__tag">À retenir</span>Le tube digestif transforme les aliments en nutriments. Les nutriments passent dans le sang au niveau de l'intestin grêle.</div>
+
+          <p>Explique avec tes mots pourquoi on dit que la digestion est à la fois <em>mécanique</em> et <em>chimique</em> :</p>
+          <div class="zone" data-block="z1"><span class="zone__label">✎ Zone d'écriture · 6 lignes Seyès</span></div>
+
+          <h2>3. Pour aller plus loin</h2>
+          <p data-block="b3" class="anchored"><span class="anchor-mark">⚓</span>Certains animaux, comme la vache, ont un estomac à quatre poches. Clique sur le bouton pour découvrir ce qu'est un ruminant.</p>
+          <ul>
+            <li>Quels aliments la vache mange-t-elle ?</li>
+            <li>Pourquoi les mâche-t-elle deux fois ?</li>
+          </ul>
+
+          <div class="layer" contenteditable="false">
+            <svg class="ink" id="ink2"></svg>
+            <div class="action-btn" style="left: 380px; top: 470px;" data-window="ruminant" title="Bouton → fenêtre (s'ouvre en classe)">Ruminant ?</div>
+          </div>
+        </div>
+        <div class="bands" id="bands2"></div>
+        <div class="page__num">2</div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Volet Ordre des animations -->
+  <aside class="pane" id="animPane" hidden>
+    <div class="pane__head">Ordre des animations <button onclick="showPane(false)" title="Fermer">×</button></div>
+    <div class="pane__list" id="animList"></div>
+    <div class="pane__foot">En classe, <b>Suivant</b> joue ces étapes dans l'ordre, puis descend d'un écran. Glisser pour réordonner.</div>
+  </aside>
+</div>
+
+<!-- ================= Barre d'état ================= -->
+<footer class="status">
+  <span id="stPage">Page 1 sur 2</span>
+  <span id="stWords">— mots</span>
+  <span id="stScreens" title="Nombre d'écrans de la bande en classe">— écrans en classe</span>
+  <span class="spacer"></span>
+  <div class="modes" role="group" aria-label="Mode">
+    <button data-mode="texte" class="is-on" title="Rédiger comme dans Word">¶ Texte</button>
+    <button data-mode="tableau" title="Dessiner par-dessus le cours">✎ Tableau</button>
+    <button class="play" onclick="openClasse(true)" title="Tester le mode En classe">▶ En classe</button>
+  </div>
+  <div class="zoom"><button class="sm" onclick="setZoom(zoom - 10)">−</button><input type="range" id="zoom" min="50" max="160" value="100"><button class="sm" onclick="setZoom(zoom + 10)">+</button><span id="zoomPct">100 %</span></div>
+</footer>
+
+<!-- ================= Mode En classe ================= -->
+<div class="classe" id="classe">
+  <div class="vp" id="vp">
+    <div class="strip" id="strip"></div>
+    <div class="popwin" id="popwin"><button onclick="closeWin()">×</button><h3>Un ruminant</h3>Un ruminant est un herbivore qui avale l'herbe, la fait remonter dans sa bouche puis la mâche une seconde fois. Son estomac a quatre poches.</div>
+  </div>
+  <div class="class-top">
+    <span class="class-chip class-chip--test" id="testChip">Mode test — l'encre sera effacée en sortant</span>
+    <span class="class-chip class-chip--phone" id="phoneChip">Téléphone : pas de séance</span>
+  </div>
+  <div class="class-pos" id="classPos">Écran 1 / 1</div>
+  <div class="class-bar">
+    <button onclick="classPrev()" title="Précédent (←)">◀</button>
+    <button id="penBtn" class="is-on" onclick="togglePen()" title="Stylo">✎</button>
+    <button onclick="toggleOverview()" title="Vue d'ensemble de la feuille (O)">⤢</button>
+    <button onclick="closeClasse()" title="Quitter (Échap)">✕</button>
+    <button class="next" onclick="classNext()" title="Suivant (→ ou Espace)">▶</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">
+  <button onclick="this.parentElement.remove()" title="Fermer">×</button>
+  <h4>À essayer</h4>
+  <ol>
+    <li>Écrire dans la feuille, mettre en gras, changer de style (onglet <b>Accueil</b>).</li>
+    <li>Barre du bas : <b>✎ Tableau</b> → dessiner au stylo par-dessus le texte.</li>
+    <li>Onglet <b>Affichage</b> → « Bande écran de classe » : ce qui tiendra sur un écran.</li>
+    <li>Onglet <b>Animations</b> → sélectionner un mot → « Mot caché ».</li>
+    <li><b>▶ Tester en classe</b> → flèche droite ou ▶ pour avancer, écrire au stylet, ⤢ pour la vue d'ensemble.</li>
+  </ol>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== Icônes (dessinées à la main, 24×24) ===================== */
+const I = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICON = {
+  paste: I('<rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><path d="M9 11h6M9 15h4"/>'),
+  cut: I('<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8 16 18 4M16 16 6 4"/>'),
+  copy: I('<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M5 16V5a2 2 0 0 1 2-2h9"/>'),
+  brush: I('<path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 21h6"/>'),
+  ul: I('<circle cx="5" cy="7" r="1.2"/><circle cx="5" cy="12" r="1.2"/><circle cx="5" cy="17" r="1.2"/><path d="M9 7h11M9 12h11M9 17h11"/>'),
+  ol: I('<path d="M4 6h2v4M4 10h3M4 14h3l-3 4h3"/><path d="M10 7h10M10 12h10M10 17h10"/>'),
+  left: I('<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>'),
+  center: I('<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>'),
+  right: I('<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>'),
+  justify: I('<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>'),
+  indent: I('<path d="M4 6h16M10 10h10M10 14h10M4 18h16M4 10l3 2-3 2"/>'),
+  image: I('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>'),
+  table: I('<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M3 14h18M9 4v16M15 4v16"/>'),
+  encart: I('<rect x="2.5" y="6" width="19" height="11" rx="1.5"/><path d="M6 13l3-3 3 2 4-4"/><path d="M5 20h14"/>'),
+  zone: I('<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M6 9h12M6 13h12M6 17h12"/><path d="M8 4v16" stroke-dasharray="2 2"/>'),
+  sigma: I('<path d="M18 5H6l6 7-6 7h12"/>'),
+  pagebreak: I('<path d="M6 3v6h12V3M6 21v-6h12v6"/><path d="M3 12h3M9 12h2M13 12h2M18 12h3"/>'),
+  link: I('<path d="M10 14a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1"/><path d="M14 10a4 4 0 0 0-5.6 0l-3 3a4 4 0 0 0 5.6 5.6l1-1"/>'),
+  select: I('<path d="M5 3l14 7-6 2-2 6z"/>'),
+  pen: I('<path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/>'),
+  marker: I('<path d="M5 19l3-1 10-10-2-2L6 16z"/><path d="M3 22h8" stroke-width="3" stroke="#FACC15"/>'),
+  eraser: I('<path d="M7 20h12"/><path d="M4 15l9-9 6 6-7 7H8z"/><path d="M9 10l6 6"/>'),
+  shapes: I('<rect x="3" y="12" width="8" height="8" rx="1"/><circle cx="16" cy="8" r="5"/>'),
+  arrow: I('<path d="M4 19L19 5"/><path d="M11 5h8v8"/>'),
+  postit: I('<path d="M4 4h16v11l-5 5H4z"/><path d="M15 20v-5h5"/>'),
+  widget: I('<circle cx="12" cy="13" r="7"/><path d="M12 9v4l3 2M10 3h4"/>'),
+  appear: I('<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M5.6 18.4l2-2M16.4 7.6l2-2"/><circle cx="12" cy="12" r="3"/>'),
+  hide: I('<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><path d="M4 4l16 16"/>'),
+  hl: I('<path d="M4 19h16" stroke="#F59E0B" stroke-width="4"/><path d="M8 15l7-9 3 2-7 9H8z"/>'),
+  btnwin: I('<rect x="3" y="7" width="12" height="7" rx="3.5"/><rect x="11" y="11" width="10" height="9" rx="1.5"/>'),
+  order: I('<path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 5v3M3.5 12h1.5l-1.5 2h1.5M3.5 17.5h1.5v1.5H3.5"/>'),
+  preview: I('<path d="M7 5v14l11-7z"/>'),
+  doc: I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>'),
+  board: I('<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/><path d="M7 12l3-3 2 2 4-4"/>'),
+  zoomin: I('<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>'),
+  ruler: I('<rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/>'),
+  bands: I('<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16" stroke-dasharray="3 2" stroke="#EA580C"/>'),
+  anchor: I('<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 11h8"/>'),
+  print: I('<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>'),
+  pdf: I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><text x="7.5" y="17" font-size="6" fill="currentColor" stroke="none" font-weight="700">PDF</text>'),
+  student: I('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
+  template: I('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="M15 15l2 2 3-4"/>'),
+  props: I('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'),
+  phone: I('<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/>'),
+};
+
+/* ===================== Ruban : contenu par onglet ===================== */
+const big = (id, icon, label, title = '') => `<button class="big" data-cmd="${id}" title="${title || label}">${ICON[icon]}<span>${label}</span></button>`;
+const sm = (id, icon, label = '', title = '') => `<button class="sm" data-cmd="${id}" title="${title || label}">${icon.startsWith('<') ? icon : ICON[icon]}${label ? `<span>${label}</span>` : ''}</button>`;
+const group = (label, body) => `<div class="group"><div class="group__body">${body}</div><div class="group__label">${label}</div></div>`;
+const swatches = (cmd, colors) => colors.map((c, i) => `<button class="swatch${i === 0 ? ' is-on' : ''}" data-cmd="${cmd}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('');
+
+const RIBBON = {
+  fichier: [
+    group('Imprimer', big('print', 'print', 'Imprimer', 'Imprimer le cours (Ctrl+P)') + big('printEleve', 'student', 'Version élève', 'Imprimer sans le corrigé : mots cachés en pointillés, encarts « vides » vides') + big('pdf', 'pdf', 'Exporter PDF')),
+    group('Cours', big('template', 'template', 'Enregistrer comme modèle') + big('props', 'props', 'Propriétés', 'Titre, niveau, chapitre, cours rattaché')),
+  ],
+  accueil: [
+    group('Presse-papiers', big('paste', 'paste', 'Coller') + `<div class="stack">${sm('cut', 'cut', 'Couper')}${sm('copy', 'copy', 'Copier')}${sm('brush', 'brush', 'Reproduire')}</div>`),
+    group('Police', `<div class="stack"><div class="row"><select class="select" style="width:150px"><option>Atkinson Hyperlegible</option><option>Arial</option><option>Calibri</option><option>Cursive scolaire</option></select><select class="select"><option>12</option><option>14</option><option>16</option><option>20</option></select></div><div class="row">${sm('bold', '<b>G</b>', '', 'Gras (Ctrl+B)')}${sm('italic', '<i>I</i>', '', 'Italique (Ctrl+I)')}${sm('underline', '<u>S</u>', '', 'Souligné (Ctrl+U)')}<span style="width:8px"></span>${swatches('color', ['#111827', '#DC2626', '#2563EB', '#16A34A', '#9333EA'])}</div><div class="row">${sm('hilite', 'marker', 'Surligner', 'Surligner le texte')}</div></div>`),
+    group('Paragraphe', `<div class="stack"><div class="row">${sm('ul', 'ul', '', 'Liste à puces')}${sm('ol', 'ol', '', 'Liste numérotée')}${sm('indent', 'indent', '', 'Augmenter le retrait')}</div><div class="row">${sm('jleft', 'left', '', 'Aligner à gauche')}${sm('jcenter', 'center', '', 'Centrer')}${sm('jright', 'right', '', 'Aligner à droite')}${sm('jfull', 'justify', '', 'Justifier')}</div></div>`),
+    group('Styles', `<div class="styles">
+      <button class="style-card" data-cmd="style" data-style="p"><div class="s-p">Texte du cours</div><span>Normal</span></button>
+      <button class="style-card" data-cmd="style" data-style="h1"><div class="s-h1">Chapitre</div><span>Titre 1</span></button>
+      <button class="style-card" data-cmd="style" data-style="h2"><div class="s-h2">1. Partie</div><span>Titre 2</span></button>
+      <button class="style-card" data-cmd="style" data-style="def"><div class="s-def">Définition</div><span>Définition</span></button>
+      <button class="style-card" data-cmd="style" data-style="ret"><div class="s-ret">À retenir</div><span>À retenir</span></button>
+      <button class="style-card" data-cmd="style" data-style="cons"><div class="s-cons">Consigne…</div><span>Consigne</span></button>
+    </div>`),
+  ],
+  insertion: [
+    group('Illustrations', big('img', 'image', 'Image') + big('table', 'table', 'Tableau')),
+    group('Spécial cours', big('encart', 'encart', 'Encart tableau', 'Bloc 16:9 de la largeur du texte : exactement un écran en classe') + big('zone', 'zone', 'Zone d\'écriture', 'Lignes Seyès / carreaux / blanc : imprimées vides, on y écrit au stylet en classe')),
+    group('Symboles', big('eq', 'sigma', 'Équation')),
+    group('Pages', big('pb', 'pagebreak', 'Saut de page', 'Ctrl+Entrée') + big('lnk', 'link', 'Lien')),
+  ],
+  dessin: [
+    group('Outils', big('tSelect', 'select', 'Sélection') + big('tPen', 'pen', 'Stylo') + big('tMarker', 'marker', 'Surligneur') + big('tEraser', 'eraser', 'Gomme')),
+    group('Couleur et épaisseur', `<div class="stack"><div class="row">${swatches('ink', ['#DC2626', '#111827', '#2563EB', '#16A34A', '#EA580C', '#9333EA'])}</div><div class="row"><select class="select" id="inkSize"><option value="2">Fin</option><option value="3.5" selected>Moyen</option><option value="7">Épais</option></select></div></div>`),
+    group('Insérer sur le tableau', big('shape', 'shapes', 'Formes') + big('arrowc', 'arrow', 'Flèche', 'Flèche ou connecteur qui suit les formes') + big('postit', 'postit', 'Post-it') + big('widget', 'widget', 'Widgets', 'Minuteur, dé, tirage au sort, sonomètre…')),
+    group('Ancrage', big('anchors', 'anchor', 'Afficher les ancres', 'Chaque élément est ancré au paragraphe sous lui et le suit')),
+  ],
+  animations: [
+    group('Sur le texte', big('aAppear', 'appear', 'Apparaître au clic', 'Le paragraphe sélectionné apparaît au clic en classe') + big('aHide', 'hide', 'Mot caché', 'Sélectionner un mot : il est masqué, dévoilé au clic (texte à trous)') + big('aHl', 'hl', 'Surligner au clic', 'Le passage se surligne au clic en classe')),
+    group('Interactions', big('aBtn', 'btnwin', 'Bouton → fenêtre', 'Un bouton qui ouvre une définition ou une image')),
+    group('Ordre', big('aPane', 'order', 'Ordre des animations') + big('aPreview', 'preview', 'Aperçu', 'Tester en classe')),
+  ],
+  affichage: [
+    group('Modes', big('mTexte', 'doc', 'Texte') + big('mTableau', 'board', 'Tableau') + big('mClasse', 'preview', 'En classe', 'Tester le mode En classe')),
+    group('Repères', big('vBands', 'bands', 'Bande écran de classe', 'Montre ce qui tiendra sur un écran en classe') + big('vRuler', 'ruler', 'Règle') + big('vAnchors', 'anchor', 'Ancres')),
+    group('Zoom', big('vZoom', 'zoomin', '100 %')),
+    group('Séance', big('vPhone', 'phone', 'Téléphone', 'En classe, la séance démarrée sur le téléphone pilote l\'écran')),
+  ],
+};
+
+const ribbon = document.getElementById('ribbon');
+let currentTab = 'accueil';
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === tab));
+  ribbon.innerHTML = RIBBON[tab].join('');
+  syncRibbonState();
+}
+document.getElementById('tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab'); if (!t) return;
+  showTab(t.dataset.tab);
+  if (t.dataset.tab === 'dessin' && mode !== 'tableau') setMode('tableau');
+});
+
+/* ===================== État ===================== */
+let mode = 'texte';
+let tool = 'pen';
+let inkColor = '#DC2626';
+let zoom = 100;
+let lastRange = null;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('is-on');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('is-on'), 2200);
+}
+
+function setMode(m) {
+  mode = m;
+  document.body.classList.toggle('mode-texte', m === 'texte');
+  document.body.classList.toggle('mode-tableau', m === 'tableau');
+  document.querySelectorAll('.col').forEach(c => c.setAttribute('contenteditable', m === 'texte' ? 'true' : 'false'));
+  document.querySelectorAll('.modes [data-mode]').forEach(b => b.classList.toggle('is-on', b.dataset.mode === m));
+  document.getElementById('dessinCtx').hidden = m !== 'tableau';
+  if (m === 'tableau' && currentTab !== 'dessin') showTab('dessin');
+  if (m === 'texte' && currentTab === 'dessin') showTab('accueil');
+  syncRibbonState();
+}
+document.querySelectorAll('.modes [data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+function syncRibbonState() {
+  ribbon.querySelectorAll('[data-cmd="tSelect"],[data-cmd="tPen"],[data-cmd="tMarker"],[data-cmd="tEraser"]').forEach(b => {
+    const map = { tSelect: 'select', tPen: 'pen', tMarker: 'marker', tEraser: 'eraser' };
+    b.classList.toggle('is-on', mode === 'tableau' && tool === map[b.dataset.cmd]);
+  });
+  ribbon.querySelectorAll('[data-cmd="ink"]').forEach(b => b.classList.toggle('is-on', b.dataset.color === inkColor));
+  const on = (cmd, v) => ribbon.querySelectorAll(`[data-cmd="${cmd}"]`).forEach(b => b.classList.toggle('is-on', v));
+  on('mTexte', mode === 'texte'); on('mTableau', mode === 'tableau');
+  on('vBands', document.body.classList.contains('show-bands'));
+  on('vAnchors', document.body.classList.contains('mode-tableau'));
+  on('vRuler', !document.querySelector('.rulerbar').hidden);
+  on('aPane', !document.getElementById('animPane').hidden);
+  const z = ribbon.querySelector('[data-cmd="vZoom"] span'); if (z) z.textContent = zoom + ' %';
+}
+
+/* Garder la sélection de texte quand on clique dans le ruban */
+document.addEventListener('selectionchange', () => {
+  const s = getSelection();
+  if (s.rangeCount && s.anchorNode && s.anchorNode.parentElement?.closest('.page .col')) lastRange = s.getRangeAt(0).cloneRange();
+});
+ribbon.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+function restoreSel() { if (!lastRange) return false; const s = getSelection(); s.removeAllRanges(); s.addRange(lastRange); return true; }
+function currentBlock() {
+  if (!lastRange) return null;
+  let n = lastRange.startContainer; if (n.nodeType === 3) n = n.parentElement;
+  const col = n.closest('.col'); if (!col) return null;
+  while (n && n.parentElement !== col) n = n.parentElement;
+  return n && !n.classList.contains('layer') ? n : null;
+}
+
+/* ===================== Commandes du ruban ===================== */
+ribbon.addEventListener('click', e => {
+  const b = e.target.closest('[data-cmd]'); if (!b) return;
+  const cmd = b.dataset.cmd;
+  const exec = (c, v = null) => { if (mode !== 'texte') return toast('Repassez en mode Texte pour modifier le texte'); restoreSel(); document.execCommand(c, false, v); };
+  switch (cmd) {
+    case 'bold': return exec('bold');
+    case 'italic': return exec('italic');
+    case 'underline': return exec('underline');
+    case 'color': ribbon.querySelectorAll('[data-cmd="color"]').forEach(x => x.classList.toggle('is-on', x === b)); return exec('foreColor', b.dataset.color);
+    case 'hilite': return exec('hiliteColor', '#FDE68A');
+    case 'ul': return exec('insertUnorderedList');
+    case 'ol': return exec('insertOrderedList');
+    case 'indent': return exec('indent');
+    case 'jleft': return exec('justifyLeft');
+    case 'jcenter': return exec('justifyCenter');
+    case 'jright': return exec('justifyRight');
+    case 'jfull': return exec('justifyFull');
+    case 'paste': case 'cut': case 'copy': case 'brush': return toast('Presse-papiers : comme dans Word (Ctrl+C / Ctrl+V, collage depuis Word gardant la mise en forme)');
+    case 'style': return applyStyle(b.dataset.style);
+    case 'img': return toast('Image : depuis l\'ordinateur, le presse-papiers, la bibliothèque ou un cloud');
+    case 'table': return insertBlock(makeTable());
+    case 'encart': return insertBlock(makeEncart());
+    case 'zone': return insertBlock(makeZone());
+    case 'eq': return toast('Équation : éditeur LaTeX (KaTeX, déjà dans l\'app)');
+    case 'pb': return toast('Saut de page (Ctrl+Entrée) : n\'existe que sur papier, invisible en classe');
+    case 'lnk': return toast('Lien vers une page web, un fichier ou une autre partie du cours');
+    case 'tSelect': tool = 'select'; setMode('tableau'); return;
+    case 'tPen': tool = 'pen'; setMode('tableau'); return;
+    case 'tMarker': tool = 'marker'; setMode('tableau'); return;
+    case 'tEraser': tool = 'eraser'; setMode('tableau'); toast('Gomme : cliquer sur un trait pour l\'effacer'); return;
+    case 'ink': inkColor = b.dataset.color; syncRibbonState(); return;
+    case 'shape': return toast('Formes : rectangle, ellipse, triangle, étoile… avec texte dedans (outils actuels du tableau)');
+    case 'arrowc': return toast('Flèches et connecteurs qui suivent les formes (outils actuels du tableau)');
+    case 'postit': return addPostit();
+    case 'widget': return toast('Widgets : minuteur, horloge, dé, roue, tirage au sort, sonomètre, QR code…');
+    case 'anchors': case 'vAnchors': if (mode !== 'tableau') setMode('tableau'); return toast('⚓ = paragraphe auquel un élément du tableau est accroché');
+    case 'aAppear': return animAppear();
+    case 'aHide': return animWrap('cache');
+    case 'aHl': return animWrap('surl');
+    case 'aBtn': return toast('Bouton → fenêtre : choisir le texte du bouton puis le contenu de la fenêtre (texte + image)');
+    case 'aPane': return showPane(document.getElementById('animPane').hidden);
+    case 'aPreview': case 'mClasse': return openClasse(true);
+    case 'mTexte': return setMode('texte');
+    case 'mTableau': return setMode('tableau');
+    case 'vBands': document.body.classList.toggle('show-bands'); drawBands(); syncRibbonState(); return;
+    case 'vRuler': { const r = document.querySelector('.rulerbar'); r.hidden = !r.hidden; syncRibbonState(); return; }
+    case 'vZoom': return setZoom(100);
+    case 'vPhone': return toast('Le jour J : « Lancer la séance » sur l\'accueil ouvre ce cours en classe ; le téléphone le rejoint quand la séance démarre');
+    case 'print': document.body.classList.remove('print-eleve'); return window.print();
+    case 'printEleve': document.body.classList.add('print-eleve'); window.print(); return document.body.classList.remove('print-eleve');
+    case 'pdf': return toast('Exporter PDF : même rendu que l\'impression, en un clic');
+    case 'template': return toast('Le cours devient un modèle réutilisable pour une autre classe ou l\'an prochain');
+    case 'props': return toast('Propriétés : titre, niveau, chapitre, cours de l\'emploi du temps rattaché');
+  }
+});
+
+function applyStyle(s) {
+  if (mode !== 'texte') return toast('Repassez en mode Texte pour modifier le texte');
+  restoreSel();
+  const blk = currentBlock(); if (!blk) return toast('Placez le curseur dans un paragraphe');
+  const text = blk.innerText.replace(/^(Consigne|Définition|À retenir)\s*/i, '');
+  let el;
+  if (s === 'h1' || s === 'h2' || s === 'p') { el = document.createElement(s); el.textContent = text; }
+  else {
+    el = document.createElement('div');
+    el.className = 'box box--' + s;
+    const tag = { def: 'Définition', ret: 'À retenir', cons: 'Consigne' }[s];
+    el.innerHTML = `<span class="box__tag">${tag}</span>`; el.append(text);
+  }
+  blk.replaceWith(el); refresh();
+}
+
+function insertBlock(el) {
+  if (mode !== 'texte') setMode('texte');
+  const blk = currentBlock();
+  if (blk) blk.after(el); else document.getElementById('col1').insertBefore(el, document.querySelector('#col1 .layer'));
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  refresh();
+}
+function makeEncart() {
+  const d = document.createElement('div');
+  d.className = 'encart'; d.contentEditable = 'false';
+  d.innerHTML = `<span class="encart__label">▦ Encart tableau 16:9 <em>= un écran en classe</em></span><svg class="scene" viewBox="0 0 605 340"><text x="302" y="175" text-anchor="middle" font-family="Segoe UI" font-size="15" fill="#94A3B8">Passez en mode Tableau pour dessiner ici</text></svg><div class="print-opt"><button data-p="rempli" class="is-on">Imprimé rempli</button><button data-p="vide">Imprimé vide</button></div>`;
+  return d;
+}
+function makeZone() {
+  const d = document.createElement('div'); d.className = 'zone'; d.contentEditable = 'false';
+  d.innerHTML = '<span class="zone__label">✎ Zone d\'écriture · 6 lignes Seyès</span>'; return d;
+}
+function makeTable() {
+  const t = document.createElement('table');
+  t.style.cssText = 'border-collapse:collapse;width:100%;margin:0 0 12px;font-size:15px';
+  t.innerHTML = '<tr><th style="border:1px solid #CBD5E1;padding:6px;background:#F1F5F9">Organe</th><th style="border:1px solid #CBD5E1;padding:6px;background:#F1F5F9">Rôle</th></tr><tr><td style="border:1px solid #CBD5E1;padding:6px">&nbsp;</td><td style="border:1px solid #CBD5E1;padding:6px">&nbsp;</td></tr>';
+  return t;
+}
+
+/* Clic sur « Imprimé rempli / vide » d'un encart */
+document.getElementById('pages').addEventListener('click', e => {
+  const b = e.target.closest('.print-opt button'); if (!b) return;
+  const enc = b.closest('.encart');
+  b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x === b));
+  enc.classList.toggle('print-vide', b.dataset.p === 'vide');
+  toast(b.dataset.p === 'vide' ? 'À l\'impression, l\'encart sera un cadre vide que l\'élève complète' : 'À l\'impression, l\'encart sera imprimé avec son contenu');
+});
+
+/* ===================== Animations ===================== */
+function nextStep() { return Math.max(0, ...[...document.querySelectorAll('.pages [data-step]')].map(e => +e.dataset.step)) + 1; }
+function animAppear() {
+  if (mode !== 'texte') setMode('texte');
+  restoreSel();
+  const blk = currentBlock(); if (!blk) return toast('Placez le curseur dans le paragraphe à faire apparaître');
+  if (blk.dataset.anim === 'appear') return toast('Ce paragraphe apparaît déjà au clic');
+  blk.dataset.anim = 'appear'; blk.dataset.step = nextStep(); refresh();
+  toast('Le paragraphe apparaîtra au clic (étape ' + blk.dataset.step + ')');
+}
+function animWrap(cls) {
+  if (mode !== 'texte') setMode('texte');
+  restoreSel();
+  const s = getSelection();
+  if (!s.rangeCount || s.isCollapsed) return toast(cls === 'cache' ? 'Sélectionnez d\'abord le mot à cacher' : 'Sélectionnez d\'abord le passage à surligner');
+  const span = document.createElement('span'); span.className = cls; span.dataset.step = nextStep();
+  try { s.getRangeAt(0).surroundContents(span); } catch { return toast('Sélectionnez un passage dans un seul paragraphe'); }
+  s.removeAllRanges(); refresh();
+  toast((cls === 'cache' ? 'Mot caché' : 'Surlignage') + ' ajouté (étape ' + span.dataset.step + ')');
+}
+const ANIM_LABEL = { appear: 'Apparaître au clic', cache: 'Mot caché', surl: 'Surligner au clic' };
+function animKind(el) { return el.dataset.anim === 'appear' ? 'appear' : el.classList.contains('cache') ? 'cache' : 'surl'; }
+function refreshBadges() {
+  document.querySelectorAll('.pages .anim-badge').forEach(b => b.remove());
+  document.querySelectorAll('.pages [data-step]').forEach(el => {
+    const b = document.createElement('span'); b.className = 'anim-badge'; b.contentEditable = 'false'; b.textContent = el.dataset.step;
+    b.title = ANIM_LABEL[animKind(el)] + ' — étape ' + el.dataset.step;
+    if (el.dataset.anim === 'appear') el.prepend(b); else el.append(b);
+  });
+  const list = document.getElementById('animList');
+  const items = [...document.querySelectorAll('.pages [data-step]')].sort((a, b) => a.dataset.step - b.dataset.step);
+  list.innerHTML = items.map(el => {
+    const t = el.cloneNode(true); t.querySelectorAll('.anim-badge,.anchor-mark,.box__tag').forEach(x => x.remove());
+    const txt = t.innerText.trim().replace(/\s+/g, ' ');
+    return `<div class="pane__item"><span class="n">${el.dataset.step}</span><span><span class="k">${ANIM_LABEL[animKind(el)]}</span><span class="t">« ${txt.length > 48 ? txt.slice(0, 48) + '…' : txt} »</span></span><span class="grip">⋮⋮</span></div>`;
+  }).join('') + `<div class="pane__item"><span class="n" style="background:#4F46E5">⚡</span><span><span class="k">Bouton → fenêtre</span><span class="t">« Ruminant ? » — au clic, hors étapes</span></span></div>`;
+}
+function showPane(v) { document.getElementById('animPane').hidden = !v; syncRibbonState(); }
+
+/* ===================== Calque tableau : stylo, surligneur, gomme, post-it ===================== */
+function inkPoint(svg, e) {
+  const r = svg.getBoundingClientRect(); const k = zoom / 100;
+  return [(e.clientX - r.left) / k, (e.clientY - r.top) / k];
+}
+function attachDrawing(svg, getPoint, enabled, styleFn) {
+  let path = null, pts = [];
+  svg.addEventListener('pointerdown', e => {
+    if (!enabled()) return;
+    if (tool === 'eraser' && svg.closest('.page')) { if (e.target.tagName === 'path' || e.target.tagName === 'ellipse') e.target.remove(); return; }
+    if (tool === 'select' && svg.closest('.page')) return;
+    e.preventDefault(); svg.setPointerCapture(e.pointerId);
+    pts = [getPoint(e)];
+    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const st = styleFn();
+    path.setAttribute('stroke', st.color); path.setAttribute('stroke-width', st.width); path.setAttribute('stroke-opacity', st.opacity);
+    path.setAttribute('fill', 'none'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(path);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!path) return;
+    pts.push(getPoint(e));
+    path.setAttribute('d', 'M' + pts.map(p => p.map(n => n.toFixed(1)).join(' ')).join(' L'));
+  });
+  const end = () => { path = null; pts = []; };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+}
+const pageInkStyle = () => tool === 'marker'
+  ? { color: '#FACC15', width: 18, opacity: .45 }
+  : { color: inkColor, width: +(document.getElementById('inkSize')?.value || 3.5), opacity: 1 };
+document.querySelectorAll('.page svg.ink').forEach(svg => attachDrawing(svg, e => inkPoint(svg, e), () => mode === 'tableau', pageInkStyle));
+function addPostit() {
+  if (mode !== 'tableau') setMode('tableau');
+  const layer = document.querySelector('#col1 .layer');
+  const p = document.createElement('div'); p.className = 'postit'; p.style.left = '40px'; p.style.top = '560px'; p.textContent = 'Nouveau post-it';
+  layer.appendChild(p); p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('Post-it ancré au paragraphe le plus proche — il suivra le texte');
+}
+
+/* ===================== Bandes « écran de classe » ===================== */
+function drawBands() {
+  // Une bande = largeur de colonne × 9/16 (340 px). La bande continue enjambe les pages en classe ;
+  // ici on la découpe page par page pour l'aperçu.
+  const H = 340;
+  let screen = 1;
+  document.querySelectorAll('.page').forEach((pg, i) => {
+    const bands = pg.querySelector('.bands');
+    const col = pg.querySelector('.col');
+    bands.style.left = col.offsetLeft + 'px'; bands.style.top = col.offsetTop + 'px';
+    bands.style.width = col.offsetWidth + 'px'; bands.style.height = col.scrollHeight + 'px';
+    bands.style.right = 'auto'; bands.style.bottom = 'auto';
+    bands.innerHTML = '';
+    for (let y = 0; y < col.scrollHeight - 20; y += H) {
+      const b = document.createElement('div'); b.className = 'band';
+      b.style.top = y + 'px'; b.style.height = Math.min(H, col.scrollHeight - y) + 'px';
+      b.innerHTML = `<span>Écran ${screen++}</span>`; bands.appendChild(b);
+    }
+  });
+}
+
+/* ===================== Barre d'état, zoom, règle ===================== */
+function refresh() {
+  refreshBadges();
+  const words = [...document.querySelectorAll('.pages .col')].map(c => { const t = c.cloneNode(true); t.querySelectorAll('.layer,.anim-badge,.anchor-mark,.encart__label,.zone__label,.print-opt').forEach(x => x.remove()); return t.innerText; }).join(' ').split(/\s+/).filter(Boolean).length;
+  document.getElementById('stWords').textContent = words + ' mots';
+  const total = [...document.querySelectorAll('.pages .col')].reduce((s, c) => s + c.scrollHeight, 0);
+  document.getElementById('stScreens').textContent = Math.ceil(total / 340) + ' écrans en classe';
+  if (document.body.classList.contains('show-bands')) drawBands();
+}
+function setZoom(z) {
+  zoom = Math.max(50, Math.min(160, z));
+  document.getElementById('pages').style.transform = `scale(${zoom / 100})`;
+  document.getElementById('pages').style.marginBottom = `${(zoom / 100 - 1) * 1300}px`;
+  document.getElementById('zoom').value = zoom;
+  document.getElementById('zoomPct').textContent = zoom + ' %';
+  syncRibbonState(); drawRuler();
+}
+document.getElementById('zoom').addEventListener('input', e => setZoom(+e.target.value));
+document.getElementById('desk').addEventListener('scroll', () => {
+  const pages = [...document.querySelectorAll('.page')];
+  const mid = document.getElementById('desk').getBoundingClientRect().top + 200;
+  const i = pages.findIndex(p => p.getBoundingClientRect().bottom > mid);
+  document.getElementById('stPage').textContent = `Page ${Math.max(1, i + 1)} sur ${pages.length}`;
+});
+function drawRuler() {
+  const k = zoom / 100, ruler = document.getElementById('ruler'), page = document.querySelector('.page');
+  const r = page.getBoundingClientRect();
+  ruler.style.left = r.left + 'px'; ruler.style.width = r.width + 'px';
+  const cm = 37.8 * k, m = 94 * k;
+  let html = `<div class="m" style="left:0;width:${m}px"></div><div class="m" style="right:0;width:${m}px"></div>`;
+  for (let i = 0; i <= 21; i++) html += `<i style="left:${i * cm}px;height:${i % 5 === 0 ? 8 : 4}px"></i>` + (i > 0 && i < 21 && i % 2 === 0 ? `<span class="num" style="left:${i * cm}px">${i}</span>` : '');
+  ruler.innerHTML = html;
+}
+window.addEventListener('resize', drawRuler);
+
+/* ===================== Mode En classe ===================== */
+const COL = 605, SCREEN = 340;
+let cls = { y: 0, maxY: 0, scale: 1, test: true, overview: false, pen: true, steps: [], encarts: [] };
+function openClasse(test) {
+  cls.test = test;
+  const strip = document.getElementById('strip');
+  strip.innerHTML = '';
+  const col = document.createElement('div'); col.className = 'col'; col.style.position = 'relative';
+  document.querySelectorAll('.pages .col').forEach((c, i) => {
+    if (i > 0) { const sep = document.createElement('div'); sep.className = 'page-sep'; col.appendChild(sep); }
+    const wrap = document.createElement('div'); wrap.style.position = 'relative';
+    [...c.children].forEach(ch => wrap.appendChild(ch.cloneNode(true)));
+    col.appendChild(wrap);
+  });
+  col.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
+  strip.appendChild(col);
+  // Encre de séance : par-dessus tout le ruban, en coordonnées du cours
+  const ink = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  ink.classList.add('class-ink'); strip.appendChild(ink);
+  document.getElementById('classe').classList.add('is-open');
+  document.getElementById('testChip').hidden = !test;
+  layoutClasse();
+  ink.setAttribute('width', COL); ink.setAttribute('height', strip.offsetHeight);
+  ink.style.pointerEvents = cls.pen ? 'auto' : 'none';
+  attachDrawing(ink, e => { const r = ink.getBoundingClientRect(); return [(e.clientX - r.left) / cls.scale, (e.clientY - r.top) / cls.scale]; }, () => cls.pen, () => ({ color: '#DC2626', width: 3, opacity: 1 }));
+  cls.steps = [...strip.querySelectorAll('[data-step]')].sort((a, b) => a.dataset.step - b.dataset.step);
+  cls.encarts = [...strip.querySelectorAll('.encart')].map(e => offsetIn(e, strip));
+  cls.blocks = [...strip.querySelectorAll('.col > div > :not(.layer)')]
+    .map(e => { const top = offsetIn(e, strip); return { top, bottom: top + e.offsetHeight, encart: e.classList.contains('encart') }; })
+    .sort((a, b) => a.top - b.top);
+  cls.maxY = Math.max(0, strip.offsetHeight - SCREEN);
+  cls.y = 0; cls.overview = false;
+  strip.querySelectorAll('.action-btn').forEach(b => b.addEventListener('click', () => document.getElementById('popwin').classList.add('is-open')));
+  render();
+}
+function offsetIn(el, root) { let y = 0; while (el && el !== root) { y += el.offsetTop; el = el.offsetParent; } return y; }
+function layoutClasse() {
+  const vp = document.getElementById('vp');
+  const W = Math.min(innerWidth - 40, (innerHeight - 40) * 16 / 9);
+  vp.style.width = W + 'px'; vp.style.height = W * 9 / 16 + 'px';
+  cls.scale = W / COL;
+  document.getElementById('strip').style.width = COL + 'px';
+  render();
+}
+function render() {
+  const strip = document.getElementById('strip');
+  if (cls.overview) {
+    const vpH = document.getElementById('vp').offsetHeight, vpW = document.getElementById('vp').offsetWidth;
+    const k = Math.min(vpH / strip.offsetHeight, vpW / COL) * 0.96;
+    strip.style.transform = `translate(${(vpW - COL * k) / 2}px, ${(vpH - strip.offsetHeight * k) / 2}px) scale(${k})`;
+  } else {
+    strip.style.transform = `scale(${cls.scale}) translateY(${-cls.y}px)`;
+  }
+  const n = Math.ceil((cls.maxY + SCREEN) / SCREEN);
+  const at = cls.y >= cls.maxY ? n : Math.min(n, Math.round(cls.y / SCREEN) + 1);
+  document.getElementById('classPos').textContent = cls.overview ? 'Vue d\'ensemble' : `Écran ${at} / ${n}`;
+}
+function classNext() {
+  if (cls.overview) { cls.overview = false; return render(); }
+  // 1) une animation non jouée visible à l'écran ?
+  const strip = document.getElementById('strip');
+  const pending = cls.steps.find(el => !el.classList.contains('played'));
+  if (pending) {
+    const top = offsetIn(pending, strip);
+    if (top >= cls.y - 4 && top < cls.y + SCREEN - 20) { pending.classList.add('played'); return; }
+    if (top < cls.y) { pending.classList.add('played'); return; }
+  }
+  // 2) sinon descendre : l'écran suivant commence au premier bloc pas entièrement visible
+  //    (un titre coupé en bas remonte en haut ; un encart remplit alors l'écran au pixel près)
+  if (cls.y >= cls.maxY) return flashEnd();
+  const i = cls.blocks.findIndex(b => b.bottom > cls.y + SCREEN + 2 && b.top > cls.y + 2);
+  let blk = cls.blocks[i];
+  // Un titre collé à un encart : on va directement à l'encart (sinon l'écran ne bougerait que de quelques px)
+  const after = cls.blocks[i + 1];
+  if (blk && after?.encart && after.top - blk.top < 80) blk = after;
+  let target = blk ? blk.top : cls.y + SCREEN;
+  target = Math.min(target, cls.maxY);
+  if (target <= cls.y) target = Math.min(cls.y + SCREEN, cls.maxY);
+  cls.y = target; render();
+}
+function classPrev() { if (cls.overview) { cls.overview = false; return render(); } cls.y = Math.max(0, cls.y - SCREEN); render(); }
+function flashEnd() { toast('Fin du cours'); }
+function toggleOverview() { cls.overview = !cls.overview; render(); }
+function togglePen() { cls.pen = !cls.pen; document.getElementById('penBtn').classList.toggle('is-on', cls.pen); document.querySelector('#strip .class-ink').style.pointerEvents = cls.pen ? 'auto' : 'none'; }
+function closeWin() { document.getElementById('popwin').classList.remove('is-open'); }
+function closeClasse() {
+  document.getElementById('classe').classList.remove('is-open'); closeWin();
+  if (cls.test) toast('Mode test terminé : l\'encre de test a été effacée');
+}
+window.addEventListener('keydown', e => {
+  if (!document.getElementById('classe').classList.contains('is-open')) return;
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); classNext(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); classPrev(); }
+  else if (e.key === 'Escape') { document.getElementById('popwin').classList.contains('is-open') ? closeWin() : closeClasse(); }
+  else if (e.key.toLowerCase() === 'o') toggleOverview();
+});
+window.addEventListener('resize', () => { if (document.getElementById('classe').classList.contains('is-open')) layoutClasse(); });
+
+/* ===================== Démarrage ===================== */
+showTab('accueil');
+refresh();
+setTimeout(drawRuler, 50);
+if (document.fonts) document.fonts.ready.then(() => { refresh(); drawRuler(); });
+</script>
+</body>
+</html>
