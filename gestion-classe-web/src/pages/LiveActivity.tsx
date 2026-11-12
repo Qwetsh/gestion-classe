@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Layout } from '../components/Layout';
+import { AnimatedCorrectionToggle } from '../components/productions/AnimatedCorrectionToggle';
+import { hasAnimatedCorrection } from '../lib/animatedCorrection';
 import { ecrirePoints, fetchActivityPoints, fetchLiveWorks, fetchSentMessages, pointsDe, sendLiveMessage, type LiveMessage, type LiveMessageStyle, type LiveMorel, type LiveWork } from '../lib/liveQueries';
 
 /**
@@ -92,6 +94,7 @@ export function LiveActivity() {
     return [...m.entries()];
   }, [works]);
   const actif = activite || activites[0]?.[0] || '';
+  const cleActive = useMemo(() => works.find((w) => w.activity_id === actif)?.activities?.key ?? '', [works, actif]);
 
   // les points donnés dans cette activité : le total de chaque groupe, rechargé avec la page
   const chargerPoints = useCallback(async () => {
@@ -166,6 +169,10 @@ export function LiveActivity() {
             <option value={480}>Aujourd'hui</option>
           </select>
         </div>
+
+        {actif && hasAnimatedCorrection(cleActive) && (
+          <AnimatedCorrectionToggle activityId={actif} classId={classeId} className={classe || null} compact />
+        )}
 
         {erreur && <p style={{ color: 'var(--neg)' }}>{erreur}</p>}
 
