@@ -168,3 +168,28 @@ Chaque lot est livrable seul (PR distincte, testée dans le navigateur).
 - Écarts / limites : pas d'impression réelle testée (seulement la mise en page) ; lien saisi par
   `window.prompt` ; un paragraphe plus haut qu'une page ne se coupe pas (il déborde) ; « Lancer la
   séance » d'un cours rédigé ouvre un tableau vide tant que l'étape 4 n'est pas faite.
+
+### Étape 2 — encarts tableau et zones d'écriture, livrée le 12/11/2026 (branche `feat/cours-encarts`)
+
+- **Encart tableau** (nœud `encart`, `EncartView`, `encartStore`) : bloc 16:9 de la largeur de
+  colonne (605 × 340 px = un écran en classe) qui pointe vers une page de `board_pages`
+  (board_id = le tableau du cours, `pageId` dans le document). Aperçu dessiné par
+  `renderPageToCanvas` ; double-clic ou « Modifier l'encart » ouvre le **tableau blanc en mode
+  page seule** (`Whiteboard.onlyPageId` : ni navigateur, ni rail, ni nouvelle page, ni
+  allongement, ni bulles de premier lancement ; stockage local `encart:<pageId>`). Le cours reste
+  monté, masqué (`visibility: hidden`) pour garder sa pagination. Impression « rempli » ou
+  « vide » (cadre seul, à compléter par l'élève).
+- **Zone d'écriture** (nœud `writingZone`) : Seyès (8 mm + interlignes 2 mm + marge), carreaux
+  5 mm, lignes 8 mm, blanc ; 1 à 40 lignes de 8 mm ; imprimée en couleur.
+- Ruban : Insertion › Encart / Zone actifs ; onglets contextuels « Encart tableau » et « Zone
+  d'écriture » ; l'onglet actif est calculé au rendu (plus d'effets) et un réglage resélectionne
+  le bloc (ProseMirror remplace un bloc insécable modifié, la sélection sautait au voisin).
+- Tableau blanc : « Retour » envoie les dernières modifications au serveur avant de fermer
+  (aussi utile hors encarts).
+- Copier un cours vers une autre classe garde les identifiants de pages (sinon les encarts de
+  la copie pointeraient dans le vide).
+- Vérifié dans le navigateur : insertion, dessin dans l'encart (2 traits en base dès la
+  fermeture), aperçu au retour et après rechargement, réglages de zone, « imprimé vide ».
+- Limites : un encart copié-collé dans le même cours partage sa page avec l'original ; les pages
+  d'encarts supprimés restent en base (sans effet) ; impression réelle non testée ; la copie vers
+  une autre classe n'a pas été testée dans le navigateur.

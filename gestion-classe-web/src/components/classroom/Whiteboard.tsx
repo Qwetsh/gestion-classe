@@ -162,6 +162,12 @@ export interface WhiteboardProps {
    * Remplace la proposition « partir d'un tableau préparé » du début de séance.
    */
   seedBoard?: Pick<Board, 'id' | 'title'>;
+  /**
+   * Encart d'un cours rédigé (PLAN_cours_editeur.md, étape 2) : on n'édite que cette page du
+   * tableau `boardId`. Pas de navigation entre pages, pas de nouvelle page, format 16:9 fixe
+   * (la page n'est jamais allongée : un encart fait exactement un écran en classe).
+   */
+  onlyPageId?: string;
   onClose: () => void;
 }
 
@@ -357,14 +363,21 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, onClose }: WhiteboardProps) {
   const activeRef = useRef(active);
   useEffect(() => { activeRef.current = active; }, [active]);
   /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
   const isSessionBoard = remote && !boardId;
   /** Propriétaire des pages côté serveur. */
   const remoteRef = boardId ? { boardId } : sessionId;
-  const [pages, setPages] = useState<Page[]>(() => loadLocal(sessionId).pages);
+  /** Encart de cours : une seule page, toujours au format 16:9. */
+  const singlePage = !!onlyPageId;
+  const [pages, setPages] = useState<Page[]>(() => {
+    const local = loadLocal(sessionId).pages;
+    if (!onlyPageId) return local;
+    const own = local.find((p) => p.id === onlyPageId);
+    return [own ?? { ...newPage(), id: onlyPageId }];
+  });
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState<string>(COLORS[0]);
@@ -381,12 +394,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [editingId, setEditingId] = useState<string | null>(null);
   // Navigateur de pages : ouvert par défaut sur un grand écran, fermé sur un écran compact (il
   // prend 14 % de la largeur en 720p) ; le choix de l'utilisateur, une fois fait, est conservé.
-  const [navOpen, setNavOpen] = useState(() => {
+  const [navOpenPref, setNavOpen] = useState(() => {
     try {
       const stored = localStorage.getItem(NAV_STORAGE_KEY);
       return stored === null ? !isCompactScreen() : stored !== '0';
     } catch { return true; }
   });
+  /** Encart de cours : jamais de navigateur de pages (la préférence reste intacte). */
+  const navOpen = navOpenPref && !singlePage;
   const [compact, setCompact] = useState(isCompactScreen);
   useEffect(() => {
     const mq = window.matchMedia(COMPACT_MQ);
@@ -557,6 +572,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
   const scaleRef = useRef(1);
   const pagesRef = useRef(pages);
+  const singlePageRef = useRef(singlePage);
   const pageIndexRef = useRef(pageIndex);
   const toolRef = useRef(tool);
   const editingIdRef = useRef<string | null>(null);
@@ -788,6 +804,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       try {
         const remote = await fetchBoardPages(remoteRef);
         if (cancelled) return;
+        if (onlyPageId) {
+          // Encart : seule sa page compte ; absente du serveur = encart encore vierge
+          const own = remote.pages.find((p) => p.id === onlyPageId);
+          remote.pages = own ? [own] : [];
+        }
         const useRemote = remote.pages.length > 0 && (remote.updatedAt >= local.savedAt || !hasInk(local.pages));
         let loaded = local.pages;
         if (useRemote) {
@@ -871,6 +892,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   const setPageHeight = useCallback((pageId: string, h: number) => {
+    if (singlePageRef.current) return;
     updatePage(pageId, (pg) => {
       const next = { ...pg };
       if (h > BOARD_PAGE_H) next.height = Math.round(h); else delete next.height;
@@ -984,12 +1006,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [updatePage]);
 
   const addPage = useCallback(() => {
+    if (singlePageRef.current) return;
     const current = pagesRef.current[pageIndexRef.current];
     setPages((prev) => [...prev, newPage(current?.background ?? 'blank')]);
     setPageIndex(pagesRef.current.length);
   }, []);
 
   const insertPageAfter = useCallback((index: number) => {
+    if (singlePageRef.current) return;
     const current = pagesRef.current[index];
     setPages((prev) => [...prev.slice(0, index + 1), newPage(current?.background ?? 'blank'), ...prev.slice(index + 1)]);
     setPageIndex(index + 1);
@@ -997,6 +1021,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
   /** Copie complète d'une page (encre et objets avec de nouveaux identifiants), insérée juste après. */
   const duplicatePage = useCallback((index: number) => {
+    if (singlePageRef.current) return;
     const src = pagesRef.current[index];
     if (!src) return;
     const copy: Page = {
@@ -1033,8 +1058,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(NAV_STORAGE_KEY, navOpen ? '1' : '0'); } catch { /* stockage indisponible */ }
-  }, [navOpen]);
+    try { localStorage.setItem(NAV_STORAGE_KEY, navOpenPref ? '1' : '0'); } catch { /* stockage indisponible */ }
+  }, [navOpenPref]);
 
 
   // -- Objets de la page (texte aujourd'hui ; formes, images… ensuite) --
@@ -1064,7 +1089,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       // Un objet posé ou tiré sous le bas de la page l'allonge : la page ne raccourcit jamais seule
       const bottom = objectsBottom(next);
       const h = pageHeight(pg);
-      return bottom > h - 8 ? { ...pg, objects: next, strokes, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next, strokes };
+      return bottom > h - 8 && !singlePageRef.current ? { ...pg, objects: next, strokes, height: Math.max(h, heightToFit(bottom)) } : { ...pg, objects: next, strokes };
     });
   }, [pushOp, updatePage]);
 
@@ -3427,7 +3452,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           links={ghostLinks}
           snapGrid={page.background === 'grid' || page.background === 'dots' || page.background === 'graph' ? 25 : undefined}
         />
-        {!displayMode && (
+        {!displayMode && !singlePage && (
           <button
             type="button"
             className="wb__extend"
@@ -3637,7 +3662,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         )}
 
         {/* Premier lancement : les trois gestes vitaux, ensemble, sans séquence ni « suivant ». */}
-        {coachOpen && !displayMode && (
+        {coachOpen && !displayMode && !singlePage && (
           <div className="wb__coach" aria-hidden>
             {!palette.hidden && (
               <div
@@ -3748,7 +3773,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         />
       )}
 
-      {navOpen && !displayMode && (
+      {navOpen && !displayMode && !singlePage && (
         <BoardPageNavigator
           pages={pages}
           pageIndex={pageIndex}
@@ -3929,7 +3954,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
       {/* Pages : rail vertical au bord, du côté du navigateur de vignettes — ce n'est pas
           un outil de dessin, ça n'a rien à faire au milieu des outils. Déplaçable par sa poignée. */}
-      {!displayMode && (
+      {!displayMode && !singlePage && (
         <BoardPageRail
           side={tbi.bar === 'right' ? 'left' : 'right'}
           navOpen={navOpen}
@@ -4056,7 +4081,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
               <BoardMoreMenu anchorRef={moreBtnRef} onClose={() => setMoreOpen(false)} sections={moreSections} />
             )}
           </>
-          <button className="wb__btn wb__close" onClick={onClose} title="Retour au plan de classe">
+          {/* Les dernières modifications partent au serveur avant de fermer (sinon elles attendraient le minuteur) */}
+          <button className="wb__btn wb__close" onClick={() => { void flushRemote().finally(onClose); }} title={singlePage ? 'Revenir au cours' : 'Retour au plan de classe'}>
             <svg viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4" /></svg>
           </button>
         </div>

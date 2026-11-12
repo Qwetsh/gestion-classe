@@ -10,7 +10,7 @@
  */
 import { supabase } from '../supabase';
 import { copyBoardPages, createBoard, deleteBoard, levelFromClassName } from '../boardsQueries';
-import { upsertBoardPages } from '../boardQueries';
+import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
 import { lessonNoteKey } from './lessonNotesQueries';
 import { emptyCourseDoc, fetchCourseDoc, saveCourseDoc } from '../course/courseDoc';
 import type { TimetableLesson } from './weekView';
@@ -136,7 +136,12 @@ export async function createLessonBoard(userId: string, lesson: LessonRef, sourc
   const board = await createBoard(userId, { title: lessonBoardTitle(lesson), level, chapter: null }, lesson.classId ?? null);
   try {
     if (sourceBoardId) {
-      const [pages, doc] = await Promise.all([copyBoardPages(sourceBoardId), fetchCourseDoc(sourceBoardId)]);
+      // Cours rédigé : ses encarts pointent vers les pages par leur identifiant → on le garde
+      // (unique par tableau seulement) ; tableau blanc : copie avec de nouveaux identifiants
+      const doc = await fetchCourseDoc(sourceBoardId);
+      const pages = doc
+        ? (await fetchBoardPages({ boardId: sourceBoardId })).pages.map((p) => JSON.parse(JSON.stringify(p)) as typeof p)
+        : await copyBoardPages(sourceBoardId);
       if (pages.length > 0) await upsertBoardPages(userId, { boardId: board.id }, pages.map((page, position) => ({ page, position })));
       if (doc) await saveCourseDoc(board.id, doc);
     } else if (kind === 'course') {

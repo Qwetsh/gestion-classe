@@ -1,7 +1,8 @@
 /**
  * Extensions TipTap de l'éditeur de cours : base « traitement de texte » (StarterKit, police,
  * taille, couleur, surlignage, alignement, tableaux, images) + blocs propres aux cours :
- * encadrés (Définition, À retenir, Consigne, Exemple) et saut de page.
+ * encadrés (Définition, À retenir, Consigne, Exemple), saut de page, encarts tableau 16:9
+ * (une page du tableau, exactement un écran en classe) et zones d'écriture (Seyès, carreaux…).
  *
  * Chaque bloc reçoit un identifiant stable (`blockId`) : le calque tableau s'y ancrera (étape 3).
  */
@@ -17,6 +18,8 @@ import { Placeholder } from '@tiptap/extensions';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { CoursePagination, type PageLayout } from './coursePagination';
 import { CourseImageView } from './CourseImageView';
+import { EncartView, type EncartOptions } from './EncartView';
+import { MM } from '../../lib/course/coursePage';
 
 // ---- Encadrés ----
 
@@ -38,8 +41,17 @@ declare module '@tiptap/core' {
     pageBreak: {
       setPageBreak: () => ReturnType;
     };
+    encart: {
+      /** Nouvel encart vide (sa page du tableau est créée au premier dessin). */
+      insertEncart: () => ReturnType;
+    };
+    writingZone: {
+      insertWritingZone: (attrs?: Partial<WritingZoneAttrs>) => ReturnType;
+    };
   }
 }
+
+const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 export const Callout = Node.create({
   name: 'callout',
@@ -103,6 +115,109 @@ export const PageBreak = Node.create({
   },
 });
 
+// ---- Encart tableau 16:9 ----
+
+export const Encart = Node.create<EncartOptions>({
+  name: 'encart',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  draggable: true,
+
+  addOptions() {
+    return { boardId: '', onEdit: () => undefined };
+  },
+
+  addAttributes() {
+    return {
+      /** Identifiant de la page dans board_pages (board_id = le tableau du cours). */
+      pageId: { default: null },
+      /** Impression : 'filled' = avec son contenu, 'blank' = cadre vide que l'élève complète. */
+      print: { default: 'filled' },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'div[data-encart]', getAttrs: (el) => ({ pageId: (el as HTMLElement).getAttribute('data-encart') }) }];
+  },
+
+  renderHTML({ node }) {
+    return ['div', { 'data-encart': node.attrs.pageId, class: 'ce-encart' }];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(EncartView);
+  },
+
+  addCommands() {
+    return {
+      insertEncart: () => ({ chain }) => chain().insertContent({ type: 'encart', attrs: { pageId: newId() } }).run(),
+    };
+  },
+});
+
+// ---- Zone d'écriture ----
+
+export type WritingZoneStyle = 'seyes' | 'carreaux' | 'lignes' | 'blanc';
+
+export interface WritingZoneAttrs {
+  style: WritingZoneStyle;
+  lines: number;
+}
+
+export const WRITING_ZONE_LABELS: Record<WritingZoneStyle, string> = {
+  seyes: 'Seyès',
+  carreaux: 'Carreaux 5 mm',
+  lignes: 'Lignes',
+  blanc: 'Blanc',
+};
+
+/** Hauteur d'une ligne d'écriture : 8 mm (grand carreau Seyès). */
+export const ZONE_LINE_PX = 8 * MM;
+
+export const WritingZone = Node.create({
+  name: 'writingZone',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      style: { default: 'seyes' },
+      lines: { default: 6 },
+    };
+  },
+
+  parseHTML() {
+    return [{
+      tag: 'div[data-zone]',
+      getAttrs: (el) => ({
+        style: (el as HTMLElement).getAttribute('data-zone') ?? 'seyes',
+        lines: Number((el as HTMLElement).getAttribute('data-lines')) || 6,
+      }),
+    }];
+  },
+
+  renderHTML({ node }) {
+    const style = node.attrs.style as WritingZoneStyle;
+    const lines = Math.max(1, Math.min(40, Number(node.attrs.lines) || 6));
+    return ['div', {
+      'data-zone': style,
+      'data-lines': String(lines),
+      'data-label': `✎ Zone d'écriture · ${lines} ligne${lines > 1 ? 's' : ''} · ${WRITING_ZONE_LABELS[style] ?? style}`,
+      class: `ce-zone ce-zone--${style}`,
+      style: `height: ${(lines * ZONE_LINE_PX).toFixed(2)}px`,
+    }];
+  },
+
+  addCommands() {
+    return {
+      insertWritingZone: (attrs) => ({ chain }) => chain().insertContent({ type: 'writingZone', attrs: { style: 'seyes', lines: 6, ...attrs } }).run(),
+    };
+  },
+});
+
 // ---- Images : fichier du bucket board-assets (chemin), affiché par URL signée ----
 
 export const CourseImage = Image.extend({
@@ -124,9 +239,9 @@ export const CourseImage = Image.extend({
 // ---- Assemblage ----
 
 /** Blocs qui reçoivent un identifiant stable (ancrage du calque tableau, animations). */
-const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule'];
+const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone'];
 
-export function courseExtensions(onLayout: (layout: PageLayout) => void): Extensions {
+export function courseExtensions(onLayout: (layout: PageLayout) => void, encart: EncartOptions): Extensions {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
@@ -141,6 +256,8 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void): Extens
     CourseImage,
     Callout,
     PageBreak,
+    Encart.configure(encart),
+    WritingZone,
     UniqueID.configure({ types: BLOCK_TYPES, attributeName: 'blockId' }),
     Placeholder.configure({
       includeChildren: false,

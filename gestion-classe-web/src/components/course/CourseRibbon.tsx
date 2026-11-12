@@ -6,13 +6,13 @@
  * Les boutons ne prennent jamais le focus (mousedown annulé) : la sélection du texte reste en
  * place, comme dans un traitement de texte.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { Icon, type IconName } from './courseIcons';
-import { CALLOUT_LABELS, type CalloutKind } from './courseExtensions';
+import { CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
 
-export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'affichage' | 'tableau' | 'image';
+export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'affichage' | 'tableau' | 'image' | 'encart' | 'zone';
 
 interface Props {
   editor: Editor;
@@ -28,6 +28,7 @@ interface Props {
   showRuler: boolean;
   onToggleRuler: () => void;
   onSoon: (what: string) => void;
+  onEditEncart: (pageId: string) => void;
 }
 
 const TEXT_COLORS = [
@@ -66,8 +67,8 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon }: Props) {
-  const [tab, setTab] = useState<RibbonTab>('accueil');
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart }: Props) {
+  const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
     editor,
@@ -97,24 +98,37 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         inTable: e.isActive('table'),
         onImage: e.isActive('image'),
         imageAlign: (e.getAttributes('image') as { align?: string }).align ?? 'center',
+        onEncart: e.isActive('encart'),
+        encartPageId: (e.getAttributes('encart') as { pageId?: string }).pageId ?? null,
+        encartPrint: (e.getAttributes('encart') as { print?: string }).print ?? 'filled',
+        onZone: e.isActive('writingZone'),
+        zoneStyle: ((e.getAttributes('writingZone') as { style?: string }).style ?? 'seyes') as WritingZoneStyle,
+        zoneLines: Number((e.getAttributes('writingZone') as { lines?: number }).lines) || 6,
         canUndo: e.can().undo(),
         canRedo: e.can().redo(),
       };
     },
   });
 
-  // Onglets contextuels : on y bascule quand ils apparaissent, on en sort quand ils disparaissent
-  useEffect(() => {
-    if (s.onImage) setTab('image');
-    else if (tab === 'image') setTab('accueil');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.onImage]);
-  useEffect(() => {
-    if (!s.inTable && tab === 'tableau') setTab('accueil');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.inTable]);
+  // Onglets contextuels (image, encart, zone) : on y bascule quand ils apparaissent ; quand ils
+  // disparaissent, on revient à l'onglet d'où l'on venait. Calculé au rendu (pas d'effet).
+  const ctx: RibbonTab | null = s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : null;
+  if (view.ctx !== ctx) {
+    const back: RibbonTab = view.ctx === 'image' ? 'accueil' : 'insertion';
+    setView({ tab: ctx ?? (view.tab === view.ctx ? back : view.tab), ctx });
+  }
+  const tab: RibbonTab = view.tab === 'tableau' && !s.inTable ? 'accueil' : view.tab;
+  const setTab = (t: RibbonTab) => setView((v) => ({ ...v, tab: t }));
 
   const c = () => editor.chain().focus();
+  /**
+   * Réglage d'un bloc insécable (image, encart, zone) : ProseMirror remplace le bloc entier, et la
+   * sélection retomberait sur le bloc voisin — on resélectionne le bloc modifié.
+   */
+  const updateNode = (type: string, attrs: Record<string, unknown>) => {
+    const pos = editor.state.selection.from;
+    c().updateAttributes(type, attrs).setNodeSelection(pos).run();
+  };
   const sizePt = s.fontSize.endsWith('pt') ? s.fontSize.slice(0, -2) : '';
 
   const tabs: { id: RibbonTab; label: string; contextual?: boolean }[] = [
@@ -124,6 +138,8 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     { id: 'affichage', label: 'Affichage' },
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
     ...(s.onImage ? [{ id: 'image' as const, label: 'Image', contextual: true }] : []),
+    ...(s.onEncart ? [{ id: 'encart' as const, label: 'Encart tableau', contextual: true }] : []),
+    ...(s.onZone ? [{ id: 'zone' as const, label: 'Zone d’écriture', contextual: true }] : []),
   ];
 
   return (
@@ -274,8 +290,8 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <Big icon="table" label="Tableau" title="Tableau de 3 × 3" onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} />
             </Group>
             <Group label="Spécial cours">
-              <Big icon="encart" label="Encart tableau" title="Bientôt : un bloc 16:9 de la largeur du texte, exactement un écran en classe" onClick={() => onSoon('Les encarts tableau arrivent à la prochaine étape.')} />
-              <Big icon="zone" label="Zone d'écriture" title="Bientôt : lignes Seyès ou carreaux imprimées vides, où l'on écrit au stylet en classe" onClick={() => onSoon('Les zones d’écriture arrivent à la prochaine étape.')} />
+              <Big icon="encart" label="Encart tableau" title="Bloc 16:9 de la largeur du texte : exactement un écran en classe. Double-clic pour y dessiner." onClick={() => c().insertEncart().run()} />
+              <Big icon="zone" label="Zone d'écriture" title="Lignes Seyès, carreaux ou blanc : imprimées vides pour l'élève, on y écrit au stylet en classe" onClick={() => c().insertWritingZone().run()} />
             </Group>
             <Group label="Texte">
               <Big icon="link" label="Lien" title="Lien vers une page web" on={s.link} onClick={onInsertLink} />
@@ -328,17 +344,60 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
           </>
         )}
 
+        {tab === 'encart' && (
+          <>
+            <Group label="Encart">
+              <Big icon="board" label="Modifier l'encart" title="Ouvrir dans le tableau blanc (ou double-clic sur l'encart)" onClick={() => { if (s.encartPageId) onEditEncart(s.encartPageId); }} />
+            </Group>
+            <Group label="Impression">
+              <Big icon="print" label="Imprimé rempli" title="L'encart s'imprime avec son contenu" on={s.encartPrint !== 'blank'} onClick={() => updateNode('encart', { print: 'filled' })} />
+              <Big icon="zone" label="Imprimé vide" title="L'encart s'imprime comme un cadre vide que l'élève complète" on={s.encartPrint === 'blank'} onClick={() => updateNode('encart', { print: 'blank' })} />
+            </Group>
+            <Group label="Supprimer">
+              <Big icon="trash" label="Supprimer l'encart" onClick={() => c().deleteSelection().run()} />
+            </Group>
+          </>
+        )}
+
+        {tab === 'zone' && (
+          <>
+            <Group label="Type de lignes">
+              {(Object.keys(WRITING_ZONE_LABELS) as WritingZoneStyle[]).map((st) => (
+                <button key={st} type="button" className={`ce-zonepick ${s.zoneStyle === st ? 'is-on' : ''}`} title={WRITING_ZONE_LABELS[st]} onClick={() => updateNode('writingZone', { style: st })}>
+                  <span className={`ce-zonepick__swatch ce-zone--${st}`} />
+                  <span>{WRITING_ZONE_LABELS[st]}</span>
+                </button>
+              ))}
+            </Group>
+            <Group label="Hauteur">
+              <div className="ce-stack">
+                <div className="ce-row ce-lines">
+                  <Sm title="Une ligne de moins" onClick={() => updateNode('writingZone', { lines: Math.max(1, s.zoneLines - 1) })}><span className="ce-glyph">−</span></Sm>
+                  <span className="ce-lines__n">{s.zoneLines} ligne{s.zoneLines > 1 ? 's' : ''}</span>
+                  <Sm title="Une ligne de plus" onClick={() => updateNode('writingZone', { lines: Math.min(40, s.zoneLines + 1) })}><span className="ce-glyph">+</span></Sm>
+                </div>
+                <div className="ce-row">
+                  {[3, 6, 10, 15].map((n) => <Sm key={n} label={String(n)} title={`${n} lignes`} on={s.zoneLines === n} onClick={() => updateNode('writingZone', { lines: n })} />)}
+                </div>
+              </div>
+            </Group>
+            <Group label="Supprimer">
+              <Big icon="trash" label="Supprimer la zone" onClick={() => c().deleteSelection().run()} />
+            </Group>
+          </>
+        )}
+
         {tab === 'image' && (
           <>
             <Group label="Position">
-              <Big icon="alignImgLeft" label="À gauche" on={s.imageAlign === 'left'} onClick={() => c().updateAttributes('image', { align: 'left' }).run()} />
-              <Big icon="alignImgCenter" label="Centrée" on={s.imageAlign === 'center'} onClick={() => c().updateAttributes('image', { align: 'center' }).run()} />
-              <Big icon="alignImgRight" label="À droite" on={s.imageAlign === 'right'} onClick={() => c().updateAttributes('image', { align: 'right' }).run()} />
+              <Big icon="alignImgLeft" label="À gauche" on={s.imageAlign === 'left'} onClick={() => updateNode('image', { align: 'left' })} />
+              <Big icon="alignImgCenter" label="Centrée" on={s.imageAlign === 'center'} onClick={() => updateNode('image', { align: 'center' })} />
+              <Big icon="alignImgRight" label="À droite" on={s.imageAlign === 'right'} onClick={() => updateNode('image', { align: 'right' })} />
             </Group>
             <Group label="Taille">
               <div className="ce-stack">
                 {[25, 50, 75, 100].map((p) => (
-                  <Sm key={p} label={`${p} % de la largeur`} title={`${p} % de la largeur du texte`} onClick={() => c().updateAttributes('image', { width: Math.round((COL_W * p) / 100) }).run()} />
+                  <Sm key={p} label={`${p} % de la largeur`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100) })} />
                 ))}
               </div>
             </Group>
