@@ -20,6 +20,7 @@ import { CoursePagination, type PageLayout } from './coursePagination';
 import { CourseImageView } from './CourseImageView';
 import { EncartView, type EncartOptions } from './EncartView';
 import { MM } from '../../lib/course/coursePage';
+import { typographyExtensions } from './courseTypography';
 
 // ---- Encadrés ----
 
@@ -110,9 +111,6 @@ export const PageBreak = Node.create({
     };
   },
 
-  addKeyboardShortcuts() {
-    return { 'Mod-Enter': () => this.editor.commands.setPageBreak() };
-  },
 });
 
 // ---- Encart tableau 16:9 ----
@@ -234,19 +232,21 @@ export const CourseImage = Image.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CourseImageView);
   },
-}).configure({ inline: false, allowBase64: true });
+// Pas d'image en base64 dans le document : elle alourdirait chaque enregistrement
+}).configure({ inline: false, allowBase64: false });
 
 // ---- Assemblage ----
 
 /** Blocs qui reçoivent un identifiant stable (ancrage du calque tableau, animations). */
 const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone'];
 
-export function courseExtensions(onLayout: (layout: PageLayout) => void, encart: EncartOptions): Extensions {
+export function courseExtensions(onLayout: (layout: PageLayout) => void, encart: EncartOptions, onLink: () => void): Extensions {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       codeBlock: false,
       code: false,
+      // Un clic place le curseur ; Ctrl + clic ouvre le lien (géré dans CourseEditor)
       link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
     }),
     TextStyleKit.configure({ lineHeight: false }),
@@ -268,6 +268,7 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
         return pos <= 2 ? 'Commencez à rédiger votre cours…' : '';
       },
     }),
+    ...typographyExtensions(onLink),
     CoursePagination.configure({ onLayout }),
   ];
 }
