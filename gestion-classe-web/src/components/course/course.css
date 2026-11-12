@@ -19,7 +19,8 @@
 
 body.ce-open { overflow: hidden; }
 
-.ce-root {
+/* Variables de l'habillage : l'éditeur de cours (.ce-root) et le ruban du tableau blanc (.ce-chrome) */
+.ce-root, .ce-chrome {
   --ce-accent: var(--indigo, #4F46E5);
   --ce-accent-soft: var(--indigo-soft, #EEF0FF);
   --ce-accent-ink: #3730A3;
@@ -31,12 +32,15 @@ body.ce-open { overflow: hidden; }
   --ce-muted: #6B7280;
   --ce-desk: #E7E9EE;
   --ce-doc-font: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
-  position: fixed; inset: 0; z-index: 1000;
-  display: flex; flex-direction: column;
-  background: var(--ce-desk); color: var(--ce-text);
+  color: var(--ce-text);
   font: 13px/1.35 Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
-.ce-root button { font: inherit; color: inherit; }
+.ce-root {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; flex-direction: column;
+  background: var(--ce-desk);
+}
+.ce-root button, .ce-chrome button { font: inherit; color: inherit; }
 .ce-loading { flex: 1; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; color: var(--ce-muted); font-size: 15px; }
 
 /* ---------- Barre de titre ---------- */

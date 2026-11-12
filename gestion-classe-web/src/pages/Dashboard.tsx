@@ -39,7 +39,7 @@ export function Dashboard() {
         <HomeContent />
       </HomeDataProvider>
       {boardOpen === 'draft' && (
-        <BoardWorkspace initial={draftTab()} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
+        <BoardWorkspace initial={draftTab()} userId={user?.id ?? ''} chrome="ribbon" onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
       )}
       {boardOpen && boardOpen !== 'draft' && (
         <OpenPreparedBoard key={boardOpen.id} board={boardOpen} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />

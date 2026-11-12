@@ -29,6 +29,6 @@ export function OpenPreparedBoard({ board, userId, kind: knownKind, onClose }: P
   const kind = knownKind ?? (fetched?.id === board.id ? fetched.kind : null);
 
   if (kind === 'course') return <CourseEditor boardId={board.id} title={board.title} userId={userId} onClose={onClose} />;
-  if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} onClose={onClose} />;
+  if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome="ribbon" onClose={onClose} />;
   return null;
 }

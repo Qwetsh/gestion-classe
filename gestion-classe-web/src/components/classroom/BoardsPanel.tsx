@@ -175,7 +175,7 @@ export function BoardsPanel({ userId }: Props) {
         />
       )}
       {open === 'draft' && (
-        <BoardWorkspace initial={draftTab()} userId={userId} onClose={() => setOpen(null)} />
+        <BoardWorkspace initial={draftTab()} userId={userId} chrome="ribbon" onClose={() => setOpen(null)} />
       )}
       {open && open !== 'draft' && (
         <OpenPreparedBoard key={open.id} board={open} kind={open.is_course === undefined ? undefined : open.is_course ? 'course' : 'board'} userId={userId} onClose={() => { setOpen(null); void refresh(); }} />

@@ -677,3 +677,71 @@ html[data-wb-density="tight"] .wb .wb__bar--right { right: 6px; }
 .wbo__rotate.wbo__rotate { bottom: calc(-22px - 2 * (var(--wb-btn-sm, 40px) - 6px)); }
 .wbo__connect--e.wbo__connect--e { right: calc(-14px - (var(--wb-btn-sm, 40px) - 6px)); }
 .wbo__connect--w.wbo__connect--w { left: calc(-14px - (var(--wb-btn-sm, 40px) - 6px)); }
+
+/* =====================================================================
+   Habillage ordinateur (ruban) — BoardRibbon.tsx
+   Même moteur, autre peau : bureau clair, chrome blanc, boutons à la taille de la souris.
+   `.wb--ribbon` pour le tableau, `body.wb-ribbon-on` pour les couches portalées.
+   ===================================================================== */
+.wb.wb--ribbon,
+body.wb-ribbon-on .wbm, body.wb-ribbon-on .wbc__panel, body.wb-ribbon-on .wbr, body.wb-ribbon-on .wbn,
+body.wb-ribbon-on .wbi__panel, body.wb-ribbon-on .wbs__panel, body.wb-ribbon-on .wbx, body.wb-ribbon-on .wblb,
+body.wb-ribbon-on .wbsr, body.wb-ribbon-on .wbp, body.wb-ribbon-on .wbk, body.wb-ribbon-on .wbpop, body.wb-ribbon-on .wbft {
+  --wb-desk: #E7E9EE;
+  --wb-desk-2: #F3F4F6;
+  --wb-chrome: #FFFFFF;
+  --wb-chrome-hover: #EEF0FF;
+  --wb-chrome-sunk: #F3F4F6;
+  --wb-chrome-line: #D1D5DB;
+  --wb-on-chrome: #1F2937;
+  --wb-on-chrome-dim: #4B5563;
+  --wb-on-chrome-mute: #6B7280;
+  --wb-btn: 36px;
+  --wb-btn-sm: 32px;
+  --wb-ico: 20px;
+  --wb-swatch: 24px;
+  --wb-bar-gap: 8px;
+  --wb-bar-pad: 6px;
+  --wb-r-btn: 6px;
+  --wb-r-bar: 10px;
+  --wb-r-panel: 10px;
+  --wb-e1: 0 1px 3px rgba(0,0,0,.12);
+  --wb-e2: 0 8px 24px rgba(15,23,42,.16);
+  --wb-e3: 0 16px 40px rgba(15,23,42,.22);
+  --wb-paper-edge: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06);
+  --wb-font-ui: Inter, 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Le ruban et la barre d'état encadrent la scène (la racine .wb est une colonne flex) */
+.wbrib { flex: none; position: relative; z-index: 20; user-select: none; }
+.wbrib__title { font-weight: 600; font-size: 14px; padding: 4px 6px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wbrib__wheel { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EF4444); flex: none; }
+.wbrib__size { width: 30px; justify-content: center; padding: 0; }
+.wbrib__size i { display: block; border-radius: 50%; }
+.wbrib__bgcolors { flex-wrap: wrap; max-width: 150px; row-gap: 4px; }
+.wbrib__status { position: relative; z-index: 20; user-select: none; }
+.wbrib__statusbtn { border: 0; background: transparent; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.wbrib__statusbtn:hover { background: #E5E7EB; }
+.wbrib__zoompct { width: auto !important; min-width: 46px; padding: 0 4px; font-size: 12px !important; }
+.wbrib .ce-zoom button:disabled, .wbrib__status .ce-zoom button:disabled { opacity: .35; cursor: default; }
+
+/* Volet des pages : sous le ruban, au-dessus de la barre d'état */
+body.wb-ribbon-on .wbn.wbn { top: var(--wb-ribbon-top, 178px); bottom: 30px; background: #F3F4F6; border-left: 1px solid #E2E4E9; }
+body.wb-ribbon-on .wbn.wbn .wbn__foot { border-top-color: #E2E4E9; }
+
+/* Barres posées sur l'objet et panneaux : clairs, bordure fine */
+body.wb-ribbon-on .wbft { background: #FFFFFF; border-color: #C7D2FE; box-shadow: var(--wb-e2); border-radius: 10px; }
+body.wb-ribbon-on .wbft .wbft__arrow { background: #FFFFFF; border-color: #C7D2FE; }
+body.wb-ribbon-on .wbft .wbft__label { color: #6B7280; }
+.wb.wb--ribbon .wb__zoom { display: none; }
+/* La page posée sur le bureau, avec de l'air autour (comme une diapositive) */
+.wb.wb--ribbon { background: var(--wb-desk); }
+.wb.wb--ribbon .wb__stage { margin-top: 18px; margin-bottom: 18px; margin-left: 24px; }
+/* Volet des pages : pied discret (les mêmes actions sont dans l'onglet Page et la barre d'état) */
+body.wb-ribbon-on .wbn.wbn .wbn__head { font: 600 11px/1 Inter, system-ui, sans-serif; letter-spacing: .08em; }
+body.wb-ribbon-on .wbn.wbn .wbn__thumb { box-shadow: 0 0 0 1px #D1D5DB; }
+body.wb-ribbon-on .wbn.wbn .wbn__thumb.is-active { box-shadow: 0 0 0 3px var(--wb-select); }
+body.wb-ribbon-on .wbn.wbn .wbn__foot { padding: 8px 10px; }
+body.wb-ribbon-on .wbn.wbn .wbn__btn { height: 30px; min-height: 0; border-radius: 6px; font-size: 12px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; box-shadow: none; }
+body.wb-ribbon-on .wbn.wbn .wbn__btn:disabled { opacity: .4; }
+body.wb-ribbon-on .wbn.wbn .wbn__btn--add { background: #4F46E5; border-color: #4F46E5; color: #FFFFFF; }
