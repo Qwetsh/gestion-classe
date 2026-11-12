@@ -1866,6 +1866,18 @@ a.dash__card-link:hover { text-decoration: underline; }
 }
 .wtt-pop__board:hover { border-color: var(--indigo); }
 .wtt-pop__board-title { font-weight: 600; }
+/* Tableau préparé pour un cours (migration 065) */
+.wtt-pop__links { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.wtt__link--muted { color: var(--text-muted); }
+.wtt__link:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
+.wtt-pop__btn--block { width: 100%; text-align: center; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
+.wtt-pop__btn:disabled { opacity: 0.6; cursor: default; }
+.wtt-pop__dup { display: flex; flex-direction: column; gap: 4px; }
+.wtt-pop__dup-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+.wtt-pop__dup-row.is-disabled { cursor: default; opacity: 0.6; }
+.wtt-pop__dup-row input { accent-color: var(--indigo); width: 16px; height: 16px; flex-shrink: 0; }
+.wtt-pop__dup-name { font-weight: 600; flex: 1; min-width: 0; }
+.wtt__lesson-board { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--indigo-ink); }
 .wtt-pop__student {
   display: flex; align-items: center; gap: 8px; padding: 4px 6px; margin: 0 -6px;
   border-radius: var(--radius-xs); color: inherit; text-decoration: none;

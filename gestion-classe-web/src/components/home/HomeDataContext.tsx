@@ -26,6 +26,10 @@ import {
   fetchLessonNotes, indexLessonNotes, lessonNoteKey, saveLessonNote, setLessonNoteDone,
   type LessonNote,
 } from '../../lib/timetable/lessonNotesQueries';
+import {
+  createLessonBoard, duplicateLessonBoard, fetchLessonBoards, indexLessonBoards, removeLessonBoard,
+  type LessonBoard, type LessonRef,
+} from '../../lib/timetable/lessonBoardsQueries';
 
 // ---- Types ----
 
@@ -135,6 +139,17 @@ export interface HomeData {
   /** Marque une note « vue » (ou la remet en avant) */
   setNoteDone: (note: LessonNote, done: boolean) => Promise<void>;
 
+  /** Tableaux préparés pour les cours de la semaine affichée (migration 065), indexés comme les notes */
+  lessonBoards: Map<string, LessonBoard>;
+  /** Tableaux de cours de la semaine affichée et des trois semaines autour (pour « reprendre celui de… ») */
+  nearbyLessonBoards: LessonBoard[];
+  /** Crée le tableau d'un cours (vide ou copie d'un autre tableau) */
+  createBoardForLesson: (lesson: LessonRef, sourceBoardId?: string) => Promise<LessonBoard>;
+  /** Copie un tableau de cours vers d'autres cours ; renvoie les cours en échec */
+  duplicateBoardToLessons: (source: LessonBoard, targets: LessonRef[]) => Promise<{ created: LessonBoard[]; failed: string[] }>;
+  /** Supprime le tableau d'un cours */
+  removeBoardForLesson: (lb: LessonBoard) => Promise<void>;
+
   // Repères de temps, calculés une fois pour toute la page
   now: Date;
   tomorrow: Date;
@@ -197,7 +212,12 @@ export function useHomeData(): HomeData {
   return ctx;
 }
 
-export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNode; onOpenBoard: (board?: { id: string; title: string }) => void }) {
+export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
+  children: ReactNode;
+  onOpenBoard: (board?: { id: string; title: string }) => void;
+  /** Augmente à chaque fermeture du tableau blanc : les tableaux de cours sont relus (titre, date de modification) */
+  boardVersion?: number;
+}) {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -299,6 +319,41 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
       next.set(lessonNoteKey(note.startsAt, note.label), { ...note, done });
       return next;
     });
+  }, []);
+
+  // Tableaux préparés pour les cours (migration 065) : semaine affichée ± 3 semaines
+  const [nearbyLessonBoards, setNearbyLessonBoards] = useState<LessonBoard[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const monday = getMonday(new Date());
+    monday.setDate(monday.getDate() + weekOffset * 7);
+    const from = new Date(monday);
+    from.setDate(from.getDate() - 21);
+    const to = new Date(monday);
+    to.setDate(to.getDate() + 28);
+    fetchLessonBoards(user.id, from, to)
+      .then(rows => { if (!cancelled) setNearbyLessonBoards(rows); });
+    return () => { cancelled = true; };
+  }, [user, weekOffset, boardVersion]);
+
+  const createBoardForLesson = useCallback(async (lesson: LessonRef, sourceBoardId?: string) => {
+    if (!user) throw new Error('Non connecté');
+    const lb = await createLessonBoard(user.id, lesson, sourceBoardId);
+    setNearbyLessonBoards(prev => [...prev, lb]);
+    return lb;
+  }, [user]);
+
+  const duplicateBoardToLessons = useCallback(async (source: LessonBoard, targets: LessonRef[]) => {
+    if (!user) throw new Error('Non connecté');
+    const res = await duplicateLessonBoard(user.id, source, targets);
+    setNearbyLessonBoards(prev => [...prev, ...res.created]);
+    return res;
+  }, [user]);
+
+  const removeBoardForLesson = useCallback(async (lb: LessonBoard) => {
+    await removeLessonBoard(lb);
+    setNearbyLessonBoards(prev => prev.filter(b => b.id !== lb.id));
   }, []);
 
   useEffect(() => {
@@ -735,6 +790,11 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
     lessonNotes,
     saveNote,
     setNoteDone,
+    lessonBoards: indexLessonBoards(nearbyLessonBoards),
+    nearbyLessonBoards,
+    createBoardForLesson,
+    duplicateBoardToLessons,
+    removeBoardForLesson,
     now,
     tomorrow,
     openBoard: onOpenBoard,

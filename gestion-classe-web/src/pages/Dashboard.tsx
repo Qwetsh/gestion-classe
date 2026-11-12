@@ -21,6 +21,7 @@ import '../styles/refonte-accueil.css';
 export function Dashboard() {
   const { user } = useAuth();
   const [boardOpen, setBoardOpen] = useState<BoardTab | null>(null);
+  const [boardVersion, setBoardVersion] = useState(0);
 
   // Chargement de la disposition enregistrée
   useEffect(() => {
@@ -32,11 +33,11 @@ export function Dashboard() {
 
   return (
     <Layout fluid>
-      <HomeDataProvider onOpenBoard={(board) => setBoardOpen(board ? boardTab(board) : draftTab())}>
+      <HomeDataProvider boardVersion={boardVersion} onOpenBoard={(board) => setBoardOpen(board ? boardTab(board) : draftTab())}>
         <HomeContent />
       </HomeDataProvider>
       {boardOpen && (
-        <BoardWorkspace initial={boardOpen} userId={user?.id ?? ''} onClose={() => setBoardOpen(null)} />
+        <BoardWorkspace initial={boardOpen} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
       )}
     </Layout>
   );

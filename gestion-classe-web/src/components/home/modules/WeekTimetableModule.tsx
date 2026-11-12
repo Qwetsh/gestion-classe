@@ -7,6 +7,7 @@ import { QuickIcon, formatTime, getClassColor, shortGroup } from '../homeHelpers
 import { assignSessions, percentOfDay, sameDay, type PlacedLesson } from '../../../lib/timetable/weekView';
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
 import { noteForLesson, type LessonNote } from '../../../lib/timetable/lessonNotesQueries';
+import { boardForLesson } from '../../../lib/timetable/lessonBoardsQueries';
 import { LessonPopover } from './LessonPopover';
 import { classTone } from '../../../lib/classColors';
 
@@ -18,7 +19,7 @@ import { classTone } from '../../../lib/classColors';
 export function WeekTimetableModule() {
   const {
     week, weekSource, weekLoading, weekOffset, isCurrentWeek, loadWeek,
-    classNames, timetableImport, reloadTimetableImport, weekSessions, lessonNotes,
+    classNames, timetableImport, reloadTimetableImport, weekSessions, lessonNotes, lessonBoards,
   } = useHomeData();
   const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<{ lesson: PlacedLesson; anchor: DOMRect } | null>(null);
@@ -185,6 +186,7 @@ export function WeekTimetableModule() {
                   current={l.start <= now && l.end > now}
                   session={sessionByLesson.get(l.id) ?? null}
                   note={noteForLesson(lessonNotes, l)}
+                  hasBoard={!!boardForLesson(lessonBoards, l)}
                   selected={selected?.lesson.id === l.id}
                   onSelect={(anchor) => setSelected(prev => (prev?.lesson.id === l.id ? null : { lesson: l, anchor }))}
                 />
@@ -221,7 +223,7 @@ export function WeekTimetableModule() {
 }
 
 function LessonBlock({
-  lesson, startHour, endHour, color, showSubject, past, current, session, note, selected, onSelect,
+  lesson, startHour, endHour, color, showSubject, past, current, session, note, hasBoard, selected, onSelect,
 }: {
   lesson: PlacedLesson;
   startHour: number;
@@ -233,6 +235,8 @@ function LessonBlock({
   session: WeekSession | null;
   /** note écrite sur ce cours depuis l'accueil (null : aucune) */
   note: LessonNote | null;
+  /** un tableau a été préparé pour ce cours (migration 065) */
+  hasBoard: boolean;
   selected: boolean;
   onSelect: (anchor: DOMRect) => void;
 }) {
@@ -266,7 +270,7 @@ function LessonBlock({
         width: `calc(${100 / lesson.lanes}% - 6px)`,
         ['--lesson-color' as string]: color,
       }}
-      title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null, note ? `Note : ${note.content}` : null].filter(Boolean).join(' · ')}
+      title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null, note ? `Note : ${note.content}` : null, hasBoard ? 'Tableau préparé' : null].filter(Boolean).join(' · ')}
     >
       <div className="wtt__lesson-name">
         {/* Direction C : la classe en puce teintée par niveau ; un cours sans classe garde son libellé neutre */}
@@ -276,6 +280,7 @@ function LessonBlock({
         {canceled && <span className="wtt__badge wtt__badge--neg">Annulé</span>}
         {lesson.status === 'modified' && <span className="wtt__badge">Modifié</span>}
         {lesson.status === 'exceptional' && <span className="wtt__badge">Except.</span>}
+        {hasBoard && <span className="wtt__lesson-board" title="Tableau préparé" aria-label="Tableau préparé">▤</span>}
       </div>
       {showSubject && <div className="wtt__lesson-sub">{lesson.subject?.toLowerCase()}</div>}
       {session && (

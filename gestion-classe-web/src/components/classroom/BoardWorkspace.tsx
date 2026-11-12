@@ -24,6 +24,8 @@ type Shared = Pick<WhiteboardProps, 'userId' | 'ticker' | 'classroom' | 'classNa
 interface Props extends Shared {
   /** Onglet de départ : la séance en classe, le tableau ouvert depuis l'accueil, le brouillon. */
   initial: BoardTab;
+  /** Tableau préparé du cours, versé dans l'onglet de la séance au lancement (cf. Whiteboard). */
+  seedBoard?: WhiteboardProps['seedBoard'];
   onClose: () => void;
 }
 
@@ -35,7 +37,7 @@ function loadTabs(key: string): { tabs: BoardTab[]; active: string } | null {
   } catch { return null; }
 }
 
-export function BoardWorkspace({ initial, onClose, ...shared }: Props) {
+export function BoardWorkspace({ initial, onClose, seedBoard, ...shared }: Props) {
   const [state, setState] = useState<{ tabs: BoardTab[]; active: string }>(() => {
     const saved = loadTabs(initial.key);
     if (saved && saved.tabs.some((t) => t.key === initial.key)) return saved;
@@ -119,6 +121,7 @@ export function BoardWorkspace({ initial, onClose, ...shared }: Props) {
             topOffset={barH}
             onOpenInTab={(b) => openTab(boardTab(b))}
             onOpenDraftTab={() => openTab(draftTab())}
+            seedBoard={t.kind === 'session' ? seedBoard : undefined}
             onClose={onClose}
           />
         </div>
