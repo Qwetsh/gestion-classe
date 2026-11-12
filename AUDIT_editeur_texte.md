@@ -1088,3 +1088,25 @@ du professeur.
 
 **Non fait dans ce lot** : « recommencer la numérotation à… » d'une liste ; les numéros de titres
 ne partent pas dans un copier-coller (ils sont dessinés, à recalculer pour l'export Word du T10).
+
+### T3 — fait le 12/11/2026 (branche `feat/texte-t3`)
+
+- **Insertion › Blocs** (`courseBlocks.ts`, `CourseBlocksMenu`) : cartouche d'évaluation (Nom,
+  Prénom, Classe, Date, Note sur le total, Appréciation), question avec barème et lignes
+  pointillées, QCM (cases à cocher), vrai ou faux, tableau de compétences (I, F, S, TB), encadré
+  libre. Ce sont des gabarits de contenu ordinaire : une fois posés, ils se modifient comme le reste.
+- **Pointillés de réponse** (`dots`, nœud en ligne) : jusqu'au bord de la ligne (le paragraphe
+  devient flexible, `:has()`), ou d'une longueur choisie (onglet contextuel, 0,5 à 16 cm).
+  Zone d'écriture : nouveau type « Pointillés » (une ligne de points tous les 8 mm).
+- **Barème** (`points`) calé à droite, réglable au demi-point ; **total** (`pointsTotal`)
+  recalculé à chaque modification, jamais stocké.
+- **Encadré libre** : titre et couleur au choix ; tout encadré peut recevoir un titre personnalisé
+  (onglet contextuel « Encadré », disponible quand le curseur est dans un encadré).
+- **QR code** (`CourseQrDialog`, bibliothèque `qrcode` déjà présente) : adresse, aperçu, taille
+  de 2,5 à 5 cm ; inséré comme une image.
+- Vérifié dans le navigateur : insertion des six blocs, total (2 + 1 = 3, puis 5,5 après réglage),
+  pointillés à 4 cm exacts, encadré libre (titre, couleur), QR code à 3 cm, aucun bloc hors page.
+
+**Non vérifié** : lecture du QR code au téléphone sur la feuille imprimée (il passe par la
+conversion JPEG des images) ; rendu imprimé des pointillés. **Non fait** : le contenu exact du
+cartouche attend la réponse à la question 9.

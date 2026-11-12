@@ -9,13 +9,15 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { Icon, type IconName } from './courseIcons';
-import { CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
+import { CALLOUT_COLORS, CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
+import { CourseBlocksMenu } from './CourseBlocksMenu';
+import { formatPoints } from './courseEval';
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
 import { CourseSymbolPicker } from './CourseSymbolPicker';
 import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
 import { HEADING_NUMBERING_LABELS, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
 
-export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'image' | 'encart' | 'zone';
+export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points';
 
 interface Props {
   editor: Editor;
@@ -23,6 +25,7 @@ interface Props {
   onExportPdf: () => void;
   onRename: () => void;
   onInsertImage: () => void;
+  onInsertQr: () => void;
   onInsertLink: () => void;
   onPaste: () => void;
   zoom: number;
@@ -80,7 +83,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -113,7 +116,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         h2: e.isActive('heading', { level: 2 }),
         h3: e.isActive('heading', { level: 3 }),
         paragraph: e.isActive('paragraph') && !e.isActive('callout'),
-        callout: (['definition', 'retenir', 'consigne', 'exemple'] as CalloutKind[]).find((k) => e.isActive('callout', { kind: k })) ?? null,
+        callout: (Object.keys(CALLOUT_LABELS) as CalloutKind[]).find((k) => e.isActive('callout', { kind: k })) ?? null,
+        calloutTitle: (e.getAttributes('callout') as { title?: string | null }).title ?? null,
+        calloutColor: ((e.getAttributes('callout') as { color?: string | null }).color ?? '') as string,
+        onDots: e.isActive('dots'),
+        dotsCm: (e.getAttributes('dots') as { cm?: number | null }).cm ?? null,
+        onPoints: e.isActive('points'),
+        pointsValue: Number((e.getAttributes('points') as { value?: number }).value) || 0,
         fontFamily: ts.fontFamily ?? '',
         fontSize: ts.fontSize ?? '',
         color: ts.color ?? '',
@@ -135,12 +144,12 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
 
   // Onglets contextuels (image, encart, zone) : on y bascule quand ils apparaissent ; quand ils
   // disparaissent, on revient à l'onglet d'où l'on venait. Calculé au rendu (pas d'effet).
-  const ctx: RibbonTab | null = s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : null;
+  const ctx: RibbonTab | null = s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : s.onDots ? 'dots' : s.onPoints ? 'points' : null;
   if (view.ctx !== ctx) {
     const back: RibbonTab = view.ctx === 'image' ? 'accueil' : 'insertion';
     setView({ tab: ctx ?? (view.tab === view.ctx ? back : view.tab), ctx });
   }
-  const tab: RibbonTab = view.tab === 'tableau' && !s.inTable ? 'accueil' : view.tab;
+  const tab: RibbonTab = (view.tab === 'tableau' && !s.inTable) || (view.tab === 'encadre' && !s.callout) ? 'accueil' : view.tab;
   const setTab = (t: RibbonTab) => setView((v) => ({ ...v, tab: t }));
 
   const c = () => editor.chain().focus();
@@ -158,6 +167,15 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     const next = dir > 0 ? FONT_SIZES_PT.find((p) => p > current) : [...FONT_SIZES_PT].reverse().find((p) => p < current);
     if (!next) return;
     if (next === 12) c().unsetFontSize().run(); else c().setFontSize(`${next}pt`).run();
+  };
+
+  // Menu des blocs, ancré sous son bouton
+  const blocksBtnRef = useRef<HTMLSpanElement>(null);
+  const [blocks, setBlocks] = useState<{ left: number; top: number } | null>(null);
+  const toggleBlocks = () => {
+    if (blocks) { setBlocks(null); return; }
+    const r = blocksBtnRef.current?.querySelector('button')?.getBoundingClientRect();
+    setBlocks({ left: r?.left ?? 200, top: (r?.bottom ?? 170) + 6 });
   };
 
   // Palette de symboles, ancrée sous son bouton
@@ -188,7 +206,10 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
     ...(s.onImage ? [{ id: 'image' as const, label: 'Image', contextual: true }] : []),
     ...(s.onEncart ? [{ id: 'encart' as const, label: 'Encart tableau', contextual: true }] : []),
+    ...(s.callout ? [{ id: 'encadre' as const, label: 'Encadré', contextual: true }] : []),
     ...(s.onZone ? [{ id: 'zone' as const, label: 'Zone d’écriture', contextual: true }] : []),
+    ...(s.onDots ? [{ id: 'dots' as const, label: 'Pointillés', contextual: true }] : []),
+    ...(s.onPoints ? [{ id: 'points' as const, label: 'Barème', contextual: true }] : []),
   ];
 
   return (
@@ -353,7 +374,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 <button type="button" className={`ce-style ${s.h3 ? 'is-on' : ''}`} onClick={() => c().toggleHeading({ level: 3 }).run()} title="Titre 3 (Ctrl+Alt+3)">
                   <span className="ce-style__h3">a. Sous-partie</span><small>Titre 3</small>
                 </button>
-                {(Object.keys(CALLOUT_LABELS) as CalloutKind[]).map((k) => (
+                {(Object.keys(CALLOUT_LABELS) as CalloutKind[]).filter((k) => k !== 'libre').map((k) => (
                   <button key={k} type="button" className={`ce-style ${s.callout === k ? 'is-on' : ''}`} onClick={() => c().toggleCallout(k).run()} title={`Encadré « ${CALLOUT_LABELS[k]} » (cliquer à nouveau pour le retirer)`}>
                     <span className={`ce-style__box ce-style__box--${k}`}>{CALLOUT_LABELS[k]}</span><small>Encadré</small>
                   </button>
@@ -372,6 +393,14 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Spécial cours">
               <Big icon="encart" label="Encart tableau" title="Bloc 16:9 de la largeur du texte : exactement un écran en classe. Double-clic pour y dessiner." onClick={() => c().insertEncart().run()} />
               <Big icon="zone" label="Zone d'écriture" title="Lignes Seyès, carreaux ou blanc : imprimées vides pour l'élève, on y écrit au stylet en classe" onClick={() => c().insertWritingZone().run()} />
+            </Group>
+            <Group label="Fiche et évaluation">
+              <span ref={blocksBtnRef} style={{ display: 'contents' }}>
+                <Big icon="blocks" label="Blocs" title="Cartouche d'évaluation, question avec barème, QCM, vrai ou faux, tableau de compétences, encadré libre" on={!!blocks} onClick={toggleBlocks} />
+              </span>
+              <Big icon="dots" label="Pointillés" title="Pointillés de réponse jusqu'au bord de la ligne (longueur réglable ensuite)" onClick={() => c().insertDots().run()} />
+              <Big icon="points" label="Barème" title="Points de la question (« / 2 »), calés à droite ; le total se calcule tout seul" onClick={() => c().insertPoints(1).run()} />
+              <Big icon="qr" label="QR code" title="QR code vers une adresse (vidéo, exercice en ligne…)" onClick={onInsertQr} />
             </Group>
             <Group label="Texte">
               <Big icon="link" label="Lien" title="Lien vers une page web ou une adresse e-mail (Ctrl+K)" on={s.link} onClick={onInsertLink} />
@@ -442,6 +471,94 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
             <Group label="Tableau">
               <Big icon="trash" label="Supprimer le tableau" onClick={() => c().deleteTable().run()} />
+            </Group>
+          </>
+        )}
+
+        {blocks && (
+          <CourseBlocksMenu left={blocks.left} top={blocks.top} onPick={(b) => c().insertContent(b.build()).run()} onClose={() => setBlocks(null)} />
+        )}
+
+        {tab === 'encadre' && (
+          <>
+            <Group label="Type">
+              {(Object.keys(CALLOUT_LABELS) as CalloutKind[]).map((k) => (
+                <button key={k} type="button" className={`ce-style ${s.callout === k ? 'is-on' : ''}`} onClick={() => c().updateAttributes('callout', { kind: k, title: null }).run()} title={k === 'libre' ? 'Encadré libre : titre et couleur au choix' : `Encadré « ${CALLOUT_LABELS[k]} »`}>
+                  <span className={`ce-style__box ce-style__box--${k}`}>{k === 'libre' ? 'Libre' : CALLOUT_LABELS[k]}</span><small>Encadré</small>
+                </button>
+              ))}
+            </Group>
+            <Group label="Titre">
+              <div className="ce-stack">
+                <input
+                  className="ce-input"
+                  value={s.calloutTitle ?? (s.callout ? CALLOUT_LABELS[s.callout] : '')}
+                  onChange={(e) => editor.chain().updateAttributes('callout', { title: e.target.value }).run()}
+                  placeholder="Sans titre"
+                  aria-label="Titre de l'encadré"
+                />
+                <Sm title="Reprendre le titre du type" disabled={s.calloutTitle === null} onClick={() => c().updateAttributes('callout', { title: null }).run()}><span className="ce-glyph ce-glyph--sm">Titre par défaut</span></Sm>
+              </div>
+            </Group>
+            <Group label="Couleur (encadré libre)">
+              <div className="ce-stack">
+                <div className="ce-row">
+                  {CALLOUT_COLORS.map((col) => (
+                    <button key={col} type="button" className={`ce-swatch ${s.callout === 'libre' && s.calloutColor.toLowerCase() === col.toLowerCase() ? 'is-on' : ''}`} style={{ background: col }} title={`Couleur ${col}`} aria-label={`Couleur ${col}`} onClick={() => c().updateAttributes('callout', { kind: 'libre', color: col }).run()} />
+                  ))}
+                  <label className="ce-colorpick" title="Autre couleur…">
+                    <span className="ce-colorpick__wheel" />
+                    <input type="color" value={/^#[0-9a-f]{6}$/i.test(s.calloutColor) ? s.calloutColor : '#0ea5e9'} onChange={(e) => c().updateAttributes('callout', { kind: 'libre', color: e.target.value }).run()} aria-label="Autre couleur d'encadré" />
+                  </label>
+                </div>
+              </div>
+            </Group>
+            <Group label="Encadré">
+              <Big icon="clear" label="Retirer l'encadré" title="Le texte reste, l'encadré disparaît" onClick={() => c().lift('callout').run()} />
+            </Group>
+          </>
+        )}
+
+        {tab === 'dots' && (
+          <>
+            <Group label="Longueur">
+              <Big icon="dots" label="Jusqu'au bord" on={s.dotsCm === null} onClick={() => updateNode('dots', { cm: null })} />
+              <div className="ce-stack">
+                <div className="ce-row ce-lines">
+                  <Sm title="Plus court" onClick={() => updateNode('dots', { cm: Math.max(0.5, (s.dotsCm ?? 4) - 0.5) })}><span className="ce-glyph">−</span></Sm>
+                  <span className="ce-lines__n">{s.dotsCm === null ? 'ligne' : `${String(s.dotsCm).replace('.', ',')} cm`}</span>
+                  <Sm title="Plus long" onClick={() => updateNode('dots', { cm: Math.min(16, (s.dotsCm ?? 4) + 0.5) })}><span className="ce-glyph">+</span></Sm>
+                </div>
+                <div className="ce-row">
+                  {[2, 4, 6, 8].map((n) => <Sm key={n} label={`${n} cm`} title={`${n} cm`} on={s.dotsCm === n} onClick={() => updateNode('dots', { cm: n })} />)}
+                </div>
+              </div>
+            </Group>
+            <Group label="Supprimer">
+              <Big icon="trash" label="Supprimer" onClick={() => c().deleteSelection().run()} />
+            </Group>
+          </>
+        )}
+
+        {tab === 'points' && (
+          <>
+            <Group label="Points de la question">
+              <div className="ce-stack">
+                <div className="ce-row ce-lines">
+                  <Sm title="Un demi-point de moins" onClick={() => updateNode('points', { value: Math.max(0, s.pointsValue - 0.5) })}><span className="ce-glyph">−</span></Sm>
+                  <span className="ce-lines__n">/ {formatPoints(s.pointsValue)}</span>
+                  <Sm title="Un demi-point de plus" onClick={() => updateNode('points', { value: s.pointsValue + 0.5 })}><span className="ce-glyph">+</span></Sm>
+                </div>
+                <div className="ce-row">
+                  {[1, 2, 3, 4, 5].map((n) => <Sm key={n} label={String(n)} title={`${n} point${n > 1 ? 's' : ''}`} on={s.pointsValue === n} onClick={() => updateNode('points', { value: n })} />)}
+                </div>
+              </div>
+            </Group>
+            <Group label="Total">
+              <Big icon="sigma" label="Insérer le total" title="Insère le total du barème à côté (il se recalcule tout seul)" onClick={() => c().setTextSelection(editor.state.selection.to).insertPointsTotal().run()} />
+            </Group>
+            <Group label="Supprimer">
+              <Big icon="trash" label="Supprimer" onClick={() => c().deleteSelection().run()} />
             </Group>
           </>
         )}

@@ -50,6 +50,13 @@ const PATHS = {
   checklist: '<rect x="3" y="4" width="6" height="6" rx="1"/><path d="M4.5 7l1.2 1.2L7.8 6"/><rect x="3" y="14" width="6" height="6" rx="1"/><path d="M12 7h9M12 17h9"/>',
   firstLine: '<path d="M9 6h11M4 10h16M4 14h16M4 18h10"/><path d="M3 4.5l3 1.5-3 1.5"/>',
   hyphen: '<path d="M4 7h9M4 12h6M4 17h9"/><path d="M14 12h3" stroke-width="2.4"/><path d="M19 7v10"/>',
+  blocks: '<rect x="3" y="3" width="8" height="5" rx="1"/><rect x="13" y="3" width="8" height="9" rx="1"/><rect x="3" y="10" width="8" height="11" rx="1"/><rect x="13" y="14" width="8" height="7" rx="1"/>',
+  dots: '<path d="M3 16h.01M7 16h.01M11 16h.01M15 16h.01M19 16h.01" stroke-width="2.6"/><path d="M4 9h7" opacity=".6"/>',
+  points: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 15l3-6"/><path d="M13.5 10.200c.6-.8 2.5-.8 2.5.6 0 1.2-2.5 1.7-2.5 3.200h2.7"/>',
+  cartouche: '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 11h18M9 5v6M15 5v6M9 11v8"/>',
+  question: '<path d="M4 7h12M4 12h16M4 17h16" stroke-dasharray="0"/><path d="M19 5v4" stroke-width="2.4"/>',
+  competences: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M13 4v16M17 4v16M3 14.500h18"/>',
+  callout: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 5v14" stroke-width="3.2"/><path d="M8 10h9M8 14h6"/>',
   // ---- Tableau blanc (ruban) ----
   select: '<path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z"/>',
   pen: '<path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/>',

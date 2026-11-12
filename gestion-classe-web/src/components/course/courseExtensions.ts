@@ -22,18 +22,23 @@ import { EncartView, type EncartOptions } from './EncartView';
 import { MM } from '../../lib/course/coursePage';
 import { typographyExtensions } from './courseTypography';
 import { CourseParagraph } from './courseParagraph';
+import { Dots, Points, PointsTotal } from './courseEval';
 import { OrderedList, TaskItem, TaskList } from '@tiptap/extension-list';
 
 // ---- Encadrés ----
 
-export type CalloutKind = 'definition' | 'retenir' | 'consigne' | 'exemple';
+export type CalloutKind = 'definition' | 'retenir' | 'consigne' | 'exemple' | 'libre';
 
 export const CALLOUT_LABELS: Record<CalloutKind, string> = {
   definition: 'Définition',
   retenir: 'À retenir',
   consigne: 'Consigne',
   exemple: 'Exemple',
+  libre: 'Encadré',
 };
+
+/** Couleurs proposées pour l'encadré libre. */
+export const CALLOUT_COLORS = ['#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#64748B'];
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -68,6 +73,20 @@ export const Callout = Node.create({
         default: 'definition',
         parseHTML: (el) => el.getAttribute('data-callout') ?? 'definition',
         renderHTML: (attrs) => ({ 'data-callout': attrs.kind }),
+      },
+      /** Titre affiché en tête ; null = celui du type (« Définition »…) ; '' = pas de titre. */
+      title: {
+        default: null,
+        parseHTML: (el) => (el.hasAttribute('data-custom-title') ? el.getAttribute('data-title') ?? '' : null),
+        renderHTML: (attrs) => (attrs.title == null
+          ? { 'data-title': CALLOUT_LABELS[attrs.kind as CalloutKind] ?? '' }
+          : { 'data-title': attrs.title, 'data-custom-title': '' }),
+      },
+      /** Couleur de l'encadré libre (#rrggbb). */
+      color: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-color'),
+        renderHTML: (attrs) => (attrs.color ? { 'data-color': attrs.color, style: `--ce-callout: ${attrs.color}` } : {}),
       },
     };
   },
@@ -158,7 +177,7 @@ export const Encart = Node.create<EncartOptions>({
 
 // ---- Zone d'écriture ----
 
-export type WritingZoneStyle = 'seyes' | 'carreaux' | 'lignes' | 'blanc';
+export type WritingZoneStyle = 'seyes' | 'carreaux' | 'lignes' | 'pointilles' | 'blanc';
 
 export interface WritingZoneAttrs {
   style: WritingZoneStyle;
@@ -169,6 +188,7 @@ export const WRITING_ZONE_LABELS: Record<WritingZoneStyle, string> = {
   seyes: 'Seyès',
   carreaux: 'Carreaux 5 mm',
   lignes: 'Lignes',
+  pointilles: 'Pointillés',
   blanc: 'Blanc',
 };
 
@@ -281,6 +301,9 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
     TaskList,
     TaskItem.configure({ nested: true }),
     CourseParagraph,
+    Dots,
+    Points,
+    PointsTotal,
     UniqueID.configure({ types: BLOCK_TYPES, attributeName: 'blockId' }),
     Placeholder.configure({
       includeChildren: false,

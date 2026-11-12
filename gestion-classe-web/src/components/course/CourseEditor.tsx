@@ -27,6 +27,8 @@ import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { Whiteboard } from '../classroom/Whiteboard';
 import { loadEncartPages } from './encartStore';
 import { CourseLinkDialog } from './CourseLinkDialog';
+import { CourseQrDialog } from './CourseQrDialog';
+import { MM } from '../../lib/course/coursePage';
 import './course.css';
 
 interface Props {
@@ -128,6 +130,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   /** Encart ouvert dans le tableau blanc (identifiant de sa page), ou null. */
   const [editingEncart, setEditingEncart] = useState<string | null>(null);
   /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
+  const [qrOpen, setQrOpen] = useState(false);
   const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -196,14 +199,14 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 
   // ---- Images (bouton, collage, glisser-déposer) ----
 
-  const uploadImages = useCallback(async (files: File[], at?: number) => {
+  const uploadImages = useCallback(async (files: File[], at?: number, widthPx?: number) => {
     const ed = editorRef.current;
     if (!ed) return;
     for (const f of files) {
       try {
         toast('Envoi de l’image…', 'info');
         const img = await uploadBoardImage(f, userId, `board:${boardId}`);
-        const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(COL_W, img.width)) } };
+        const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
         if (at != null) ed.chain().focus().insertContentAt(at, node).run();
         else ed.chain().focus().insertContent(node).run();
       } catch (err) {
@@ -505,6 +508,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         onExportPdf={() => { toast('Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF ».', 'info'); window.setTimeout(print, 400); }}
         onRename={() => setRenaming(true)}
         onInsertImage={() => fileRef.current?.click()}
+        onInsertQr={() => setQrOpen(true)}
         onInsertLink={insertLink}
         onPaste={() => void paste()}
         zoom={zoom}
@@ -564,6 +568,13 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {qrOpen && (
+        <CourseQrDialog
+          onInsert={(file, cm) => { void uploadImages([file], undefined, cm * 10 * MM); }}
+          onClose={() => { setQrOpen(false); editor.commands.focus(); }}
+        />
+      )}
 
       {linkDialog && (
         <CourseLinkDialog
