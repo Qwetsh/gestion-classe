@@ -1064,3 +1064,27 @@ du professeur.
   faire par Thomas (un cours de trois pages, marges à la règle, carreaux Seyès à 8 mm).
 - Les **polices supplémentaires** (dys, cursive) : licences à vérifier, question 11 ouverte.
 - La **taille de police libre** (hors liste) et les raccourcis clavier d'agrandissement.
+
+### T2 — fait le 12/11/2026 (branche `feat/texte-t2`)
+
+- **Interligne** (1,0 · 1,15 · Normal · 1,5 · 2,0), **espace avant / après** (du style, aucun,
+  petit, moyen, grand), **retrait gauche** par crans de 1,25 cm (boutons, Ctrl+M / Ctrl+Maj+M ;
+  dans une liste les mêmes boutons changent de niveau), **alinéa** de première ligne. Portés par
+  les paragraphes et les titres (`courseParagraph.ts`) ; la pagination suit.
+- **Titres numérotés** (onglet Mise en page) : sans numéros (défaut), « I. puis 1. », « 1. puis
+  a. », « 1. puis 1.1 ». Compteurs CSS : rien n'est écrit dans le texte, la numérotation se
+  recalcule quand on déplace ou supprime un titre. Le Titre 1 (titre du cours) n'est pas numéroté.
+- **Cases à cocher** (liste de tâches, imbriquable).
+- **Type de numéros** d'une liste numérotée : 1. · a. · A. · I. · i. (F7 corrigé : `data-kind`,
+  l'attribut `type` ne distinguant pas a de A en CSS).
+- **Coupure des mots** en fin de ligne (onglet Mise en page).
+- Réglages du document dans `doc.settings` (`numbering`, `hyphens`) — absents des anciens cours,
+  valeurs par défaut appliquées ; pas de changement de version.
+- Nouvel onglet **Mise en page** (titres, coupure des mots, saut de page) : il accueillera les
+  marges et les en-têtes du lot T9.
+- Vérifié dans le navigateur : chaque réglage, numérotation dans les trois schémas (remise à
+  zéro des sous-parties), cases à cocher, listes a. et A., enregistrement et relecture des
+  réglages, aucun bloc hors page.
+
+**Non fait dans ce lot** : « recommencer la numérotation à… » d'une liste ; les numéros de titres
+ne partent pas dans un copier-coller (ils sont dessinés, à recalculer pour l'export Word du T10).

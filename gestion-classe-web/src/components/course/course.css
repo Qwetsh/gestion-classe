@@ -77,7 +77,7 @@ body.ce-open { overflow: hidden; }
 .ce-tab--ctx { color: var(--ce-orange) !important; font-weight: 600; }
 .ce-tab--ctx.is-active { border-bottom-color: var(--ce-orange); }
 
-.ce-ribbon { height: 98px; display: flex; align-items: stretch; padding: 4px 8px 0; overflow-x: auto; overflow-y: hidden; }
+.ce-ribbon { height: 98px; display: flex; align-items: stretch; padding: 4px 8px 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .ce-group { display: flex; flex-direction: column; padding: 0 8px; border-right: 1px solid var(--ce-line); flex: none; }
 .ce-group:last-child { border-right: 0; }
 .ce-group__body { flex: 1; display: flex; align-items: flex-start; gap: 2px; }
@@ -94,11 +94,11 @@ body.ce-open { overflow: hidden; }
 .ce-sep { width: 8px; }
 .ce-minilabel { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #374151; padding: 0 4px 0 2px; }
 .ce-select { height: 26px; border: 1px solid var(--ce-line-2); border-radius: 5px; background: #fff; padding: 0 4px; font: 12px Inter, sans-serif; cursor: pointer; }
-.ce-select--font { width: 160px; }
+.ce-select--font { width: 138px; }
 .ce-swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--ce-line-2); cursor: pointer; padding: 0; flex: none; }
 .ce-swatch.is-on { box-shadow: 0 0 0 2px var(--ce-accent); }
 .ce-styles { display: flex; gap: 4px; padding-top: 2px; }
-.ce-style { width: 82px; height: 58px; border: 1px solid var(--ce-line); border-radius: 6px; background: #fff; cursor: pointer; padding: 4px 6px; text-align: left; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.ce-style { width: 68px; height: 58px; border: 1px solid var(--ce-line); border-radius: 6px; background: #fff; cursor: pointer; padding: 4px 6px; text-align: left; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
 .ce-style:hover { border-color: #A5B4FC; background: var(--ce-accent-soft); }
 .ce-style.is-on { border-color: var(--ce-accent); box-shadow: inset 0 0 0 1px var(--ce-accent); }
 .ce-style small { font-size: 10px; color: var(--ce-muted); }
@@ -233,6 +233,38 @@ body.ce-open { overflow: hidden; }
 
 /* Encart ouvert dans le tableau blanc : le cours reste monté (pagination intacte) mais masqué */
 body.ce-encart-editing .ce-root { visibility: hidden; }
+
+/* ---------- Paragraphe, listes, titres numérotés (T2) ---------- */
+.ce-select--wide { width: 150px; }
+/* Type de numéros choisi sur la liste (data-kind : l'attribut « type » ne distingue pas a de A en CSS) */
+.ce-doc ol[data-kind="lower-alpha"] { list-style: lower-alpha; }
+.ce-doc ol[data-kind="upper-alpha"] { list-style: upper-alpha; }
+.ce-doc ol[data-kind="lower-roman"] { list-style: lower-roman; }
+.ce-doc ol[data-kind="upper-roman"] { list-style: upper-roman; }
+
+/* Cases à cocher */
+.ce-doc ul[data-type="taskList"] { list-style: none; padding-left: 4px; }
+.ce-doc ul[data-type="taskList"] > li { display: flex; align-items: flex-start; gap: 8px; }
+.ce-doc ul[data-type="taskList"] > li > label { flex: none; margin-top: 4px; user-select: none; line-height: 0; }
+.ce-doc ul[data-type="taskList"] > li > label input { width: 15px; height: 15px; margin: 0; cursor: pointer; accent-color: #4F46E5; }
+.ce-doc ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
+.ce-doc ul[data-type="taskList"] ul[data-type="taskList"] { margin-bottom: 0; }
+
+/* Titres numérotés : compteurs CSS (rien n'est écrit dans le texte). Titre 1 = titre du cours, non numéroté. */
+/* Le compteur des Titres 3 n'est PAS déclaré sur le document : un compteur du parent masquerait
+   celui que chaque Titre 2 remet à zéro pour ses frères suivants (règle d'héritage des compteurs). */
+.ce-flow[data-numbering] .ce-doc { counter-reset: ce-h2; }
+.ce-flow[data-numbering] .ce-doc h2 { counter-increment: ce-h2; counter-reset: ce-h3; }
+.ce-flow[data-numbering] .ce-doc h3 { counter-increment: ce-h3; }
+.ce-flow[data-numbering="roman"] .ce-doc h2:not(.is-empty)::before { content: counter(ce-h2, upper-roman) ". "; }
+.ce-flow[data-numbering="roman"] .ce-doc h3:not(.is-empty)::before { content: counter(ce-h3) ". "; }
+.ce-flow[data-numbering="alpha"] .ce-doc h2:not(.is-empty)::before { content: counter(ce-h2) ". "; }
+.ce-flow[data-numbering="alpha"] .ce-doc h3:not(.is-empty)::before { content: counter(ce-h3, lower-alpha) ". "; }
+.ce-flow[data-numbering="decimal"] .ce-doc h2:not(.is-empty)::before { content: counter(ce-h2) ". "; }
+.ce-flow[data-numbering="decimal"] .ce-doc h3:not(.is-empty)::before { content: counter(ce-h2) "." counter(ce-h3) " "; }
+
+/* Coupure des mots */
+.ce-flow[data-hyphens] .ce-doc p, .ce-flow[data-hyphens] .ce-doc li { hyphens: auto; -webkit-hyphens: auto; }
 
 /* ---------- Caractères (T1) ---------- */
 .ce-doc { tab-size: 1.25cm; -moz-tab-size: 1.25cm; }
