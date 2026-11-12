@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { WorkCorrection } from './WorkCorrection';
+import { AnimatedCorrectionToggle } from './AnimatedCorrectionToggle';
+import { hasAnimatedCorrection } from '../../lib/animatedCorrection';
 import { MoreMenu } from '../MoreMenu';
 import { Badge } from '../AiRunPanel';
 import {
@@ -344,8 +346,12 @@ export function ActivityClassPanel({
           </div>
         </div>
 
+        {hasAnimatedCorrection(activity.key) && (
+          <AnimatedCorrectionToggle activityId={activity.id} classId={classId || null} className={className || null} />
+        )}
+
         {classId && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', borderTop:'1px solid var(--border)', paddingTop: 12 }}>
             <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: 'var(--text-muted)' }}>
               {correctedGroups} production{correctedGroups > 1 ? 's' : ''} corrigée{correctedGroups > 1 ? 's' : ''} sur {groups.length} reçue{groups.length > 1 ? 's' : ''} ({classWorks.length} élève{classWorks.length > 1 ? 's' : ''}).
               {inFiche
