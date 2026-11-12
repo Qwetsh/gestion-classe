@@ -17,7 +17,7 @@ import { CourseRibbon } from './CourseRibbon';
 import { Icon } from './courseIcons';
 import {
   COURSE_DOC_VERSION, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDoc, saveLocalCourse,
-  type CourseDoc,
+  type CourseDoc, type CourseSettings,
 } from '../../lib/course/courseDoc';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
@@ -112,6 +112,10 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 }) {
   const { toast, confirm } = useUIFeedback();
   const [title, setTitle] = useState(initialTitle);
+  /** Réglages du document (numérotation des titres, coupure des mots), enregistrés avec lui. */
+  const [settings, setSettings] = useState<CourseSettings>(initialDoc.settings ?? {});
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   const [renaming, setRenaming] = useState(false);
   const [save, setSave] = useState<SaveState>(restored ? 'dirty' : 'saved');
   const [pages, setPages] = useState(1);
@@ -141,7 +145,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 
   const currentDoc = (): CourseDoc | null => {
     const ed = editorRef.current;
-    return ed ? { version: COURSE_DOC_VERSION, content: ed.getJSON() } : null;
+    return ed ? { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current } : null;
   };
 
   /** Toujours la dernière version de `flush` (minuteries, raccourcis, nouvel essai). */
@@ -269,6 +273,18 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 
   useEffect(() => { editorRef.current = editor; }, [editor]);
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
+
+  const changeSettings = (patch: Partial<CourseSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...patch };
+      settingsRef.current = next;
+      return next;
+    });
+    pendingRef.current = true;
+    setSave('dirty');
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => { void flushRef.current(); }, SAVE_DELAY_MS);
+  };
 
   const words = useEditorState({
     editor,
@@ -498,6 +514,8 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         onToggleRuler={() => setShowRuler((v) => { store(RULER_KEY, v ? '0' : '1'); return !v; })}
         onSoon={(what) => toast(what, 'info')}
         onEditEncart={(pageId) => setEditingEncart(pageId)}
+        settings={settings}
+        onSettings={changeSettings}
       />
 
       {showRuler && (
@@ -523,7 +541,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
                 <span className="ce-sheet__num">{i + 1}</span>
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }}>
+            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined}>
               <EditorContent editor={editor} />
             </div>
           </div>

@@ -21,6 +21,8 @@ import { CourseImageView } from './CourseImageView';
 import { EncartView, type EncartOptions } from './EncartView';
 import { MM } from '../../lib/course/coursePage';
 import { typographyExtensions } from './courseTypography';
+import { CourseParagraph } from './courseParagraph';
+import { OrderedList, TaskItem, TaskList } from '@tiptap/extension-list';
 
 // ---- Encadrés ----
 
@@ -216,6 +218,22 @@ export const WritingZone = Node.create({
   },
 });
 
+// ---- Liste numérotée : type de numéros (a, A, i, I) ----
+
+const LIST_KINDS: Record<string, string> = { a: 'lower-alpha', A: 'upper-alpha', i: 'lower-roman', I: 'upper-roman' };
+
+/**
+ * L'attribut HTML `type` d'une liste ne distingue pas « a » de « A » dans un sélecteur CSS
+ * (comparaison insensible à la casse) : on double l'information dans `data-kind`.
+ */
+export const CourseOrderedList = OrderedList.extend({
+  renderHTML({ HTMLAttributes, node }) {
+    const { start, ...rest } = HTMLAttributes as Record<string, unknown>;
+    const kind = LIST_KINDS[String(node.attrs.type ?? '')];
+    return ['ol', mergeAttributes(this.options.HTMLAttributes, start === 1 ? rest : HTMLAttributes, kind ? { 'data-kind': kind } : {}), 0];
+  },
+});
+
 // ---- Images : fichier du bucket board-assets (chemin), affiché par URL signée ----
 
 export const CourseImage = Image.extend({
@@ -238,13 +256,14 @@ export const CourseImage = Image.extend({
 // ---- Assemblage ----
 
 /** Blocs qui reçoivent un identifiant stable (ancrage du calque tableau, animations). */
-const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone'];
+const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone', 'taskList'];
 
 export function courseExtensions(onLayout: (layout: PageLayout) => void, encart: EncartOptions, onLink: () => void): Extensions {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       codeBlock: false,
+      orderedList: false,
       code: false,
       // Un clic place le curseur ; Ctrl + clic ouvre le lien (géré dans CourseEditor)
       link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
@@ -258,6 +277,10 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
     PageBreak,
     Encart.configure(encart),
     WritingZone,
+    CourseOrderedList,
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    CourseParagraph,
     UniqueID.configure({ types: BLOCK_TYPES, attributeName: 'blockId' }),
     Placeholder.configure({
       includeChildren: false,

@@ -47,6 +47,9 @@ const PATHS = {
   alignImgLeft: '<rect x="3" y="5" width="9" height="8" rx="1"/><path d="M15 6h6M15 10h6M3 17h18"/>',
   alignImgCenter: '<rect x="7" y="4" width="10" height="9" rx="1"/><path d="M3 17h18M6 20h12"/>',
   alignImgRight: '<rect x="12" y="5" width="9" height="8" rx="1"/><path d="M3 6h6M3 10h6M3 17h18"/>',
+  checklist: '<rect x="3" y="4" width="6" height="6" rx="1"/><path d="M4.5 7l1.2 1.2L7.8 6"/><rect x="3" y="14" width="6" height="6" rx="1"/><path d="M12 7h9M12 17h9"/>',
+  firstLine: '<path d="M9 6h11M4 10h16M4 14h16M4 18h10"/><path d="M3 4.5l3 1.5-3 1.5"/>',
+  hyphen: '<path d="M4 7h9M4 12h6M4 17h9"/><path d="M14 12h3" stroke-width="2.4"/><path d="M19 7v10"/>',
   // ---- Tableau blanc (ruban) ----
   select: '<path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z"/>',
   pen: '<path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/>',

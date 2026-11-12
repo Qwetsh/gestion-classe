@@ -12,8 +12,10 @@ import { Icon, type IconName } from './courseIcons';
 import { CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
 import { CourseSymbolPicker } from './CourseSymbolPicker';
+import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
+import { HEADING_NUMBERING_LABELS, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
 
-export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'affichage' | 'tableau' | 'image' | 'encart' | 'zone';
+export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'image' | 'encart' | 'zone';
 
 interface Props {
   editor: Editor;
@@ -30,7 +32,17 @@ interface Props {
   onToggleRuler: () => void;
   onSoon: (what: string) => void;
   onEditEncart: (pageId: string) => void;
+  settings: CourseSettings;
+  onSettings: (patch: Partial<CourseSettings>) => void;
 }
+
+const LIST_TYPES: { label: string; value: string | null }[] = [
+  { label: '1. 2. 3.', value: null },
+  { label: 'a. b. c.', value: 'a' },
+  { label: 'A. B. C.', value: 'A' },
+  { label: 'I. II. III.', value: 'I' },
+  { label: 'i. ii. iii.', value: 'i' },
+];
 
 const TEXT_COLORS = [
   { c: '#111827', n: 'Noir' }, { c: '#DC2626', n: 'Rouge' }, { c: '#2563EB', n: 'Bleu' },
@@ -68,7 +80,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -86,6 +98,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         bullet: e.isActive('bulletList'),
         ordered: e.isActive('orderedList'),
         listItem: e.isActive('listItem'),
+        tasks: e.isActive('taskList'),
+        taskItem: e.isActive('taskItem'),
+        listType: ((e.getAttributes('orderedList') as { type?: string | null }).type ?? '') as string,
+        lineHeight: ((e.getAttributes('heading').lineHeight ?? e.getAttributes('paragraph').lineHeight ?? '') as string),
+        spaceBefore: (e.getAttributes('heading').spaceBefore ?? e.getAttributes('paragraph').spaceBefore ?? null) as number | null,
+        spaceAfter: (e.getAttributes('heading').spaceAfter ?? e.getAttributes('paragraph').spaceAfter ?? null) as number | null,
+        firstLine: !!e.getAttributes('paragraph').firstLine,
         alignLeft: e.isActive({ textAlign: 'left' }),
         alignCenter: e.isActive({ textAlign: 'center' }),
         alignRight: e.isActive({ textAlign: 'right' }),
@@ -126,6 +145,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
 
   const c = () => editor.chain().focus();
 
+  /** Retrait : dans une liste, on change de niveau ; ailleurs, on décale le paragraphe. */
+  const indent = (dir: 1 | -1) => {
+    const item = s.taskItem ? 'taskItem' : s.listItem ? 'listItem' : null;
+    if (item) { if (dir > 0) c().sinkListItem(item).run(); else c().liftListItem(item).run(); }
+    else c().indentParagraph(dir).run();
+  };
+
   /** Taille suivante ou précédente dans la liste des tailles (12 pt = taille du style). */
   const stepFontSize = (dir: 1 | -1) => {
     const current = s.fontSize.endsWith('pt') ? Number(s.fontSize.slice(0, -2)) : 12;
@@ -157,6 +183,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     { id: 'fichier', label: 'Fichier' },
     { id: 'accueil', label: 'Accueil' },
     { id: 'insertion', label: 'Insertion' },
+    { id: 'miseenpage', label: 'Mise en page' },
     { id: 'affichage', label: 'Affichage' },
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
     ...(s.onImage ? [{ id: 'image' as const, label: 'Image', contextual: true }] : []),
@@ -201,7 +228,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <div className="ce-stack">
                 <Sm icon="cut" label="Couper" title="Couper (Ctrl+X)" onClick={() => { editor.commands.focus(); document.execCommand('cut'); }} />
                 <Sm icon="copy" label="Copier" title="Copier (Ctrl+C)" onClick={() => { editor.commands.focus(); document.execCommand('copy'); }} />
-                <Sm icon="clear" label="Effacer la mise en forme" title="Effacer la mise en forme" onClick={() => c().unsetAllMarks().unsetTextAlign().run()} />
+                <Sm icon="clear" label="Effacer" title="Effacer la mise en forme" onClick={() => c().unsetAllMarks().unsetTextAlign().run()} />
               </div>
             </Group>
 
@@ -282,14 +309,32 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 <div className="ce-row">
                   <Sm icon="ul" title="Liste à puces" on={s.bullet} onClick={() => c().toggleBulletList().run()} />
                   <Sm icon="ol" title="Liste numérotée" on={s.ordered} onClick={() => c().toggleOrderedList().run()} />
-                  <Sm icon="outdent" title="Diminuer le retrait (Maj+Tab)" disabled={!s.listItem} onClick={() => c().liftListItem('listItem').run()} />
-                  <Sm icon="indent" title="Augmenter le retrait (Tab)" disabled={!s.listItem} onClick={() => c().sinkListItem('listItem').run()} />
+                  <Sm icon="checklist" title="Liste à cases à cocher" on={s.tasks} onClick={() => c().toggleTaskList().run()} />
+                  <Sm icon="outdent" title="Diminuer le retrait (Maj+Tab dans une liste, Ctrl+Maj+M ailleurs)" onClick={() => indent(-1)} />
+                  <Sm icon="indent" title="Augmenter le retrait (Tab dans une liste, Ctrl+M ailleurs)" onClick={() => indent(1)} />
+                  <Sm icon="firstLine" title="Alinéa : retrait de la première ligne" on={s.firstLine} onClick={() => c().toggleFirstLine().run()} />
                 </div>
                 <div className="ce-row">
                   <Sm icon="left" title="Aligner à gauche (Ctrl+Maj+L)" on={s.alignLeft} onClick={() => c().setTextAlign('left').run()} />
                   <Sm icon="center" title="Centrer (Ctrl+Maj+E)" on={s.alignCenter} onClick={() => c().setTextAlign('center').run()} />
                   <Sm icon="right" title="Aligner à droite (Ctrl+Maj+R)" on={s.alignRight} onClick={() => c().setTextAlign('right').run()} />
                   <Sm icon="justify" title="Justifier (Ctrl+Maj+J)" on={s.alignJustify} onClick={() => c().setTextAlign('justify').run()} />
+                  <select className="ce-select" value={s.lineHeight} onChange={(e) => c().setLineHeight(e.target.value || null).run()} title="Interligne" aria-label="Interligne">
+                    {LINE_HEIGHTS.map((l) => <option key={l.label} value={l.value ?? ''}>{l.value ? `↕ ${l.label}` : '↕ Interligne'}</option>)}
+                  </select>
+                </div>
+                <div className="ce-row">
+                  <select className="ce-select" value={s.spaceBefore ?? ''} onChange={(e) => c().setSpaceBefore(e.target.value === '' ? null : Number(e.target.value)).run()} title="Espace avant le paragraphe" aria-label="Espace avant le paragraphe">
+                    {SPACE_BEFORE.map((o) => <option key={o.label} value={o.value ?? ''}>{o.value === null ? 'Espace avant' : `Avant : ${o.label.toLowerCase()}`}</option>)}
+                  </select>
+                  <select className="ce-select" value={s.spaceAfter ?? ''} onChange={(e) => c().setSpaceAfter(e.target.value === '' ? null : Number(e.target.value)).run()} title="Espace après le paragraphe" aria-label="Espace après le paragraphe">
+                    {SPACE_AFTER.map((o) => <option key={o.label} value={o.value ?? ''}>{o.value === null ? 'Espace après' : `Après : ${o.label.toLowerCase()}`}</option>)}
+                  </select>
+                  {s.ordered && (
+                    <select className="ce-select" value={s.listType} onChange={(e) => c().updateAttributes('orderedList', { type: e.target.value || null }).run()} title="Type de numéros de la liste" aria-label="Type de numéros de la liste">
+                      {LIST_TYPES.map((t) => <option key={t.label} value={t.value ?? ''}>{t.label}</option>)}
+                    </select>
+                  )}
                 </div>
               </div>
             </Group>
@@ -337,6 +382,25 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
             <Group label="Pages">
               <Big icon="pagebreak" label="Saut de page" title="Saut de page (Ctrl+Entrée) : seulement sur papier" onClick={() => c().setPageBreak().run()} />
+            </Group>
+          </>
+        )}
+
+        {tab === 'miseenpage' && (
+          <>
+            <Group label="Titres">
+              <div className="ce-stack">
+                <span className="ce-minilabel">Numéroter les titres</span>
+                <select className="ce-select ce-select--wide" value={settings.numbering ?? 'none'} onChange={(e) => onSettings({ numbering: e.target.value as HeadingNumbering })} title="Numérotation automatique des Titres 2 et 3 (le Titre 1 est le titre du cours)" aria-label="Numérotation des titres">
+                  {(Object.keys(HEADING_NUMBERING_LABELS) as HeadingNumbering[]).map((k) => <option key={k} value={k}>{HEADING_NUMBERING_LABELS[k]}</option>)}
+                </select>
+              </div>
+            </Group>
+            <Group label="Texte">
+              <Big icon="hyphen" label="Couper les mots" title="Coupure des mots en fin de ligne (utile avec le texte justifié)" on={!!settings.hyphens} onClick={() => onSettings({ hyphens: !settings.hyphens })} />
+            </Group>
+            <Group label="Pages">
+              <Big icon="pagebreak" label="Saut de page" title="Saut de page (Ctrl+Entrée)" onClick={() => c().setPageBreak().run()} />
             </Group>
           </>
         )}

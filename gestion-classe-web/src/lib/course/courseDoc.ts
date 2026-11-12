@@ -11,9 +11,27 @@ import { createBoard, deleteBoard, type Board, type BoardMeta } from '../boardsQ
 
 export const COURSE_DOC_VERSION = 1;
 
+/** Numérotation automatique des titres (Titre 2 → Titre 3). Le Titre 1 est le titre du cours. */
+export type HeadingNumbering = 'none' | 'roman' | 'alpha' | 'decimal';
+
+export const HEADING_NUMBERING_LABELS: Record<HeadingNumbering, string> = {
+  none: 'Sans numéros',
+  roman: 'I. puis 1.',
+  alpha: '1. puis a.',
+  decimal: '1. puis 1.1',
+};
+
+/** Réglages du document entier (absents dans les cours enregistrés avant le lot T2). */
+export interface CourseSettings {
+  numbering?: HeadingNumbering;
+  /** Coupure des mots en fin de ligne. */
+  hyphens?: boolean;
+}
+
 export interface CourseDoc {
   version: number;
   content: JSONContent;
+  settings?: CourseSettings;
 }
 
 /** Document de départ : un titre à remplir et un premier paragraphe. */
