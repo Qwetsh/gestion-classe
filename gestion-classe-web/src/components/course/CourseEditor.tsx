@@ -24,6 +24,8 @@ import { updateBoard } from '../../lib/boardsQueries';
 import { uploadBoardImage } from '../../lib/boardImport';
 import { fetchLessonBoardByBoardId } from '../../lib/timetable/lessonBoardsQueries';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
+import { Whiteboard } from '../classroom/Whiteboard';
+import { loadEncartPages } from './encartStore';
 import './course.css';
 
 interface Props {
@@ -116,6 +118,8 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   const [lessonChip, setLessonChip] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [scrollbarW, setScrollbarW] = useState(0);
+  /** Encart ouvert dans le tableau blanc (identifiant de sa page), ou null. */
+  const [editingEncart, setEditingEncart] = useState<string | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -203,7 +207,21 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 
   // ---- Éditeur ----
 
-  const extensions = useMemo(() => courseExtensions((layout) => setPages(layout.pages)), []);
+  const extensions = useMemo(() => courseExtensions(
+    (layout) => setPages(layout.pages),
+    { boardId, onEdit: (pageId) => setEditingEncart(pageId) },
+  ), [boardId]);
+
+  // Pages des encarts (aperçus) ; relues au retour du tableau blanc
+  useEffect(() => { void loadEncartPages(boardId); }, [boardId]);
+  useEffect(() => {
+    document.body.classList.toggle('ce-encart-editing', !!editingEncart);
+    return () => document.body.classList.remove('ce-encart-editing');
+  }, [editingEncart]);
+  const closeEncart = useCallback(() => {
+    setEditingEncart(null);
+    void loadEncartPages(boardId, true);
+  }, [boardId]);
 
   const editor = useEditor({
     extensions,
@@ -430,6 +448,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         showRuler={showRuler}
         onToggleRuler={() => setShowRuler((v) => { store(RULER_KEY, v ? '0' : '1'); return !v; })}
         onSoon={(what) => toast(what, 'info')}
+        onEditEncart={(pageId) => setEditingEncart(pageId)}
       />
 
       {showRuler && (
@@ -478,6 +497,21 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {/* Encart ouvert dans le tableau blanc, sur sa seule page ; le cours reste monté dessous (masqué) */}
+      {editingEncart && createPortal(
+        <Whiteboard
+          key={editingEncart}
+          sessionId={`encart:${editingEncart}`}
+          boardId={boardId}
+          onlyPageId={editingEncart}
+          userId={userId}
+          title={`${title} — encart`}
+          remote
+          onClose={closeEncart}
+        />,
+        document.body,
+      )}
 
       <input
         ref={fileRef}

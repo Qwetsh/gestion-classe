@@ -7,6 +7,9 @@
  * (605 × 340) remplit exactement un écran.
  */
 
+/** Un millimètre en px CSS (96 dpi). */
+export const MM = 96 / 25.4;
+
 /** Largeur d'une feuille A4 (210 mm). */
 export const PAGE_W = 793.7;
 /** Hauteur d'une feuille A4 (297 mm) — non arrondie : l'écart s'accumulerait page après page à l'impression. */
