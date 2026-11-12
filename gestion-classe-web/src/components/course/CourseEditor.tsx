@@ -507,6 +507,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
           onlyPageId={editingEncart}
           userId={userId}
           title={`${title} — encart`}
+          chrome="ribbon"
           remote
           onClose={closeEncart}
         />,

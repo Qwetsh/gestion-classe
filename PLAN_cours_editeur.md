@@ -193,3 +193,29 @@ Chaque lot est livrable seul (PR distincte, testée dans le navigateur).
 - Limites : un encart copié-collé dans le même cours partage sa page avec l'original ; les pages
   d'encarts supprimés restent en base (sans effet) ; impression réelle non testée ; la copie vers
   une autre classe n'a pas été testée dans le navigateur.
+
+### Étape 3a — ruban du tableau blanc, faite le 12/11/2026 (branche `feat/tableau-ruban`)
+
+Demande de Thomas : les fonctions du tableau lui plaisent, mais le visuel de création non →
+l'habillage de l'éditeur de cours, adapté au tableau.
+
+- `BoardRibbon.tsx` (+ `BoardStatusBar`) : barre de titre, onglets **Fichier, Accueil, Insertion,
+  Page, Outils, Affichage**, groupes étiquetés, barre d'état (pages, zoom). Il réutilise les
+  classes `ce-*` de `course.css` (variables partagées par `.ce-chrome`) et les icônes de
+  `courseIcons.tsx` (une cinquantaine ajoutées).
+- `Whiteboard` : prop `chrome` ('tbi' par défaut, 'ribbon'). Le ruban ne porte aucun geste : il
+  reçoit une table d'actions par identifiant, construite à partir de `paletteBindings`, de
+  `moreSections` et des actions qui n'avaient pas de bouton (presse-papiers, ordre, grouper,
+  verrouiller, dupliquer / supprimer la page, rideau, hauteur, image PNG). Sous le ruban : pas de
+  barre flottante, de pastille, de rail de pages ni de bulles ; barres d'objet posées sur l'objet.
+- Thème clair par variables (`.wb--ribbon` + `body.wb-ribbon-on` pour les couches portalées) dans
+  `wb-theme.css` : bureau gris clair, page avec marges, chrome blanc, boutons de 36 px.
+- Ruban actif pour : tableaux préparés et brouillon ouverts depuis l'accueil / Mes tableaux,
+  encarts de cours. **La classe (`/classe`) garde l'habillage tactile.** Affichage › « Tactile
+  (TBI) » y revient (choix mémorisé, `classroom-board-chrome`) ; retour par Plus › Réglages.
+- Vérifié dans le navigateur : rendu, outils, forme + barre d'objet claire, onglets, post-it,
+  nouvelle page, fond quadrillé, volet des pages, bascule tactile ↔ ruban, encart (« Revenir au
+  cours », onglet « Fond »).
+- Reste (étape 3b) : le calque tableau **par-dessus le texte du cours**, ancré aux paragraphes.
+  Les barres d'objet (texte, forme…) et les panneaux (Ressources, Rechercher) n'ont que les
+  couleurs du thème clair, pas encore une mise en forme « ruban ».

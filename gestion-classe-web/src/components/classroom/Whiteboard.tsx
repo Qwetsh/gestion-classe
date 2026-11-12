@@ -108,6 +108,7 @@ import {
   type WidgetObject,
 } from '../../lib/boardMedia';
 import './wb-theme.css';
+import { BoardRibbon, BoardStatusBar, type RibbonAction } from './BoardRibbon';
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'select' | 'shape' | 'laser';
 /** Outils qui manipulent les objets de la page (les cadres deviennent cliquables). */
@@ -168,11 +169,19 @@ export interface WhiteboardProps {
    * (la page n'est jamais allongée : un encart fait exactement un écran en classe).
    */
   onlyPageId?: string;
+  /**
+   * Habillage : 'tbi' (défaut — barre flottante, pastille, gros boutons : la classe) ou 'ribbon'
+   * (ruban façon traitement de texte, pour préparer à l'ordinateur). Avec 'ribbon', l'utilisateur
+   * peut repasser à l'habillage tactile ; son choix est mémorisé sur l'appareil.
+   */
+  chrome?: 'tbi' | 'ribbon';
   onClose: () => void;
 }
 
 /** Clé locale : le panneau « Tableaux préparés » ne s'ouvre tout seul qu'une fois par séance. */
 const START_PROMPT_PREFIX = 'classroom-board-start:';
+/** Habillage préféré quand l'appelant propose le ruban : 'tbi' = garder le tactile. */
+const CHROME_KEY = 'classroom-board-chrome';
 
 const UNIT = BOARD_UNIT;
 const COLORS = SWATCHES.quick.defaults;
@@ -363,7 +372,7 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, chrome = 'tbi', onClose }: WhiteboardProps) {
   const activeRef = useRef(active);
   useEffect(() => { activeRef.current = active; }, [active]);
   /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
@@ -494,6 +503,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const [libraryDialog, setLibraryDialog] = useState<'open' | 'start' | 'save' | null>(null);
   /** Mode affichage (écran de classe) : barre et panneaux masqués, widgets manipulables. */
   const [displayMode, setDisplayMode] = useState(false);
+  // Habillage ordinateur (ruban) : proposé par l'appelant, sauf si l'utilisateur a préféré le tactile
+  const [touchChrome, setTouchChrome] = useState(() => { try { return localStorage.getItem(CHROME_KEY) === 'tbi'; } catch { return false; } });
+  const ribbon = chrome === 'ribbon' && !touchChrome;
+  const chooseChrome = (mode: 'tbi' | 'ribbon') => {
+    setTouchChrome(mode === 'tbi');
+    try { localStorage.setItem(CHROME_KEY, mode); } catch { /* stockage indisponible */ }
+  };
+  // Les couches portalées (menus, panneaux, barres flottantes) suivent le thème clair du ruban
+  useEffect(() => {
+    if (!ribbon || !active) return;
+    document.body.classList.add('wb-ribbon-on');
+    // Haut du volet des pages (position fixe) = bas du ruban
+    const rib = rootRef.current?.querySelector('.wbrib');
+    if (rib) document.body.style.setProperty('--wb-ribbon-top', `${Math.round(rib.getBoundingClientRect().bottom)}px`);
+    return () => { document.body.classList.remove('wb-ribbon-on'); document.body.style.removeProperty('--wb-ribbon-top'); };
+  }, [ribbon, active, topOffset, displayMode]);
   const [pickOpen, setPickOpen] = useState(false);
   /** Élèves déjà tirés dans la séance (sans remise), mémorisés sur l'appareil. */
   const [pickedIds, setPickedIds] = useState<ReadonlySet<string>>(() => {
@@ -3305,6 +3330,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     {
       title: 'Réglages',
       items: [
+        ...(chrome === 'ribbon' ? [{ id: 'set-chrome-ribbon', label: 'Interface ordinateur (ruban)', icon: '🖥', onSelect: () => chooseChrome('ribbon') }] : []),
         { id: 'set-palette', label: 'Personnaliser la palette…', icon: '◎', onSelect: () => setPaletteEditor(true) },
         { id: 'set-probe', label: 'Test du stylet (diagnostic)', icon: '🎯', active: probeOpen, onSelect: () => setProbeOpen((v) => !v) },
         { id: 'set-palette-show', label: palette.hidden ? 'Afficher la pastille' : 'Masquer la pastille', icon: '◉', active: !palette.hidden, onSelect: () => setPalette((p) => ({ ...p, hidden: !p.hidden })) },
@@ -3335,16 +3361,67 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     },
   ];
 
+  // Actions du ruban : celles de la palette et du menu « Plus », plus celles qui n'avaient pas de bouton
+  const hasObjectSelection = selectedIds.size > 0;
+  const hasAnySelection = hasObjectSelection || selectedStrokeIds.size > 0;
+  const ribbonActions: Record<string, RibbonAction | undefined> = ribbon ? {
+    ...Object.fromEntries(moreSections.flatMap((sec) => sec.items).map((it) => [it.id, { onSelect: it.onSelect, active: it.active, disabled: it.disabled }])),
+    ...Object.fromEntries(Object.entries(paletteBindings).map(([id, b]) => [id, { onSelect: b.onSelect, active: b.active, disabled: b.disabled }])),
+    pick: classroom ? { onSelect: () => setPickOpen(true) } : undefined,
+    paste: { onSelect: pasteFromClipboard },
+    copy: { onSelect: copySelected, disabled: !hasObjectSelection },
+    cut: { onSelect: cutSelected, disabled: !hasObjectSelection },
+    duplicate: { onSelect: duplicateSelected, disabled: !hasObjectSelection },
+    delete: { onSelect: () => { if (selectedStrokeIds.size > 0) deleteSelectedStrokes(); else deleteSelected(); }, disabled: !hasAnySelection },
+    'select-all': { onSelect: selectAll },
+    'order-front': { onSelect: () => reorderSelected('front'), disabled: !hasObjectSelection },
+    'order-back': { onSelect: () => reorderSelected('back'), disabled: !hasObjectSelection },
+    lock: { onSelect: toggleLockSelected, disabled: !hasObjectSelection },
+    group: { onSelect: groupSelected, disabled: selectedIds.size < 2 },
+    ungroup: { onSelect: ungroupSelected, disabled: !hasObjectSelection },
+    'auto-shapes': { onSelect: () => setAutoShapes((v) => !v), active: autoShapes },
+    'file-png': { onSelect: () => void exportPageImage() },
+    'page-duplicate': { onSelect: () => duplicatePage(pageIndex) },
+    'page-delete': { onSelect: () => deletePage(pageIndex), disabled: pages.length <= 1 },
+    'page-curtain': { onSelect: togglePageCurtain, active: !!page.curtain },
+    'page-extend': { onSelect: () => extendPage() },
+    'page-fit': { onSelect: fitPageHeight },
+    'zoom-out': { onSelect: () => zoomAt(1 / 1.5, window.innerWidth / 2, window.innerHeight / 2), disabled: view.zoom <= 1 },
+    'chrome-tbi': { onSelect: () => chooseChrome('tbi') },
+  } : {};
+  const closeBoard = () => { void flushRemote().finally(onClose); };
+
   return (
     <div
       ref={rootRef}
-      className={`wb ${dragOver ? 'is-dragover' : ''}`}
+      className={`wb ${dragOver ? 'is-dragover' : ''} ${ribbon && !displayMode ? 'wb--ribbon' : ''}`}
       style={topOffset ? { top: topOffset } : undefined}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); void importFiles(e.dataTransfer.files, toUnit(e)); }}
     >
       <style>{CSS}</style>
+      {ribbon && !displayMode && (
+        <BoardRibbon
+          title={title}
+          saveFailed={saveFailed}
+          act={ribbonActions}
+          tool={tool}
+          colors={quickColors}
+          color={color}
+          onColor={pickColor}
+          onOtherColor={() => openColorWheel(color, pickColor)}
+          sizeKey={sizeKey}
+          onSize={setSizeKey}
+          eraserKey={eraserKey}
+          onEraserSize={setEraserKey}
+          backgrounds={BACKGROUNDS.map((b) => ({ id: b.id, label: b.label, active: page.background === b.id, onSelect: () => setBackground(b.id) }))}
+          bgColors={bgColors.map((c, i) => ({ color: c, label: `Fond ${swatchLabel(SWATCHES.background, i, bgColors).toLowerCase()}`, active: (page.color ?? '#FFFFFF').toUpperCase() === c.toUpperCase(), onSelect: () => setBackgroundColor(c) }))}
+          inserts={insertEntries().map((e) => ({ id: e.id, label: e.label, run: e.run, active: e.id === 'record' && recording }))}
+          single={singlePage}
+          onClose={closeBoard}
+        />
+      )}
       <input
         ref={fileInputRef}
         type="file"
@@ -3387,7 +3464,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       <div
         className={`wb__stage ${view.zoom > 1 ? 'is-zoomed' : ''}`}
         ref={containerRef}
-        style={{ marginRight: navOpen && !displayMode ? navWidth : 0 }}
+        style={{ marginRight: (navOpen && !displayMode ? navWidth : 0) + (ribbon && !displayMode ? 24 : 0) }}
         onPointerDownCapture={onStagePointerDown}
         onPointerMoveCapture={onStagePointerMove}
         onPointerUpCapture={onStagePointerUp}
@@ -3452,7 +3529,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           links={ghostLinks}
           snapGrid={page.background === 'grid' || page.background === 'dots' || page.background === 'graph' ? 25 : undefined}
         />
-        {!displayMode && !singlePage && (
+        {!displayMode && !singlePage && !ribbon && (
           <button
             type="button"
             className="wb__extend"
@@ -3560,7 +3637,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         {page.strokes.length === 0 && pageObjects.length === 0 && !displayMode && (
           <div className="wb__empty" aria-hidden>
             <p>Écrivez.</p>
-            <p>Les outils sont dans la pastille.</p>
+            <p>{ribbon ? 'Les outils sont dans le ruban, en haut.' : 'Les outils sont dans la pastille.'}</p>
           </div>
         )}
       </div>
@@ -3619,7 +3696,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             <button type="button" onClick={cancelLinking}>Annuler</button>
           </div>
         )}
-        {!displayMode && !palette.hidden && (
+        {!displayMode && !ribbon && !palette.hidden && (
           <BoardPalette
             x={palette.x}
             y={palette.y}
@@ -3662,7 +3739,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         )}
 
         {/* Premier lancement : les trois gestes vitaux, ensemble, sans séquence ni « suivant ». */}
-        {coachOpen && !displayMode && !singlePage && (
+        {coachOpen && !displayMode && !singlePage && !ribbon && (
           <div className="wb__coach" aria-hidden>
             {!palette.hidden && (
               <div
@@ -3848,7 +3925,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
       {/* Barres contextuelles : elles se posent sur l'objet, plus dans la barre principale. */}
       {!displayMode && showTextToolbar && (
-        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedBox?.id ?? null} label="Texte">
+        <BoardFloatingToolbar docked={tbi.floating === 'bar' && !ribbon} objectId={selectedBox?.id ?? null} label="Texte">
             <BoardTextToolbar
               api={textApiRef}
               format={format}
@@ -3888,7 +3965,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         </BoardFloatingToolbar>
       )}
       {!displayMode && showShapeToolbar && (
-        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedShapes[0]?.id ?? selectedLibrary[0]?.id ?? null} label={selectedShapes.length === 0 && selectedLibrary.length > 0 ? 'Objet' : 'Forme'}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar' && !ribbon} objectId={selectedShapes[0]?.id ?? selectedLibrary[0]?.id ?? null} label={selectedShapes.length === 0 && selectedLibrary.length > 0 ? 'Objet' : 'Forme'}>
             <BoardShapeToolbar
               kind={shapeKind}
               style={selectedShapes[0] ? { stroke: selectedShapes[0].stroke, strokeWidth: selectedShapes[0].strokeWidth, fill: selectedShapes[0].fill, dashed: selectedShapes[0].dashed === true } : selectedLibrary[0] ? { stroke: selectedLibrary[0].stroke, strokeWidth: selectedLibrary[0].strokeWidth, fill: selectedLibrary[0].fill, dashed: false } : shapeStyle}
@@ -3917,12 +3994,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
 
       {!displayMode && showConnectorToolbar && (
-        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedConnectors[0].id} label={selectedConnectors.length > 1 ? `Flèches (${selectedConnectors.length})` : 'Flèche'}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar' && !ribbon} objectId={selectedConnectors[0].id} label={selectedConnectors.length > 1 ? `Flèches (${selectedConnectors.length})` : 'Flèche'}>
           <BoardConnectorToolbar connectors={selectedConnectors} onPatch={patchSelectedConnectors} onDelete={deleteSelected} />
         </BoardFloatingToolbar>
       )}
       {!displayMode && showObjectToolbar && (
-        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar' && !ribbon} objectId={selectedOthers[0].id} label={objectTypeLabel(selectedOthers)}>
           <BoardObjectToolbar
             objects={selectedOthers}
             tableCell={tableCellRef.current && tableCellRef.current.id === selectedOthers[0].id ? { r: tableCellRef.current.r, c: tableCellRef.current.c } : null}
@@ -3941,7 +4018,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         </BoardFloatingToolbar>
       )}
       {!displayMode && inkSelection && tool === 'select' && (
-        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId="ink-selection" label={`Encre · ${selectedStrokeIds.size} trait${selectedStrokeIds.size > 1 ? 's' : ''}`}>
+        <BoardFloatingToolbar docked={tbi.floating === 'bar' && !ribbon} objectId="ink-selection" label={`Encre · ${selectedStrokeIds.size} trait${selectedStrokeIds.size > 1 ? 's' : ''}`}>
           <div className="wb__group">
             <button type="button" className="wb__btn wb__txt" title="Convertir l'écriture en texte" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void convertInkToText()}>Aa</button>
             <button type="button" className="wb__btn wb__txt" title="Exporter en image (PNG)" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => void exportSelectionImage()}>⤓</button>
@@ -3954,7 +4031,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
 
       {/* Pages : rail vertical au bord, du côté du navigateur de vignettes — ce n'est pas
           un outil de dessin, ça n'a rien à faire au milieu des outils. Déplaçable par sa poignée. */}
-      {!displayMode && !singlePage && (
+      {!displayMode && !singlePage && !ribbon && (
         <BoardPageRail
           side={tbi.bar === 'right' ? 'left' : 'right'}
           navOpen={navOpen}
@@ -3969,7 +4046,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       )}
 
       {/* Annuler / Rétablir : hors de la barre, dans le coin opposé à la main qui écrit */}
-      {!displayMode && (() => {
+      {!displayMode && !ribbon && (() => {
         // Jamais du même côté que la barre, sinon les deux se recouvrent dans le coin.
         const side = tbi.bar === 'left' ? 'right' : tbi.bar === 'right' ? 'left' : tbi.hand === 'left' ? 'right' : 'left';
         return (
@@ -3984,7 +4061,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         );
       })()}
 
-      <div hidden={displayMode} className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -navWidth / 2 : 0 } : { right: tbi.bar === 'right' && navOpen ? navWidth + 10 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
+      <div hidden={displayMode || ribbon} className={`wb__bar wb__bar--${tbi.bar} wb__bar--hand-${tbi.hand}`} style={tbi.bar === 'bottom' ? { marginLeft: navOpen ? -navWidth / 2 : 0 } : { right: tbi.bar === 'right' && navOpen ? navWidth + 10 : undefined }} onPointerDown={(e) => e.stopPropagation()}>
         <div className="wb__group">
           <button className={`wb__btn ${tool === 'select' ? 'is-on' : ''}`} onClick={() => setTool('select')} title="Sélection (V)">
             <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z" /></svg>
@@ -4082,11 +4159,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             )}
           </>
           {/* Les dernières modifications partent au serveur avant de fermer (sinon elles attendraient le minuteur) */}
-          <button className="wb__btn wb__close" onClick={() => { void flushRemote().finally(onClose); }} title={singlePage ? 'Revenir au cours' : 'Retour au plan de classe'}>
+          <button className="wb__btn wb__close" onClick={closeBoard} title={singlePage ? 'Revenir au cours' : 'Retour au plan de classe'}>
             <svg viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4" /></svg>
           </button>
         </div>
       </div>
+      {ribbon && !displayMode && (
+        <BoardStatusBar act={ribbonActions} pageIndex={pageIndex} pageCount={pageCount} zoom={view.zoom} single={singlePage} />
+      )}
     </div>
   );
 }
