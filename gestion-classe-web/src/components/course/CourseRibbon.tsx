@@ -6,7 +6,7 @@
  * Les boutons ne prennent jamais le focus (mousedown annulé) : la sélection du texte reste en
  * place, comme dans un traitement de texte.
  */
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { Icon, type IconName } from './courseIcons';
 import { CALLOUT_COLORS, CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
@@ -29,7 +29,7 @@ interface Props {
   onInsertImage: () => void;
   onInsertQr: () => void;
   onInsertLink: () => void;
-  onPaste: () => void;
+  onPaste: (mode: 'adapt' | 'keep' | 'text') => void;
   zoom: number;
   onZoom: (z: number) => void;
   onFitWidth: () => void;
@@ -143,6 +143,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         onZone: e.isActive('writingZone'),
         zoneStyle: ((e.getAttributes('writingZone') as { style?: string }).style ?? 'seyes') as WritingZoneStyle,
         zoneLines: Number((e.getAttributes('writingZone') as { lines?: number }).lines) || 6,
+        painter: e.storage.formatPainter?.armed ?? false,
         canUndo: e.can().undo(),
         canRedo: e.can().redo(),
       };
@@ -175,6 +176,29 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     if (!next) return;
     if (next === 12) c().unsetFontSize().run(); else c().setFontSize(`${next}pt`).run();
   };
+
+  // Menu « Options de collage », sous le bouton Coller
+  const pasteBtnRef = useRef<HTMLDivElement>(null);
+  const [pasteMenu, setPasteMenu] = useState<{ left: number; top: number } | null>(null);
+  const pasteMenuRef = useRef<HTMLDivElement>(null);
+  const togglePasteMenu = () => {
+    if (pasteMenu) { setPasteMenu(null); return; }
+    const r = pasteBtnRef.current?.getBoundingClientRect();
+    setPasteMenu({ left: r?.left ?? 10, top: (r?.bottom ?? 170) + 4 });
+  };
+  // Fermeture : clic ailleurs (hors du menu et du bouton) ou Échap
+  useEffect(() => {
+    if (!pasteMenu) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (pasteMenuRef.current?.contains(t) || pasteBtnRef.current?.contains(t)) return;
+      setPasteMenu(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPasteMenu(null); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [pasteMenu]);
 
   // Grille de taille du tableau, ancrée sous son bouton
   const tableBtnRef = useRef<HTMLSpanElement>(null);
@@ -261,11 +285,27 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         {tab === 'accueil' && (
           <>
             <Group label="Presse-papiers">
-              <Big icon="paste" label="Coller" title="Coller (Ctrl+V)" onClick={onPaste} />
+              <div className="ce-split" ref={pasteBtnRef}>
+                <Big icon="paste" label="Coller" title="Coller en adaptant au cours (Ctrl+V)" onClick={() => onPaste('adapt')} />
+                <button type="button" className="ce-split__caret" title="Options de collage" aria-label="Options de collage" onClick={togglePasteMenu}>▾</button>
+              </div>
               <div className="ce-stack">
                 <Sm icon="cut" label="Couper" title="Couper (Ctrl+X)" onClick={() => { editor.commands.focus(); document.execCommand('cut'); }} />
                 <Sm icon="copy" label="Copier" title="Copier (Ctrl+C)" onClick={() => { editor.commands.focus(); document.execCommand('copy'); }} />
-                <Sm icon="clear" label="Effacer" title="Effacer la mise en forme" onClick={() => c().unsetAllMarks().unsetTextAlign().run()} />
+                <button
+                  type="button"
+                  className={`ce-sm ${s.painter ? 'is-on' : ''}`}
+                  title="Reproduire la mise en forme : cliquer, puis sélectionner le texte à mettre en forme. Double-clic : plusieurs fois (Échap pour arrêter)"
+                  aria-pressed={s.painter}
+                  onClick={(e) => {
+                    if (s.painter) { editor.chain().focus().cancelFormat().run(); return; }
+                    editor.chain().focus().pickFormat(e.detail >= 2).run();
+                  }}
+                  onDoubleClick={() => editor.chain().focus().pickFormat(true).run()}
+                >
+                  <Icon name="brush" size={16} />
+                  <span>Reproduire</span>
+                </button>
               </div>
             </Group>
 
@@ -294,6 +334,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                   <Sm title="Agrandir la police" onClick={() => stepFontSize(1)}><span className="ce-glyph">A<sup>+</sup></span></Sm>
                   <Sm title="Réduire la police" onClick={() => stepFontSize(-1)}><span className="ce-glyph ce-glyph--small">A<sup>−</sup></span></Sm>
                   <Sm title="Changer la casse : minuscules, MAJUSCULES, Première lettre (Maj+F3)" onClick={() => c().cycleCase().run()}><span className="ce-glyph">Aa</span></Sm>
+                  <Sm icon="clear" title="Effacer la mise en forme" onClick={() => c().unsetAllMarks().unsetTextAlign().run()} />
                 </div>
                 <div className="ce-row">
                   <Sm title="Gras (Ctrl+B)" on={s.bold} onClick={() => c().toggleBold().run()}><b className="ce-glyph">G</b></Sm>
@@ -544,6 +585,20 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <Big icon="trash" label="Supprimer" title="Supprimer le tableau" onClick={() => c().deleteTable().run()} />
             </Group>
           </>
+        )}
+
+        {pasteMenu && (
+          <div ref={pasteMenuRef} className="ce-menu ce-menu--small" style={{ left: pasteMenu.left, top: pasteMenu.top }} role="menu" onMouseDown={(e) => e.preventDefault()}>
+            {([
+              ['adapt', 'Adapter au cours', 'Garde titres, listes, tableaux, gras et couleurs ; prend la police du cours (Ctrl+V)'],
+              ['keep', 'Garder la mise en forme', 'Garde aussi la police et la taille d’origine'],
+              ['text', 'Texte seul', 'Sans aucune mise en forme (Ctrl+Maj+V)'],
+            ] as const).map(([mode, label, hint]) => (
+              <button key={mode} type="button" role="menuitem" className="ce-menu__item" onClick={() => { setPasteMenu(null); onPaste(mode); }}>
+                <span><strong>{label}</strong><small>{hint}</small></span>
+              </button>
+            ))}
+          </div>
         )}
 
         {tableGrid && (

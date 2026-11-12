@@ -25,7 +25,8 @@ import { uploadBoardImage } from '../../lib/boardImport';
 import { fetchLessonBoardByBoardId } from '../../lib/timetable/lessonBoardsQueries';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { Whiteboard } from '../classroom/Whiteboard';
-import { loadEncartPages } from './encartStore';
+import { duplicateEncartPage, loadEncartPages } from './encartStore';
+import type { PasteMode } from './coursePaste';
 import { CourseLinkDialog } from './CourseLinkDialog';
 import { CourseQrDialog } from './CourseQrDialog';
 import { MM } from '../../lib/course/coursePage';
@@ -219,12 +220,21 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
 
   // ---- Éditeur ----
 
+  /** Mode du prochain collage HTML : « garder la mise en forme » le temps d'un clic sur le bouton. */
+  const pasteModeRef = useRef<PasteMode>('adapt');
+
   const extensions = useMemo(() => courseExtensions(
     (layout) => setPages(layout.pages),
     { boardId, onEdit: (pageId) => setEditingEncart(pageId) },
     // Ctrl+K : l'extension prévient par un événement, l'éditeur ouvre la fenêtre (cf. insertLink)
     () => { window.dispatchEvent(new Event(LINK_EVENT)); },
-  ), [boardId]);
+    {
+      getMode: () => pasteModeRef.current,
+      onDroppedImages: (n) => toast(`${n} image${n > 1 ? 's' : ''} de Word n'${n > 1 ? 'ont' : 'a'} pas pu être reprise${n > 1 ? 's' : ''} : insérez-la${n > 1 ? 's' : ''} avec le bouton Image.`, 'info'),
+      onDuplicateEncart: (fromId, toId) => { void duplicateEncartPage(boardId, userId, fromId, toId).catch(() => toast('Le dessin de l’encart copié n’a pas pu être dupliqué.')); },
+      onImageFiles: (files) => { void uploadRef.current(files); },
+    },
+  ), [boardId, userId, toast]);
 
   // Pages des encarts (aperçus) ; relues au retour du tableau blanc
   useEffect(() => { void loadEncartPages(boardId); }, [boardId]);
@@ -243,12 +253,6 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
     autofocus: 'start',
     editorProps: {
       attributes: { class: 'ce-doc', spellcheck: 'true', lang: 'fr' },
-      handlePaste: (_view, event) => {
-        const files = imageFiles(event.clipboardData);
-        if (files.length === 0) return false;
-        void uploadRef.current(files);
-        return true;
-      },
       // Ctrl + clic sur un lien : l'ouvrir dans un nouvel onglet (un clic simple place le curseur)
       handleClick: (_view, _pos, event) => {
         if (!(event.ctrlKey || event.metaKey)) return false;
@@ -275,6 +279,51 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   });
 
   useEffect(() => { editorRef.current = editor; }, [editor]);
+
+  // Images collées (page web, image incrustée) : rapatriées dans le stockage du cours, pour ne
+  // dépendre ni du site d'origine ni d'un lien qui expire. Un site peut refuser : on prévient.
+  const triedImages = useRef(new Set<string>());
+  useEffect(() => {
+    if (!editor) return;
+    const rescue = () => {
+      const pending: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name !== 'image' || node.attrs.path || !node.attrs.src) return;
+        const src = node.attrs.src as string;
+        if (!triedImages.current.has(src)) pending.push(src);
+      });
+      if (pending.length === 0) return;
+      let failed = 0;
+      void Promise.all(pending.map(async (src) => {
+        triedImages.current.add(src);
+        try {
+          const res = await fetch(src);
+          if (!res.ok) throw new Error(String(res.status));
+          const blob = await res.blob();
+          if (!blob.type.startsWith('image/')) throw new Error('pas une image');
+          const img = await uploadBoardImage(new File([blob], 'image', { type: blob.type }), userId, `board:${boardId}`);
+          // La position a pu bouger pendant l'envoi : on retrouve l'image par son adresse
+          const { tr } = editor.state;
+          let changed = false;
+          editor.state.doc.descendants((node, pos) => {
+            if (node.type.name === 'image' && node.attrs.src === src && !node.attrs.path) {
+              tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, width: node.attrs.width ?? Math.round(Math.min(COL_W, img.width)) });
+              changed = true;
+            }
+          });
+          if (changed) editor.view.dispatch(tr);
+          if (src.startsWith('blob:')) URL.revokeObjectURL(src);
+        } catch {
+          failed++;
+        }
+      })).then(() => {
+        if (failed > 0) toast(`${failed} image${failed > 1 ? 's' : ''} collée${failed > 1 ? 's' : ''} reste${failed > 1 ? 'nt' : ''} liée${failed > 1 ? 's' : ''} au site d'origine (il en interdit la copie) : enregistrez-la${failed > 1 ? 's' : ''} puis insérez-la${failed > 1 ? 's' : ''} avec le bouton Image.`, 'info');
+      });
+    };
+    rescue();
+    editor.on('update', rescue);
+    return () => { editor.off('update', rescue); };
+  }, [editor, boardId, userId, toast]);
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
 
   const changeSettings = (patch: Partial<CourseSettings>) => {
@@ -437,16 +486,23 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   };
 
   /** Bouton « Coller » : comme Ctrl+V (mise en forme comprise), si le navigateur donne accès au presse-papiers. */
-  const paste = async () => {
+  const paste = async (mode: PasteMode | 'text' = 'adapt') => {
     if (!editor) return;
     try {
       editor.commands.focus();
+      if (mode === 'text') {
+        const text = await navigator.clipboard.readText();
+        if (text) editor.view.pasteText(text);
+        return;
+      }
       if (typeof navigator.clipboard.read === 'function') {
         const items = await navigator.clipboard.read();
         for (const item of items) {
           const imageType = item.types.find((t) => t.startsWith('image/'));
           if (item.types.includes('text/html')) {
-            editor.view.pasteHTML(await (await item.getType('text/html')).text());
+            pasteModeRef.current = mode;
+            try { editor.view.pasteHTML(await (await item.getType('text/html')).text()); }
+            finally { pasteModeRef.current = 'adapt'; }
             return;
           }
           if (imageType) {
@@ -510,7 +566,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         onInsertImage={() => fileRef.current?.click()}
         onInsertQr={() => setQrOpen(true)}
         onInsertLink={insertLink}
-        onPaste={() => void paste()}
+        onPaste={(mode) => void paste(mode)}
         zoom={zoom}
         onZoom={setZoom}
         onFitWidth={fitWidth}

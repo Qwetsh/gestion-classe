@@ -3,7 +3,7 @@
  * cours), gardées en mémoire pour dessiner les aperçus sans relire la base à chaque rendu.
  * Rechargées quand on revient de l'édition d'un encart.
  */
-import { fetchBoardPages } from '../../lib/boardQueries';
+import { fetchBoardPages, upsertBoardPages } from '../../lib/boardQueries';
 import type { BoardPage } from '../../lib/boardRender';
 
 const pagesByBoard = new Map<string, Map<string, BoardPage>>();
@@ -48,4 +48,22 @@ export function subscribeEncarts(fn: () => void): () => void {
 
 export function encartsVersion(): number {
   return version;
+}
+
+/**
+ * Encart copié-collé : sa nouvelle page reçoit une copie du dessin de l'original, pour que
+ * modifier l'une ne modifie plus l'autre. Page absente (encart encore vierge) : rien à copier.
+ */
+export async function duplicateEncartPage(boardId: string, userId: string, fromId: string, toId: string): Promise<void> {
+  await loadEncartPages(boardId);
+  let source = getEncartPage(boardId, fromId);
+  if (!source) {
+    await loadEncartPages(boardId, true);
+    source = getEncartPage(boardId, fromId);
+  }
+  if (!source) return;
+  const copy = { ...(JSON.parse(JSON.stringify(source)) as BoardPage), id: toId };
+  await upsertBoardPages(userId, { boardId }, [{ page: copy, position: 9999 }]);
+  pagesByBoard.get(boardId)?.set(toId, copy);
+  notify();
 }

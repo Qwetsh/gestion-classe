@@ -62,6 +62,7 @@ const PATHS = {
   vBottom: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 13h8M8 16h5"/>',
   headerCol: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16" stroke-width="3"/>',
   equalCols: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16M15 4v16"/><path d="M5 12h2M11 12h2M17 12h2" stroke-width="2"/>',
+  brush: '<path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 21h6"/>',
   // ---- Tableau blanc (ruban) ----
   select: '<path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z"/>',
   pen: '<path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/>',

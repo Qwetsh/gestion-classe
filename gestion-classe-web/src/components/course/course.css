@@ -311,6 +311,14 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 /* Coupure des mots */
 .ce-flow[data-hyphens] .ce-doc p, .ce-flow[data-hyphens] .ce-doc li { hyphens: auto; -webkit-hyphens: auto; }
 
+/* ---------- Collage et pinceau (T5) ---------- */
+.ce-split { position: relative; display: flex; }
+.ce-split__caret { position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; cursor: pointer; font-size: 10px; line-height: 1; color: var(--ce-muted); }
+.ce-split__caret:hover { background: var(--ce-accent-soft); border-color: #C7D2FE; color: var(--ce-text); }
+.ce-menu--small { width: 300px; }
+/* Pinceau armé : curseur « pinceau » sur la feuille */
+.ce-doc.ce-painting { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%23ffffff' stroke='%234F46E5' stroke-width='1.7' stroke-linejoin='round'><path d='M14 4l6 6-8 8H6v-6z'/></svg>") 4 20, text; }
+
 /* ---------- Fiche et évaluation (T3) ---------- */
 /* Pointillés de réponse dans la ligne */
 .ce-doc .ce-dots { display: inline-block; height: 0.9em; border-bottom: 1.5px dotted #475569; vertical-align: baseline; min-width: 0.6cm; }
