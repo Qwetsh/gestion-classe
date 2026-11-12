@@ -39,6 +39,11 @@ interface Props {
   onEditEncart: (pageId: string) => void;
   settings: CourseSettings;
   onSettings: (patch: Partial<CourseSettings>) => void;
+  onHistory: () => void;
+  historyOpen: boolean;
+  onSaveVersion: () => void;
+  onDuplicate: () => void;
+  onSaveTemplate: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -85,7 +90,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -278,6 +283,12 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
             <Group label="Cours">
               <Big icon="rename" label="Renommer" onClick={onRename} />
+              <Big icon="duplicate" label="Dupliquer" title="Faire une copie indépendante de ce cours (texte et encarts)" onClick={onDuplicate} />
+              <Big icon="template" label="Enregistrer comme modèle" title="Garder ce cours comme point de départ des prochains" onClick={onSaveTemplate} />
+            </Group>
+            <Group label="Versions">
+              <Big icon="history" label="Historique" title="Revoir et restaurer les versions précédentes du cours" onClick={onHistory} on={historyOpen} />
+              <Big icon="versionSave" label="Enregistrer une version" title="Garder l'état actuel du cours dans l'historique, sous un nom" onClick={onSaveVersion} />
             </Group>
           </>
         )}

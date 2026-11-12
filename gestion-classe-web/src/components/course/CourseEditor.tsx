@@ -16,9 +16,14 @@ import { relayoutNow } from './coursePagination';
 import { CourseRibbon } from './CourseRibbon';
 import { Icon } from './courseIcons';
 import {
-  COURSE_DOC_VERSION, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDoc, saveLocalCourse,
-  type CourseDoc, type CourseSettings,
+  COURSE_DOC_VERSION, duplicateCourse, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDocGuarded, saveLocalCourse,
+  templatesUnavailable, type CourseDoc, type CourseSettings,
 } from '../../lib/course/courseDoc';
+import { createVersion, fetchVersionDoc, lastVersionAt, versionsUnavailable, type CourseVersion } from '../../lib/course/courseVersions';
+import { supabase } from '../../lib/supabase';
+import { CourseVersionsPanel } from './CourseVersionsPanel';
+import { CourseVersionPreview } from './CourseVersionPreview';
+import { CourseNameDialog } from './CourseNameDialog';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
 import { uploadBoardImage } from '../../lib/boardImport';
@@ -39,7 +44,22 @@ interface Props {
   onClose: () => void;
 }
 
-type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'offline';
+type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'offline' | 'conflict';
+
+/** Une version automatique au plus toutes les 10 minutes de travail. */
+const SNAPSHOT_EVERY_MS = 10 * 60 * 1000;
+
+interface Loaded {
+  doc: CourseDoc;
+  title: string;
+  level: string | null;
+  chapter: string | null;
+  restored: boolean;
+  /** Document et numéro d'enregistrement tels qu'en base à l'ouverture. */
+  serverDoc: CourseDoc | null;
+  rev: string | null;
+  updatedAt: number;
+}
 
 const SAVE_DELAY_MS = 1000;
 const RETRY_MS = 15000;
@@ -61,18 +81,18 @@ function imageFiles(data: DataTransfer | null): File[] {
 }
 
 export function CourseEditor({ boardId, title, userId, onClose }: Props) {
-  const [loaded, setLoaded] = useState<{ doc: CourseDoc; title: string; restored: boolean } | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchCourse(boardId)
-      .then(({ doc, title: t, updatedAt }) => {
+      .then(({ doc, title: t, level, chapter, updatedAt, rev }) => {
         if (cancelled) return;
         // Copie locale plus récente que le serveur : un enregistrement n'est pas arrivé
         const local = loadLocalCourse(boardId);
         const restored = !!local && local.savedAt > updatedAt + 2000;
-        setLoaded({ doc: restored && local ? local.doc : doc ?? emptyCourseDoc(), title: t, restored });
+        setLoaded({ doc: restored && local ? local.doc : doc ?? emptyCourseDoc(), title: t, level, chapter, restored, serverDoc: doc, rev, updatedAt });
       })
       .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Ouverture impossible'); });
     return () => { cancelled = true; };
@@ -87,7 +107,7 @@ export function CourseEditor({ boardId, title, userId, onClose }: Props) {
   return createPortal(
     <div className="ce-root" role="dialog" aria-label={`Cours ${title}`}>
       {loaded ? (
-        <CourseEditorInner boardId={boardId} userId={userId} initialDoc={loaded.doc} initialTitle={loaded.title} restored={loaded.restored} onClose={onClose} />
+        <CourseEditorInner boardId={boardId} userId={userId} loaded={loaded} onClose={onClose} />
       ) : (
         <div className="ce-loading">
           {error ? (
@@ -105,14 +125,13 @@ export function CourseEditor({ boardId, title, userId, onClose }: Props) {
   );
 }
 
-function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored, onClose }: {
+function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   boardId: string;
   userId: string;
-  initialDoc: CourseDoc;
-  initialTitle: string;
-  restored: boolean;
+  loaded: Loaded;
   onClose: () => void;
 }) {
+  const { doc: initialDoc, title: initialTitle, restored } = loaded;
   const { toast, confirm } = useUIFeedback();
   const [title, setTitle] = useState(initialTitle);
   /** Réglages du document (numérotation des titres, coupure des mots), enregistrés avec lui. */
@@ -138,6 +157,19 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
   const editorRef = useRef<Editor | null>(null);
   const saveTimer = useRef(0);
   const pendingRef = useRef(restored);
+  /** Numéro d'enregistrement attendu en base (contrôle des écritures concurrentes). */
+  const revRef = useRef<string | null>(loaded.rev);
+  /** Un autre onglet ou appareil a enregistré le cours : plus d'écriture avant le choix. */
+  const [conflict, setConflict] = useState(false);
+  const conflictRef = useRef(false);
+  /** Historique : volet ouvert, version affichée, fenêtres « nommer ». */
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versionsKey, setVersionsKey] = useState(0);
+  const [preview, setPreview] = useState<{ version: CourseVersion; doc: CourseDoc } | null>(null);
+  const [nameDialog, setNameDialog] = useState<'version' | 'duplicate' | 'template' | null>(null);
+  const lastSnapshotRef = useRef(Date.now());
+  /** Nombre d'autres onglets ou appareils où le cours est ouvert. */
+  const [others, setOthers] = useState(0);
 
   const setZoom = useCallback((z: number) => {
     const v = Math.round(Math.min(2, Math.max(0.5, z)) * 100) / 100;
@@ -160,12 +192,29 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
     if (!pendingRef.current) return true;
     const doc = currentDoc();
     if (!doc) return true;
-    pendingRef.current = false;
     saveLocalCourse(boardId, doc);
+    if (conflictRef.current) return false;
+    pendingRef.current = false;
     setSave('saving');
     try {
-      await saveCourseDoc(boardId, doc);
+      const res = await saveCourseDocGuarded(boardId, doc, revRef.current);
+      if (!res.ok) {
+        // Réécrit ailleurs depuis l'ouverture : on n'écrase rien, on demande
+        pendingRef.current = true;
+        conflictRef.current = true;
+        setConflict(true);
+        setSave('conflict');
+        return false;
+      }
+      revRef.current = res.rev;
       if (!pendingRef.current) setSave('saved');
+      // Une version toutes les 10 minutes de travail
+      if (Date.now() - lastSnapshotRef.current >= SNAPSHOT_EVERY_MS) {
+        lastSnapshotRef.current = Date.now();
+        void createVersion(userId, boardId, doc, 'auto')
+          .then((ok) => { if (ok) setVersionsKey((k) => k + 1); })
+          .catch((err: unknown) => console.warn('[CourseEditor] version :', err));
+      }
       return true;
     } catch (err) {
       console.warn('[CourseEditor] enregistrement :', err);
@@ -174,7 +223,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
       saveTimer.current = window.setTimeout(() => { void flushRef.current(); }, RETRY_MS);
       return false;
     }
-  }, [boardId]);
+  }, [boardId, userId]);
 
   useEffect(() => { flushRef.current = flush; }, [flush]);
 
@@ -185,6 +234,28 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
     const t = window.setTimeout(() => { void flushRef.current(); }, 500);
     return () => window.clearTimeout(t);
   }, [restored, toast]);
+
+  // Version prise à l'ouverture : l'état du cours tel qu'en base, s'il a changé depuis la dernière
+  useEffect(() => {
+    const serverDoc = loaded.serverDoc;
+    if (!serverDoc) return;
+    let cancelled = false;
+    void lastVersionAt(boardId).then(async (last) => {
+      if (cancelled || last === null || last >= loaded.updatedAt - 1000) return;
+      if (await createVersion(userId, boardId, serverDoc, 'auto')) setVersionsKey((k) => k + 1);
+    }).catch((err: unknown) => console.warn('[CourseEditor] version d’ouverture :', err));
+    return () => { cancelled = true; };
+  }, [boardId, userId, loaded]);
+
+  // Le même cours ouvert dans un autre onglet ou sur un autre appareil (présence Realtime)
+  useEffect(() => {
+    const key = Math.random().toString(36).slice(2, 10);
+    const channel = supabase.channel(`course-open:${boardId}`, { config: { presence: { key } } });
+    channel
+      .on('presence', { event: 'sync' }, () => { setOthers(Math.max(0, Object.keys(channel.presenceState()).length - 1)); })
+      .subscribe((status) => { if (status === 'SUBSCRIBED') void channel.track({ since: Date.now() }); });
+    return () => { void supabase.removeChannel(channel); };
+  }, [boardId]);
 
   // Fermeture de l'onglet avec des modifications en attente : copie locale immédiate
   useEffect(() => {
@@ -459,6 +530,94 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
     catch { toast('Impossible de renommer le cours.'); setTitle(title); }
   };
 
+  // ---- Versions, copies, modèles (lot T6) ----
+
+  /** Remplace le document affiché (restauration, version de l'autre appareil). */
+  const replaceDoc = (doc: CourseDoc, emitUpdate: boolean) => {
+    if (!editor) return;
+    setSettings(doc.settings ?? {});
+    settingsRef.current = doc.settings ?? {};
+    editor.commands.setContent(doc.content, { emitUpdate });
+  };
+
+  const saveVersion = async (label: string) => {
+    const doc = currentDoc();
+    if (!doc) return;
+    try {
+      const ok = await createVersion(userId, boardId, doc, label ? 'manual' : 'auto', label || null);
+      if (!ok) { toast('L’historique des versions demande la migration 072.'); return; }
+      lastSnapshotRef.current = Date.now();
+      setVersionsKey((k) => k + 1);
+      setNameDialog(null);
+      toast(label ? `Version « ${label} » enregistrée.` : 'Version enregistrée.', 'success');
+    } catch { toast('Impossible d’enregistrer la version.'); }
+  };
+
+  const openPreview = async (version: CourseVersion) => {
+    try { setPreview({ version, doc: await fetchVersionDoc(version.id) }); }
+    catch { toast('Cette version est illisible.'); }
+  };
+
+  const restorePreview = async () => {
+    if (!preview || !editor) return;
+    const at = new Date(preview.version.created_at);
+    const ok = await confirm({
+      title: 'Restaurer cette version ?',
+      message: `Le texte du cours reprend son état du ${at.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} à ${at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}. L’état actuel reste dans l’historique (« Avant restauration »). Les dessins des encarts ne changent pas.`,
+      confirmLabel: 'Restaurer',
+      variant: 'warning',
+    });
+    if (!ok) return;
+    const current = currentDoc();
+    if (current) await createVersion(userId, boardId, current, 'restore').catch((err: unknown) => console.warn('[CourseEditor] version avant restauration :', err));
+    replaceDoc(preview.doc, true);
+    setPreview(null);
+    setVersionsKey((k) => k + 1);
+    lastSnapshotRef.current = Date.now();
+    toast('Version restaurée. Ctrl+Z pour revenir en arrière.', 'success');
+  };
+
+  const duplicate = async (name: string, asTemplate: boolean) => {
+    if (!(await flush())) { toast('Le cours n’est pas encore enregistré : réessayez dans un instant.'); return; }
+    try {
+      await duplicateCourse(userId, boardId, { title: name, level: loaded.level, chapter: loaded.chapter }, asTemplate);
+      setNameDialog(null);
+      toast(asTemplate
+        ? `Modèle « ${name} » enregistré : il est proposé à la création d’un cours.`
+        : `Copie « ${name} » créée dans Mes tableaux.`, 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Copie impossible.');
+    }
+  };
+
+  /** Conflit : garder ma version (celle d'en face va dans l'historique) ou prendre l'autre. */
+  const resolveConflict = async (keep: 'mine' | 'theirs') => {
+    try {
+      const server = await fetchCourse(boardId);
+      const mine = currentDoc();
+      if (keep === 'mine') {
+        if (server.doc) await createVersion(userId, boardId, server.doc, 'conflict', 'Écrasée par une autre fenêtre').catch(() => false);
+        revRef.current = server.rev;
+        conflictRef.current = false;
+        setConflict(false);
+        pendingRef.current = true;
+        await flush();
+      } else {
+        if (mine) await createVersion(userId, boardId, mine, 'conflict', 'Modifications non gardées').catch(() => false);
+        conflictRef.current = false;
+        setConflict(false);
+        revRef.current = server.rev;
+        pendingRef.current = false;
+        window.clearTimeout(saveTimer.current);
+        if (server.doc) { replaceDoc(server.doc, false); saveLocalCourse(boardId, server.doc); }
+        setSave('saved');
+      }
+      setVersionsKey((k) => k + 1);
+    } catch {
+      toast('Le serveur ne répond pas : réessayez dans un instant.');
+    }
+  };
+
   const insertLink = () => {
     if (!editor) return;
     const inLink = editor.isActive('link');
@@ -525,6 +684,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
     saving: 'Enregistrement…',
     error: 'Pas enregistré — nouvel essai bientôt',
     offline: 'Hors connexion — copie gardée sur cet ordinateur',
+    conflict: 'Pas enregistré — modifié ailleurs',
   };
 
   if (!editor) return null;
@@ -554,6 +714,11 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         )}
         {lessonChip && <span className="ce-chip" title="Cours de l'emploi du temps auquel ce document est rattaché">{lessonChip}</span>}
         <span className={`ce-saved ce-saved--${save}`} role="status">{saveLabel[save]}</span>
+        {others > 0 && (
+          <span className="ce-chip ce-chip--warn" title="Ce cours est ouvert dans un autre onglet ou sur un autre appareil. Si les deux enregistrent, l’éditeur demandera quelle version garder.">
+            Ouvert aussi ailleurs
+          </span>
+        )}
         <span className="ce-spacer-flex" />
         <button type="button" className="ce-btn ce-btn--primary" onClick={() => void close()}>Fermer</button>
       </header>
@@ -576,7 +741,24 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         onEditEncart={(pageId) => setEditingEncart(pageId)}
         settings={settings}
         onSettings={changeSettings}
+        onHistory={() => setVersionsOpen((v) => !v)}
+        historyOpen={versionsOpen}
+        onSaveVersion={() => setNameDialog('version')}
+        onDuplicate={() => setNameDialog('duplicate')}
+        onSaveTemplate={() => setNameDialog('template')}
       />
+
+      {conflict && (
+        <div className="ce-conflict" role="alert">
+          <div>
+            <strong>Ce cours a été modifié dans une autre fenêtre ou sur un autre appareil.</strong>
+            <span>Vos dernières modifications ne sont pas encore enregistrées. Quelle version garder ? L’autre restera dans l’historique.</span>
+          </div>
+          <span className="ce-spacer-flex" />
+          <button type="button" className="ce-btn" onClick={() => void resolveConflict('theirs')}>Prendre l’autre version</button>
+          <button type="button" className="ce-btn ce-btn--primary" onClick={() => void resolveConflict('mine')}>Garder la mienne</button>
+        </div>
+      )}
 
       {showRuler && (
         <div className="ce-rulerbar" style={{ paddingRight: scrollbarW }} aria-hidden>
@@ -593,6 +775,7 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
         </div>
       )}
 
+      <div className="ce-main">
       <div className="ce-desk" ref={deskRef} onScroll={onDeskScroll}>
         <div className="ce-sheets-outer" style={{ width: PAGE_W * zoom, height: sheetsH * zoom }}>
           <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }} onMouseDown={onSheetsMouseDown}>
@@ -606,6 +789,28 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
             </div>
           </div>
         </div>
+      </div>
+        {preview && (
+          <CourseVersionPreview
+            key={preview.version.id}
+            boardId={boardId}
+            version={preview.version}
+            doc={preview.doc}
+            zoom={zoom}
+            onRestore={() => void restorePreview()}
+            onClose={() => setPreview(null)}
+          />
+        )}
+        {versionsOpen && (
+          <CourseVersionsPanel
+            boardId={boardId}
+            refreshKey={versionsKey}
+            previewId={preview?.version.id ?? null}
+            onPreview={(v) => void openPreview(v)}
+            onSaveVersion={() => setNameDialog('version')}
+            onClose={() => { setVersionsOpen(false); setPreview(null); }}
+          />
+        )}
       </div>
 
       <footer className="ce-status">
@@ -624,6 +829,32 @@ function CourseEditorInner({ boardId, userId, initialDoc, initialTitle, restored
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {nameDialog === 'version' && (
+        <CourseNameDialog
+          title="Enregistrer une version"
+          label="Nom de la version (facultatif)"
+          placeholder="Avant la séance de jeudi, version corrigée…"
+          hint={versionsUnavailable() ? 'L’historique demande la migration 072.' : 'Une version nommée n’est jamais effacée de l’historique.'}
+          confirmLabel="Enregistrer"
+          optional
+          onConfirm={saveVersion}
+          onClose={() => setNameDialog(null)}
+        />
+      )}
+      {(nameDialog === 'duplicate' || nameDialog === 'template') && (
+        <CourseNameDialog
+          title={nameDialog === 'duplicate' ? 'Dupliquer ce cours' : 'Enregistrer comme modèle'}
+          label={nameDialog === 'duplicate' ? 'Nom de la copie' : 'Nom du modèle'}
+          initial={nameDialog === 'duplicate' ? `${title} (copie)` : title}
+          hint={nameDialog === 'duplicate'
+            ? 'La copie (texte et encarts) est indépendante : la modifier ne change pas ce cours.'
+            : templatesUnavailable() ? 'Les modèles demandent la migration 072.' : 'Le modèle sera proposé dans « + Nouveau » de Mes tableaux. Ce cours-ci ne change pas.'}
+          confirmLabel={nameDialog === 'duplicate' ? 'Dupliquer' : 'Enregistrer le modèle'}
+          onConfirm={(name) => duplicate(name, nameDialog === 'template')}
+          onClose={() => setNameDialog(null)}
+        />
+      )}
 
       {qrOpen && (
         <CourseQrDialog

@@ -21,7 +21,11 @@ import {
 import { BoardWorkspace } from './BoardWorkspace';
 import { draftTab } from '../../lib/boardTabs';
 import { OpenPreparedBoard } from '../course/OpenPreparedBoard';
-import { coursesUnavailable, createCourse } from '../../lib/course/courseDoc';
+import { coursesUnavailable, createCourse, duplicateCourse, listTemplates, type CourseTemplateRow } from '../../lib/course/courseDoc';
+import { BUILTIN_TEMPLATES } from '../course/courseTemplates';
+
+/** Modèle choisi pour un nouveau cours : fourni (courseTemplates.ts) ou personnel (boards.is_template). */
+type TemplateChoice = { from: 'builtin'; id: string } | { from: 'mine'; id: string };
 
 /** Clé de stockage local du tableau blanc libre (hors séance). */
 
@@ -77,9 +81,12 @@ export function BoardsPanel({ userId }: Props) {
       }));
   }, [boards]);
 
-  const save = async (meta: BoardMeta, kind: 'course' | 'board') => {
+  const save = async (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
     if (editing === 'new') {
-      const b = kind === 'course' ? { ...(await createCourse(userId, meta)), is_course: true } : await createBoard(userId, meta);
+      let b: Board;
+      if (kind === 'board') b = await createBoard(userId, meta);
+      else if (template.from === 'mine') b = await duplicateCourse(userId, template.id, meta);
+      else b = { ...(await createCourse(userId, meta, null, (BUILTIN_TEMPLATES.find((t) => t.id === template.id) ?? BUILTIN_TEMPLATES[0]).build())), is_course: true };
       setBoards((prev) => [b, ...prev]);
       setEditing(null);
       setOpen(b);
@@ -168,6 +175,7 @@ export function BoardsPanel({ userId }: Props) {
 
       {editing && (
         <BoardMetaForm
+          userId={userId}
           initial={editing === 'new' ? { title: '', level: null, chapter: null } : { title: editing.title, level: editing.level, chapter: editing.chapter }}
           isNew={editing === 'new'}
           onSave={save}
@@ -187,20 +195,39 @@ export function BoardsPanel({ userId }: Props) {
 // ---------------------------------------------------------------------------------------------
 
 interface FormProps {
+  userId: string;
   initial: BoardMeta;
   isNew: boolean;
-  onSave: (meta: BoardMeta, kind: 'course' | 'board') => Promise<void>;
+  onSave: (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => Promise<void>;
   onClose: () => void;
 }
 
 /** Petit formulaire modal : titre, niveau, chapitre. Remplace les `window.prompt` d'avant. */
-function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
+function BoardMetaForm({ userId, initial, isNew, onSave, onClose }: FormProps) {
   const [title, setTitle] = useState(initial.title);
   const [level, setLevel] = useState(initial.level ?? '');
   const [chapter, setChapter] = useState(initial.chapter ?? '');
   const [kind, setKind] = useState<'course' | 'board'>(coursesUnavailable() ? 'board' : 'course');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [template, setTemplate] = useState<TemplateChoice>({ from: 'builtin', id: 'vierge' });
+  const [mine, setMine] = useState<CourseTemplateRow[]>([]);
+
+  useEffect(() => {
+    if (!isNew) return;
+    let cancelled = false;
+    listTemplates(userId).then((t) => { if (!cancelled) setMine(t); }).catch(() => { /* pas de modèles personnels */ });
+    return () => { cancelled = true; };
+  }, [isNew, userId]);
+
+  const removeTemplate = async (t: CourseTemplateRow) => {
+    if (!window.confirm(`Supprimer le modèle « ${t.title} » ? Les cours créés à partir de lui ne changent pas.`)) return;
+    try {
+      await deleteBoard(t.id);
+      setMine((prev) => prev.filter((x) => x.id !== t.id));
+      if (template.from === 'mine' && template.id === t.id) setTemplate({ from: 'builtin', id: 'vierge' });
+    } catch (err) { setError(err instanceof Error ? err.message : 'Suppression impossible'); }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -213,7 +240,7 @@ function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
     if (!title.trim()) return;
     setBusy(true);
     setError(null);
-    try { await onSave({ title: title.trim(), level: level || null, chapter: chapter.trim() || null }, kind); }
+    try { await onSave({ title: title.trim(), level: level || null, chapter: chapter.trim() || null }, kind, template); }
     catch (err) { setError(err instanceof Error ? err.message : 'Enregistrement impossible'); setBusy(false); }
   };
 
@@ -225,7 +252,7 @@ function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
       <form
         onSubmit={(e) => void submit(e)}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-[var(--surface)] p-6 space-y-4"
+        className={`w-full ${isNew && kind === 'course' ? 'max-w-xl' : 'max-w-md'} bg-[var(--surface)] p-6 space-y-4`}
         style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-2, var(--shadow-1))' }}
       >
         <h3 className="dash__card-title">{isNew ? 'Nouveau tableau préparé' : 'Modifier le tableau'}</h3>
@@ -248,6 +275,37 @@ function BoardMetaForm({ initial, isNew, onSave, onClose }: FormProps) {
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>
               </button>
             ))}
+          </div>
+        )}
+        {isNew && kind === 'course' && (
+          <div role="radiogroup" aria-label="Modèle" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Partir de</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
+              {[
+                ...BUILTIN_TEMPLATES.map((t) => ({ choice: { from: 'builtin', id: t.id } as TemplateChoice, label: t.label, hint: t.hint, emoji: t.emoji, row: null as CourseTemplateRow | null })),
+                ...mine.map((t) => ({ choice: { from: 'mine', id: t.id } as TemplateChoice, label: t.title, hint: 'Mon modèle', emoji: '⭐', row: t })),
+              ].map(({ choice, label: l, hint, emoji, row }) => {
+                const on = template.from === choice.from && template.id === choice.id;
+                return (
+                  <div key={`${choice.from}:${choice.id}`} style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setTemplate(choice)}
+                      title={hint}
+                      style={{ width: '100%', height: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 'var(--radius)', border: `1px solid ${on ? 'var(--indigo)' : 'var(--border)'}`, background: on ? 'var(--indigo-soft)' : 'var(--surface)', cursor: 'pointer', font: 'inherit', display: 'flex', gap: 8, alignItems: 'center' }}
+                    >
+                      <span aria-hidden style={{ fontSize: 18 }}>{emoji}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: row ? 16 : 0 }}>{l}</span>
+                    </button>
+                    {row && (
+                      <button type="button" onClick={() => void removeTemplate(row)} title="Supprimer ce modèle" aria-label={`Supprimer le modèle ${row.title}`} style={{ position: 'absolute', top: 4, right: 4, border: 0, background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, padding: 2 }}>✕</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
         <label style={label}>
