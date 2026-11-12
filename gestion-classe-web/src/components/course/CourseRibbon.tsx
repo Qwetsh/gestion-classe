@@ -12,6 +12,8 @@ import { Icon, type IconName } from './courseIcons';
 import { CALLOUT_COLORS, CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
 import { CourseBlocksMenu } from './CourseBlocksMenu';
 import { formatPoints } from './courseEval';
+import { CourseTableGrid } from './CourseTableGrid';
+import { CELL_COLORS, ROW_HEIGHTS, TABLE_STYLES, type TableStyle } from './courseTable';
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
 import { CourseSymbolPicker } from './CourseSymbolPicker';
 import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
@@ -128,6 +130,11 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         color: ts.color ?? '',
         link: e.isActive('link'),
         inTable: e.isActive('table'),
+        tableStyle: ((e.getAttributes('table') as { tableStyle?: string }).tableStyle ?? 'grid') as TableStyle,
+        tableAlign: ((e.getAttributes('table') as { tableAlign?: string }).tableAlign ?? 'left') as string,
+        cellBg: ((e.getAttributes('tableCell').backgroundColor ?? e.getAttributes('tableHeader').backgroundColor ?? '') as string),
+        cellVAlign: ((e.getAttributes('tableCell').verticalAlign ?? e.getAttributes('tableHeader').verticalAlign ?? 'top') as string),
+        rowHeight: (e.getAttributes('tableRow').minHeight ?? null) as number | null,
         onImage: e.isActive('image'),
         imageAlign: (e.getAttributes('image') as { align?: string }).align ?? 'center',
         onEncart: e.isActive('encart'),
@@ -167,6 +174,15 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     const next = dir > 0 ? FONT_SIZES_PT.find((p) => p > current) : [...FONT_SIZES_PT].reverse().find((p) => p < current);
     if (!next) return;
     if (next === 12) c().unsetFontSize().run(); else c().setFontSize(`${next}pt`).run();
+  };
+
+  // Grille de taille du tableau, ancrée sous son bouton
+  const tableBtnRef = useRef<HTMLSpanElement>(null);
+  const [tableGrid, setTableGrid] = useState<{ left: number; top: number } | null>(null);
+  const toggleTableGrid = () => {
+    if (tableGrid) { setTableGrid(null); return; }
+    const r = tableBtnRef.current?.querySelector('button')?.getBoundingClientRect();
+    setTableGrid({ left: r?.left ?? 200, top: (r?.bottom ?? 170) + 6 });
   };
 
   // Menu des blocs, ancré sous son bouton
@@ -388,7 +404,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
           <>
             <Group label="Illustrations">
               <Big icon="image" label="Image" title="Image depuis l'ordinateur (ou collez / glissez une image dans le cours)" onClick={onInsertImage} />
-              <Big icon="table" label="Tableau" title="Tableau de 3 × 3" onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} />
+              <span ref={tableBtnRef} style={{ display: 'contents' }}>
+                <Big icon="table" label="Tableau" title="Tableau : choisir le nombre de lignes et de colonnes" on={!!tableGrid} onClick={toggleTableGrid} />
+              </span>
             </Group>
             <Group label="Spécial cours">
               <Big icon="encart" label="Encart tableau" title="Bloc 16:9 de la largeur du texte : exactement un écran en classe. Double-clic pour y dessiner." onClick={() => c().insertEncart().run()} />
@@ -453,26 +471,83 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
 
         {tab === 'tableau' && (
           <>
-            <Group label="Lignes et colonnes">
+            <Group label="Lignes · Colonnes">
               <div className="ce-stack">
-                <Sm icon="rowAbove" label="Ligne au-dessus" title="Insérer une ligne au-dessus" onClick={() => c().addRowBefore().run()} />
-                <Sm icon="rowBelow" label="Ligne en dessous" title="Insérer une ligne en dessous" onClick={() => c().addRowAfter().run()} />
-                <Sm icon="delRow" label="Supprimer la ligne" title="Supprimer la ligne" onClick={() => c().deleteRow().run()} />
+                <Sm icon="rowAbove" label="Au-dessus" title="Insérer une ligne au-dessus" onClick={() => c().addRowBefore().run()} />
+                <Sm icon="rowBelow" label="En dessous" title="Insérer une ligne en dessous" onClick={() => c().addRowAfter().run()} />
+                <Sm icon="delRow" label="Supprimer" title="Supprimer la ligne" onClick={() => c().deleteRow().run()} />
               </div>
               <div className="ce-stack">
-                <Sm icon="colLeft" label="Colonne à gauche" title="Insérer une colonne à gauche" onClick={() => c().addColumnBefore().run()} />
-                <Sm icon="colRight" label="Colonne à droite" title="Insérer une colonne à droite" onClick={() => c().addColumnAfter().run()} />
-                <Sm icon="delCol" label="Supprimer la colonne" title="Supprimer la colonne" onClick={() => c().deleteColumn().run()} />
+                <Sm icon="colLeft" label="À gauche" title="Insérer une colonne à gauche" onClick={() => c().addColumnBefore().run()} />
+                <Sm icon="colRight" label="À droite" title="Insérer une colonne à droite" onClick={() => c().addColumnAfter().run()} />
+                <Sm icon="delCol" label="Supprimer" title="Supprimer la colonne" onClick={() => c().deleteColumn().run()} />
               </div>
+            </Group>
+            <Group label="Style">
+              {TABLE_STYLES.map((st) => (
+                <button key={st.id} type="button" className={`ce-tstyle ${s.tableStyle === st.id ? 'is-on' : ''}`} title={st.hint} onClick={() => c().updateAttributes('table', { tableStyle: st.id }).run()}>
+                  <span className={`ce-tstyle__swatch ce-tstyle__swatch--${st.id}`}><i /><i /><i /><i /><i /><i /></span>
+                  <small>{st.label}</small>
+                </button>
+              ))}
             </Group>
             <Group label="Cellules">
-              <Big icon="merge" label="Fusionner / scinder" onClick={() => c().mergeOrSplit().run()} />
-              <Big icon="header" label="Ligne d'en-tête" onClick={() => c().toggleHeaderRow().run()} />
+              <div className="ce-stack">
+                <div className="ce-row">
+                  <span className="ce-minilabel">Fond</span>
+                  {CELL_COLORS.map((col) => (
+                    <button key={col.c} type="button" className={`ce-swatch ${s.cellBg.toLowerCase() === col.c.toLowerCase() ? 'is-on' : ''}`} style={{ background: col.c }} title={`Fond ${col.n.toLowerCase()}`} aria-label={`Fond ${col.n.toLowerCase()}`} onClick={() => c().setCellAttribute('backgroundColor', col.c).run()} />
+                  ))}
+                  <label className="ce-colorpick" title="Autre couleur de fond…">
+                    <span className="ce-colorpick__wheel" />
+                    <input type="color" value={/^#[0-9a-f]{6}$/i.test(s.cellBg) ? s.cellBg : '#f1f5f9'} onChange={(e) => c().setCellAttribute('backgroundColor', e.target.value).run()} aria-label="Autre couleur de fond" />
+                  </label>
+                  <Sm title="Sans fond" onClick={() => c().setCellAttribute('backgroundColor', null).run()}><span className="ce-glyph ce-glyph--sm">Aucun</span></Sm>
+                </div>
+                <div className="ce-row">
+                  <span className="ce-minilabel">Texte</span>
+                  <Sm icon="vTop" title="Texte en haut de la cellule" on={s.cellVAlign === 'top'} onClick={() => c().setCellAttribute('verticalAlign', null).run()} />
+                  <Sm icon="vMiddle" title="Texte au milieu de la cellule" on={s.cellVAlign === 'middle'} onClick={() => c().setCellAttribute('verticalAlign', 'middle').run()} />
+                  <Sm icon="vBottom" title="Texte en bas de la cellule" on={s.cellVAlign === 'bottom'} onClick={() => c().setCellAttribute('verticalAlign', 'bottom').run()} />
+                  <span className="ce-sep" />
+                  <Sm icon="merge" label="Fusionner" title="Fusionner les cellules sélectionnées, ou scinder une cellule fusionnée" onClick={() => c().mergeOrSplit().run()} />
+                </div>
+                <div className="ce-row">
+                  <span className="ce-minilabel">Hauteur</span>
+                  <select className="ce-select" value={s.rowHeight ?? ''} onChange={(e) => c().setRowHeight(e.target.value ? Number(e.target.value) : null).run()} title="Hauteur des lignes sélectionnées" aria-label="Hauteur des lignes">
+                    {ROW_HEIGHTS.map((h) => <option key={h.label} value={h.value ?? ''}>{h.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            </Group>
+            <Group label="En-têtes">
+              <div className="ce-stack">
+                <Sm icon="header" label="Ligne d'en-tête" title="La première ligne devient une ligne de titres" onClick={() => c().toggleHeaderRow().run()} />
+                <Sm icon="headerCol" label="Colonne d'en-tête" title="La première colonne devient une colonne de titres" onClick={() => c().toggleHeaderColumn().run()} />
+              </div>
+            </Group>
+            <Group label="Taille et position">
+              <div className="ce-stack">
+                <div className="ce-row">
+                  <span className="ce-minilabel">Largeur</span>
+                  {[100, 75, 50].map((p) => <Sm key={p} label={`${p} %`} title={`Tableau sur ${p} % de la largeur du texte`} onClick={() => c().setTableWidth(p).run()} />)}
+                </div>
+                <div className="ce-row">
+                  <Sm icon="alignImgLeft" title="Tableau à gauche" on={s.tableAlign === 'left'} onClick={() => c().updateAttributes('table', { tableAlign: 'left' }).run()} />
+                  <Sm icon="alignImgCenter" title="Tableau centré" on={s.tableAlign === 'center'} onClick={() => c().updateAttributes('table', { tableAlign: 'center' }).run()} />
+                  <Sm icon="alignImgRight" title="Tableau à droite" on={s.tableAlign === 'right'} onClick={() => c().updateAttributes('table', { tableAlign: 'right' }).run()} />
+                </div>
+                <Sm icon="equalCols" label="Colonnes égales" title="Même largeur pour toutes les colonnes" onClick={() => c().equalizeColumns().run()} />
+              </div>
             </Group>
             <Group label="Tableau">
-              <Big icon="trash" label="Supprimer le tableau" onClick={() => c().deleteTable().run()} />
+              <Big icon="trash" label="Supprimer" title="Supprimer le tableau" onClick={() => c().deleteTable().run()} />
             </Group>
           </>
+        )}
+
+        {tableGrid && (
+          <CourseTableGrid left={tableGrid.left} top={tableGrid.top} onPick={(rows, cols) => c().insertTable({ rows, cols, withHeaderRow: rows > 1 }).run()} onClose={() => setTableGrid(null)} />
         )}
 
         {blocks && (

@@ -178,6 +178,43 @@ body.ce-open { overflow: hidden; }
 .ce-doc table { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 0; }
 .ce-doc th, .ce-doc td { border: 1px solid #94A3B8; padding: 5px 8px; vertical-align: top; position: relative; min-width: 40px; }
 .ce-doc th { background: #F1F5F9; font-weight: 700; text-align: left; }
+/* Position du tableau (quand il est moins large que le texte) */
+.ce-doc .tableWrapper[data-talign="center"] table { margin-left: auto; margin-right: auto; }
+.ce-doc .tableWrapper[data-talign="right"] table { margin-left: auto; }
+/* Styles de tableau (T4) — le fond choisi sur une cellule passe toujours devant (style en ligne) */
+.ce-doc .tableWrapper[data-tstyle="outer"] th, .ce-doc .tableWrapper[data-tstyle="outer"] td { border-color: transparent; }
+.ce-doc .tableWrapper[data-tstyle="outer"] table { outline: 1.5px solid #475569; outline-offset: -1px; }
+.ce-doc .tableWrapper[data-tstyle="lines"] th, .ce-doc .tableWrapper[data-tstyle="lines"] td { border-left-color: transparent; border-right-color: transparent; }
+.ce-doc .tableWrapper[data-tstyle="lines"] th { background: transparent; border-bottom: 2px solid #475569; }
+.ce-doc .tableWrapper[data-tstyle="zebra"] th, .ce-doc .tableWrapper[data-tstyle="zebra"] td { border-color: #CBD5E1; }
+.ce-doc .tableWrapper[data-tstyle="zebra"] tr:nth-child(even) > td { background: #F1F5F9; }
+.ce-doc .tableWrapper[data-tstyle="header"] th { background: #4F46E5; color: #fff; border-color: #4F46E5; }
+.ce-doc .tableWrapper[data-tstyle="none"] th, .ce-doc .tableWrapper[data-tstyle="none"] td { border-color: transparent; }
+.ce-doc .tableWrapper[data-tstyle="none"] th { background: transparent; }
+/* Repère discret à l'écran pour un tableau invisible (il ne s'imprime pas) */
+.ce-doc .tableWrapper[data-tstyle="none"] td, .ce-doc .tableWrapper[data-tstyle="none"] th { outline: 1px dashed #E2E8F0; outline-offset: -1px; }
+
+/* Choix du style (onglet Tableau) */
+.ce-tstyle { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 54px; padding: 5px 2px 3px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
+.ce-tstyle:hover { background: var(--ce-accent-soft); border-color: #C7D2FE; }
+.ce-tstyle.is-on { background: #E0E7FF; border-color: #A5B4FC; }
+.ce-tstyle small { font-size: 10.5px; color: #374151; }
+.ce-tstyle__swatch { display: grid; grid-template-columns: repeat(3, 12px); grid-template-rows: repeat(2, 9px); border: 1px solid #94A3B8; background: #fff; }
+.ce-tstyle__swatch i { border: 0.5px solid #94A3B8; }
+.ce-tstyle__swatch--outer i, .ce-tstyle__swatch--none i { border-color: transparent; }
+.ce-tstyle__swatch--none { border-style: dashed; border-color: #CBD5E1; }
+.ce-tstyle__swatch--lines i { border-left-color: transparent; border-right-color: transparent; }
+.ce-tstyle__swatch--lines { border-left-color: transparent; border-right-color: transparent; }
+.ce-tstyle__swatch--zebra i:nth-child(n+4) { background: #E2E8F0; }
+.ce-tstyle__swatch--header i:nth-child(-n+3) { background: #4F46E5; border-color: #4F46E5; }
+.ce-tstyle__swatch--grid i:nth-child(-n+3) { background: #F1F5F9; }
+
+/* Grille de taille d'un nouveau tableau */
+.ce-tgrid { position: fixed; z-index: 1200; padding: 8px 10px 10px; background: #fff; border: 1px solid var(--ce-line-2); border-radius: 10px; box-shadow: 0 16px 40px rgba(15,23,42,.22); }
+.ce-tgrid__label { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.ce-tgrid__cells { display: grid; gap: 2px; }
+.ce-tgrid__cell { width: 20px; height: 20px; padding: 0; border: 1px solid #D1D5DB; border-radius: 2px; background: #fff; cursor: pointer; }
+.ce-tgrid__cell.is-on { background: #E0E7FF; border-color: #6366F1; }
 .ce-doc td > p, .ce-doc th > p { margin: 0; }
 .ce-doc .selectedCell::after { content: ''; position: absolute; inset: 0; background: rgba(79,70,229,.12); pointer-events: none; }
 .ce-doc .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #A5B4FC; pointer-events: none; }
@@ -364,6 +401,8 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
   .ce-doc .ProseMirror-selectednode, .ce-img.is-selected .ce-img__box { outline: 0; }
   .ce-img__handle, .ce-doc .is-empty::before, .ce-doc .column-resize-handle, .ce-doc .selectedCell::after { display: none !important; }
   .ce-doc .ce-callout, .ce-doc mark, .ce-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ce-doc td, .ce-doc tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ce-doc .tableWrapper[data-tstyle="none"] td, .ce-doc .tableWrapper[data-tstyle="none"] th { outline: 0; }
   .ce-encart__label, .ce-encart__edit, .ce-doc .ce-zone::before { display: none !important; }
   .ce-encart { outline: 1px solid #94A3B8; }
   .ce-encart__empty { background: none; color: transparent; }

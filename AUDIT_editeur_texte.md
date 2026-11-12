@@ -1110,3 +1110,25 @@ ne partent pas dans un copier-coller (ils sont dessinés, à recalculer pour l'e
 **Non vérifié** : lecture du QR code au téléphone sur la feuille imprimée (il passe par la
 conversion JPEG des images) ; rendu imprimé des pointillés. **Non fait** : le contenu exact du
 cartouche attend la réponse à la question 9.
+
+### T4 — fait le 12/11/2026 (branche `feat/texte-t4`)
+
+- **Taille à l'insertion** : grille 8 × 8 à survoler (`CourseTableGrid`), ligne d'en-tête si
+  plus d'une ligne.
+- **Styles de tableau** : Grille, Cadre (bordure extérieure), Lignes (traits horizontaux),
+  Alterné, En-tête coloré, Invisible (sans bordures, repère pointillé à l'écran seulement).
+- **Cellules** : couleur de fond (7 teintes claires + roue), alignement vertical (haut, milieu,
+  bas), fusionner / scinder ; **hauteur des lignes** (auto, 1, 1,5, 2, 3 cm).
+- **En-têtes** : ligne et colonne d'en-tête.
+- **Taille et position** : largeur 100 / 75 / 50 % (les colonnes gardent leurs proportions),
+  tableau à gauche, centré ou à droite, colonnes égales.
+- `courseTable.ts` remplace `TableKit` : attributs `tableStyle` et `tableAlign` sur le tableau
+  (reportés sur l'enveloppe par `CourseTableView`, la vue de TipTap les ignorant), `minHeight`
+  sur les lignes, `backgroundColor` et `verticalAlign` sur les cellules. Fonds imprimés
+  (`print-color-adjust`).
+- Vérifié dans le navigateur : tableau 2 × 6 par la grille, les six styles, fond + alignement +
+  hauteur, colonne d'en-tête, 50 % centré, colonnes égales, relecture depuis la base, aucun bloc
+  hors page, ruban dans la largeur à 1440 px.
+
+**Non fait** : bordures cellule par cellule (épaisseur, couleur) — les styles couvrent les cas
+courants ; tableau qui se coupe entre deux pages (T15).

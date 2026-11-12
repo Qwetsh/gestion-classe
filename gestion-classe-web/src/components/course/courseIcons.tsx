@@ -57,6 +57,11 @@ const PATHS = {
   question: '<path d="M4 7h12M4 12h16M4 17h16" stroke-dasharray="0"/><path d="M19 5v4" stroke-width="2.4"/>',
   competences: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M13 4v16M17 4v16M3 14.500h18"/>',
   callout: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 5v14" stroke-width="3.2"/><path d="M8 10h9M8 14h6"/>',
+  vTop: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 8h8M8 11h5"/>',
+  vMiddle: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 11h8M8 14h5"/>',
+  vBottom: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 13h8M8 16h5"/>',
+  headerCol: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16" stroke-width="3"/>',
+  equalCols: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16M15 4v16"/><path d="M5 12h2M11 12h2M17 12h2" stroke-width="2"/>',
   // ---- Tableau blanc (ruban) ----
   select: '<path d="M5 3l14 8-6 1.5L16 20l-3 1-3-7.5L5 17z"/>',
   pen: '<path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/>',
