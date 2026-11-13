@@ -22,7 +22,7 @@ import { COLUMNS_LAYOUTS, findColumns, type ColumnsLayout } from './courseColumn
 import { PAGE_NUMBER_PRESETS, footerOf, pageNumberPreset } from './courseHeaderFooter';
 import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, IMAGE_FRAMES, flipCrop, rotateCrop, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
-export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
+export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'revision' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
 
 interface Props {
   editor: Editor;
@@ -60,6 +60,12 @@ interface Props {
   onHeaderFooter: () => void;
   /** Importer un fichier Word ou PDF dans le cours (lot T10a). */
   onImportFile: () => void;
+  /** Orthographe et grammaire (lot T11). */
+  spell: { active: boolean; live: boolean; checking: boolean; count: number };
+  onSpellCheck: () => void;
+  onSpellNext: () => void;
+  onSpellLive: () => void;
+  onSpellHide: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -128,7 +134,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -288,6 +294,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     { id: 'accueil', label: 'Accueil' },
     { id: 'insertion', label: 'Insertion' },
     { id: 'miseenpage', label: 'Mise en page' },
+    { id: 'revision', label: 'Révision' },
     { id: 'affichage', label: 'Affichage' },
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
     ...(s.inColumns ? [{ id: 'colonnes' as const, label: 'Colonnes', contextual: true }] : []),
@@ -578,6 +585,17 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
             <Group label="Pages">
               <Big icon="pagebreak" label="Saut de page" title="Saut de page (Ctrl+Entrée)" onClick={() => c().setPageBreak().run()} />
+            </Group>
+          </>
+        )}
+
+        {tab === 'revision' && (
+          <>
+            <Group label="Orthographe et grammaire">
+              <Big icon="spellcheck" label={spell.checking ? 'Vérification…' : 'Vérifier le cours'} title="Souligne les fautes d'orthographe, de grammaire et de typographie (service LanguageTool, seulement quand vous le demandez)" disabled={spell.checking} onClick={onSpellCheck} />
+              <Big icon="spellNext" label={spell.active ? `Faute suivante${spell.count ? ` (${spell.count})` : ''}` : 'Faute suivante'} title="Aller à la faute suivante et voir les propositions" disabled={!spell.active || spell.count === 0} onClick={onSpellNext} />
+              <Big icon="spellLive" label="Pendant la frappe" title="Vérifier les paragraphes modifiés 2 secondes après la dernière touche (réglage de cet ordinateur)" on={spell.live} onClick={onSpellLive} />
+              <Big icon="spellHide" label="Masquer" title="Retirer les soulignements (une nouvelle vérification les remet)" disabled={!spell.active} onClick={onSpellHide} />
             </Group>
           </>
         )}

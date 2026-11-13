@@ -1286,3 +1286,30 @@ plus de 20 pages ; le refus d'un .doc.
 
 **T10b (exporter en Word) : pas fait**, en attente de la question 5 du § 7 (export Word utile,
 ou le PDF suffit-il ?).
+
+### T11 — fait le 13/11/2026 (branche `feat/texte-t11`, pas de migration)
+
+- **Onglet « Révision »** : « Vérifier le cours », « Faute suivante » (avec le nombre),
+  « Pendant la frappe » (éteint par défaut, réglage de l'ordinateur), « Masquer ». Nombre de
+  fautes dans la barre d'état (un clic = faute suivante).
+- **Question 6 du § 7, en attendant la réponse de Thomas** : rien ne part tout seul. Le texte
+  n'est envoyé à LanguageTool (le même service que le tableau blanc) que sur demande ; la
+  première fois, une fenêtre explique l'envoi et rappelle de ne pas y laisser de noms d'élèves.
+- Module `courseSpell.ts` : paragraphe par paragraphe, regroupés (un cours de 6 pages = une
+  requête), au moins 3 s entre deux requêtes ; résultats gardés par texte de paragraphe (un
+  paragraphe inchangé n'est jamais renvoyé). Soulignés ondulés : rouge (orthographe), bleu
+  (grammaire), pointillés orange (typographie), jamais imprimés. Le correcteur du navigateur se
+  tait pendant ce temps (pas de double soulignement).
+- **Bulle** au clic sur un mot souligné : explication, propositions (la mise en forme du mot est
+  gardée, Ctrl+Z défait), « Ignorer », « Ajouter au dictionnaire » (partagé avec le tableau
+  blanc). Après une correction, les autres fautes du paragraphe restent soulignées et le
+  paragraphe est revérifié à la vérification suivante (une correction peut en appeler une autre).
+- Au passage : les confirmations de l'envoi et de l'import d'un gros PDF (T10a) avaient
+  l'icône de suppression ; elles ont l'icône d'avertissement.
+- Vérifié dans le navigateur (vrai service) : « Les élève », « Il a manger » soulignés ;
+  proposition appliquée puis Ctrl+Z ; faute suivante ; « Les élèves » corrigé laisse « manger »
+  souligné puis « travaille » est trouvé ; pendant la frappe, « Nous mange » souligné 2 s après.
+  Tests unitaires du découpage en lots.
+
+**Non vérifié** : un cours de 6 pages réel ; hors connexion (le code se tait en mode frappe et
+affiche un message en vérification manuelle) ; le menu contextuel du lot 6.

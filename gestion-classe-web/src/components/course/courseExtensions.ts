@@ -16,6 +16,7 @@ import { CoursePaste, type PasteMode } from './coursePaste';
 import { FormatPainter } from './courseFormatPainter';
 import { CourseSearch } from './courseSearch';
 import { CourseInvisibles } from './courseInvisibles';
+import { CourseSpell } from './courseSpell';
 import Image from '@tiptap/extension-image';
 import UniqueID from '@tiptap/extension-unique-id';
 import { Placeholder } from '@tiptap/extensions';
@@ -362,6 +363,7 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
     FormatPainter,
     CourseSearch,
     CourseInvisibles,
+    CourseSpell,
     CoursePagination.configure({ onLayout }),
   ];
 }

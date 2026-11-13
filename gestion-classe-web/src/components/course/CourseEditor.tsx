@@ -31,6 +31,8 @@ import { CourseSheetChrome } from './CourseSheetChrome';
 import { CourseHeaderFooterDialog } from './CourseHeaderFooterDialog';
 import { formatHeaderDate } from './courseHeaderFooter';
 import { setInvisibles } from './courseInvisibles';
+import { checkCourse, setLiveSpell, spellHits, spellKey, hideSpell, type SpellHit } from './courseSpell';
+import { CourseSpellPopover } from './CourseSpellPopover';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
 import { uploadBoardImage } from '../../lib/boardImport';
@@ -74,6 +76,9 @@ const ZOOM_KEY = 'course-editor-zoom';
 const RULER_KEY = 'course-editor-ruler';
 const OUTLINE_KEY = 'course-editor-outline';
 const INVISIBLES_KEY = 'course-editor-invisibles';
+/** Lot T11 : vérification pendant la frappe (réglage de l'ordinateur) et accord pour l'envoi au correcteur. */
+const SPELL_LIVE_KEY = 'course-spell-live';
+const SPELL_CONSENT_KEY = 'course-spell-consent';
 /** Largeur du volet « Plan du cours » (.ce-outline), pour garder la règle au-dessus de la page. */
 const OUTLINE_W = 250;
 const ZOOM_MIN = 0.25;
@@ -168,6 +173,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [showOutline, setShowOutline] = useState(() => readBool(OUTLINE_KEY, false));
   const [showInvisibles, setShowInvisibles] = useState(() => readBool(INVISIBLES_KEY, false));
   const [find, setFind] = useState<{ replace: boolean; query: string; key: number } | null>(null);
+  /** Bulle du correcteur ouverte sur une faute (lot T11). */
+  const [spellPop, setSpellPop] = useState<{ hit: SpellHit; rect: DOMRect } | null>(null);
   const [lessonChip, setLessonChip] = useState<string | null>(null);
   /** Cours de l'emploi du temps rattaché : champs {classe} et {date} des en-têtes (lot T9). */
   const [lesson, setLesson] = useState<{ label: string; startsAt: Date } | null>(null);
@@ -366,6 +373,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
               ? `Ce PDF a ${pdfPages} pages : seules les ${PDF_PAGES_MAX} premières seront insérées, chacune comme une image du cours.`
               : `Ce PDF a ${pdfPages} pages : chacune devient une image du cours (le texte n'est pas modifiable).`,
             confirmLabel: 'Insérer',
+            variant: 'warning',
           });
           if (!ok) return;
         }
@@ -456,7 +464,9 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     content: initialDoc.content,
     autofocus: 'start',
     editorProps: {
-      attributes: { class: 'ce-doc', spellcheck: 'true', lang: 'fr' },
+      // Le correcteur du navigateur se tait quand celui du cours (LanguageTool) est affiché :
+      // pas de double soulignement
+      attributes: (state) => ({ class: 'ce-doc', spellcheck: spellKey.getState(state)?.find().length || editorRef.current?.storage.courseSpell?.active ? 'false' : 'true', lang: 'fr' }),
       // Ctrl + clic sur un lien : l'ouvrir dans un nouvel onglet (un clic simple place le curseur)
       handleClick: (_view, _pos, event) => {
         if (!(event.ctrlKey || event.metaKey)) return false;
@@ -720,6 +730,71 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
 
   const toggleOutline = () => setShowOutline((v) => { store(OUTLINE_KEY, v ? '0' : '1'); return !v; });
   const toggleInvisibles = () => setShowInvisibles((v) => { store(INVISIBLES_KEY, v ? '0' : '1'); return !v; });
+
+  // ---- Orthographe et grammaire (lot T11) ----
+
+  const spell = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      const st = e?.storage.courseSpell;
+      return { active: !!st?.active, live: !!st?.live, checking: !!st?.checking, count: e ? spellHits(e.state).length : 0 };
+    },
+  }) ?? { active: false, live: false, checking: false, count: 0 };
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.storage.courseSpell.onOpen = (hit, rect) => setSpellPop({ hit, rect });
+    if (readBool(SPELL_LIVE_KEY, false) && readBool(SPELL_CONSENT_KEY, false)) setLiveSpell(editor, true);
+    return () => { if (!editor.isDestroyed) editor.storage.courseSpell.onOpen = null; };
+  }, [editor]);
+
+  /** Le texte part chez un service en ligne : on le dit une fois, l'enseignant décide. */
+  const spellConsent = async (): Promise<boolean> => {
+    if (readBool(SPELL_CONSENT_KEY, false)) return true;
+    const ok = await confirm({
+      title: 'Vérifier avec LanguageTool ?',
+      message: 'Le texte du cours est envoyé au service en ligne gratuit LanguageTool (le même que pour le tableau blanc), qui renvoie les fautes. Rien n’est envoyé sans que vous le demandiez. Évitez d’y laisser des noms d’élèves.',
+      confirmLabel: 'Vérifier',
+      variant: 'warning',
+    });
+    if (ok) store(SPELL_CONSENT_KEY, '1');
+    return ok;
+  };
+
+  const runSpell = async () => {
+    if (!editor || !(await spellConsent())) return;
+    try {
+      const n = await checkCourse(editor);
+      toast(n === 0 ? 'Aucune faute trouvée.' : `${n} faute${n > 1 ? 's' : ''} soulignée${n > 1 ? 's' : ''} : cliquez sur un mot pour les propositions.`, n === 0 ? 'success' : 'info');
+    } catch {
+      toast('Le correcteur ne répond pas (pas de réseau, ou trop de demandes) : réessayez dans une minute.');
+    }
+  };
+
+  /** Faute suivante après le curseur (on reboucle au début), bulle ouverte dessus. */
+  const nextSpell = () => {
+    if (!editor) return;
+    const hits = spellHits(editor.state);
+    if (hits.length === 0) { toast('Aucune faute soulignée.', 'info'); return; }
+    const at = editor.state.selection.to;
+    const hit = hits.find((h) => h.from >= at) ?? hits[0];
+    editor.chain().focus().setTextSelection({ from: hit.from, to: hit.to }).run();
+    reveal(hit.from);
+    window.setTimeout(() => {
+      const el = (editor.view.domAtPos(hit.from + 1).node as Node);
+      const span = (el.nodeType === Node.TEXT_NODE ? el.parentElement : el as HTMLElement)?.closest('.ce-spell') as HTMLElement | null;
+      const r = span?.getBoundingClientRect() ?? editor.view.coordsAtPos(hit.from);
+      setSpellPop({ hit, rect: r instanceof DOMRect ? r : new DOMRect(r.left, r.top, 1, r.bottom - r.top) });
+    }, 60);
+  };
+
+  const toggleLiveSpell = async () => {
+    if (!editor) return;
+    const next = !spell.live;
+    if (next && !(await spellConsent())) return;
+    store(SPELL_LIVE_KEY, next ? '1' : '0');
+    setLiveSpell(editor, next);
+  };
 
   // Marques non imprimables : le réglage gardé sur cet ordinateur s'applique au document
   useEffect(() => {
@@ -991,6 +1066,11 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onToggleInvisibles={toggleInvisibles}
         onHeaderFooter={() => setHfOpen(true)}
         onImportFile={() => docFileRef.current?.click()}
+        spell={spell}
+        onSpellCheck={() => void runSpell()}
+        onSpellNext={nextSpell}
+        onSpellLive={() => void toggleLiveSpell()}
+        onSpellHide={() => { if (editor) hideSpell(editor); setSpellPop(null); }}
         onReplaceImage={() => { replacePosRef.current = editor.state.selection.from; fileRef.current?.click(); }}
       />
 
@@ -1079,6 +1159,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         <span>Page {Math.min(currentPage, pages)} sur {pages}</span>
         <span>{words} mot{words > 1 ? 's' : ''}</span>
         {importing && <span className="ce-status__busy" role="status">{importing}</span>}
+        {spell.checking && <span className="ce-status__busy" role="status">Vérification de l’orthographe…</span>}
+        {!spell.checking && spell.active && (
+          <button type="button" className="ce-status__spell" onClick={nextSpell} title="Aller à la faute suivante">
+            {spell.count === 0 ? 'Aucune faute' : `${spell.count} faute${spell.count > 1 ? 's' : ''}`}
+          </button>
+        )}
         <span className="ce-spacer-flex" />
         <div className="ce-modes" role="group" aria-label="Mode">
           <button type="button" className="is-on" title="Rédiger le cours">¶ Texte</button>
@@ -1092,6 +1178,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {spellPop && <CourseSpellPopover editor={editor} hit={spellPop.hit} rect={spellPop.rect} onClose={() => setSpellPop(null)} />}
 
       {hfOpen && <CourseHeaderFooterDialog settings={settings} onSettings={changeSettings} onClose={() => setHfOpen(false)} />}
 

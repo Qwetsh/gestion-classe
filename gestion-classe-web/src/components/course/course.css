@@ -540,6 +540,27 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-status__busy::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ce-accent); animation: ce-pulse 1s ease-in-out infinite alternate; }
 @keyframes ce-pulse { from { opacity: .3; } to { opacity: 1; } }
 
+/* ---------- Orthographe et grammaire (lot T11) ---------- */
+.ce-spell { text-decoration-line: underline; text-decoration-style: wavy; text-decoration-thickness: 1.5px; text-underline-offset: 3px; text-decoration-skip-ink: none; cursor: pointer; }
+.ce-spell--spelling { text-decoration-color: #DC2626; }
+.ce-spell--grammar { text-decoration-color: #2563EB; }
+.ce-spell--style { text-decoration-color: #D97706; text-decoration-style: dotted; }
+.ce-spellpop { position: fixed; z-index: 90; width: 320px; background: #fff; border: 1px solid var(--ce-line-2); border-radius: 10px; box-shadow: 0 12px 32px rgba(15,23,42,.18); padding: 10px 12px; font: 13px Inter, sans-serif; color: var(--ce-text); display: flex; flex-direction: column; gap: 8px; }
+.ce-spellpop__kind { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.ce-spellpop__kind--spelling { color: #B91C1C; }
+.ce-spellpop__kind--grammar { color: #1D4ED8; }
+.ce-spellpop__kind--style { color: #B45309; }
+.ce-spellpop__msg { margin: 0; line-height: 1.4; }
+.ce-spellpop__none { margin: 0; color: var(--ce-muted); font-size: 12px; }
+.ce-spellpop__sugg { display: flex; flex-wrap: wrap; gap: 6px; }
+.ce-spellpop__btn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--ce-line-2); background: #fff; cursor: pointer; font: inherit; color: var(--ce-text); }
+.ce-spellpop__btn:hover { background: var(--ce-chrome); }
+.ce-spellpop__btn--sugg { font-weight: 600; border-color: #C7D2FE; background: var(--ce-accent-soft); color: var(--ce-accent-ink); }
+.ce-spellpop__btn--sugg:hover { background: #E0E7FF; }
+.ce-spellpop__foot { display: flex; gap: 6px; border-top: 1px solid var(--ce-line); padding-top: 8px; }
+.ce-status__spell { border: 0; background: none; padding: 0 4px; font: inherit; color: #B91C1C; cursor: pointer; }
+.ce-status__spell:hover { text-decoration: underline; }
+
 @media print {
   @page { size: A4; margin: 0; }
   body.ce-open { overflow: visible !important; background: #fff !important; }
@@ -560,6 +581,8 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
   .ce-doc .ce-col { outline: 0 !important; }
   .ce-hf--empty, .ce-hf__missing { display: none !important; }
   .ce-hf { outline: 0 !important; }
+  .ce-spell { text-decoration: none !important; }
+  .ce-spellpop { display: none !important; }
   .ce-img__caption:has(.is-empty), .ce-img__crop-hint { display: none !important; }
   .ce-img__handle, .ce-doc .is-empty::before, .ce-doc .column-resize-handle, .ce-doc .selectedCell::after { display: none !important; }
   .ce-doc .ce-callout, .ce-doc mark, .ce-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
