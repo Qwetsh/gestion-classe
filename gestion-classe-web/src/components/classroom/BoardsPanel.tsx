@@ -23,6 +23,7 @@ import { draftTab } from '../../lib/boardTabs';
 import { OpenPreparedBoard } from '../course/OpenPreparedBoard';
 import { coursesUnavailable, createCourse, duplicateCourse, emptyCourseDoc, listTemplates, type CourseTemplateRow } from '../../lib/course/courseDoc';
 import { isDocxFile, queueCourseImport } from '../../lib/course/courseImport';
+import { withDefaultTheme } from '../course/courseThemes';
 import { BUILTIN_TEMPLATES } from '../course/courseTemplates';
 
 /** Modèle choisi pour un nouveau cours : fourni (courseTemplates.ts) ou personnel (boards.is_template). */
@@ -91,10 +92,10 @@ export function BoardsPanel({ userId }: Props) {
       else if (template.from === 'mine') b = await duplicateCourse(userId, template.id, meta);
       else if (template.from === 'word') {
         // Cours vide : l'éditeur importe le fichier Word à l'ouverture (avec le nettoyage du collage)
-        b = { ...(await createCourse(userId, meta, null, emptyCourseDoc())), is_course: true };
+        b = { ...(await createCourse(userId, meta, null, withDefaultTheme(emptyCourseDoc()))), is_course: true };
         queueCourseImport(b.id, template.file);
       }
-      else b = { ...(await createCourse(userId, meta, null, (BUILTIN_TEMPLATES.find((t) => t.id === template.id) ?? BUILTIN_TEMPLATES[0]).build())), is_course: true };
+      else b = { ...(await createCourse(userId, meta, null, withDefaultTheme((BUILTIN_TEMPLATES.find((t) => t.id === template.id) ?? BUILTIN_TEMPLATES[0]).build()))), is_course: true };
       setBoards((prev) => [b, ...prev]);
       setEditing(null);
       setOpen(b);

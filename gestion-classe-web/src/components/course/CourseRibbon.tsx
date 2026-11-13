@@ -16,10 +16,12 @@ import { CourseTableGrid } from './CourseTableGrid';
 import { CELL_COLORS, ROW_HEIGHTS, TABLE_STYLES, type TableStyle } from './courseTable';
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
 import { CourseSymbolPicker } from './CourseSymbolPicker';
+import { CourseIconPicker } from './CourseIconPicker';
 import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
 import { CAPTION_LABELS, HEADING_NUMBERING_LABELS, type CaptionLabel, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
 import { COLUMNS_LAYOUTS, findColumns, type ColumnsLayout } from './courseColumns';
 import { PAGE_NUMBER_PRESETS, footerOf, pageNumberPreset } from './courseHeaderFooter';
+import { COURSE_THEMES, defaultThemeId, setDefaultThemeId, themeById, type CourseThemeId } from './courseThemes';
 import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, IMAGE_FRAMES, flipCrop, rotateCrop, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
 export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'revision' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
@@ -100,6 +102,21 @@ function Sm({ icon, label, title, onClick, on, disabled, children }: { icon?: Ic
       {children}
       {label && <span>{label}</span>}
     </button>
+  );
+}
+
+/** « Pour les nouveaux cours » : le thème affiché devient celui des cours créés sur cet ordinateur. */
+function ThemeDefaultButton({ current }: { current: CourseThemeId }) {
+  const [def, setDef] = useState<CourseThemeId>(() => defaultThemeId() ?? 'classique');
+  const isDefault = def === current;
+  return (
+    <Sm
+      icon="template"
+      label={isDefault ? 'Thème par défaut' : 'Par défaut'}
+      title={isDefault ? 'C’est le thème des nouveaux cours sur cet ordinateur' : 'Utiliser ce thème pour les nouveaux cours (sur cet ordinateur)'}
+      on={isDefault}
+      onClick={() => { setDefaultThemeId(current); setDef(current); }}
+    />
   );
 }
 
@@ -273,6 +290,14 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
   // Palette de symboles, ancrée sous son bouton
   const symbolBtnRef = useRef<HTMLSpanElement>(null);
   const [symbols, setSymbols] = useState<{ left: number; top: number } | null>(null);
+  // Fenêtre des icônes (lot T16a), ancrée sous son bouton
+  const iconBtnRef = useRef<HTMLSpanElement>(null);
+  const [iconPick, setIconPick] = useState<{ left: number; top: number } | null>(null);
+  const toggleIcons = () => {
+    if (iconPick) { setIconPick(null); return; }
+    const r = iconBtnRef.current?.querySelector('button')?.getBoundingClientRect();
+    setIconPick({ left: r?.left ?? 200, top: (r?.bottom ?? 170) + 6 });
+  };
   const toggleSymbols = () => {
     if (symbols) { setSymbols(null); return; }
     const btn = symbolBtnRef.current?.querySelector('button');
@@ -540,6 +565,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
             <Group label="Texte">
               <Big icon="link" label="Lien" title="Lien vers une page web ou une adresse e-mail (Ctrl+K)" on={s.link} onClick={onInsertLink} />
+              <span ref={iconBtnRef} style={{ display: 'contents' }}>
+                <Big icon="star" label="Icône" title="Petite image dans la ligne : microscope, volcan, attention… (taille et couleur du texte)" on={!!iconPick} onClick={toggleIcons} />
+              </span>
               <span ref={symbolBtnRef} style={{ display: 'contents' }}>
                 <Big icon="sigma" label="Symbole" title="Flèches, signes mathématiques, lettres grecques, majuscules accentuées…" on={!!symbols} onClick={toggleSymbols} />
               </span>
@@ -553,6 +581,23 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
 
         {tab === 'miseenpage' && (
           <>
+            <Group label="Thème">
+              <div className="ce-themes" role="radiogroup" aria-label="Thème du cours">
+                {COURSE_THEMES.map((t) => {
+                  const on = themeById(settings.theme).id === t.id;
+                  return (
+                    <button key={t.id} type="button" role="radio" aria-checked={on} className={`ce-theme ${on ? 'is-on' : ''}`} title={t.hint}
+                      onClick={() => onSettings({ theme: t.id === 'classique' ? undefined : t.id })}>
+                      <span className="ce-theme__sw" aria-hidden>
+                        <i style={{ background: t.h1 }} /><i style={{ background: t.def.line }} /><i style={{ background: t.ret.line }} /><i style={{ background: t.ex.line }} />
+                      </span>
+                      <span className="ce-theme__name" style={t.headFont ? { fontFamily: t.headFont, fontSize: 11 } : undefined}>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <ThemeDefaultButton current={themeById(settings.theme).id} />
+            </Group>
             <Group label="Titres">
               <div className="ce-stack">
                 <span className="ce-minilabel">Numéroter les titres</span>
@@ -803,6 +848,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
           </>
         )}
 
+        {iconPick && (
+          <CourseIconPicker left={iconPick.left} top={iconPick.top} onInsert={(name) => c().insertIcon(name).run()} onClose={() => setIconPick(null)} />
+        )}
         {symbols && (
           <CourseSymbolPicker left={symbols.left} top={symbols.top} onInsert={(ch) => c().insertContent(ch).run()} onClose={() => setSymbols(null)} />
         )}

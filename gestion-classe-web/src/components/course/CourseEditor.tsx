@@ -47,6 +47,11 @@ import { CourseLinkDialog } from './CourseLinkDialog';
 import { CourseQrDialog } from './CourseQrDialog';
 import { MM } from '../../lib/course/coursePage';
 import './course.css';
+// Polices ajoutées au lot T16a (OFL) : OpenDyslexic et l'écriture attachée de l'école française
+import '@fontsource/opendyslexic/400.css';
+import '@fontsource/opendyslexic/700.css';
+import '@fontsource/playwrite-fr-moderne/400.css';
+import { themeStyle } from './courseThemes';
 
 interface Props {
   boardId: string;
@@ -1148,7 +1153,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
                 <CourseSheetChrome page={i + 1} pages={pages} settings={settings} values={chromeValues} onEdit={() => setHfOpen(true)} />
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
+            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...themeStyle(settings.theme) }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
               <EditorContent editor={editor} />
             </div>
           </div>

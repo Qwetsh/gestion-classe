@@ -1340,3 +1340,35 @@ affiche un message en vérification manuelle) ; le menu contextuel du lot 6.
 
 **Non vérifié** : une vraie impression papier (rendu noir et blanc, coupe A5, photocopieuse) ;
 Firefox et Safari (`@page` injecté).
+
+### Décisions de Thomas (13/11/2026) — questions du § 7
+
+- **Q1 Marges** : fixes à 2,5 cm. **T9b abandonné.**
+- **Q5 Export Word** : le PDF suffit. **T10b abandonné.**
+- **Q7 Équations** : pas besoin. **T12 abandonné.**
+- **Q11 Polices** : ajouter une police dys et une écriture attachée → T16a.
+- **Q12 Étude de texte** : pas maintenant. **T14 reporté.**
+- **Q14 Aide par IA** : non. **T17 abandonné.**
+- Restent : T15 (pagination fine, XL, après le lot 4), T16b (banque d'images : conditions
+  d'usage à vérifier), T14 (plus tard).
+
+### T16a — fait le 13/11/2026 (branche `feat/texte-t16`, pas de migration)
+
+- **Thèmes** (Mise en page › Thème) : Classique (l'apparence d'origine), Sobre (noir et gris,
+  photocopie), Nature, Chaleureux, Écolier (titres en écriture attachée, rouge et bleu).
+  Couleurs des titres et des encadrés devenues des variables CSS (`courseThemes.ts`) ; le thème
+  est rangé dans le cours (`settings.theme`). « Par défaut » : thème posé sur les nouveaux cours
+  créés sur cet ordinateur (`localStorage`, appliqué à la création).
+- **Polices** (paquets Fontsource, licence OFL) : OpenDyslexic et « Écriture attachée »
+  (Playwrite France Moderne, l'écriture enseignée à l'école) dans le menu des polices ; fichiers
+  téléchargés seulement s'ils servent.
+- **Icônes dans le texte** (Insertion › Icône) : 174 icônes Lucide choisies pour l'école, recherche
+  en français (« volcan », « attention »…), chargées à la demande (10 Ko compressés) ; nœud en
+  ligne `courseIcon`, de la taille et de la couleur du texte (titre compris).
+- Vérifié dans le navigateur : couleurs réelles des 5 thèmes (Classique inchangé), titres
+  Écolier en écriture attachée, polices chargées et dans le menu, thème par défaut posé sur un
+  nouveau cours, icône trouvée par « volcan », icône dans un titre (taille et couleur suivies),
+  tout enregistré dans le cours. Construction de production : OK. Tests unitaires des thèmes.
+
+**Non vérifié** : impression des thèmes (le thème Sobre en photocopie) ; l'écriture attachée
+dans les encadrés et le texte courant sur papier.
