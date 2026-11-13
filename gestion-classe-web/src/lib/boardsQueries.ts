@@ -77,16 +77,18 @@ export async function listBoards(userId: string): Promise<Board[]> {
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   const [first, lessonLinks] = await Promise.all([
-    // Avec le type (cours rédigé ou tableau blanc) ; sans, si la migration 071 manque
-    query(`${COLUMNS}, doc_version:doc->version`),
+    // Avec le type (cours rédigé ou tableau blanc) et la marque « modèle » (migration 072)
+    query(`${COLUMNS}, doc_version:doc->version, is_template`),
     // Table absente ou erreur : rien à écarter
     supabase.from('lesson_boards').select('board_id').eq('user_id', userId),
   ]);
-  let { data, error } = first as { data: unknown[] | null; error: { message?: string; code?: string } | null };
-  // Colonne `doc` absente (migration 071 non appliquée) : même liste, sans le type
+  type Res = { data: unknown[] | null; error: { message?: string; code?: string } | null };
+  let { data, error } = first as Res;
+  // Colonnes récentes absentes (migrations 072 puis 071 non appliquées) : même liste, sans elles
   // (à tester avant isMissingTable, dont le message « boards.doc does not exist » ferait croire la table absente)
-  const docColumnMissing = !!error && error.code !== '42P01' && (error.code === '42703' || /\bdoc\b/i.test(error.message ?? ''));
-  if (docColumnMissing) ({ data, error } = (await query(COLUMNS)) as { data: unknown[] | null; error: { message?: string; code?: string } | null });
+  const columnMissing = (e: Res['error'], col: RegExp) => !!e && e.code !== '42P01' && (e.code === '42703' || col.test(e.message ?? ''));
+  if (columnMissing(error, /is_template/i)) ({ data, error } = (await query(`${COLUMNS}, doc_version:doc->version`)) as Res);
+  if (columnMissing(error, /\bdoc\b/i)) ({ data, error } = (await query(COLUMNS)) as Res);
   if (isMissingTable(error)) {
     tableMissing = true;
     console.warn('[boardsQueries] table « boards » absente : migration add_boards.sql à appliquer');
@@ -94,9 +96,10 @@ export async function listBoards(userId: string): Promise<Board[]> {
   }
   if (error) throw error;
   const lessonBoardIds = new Set(((lessonLinks.error ? [] : lessonLinks.data) ?? []).map((r: { board_id: string }) => r.board_id));
-  return ((data || []) as (Board & { doc_version?: unknown })[])
-    .filter((b) => !lessonBoardIds.has(b.id))
-    .map(({ doc_version, ...b }) => ({ ...b, is_course: doc_version != null }));
+  // Les modèles de cours (migration 072) se choisissent à la création d'un cours, pas ici
+  return ((data || []) as (Board & { doc_version?: unknown; is_template?: boolean })[])
+    .filter((b) => !lessonBoardIds.has(b.id) && !b.is_template)
+    .map(({ doc_version, ...b }) => { delete b.is_template; return { ...b, is_course: doc_version != null }; });
 }
 
 export async function createBoard(userId: string, meta: BoardMeta, classId: string | null = null): Promise<Board> {

@@ -1160,3 +1160,30 @@ courants ; tableau qui se coupe entre deux pages (T15).
 
 **Non vérifié** : un vrai presse-papiers de Word (extraits simulés), Writer, Excel et Pronote ;
 la demande d'autorisation du navigateur pour le bouton Coller.
+
+### T6 — fait le 13/11/2026 (branche `feat/texte-t6`, migration 072 appliquée en prod)
+
+- **Historique des versions** (table `board_doc_versions`) : une version à l'ouverture si le
+  cours a changé depuis la dernière (pas pour un cours tout juste créé), une toutes les
+  10 minutes de travail, une « Avant restauration », une de chaque côté d'un conflit ; versions
+  nommées (jamais effacées). Volet « Historique » (onglet Fichier) : aperçu en lecture seule,
+  restauration (Ctrl+Z la défait), renommer, supprimer. La restauration ne touche que le texte,
+  pas les dessins des encarts.
+- **Dupliquer** (texte + pages d'encarts, copie indépendante) et **Enregistrer comme modèle**
+  (colonne `boards.is_template`) ; les modèles personnels n'apparaissent plus dans « Mes
+  tableaux » mais dans « + Nouveau », à côté des 5 modèles fournis (cours, fiche d'activité,
+  évaluation, fiche méthode, compte rendu de TP), avec une croix pour les retirer.
+- **Garde-fou d'enregistrement** (F11) : chaque écriture porte un numéro `doc.rev` et ne passe
+  que si le cours en base porte encore celui qu'on a lu. Sinon, bandeau « modifié ailleurs » :
+  garder la mienne ou prendre l'autre, la version écartée va dans l'historique. Pastille
+  « Ouvert aussi ailleurs » (présence Realtime) quand le même cours est ouvert dans un autre
+  onglet ou appareil.
+- Au passage : la croix des messages (toasts) de tout le site affichait `✕` en clair.
+- Vérifié dans le navigateur : modèle fourni, version nommée, aperçu, restauration, dupliquer,
+  enregistrer comme modèle (proposé dans « + Nouveau », absent de la liste), pastille de
+  présence, conflit entre deux onglets dans les deux sens, cours sans numéro (antérieur à T6)
+  qui s'enregistre et en reçoit un.
+
+**Non vérifié** : le conflit entre deux appareils (testé entre deux onglets) ; un onglet resté
+ouvert ne se met pas à jour tout seul quand l'autre enregistre (le conflit n'apparaît qu'à sa
+prochaine écriture).

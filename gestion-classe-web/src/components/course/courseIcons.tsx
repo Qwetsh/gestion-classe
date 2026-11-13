@@ -120,6 +120,9 @@ const PATHS = {
   png: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/><path d="M12 2v0"/>',
   bgPage: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16M10 3v18" opacity=".55"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.900l2.1 2.100M17 17l2.1 2.100M4.9 19.100L7 17M17 7l2.1-2.1"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4.5h4.5"/><path d="M12 7.5V12l3 2"/>',
+  template: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 8h16"/><rect x="7" y="11" width="4" height="6" rx=".5"/><path d="M14 12h3M14 15h3"/>',
+  versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 
 export type IconName = keyof typeof PATHS;
