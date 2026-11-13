@@ -561,6 +561,50 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-status__spell { border: 0; background: none; padding: 0 4px; font: inherit; color: #B91C1C; cursor: pointer; }
 .ce-status__spell:hover { text-decoration: underline; }
 
+/* ---------- Impressions adaptées (lot T13) : classes de <body> le temps d'une impression ---------- */
+/* Version adaptée (dys) : visible à l'écran pendant la fenêtre d'impression (c'est elle qu'on mesure) */
+body.ce-print-adapted .ce-doc { font-size: 19px; line-height: 1.75; letter-spacing: .03em; word-spacing: .14em; }
+body.ce-print-adapted .ce-doc p { margin-bottom: 12px; }
+body.ce-print-adapted .ce-doc h1 { font-size: 32px; }
+body.ce-print-adapted .ce-doc h2 { font-size: 24px; }
+body.ce-print-adapted .ce-doc h3 { font-size: 21px; }
+body.ce-print-adapted .ce-doc span[style*="font-size"] { font-size: inherit !important; }
+body.ce-print-adapted .ce-doc [style*="text-align: justify"] { text-align: left !important; }
+body.ce-print-adapted .ce-flow .ce-doc { hyphens: manual !important; -webkit-hyphens: manual !important; }
+body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: normal; font-weight: 600; }
+
+/* Deux par feuille : la copie figée n'existe que pendant l'impression */
+.ce-twoup { display: none; }
+
+.ce-printd { width: min(560px, calc(100vw - 32px)); }
+.ce-printd__row { display: flex; flex-direction: column; gap: 6px; }
+.ce-printd__choices { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.ce-printd__choice { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--ce-line-2); border-radius: 8px; background: #fff; cursor: pointer; font: 12px/1.35 Inter, sans-serif; color: var(--ce-muted); }
+.ce-printd__choice strong { font-size: 13px; color: var(--ce-text); }
+.ce-printd__choice.is-on { border-color: var(--ce-accent); background: var(--ce-accent-soft); box-shadow: 0 0 0 1px var(--ce-accent); }
+
+@media print {
+  /* Noir et blanc : texte noir, fonds gris clair, images en niveaux de gris */
+  body.ce-print-bw .ce-doc, body.ce-print-bw .ce-doc *, body.ce-print-bw .ce-hf { color: #000 !important; }
+  body.ce-print-bw .ce-doc .ce-callout { background: #F1F1F1 !important; border-color: #555 !important; }
+  body.ce-print-bw .ce-doc mark { background: #DDD !important; }
+  body.ce-print-bw .ce-doc th { background: #E8E8E8 !important; }
+  body.ce-print-bw .ce-doc td { background: transparent !important; }
+  body.ce-print-bw .ce-doc img, body.ce-print-bw .ce-encart img { filter: grayscale(1); }
+  /* Économie d'encre : aucun fond, images éclaircies, traits fins */
+  body.ce-print-eco .ce-doc, body.ce-print-eco .ce-doc *, body.ce-print-eco .ce-hf { color: #000 !important; }
+  body.ce-print-eco .ce-doc .ce-callout { background: none !important; border-color: #999 !important; }
+  body.ce-print-eco .ce-doc mark { background: none !important; text-decoration: underline; text-decoration-thickness: 2px; }
+  body.ce-print-eco .ce-doc th, body.ce-print-eco .ce-doc td { background: none !important; }
+  body.ce-print-eco .ce-doc img, body.ce-print-eco .ce-encart img { filter: grayscale(1) opacity(.6); }
+  /* Deux par feuille : seule la copie figée s'imprime, deux fois côte à côte en A5 */
+  body.ce-print-twoup .ce-root .ce-main { display: none !important; }
+  body.ce-print-twoup .ce-twoup { display: block; position: relative; width: 297mm; overflow: hidden; }
+  body.ce-print-twoup .ce-twoup__copy { position: absolute !important; top: 0; transform-origin: 0 0; }
+  body.ce-print-twoup .ce-twoup__cut { position: absolute; top: 0; bottom: 0; left: 148.5mm; border-left: 1px dashed #BBB; }
+  .ce-root .ce-modal { display: none !important; }
+}
+
 @media print {
   @page { size: A4; margin: 0; }
   body.ce-open { overflow: visible !important; background: #fff !important; }
