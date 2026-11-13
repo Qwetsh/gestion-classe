@@ -430,13 +430,59 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-preview__desk { flex: 1; min-height: 0; }
 
 /* ---------- Impression : seulement les feuilles, en A4 exact ---------- */
+/* ---------- Rechercher / remplacer, plan, marques non imprimables (lot T7) ---------- */
+.ce-find { background: #FEF08A; border-radius: 2px; box-shadow: 0 0 0 1px #FDE047; }
+.ce-find--current { background: #FB923C; box-shadow: 0 0 0 1px #EA580C; color: #111827; }
+.ce-find-bar { position: absolute; top: 10px; right: 24px; z-index: 6; width: 380px; max-width: calc(100% - 32px); background: #fff; border: 1px solid var(--ce-line-2); border-radius: 10px; box-shadow: 0 10px 30px rgba(15,23,42,.14); padding: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.ce-main.has-versions .ce-find-bar { right: 344px; }
+.ce-find-bar__row { display: flex; align-items: center; gap: 4px; }
+.ce-find-bar__toggle { width: 22px; height: 30px; border: 0; background: transparent; color: var(--ce-muted); cursor: pointer; border-radius: 4px; transition: transform .15s; flex: none; }
+.ce-find-bar__toggle.is-open { transform: rotate(90deg); }
+.ce-find-bar__spacer { width: 22px; flex: none; }
+.ce-find-bar__field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--ce-line-2); border-radius: 6px; color: var(--ce-muted); }
+.ce-find-bar__field:focus-within { border-color: var(--ce-accent); box-shadow: 0 0 0 2px var(--ce-accent-soft); }
+.ce-find-bar__field input { flex: 1; min-width: 0; border: 0; outline: none; font: inherit; color: var(--ce-text); background: transparent; }
+.ce-find-bar__count { font-size: 12px; white-space: nowrap; color: var(--ce-muted); }
+.ce-find-bar__count.is-none { color: #B91C1C; }
+.ce-find-bar__btn { width: 28px; height: 28px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: var(--ce-text); flex: none; font-size: 14px; }
+.ce-find-bar__btn:hover:not(:disabled) { background: var(--ce-chrome); }
+.ce-find-bar__btn:disabled { opacity: .35; cursor: default; }
+.ce-find-bar__opts { display: flex; gap: 14px; padding-left: 26px; color: var(--ce-muted); font-size: 12px; }
+.ce-find-bar__opts label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.ce-find-bar .ce-btn { height: 30px; padding: 0 10px; white-space: nowrap; }
+
+.ce-outline { width: 250px; flex: none; display: flex; flex-direction: column; background: #fff; border-right: 1px solid var(--ce-line); overflow: hidden; }
+.ce-outline__head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 6px 14px; font-size: 14px; }
+.ce-outline ul { list-style: none; margin: 0; padding: 0 6px 16px; overflow-y: auto; flex: 1; }
+.ce-outline__empty { margin: 6px 14px; color: var(--ce-muted); font-size: 12px; line-height: 1.5; }
+.ce-outline__item { display: flex; gap: 6px; width: 100%; text-align: left; border: 0; background: transparent; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: var(--ce-text); font-size: 13px; line-height: 1.35; }
+.ce-outline__item:hover { background: var(--ce-chrome); }
+.ce-outline__item.is-active { background: var(--ce-accent-soft); color: var(--ce-accent-ink); }
+.ce-outline__item--h1 { font-weight: 700; }
+.ce-outline__item--h2 { font-weight: 600; padding-left: 14px; }
+.ce-outline__item--h3 { padding-left: 28px; color: #374151; }
+.ce-outline__item.is-empty .ce-outline__text { color: var(--ce-muted); font-style: italic; font-weight: 400; }
+.ce-outline__num { flex: none; color: var(--ce-muted); font-variant-numeric: tabular-nums; }
+.ce-outline__text { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Marques : elles ne prennent aucune place (la mise en page ne bouge pas) */
+.ce-inv { position: relative; }
+.ce-inv::after { position: absolute; left: 50%; top: 0; transform: translateX(-50%); color: #60A5FA; font-weight: 400; font-style: normal; pointer-events: none; }
+.ce-inv--space::after { content: '·'; }
+.ce-inv--nbsp::after { content: '°'; font-size: .8em; }
+.ce-inv--tab::after { content: '→'; left: 0; transform: none; }
+.ce-inv-break { display: inline-block; width: 0; overflow: visible; color: #60A5FA; font-weight: 400; font-style: normal; pointer-events: none; user-select: none; }
+.ce-flow[data-invisibles] .ce-doc :is(p, h1, h2, h3, h4)::after { content: '¶'; display: inline-block; width: 0; overflow: visible; color: #60A5FA; font-weight: 400; font-style: normal; font-size: 1rem; pointer-events: none; }
+
 @media print {
   @page { size: A4; margin: 0; }
   body.ce-open { overflow: visible !important; background: #fff !important; }
   body.ce-open > *:not(.ce-root) { display: none !important; }
   body.ce-open .ce-root { position: static; display: block; background: #fff; }
   .ce-root .ce-titlebar, .ce-root .ce-ribbonwrap, .ce-root .ce-rulerbar, .ce-root .ce-status,
-  .ce-root .ce-versions, .ce-root .ce-preview, .ce-root .ce-conflict { display: none !important; }
+  .ce-root .ce-versions, .ce-root .ce-preview, .ce-root .ce-conflict, .ce-root .ce-find-bar, .ce-root .ce-outline, .ce-inv-break { display: none !important; }
+  .ce-inv::after, .ce-flow[data-invisibles] .ce-doc :is(p, h1, h2, h3, h4)::after { content: none !important; }
+  .ce-find, .ce-find--current { background: none !important; box-shadow: none !important; }
   .ce-root .ce-main { display: block; }
   .ce-root .ce-desk { overflow: visible; padding: 0; height: auto; }
   .ce-root .ce-sheets-outer { width: auto !important; height: auto !important; margin: 0; }

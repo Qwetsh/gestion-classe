@@ -44,6 +44,13 @@ interface Props {
   onSaveVersion: () => void;
   onDuplicate: () => void;
   onSaveTemplate: () => void;
+  onFind: () => void;
+  onReplace: () => void;
+  onFitPage: () => void;
+  showOutline: boolean;
+  onToggleOutline: () => void;
+  showInvisibles: boolean;
+  onToggleInvisibles: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -90,7 +97,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -449,6 +456,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 ))}
               </div>
             </Group>
+
+            <Group label="Modification">
+              <div className="ce-stack">
+                <Sm icon="search" label="Rechercher" title="Rechercher (Ctrl+F)" onClick={onFind} />
+                <Sm icon="replace" label="Remplacer" title="Remplacer (Ctrl+H)" onClick={onReplace} />
+              </div>
+            </Group>
           </>
         )}
 
@@ -514,9 +528,12 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Zoom">
               <Big icon="zoomin" label={`${Math.round(zoom * 100)} %`} title="Revenir à 100 %" onClick={() => onZoom(1)} />
               <Big icon="fitwidth" label="Largeur de page" onClick={onFitWidth} />
+              <Big icon="fitPage" label="Page entière" title="Voir une page entière (Ctrl+molette pour zoomer)" onClick={onFitPage} />
             </Group>
             <Group label="Repères">
+              <Big icon="outline" label="Plan du cours" title="Volet des titres : un clic amène au titre" on={showOutline} onClick={onToggleOutline} />
               <Big icon="ruler" label="Règle" on={showRuler} onClick={onToggleRuler} />
+              <Big icon="pilcrow" label="Marques ¶" title="Afficher les fins de paragraphe, les espaces et les retours à la ligne (non imprimés)" on={showInvisibles} onClick={onToggleInvisibles} />
             </Group>
           </>
         )}

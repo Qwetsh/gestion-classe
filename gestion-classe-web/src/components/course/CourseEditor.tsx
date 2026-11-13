@@ -8,7 +8,7 @@
  *
  * Plein écran au-dessus de l'application (portail sur <body>), comme le tableau blanc.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import { courseExtensions } from './courseExtensions';
@@ -24,6 +24,9 @@ import { supabase } from '../../lib/supabase';
 import { CourseVersionsPanel } from './CourseVersionsPanel';
 import { CourseVersionPreview } from './CourseVersionPreview';
 import { CourseNameDialog } from './CourseNameDialog';
+import { CourseFindBar } from './CourseFindBar';
+import { CourseOutline } from './CourseOutline';
+import { setInvisibles } from './courseInvisibles';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
 import { uploadBoardImage } from '../../lib/boardImport';
@@ -65,6 +68,14 @@ const SAVE_DELAY_MS = 1000;
 const RETRY_MS = 15000;
 const ZOOM_KEY = 'course-editor-zoom';
 const RULER_KEY = 'course-editor-ruler';
+const OUTLINE_KEY = 'course-editor-outline';
+const INVISIBLES_KEY = 'course-editor-invisibles';
+/** Largeur du volet « Plan du cours » (.ce-outline), pour garder la règle au-dessus de la page. */
+const OUTLINE_W = 250;
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 2;
+/** Marge haute du bureau (padding de .ce-desk), pour garder un point fixe en zoomant. */
+const DESK_PAD = 24;
 /** Événement interne : raccourci Ctrl+K frappé dans le texte. */
 const LINK_EVENT = 'course-editor:link';
 
@@ -142,8 +153,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [save, setSave] = useState<SaveState>(restored ? 'dirty' : 'saved');
   const [pages, setPages] = useState(1);
   const [gap, setGap] = useState(SHEET_GAP);
-  const [zoom, setZoomState] = useState(() => Math.min(2, Math.max(0.5, readNumber(ZOOM_KEY, 1))));
+  const [zoom, setZoomState] = useState(() => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, readNumber(ZOOM_KEY, 1))));
   const [showRuler, setShowRuler] = useState(() => readBool(RULER_KEY, true));
+  /** Lot T7 : volet du plan, marques non imprimables, barre de recherche. */
+  const [showOutline, setShowOutline] = useState(() => readBool(OUTLINE_KEY, false));
+  const [showInvisibles, setShowInvisibles] = useState(() => readBool(INVISIBLES_KEY, false));
+  const [find, setFind] = useState<{ replace: boolean; query: string; key: number } | null>(null);
   const [lessonChip, setLessonChip] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [scrollbarW, setScrollbarW] = useState(0);
@@ -172,7 +187,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [others, setOthers] = useState(0);
 
   const setZoom = useCallback((z: number) => {
-    const v = Math.round(Math.min(2, Math.max(0.5, z)) * 100) / 100;
+    const v = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) * 100) / 100;
     setZoomState(v);
     store(ZOOM_KEY, String(v));
   }, []);
@@ -461,6 +476,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         pendingRef.current = true;
         void flushRef.current().then((ok) => { if (ok) toast('Cours enregistré.', 'success'); });
       }
+      // Ctrl+F, Ctrl+H : la recherche du cours plutôt que celle du navigateur (pas dans un encart)
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'f' || k === 'h') && !editingEncartRef.current) {
+        e.preventDefault();
+        openFindRef.current(k === 'h');
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -491,6 +512,88 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     const desk = deskRef.current;
     if (desk) setZoom((desk.clientWidth - 48) / PAGE_W);
   };
+
+  // ---- Zoom autour d'un point fixe (Ctrl+molette, page entière) ----
+
+  const zoomRef = useRef(zoom);
+  /** Point du bureau à garder sous le même pixel après le prochain changement de zoom. */
+  const zoomAnchorRef = useRef<{ y: number; contentY: number } | null>(null);
+  useLayoutEffect(() => {
+    zoomRef.current = zoom;
+    const desk = deskRef.current;
+    const a = zoomAnchorRef.current;
+    zoomAnchorRef.current = null;
+    if (desk && a) desk.scrollTop = a.contentY * zoom + DESK_PAD - a.y;
+  }, [zoom]);
+
+  useEffect(() => {
+    const desk = deskRef.current;
+    if (!desk) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const y = e.clientY - desk.getBoundingClientRect().top;
+      zoomAnchorRef.current = { y, contentY: (desk.scrollTop + y - DESK_PAD) / zoomRef.current };
+      // pavé tactile (petits pas) comme molette (pas de 100) : environ 14 % par cran de molette
+      setZoom(zoomRef.current * Math.exp(-Math.max(-100, Math.min(100, e.deltaY)) * 0.0015));
+    };
+    desk.addEventListener('wheel', onWheel, { passive: false });
+    return () => desk.removeEventListener('wheel', onWheel);
+  }, [setZoom]);
+
+  /** Une page entière à l'écran, en haut du bureau. */
+  const fitPage = () => {
+    const desk = deskRef.current;
+    if (!desk) return;
+    const page = Math.min(currentPage, pages) - 1;
+    zoomAnchorRef.current = { y: DESK_PAD, contentY: page * (PAGE_H + gap) };
+    setZoom(Math.min((desk.clientHeight - 2 * DESK_PAD) / PAGE_H, (desk.clientWidth - 48) / PAGE_W));
+  };
+
+  /** Fait défiler le bureau jusqu'à une position du document (au tiers haut), si elle est hors de vue. */
+  const reveal = useCallback((pos: number) => {
+    const ed = editorRef.current;
+    const desk = deskRef.current;
+    if (!ed || !desk) return;
+    let c: { top: number; bottom: number; left: number };
+    try { c = ed.view.coordsAtPos(pos); } catch { return; }
+    const r = desk.getBoundingClientRect();
+    if (c.top < r.top + 40 || c.bottom > r.bottom - 40) desk.scrollTop += c.top - r.top - r.height / 3;
+    if (c.left < r.left + 20 || c.left > r.right - 20) desk.scrollLeft += c.left - r.left - r.width / 2;
+  }, []);
+
+  // ---- Rechercher, plan, marques (lot T7) ----
+
+  const editingEncartRef = useRef(editingEncart);
+  useEffect(() => { editingEncartRef.current = editingEncart; }, [editingEncart]);
+
+  const openFind = (replace: boolean) => {
+    const ed = editorRef.current;
+    let query = '';
+    if (ed && !ed.state.selection.empty) {
+      const { from, to } = ed.state.selection;
+      const sel = ed.state.doc.textBetween(from, to, '\n');
+      if (sel.length <= 120 && !sel.includes('\n')) query = sel;
+    }
+    setFind((prev) => ({ replace: replace || (prev?.replace ?? false), query, key: (prev?.key ?? 0) + 1 }));
+  };
+  const openFindRef = useRef(openFind);
+  useEffect(() => { openFindRef.current = openFind; });
+
+  const goToHeading = (pos: number) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.chain().focus().setTextSelection(pos + 1).run();
+    reveal(pos + 1);
+  };
+
+  const toggleOutline = () => setShowOutline((v) => { store(OUTLINE_KEY, v ? '0' : '1'); return !v; });
+  const toggleInvisibles = () => setShowInvisibles((v) => { store(INVISIBLES_KEY, v ? '0' : '1'); return !v; });
+
+  // Marques non imprimables : le réglage gardé sur cet ordinateur s'applique au document
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) setInvisibles(editor.view, showInvisibles);
+  }, [editor, showInvisibles]);
 
   /** Clic dans une marge ou sous le texte : le curseur va au point le plus proche, comme dans Word. */
   const onSheetsMouseDown = (e: React.MouseEvent) => {
@@ -748,6 +851,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onSaveVersion={() => setNameDialog('version')}
         onDuplicate={() => setNameDialog('duplicate')}
         onSaveTemplate={() => setNameDialog('template')}
+        onFind={() => openFind(false)}
+        onReplace={() => openFind(true)}
+        onFitPage={fitPage}
+        showOutline={showOutline}
+        onToggleOutline={toggleOutline}
+        showInvisibles={showInvisibles}
+        onToggleInvisibles={toggleInvisibles}
       />
 
       {conflict && (
@@ -763,7 +873,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       )}
 
       {showRuler && (
-        <div className="ce-rulerbar" style={{ paddingRight: scrollbarW }} aria-hidden>
+        <div className="ce-rulerbar" style={{ paddingRight: scrollbarW, paddingLeft: showOutline ? OUTLINE_W : 0 }} aria-hidden>
           <div className="ce-ruler" style={{ width: PAGE_W * zoom }}>
             <div className="ce-ruler__margin" style={{ left: 0, width: MARGIN * zoom }} />
             <div className="ce-ruler__margin" style={{ right: 0, width: MARGIN * zoom }} />
@@ -777,7 +887,10 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         </div>
       )}
 
-      <div className="ce-main">
+      <div className={`ce-main ${versionsOpen ? 'has-versions' : ''}`}>
+      {showOutline && (
+        <CourseOutline editor={editor} numbering={settings.numbering} onGo={goToHeading} onClose={toggleOutline} />
+      )}
       <div className="ce-desk" ref={deskRef} onScroll={onDeskScroll}>
         <div className="ce-sheets-outer" style={{ width: PAGE_W * zoom, height: sheetsH * zoom }}>
           <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }} onMouseDown={onSheetsMouseDown}>
@@ -786,7 +899,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
                 <span className="ce-sheet__num">{i + 1}</span>
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined}>
+            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined}>
               <EditorContent editor={editor} />
             </div>
           </div>
@@ -801,6 +914,18 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
             zoom={zoom}
             onRestore={() => void restorePreview()}
             onClose={() => setPreview(null)}
+          />
+        )}
+        {find && (
+          <CourseFindBar
+            editor={editor}
+            replaceOpen={find.replace}
+            onReplaceOpen={(open) => setFind((f) => (f ? { ...f, replace: open } : f))}
+            initialQuery={find.query}
+            focusKey={find.key}
+            onReveal={reveal}
+            onClose={() => setFind(null)}
+            onToast={(msg) => toast(msg, 'info')}
           />
         )}
         {versionsOpen && (
@@ -826,7 +951,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         </div>
         <div className="ce-zoom">
           <button type="button" onClick={() => setZoom(zoom - 0.1)} aria-label="Zoom arrière">−</button>
-          <input type="range" min={50} max={200} step={5} value={Math.round(zoom * 100)} onChange={(e) => setZoom(Number(e.target.value) / 100)} aria-label="Zoom" />
+          <input type="range" min={ZOOM_MIN * 100} max={ZOOM_MAX * 100} step={5} value={Math.round(zoom * 100)} onChange={(e) => setZoom(Number(e.target.value) / 100)} aria-label="Zoom" />
           <button type="button" onClick={() => setZoom(zoom + 0.1)} aria-label="Zoom avant">+</button>
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>

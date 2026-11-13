@@ -1187,3 +1187,27 @@ la demande d'autorisation du navigateur pour le bouton Coller.
 **Non vérifié** : le conflit entre deux appareils (testé entre deux onglets) ; un onglet resté
 ouvert ne se met pas à jour tout seul quand l'autre enregistre (le conflit n'apparaît qu'à sa
 prochaine écriture).
+
+### T7 — fait le 13/11/2026 (branche `feat/texte-t7`, pas de migration)
+
+- **Rechercher / remplacer** (Ctrl+F, Ctrl+H, boutons dans Accueil › Modification) : module
+  maison `courseSearch.ts` plutôt que `prosemirror-search` (pas de second exemplaire de
+  prosemirror-state/view à côté de TipTap). Sans accents ni majuscules par défaut
+  (« evaluation » trouve « Évaluation ») ; cases « Majuscules et accents exacts » et « Mot
+  entier ». Entrée / Maj+Entrée, compteur « 3 sur 12 », résultat courant en orange, le bureau
+  défile jusqu'à lui (même zoomé). « Tout remplacer » = une seule étape (un Ctrl+Z défait
+  tout) ; comme Word, le remplacement reprend la casse du mot trouvé (Cellule → Neurone).
+- **Plan du cours** (Affichage › Repères) : volet des titres numérotés comme sur la feuille,
+  titre courant en avant, clic = curseur et bureau sur le titre ; réglage gardé sur
+  l'ordinateur.
+- **Zoom** : Ctrl+molette sur le bureau (le point sous la souris ne bouge pas), « Page
+  entière », zoom de 25 à 200 %.
+- **Marques ¶** : fins de paragraphe ¶, espaces ·, insécables °, tabulations →, retours à la
+  ligne ↵ ; sans place prise (la pagination ne bouge pas), jamais imprimées.
+  `@tiptap/extension-invisible-characters` non utilisé (décorations maison, même raison).
+- Vérifié dans le navigateur sur un cours de 4 pages : 121 résultats, aller au dernier
+  (page 4), accents, casse exacte, mot entier (81), tout remplacer puis Ctrl+Z, casse reprise,
+  plan et clic sur un titre, Ctrl+molette avec point fixe, page entière, marques.
+
+**Non vérifié** : l'impression avec les marques affichées (masquées par la feuille de style
+d'impression) ; Ctrl+molette sur un vrai pavé tactile (simulé par un événement).
