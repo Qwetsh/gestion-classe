@@ -149,6 +149,7 @@ body.ce-open { overflow: hidden; }
 .ce-doc blockquote { margin: 0 0 8px; padding-left: 12px; border-left: 3px solid #CBD5E1; color: #374151; }
 .ce-doc .is-empty::before, .ce-doc .is-editor-empty::before { content: attr(data-placeholder); float: left; height: 0; color: #9CA3AF; pointer-events: none; }
 .ce-doc .ProseMirror-selectednode { outline: 2px solid var(--ce-accent); outline-offset: 2px; }
+.ce-doc .ce-img.ProseMirror-selectednode { outline: 0; }
 
 /* Encadrés */
 .ce-doc .ce-callout { display: flow-root; border-radius: 6px; padding: 10px 14px 6px; margin: 4px 0 12px; position: relative; }
@@ -225,8 +226,49 @@ body.ce-open { overflow: hidden; }
 .ce-img--left { justify-content: flex-start; }
 .ce-img--center { justify-content: center; }
 .ce-img--right { justify-content: flex-end; }
-.ce-img__box { position: relative; max-width: 100%; line-height: 0; }
-.ce-img__box img { width: 100%; height: auto; display: block; border-radius: 2px; }
+.ce-img__fig { display: flex; flex-direction: column; max-width: 100%; }
+.ce-img__box { position: relative; max-width: 100%; line-height: 0; border-radius: 2px; }
+.ce-img__box img { width: 100%; height: auto; display: block; }
+/* Lot T8 : l'image est découpée par .ce-img__clip (rognage, coins), les poignées restent dehors */
+.ce-img__clip { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+.ce-img__frame { position: absolute; }
+.ce-img__box--border { box-shadow: 0 0 0 1.5px #64748B; }
+.ce-img__box--rounded { border-radius: 12px; }
+.ce-img__box--shadow { box-shadow: 0 4px 14px rgba(15,23,42,.28); }
+.ce-img__box--circle { border-radius: 50%; }
+.ce-img__crop-dim { position: absolute; box-shadow: 0 0 0 9999px rgba(15,23,42,.55); pointer-events: none; }
+.ce-img__crop { position: absolute; outline: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(15,23,42,.6); }
+.ce-img__ch { position: absolute; width: 12px; height: 12px; background: #fff; border: 2px solid #0F172A; border-radius: 2px; transform: translate(-50%, -50%); }
+.ce-img__ch--nw { left: 0; top: 0; cursor: nwse-resize; }
+.ce-img__ch--n { left: 50%; top: 0; cursor: ns-resize; }
+.ce-img__ch--ne { left: 100%; top: 0; cursor: nesw-resize; }
+.ce-img__ch--e { left: 100%; top: 50%; cursor: ew-resize; }
+.ce-img__ch--se { left: 100%; top: 100%; cursor: nwse-resize; }
+.ce-img__ch--s { left: 50%; top: 100%; cursor: ns-resize; }
+.ce-img__ch--sw { left: 0; top: 100%; cursor: nesw-resize; }
+.ce-img__ch--w { left: 0; top: 50%; cursor: ew-resize; }
+.ce-img__crop-hint { font: 12px Inter, sans-serif; color: var(--ce-muted); text-align: center; margin-top: 6px; line-height: 1.3; }
+
+/* Légendes numérotées : « Document 1 : … » (compteur sur la feuille, juste après tout déplacement) */
+.ce-flow { counter-reset: ce-fig; --ce-fig-label: 'Document '; }
+.ce-flow[data-caption="figure"] { --ce-fig-label: 'Figure '; }
+.ce-flow[data-caption="doc"] { --ce-fig-label: 'Doc. '; }
+.ce-img__caption { counter-increment: ce-fig; display: block; margin-top: 6px; font-size: .88em; line-height: 1.35; font-style: italic; color: #334155; text-align: center; cursor: text; }
+.ce-img__num::before { content: var(--ce-fig-label) counter(ce-fig) ' : '; font-style: normal; font-weight: 600; white-space: nowrap; }
+.ce-img__caption:has(textarea) { display: flex; gap: 4px; align-items: baseline; }
+.ce-flow[data-caption="none"] .ce-img__num { display: none; }
+.ce-img__caption-text.is-empty { color: #94A3B8; }
+.ce-img__caption-input { flex: 1; min-width: 0; border: 0; outline: 1px dashed var(--ce-accent); outline-offset: 2px; background: transparent; resize: none; overflow: hidden; font: inherit; color: inherit; text-align: center; padding: 0; line-height: inherit; }
+
+/* Colonnes (lot T8) : un bloc, deux ou trois colonnes ; repère pointillé à l'écran seulement */
+.ce-doc .ce-cols { display: grid; gap: 18px; margin: 4px 0 12px; grid-template-columns: 1fr 1fr; }
+.ce-doc .ce-cols[data-layout="1-2"] { grid-template-columns: 1fr 2fr; }
+.ce-doc .ce-cols[data-layout="2-1"] { grid-template-columns: 2fr 1fr; }
+.ce-doc .ce-cols[data-layout="1-1-1"] { grid-template-columns: 1fr 1fr 1fr; }
+.ce-doc .ce-col { min-width: 0; outline: 1px dashed #CBD5E1; outline-offset: 3px; border-radius: 2px; }
+.ce-doc .ce-col > :first-child { margin-top: 0; }
+.ce-doc .ce-col > :last-child { margin-bottom: 0; }
+.ce-input--alt { width: 170px; }
 .ce-img.is-selected .ce-img__box { outline: 2px solid var(--ce-accent); outline-offset: 2px; }
 .ce-img__placeholder { height: 120px; display: flex; align-items: center; justify-content: center; background: #F1F5F9; color: #94A3B8; font: 13px Inter, sans-serif; line-height: 1.3; border-radius: 4px; }
 .ce-img__handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 3px; background: #fff; border: 2px solid var(--ce-accent); cursor: nwse-resize; }
@@ -491,6 +533,8 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
   .ce-doc .ce-pagebreak { border: 0; }
   .ce-doc .ce-pagebreak::after { display: none; }
   .ce-doc .ProseMirror-selectednode, .ce-img.is-selected .ce-img__box { outline: 0; }
+  .ce-doc .ce-col { outline: 0 !important; }
+  .ce-img__caption:has(.is-empty), .ce-img__crop-hint { display: none !important; }
   .ce-img__handle, .ce-doc .is-empty::before, .ce-doc .column-resize-handle, .ce-doc .selectedCell::after { display: none !important; }
   .ce-doc .ce-callout, .ce-doc mark, .ce-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .ce-doc td, .ce-doc tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

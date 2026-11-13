@@ -126,6 +126,18 @@ const PATHS = {
   replace: '<circle cx="9" cy="9" r="5"/><path d="m13 13 3 3"/><path d="M14 20h7M18 17l3 3-3 3" />',
   outline: '<path d="M4 5h16M8 10h12M8 15h12M12 20h8"/><circle cx="4" cy="10" r=".8"/><circle cx="4" cy="15" r=".8"/>',
   fitPage: '<rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M2 9V5M2 19v-4M22 9V5M22 19v-4"/>',
+  caption: '<rect x="4" y="3" width="16" height="11" rx="1.5"/><path d="m4 12 4-4 4 4 3-3 5 5"/><path d="M6 18h12M8 21h8"/>',
+  crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
+  rotateLeft: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v5h5"/>',
+  rotateRight: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/>',
+  flipH: '<path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 6 3 18h6zM15 6l6 12h-6z"/>',
+  reset: '<path d="M4 4v6h6"/><path d="M5.5 15a8 8 0 1 0 1.4-8.9L4 10"/>',
+  replaceImage: '<rect x="3" y="3" width="12" height="12" rx="1.5"/><path d="m3 12 3-3 3 3 2-2 4 4"/><path d="M19 9v6a4 4 0 0 1-4 4H9"/><path d="m12 16-3 3 3 3"/>',
+  cols2: '<rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/>',
+  cols3: '<rect x="2" y="4" width="5.5" height="16" rx="1.2"/><rect x="9.25" y="4" width="5.5" height="16" rx="1.2"/><rect x="16.5" y="4" width="5.5" height="16" rx="1.2"/>',
+  cols12: '<rect x="3" y="4" width="6" height="16" rx="1.5"/><path d="m4 15 2-2 2 2"/><rect x="11" y="4" width="10" height="16" rx="1.5"/><path d="M13.5 8h5M13.5 11h5M13.5 14h5M13.5 17h3"/>',
+  cols21: '<rect x="3" y="4" width="10" height="16" rx="1.5"/><path d="M5.5 8h5M5.5 11h5M5.5 14h5M5.5 17h3"/><rect x="15" y="4" width="6" height="16" rx="1.5"/>',
+  uncols: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M12 4v16" stroke-dasharray="2 2"/><path d="M7 9h10M7 13h10M7 17h6"/>',
   versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 

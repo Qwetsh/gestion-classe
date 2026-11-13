@@ -27,7 +27,18 @@ export interface CourseSettings {
   numbering?: HeadingNumbering;
   /** Coupure des mots en fin de ligne. */
   hyphens?: boolean;
+  /** Numérotation des légendes d'images (lot T8) : « Document 1 : » par défaut. */
+  captionLabel?: CaptionLabel;
 }
+
+export type CaptionLabel = 'document' | 'figure' | 'doc' | 'none';
+
+export const CAPTION_LABELS: Record<CaptionLabel, string> = {
+  document: 'Document 1',
+  figure: 'Figure 1',
+  doc: 'Doc. 1',
+  none: 'Sans numéro',
+};
 
 export interface CourseDoc {
   version: number;

@@ -52,7 +52,7 @@ export function CourseVersionPreview({ boardId, version, doc, zoom, onRestore, o
                 <span className="ce-sheet__num">{i + 1}</span>
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined}>
+            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>
               {editor && <EditorContent editor={editor} />}
             </div>
           </div>
