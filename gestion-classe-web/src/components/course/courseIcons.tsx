@@ -139,6 +139,10 @@ const PATHS = {
   cols21: '<rect x="3" y="4" width="10" height="16" rx="1.5"/><path d="M5.5 8h5M5.5 11h5M5.5 14h5M5.5 17h3"/><rect x="15" y="4" width="6" height="16" rx="1.5"/>',
   uncols: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M12 4v16" stroke-dasharray="2 2"/><path d="M7 9h10M7 13h10M7 17h6"/>',
   headerFooter: '<rect x="4" y="2" width="16" height="20" rx="1.5"/><path d="M7 5.5h10M7 18.5h10" stroke-width="2.2"/><path d="M7 10h10M7 13h7" opacity=".45"/>',
+  spellcheck: '<path d="M4 15 8 5l4 10M5.5 11.5h5"/><path d="m13 15 3 3 6-7"/>',
+  spellNext: '<path d="M3 8h9M3 12h6M3 16h7"/><path d="M3 19.5c1-.8 2-.8 3 0s2 .8 3 0" stroke="#DC2626"/><path d="m15 9 5 3-5 3z"/>',
+  spellLive: '<path d="M4 6h16M4 10h10"/><path d="M4 14.5c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0" stroke="#DC2626"/><path d="M18 13v6M15 16h6"/>',
+  spellHide: '<path d="M4 9h16"/><path d="M4 13.5c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0 2.4-1 3.6 0" opacity=".45"/><path d="M4 4l16 16"/>',
   versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 
