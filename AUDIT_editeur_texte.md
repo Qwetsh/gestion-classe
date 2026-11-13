@@ -1260,3 +1260,29 @@ tablette ; la lisibilité des colonnes en classe (lot 4).
 
 **T9b (marges, paysage) : pas fait**, en attente de la question 1 du § 7 (marges fixes ou
 réglables, à décider avant le mode Tableau).
+
+### T10a — fait le 13/11/2026 (branche `feat/texte-t10`, pas de migration)
+
+- **Nouveau cours à partir d'un fichier Word** (« + Nouveau » › Partir de › Fichier Word…) : le
+  titre est proposé d'après le nom du fichier ; le cours est créé vide et l'éditeur importe le
+  fichier à l'ouverture.
+- **Insérer un fichier Word ou PDF** dans un cours : Fichier › Importer › « Word ou PDF… », ou
+  en déposant le fichier sur la feuille. Le Word arrive dans un paragraphe neuf après celui du
+  curseur.
+- Word : `mammoth` → HTML → même nettoyage que le collage « Adapter au cours » (T5), images
+  rapatriées dans le stockage du cours. Styles « Titre / Title » → Titre 1 du cours ; quand le
+  document en a un, ses « Titre 1 » deviennent des parties (Titre 2) et ses « Titre 2 » des
+  sous-parties. Souligné et barré gardés. Un .doc ancien est refusé avec un message.
+- PDF : chaque page devient une image (1 600 px, largeur de la colonne, bordure fine, texte de
+  remplacement « fichier, page n »), un seul Ctrl+Z les retire ; confirmation au-delà de
+  20 pages, 60 au plus.
+- Une version « Avant l'import de … » est prise à chaque import (lot T6).
+- Vérifié dans le navigateur avec un .docx et un PDF de 3 pages produits pour l'occasion :
+  titre, titres, gras, italique, souligné, liste, tableau, image ; décalage des niveaux de
+  titre ; dépôt du PDF ; insertion au milieu d'un cours ; versions d'avant import.
+
+**Non vérifié** : de vrais cours Word de Thomas et d'Aurélie (question 4 du § 7) ; un PDF de
+plus de 20 pages ; le refus d'un .doc.
+
+**T10b (exporter en Word) : pas fait**, en attente de la question 5 du § 7 (export Word utile,
+ou le PDF suffit-il ?).

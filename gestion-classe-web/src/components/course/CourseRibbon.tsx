@@ -58,6 +58,8 @@ interface Props {
   onReplaceImage: () => void;
   /** Fenêtre « En-tête et pied de page » (lot T9). */
   onHeaderFooter: () => void;
+  /** Importer un fichier Word ou PDF dans le cours (lot T10a). */
+  onImportFile: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -126,7 +128,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -320,6 +322,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Imprimer">
               <Big icon="print" label="Imprimer" title="Imprimer le cours (Ctrl+P)" onClick={onPrint} />
               <Big icon="pdf" label="Exporter en PDF" title="Exporter en PDF : choisir « Enregistrer au format PDF » dans la fenêtre d'impression" onClick={onExportPdf} />
+            </Group>
+            <Group label="Importer">
+              <Big icon="openFile" label="Word ou PDF…" title="Insérer un fichier Word (.docx) ou les pages d'un PDF à l'endroit du curseur (ou déposez le fichier sur la feuille)" onClick={onImportFile} />
             </Group>
             <Group label="Cours">
               <Big icon="rename" label="Renommer" onClick={onRename} />

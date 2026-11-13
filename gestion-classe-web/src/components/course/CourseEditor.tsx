@@ -19,7 +19,8 @@ import {
   COURSE_DOC_VERSION, duplicateCourse, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDocGuarded, saveLocalCourse,
   templatesUnavailable, type CourseDoc, type CourseSettings,
 } from '../../lib/course/courseDoc';
-import { createVersion, fetchVersionDoc, lastVersionAt, versionsUnavailable, type CourseVersion } from '../../lib/course/courseVersions';
+import { countWords, createVersion, fetchVersionDoc, lastVersionAt, versionsUnavailable, type CourseVersion } from '../../lib/course/courseVersions';
+import { PDF_PAGES_MAX, PDF_PAGES_WARN, docxToCourseHtml, isDocxFile, isOldDocFile, isPdfFile, pdfPageCount, pdfToImages, takeCourseImport } from '../../lib/course/courseImport';
 import { supabase } from '../../lib/supabase';
 import { CourseVersionsPanel } from './CourseVersionsPanel';
 import { CourseVersionPreview } from './CourseVersionPreview';
@@ -92,6 +93,11 @@ const store = (key: string, value: string) => { try { localStorage.setItem(key, 
 
 function imageFiles(data: DataTransfer | null): File[] {
   return Array.from(data?.files ?? []).filter((f) => f.type.startsWith('image/'));
+}
+
+/** Fichiers à importer (lot T10a) : Word et PDF déposés sur la feuille. */
+function documentFiles(data: DataTransfer | null): File[] {
+  return Array.from(data?.files ?? []).filter((f) => isDocxFile(f) || isPdfFile(f) || isOldDocFile(f));
 }
 
 export function CourseEditor({ boardId, title, userId, onClose }: Props) {
@@ -175,6 +181,10 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  /** Sélecteur « Importer un fichier Word ou PDF » (lot T10a). */
+  const docFileRef = useRef<HTMLInputElement>(null);
+  /** Import en cours : texte de la barre d'état. */
+  const [importing, setImporting] = useState<string | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const saveTimer = useRef(0);
   const pendingRef = useRef(restored);
@@ -332,6 +342,83 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     }
   }, [boardId, userId, toast]);
 
+  // ---- Importer un fichier Word ou PDF (lot T10a) ----
+
+  /** `replaceAll` : le fichier remplace tout le cours (nouveau cours créé à partir d'un fichier). */
+  const importFile = useCallback(async (file: File, at?: number, replaceAll = false) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    if (isOldDocFile(file) && !isDocxFile(file)) {
+      toast('Ancien format Word (.doc) : ouvrez-le dans Word ou LibreOffice et enregistrez-le en .docx.');
+      return;
+    }
+    if (!isDocxFile(file) && !isPdfFile(file)) { toast('Formats acceptés : Word (.docx) et PDF.'); return; }
+    try {
+      let pdfPages = 0;
+      if (isPdfFile(file)) {
+        setImporting(`Lecture de « ${file.name} »…`);
+        pdfPages = await pdfPageCount(file);
+        if (pdfPages > PDF_PAGES_WARN) {
+          setImporting(null);
+          const ok = await confirm({
+            title: `Insérer ${Math.min(pdfPages, PDF_PAGES_MAX)} pages ?`,
+            message: pdfPages > PDF_PAGES_MAX
+              ? `Ce PDF a ${pdfPages} pages : seules les ${PDF_PAGES_MAX} premières seront insérées, chacune comme une image du cours.`
+              : `Ce PDF a ${pdfPages} pages : chacune devient une image du cours (le texte n'est pas modifiable).`,
+            confirmLabel: 'Insérer',
+          });
+          if (!ok) return;
+        }
+      }
+      // Filet de sécurité (lot T6) : l'état d'avant l'import reste dans l'historique
+      const before = ed.getJSON();
+      if (countWords(before) > 0) {
+        void createVersion(userId, boardId, { version: COURSE_DOC_VERSION, content: before, settings: settingsRef.current }, 'import', `Avant l'import de ${file.name}`)
+          .then((ok) => { if (ok) setVersionsKey((k) => k + 1); })
+          .catch((err: unknown) => console.warn('[CourseEditor] version avant import :', err));
+      }
+      if (isDocxFile(file)) {
+        setImporting(`Lecture de « ${file.name} »…`);
+        const html = await docxToCourseHtml(file);
+        if (replaceAll) ed.commands.selectAll();
+        else {
+          // Le fichier arrive dans un paragraphe vide après le bloc du curseur : sinon son premier
+          // paragraphe (souvent le titre) se fondrait dans le texte du curseur
+          const $p = ed.state.doc.resolve(at ?? ed.state.selection.to);
+          if ($p.parent.isTextblock && $p.parent.content.size > 0) {
+            const after = $p.after($p.depth);
+            ed.chain().insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1).run();
+          } else {
+            ed.commands.setTextSelection($p.pos);
+          }
+        }
+        ed.commands.focus();
+        pasteModeRef.current = 'adapt';
+        ed.view.pasteHTML(html);
+        toast(`« ${file.name} » importé : relisez-le. Les couleurs, colonnes, zones de texte et en-têtes de Word ne sont pas repris.`, 'success');
+      } else {
+        const blobs = await pdfToImages(file, (done, total) => setImporting(`PDF : page ${Math.min(done + 1, total)} sur ${total}…`));
+        const nodes = [];
+        for (let i = 0; i < blobs.length; i++) {
+          setImporting(`Envoi des pages : ${i + 1} sur ${blobs.length}…`);
+          const img = await uploadBoardImage(new File([blobs[i]], `page-${i + 1}.jpg`, { type: 'image/jpeg' }), userId, `board:${boardId}`);
+          // Bordure fine : le bord d'une page blanche reste visible sur la feuille
+          nodes.push({ type: 'image', attrs: { path: img.path, width: Math.round(COL_W), frame: 'border', alt: `${file.name}, page ${i + 1}` } });
+        }
+        const pos = at ?? ed.state.selection.to;
+        // Une seule étape : un Ctrl+Z retire toutes les pages
+        ed.chain().focus().insertContentAt(pos, nodes).run();
+        toast(`${nodes.length} page${nodes.length > 1 ? 's' : ''} du PDF insérée${nodes.length > 1 ? 's' : ''} en image${nodes.length > 1 ? 's' : ''}.`, 'success');
+      }
+    } catch (err) {
+      toast(`Import impossible : ${err instanceof Error ? err.message : 'fichier illisible'}`);
+    } finally {
+      setImporting(null);
+    }
+  }, [boardId, userId, toast, confirm]);
+  const importRef = useRef(importFile);
+  useEffect(() => { importRef.current = importFile; }, [importFile]);
+
   const uploadRef = useRef(uploadImages);
   useEffect(() => { uploadRef.current = uploadImages; }, [uploadImages]);
 
@@ -380,9 +467,11 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       },
       handleDrop: (view, event, _slice, moved) => {
         if (moved) return false;
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+        const docs = documentFiles(event.dataTransfer);
+        if (docs.length > 0) { void importRef.current(docs[0], pos); return true; }
         const files = imageFiles(event.dataTransfer);
         if (files.length === 0) return false;
-        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
         void uploadRef.current(files, pos);
         return true;
       },
@@ -396,6 +485,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   });
 
   useEffect(() => { editorRef.current = editor; }, [editor]);
+
+  // Cours créé « à partir d'un fichier Word » : le fichier attend l'ouverture de l'éditeur
+  useEffect(() => {
+    if (!editor) return;
+    const queued = takeCourseImport(boardId);
+    if (queued) void importRef.current(queued, undefined, true);
+  }, [editor, boardId]);
 
   // Images collées (page web, image incrustée) : rapatriées dans le stockage du cours, pour ne
   // dépendre ni du site d'origine ni d'un lien qui expire. Un site peut refuser : on prévient.
@@ -894,6 +990,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         showInvisibles={showInvisibles}
         onToggleInvisibles={toggleInvisibles}
         onHeaderFooter={() => setHfOpen(true)}
+        onImportFile={() => docFileRef.current?.click()}
         onReplaceImage={() => { replacePosRef.current = editor.state.selection.from; fileRef.current?.click(); }}
       />
 
@@ -981,6 +1078,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       <footer className="ce-status">
         <span>Page {Math.min(currentPage, pages)} sur {pages}</span>
         <span>{words} mot{words > 1 ? 's' : ''}</span>
+        {importing && <span className="ce-status__busy" role="status">{importing}</span>}
         <span className="ce-spacer-flex" />
         <div className="ce-modes" role="group" aria-label="Mode">
           <button type="button" className="is-on" title="Rédiger le cours">¶ Texte</button>
@@ -1057,6 +1155,17 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         document.body,
       )}
 
+      <input
+        ref={docFileRef}
+        type="file"
+        accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) void importFile(f);
+        }}
+      />
       <input
         ref={fileRef}
         type="file"
