@@ -35,6 +35,8 @@ export interface CourseSettings {
   footer?: HeaderFooterLine;
   /** Rien en haut ni en bas de la première page (page de titre, fiche avec cartouche). */
   firstPageBlank?: boolean;
+  /** Thème : couleurs des titres et encadrés, police des titres (lot T16a ; absent = Classique). */
+  theme?: string;
 }
 
 /** Une ligne d'en-tête ou de pied de page : trois cases. */

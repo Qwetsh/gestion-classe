@@ -143,6 +143,7 @@ const PATHS = {
   spellNext: '<path d="M3 8h9M3 12h6M3 16h7"/><path d="M3 19.5c1-.8 2-.8 3 0s2 .8 3 0" stroke="#DC2626"/><path d="m15 9 5 3-5 3z"/>',
   spellLive: '<path d="M4 6h16M4 10h10"/><path d="M4 14.5c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0" stroke="#DC2626"/><path d="M18 13v6M15 16h6"/>',
   spellHide: '<path d="M4 9h16"/><path d="M4 13.5c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0 2.4-1 3.6 0" opacity=".45"/><path d="M4 4l16 16"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/>',
   versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 

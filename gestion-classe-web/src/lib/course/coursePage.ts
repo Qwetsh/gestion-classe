@@ -38,5 +38,8 @@ export const FONT_FAMILIES: { label: string; value: string | null }[] = [
   { label: 'Georgia', value: 'Georgia, serif' },
   { label: 'Times New Roman', value: '"Times New Roman", Times, serif' },
   { label: 'Comic Sans MS', value: '"Comic Sans MS", "Comic Sans", cursive' },
+  // Lot T16a (paquets Fontsource, licence OFL, chargés avec l'éditeur de cours)
+  { label: 'OpenDyslexic', value: '"OpenDyslexic", sans-serif' },
+  { label: 'Écriture attachée', value: '"Playwrite FR Moderne", cursive' },
   { label: 'Courier New', value: '"Courier New", monospace' },
 ];

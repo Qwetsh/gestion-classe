@@ -23,6 +23,7 @@ import { Placeholder } from '@tiptap/extensions';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { CoursePagination, type PageLayout } from './coursePagination';
 import { CourseImageView } from './CourseImageView';
+import { CourseIconView } from './CourseIconView';
 import { Column, Columns } from './courseColumns';
 import { EncartView, type EncartOptions } from './EncartView';
 import { MM } from '../../lib/course/coursePage';
@@ -308,6 +309,45 @@ export const CourseImage = Image.extend({
 // Pas d'image en base64 dans le document : elle alourdirait chaque enregistrement
 }).configure({ inline: false, allowBase64: false });
 
+// ---- Icônes dans le texte (lot T16a) ----
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    courseIcon: {
+      /** Icône Lucide (nom du jeu `courseIconSet.ts`) au curseur. */
+      insertIcon: (name: string) => ReturnType;
+    };
+  }
+}
+
+export const CourseIcon = Node.create({
+  name: 'courseIcon',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  draggable: false,
+  addAttributes() {
+    return {
+      name: {
+        default: 'Star',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-icon') || 'Star',
+        renderHTML: (a: { name?: string }) => ({ 'data-icon': a.name ?? 'Star' }),
+      },
+    };
+  },
+  parseHTML: () => [{ tag: 'span[data-icon]' }],
+  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { class: 'ce-icon' })],
+  addNodeView() {
+    return ReactNodeViewRenderer(CourseIconView);
+  },
+  addCommands() {
+    return {
+      insertIcon: (name) => ({ commands }) => commands.insertContent({ type: this.name, attrs: { name } }),
+    };
+  },
+});
+
 // ---- Assemblage ----
 
 /** Blocs qui reçoivent un identifiant stable (ancrage du calque tableau, animations). */
@@ -337,6 +377,7 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
     CourseImage,
     Columns,
     Column,
+    CourseIcon,
     Callout,
     PageBreak,
     Encart.configure(encart),

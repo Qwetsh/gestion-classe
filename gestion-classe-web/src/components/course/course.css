@@ -132,9 +132,11 @@ body.ce-open { overflow: hidden; }
 .ce-doc { display: flow-root; outline: none; font: 16px/1.45 var(--ce-doc-font); color: #111827; caret-color: #111827; word-wrap: break-word; }
 .ce-doc > * + * { margin-top: 0; }
 .ce-doc p { margin: 0 0 8px; }
-.ce-doc h1 { font-size: 30px; line-height: 1.15; color: #1E3A8A; margin: 0 0 10px; font-weight: 700; }
-.ce-doc h2 { font-size: 21px; line-height: 1.25; color: #3730A3; margin: 20px 0 8px; font-weight: 700; }
-.ce-doc h3 { font-size: 18px; line-height: 1.3; color: #4338CA; margin: 14px 0 6px; font-weight: 700; }
+.ce-doc h1 { font-size: 30px; line-height: 1.15; color: var(--ce-h1, #1E3A8A); margin: 0 0 10px; font-weight: 700; }
+.ce-doc h2 { font-size: 21px; line-height: 1.25; color: var(--ce-h2, #3730A3); margin: 20px 0 8px; font-weight: 700; }
+.ce-doc h3 { font-size: 18px; line-height: 1.3; color: var(--ce-h3, #4338CA); margin: 14px 0 6px; font-weight: 700; }
+/* Thème (lot T16a) : police des titres (Écolier : écriture attachée) */
+.ce-doc :is(h1, h2, h3) { font-family: var(--ce-head-font, inherit); }
 .ce-doc ul, .ce-doc ol { margin: 0 0 8px; padding-left: 26px; }
 .ce-doc ul { list-style: disc; }
 .ce-doc ul ul { list-style: circle; }
@@ -154,16 +156,16 @@ body.ce-open { overflow: hidden; }
 .ce-doc .ce-callout { display: flow-root; border-radius: 6px; padding: 10px 14px 6px; margin: 4px 0 12px; position: relative; }
 .ce-doc .ce-callout::before { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; font-style: normal; user-select: none; }
 .ce-doc .ce-callout > :last-child { margin-bottom: 4px; }
-.ce-doc .ce-callout[data-callout="definition"] { border-left: 5px solid #10B981; background: #ECFDF5; }
+.ce-doc .ce-callout[data-callout="definition"] { border-left: 5px solid var(--ce-def-line, #10B981); background: var(--ce-def-bg, #ECFDF5); }
 .ce-doc .ce-callout::before { content: attr(data-title); }
 .ce-doc .ce-callout[data-title=""]::before { display: none; }
-.ce-doc .ce-callout[data-callout="definition"]::before { color: #047857; }
-.ce-doc .ce-callout[data-callout="retenir"] { background: #FEF3C7; border: 2px solid #F59E0B; }
-.ce-doc .ce-callout[data-callout="retenir"]::before { color: #B45309; }
-.ce-doc .ce-callout[data-callout="consigne"] { background: #EFF6FF; color: #1E3A8A; font-style: italic; }
-.ce-doc .ce-callout[data-callout="consigne"]::before { color: #2563EB; }
-.ce-doc .ce-callout[data-callout="exemple"] { background: #F5F3FF; border-left: 5px solid #8B5CF6; }
-.ce-doc .ce-callout[data-callout="exemple"]::before { color: #6D28D9; }
+.ce-doc .ce-callout[data-callout="definition"]::before { color: var(--ce-def-ink, #047857); }
+.ce-doc .ce-callout[data-callout="retenir"] { background: var(--ce-ret-bg, #FEF3C7); border: 2px solid var(--ce-ret-line, #F59E0B); }
+.ce-doc .ce-callout[data-callout="retenir"]::before { color: var(--ce-ret-ink, #B45309); }
+.ce-doc .ce-callout[data-callout="consigne"] { background: var(--ce-con-bg, #EFF6FF); color: var(--ce-con-text, #1E3A8A); font-style: italic; }
+.ce-doc .ce-callout[data-callout="consigne"]::before { color: var(--ce-con-ink, #2563EB); }
+.ce-doc .ce-callout[data-callout="exemple"] { background: var(--ce-ex-bg, #F5F3FF); border-left: 5px solid var(--ce-ex-line, #8B5CF6); }
+.ce-doc .ce-callout[data-callout="exemple"]::before { color: var(--ce-ex-ink, #6D28D9); }
 /* Encadré libre : une couleur au choix (--ce-callout), fond très clair de la même teinte */
 .ce-doc .ce-callout[data-callout="libre"] { --ce-callout: #0EA5E9; border-left: 5px solid var(--ce-callout); background: color-mix(in srgb, var(--ce-callout) 9%, #fff); }
 .ce-doc .ce-callout[data-callout="libre"]::before { color: color-mix(in srgb, var(--ce-callout) 78%, #000); }
@@ -604,6 +606,28 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   body.ce-print-twoup .ce-twoup__cut { position: absolute; top: 0; bottom: 0; left: 148.5mm; border-left: 1px dashed #BBB; }
   .ce-root .ce-modal { display: none !important; }
 }
+
+/* ---------- Thèmes (lot T16a) : vignettes du ruban ---------- */
+.ce-themes { display: grid; grid-template-columns: repeat(5, 62px); gap: 4px; }
+.ce-theme { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 5px 2px 4px; border: 1px solid var(--ce-line); border-radius: 6px; background: #fff; cursor: pointer; }
+.ce-theme:hover { border-color: var(--ce-line-2); background: var(--ce-chrome); }
+.ce-theme.is-on { border-color: var(--ce-accent); box-shadow: 0 0 0 1px var(--ce-accent); background: var(--ce-accent-soft); }
+.ce-theme__sw { display: flex; gap: 2px; }
+.ce-theme__sw i { width: 9px; height: 18px; border-radius: 2px; display: block; }
+.ce-theme__name { font: 600 11px Inter, sans-serif; color: var(--ce-text); white-space: nowrap; }
+
+/* ---------- Icônes dans le texte (lot T16a) ---------- */
+.ce-doc .ce-icon { display: inline-flex; vertical-align: -0.2em; line-height: 0; margin: 0 .06em; }
+.ce-doc .ce-icon svg { width: 1.15em; height: 1.15em; }
+.ce-doc .ce-icon.is-selected, .ce-doc .ce-icon.ProseMirror-selectednode { outline: 2px solid var(--ce-accent); outline-offset: 1px; border-radius: 3px; }
+.ce-icon__wait { display: inline-block; width: 1.15em; text-align: center; color: #CBD5E1; line-height: 1; }
+.ce-iconpick { position: fixed; z-index: 60; width: 380px; background: #fff; border: 1px solid var(--ce-line-2); border-radius: 10px; box-shadow: 0 12px 32px rgba(15,23,42,.16); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ce-iconpick__search { width: 100%; height: 30px; font-size: 13px; }
+.ce-iconpick__grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; max-height: 260px; overflow-y: auto; }
+.ce-iconpick__btn { aspect-ratio: 1; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: #1F2937; display: flex; align-items: center; justify-content: center; }
+.ce-iconpick__btn:hover { background: var(--ce-accent-soft); color: var(--ce-accent-ink); }
+.ce-iconpick__none { grid-column: 1 / -1; color: var(--ce-muted); font-size: 12px; padding: 8px 2px; }
+.ce-iconpick__foot { font-size: 11px; color: var(--ce-muted); }
 
 @media print {
   @page { size: A4; margin: 0; }
