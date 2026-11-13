@@ -19,6 +19,7 @@ import { CourseSymbolPicker } from './CourseSymbolPicker';
 import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
 import { CAPTION_LABELS, HEADING_NUMBERING_LABELS, type CaptionLabel, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
 import { COLUMNS_LAYOUTS, findColumns, type ColumnsLayout } from './courseColumns';
+import { PAGE_NUMBER_PRESETS, footerOf, pageNumberPreset } from './courseHeaderFooter';
 import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, IMAGE_FRAMES, flipCrop, rotateCrop, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
 export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
@@ -55,6 +56,8 @@ interface Props {
   onToggleInvisibles: () => void;
   /** Remplacer le fichier de l'image sélectionnée (lot T8). */
   onReplaceImage: () => void;
+  /** Fenêtre « En-tête et pied de page » (lot T9). */
+  onHeaderFooter: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -123,7 +126,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -548,6 +551,25 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
             <Group label="Texte">
               <Big icon="hyphen" label="Couper les mots" title="Coupure des mots en fin de ligne (utile avec le texte justifié)" on={!!settings.hyphens} onClick={() => onSettings({ hyphens: !settings.hyphens })} />
+            </Group>
+            <Group label="En-tête et pied">
+              <Big icon="headerFooter" label="En-tête et pied" title="Texte en haut et en bas de chaque page : titre, classe, date, numéro… (ou double-clic dans la marge)" onClick={onHeaderFooter} />
+              <div className="ce-stack">
+                <span className="ce-minilabel">Numéro de page</span>
+                <select
+                  className="ce-select"
+                  value={pageNumberPreset(settings) ?? 'custom'}
+                  onChange={(e) => {
+                    const preset = PAGE_NUMBER_PRESETS.find((p) => p.id === e.target.value);
+                    if (preset) onSettings({ footer: { ...footerOf(settings), center: preset.text } });
+                  }}
+                  title="Numéro au centre du pied de page"
+                  aria-label="Numéro de page"
+                >
+                  {PAGE_NUMBER_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  {pageNumberPreset(settings) === null && <option value="custom" disabled>Personnalisé</option>}
+                </select>
+              </div>
             </Group>
             <Group label="Pages">
               <Big icon="pagebreak" label="Saut de page" title="Saut de page (Ctrl+Entrée)" onClick={() => c().setPageBreak().run()} />

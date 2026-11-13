@@ -29,6 +29,19 @@ export interface CourseSettings {
   hyphens?: boolean;
   /** Numérotation des légendes d'images (lot T8) : « Document 1 : » par défaut. */
   captionLabel?: CaptionLabel;
+  /** En-tête et pied de page (lot T9) : trois cases, texte et champs ({titre}, {page}…). */
+  header?: HeaderFooterLine;
+  /** Absent : numéro de page centré en bas, comme avant le lot T9. */
+  footer?: HeaderFooterLine;
+  /** Rien en haut ni en bas de la première page (page de titre, fiche avec cartouche). */
+  firstPageBlank?: boolean;
+}
+
+/** Une ligne d'en-tête ou de pied de page : trois cases. */
+export interface HeaderFooterLine {
+  left?: string;
+  center?: string;
+  right?: string;
 }
 
 export type CaptionLabel = 'document' | 'figure' | 'doc' | 'none';
