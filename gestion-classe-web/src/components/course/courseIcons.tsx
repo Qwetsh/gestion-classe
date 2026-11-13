@@ -122,6 +122,10 @@ const PATHS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.900l2.1 2.100M17 17l2.1 2.100M4.9 19.100L7 17M17 7l2.1-2.1"/>',
   history: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4.5h4.5"/><path d="M12 7.5V12l3 2"/>',
   template: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 8h16"/><rect x="7" y="11" width="4" height="6" rx=".5"/><path d="M14 12h3M14 15h3"/>',
+  pilcrow: '<path d="M17 4v16M13 4v16"/><path d="M19 4h-9a4 4 0 0 0 0 8h3"/>',
+  replace: '<circle cx="9" cy="9" r="5"/><path d="m13 13 3 3"/><path d="M14 20h7M18 17l3 3-3 3" />',
+  outline: '<path d="M4 5h16M8 10h12M8 15h12M12 20h8"/><circle cx="4" cy="10" r=".8"/><circle cx="4" cy="15" r=".8"/>',
+  fitPage: '<rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M2 9V5M2 19v-4M22 9V5M22 19v-4"/>',
   versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 
