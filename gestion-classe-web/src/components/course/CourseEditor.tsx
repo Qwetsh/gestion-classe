@@ -26,6 +26,9 @@ import { CourseVersionPreview } from './CourseVersionPreview';
 import { CourseNameDialog } from './CourseNameDialog';
 import { CourseFindBar } from './CourseFindBar';
 import { CourseOutline } from './CourseOutline';
+import { CourseSheetChrome } from './CourseSheetChrome';
+import { CourseHeaderFooterDialog } from './CourseHeaderFooterDialog';
+import { formatHeaderDate } from './courseHeaderFooter';
 import { setInvisibles } from './courseInvisibles';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
@@ -160,6 +163,9 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [showInvisibles, setShowInvisibles] = useState(() => readBool(INVISIBLES_KEY, false));
   const [find, setFind] = useState<{ replace: boolean; query: string; key: number } | null>(null);
   const [lessonChip, setLessonChip] = useState<string | null>(null);
+  /** Cours de l'emploi du temps rattaché : champs {classe} et {date} des en-têtes (lot T9). */
+  const [lesson, setLesson] = useState<{ label: string; startsAt: Date } | null>(null);
+  const [hfOpen, setHfOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [scrollbarW, setScrollbarW] = useState(0);
   /** Encart ouvert dans le tableau blanc (identifiant de sa page), ou null. */
@@ -463,6 +469,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       const day = lb.startsAt.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
       const time = lb.startsAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       setLessonChip(`${lb.label} · ${day} · ${time}`);
+      setLesson({ label: lb.label, startsAt: lb.startsAt });
     });
     return () => { cancelled = true; };
   }, [boardId]);
@@ -513,6 +520,11 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   // ---- Bureau : page courante, largeur de la barre de défilement (alignement de la règle) ----
 
   const sheetsH = pages * PAGE_H + (pages - 1) * gap;
+  const chromeValues = useMemo(() => ({
+    titre: title,
+    classe: lesson?.label ?? '',
+    date: formatHeaderDate(lesson?.startsAt ?? new Date()),
+  }), [title, lesson]);
 
   const onDeskScroll = () => {
     const desk = deskRef.current;
@@ -881,6 +893,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onToggleOutline={toggleOutline}
         showInvisibles={showInvisibles}
         onToggleInvisibles={toggleInvisibles}
+        onHeaderFooter={() => setHfOpen(true)}
         onReplaceImage={() => { replacePosRef.current = editor.state.selection.from; fileRef.current?.click(); }}
       />
 
@@ -920,7 +933,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }} onMouseDown={onSheetsMouseDown}>
             {Array.from({ length: pages }).map((_, i) => (
               <div key={i} className="ce-sheet" style={{ top: i * (PAGE_H + gap), width: PAGE_W, height: PAGE_H }}>
-                <span className="ce-sheet__num">{i + 1}</span>
+                <CourseSheetChrome page={i + 1} pages={pages} settings={settings} values={chromeValues} onEdit={() => setHfOpen(true)} />
               </div>
             ))}
             <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
@@ -936,6 +949,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
             version={preview.version}
             doc={preview.doc}
             zoom={zoom}
+            chromeValues={chromeValues}
             onRestore={() => void restorePreview()}
             onClose={() => setPreview(null)}
           />
@@ -980,6 +994,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {hfOpen && <CourseHeaderFooterDialog settings={settings} onSettings={changeSettings} onClose={() => setHfOpen(false)} />}
 
       {nameDialog === 'version' && (
         <CourseNameDialog

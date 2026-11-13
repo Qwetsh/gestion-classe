@@ -138,6 +138,7 @@ const PATHS = {
   cols12: '<rect x="3" y="4" width="6" height="16" rx="1.5"/><path d="m4 15 2-2 2 2"/><rect x="11" y="4" width="10" height="16" rx="1.5"/><path d="M13.5 8h5M13.5 11h5M13.5 14h5M13.5 17h3"/>',
   cols21: '<rect x="3" y="4" width="10" height="16" rx="1.5"/><path d="M5.5 8h5M5.5 11h5M5.5 14h5M5.5 17h3"/><rect x="15" y="4" width="6" height="16" rx="1.5"/>',
   uncols: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M12 4v16" stroke-dasharray="2 2"/><path d="M7 9h10M7 13h10M7 17h6"/>',
+  headerFooter: '<rect x="4" y="2" width="16" height="20" rx="1.5"/><path d="M7 5.5h10M7 18.5h10" stroke-width="2.2"/><path d="M7 10h10M7 13h7" opacity=".45"/>',
   versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 

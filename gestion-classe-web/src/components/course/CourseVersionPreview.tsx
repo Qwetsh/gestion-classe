@@ -8,17 +8,21 @@ import { courseExtensions } from './courseExtensions';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import { VERSION_KIND_LABELS, type CourseVersion } from '../../lib/course/courseVersions';
+import { CourseSheetChrome } from './CourseSheetChrome';
+import type { FieldValues } from './courseHeaderFooter';
 
 interface Props {
   boardId: string;
   version: CourseVersion;
   doc: CourseDoc;
   zoom: number;
+  /** Titre, classe, date des en-têtes (lot T9). */
+  chromeValues?: Omit<FieldValues, 'page' | 'pages'>;
   onRestore: () => void;
   onClose: () => void;
 }
 
-export function CourseVersionPreview({ boardId, version, doc, zoom, onRestore, onClose }: Props) {
+export function CourseVersionPreview({ boardId, version, doc, zoom, chromeValues, onRestore, onClose }: Props) {
   const [pages, setPages] = useState(1);
   const extensions = useMemo(() => courseExtensions(
     (layout) => setPages(layout.pages),
@@ -49,7 +53,7 @@ export function CourseVersionPreview({ boardId, version, doc, zoom, onRestore, o
           <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }}>
             {Array.from({ length: pages }).map((_, i) => (
               <div key={i} className="ce-sheet" style={{ top: i * (PAGE_H + SHEET_GAP), width: PAGE_W, height: PAGE_H }}>
-                <span className="ce-sheet__num">{i + 1}</span>
+                <CourseSheetChrome page={i + 1} pages={pages} settings={doc.settings ?? {}} values={chromeValues ?? { titre: '', classe: '', date: '' }} />
               </div>
             ))}
             <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>

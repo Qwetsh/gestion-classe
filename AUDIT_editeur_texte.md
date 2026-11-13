@@ -1240,3 +1240,23 @@ d'impression) ; Ctrl+molette sur un vrai pavé tactile (simulé par un événeme
 
 **Non vérifié** : l'impression (légendes, cadres et colonnes en A4) ; le rognage au doigt sur
 tablette ; la lisibilité des colonnes en classe (lot 4).
+
+### T9a — fait le 13/11/2026 (branche `feat/texte-t9`, pas de migration)
+
+- **En-tête et pied de page** (Mise en page › En-tête et pied, ou double-clic dans la marge
+  haute ou basse d'une feuille) : trois cases chacun (gauche, centre, droite), texte libre et
+  champs insérés au curseur : `{titre}`, `{classe}`, `{date}`, `{page}`, `{pages}`, plus
+  « Nom : …  Prénom : … ». Réglages dans `doc.settings.header` / `footer` / `firstPageBlank`.
+- **Numéro de page** (menu du ruban) : 1, Page 1, Page 1 sur 4, 1 / 4, sans numéro. Un cours
+  sans réglage garde le numéro centré en bas, comme avant.
+- **Rien sur la première page** (page de titre, fiche avec cartouche).
+- `{classe}` et `{date}` viennent du cours de l'emploi du temps rattaché (date du jour sinon) ;
+  un champ sans valeur est montré « (classe) » en gris à l'écran et n'est pas imprimé.
+- Vérifié dans le navigateur sur un cours de 4 pages : double-clic dans la marge, champs insérés
+  au curseur, première page vide, « Page 2 sur 4 » puis « sur 5 » juste après l'ajout d'une
+  page, réglages enregistrés dans le cours. Tests unitaires des champs et des numéros.
+
+**Non vérifié** : l'impression (en-têtes dans les marges en A4).
+
+**T9b (marges, paysage) : pas fait**, en attente de la question 1 du § 7 (marges fixes ou
+réglables, à décider avant le mode Tableau).
