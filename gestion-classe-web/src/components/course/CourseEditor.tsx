@@ -242,6 +242,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     let cancelled = false;
     void lastVersionAt(boardId).then(async (last) => {
       if (cancelled || last === null || last >= loaded.updatedAt - 1000) return;
+      // cours tout juste créé (pas d'historique, écrit il y a moins d'une minute) : rien à garder
+      if (last === 0 && Date.now() - loaded.updatedAt < 60_000) return;
       if (await createVersion(userId, boardId, serverDoc, 'auto')) setVersionsKey((k) => k + 1);
     }).catch((err: unknown) => console.warn('[CourseEditor] version d’ouverture :', err));
     return () => { cancelled = true; };

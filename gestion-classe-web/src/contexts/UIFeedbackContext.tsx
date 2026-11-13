@@ -129,7 +129,7 @@ export function UIFeedbackProvider({ children }: { children: ReactNode }) {
                   style={{ color: colors.text }}
                   aria-label="Fermer"
                 >
-                  \u2715
+                  ✕
                 </button>
               </div>
             );
