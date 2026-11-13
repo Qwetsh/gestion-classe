@@ -17,9 +17,11 @@ import { CELL_COLORS, ROW_HEIGHTS, TABLE_STYLES, type TableStyle } from './cours
 import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
 import { CourseSymbolPicker } from './CourseSymbolPicker';
 import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
-import { HEADING_NUMBERING_LABELS, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
+import { CAPTION_LABELS, HEADING_NUMBERING_LABELS, type CaptionLabel, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
+import { COLUMNS_LAYOUTS, findColumns, type ColumnsLayout } from './courseColumns';
+import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, IMAGE_FRAMES, flipCrop, rotateCrop, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
-export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points';
+export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
 
 interface Props {
   editor: Editor;
@@ -51,6 +53,8 @@ interface Props {
   onToggleOutline: () => void;
   showInvisibles: boolean;
   onToggleInvisibles: () => void;
+  /** Remplacer le fichier de l'image sélectionnée (lot T8). */
+  onReplaceImage: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -88,6 +92,28 @@ function Sm({ icon, label, title, onClick, on, disabled, children }: { icon?: Ic
   );
 }
 
+/** Texte de remplacement de l'image (lu par les lecteurs d'écran), enregistré en quittant le champ. */
+function AltField({ editor, value }: { editor: Editor; value: string }) {
+  const [v, setV] = useState(value);
+  const commit = () => {
+    if (v === value) return;
+    const pos = editor.state.selection.from;
+    editor.chain().updateAttributes('image', { alt: v.trim() || null }).setNodeSelection(pos).run();
+  };
+  return (
+    <input
+      className="ce-input ce-input--alt"
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+      placeholder="Texte de remplacement"
+      title="Décrit l'image pour un élève qui utilise un lecteur d'écran"
+      aria-label="Texte de remplacement de l'image"
+    />
+  );
+}
+
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="ce-group">
@@ -97,7 +123,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -149,6 +175,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         rowHeight: (e.getAttributes('tableRow').minHeight ?? null) as number | null,
         onImage: e.isActive('image'),
         imageAlign: (e.getAttributes('image') as { align?: string }).align ?? 'center',
+        image: e.getAttributes('image') as { caption?: string | null; frame?: ImageFrame; alt?: string | null; rotate?: number; flip?: boolean; crop?: ImageCrop | null },
+        inColumns: !!findColumns(e.state),
+        columnsLayout: ((findColumns(e.state)?.node.attrs.layout as ColumnsLayout | undefined) ?? '1-1'),
         onEncart: e.isActive('encart'),
         encartPageId: (e.getAttributes('encart') as { pageId?: string }).pageId ?? null,
         encartPrint: (e.getAttributes('encart') as { print?: string }).print ?? 'filled',
@@ -169,7 +198,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     const back: RibbonTab = view.ctx === 'image' ? 'accueil' : 'insertion';
     setView({ tab: ctx ?? (view.tab === view.ctx ? back : view.tab), ctx });
   }
-  const tab: RibbonTab = (view.tab === 'tableau' && !s.inTable) || (view.tab === 'encadre' && !s.callout) ? 'accueil' : view.tab;
+  const tab: RibbonTab = (view.tab === 'tableau' && !s.inTable) || (view.tab === 'encadre' && !s.callout) || (view.tab === 'colonnes' && !s.inColumns) ? 'accueil' : view.tab;
   const setTab = (t: RibbonTab) => setView((v) => ({ ...v, tab: t }));
 
   const c = () => editor.chain().focus();
@@ -256,6 +285,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     { id: 'miseenpage', label: 'Mise en page' },
     { id: 'affichage', label: 'Affichage' },
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
+    ...(s.inColumns ? [{ id: 'colonnes' as const, label: 'Colonnes', contextual: true }] : []),
     ...(s.onImage ? [{ id: 'image' as const, label: 'Image', contextual: true }] : []),
     ...(s.onEncart ? [{ id: 'encart' as const, label: 'Encart tableau', contextual: true }] : []),
     ...(s.callout ? [{ id: 'encadre' as const, label: 'Encadré', contextual: true }] : []),
@@ -473,6 +503,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <span ref={tableBtnRef} style={{ display: 'contents' }}>
                 <Big icon="table" label="Tableau" title="Tableau : choisir le nombre de lignes et de colonnes" on={!!tableGrid} onClick={toggleTableGrid} />
               </span>
+            </Group>
+            <Group label="Colonnes">
+              <div className="ce-stack">
+                <Sm icon="cols2" label="2 colonnes" title="Deux colonnes côte à côte (le bloc reste sur une seule page)" onClick={() => c().insertColumns('1-1').run()} />
+                <Sm icon="cols3" label="3 colonnes" title="Trois colonnes côte à côte" onClick={() => c().insertColumns('1-1-1').run()} />
+                <Sm icon="cols12" label="Image + texte" title="Une colonne étroite à gauche (image), le texte à droite. Une image sélectionnée y est placée." onClick={() => c().insertColumns('1-2').run()} />
+              </div>
             </Group>
             <Group label="Spécial cours">
               <Big icon="encart" label="Encart tableau" title="Bloc 16:9 de la largeur du texte : exactement un écran en classe. Double-clic pour y dessiner." onClick={() => c().insertEncart().run()} />
@@ -782,8 +819,50 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 ))}
               </div>
             </Group>
+            <Group label="Légende">
+              <Big icon="caption" label="Légende" title="Légende sous l'image, numérotée (« Document 1 : … »)" on={s.image.caption != null}
+                onClick={() => (s.image.caption != null ? updateNode('image', { caption: null }) : window.dispatchEvent(new Event(IMAGE_CAPTION_EVENT)))} />
+              <div className="ce-stack">
+                <span className="ce-minilabel">Numéros</span>
+                <select className="ce-select" value={settings.captionLabel ?? 'document'} onChange={(e) => onSettings({ captionLabel: e.target.value as CaptionLabel })} title="Numérotation des légendes de tout le cours" aria-label="Numérotation des légendes">
+                  {(Object.keys(CAPTION_LABELS) as CaptionLabel[]).map((k) => <option key={k} value={k}>{CAPTION_LABELS[k]}</option>)}
+                </select>
+              </div>
+            </Group>
+            <Group label="Retoucher">
+              <Big icon="crop" label="Rogner" title="Rogner : tirer les poignées, puis Entrée (rien n'est perdu, on peut rogner à nouveau)" onClick={() => window.dispatchEvent(new Event(IMAGE_CROP_EVENT))} />
+              <div className="ce-stack">
+                <Sm icon="rotateLeft" label="Pivoter à gauche" title="Quart de tour à gauche" onClick={() => updateNode('image', { rotate: ((s.image.rotate ?? 0) + 270) % 360, crop: rotateCrop(s.image.crop ?? null, false) })} />
+                <Sm icon="rotateRight" label="Pivoter à droite" title="Quart de tour à droite" onClick={() => updateNode('image', { rotate: ((s.image.rotate ?? 0) + 90) % 360, crop: rotateCrop(s.image.crop ?? null, true) })} />
+                <Sm icon="flipH" label="Miroir" title="Retourner horizontalement" on={!!s.image.flip} onClick={() => updateNode('image', { flip: !s.image.flip, crop: flipCrop(s.image.crop ?? null) })} />
+              </div>
+              <Big icon="reset" label="Rétablir" title="Annuler le rognage, la rotation et le miroir" disabled={!s.image.crop && !s.image.rotate && !s.image.flip} onClick={() => updateNode('image', { crop: null, rotate: 0, flip: false })} />
+            </Group>
+            <Group label="Cadre">
+              <div className="ce-stack">
+                <select className="ce-select" value={s.image.frame ?? 'none'} onChange={(e) => updateNode('image', { frame: e.target.value as ImageFrame })} aria-label="Cadre de l'image" title="Cadre de l'image">
+                  {IMAGE_FRAMES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+                <AltField key={editor.state.selection.from} editor={editor} value={s.image.alt ?? ''} />
+              </div>
+            </Group>
             <Group label="Image">
+              <Big icon="replaceImage" label="Remplacer" title="Remplacer par une autre image (taille, place et légende gardées)" onClick={onReplaceImage} />
               <Big icon="trash" label="Supprimer l'image" onClick={() => c().deleteSelection().run()} />
+            </Group>
+          </>
+        )}
+
+        {tab === 'colonnes' && (
+          <>
+            <Group label="Disposition">
+              {COLUMNS_LAYOUTS.map((l) => (
+                <Big key={l.id} icon={l.id === '1-1' ? 'cols2' : l.id === '1-2' ? 'cols12' : l.id === '2-1' ? 'cols21' : 'cols3'} label={l.label} title={l.title}
+                  on={s.columnsLayout === l.id} onClick={() => c().setColumnsLayout(l.id).run()} />
+              ))}
+            </Group>
+            <Group label="Colonnes">
+              <Big icon="uncols" label="Retirer les colonnes" title="Remet le contenu des colonnes à la suite, sans rien effacer" onClick={() => c().unsetColumns().run()} />
             </Group>
           </>
         )}

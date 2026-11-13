@@ -22,6 +22,7 @@ import { Placeholder } from '@tiptap/extensions';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { CoursePagination, type PageLayout } from './coursePagination';
 import { CourseImageView } from './CourseImageView';
+import { Column, Columns } from './courseColumns';
 import { EncartView, type EncartOptions } from './EncartView';
 import { MM } from '../../lib/course/coursePage';
 import { typographyExtensions } from './courseTypography';
@@ -269,6 +270,35 @@ export const CourseImage = Image.extend({
       /** Largeur affichée en px (null = largeur naturelle, plafonnée à la colonne). */
       width: { default: null },
       align: { default: 'center' },
+      // Lot T8 (absents des images plus anciennes : valeurs par défaut)
+      /** Légende sous l'image (null = pas de légende ; '' = légende à écrire). */
+      caption: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-caption'),
+        renderHTML: (a: { caption?: string | null }) => (a.caption == null ? {} : { 'data-caption': a.caption }),
+      },
+      /** Rognage non destructif : { t, r, b, l } en fractions de l'image tournée. */
+      crop: {
+        default: null,
+        parseHTML: (el: HTMLElement) => { try { return JSON.parse(el.getAttribute('data-crop') || 'null'); } catch { return null; } },
+        renderHTML: (a: { crop?: unknown }) => (a.crop ? { 'data-crop': JSON.stringify(a.crop) } : {}),
+      },
+      /** Quarts de tour : 0, 90, 180, 270. */
+      rotate: {
+        default: 0,
+        parseHTML: (el: HTMLElement) => Number(el.getAttribute('data-rotate')) || 0,
+        renderHTML: (a: { rotate?: number }) => (a.rotate ? { 'data-rotate': String(a.rotate) } : {}),
+      },
+      flip: {
+        default: false,
+        parseHTML: (el: HTMLElement) => el.hasAttribute('data-flip'),
+        renderHTML: (a: { flip?: boolean }) => (a.flip ? { 'data-flip': '' } : {}),
+      },
+      frame: {
+        default: 'none',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-frame') || 'none',
+        renderHTML: (a: { frame?: string }) => (a.frame && a.frame !== 'none' ? { 'data-frame': a.frame } : {}),
+      },
     };
   },
   addNodeView() {
@@ -280,7 +310,7 @@ export const CourseImage = Image.extend({
 // ---- Assemblage ----
 
 /** Blocs qui reçoivent un identifiant stable (ancrage du calque tableau, animations). */
-const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone', 'taskList'];
+const BLOCK_TYPES = ['heading', 'paragraph', 'callout', 'image', 'table', 'bulletList', 'orderedList', 'pageBreak', 'blockquote', 'horizontalRule', 'encart', 'writingZone', 'taskList', 'columns'];
 
 export interface CoursePasteHooks {
   getMode: () => PasteMode;
@@ -304,6 +334,8 @@ export function courseExtensions(onLayout: (layout: PageLayout) => void, encart:
     Highlight.configure({ multicolor: true }),
     ...courseTableExtensions,
     CourseImage,
+    Columns,
+    Column,
     Callout,
     PageBreak,
     Encart.configure(encart),

@@ -294,7 +294,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     for (const f of files) {
       try {
         toast('Envoi de l’image…', 'info');
-        const img = await uploadBoardImage(f, userId, `board:${boardId}`);
+        const img = await uploadBoardImage(f, userId, `board:${boardId}`, { keepTransparency: true });
         const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
         if (at != null) ed.chain().focus().insertContentAt(at, node).run();
         else ed.chain().focus().insertContent(node).run();
@@ -303,6 +303,29 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       }
     }
   }, [boardId, userId, toast]);
+  /** Image à remplacer (position du nœud), le temps que le sélecteur de fichier réponde. */
+  const replacePosRef = useRef<number | null>(null);
+  const replaceImage = useCallback(async (file: File) => {
+    const ed = editorRef.current;
+    const pos = replacePosRef.current;
+    replacePosRef.current = null;
+    if (!ed || pos == null) return;
+    try {
+      toast('Envoi de l’image…', 'info');
+      const img = await uploadBoardImage(file, userId, `board:${boardId}`, { keepTransparency: true });
+      const node = ed.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') { toast('L’image a été déplacée entre-temps : réessayez.'); return; }
+      // Taille, place, cadre et légende gardés ; rognage, rotation et texte de remplacement (propres à
+      // l'ancienne image) retirés
+      ed.chain().command(({ tr }) => {
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, crop: null, rotate: 0, flip: false, alt: null });
+        return true;
+      }).setNodeSelection(pos).run();
+    } catch (err) {
+      toast(`Image non envoyée : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+    }
+  }, [boardId, userId, toast]);
+
   const uploadRef = useRef(uploadImages);
   useEffect(() => { uploadRef.current = uploadImages; }, [uploadImages]);
 
@@ -389,7 +412,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           if (!res.ok) throw new Error(String(res.status));
           const blob = await res.blob();
           if (!blob.type.startsWith('image/')) throw new Error('pas une image');
-          const img = await uploadBoardImage(new File([blob], 'image', { type: blob.type }), userId, `board:${boardId}`);
+          const img = await uploadBoardImage(new File([blob], 'image', { type: blob.type }), userId, `board:${boardId}`, { keepTransparency: true });
           // La position a pu bouger pendant l'envoi : on retrouve l'image par son adresse
           const { tr } = editor.state;
           let changed = false;
@@ -833,7 +856,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onPrint={print}
         onExportPdf={() => { toast('Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF ».', 'info'); window.setTimeout(print, 400); }}
         onRename={() => setRenaming(true)}
-        onInsertImage={() => fileRef.current?.click()}
+        onInsertImage={() => { replacePosRef.current = null; fileRef.current?.click(); }}
         onInsertQr={() => setQrOpen(true)}
         onInsertLink={insertLink}
         onPaste={(mode) => void paste(mode)}
@@ -858,6 +881,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onToggleOutline={toggleOutline}
         showInvisibles={showInvisibles}
         onToggleInvisibles={toggleInvisibles}
+        onReplaceImage={() => { replacePosRef.current = editor.state.selection.from; fileRef.current?.click(); }}
       />
 
       {conflict && (
@@ -899,7 +923,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
                 <span className="ce-sheet__num">{i + 1}</span>
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined}>
+            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
               <EditorContent editor={editor} />
             </div>
           </div>
@@ -1026,6 +1050,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
           e.target.value = '';
+          if (replacePosRef.current != null) { if (files[0]) void replaceImage(files[0]); else replacePosRef.current = null; return; }
           if (files.length) void uploadImages(files);
         }}
       />

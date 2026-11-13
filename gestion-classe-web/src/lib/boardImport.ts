@@ -14,16 +14,35 @@ export interface ImportProgress { done: number; total: number; label: string }
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
+function canvasToBlob(canvas: HTMLCanvasElement, type: 'image/jpeg' | 'image/png'): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Conversion JPEG impossible'))), 'image/jpeg', JPEG_QUALITY);
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Conversion de l’image impossible'))), type, JPEG_QUALITY);
   });
 }
 
+/** Vrai si au moins un pixel n'est pas opaque (logo, schéma détouré). */
+function hasTransparency(canvas: HTMLCanvasElement): boolean {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return false;
+  try {
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
+  } catch { /* canvas illisible : on reste en JPEG */ }
+  return false;
+}
+
+export interface UploadImageOptions {
+  /**
+   * Garder la transparence (PNG) quand l'image en a : schémas et logos des cours. Sans cette
+   * option (tableau blanc), l'image est aplatie sur fond blanc et envoyée en JPEG, comme avant.
+   */
+  keepTransparency?: boolean;
+}
+
 /** Envoie une image (fichier ou blob collé) dans le bucket, redimensionnée si énorme. */
-export async function uploadBoardImage(file: File | Blob, userId: string, sessionId: string): Promise<{ path: string; width: number; height: number }> {
+export async function uploadBoardImage(file: File | Blob, userId: string, sessionId: string, options: UploadImageOptions = {}): Promise<{ path: string; width: number; height: number }> {
   const asFile = file instanceof File ? file : new File([file], 'image.png', { type: file.type || 'image/png' });
-  const page = await renderImage(asFile, userId, sessionId);
+  const page = await renderImage(asFile, userId, sessionId, 'full', options.keepTransparency ?? false);
   if (!page.image) throw new Error("L'image n'a pas pu être préparée");
   return page.image;
 }
@@ -34,9 +53,9 @@ export const uploadCoverImage = uploadBoardImage;
 /** Fichiers image (à insérer comme objets) et autres importables (PDF → pages). */
 export const isImageFile = (f: File) => f.type.startsWith('image/');
 
-async function uploadPageImage(userId: string, sessionId: string, pageId: string, blob: Blob): Promise<string> {
-  const path = `${userId}/${sessionId}/${pageId}.jpg`;
-  const { error } = await supabase.storage.from(BOARD_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+async function uploadPageImage(userId: string, sessionId: string, pageId: string, blob: Blob, type: 'image/jpeg' | 'image/png' = 'image/jpeg'): Promise<string> {
+  const path = `${userId}/${sessionId}/${pageId}.${type === 'image/png' ? 'png' : 'jpg'}`;
+  const { error } = await supabase.storage.from(BOARD_BUCKET).upload(path, blob, { contentType: type, upsert: true });
   if (error) throw error;
   return path;
 }
@@ -50,10 +69,10 @@ export type ImportLayout = 'full' | 'fit';
 /** Hauteur de page (unités) qu'il faut pour afficher l'image en pleine largeur. */
 export const fullWidthPageHeight = (img: Pick<PageImage, 'width' | 'height'>) => Math.ceil((BOARD_UNIT * img.height) / Math.max(1, img.width));
 
-async function pageFromCanvas(userId: string, sessionId: string, canvas: HTMLCanvasElement, layout: ImportLayout): Promise<BoardPage> {
+async function pageFromCanvas(userId: string, sessionId: string, canvas: HTMLCanvasElement, layout: ImportLayout, type: 'image/jpeg' | 'image/png' = 'image/jpeg'): Promise<BoardPage> {
   const id = uid();
-  const blob = await canvasToJpeg(canvas);
-  const path = await uploadPageImage(userId, sessionId, id, blob);
+  const blob = await canvasToBlob(canvas, type);
+  const path = await uploadPageImage(userId, sessionId, id, blob, type);
   const image: PageImage = { path, width: canvas.width, height: canvas.height };
   const page: BoardPage = { id, background: 'blank', strokes: [], objects: [], image };
   // Pleine largeur : un document plus haut que l'écran (A4 portrait) allonge la page au lieu
@@ -92,7 +111,7 @@ async function renderPdfPages(file: File, userId: string, sessionId: string, onP
   return pages;
 }
 
-async function renderImage(file: File, userId: string, sessionId: string, layout: ImportLayout = 'full'): Promise<BoardPage> {
+async function renderImage(file: File, userId: string, sessionId: string, layout: ImportLayout = 'full', keepTransparency = false): Promise<BoardPage> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -107,6 +126,12 @@ async function renderImage(file: File, userId: string, sessionId: string, layout
     canvas.height = Math.round(img.height * ratio);
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas indisponible');
+    // Formats qui peuvent être transparents : on regarde avant d'aplatir sur fond blanc
+    if (keepTransparency && /^image\/(png|webp|gif|svg)/.test(file.type)) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      if (hasTransparency(canvas)) return pageFromCanvas(userId, sessionId, canvas, layout, 'image/png');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);

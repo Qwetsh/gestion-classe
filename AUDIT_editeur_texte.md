@@ -1211,3 +1211,32 @@ prochaine écriture).
 
 **Non vérifié** : l'impression avec les marques affichées (masquées par la feuille de style
 d'impression) ; Ctrl+molette sur un vrai pavé tactile (simulé par un événement).
+
+### T8 — fait le 13/11/2026 (branche `feat/texte-t8`, pas de migration)
+
+- **Légende** (onglet Image › Légende) : texte sous l'image, attribut `caption` de l'image plutôt
+  qu'un nœud `figure` (la légende suit l'image au glisser par construction, et les images déjà
+  posées ne changent pas). Numérotation par compteur CSS « Document 1 : » (ou Figure, Doc.,
+  sans numéro : réglage du cours `settings.captionLabel`), juste après tout déplacement ; une
+  légende vide ne s'imprime pas.
+- **Retoucher** : rogner (8 poignées, non destructif, `crop` en fractions, l'échelle est
+  gardée), pivoter d'un quart de tour à gauche ou à droite (le rognage suit), miroir,
+  « Rétablir ». **Cadre** : bordure, coins arrondis, ombre, rond. **Texte de remplacement**
+  (champ dans le ruban). **Remplacer** l'image : taille, place, cadre et légende gardés ;
+  rognage, rotation et texte de remplacement remis à zéro.
+- **Transparence** : une image PNG, WebP, GIF ou SVG qui a des pixels transparents est envoyée en
+  PNG (option `keepTransparency` de `uploadBoardImage`) ; le tableau blanc garde le JPEG.
+- **Colonnes** (Insertion › Colonnes ; onglet contextuel « Colonnes ») : 2 colonnes, 3 colonnes,
+  « Image + texte » (une image sélectionnée va dans la colonne étroite) ; dispositions 1-1,
+  1/3-2/3, 2/3-1/3, 1-1-1 ; passer de 3 à 2 colonnes rassemble les deux dernières ; « Retirer
+  les colonnes » garde tout. Bloc de premier niveau : la pagination le renvoie entier à la page
+  suivante. Repère pointillé à l'écran seulement.
+- Au passage : l'image sélectionnée avait deux contours (celui de la page entière en plus).
+- Vérifié dans le navigateur : PNG transparent gardé en .png, photo en .jpg ; légende,
+  numérotation après déplacement ; rognage gauche + bas puis redimensionnement (proportions
+  exactes) ; quart de tour avec rognage ; miroir ; cadre ombre ; texte de remplacement ;
+  remplacer ; image + texte ; 3 colonnes puis 2 (texte gardé) ; bloc renvoyé entier en page 2 ;
+  retirer les colonnes. Tests unitaires des commandes de colonnes et du rognage tourné.
+
+**Non vérifié** : l'impression (légendes, cadres et colonnes en A4) ; le rognage au doigt sur
+tablette ; la lisibilité des colonnes en classe (lot 4).
