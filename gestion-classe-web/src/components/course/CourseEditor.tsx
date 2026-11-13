@@ -33,6 +33,8 @@ import { formatHeaderDate } from './courseHeaderFooter';
 import { setInvisibles } from './courseInvisibles';
 import { checkCourse, setLiveSpell, spellHits, spellKey, hideSpell, type SpellHit } from './courseSpell';
 import { CourseSpellPopover } from './CourseSpellPopover';
+import { CoursePrintDialog } from './CoursePrintDialog';
+import { buildTwoUp, printClasses, type PrintOptions } from './coursePrint';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
 import { uploadBoardImage } from '../../lib/boardImport';
@@ -187,6 +189,10 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [qrOpen, setQrOpen] = useState(false);
   const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
+  /** Feuilles du cours (copie figée pour « deux par feuille », lot T13). */
+  const sheetsRef = useRef<HTMLDivElement>(null);
+  /** Fenêtre « Imprimer » / « Exporter en PDF » (lot T13). */
+  const [printDialog, setPrintDialog] = useState<'print' | 'pdf' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   /** Sélecteur « Importer un fichier Word ou PDF » (lot T10a). */
   const docFileRef = useRef<HTMLInputElement>(null);
@@ -601,7 +607,36 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     };
   }, []);
 
-  const print = useCallback(() => { window.print(); }, []);
+
+  /**
+   * Impression avec options (lot T13) : classes posées sur <body> (la version adaptée change la
+   * mise en page : la pagination de `beforeprint` la mesure), copie « deux par feuille » faite
+   * après ce recalcul, tout est retiré après l'impression.
+   */
+  const printWith = (o: PrintOptions) => {
+    flushSync(() => setPrintDialog(null));
+    const classes = printClasses(o);
+    if (classes.length === 0) { window.print(); return; }
+    document.body.classList.add(...classes);
+    let undoTwoUp: (() => void) | null = null;
+    const before = () => {
+      const root = deskRef.current?.closest('.ce-root') as HTMLElement | null;
+      const sheets = sheetsRef.current;
+      if (o.twoUp && root && sheets) undoTwoUp = buildTwoUp(root, sheets, sheets.querySelectorAll('.ce-sheet').length);
+    };
+    const after = () => {
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint', after);
+      undoTwoUp?.();
+      document.body.classList.remove(...classes);
+      const ed = editorRef.current;
+      if (ed) relayoutNow(ed, SHEET_GAP);
+    };
+    // Enregistrés après ceux de la pagination : ils voient la mise en page recalculée
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
+    window.print();
+  };
 
   // ---- Raccourcis globaux ----
 
@@ -1036,8 +1071,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
 
       <CourseRibbon
         editor={editor}
-        onPrint={print}
-        onExportPdf={() => { toast('Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF ».', 'info'); window.setTimeout(print, 400); }}
+        onPrint={() => setPrintDialog('print')}
+        onExportPdf={() => setPrintDialog('pdf')}
         onRename={() => setRenaming(true)}
         onInsertImage={() => { replacePosRef.current = null; fileRef.current?.click(); }}
         onInsertQr={() => setQrOpen(true)}
@@ -1107,7 +1142,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       )}
       <div className="ce-desk" ref={deskRef} onScroll={onDeskScroll}>
         <div className="ce-sheets-outer" style={{ width: PAGE_W * zoom, height: sheetsH * zoom }}>
-          <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }} onMouseDown={onSheetsMouseDown}>
+          <div ref={sheetsRef} className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }} onMouseDown={onSheetsMouseDown}>
             {Array.from({ length: pages }).map((_, i) => (
               <div key={i} className="ce-sheet" style={{ top: i * (PAGE_H + gap), width: PAGE_W, height: PAGE_H }}>
                 <CourseSheetChrome page={i + 1} pages={pages} settings={settings} values={chromeValues} onEdit={() => setHfOpen(true)} />
@@ -1178,6 +1213,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {printDialog && <CoursePrintDialog pdf={printDialog === 'pdf'} onPrint={printWith} onClose={() => setPrintDialog(null)} />}
 
       {spellPop && <CourseSpellPopover editor={editor} hit={spellPop.hit} rect={spellPop.rect} onClose={() => setSpellPop(null)} />}
 

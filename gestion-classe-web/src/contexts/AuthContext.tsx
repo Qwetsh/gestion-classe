@@ -45,11 +45,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only process events after initial load, OR if it's a sign out/sign in event
         // This prevents race condition where listener fires before getSession completes
         if (initialLoadComplete.current || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-          setState({
-            user: session?.user ?? null,
-            session,
-            isLoading: false,
-            error: null,
+          // Supabase renvoie SIGNED_IN à chaque retour sur l'onglet : même personne, même jeton =
+          // rien ne change. Et tant que c'est la même personne, `user` garde le même objet : les
+          // écrans qui rechargent leurs données sur [user] (l'accueil, qui démonte alors ses
+          // modules et un cours ouvert dedans) ne repartent pas de zéro.
+          setState((prev) => {
+            const nextUser = session?.user ?? null;
+            // USER_UPDATED : le compte lui-même a changé (courriel, métadonnées) : nouvel objet
+            const sameUser = event !== 'USER_UPDATED' && !!prev.user && !!nextUser && prev.user.id === nextUser.id;
+            if (sameUser && prev.session?.access_token === session?.access_token && !prev.isLoading && !prev.error) return prev;
+            return {
+              user: sameUser ? prev.user : nextUser,
+              session,
+              isLoading: false,
+              error: null,
+            };
           });
         }
 

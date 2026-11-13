@@ -1313,3 +1313,30 @@ ou le PDF suffit-il ?).
 
 **Non vérifié** : un cours de 6 pages réel ; hors connexion (le code se tait en mode frappe et
 affiche un message en vérification manuelle) ; le menu contextuel du lot 6.
+
+### T13 — fait le 13/11/2026 (branche `feat/texte-t13`, pas de migration)
+
+- **Fenêtre « Imprimer »** (Fichier › Imprimer, et Exporter en PDF) : version normale ou adaptée,
+  une page A4 ou deux demi-feuilles, couleur / noir et blanc / économie d'encre. Choix gardés sur
+  l'ordinateur. Ctrl+P imprime directement la version normale.
+- **Version adaptée (dys)**, en attendant la question 8 du § 7 (réglages par défaut, un seul
+  profil) : texte 14 pt (19 px), interligne 1,75, lettres et mots espacés, titres agrandis,
+  tailles imposées neutralisées, pas de justification ni de coupure, italique remplacé par du
+  demi-gras ; même police Atkinson Hyperlegible. La pagination est recalculée pour l'impression
+  (plus de pages), puis rétablie.
+- **Deux demi-feuilles** : copie figée des feuilles (après le recalcul), deux fois côte à côte,
+  réduite en A5 sur un A4 paysage, trait de coupe pointillé.
+- **Noir et blanc** : texte noir, fonds gris clair, images en niveaux de gris.
+  **Économie d'encre** : aucun fond, surlignage en souligné, images grises éclaircies.
+- **Correctif hors lot (même PR, commit séparé)** : Supabase renvoie « SIGNED_IN » à chaque
+  retour sur l'onglet ; `AuthContext` recréait alors l'objet `user`, l'accueil rechargeait ses
+  données et démontait ses modules : « Mes tableaux » et un **cours ouvert depuis l'accueil se
+  fermaient tout seuls** (avec la dernière seconde de frappe pas forcément enregistrée).
+  `user` garde désormais le même objet tant que c'est la même personne.
+- Vérifié dans le navigateur (impression simulée : `window.print` remplacé pour déclencher
+  `beforeprint`) : version adaptée (2 → 3 pages, 19 px, justification retirée), deux par
+  feuille (deux copies identiques de 3 pages, 630 mm, A4 paysage), tout est retiré après
+  l'impression. Accueil stable au retour sur l'onglet.
+
+**Non vérifié** : une vraie impression papier (rendu noir et blanc, coupe A5, photocopieuse) ;
+Firefox et Safari (`@page` injecté).
