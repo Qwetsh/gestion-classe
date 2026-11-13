@@ -3,7 +3,7 @@
  * chapitre, à ouvrir depuis l'accueil. Chaque tableau indique dans combien de séances il a servi
  * (table `session_boards`) ; le « Brouillon » local (sans compte ni migration) reste disponible.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BOARD_LEVELS,
   NO_LEVEL,
@@ -21,11 +21,14 @@ import {
 import { BoardWorkspace } from './BoardWorkspace';
 import { draftTab } from '../../lib/boardTabs';
 import { OpenPreparedBoard } from '../course/OpenPreparedBoard';
-import { coursesUnavailable, createCourse, duplicateCourse, listTemplates, type CourseTemplateRow } from '../../lib/course/courseDoc';
+import { coursesUnavailable, createCourse, duplicateCourse, emptyCourseDoc, listTemplates, type CourseTemplateRow } from '../../lib/course/courseDoc';
+import { isDocxFile, queueCourseImport } from '../../lib/course/courseImport';
 import { BUILTIN_TEMPLATES } from '../course/courseTemplates';
 
 /** Modèle choisi pour un nouveau cours : fourni (courseTemplates.ts) ou personnel (boards.is_template). */
-type TemplateChoice = { from: 'builtin'; id: string } | { from: 'mine'; id: string };
+type TemplateChoice = { from: 'builtin'; id: string } | { from: 'mine'; id: string } | { from: 'word'; file: File };
+/** Modèle de la liste (fourni ou personnel), par opposition au fichier Word choisi. */
+type ListedChoice = Extract<TemplateChoice, { id: string }>;
 
 /** Clé de stockage local du tableau blanc libre (hors séance). */
 
@@ -86,6 +89,11 @@ export function BoardsPanel({ userId }: Props) {
       let b: Board;
       if (kind === 'board') b = await createBoard(userId, meta);
       else if (template.from === 'mine') b = await duplicateCourse(userId, template.id, meta);
+      else if (template.from === 'word') {
+        // Cours vide : l'éditeur importe le fichier Word à l'ouverture (avec le nettoyage du collage)
+        b = { ...(await createCourse(userId, meta, null, emptyCourseDoc())), is_course: true };
+        queueCourseImport(b.id, template.file);
+      }
       else b = { ...(await createCourse(userId, meta, null, (BUILTIN_TEMPLATES.find((t) => t.id === template.id) ?? BUILTIN_TEMPLATES[0]).build())), is_course: true };
       setBoards((prev) => [b, ...prev]);
       setEditing(null);
@@ -212,6 +220,7 @@ function BoardMetaForm({ userId, initial, isNew, onSave, onClose }: FormProps) {
   const [error, setError] = useState<string | null>(null);
   const [template, setTemplate] = useState<TemplateChoice>({ from: 'builtin', id: 'vierge' });
   const [mine, setMine] = useState<CourseTemplateRow[]>([]);
+  const wordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isNew) return;
@@ -282,10 +291,10 @@ function BoardMetaForm({ userId, initial, isNew, onSave, onClose }: FormProps) {
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Partir de</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
               {[
-                ...BUILTIN_TEMPLATES.map((t) => ({ choice: { from: 'builtin', id: t.id } as TemplateChoice, label: t.label, hint: t.hint, emoji: t.emoji, row: null as CourseTemplateRow | null })),
-                ...mine.map((t) => ({ choice: { from: 'mine', id: t.id } as TemplateChoice, label: t.title, hint: 'Mon modèle', emoji: '⭐', row: t })),
+                ...BUILTIN_TEMPLATES.map((t) => ({ choice: { from: 'builtin', id: t.id } as ListedChoice, label: t.label, hint: t.hint, emoji: t.emoji, row: null as CourseTemplateRow | null })),
+                ...mine.map((t) => ({ choice: { from: 'mine', id: t.id } as ListedChoice, label: t.title, hint: 'Mon modèle', emoji: '⭐', row: t })),
               ].map(({ choice, label: l, hint, emoji, row }) => {
-                const on = template.from === choice.from && template.id === choice.id;
+                const on = template.from === choice.from && 'id' in template && template.id === choice.id;
                 return (
                   <div key={`${choice.from}:${choice.id}`} style={{ position: 'relative' }}>
                     <button
@@ -305,6 +314,35 @@ function BoardMetaForm({ userId, initial, isNew, onSave, onClose }: FormProps) {
                   </div>
                 );
               })}
+              {/* Lot T10a : reprendre un cours Word existant */}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={template.from === 'word'}
+                onClick={() => wordRef.current?.click()}
+                title="Reprendre un cours Word (.docx) : titres, listes, tableaux, images et gras sont gardés ; à relire ensuite"
+                style={{ width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 'var(--radius)', border: `1px solid ${template.from === 'word' ? 'var(--indigo)' : 'var(--border)'}`, background: template.from === 'word' ? 'var(--indigo-soft)' : 'var(--surface)', cursor: 'pointer', font: 'inherit', display: 'flex', gap: 8, alignItems: 'center' }}
+              >
+                <span aria-hidden style={{ fontSize: 18 }}>📥</span>
+                <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {template.from === 'word' ? template.file.name : 'Fichier Word…'}
+                </span>
+              </button>
+              <input
+                ref={wordRef}
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  if (!isDocxFile(f)) { setError('Seuls les fichiers Word récents (.docx) peuvent être repris. Un .doc s’enregistre en .docx depuis Word ou LibreOffice.'); return; }
+                  setError(null);
+                  setTemplate({ from: 'word', file: f });
+                  if (!title.trim()) setTitle(f.name.replace(/\.docx$/i, '').replace(/[_-]+/g, ' ').trim());
+                }}
+              />
             </div>
           </div>
         )}

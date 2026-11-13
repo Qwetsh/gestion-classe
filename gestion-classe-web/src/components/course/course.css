@@ -536,6 +536,10 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ce-text); cursor: pointer; }
 .ce-dialog__hint code { font: 12px ui-monospace, monospace; background: var(--ce-chrome); padding: 0 4px; border-radius: 3px; }
 
+.ce-status__busy { color: var(--ce-accent-ink); font-weight: 600; }
+.ce-status__busy::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ce-accent); animation: ce-pulse 1s ease-in-out infinite alternate; }
+@keyframes ce-pulse { from { opacity: .3; } to { opacity: 1; } }
+
 @media print {
   @page { size: A4; margin: 0; }
   body.ce-open { overflow: visible !important; background: #fff !important; }
