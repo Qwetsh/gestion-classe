@@ -44,6 +44,26 @@ export const CALLOUT_LABELS: Record<CalloutKind, string> = {
   libre: 'Encadré',
 };
 
+/** Bordure d'un encadré ; null = celle du type (barre à gauche, cadre pour « À retenir »…). */
+export type CalloutFrame = 'bar' | 'box' | 'plain';
+
+export const CALLOUT_FRAMES: { id: CalloutFrame; label: string; hint: string }[] = [
+  { id: 'bar', label: 'Barre', hint: 'Une barre épaisse à gauche' },
+  { id: 'box', label: 'Cadre', hint: 'Un cadre fin tout autour, comme une fiche Word' },
+  { id: 'plain', label: 'Fond seul', hint: 'Sans bordure, seulement le fond coloré' },
+];
+
+/** Bordure réellement dessinée : celle choisie, sinon celle du type. */
+export function calloutFrameOf(attrs: { kind?: string; frame?: string | null }): CalloutFrame {
+  if (attrs.frame === 'bar' || attrs.frame === 'box' || attrs.frame === 'plain') return attrs.frame;
+  if (attrs.kind === 'retenir') return 'box';
+  if (attrs.kind === 'consigne') return 'plain';
+  return 'bar';
+}
+
+/** Allure du titre : petites majuscules espacées (par défaut) ou gras à la taille du texte. */
+export type CalloutTitleStyle = 'label' | 'bold';
+
 /** Couleurs proposées pour l'encadré libre. */
 export const CALLOUT_COLORS = ['#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#64748B'];
 
@@ -94,6 +114,18 @@ export const Callout = Node.create({
         default: null,
         parseHTML: (el) => el.getAttribute('data-color'),
         renderHTML: (attrs) => (attrs.color ? { 'data-color': attrs.color, style: `--ce-callout: ${attrs.color}` } : {}),
+      },
+      /** Bordure (CalloutFrame) ; null = celle du type. */
+      frame: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-frame'),
+        renderHTML: (attrs) => (attrs.frame ? { 'data-frame': attrs.frame } : {}),
+      },
+      /** Allure du titre (CalloutTitleStyle) ; null = petites majuscules. */
+      titleStyle: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-title-style'),
+        renderHTML: (attrs) => (attrs.titleStyle && attrs.titleStyle !== 'label' ? { 'data-title-style': attrs.titleStyle } : {}),
       },
     };
   },

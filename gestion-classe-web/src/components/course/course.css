@@ -154,7 +154,7 @@ body.ce-open { overflow: hidden; }
 .ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:has(+ tr.ce-spacer--row) > * { border-bottom-color: #475569; }
 
 /* ---------- Le texte du cours ---------- */
-.ce-doc { display: flow-root; outline: none; font: 16px/1.45 var(--ce-doc-font); color: #111827; caret-color: #111827; word-wrap: break-word; }
+.ce-doc { display: flow-root; outline: none; font: var(--ce-doc-size, 16px)/1.45 var(--ce-doc-font); color: #111827; caret-color: #111827; word-wrap: break-word; }
 .ce-doc > * + * { margin-top: 0; }
 .ce-doc p { margin: 0 0 8px; }
 .ce-doc h1 { font-size: 30px; line-height: 1.15; color: var(--ce-h1, #1E3A8A); margin: 0 0 10px; font-weight: 700; }
@@ -194,6 +194,23 @@ body.ce-open { overflow: hidden; }
 /* Encadré libre : une couleur au choix (--ce-callout), fond très clair de la même teinte */
 .ce-doc .ce-callout[data-callout="libre"] { --ce-callout: #0EA5E9; border-left: 5px solid var(--ce-callout); background: color-mix(in srgb, var(--ce-callout) 9%, #fff); }
 .ce-doc .ce-callout[data-callout="libre"]::before { color: color-mix(in srgb, var(--ce-callout) 78%, #000); }
+/* Bordure et titre au choix (lot Q1) : --ce-cl = couleur du trait du type, --ce-ci = son encre */
+.ce-doc .ce-callout[data-callout="definition"] { --ce-cl: var(--ce-def-line, #10B981); }
+.ce-doc .ce-callout[data-callout="retenir"] { --ce-cl: var(--ce-ret-line, #F59E0B); }
+.ce-doc .ce-callout[data-callout="consigne"] { --ce-cl: var(--ce-con-ink, #2563EB); }
+.ce-doc .ce-callout[data-callout="exemple"] { --ce-cl: var(--ce-ex-line, #8B5CF6); }
+.ce-doc .ce-callout[data-callout="libre"] { --ce-cl: var(--ce-callout); }
+.ce-doc .ce-callout[data-frame="bar"] { border: 0; border-left: 5px solid var(--ce-cl); border-radius: 6px; }
+.ce-doc .ce-callout[data-frame="box"] { border: 1px solid var(--ce-cl); border-radius: 3px; padding: 7px 12px 4px; }
+.ce-doc .ce-callout[data-frame="plain"] { border: 0; }
+/* Encadrés « cadre » qui se suivent : collés, comme deux cases d'un même tableau Word */
+.ce-doc .ce-callout[data-frame="box"] + .ce-callout[data-frame="box"] { margin-top: -13px; border-top-left-radius: 0; border-top-right-radius: 0; }
+.ce-doc .ce-callout[data-frame="box"]:has(+ .ce-callout[data-frame="box"]) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.ce-doc .ce-callout[data-title-style="bold"]::before { font-size: 1em; text-transform: none; letter-spacing: 0; margin-bottom: 1px; }
+.ce-style__frame { display: block; width: 30px; height: 18px; border-radius: 3px; background: #F0F9FF; }
+.ce-style__frame--bar { border-left: 4px solid #0EA5E9; }
+.ce-style__frame--box { border: 1px solid #0EA5E9; }
+.ce-style__frame--plain { background: #E0F2FE; }
 .ce-style__box--libre { border-left: 3px solid #0EA5E9; background: #F0F9FF; color: #0369A1; }
 
 /* Saut de page : visible à l'écran, invisible sur papier */
