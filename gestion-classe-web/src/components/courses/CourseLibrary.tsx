@@ -6,7 +6,9 @@
 import { useState } from 'react';
 import { ChevronDown, FileText, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
+import { classTone } from '../../lib/classColors';
 import type { LibraryLevel } from '../../lib/courseLibrary';
+import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu } from '../MoreMenu';
 
 const COLLAPSED_KEY = 'mes-cours-collapsed';
@@ -19,6 +21,11 @@ interface Props {
   levels: LibraryLevel[];
   /** Recherche en cours : tous les niveaux sont dépliés, sans toucher au choix mémorisé. */
   expandAll?: boolean;
+  /** Classes où chaque original est placé (par identifiant d'original). */
+  chips: Map<string, PlacementChip[]>;
+  /** Ouvrir la copie d'une classe (pastille). */
+  onOpenCopy: (boardId: string) => void;
+  onPlace: (board: Board) => void;
   onOpen: (board: Board) => void;
   /** Cours rédigé : l'essayer en classe (rien n'est gardé en quittant). */
   onPresent: (board: Board) => void;
@@ -29,7 +36,7 @@ interface Props {
   onRenameSequence: (level: string | null, from: string, to: string) => Promise<void>;
 }
 
-export function CourseLibrary({ levels, expandAll, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence }: Props) {
+export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
   /** Séquence en cours de renommage : son niveau, son nom d'origine, la saisie. */
   const [renaming, setRenaming] = useState<{ level: string | null; from: string; value: string; busy: boolean } | null>(null);
@@ -110,6 +117,26 @@ export function CourseLibrary({ levels, expandAll, onOpen, onPresent, onEdit, on
                             : <Presentation size={17} className="mc-row__icon" aria-label="Tableau blanc" />}
                           <span className="mc-row__title">{b.title}</span>
                         </button>
+                        {(chips.get(b.id)?.length ?? 0) > 0 && (
+                          <span className="mc-row__chips">
+                            {chips.get(b.id)!.map((chip) => {
+                              const tone = classTone(chip.name);
+                              return (
+                                <button
+                                  key={chip.key}
+                                  type="button"
+                                  className="mc-chip"
+                                  style={{ background: tone.soft, color: tone.ink }}
+                                  onClick={() => onOpenCopy(chip.boardId)}
+                                  title={[`Ouvrir la copie de ${chip.name}`, ...chip.dates.map(formatSlot)].join(' · ')}
+                                  aria-label={`Ouvrir la copie de ${chip.name}`}
+                                >
+                                  {chip.name}
+                                </button>
+                              );
+                            })}
+                          </span>
+                        )}
                         {b.is_course && (
                           <button type="button" className="mc-row__play" onClick={() => onPresent(b)} title="Essayer en classe (rien n'est gardé en quittant)" aria-label={`Essayer ${b.title} en classe`}>
                             <Play size={15} aria-hidden />
@@ -119,6 +146,7 @@ export function CourseLibrary({ levels, expandAll, onOpen, onPresent, onEdit, on
                           compact
                           title={`Actions de ${b.title}`}
                           items={[
+                            { label: 'Placer sur un cours…', onClick: () => onPlace(b), title: 'Poser une copie sur des cours à venir' },
                             { label: 'Dupliquer', onClick: () => onDuplicate(b) },
                             ...(b.is_course ? [{ label: 'Enregistrer comme modèle', onClick: () => onSaveAsTemplate(b), title: 'Proposé ensuite à la création d\'un cours' }] : []),
                             { label: 'Renommer, ranger', onClick: () => onEdit(b), title: 'Titre, niveau, séquence' },

@@ -47,6 +47,9 @@ type Row = {
 
 type BoardCols = { title: string; level: string | null; updated_at: string; course?: unknown };
 
+// `boards(...)` suit la seule clé étrangère lesson_boards → boards (board_id). Ne jamais en ajouter
+// une seconde : la lecture devient ambiguë pour PostgREST (PGRST201) et échoue partout — c'est
+// pourquoi `source_board_id` (migration 077) n'a pas de contrainte.
 const SELECT = 'id, board_id, starts_at, ends_at, label, class_id, group_id, boards(title, level, updated_at, course:doc->version)';
 
 function fromRow(r: Row): LessonBoard {
@@ -129,16 +132,40 @@ export function lessonBoardTitle(lesson: LessonRef): string {
   return `${lessonDisplayName(lesson)} · ${day}`;
 }
 
+// ---- Provenance d'une copie (migration 077 : lesson_boards.source_board_id) ----
+
+let sourceColumnMissing = false;
+
+const isMissingSourceColumn = (error: { message?: string; code?: string } | null) =>
+  !!error && (error.code === '42703' || error.code === 'PGRST204' || /source_board_id/i.test(error.message ?? ''));
+
+/** Vrai si la migration 077 n'est pas appliquée (détecté au premier appel) : pas de provenance. */
+export const lessonSourceUnavailable = () => sourceColumnMissing;
+
+/**
+ * Original de la bibliothèque d'où part une copie : le tableau lui-même s'il n'est placé sur aucun
+ * cours ; sinon l'original de cette copie (copier le tableau d'un cours vers d'autres classes garde
+ * le même original). Null quand il est inconnu.
+ */
+async function originOf(sourceBoardId: string): Promise<string | null> {
+  if (sourceColumnMissing) return null;
+  const { data, error } = await supabase.from('lesson_boards').select('source_board_id').eq('board_id', sourceBoardId).maybeSingle();
+  if (isMissingSourceColumn(error)) { sourceColumnMissing = true; return null; }
+  if (error) return null;
+  return data ? (data as { source_board_id: string | null }).source_board_id ?? null : sourceBoardId;
+}
+
 /**
  * Crée le tableau d'un cours : vide, ou copie d'un autre tableau (`sourceBoardId` : ses pages et,
  * s'il en a un, son cours rédigé). `kind` choisit, pour un tableau vide, entre un cours rédigé
- * (éditeur Texte, migration 071) et un tableau blanc classique.
+ * (éditeur Texte, migration 071) et un tableau blanc classique. `title` remplace le titre par
+ * défaut (« 5e B · mar. 10 nov. ») : une activité placée depuis la bibliothèque garde son nom.
  * Si le cours a déjà un tableau (autre onglet, double clic), le tableau créé est supprimé.
  */
-export async function createLessonBoard(userId: string, lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board'): Promise<LessonBoard> {
+export async function createLessonBoard(userId: string, lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board', title?: string): Promise<LessonBoard> {
   if (tableMissing) throw new Error('Les tableaux de cours demandent la migration 065');
   const level = levelFromClassName(lesson.className);
-  const board = await createBoard(userId, { title: lessonBoardTitle(lesson), level, chapter: null }, lesson.classId ?? null);
+  const board = await createBoard(userId, { title: title?.trim() || lessonBoardTitle(lesson), level, chapter: null }, lesson.classId ?? null);
   try {
     if (sourceBoardId) {
       // Cours rédigé : ses encarts pointent vers les pages par leur identifiant → on le garde
@@ -152,19 +179,23 @@ export async function createLessonBoard(userId: string, lesson: LessonRef, sourc
     } else if (kind === 'course') {
       await saveCourseDoc(board.id, emptyCourseDoc());
     }
-    const { data, error } = await supabase
-      .from('lesson_boards')
-      .insert({
-        user_id: userId,
-        starts_at: minute(lesson.start).toISOString(),
-        ends_at: new Date(lesson.end).toISOString(),
-        label: lesson.label,
-        class_id: lesson.classId ?? null,
-        group_id: lesson.groupId ?? null,
-        board_id: board.id,
-      })
-      .select(SELECT)
-      .single();
+    const origin = sourceBoardId ? await originOf(sourceBoardId) : null;
+    const row = {
+      user_id: userId,
+      starts_at: minute(lesson.start).toISOString(),
+      ends_at: new Date(lesson.end).toISOString(),
+      label: lesson.label,
+      class_id: lesson.classId ?? null,
+      group_id: lesson.groupId ?? null,
+      board_id: board.id,
+    };
+    const insert = (payload: Record<string, unknown>) => supabase.from('lesson_boards').insert(payload).select(SELECT).single();
+    let { data, error } = await insert(origin ? { ...row, source_board_id: origin } : row);
+    // Colonne de provenance absente (migration 077) : le cours est placé quand même, sans elle
+    if (origin && isMissingSourceColumn(error)) {
+      sourceColumnMissing = true;
+      ({ data, error } = await insert(row));
+    }
     if (isMissingTable(error)) { tableMissing = true; throw new Error('Les tableaux de cours demandent la migration 065'); }
     if (error) throw error.code === '23505' ? new Error('Ce cours a déjà un tableau') : error;
     return fromRow(data as unknown as Row);

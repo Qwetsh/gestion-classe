@@ -92,3 +92,38 @@
   .mc-search { max-width: none; }
   .mc-search__input { height: 44px; font-size: 16px; }
 }
+
+/* ---- Pastilles de classes et « Placer sur un cours » (lot C3) ---- */
+.mc-row__chips { display: flex; flex-shrink: 0; gap: 4px; }
+.mc-chip {
+  height: 22px; padding: 0 7px; border: 0; border-radius: 6px; cursor: pointer;
+  font: inherit; font-size: 11.5px; font-weight: 600; line-height: 22px; white-space: nowrap;
+}
+.mc-chip:hover { filter: brightness(0.95); }
+
+.mc-place__what { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); }
+.mc-place__note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.mc-place__classes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.mc-place__class {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600;
+}
+.mc-place__picked {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  color: #fff; font-size: 11px; line-height: 18px; text-align: center;
+}
+.mc-place__slots { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.mc-place__slots > li + li { border-top: 1px solid var(--border); }
+.mc-place__slot { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 12px; cursor: pointer; font-size: 14px; }
+.mc-place__slot--taken { cursor: default; color: var(--text-muted); }
+.mc-place__when { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.mc-place__taken { min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 767px) {
+  /* Les pastilles passent sous le titre : la ligne garde son titre lisible */
+  .mc-row { flex-wrap: wrap; }
+  .mc-row__chips { order: 5; flex-basis: 100%; flex-wrap: wrap; padding: 0 0 8px 44px; }
+  .mc-chip { height: 28px; line-height: 28px; padding: 0 10px; font-size: 12.5px; }
+  .mc-place__slot { min-height: 48px; }
+}
