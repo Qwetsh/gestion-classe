@@ -53,6 +53,7 @@ import '@fontsource/opendyslexic/700.css';
 import '@fontsource/playwrite-fr-moderne/400.css';
 import { themeStyle } from './courseThemes';
 import { CourseLayer } from './CourseLayer';
+import { CoursePresenter } from './CoursePresenter';
 import type { DrawStyle } from './courseDraw';
 import type { LayerItem } from '../../lib/course/courseLayer';
 
@@ -207,6 +208,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const layerRedo = useRef<LayerItem[][]>([]);
   const [layerSel, setLayerSel] = useState<string | null>(null);
   const [drawStyle, setDrawStyle] = useState<DrawStyle>({ tool: 'pen', color: '#DC2626', size: 'M' });
+  /** Mode En classe (lot 4) : le cours tel qu'à l'instant du clic, projeté en plein écran. */
+  const [presenting, setPresenting] = useState<CourseDoc | null>(null);
   const modeRef = useRef(mode);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   /** Fenêtre « Imprimer » / « Exporter en PDF » (lot T13). */
@@ -1168,9 +1171,9 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onFitWidth={fitWidth}
         showRuler={showRuler}
         onToggleRuler={() => setShowRuler((v) => { store(RULER_KEY, v ? '0' : '1'); return !v; })}
-        onSoon={(what) => toast(what, 'info')}
         mode={mode}
         onMode={switchMode}
+        onPresent={() => setPresenting(currentDoc())}
         drawStyle={drawStyle}
         onDrawStyle={(patch) => setDrawStyle((s) => ({ ...s, ...patch }))}
         layerCanUndo={layerUndo.current.length > 0}
@@ -1314,7 +1317,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         <div className="ce-modes" role="group" aria-label="Mode">
           <button type="button" className={mode === 'texte' ? 'is-on' : ''} title="Rédiger le cours" onClick={() => switchMode('texte')}>¶ Texte</button>
           <button type="button" className={mode === 'tableau' ? 'is-on' : ''} title="Dessiner par-dessus le cours : flèches, entourages, annotations (ancrées aux paragraphes)" onClick={() => switchMode('tableau')}>✎ Tableau</button>
-          <button type="button" className="ce-modes__play" title="Bientôt : le cours projeté en classe" onClick={() => toast('Le mode En classe arrive à l’étape 4.', 'info')}>▶ En classe</button>
+          <button type="button" className="ce-modes__play" title="Projeter le cours : bande de la largeur du texte, Suivant / Précédent, encre de séance (test)" onClick={() => setPresenting(currentDoc())}>▶ En classe</button>
         </div>
         <div className="ce-zoom">
           <button type="button" onClick={() => setZoom(zoom - 0.1)} aria-label="Zoom arrière">−</button>
@@ -1323,6 +1326,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {presenting && <CoursePresenter boardId={boardId} doc={presenting} title={title} onClose={() => { setPresenting(null); editor.commands.focus(); }} />}
 
       {printDialog && <CoursePrintDialog pdf={printDialog === 'pdf'} onPrint={printWith} onClose={() => setPrintDialog(null)} />}
 
