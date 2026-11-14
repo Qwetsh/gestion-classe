@@ -625,7 +625,7 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
 }
 
 /* ---------- Thèmes (lot T16a) : vignettes du ruban ---------- */
-.ce-themes { display: grid; grid-template-columns: repeat(5, 62px); gap: 4px; }
+.ce-themes { display: grid; grid-template-columns: repeat(6, 58px); gap: 4px; }
 .ce-theme { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 5px 2px 4px; border: 1px solid var(--ce-line); border-radius: 6px; background: #fff; cursor: pointer; }
 .ce-theme:hover { border-color: var(--ce-line-2); background: var(--ce-chrome); }
 .ce-theme.is-on { border-color: var(--ce-accent); box-shadow: 0 0 0 1px var(--ce-accent); background: var(--ce-accent-soft); }
