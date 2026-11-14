@@ -6,6 +6,7 @@
  * Colonne absente (migration non appliquée) : les cours ne sont pas disponibles, rien ne casse.
  */
 import type { JSONContent } from '@tiptap/core';
+import type { CourseLayer } from './courseLayer';
 import { supabase } from '../supabase';
 import { createBoard, deleteBoard, type Board, type BoardMeta } from '../boardsQueries';
 import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
@@ -65,6 +66,8 @@ export interface CourseDoc {
   version: number;
   content: JSONContent;
   settings?: CourseSettings;
+  /** Calque Tableau (lot 3) : annotations ancrées aux blocs, par-dessus le texte. */
+  layer?: CourseLayer;
   /**
    * Numéro d'enregistrement, changé à chaque écriture de l'éditeur (lot T6) : un enregistrement
    * ne passe que si le cours n'a pas été réécrit entre-temps par un autre onglet ou appareil.
