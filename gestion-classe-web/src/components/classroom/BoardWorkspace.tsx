@@ -11,6 +11,7 @@
  * rechargement.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Whiteboard, type WhiteboardProps } from './Whiteboard';
 import { BoardLibraryDialog } from './BoardLibraryDialog';
 import { MAX_TABS, boardTab, draftTab, type BoardTab } from '../../lib/boardTabs';
@@ -92,7 +93,10 @@ export function BoardWorkspace({ initial, onClose, seedBoard, ...shared }: Props
     ...(tabs.some((t) => t.kind === 'draft') ? [] : [{ label: '🖊 Brouillon', run: () => openTab(draftTab()) }]),
   ], [tabs, openTab]);
 
-  return (
+  // Rendu dans <body>, hors de la page : sur grand écran le contenu des pages est agrandi (règle
+  // `zoom` de .gc-main--padded), et un tableau rendu dedans héritait de cet agrandissement — le
+  // trait partait alors à droite du stylet, de plus en plus loin du bord gauche.
+  return createPortal(
     <>
       {!single && (
         <div className="wbws" role="tablist">
@@ -138,7 +142,8 @@ export function BoardWorkspace({ initial, onClose, seedBoard, ...shared }: Props
         />
       )}
       <style>{CSS}</style>
-    </>
+    </>,
+    document.body,
   );
 }
 

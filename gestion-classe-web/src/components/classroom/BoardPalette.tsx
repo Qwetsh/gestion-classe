@@ -8,7 +8,7 @@
  * Au clic droit (souris ou stylet avec bouton), la personnalisation du menu s'ouvre directement.
  * Fonctionne en émulation souris (TBI mono-contact), au stylet et au doigt.
  */
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 interface Props {
   /** Position en fraction de la scène (0-1). */
@@ -20,9 +20,16 @@ interface Props {
   /** Clic droit : ouvre le paramétrage du menu (éditeur de palette). */
   onSettings?: () => void;
   open: boolean;
-  icon: string;
-  /** Couleur de l'anneau : couleur du stylo, jaune du surligneur… `null` = pas d'anneau. */
+  /** Outil en cours : émoji (habillage tactile) ou icône au trait (ruban). */
+  icon: ReactNode;
+  /** Couleur en cours : couleur du stylo, jaune du surligneur… `null` = aucune (gomme, sélection). */
   ring: string | null;
+  /**
+   * Habillage du ruban : disque blanc à bord fin, icône au trait, couleur en cours dans une petite
+   * pastille — le même vocabulaire que les boutons du ruban. Sans lui, le disque sombre à anneau
+   * de l'habillage tactile.
+   */
+  flat?: boolean;
   title?: string;
 }
 
@@ -30,7 +37,7 @@ interface Props {
 const MOVE_PX = 14;
 const MARGIN = 0.04;
 
-export function BoardPalette({ x, y, onMove, onPress, onSettings, open, icon, ring, title }: Props) {
+export function BoardPalette({ x, y, onMove, onPress, onSettings, open, icon, ring, flat, title }: Props) {
   const ref = useRef<HTMLButtonElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ id: number; x0: number; y0: number; dragging: boolean } | null>(null);
@@ -52,7 +59,7 @@ export function BoardPalette({ x, y, onMove, onPress, onSettings, open, icon, ri
     <button
       ref={ref}
       type="button"
-      className={`wbpal ${open ? 'is-open' : ''} ${drag ? 'is-drag' : ''}`}
+      className={`wbpal ${flat ? 'wbpal--flat' : ''} ${open ? 'is-open' : ''} ${drag ? 'is-drag' : ''}`}
       style={{ left: `${px * 100}%`, top: `${py * 100}%`, ['--wbpal-ring' as string]: ring ?? 'transparent' }}
       title={title ?? 'Outils (taper) — glisser pour déplacer — clic droit : personnaliser'}
       aria-label="Palette d'outils"
@@ -98,6 +105,7 @@ export function BoardPalette({ x, y, onMove, onPress, onSettings, open, icon, ri
       }}
     >
       <span className="wbpal__icon">{icon}</span>
+      {flat && ring && <span className="wbpal__color" style={{ background: ring }} aria-hidden />}
       <style>{CSS}</style>
     </button>
   );
@@ -121,4 +129,15 @@ const CSS = `
   .wbpal { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
   .wbpal__icon { font-size: 24px; }
 }
+/* Ruban : surface blanche, bord fin, indigo au survol — comme un bouton du ruban, en rond */
+.wbpal.wbpal--flat {
+  width: 52px; height: 52px; margin: -26px 0 0 -26px;
+  background: #FFFFFF; color: #1F2937; border: 1px solid #D1D5DB;
+  box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 6px 16px -6px rgba(15,23,42,.22);
+  transition: background var(--wb-t, 140ms), border-color var(--wb-t, 140ms), opacity var(--wb-t, 140ms);
+}
+.wbpal.wbpal--flat:hover { transform: none; background: #EEF0FF; border-color: #A5B4FC; color: #3730A3; }
+.wbpal.wbpal--flat.is-drag { transform: none; background: #EEF0FF; border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,.18), 0 10px 24px -8px rgba(15,23,42,.3); }
+.wbpal--flat .wbpal__icon { display: flex; }
+.wbpal__color { position: absolute; right: 1px; bottom: 1px; width: 15px; height: 15px; border-radius: 50%; border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px #D1D5DB; pointer-events: none; }
 `;

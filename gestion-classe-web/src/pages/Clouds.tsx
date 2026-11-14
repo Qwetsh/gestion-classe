@@ -5,6 +5,7 @@
  * synchronisés entre appareils (`userKeys.ts`).
  */
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Layout } from '../components/Layout';
 import { CloudFileViewer } from '../components/clouds/CloudFileViewer';
 import { Whiteboard } from '../components/classroom/Whiteboard';
@@ -360,7 +361,8 @@ export function Clouds() {
       </div>
 
       {viewer && <CloudFileViewer opened={viewer.opened} title={viewer.title} subtitle={viewer.subtitle} webUrl={viewer.webUrl} cloudLabel={viewer.cloudLabel} onOpenInBoard={user ? (f) => void openInBoard(f) : undefined} onClose={() => setViewer(null)} />}
-      {board && user && <Whiteboard sessionId={`board:${board.id}`} boardId={board.id} userId={user.id} title={board.title} onClose={() => setBoard(null)} />}
+      {/* Dans <body> : hors de l'agrandissement « grand écran » de la page, qui décalait le trait du stylet */}
+      {board && user && createPortal(<Whiteboard sessionId={`board:${board.id}`} boardId={board.id} userId={user.id} title={board.title} onClose={() => setBoard(null)} />, document.body)}
       <style>{CSS}</style>
     </Layout>
   );

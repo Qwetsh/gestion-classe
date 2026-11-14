@@ -729,6 +729,22 @@ body.wb-ribbon-on .wbsr, body.wb-ribbon-on .wbp, body.wb-ribbon-on .wbk, body.wb
 .wbrib__wheel { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EF4444); flex: none; }
 .wbrib__size { width: 30px; justify-content: center; padding: 0; }
 .wbrib__size i { display: block; border-radius: 50%; }
+/* Menu radial sous le ruban : quartiers blancs, indigo doux pour l'outil en cours, indigo plein
+   sous le doigt — l'outil en cours était en indigo sombre, son nom illisible dessus. */
+body.wb-ribbon-on .wbr.wbr { filter: drop-shadow(0 10px 24px rgba(15,23,42,.20)); }
+body.wb-ribbon-on .wbr.wbr .wbr__seg path { stroke: #E2E4E9; stroke-width: 1.5; }
+body.wb-ribbon-on .wbr.wbr .wbr__seg.is-active path { fill: #E0E7FF; stroke: #A5B4FC; }
+body.wb-ribbon-on .wbr.wbr .wbr__seg.is-active .wbr__label { fill: #3730A3; }
+body.wb-ribbon-on .wbr.wbr .wbr__seg.is-hot path { fill: #4F46E5; stroke: #4F46E5; }
+body.wb-ribbon-on .wbr.wbr .wbr__seg.is-hot .wbr__label { fill: #FFFFFF; }
+body.wb-ribbon-on .wbr.wbr .wbr__center { stroke: #D1D5DB; stroke-width: 1; }
+body.wb-ribbon-on .wbr.wbr .wbr__x { fill: #4B5563; }
+
+/* Onglet « Texte » : ses groupes se rangent comme ceux des autres onglets */
+.wbrib__text { display: contents; }
+.wbrib__text .ce-swatch:disabled, .wbrib__text .ce-sm:disabled { opacity: .4; cursor: default; }
+.wbrib__spellstate { color: var(--ce-muted); padding-left: 8px; }
+.wbrib__spellstate.is-warn { color: #B45309; }
 .wbrib__bgcolors { flex-wrap: wrap; max-width: 150px; row-gap: 4px; }
 .wbrib__status { position: relative; z-index: 20; user-select: none; }
 .wbrib__statusbtn { border: 0; background: transparent; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }

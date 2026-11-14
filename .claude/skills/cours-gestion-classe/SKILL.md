@@ -146,6 +146,11 @@ Pour un **cours** (trace écrite) :
 - `titre1` pour le chapitre, `titre2` et `titre3` pour les parties ;
 - encadrés `Encadre(type_='definition')` et `Encadre(type_='retenir')` pour le bilan.
 
+**Le bilan s'écrit toujours en rouge** (règle de Thomas, 14/11/2026 : c'est la trace que les élèves
+recopient en rouge). Partout où Claude écrit un bilan — cours, fiche, correction, écran — son titre
+et son texte sont en `ROUGE` (`#C00000`) : `C('…', ROUGE)` dans un document, `color` de l'objet
+texte sur un écran. Les mots d'un texte à trous suivent la couleur du texte.
+
 Pour une **évaluation** :
 
 - `Question(..., points=2)` et `Zone('lignes', 4)` pour répondre ;

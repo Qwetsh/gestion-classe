@@ -28,7 +28,7 @@ import { BoardObjectLayer, type BoardTextApi, type ConnectDrop, type FormatState
 import { BoardConnectorToolbar } from './BoardConnectorToolbar';
 import { dropOrphanConnectors, newConnector, refreshConnectors, sideDir, type ConnectorObject, type FixedSide } from '../../lib/boardConnectors';
 import type { SpellStatus } from './BoardSpellChecker';
-import { BoardTextToolbar } from './BoardTextToolbar';
+import { BoardTextToolbar, type TextToolbarProps } from './BoardTextToolbar';
 import { BoardContextMenu, type MenuItem } from './BoardContextMenu';
 import { BoardPageNavigator } from './BoardPageNavigator';
 import { BoardPageRail } from './BoardPageRail';
@@ -60,6 +60,7 @@ import { BoardInteractionBubble, type InteractionDraft } from './BoardInteractio
 import type { GhostLink } from './BoardConnectorLayer';
 import { BoardRadialMenu, type RadialItem } from './BoardRadialMenu';
 import { BoardPalette } from './BoardPalette';
+import { Icon, type IconName } from '../course/courseIcons';
 import { BoardPaletteEditor } from './BoardPaletteEditor';
 import { BoardInputProbe } from './BoardInputProbe';
 import { loadPalette, savePalette, paletteAction, INSERT_ACTIONS, type InsertKind, type PaletteConfig } from '../../lib/boardRadialPalette';
@@ -75,6 +76,7 @@ import { copyBoardPages, createBoardFromPages, fetchSessionSourceBoard, levelFro
 import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
+import { BoardRibbonText } from './BoardRibbonText';
 import { BoardObjectToolbar } from './BoardObjectToolbar';
 import { BoardPickOverlay, type PickableStudent } from './BoardPickOverlay';
 import { BoardCameraOverlay } from './BoardCameraOverlay';
@@ -3272,6 +3274,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     return b;
   };
   const TOOL_ICONS: Record<Tool, string> = { pen: '✏️', highlighter: '🖍️', eraser: '🧽', select: '⬚', text: 'T', shape: '◯', laser: '🔴' };
+  const TOOL_ICON_NAMES: Record<Tool, IconName> = { pen: 'pen', highlighter: 'highlighter', eraser: 'eraser', select: 'select', text: 'textTool', shape: 'shapes', laser: 'laser' };
   const paletteRing = tool === 'highlighter' ? HIGHLIGHT_COLOR : tool === 'laser' ? '#EF4444' : tool === 'eraser' || tool === 'select' ? null : color;
 
   // Collage : une image du presse-papiers devient un objet image, du texte une zone de texte ;
@@ -3488,6 +3491,45 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   } : {};
   const closeBoard = () => { void flushRemote().finally(() => onClose(pagesRef.current)); };
 
+  // Mise en forme du texte : mêmes commandes pour la barre flottante (habillage tactile) et pour
+  // l'onglet « Texte » du ruban.
+  const textToolbarProps: TextToolbarProps = {
+    api: textApiRef,
+    format,
+    box: selectedBox,
+    editing: editingId !== null,
+    fontId: selectedBox?.font ?? textFont,
+    size: selectedBox?.size ?? textSize,
+    color,
+    onFontChange: (id) => {
+      setTextFont(id);
+      if (editingId) textApiRef.current?.applyFontFamily(id);
+      else patchSelectedTexts((o) => ({ ...o, font: id }));
+    },
+    onSizeChange: (size) => {
+      setTextSize(size);
+      if (editingId) textApiRef.current?.applyFontSize(size);
+      else patchSelectedTexts((o) => ({ ...o, size }));
+    },
+    onColor: (c) => {
+      setColor(c);
+      if (editingId) textApiRef.current?.applyColor(c);
+      else patchSelectedTexts((o) => ({ ...o, color: c }));
+    },
+    onDelete: deleteSelected,
+    onInteractions: startLinking,
+    spell: spellCheck,
+    spellStatus,
+    onToggleSpell: () => setSpellCheck((v) => !v),
+    gapCount: selectedBox ? gapIdsIn(selectedBox.html).length : 0,
+    onGap: () => textApiRef.current?.makeGap(),
+    onRevealGaps: () => { if (selectedBox) revealAllGaps(selectedBox.id); },
+    onRemoveGaps: () => {
+      if (editingId) textApiRef.current?.removeGaps();
+      else patchSelectedTexts((o) => ({ ...o, html: stripGapsHtml(o.html) }));
+    },
+  };
+
   return (
     <div
       ref={rootRef}
@@ -3520,6 +3562,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           closeLabel={singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : inClass && isSessionBoard ? 'Plan de classe' : 'Fermer'}
           collapsed={ribbonMin}
           onToggleCollapsed={toggleRibbonMin}
+          text={showTextToolbar && !displayMode ? { key: selectedBox?.id ?? null, panel: <BoardRibbonText {...textToolbarProps} /> } : null}
         />
       )}
       <input
@@ -3805,8 +3848,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             onPress={(cx, cy) => { if (coachOpen) dismissCoach(); setRadial({ x: cx, y: cy, bounds: radialBounds() }); }}
             onSettings={() => { if (coachOpen) dismissCoach(); setRadial(null); setMenu(null); setPaletteEditor(true); }}
             open={radial !== null}
-            icon={TOOL_ICONS[tool]}
+            icon={ribbon ? <Icon name={TOOL_ICON_NAMES[tool]} size={24} /> : TOOL_ICONS[tool]}
             ring={paletteRing}
+            flat={ribbon}
           />
         )}
         {view.zoom > 1 && (
@@ -4025,44 +4069,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       {ticker && <div className="wb__ticker" key={ticker}>{ticker}</div>}
 
       {/* Barres contextuelles : elles se posent sur l'objet, plus dans la barre principale. */}
-      {!displayMode && showTextToolbar && (
-        <BoardFloatingToolbar docked={tbi.floating === 'bar' && !ribbon} objectId={selectedBox?.id ?? null} label="Texte">
-            <BoardTextToolbar
-              api={textApiRef}
-              format={format}
-              box={selectedBox}
-              editing={editingId !== null}
-              fontId={selectedBox?.font ?? textFont}
-              size={selectedBox?.size ?? textSize}
-              color={color}
-              onFontChange={(id) => {
-                setTextFont(id);
-                if (editingId) textApiRef.current?.applyFontFamily(id);
-                else patchSelectedTexts((o) => ({ ...o, font: id }));
-              }}
-              onSizeChange={(size) => {
-                setTextSize(size);
-                if (editingId) textApiRef.current?.applyFontSize(size);
-                else patchSelectedTexts((o) => ({ ...o, size }));
-              }}
-              onColor={(c) => {
-                setColor(c);
-                if (editingId) textApiRef.current?.applyColor(c);
-                else patchSelectedTexts((o) => ({ ...o, color: c }));
-              }}
-              onDelete={deleteSelected}
-              onInteractions={startLinking}
-              spell={spellCheck}
-              spellStatus={spellStatus}
-              onToggleSpell={() => setSpellCheck((v) => !v)}
-              gapCount={selectedBox ? gapIdsIn(selectedBox.html).length : 0}
-              onGap={() => textApiRef.current?.makeGap()}
-              onRevealGaps={() => { if (selectedBox) revealAllGaps(selectedBox.id); }}
-              onRemoveGaps={() => {
-                if (editingId) textApiRef.current?.removeGaps();
-                else patchSelectedTexts((o) => ({ ...o, html: stripGapsHtml(o.html) }));
-              }}
-            />
+      {/* Avec le ruban, la mise en forme du texte est dans son onglet « Texte » : plus de barre flottante */}
+      {!displayMode && showTextToolbar && !ribbon && (
+        <BoardFloatingToolbar docked={tbi.floating === 'bar'} objectId={selectedBox?.id ?? null} label="Texte">
+          <BoardTextToolbar {...textToolbarProps} />
         </BoardFloatingToolbar>
       )}
       {!displayMode && showShapeToolbar && (
