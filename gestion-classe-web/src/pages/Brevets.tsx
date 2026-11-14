@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Layout } from '../components/Layout';
+import { PdfUrlReader } from '../components/clouds/PdfUrlReader';
 import { brevets, type Brevet, type Matiere } from '../lib/brevets';
 import {
   fetchCustomAnnales,
@@ -295,12 +296,8 @@ export function Brevets() {
                 </button>
               </div>
             </div>
-            {/* Viewer PDF natif */}
-            <iframe
-              src={preview.url}
-              title={preview.theme}
-              style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }}
-            />
+            {/* Lecteur commun (pdfjs) : il s'affiche aussi sur téléphone, où l'aperçu natif reste vide */}
+            <PdfUrlReader url={preview.url} name={preview.theme} />
           </div>
         </div>
       )}

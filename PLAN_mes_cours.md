@@ -155,11 +155,11 @@ de la séance, et sort en PDF.
 
 | Lot | État |
 |---|---|
-| C1 — Page et bibliothèque | **Fait** le 14/11/2026 (branche `feat/mes-cours`, worktree `gc-worktrees/mes-cours`), pas encore commité |
-| C2 — Recherche | **Codé** le 14/11/2026 (branche `feat/mes-cours-recherche`), pas commité ; migration 076 appliquée en prod le 14/11/2026 |
-| C3 — Provenance et placement | **Codé** le 14/11/2026 (branche `feat/mes-cours-provenance`), pas commité ; migration 077 (sans clé étrangère) et rattrapage appliqués en prod le 14/11/2026 |
-| C4 — Par classe et fins de séance | **Codé** le 14/11/2026 (branche `feat/mes-cours-par-classe`), pas commité ; la partie « passé » reste à voir après une vraie séance |
-| N1 — Ménage du menu | À faire |
+| C1 — Page et bibliothèque | **Fusionné dans master le 14/11/2026** (PR #92) |
+| C2 — Recherche | **Fusionné dans master le 14/11/2026** (PR #93, migration 076) |
+| C3 — Provenance et placement | **Fusionné dans master le 14/11/2026** (PR #94, migration 077) |
+| C4 — Par classe et fins de séance | **Fusionné dans master le 14/11/2026** (PR #95 ; la partie « passé » reste à voir après une vraie séance) |
+| N1 — Ménage du menu | **Codé** le 14/11/2026 (branche `feat/menu-menage`), pas commité |
 | N2 / N3 — Menu regroupé | À faire |
 | R1 — Recherche globale | À faire |
 | F1 — Fichiers | En attente de la décision de stockage |
@@ -284,4 +284,38 @@ de la séance, et sort en PDF.
   (`session_boards.course_ink`) : elle n'apparaît pas ici, la galerie dit alors qu'aucune page n'a
   été laissée.
 - **Limite** : au-delà de 1 000 documents placés, seuls les plus récents sont lus.
+
+### Mise en ligne des lots C1 à C4 — 14/11/2026
+
+PR #92, #93, #94 et #95 fusionnées dans master dans cet ordre (dernier commit `5b9f962`), déploiement
+GitHub Pages réussi. À regarder en vraie séance : la section « Passé » et « Fin de séance » du lot C4.
+
+### Lot N1 — ménage du menu, codé le 14/11/2026 (branche `feat/menu-menage`, depuis master)
+
+- **Une seule liste des onglets masquables** (`lib/appTabs.ts`, avec tests) : elle sert au menu, aux
+  Réglages et à la préférence du compte. « Productions » et « Groupes », qui avaient quitté le menu,
+  n'ont plus de bascule ; un ancien réglage qui les cite est simplement ignoré.
+- **Visibilité rangée dans le compte** (`user_preferences`, clé `hidden_tabs`, table de la migration
+  042 : aucune migration). À la connexion, le réglage du compte fait foi ; s'il n'existe pas encore,
+  celui de l'appareil y est envoyé (premier passage), sauf s'il ne masque rien. Un geste du
+  professeur fait avant la réponse du compte l'emporte. Le stockage local reste comme copie hors
+  connexion. Les autres réglages (établissement, thème…) restent sur l'appareil.
+- **« En direct » devient « Activité en direct »** (menu et titre de la page) et peut être masqué.
+  Le nom est un choix de Claude, pour le distinguer des séances en direct : à confirmer par Thomas.
+- **Un seul lecteur PDF** : les annales (page du professeur et espace élève) passent par le lecteur
+  commun `PdfReader` (pdfjs), via `components/clouds/PdfUrlReader.tsx` qui télécharge le fichier.
+  L'aperçu natif dans une `<iframe>`, vide sur téléphone, ne sert plus que de repli si le
+  téléchargement échoue.
+- Libellés des Réglages accentués (« Récompenses », « Évaluations », « Académie »).
+- **Vérifié** : `tsc -b`, 525 tests ; le lint ne signale aucune erreur nouvelle (les 6 qu'il relève
+  dans ces fichiers existent sur master). Dans le navigateur : menu et libellé (non coupé, menu
+  déplié) ; 9 bascules dans Réglages ; « Activité en direct » masqué → il quitte le menu et la ligne
+  du compte est écrite ; stockage local vidé puis rechargement (comme un autre appareil) → l'onglet
+  reste masqué ; rétabli. Annales : un sujet de 6 pages s'ouvre dans le lecteur commun.
+- **Nettoyage** : la ligne `hidden_tabs` créée par l'essai a été supprimée du compte, pour que le
+  premier appareil réel de Thomas y envoie son propre réglage.
+- **Non vérifié** : l'espace élève (`/eleve`, il faut un code d'élève) ; un vrai téléphone ; le
+  repli sur l'aperçu natif.
+- **Reste** : l'en-tête de l'aperçu des annales et la barre du lecteur proposent chacun un bouton
+  « ouvrir dans un onglet » (doublon mineur).
 

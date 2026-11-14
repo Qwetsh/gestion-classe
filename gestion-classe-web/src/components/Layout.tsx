@@ -38,7 +38,7 @@ const primaryNavItems = [
 const classLifeItems = [
   { path: '/rewards', label: 'Récompenses', icon: 'star' },
   { path: '/evaluations', label: 'Évaluations', icon: 'evaluations' },
-  { path: '/direct', label: 'En direct', icon: 'direct' },
+  { path: '/direct', label: 'Activité en direct', icon: 'direct' },
   { path: '/academy', label: 'Académie', icon: 'academy' },
 ];
 

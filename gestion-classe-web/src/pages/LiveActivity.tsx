@@ -142,7 +142,7 @@ export function LiveActivity() {
     <Layout>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '16px 16px 48px' }}>
         <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-          <h1 style={{ margin: 0, fontSize: 22 }}>En direct</h1>
+          <h1 style={{ margin: 0, fontSize: 22 }}>Activité en direct</h1>
           <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
             {maj ? `mis à jour à ${heure(maj)}, toutes les 15 s` : 'chargement…'}
           </span>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PdfUrlReader } from './clouds/PdfUrlReader';
 import { brevets, type Brevet, type Matiere } from '../lib/brevets';
 import { fetchCustomAnnales, type BrevetItem } from '../lib/customAnnales';
 
@@ -267,11 +268,8 @@ export function StudentAnnales() {
                 </button>
               </div>
             </div>
-            <iframe
-              src={preview.url}
-              title={preview.theme}
-              style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }}
-            />
+            {/* Lecteur commun (pdfjs) : il s'affiche aussi sur téléphone, où l'aperçu natif reste vide */}
+            <PdfUrlReader url={preview.url} name={preview.theme} />
           </div>
         </div>
       )}

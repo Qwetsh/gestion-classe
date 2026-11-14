@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
+import { MASKABLE_TABS } from '../lib/appTabs';
 import { HOME_MODULES } from './home/homeModules';
 import { TimetableImportPanel } from './timetable/TimetableImportPanel';
 import { ImportTokensPanel } from './ImportTokensPanel';
@@ -37,18 +38,8 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 
 // ── Configuration des onglets masquables ──
 
-const TAB_OPTIONS: { key: keyof HiddenTabs; label: string }[] = [
-  { key: 'rewards', label: 'Recompenses' },
-  { key: 'group-sessions', label: 'Groupes' },
-  { key: 'evaluations', label: 'Evaluations' },
-  { key: 'productions', label: 'Productions' },
-  { key: 'academy', label: 'Academie' },
-  { key: 'tp-templates', label: 'Mes TP' },
-  { key: 'brevets', label: 'Annales' },
-  { key: 'clouds', label: 'Mes clouds' },
-  { key: 'tools', label: 'Outils' },
-  { key: 'pronote', label: 'Pronote' },
-];
+// Même liste que le menu (lib/appTabs.ts) : un onglet retiré du menu n'a plus de bascule ici
+const TAB_OPTIONS: readonly { key: keyof HiddenTabs; label: string }[] = MASKABLE_TABS;
 
 // ── Composant Toggle Switch ──
 
@@ -165,7 +156,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           <div className="space-y-1">
             <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Onglets visibles</h3>
             <p className="text-xs text-[var(--text-muted)] mb-4">
-              Masquez les onglets que vous n'utilisez pas. Ils disparaitront de la barre de navigation.
+              Masquez les onglets que vous n'utilisez pas : ils disparaissent du menu. Ce choix est gardé dans votre compte et vous suit sur tous vos appareils.
             </p>
             <div className="space-y-3">
               {TAB_OPTIONS.map(({ key, label }) => (
