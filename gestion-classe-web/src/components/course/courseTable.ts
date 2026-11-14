@@ -8,6 +8,7 @@
  */
 import { Table, TableCell, TableHeader, TableRow, TableView } from '@tiptap/extension-table';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { TableMap } from '@tiptap/pm/tables';
 import type { EditorView } from '@tiptap/pm/view';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { COL_W } from '../../lib/course/coursePage';
@@ -81,18 +82,28 @@ function columnCount(table: PMNode): number {
   return n;
 }
 
-/** Applique à chaque cellule la largeur de ses colonnes, d'après `colWidths` (une valeur par colonne). */
-function applyColumnWidths(tr: Transaction, tablePos: number, table: PMNode, colWidths: number[]) {
-  table.forEach((row, rowOffset) => {
-    let col = 0;
-    row.forEach((cell, cellOffset) => {
+/**
+ * Applique à chaque cellule la largeur de ses colonnes, d'après `colWidths` (une valeur par colonne).
+ * La colonne de chaque cellule vient de la carte du tableau (`TableMap`) : une cellule fusionnée sur
+ * plusieurs lignes occupe sa colonne dans les lignes suivantes, qui commencent donc plus loin.
+ */
+export function applyColumnWidths(tr: Transaction, tablePos: number, table: PMNode, colWidths: number[]) {
+  const map = TableMap.get(table);
+  const done = new Set<number>();
+  for (let row = 0; row < map.height; row++) {
+    for (let col = 0; col < map.width; col++) {
+      const cellPos = map.map[row * map.width + col];
+      // Première rencontre (ordre ligne par ligne) = coin haut gauche de la cellule : sa première colonne
+      if (done.has(cellPos)) continue;
+      done.add(cellPos);
+      const cell = table.nodeAt(cellPos);
+      if (!cell) continue;
       const span = Number(cell.attrs.colspan) || 1;
       const colwidth = colWidths.slice(col, col + span).map((w) => Math.round(w));
-      // +1 (entrée dans le tableau) +1 (entrée dans la ligne)
-      tr.setNodeMarkup(tablePos + 1 + rowOffset + 1 + cellOffset, undefined, { ...cell.attrs, colwidth });
-      col += span;
-    });
-  });
+      // +1 : entrée dans le tableau (les positions de la carte partent du début de son contenu)
+      tr.setNodeMarkup(tablePos + 1 + cellPos, undefined, { ...cell.attrs, colwidth });
+    }
+  }
 }
 
 export const CourseTable = Table.extend({
