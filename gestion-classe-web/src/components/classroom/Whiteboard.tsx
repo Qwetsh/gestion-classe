@@ -162,7 +162,10 @@ export interface WhiteboardProps {
    * de la séance s'il est encore vide et qu'aucun tableau préparé n'y a déjà été versé.
    * Remplace la proposition « partir d'un tableau préparé » du début de séance.
    */
-  seedBoard?: Pick<Board, 'id' | 'title'>;
+  seedBoard?: Pick<Board, 'id' | 'title'> & {
+    /** Cours à écrans : seules ces pages sont versées, dans cet ordre (les autres sont des encarts). */
+    pageIds?: string[];
+  };
   /**
    * Encart d'un cours rédigé (PLAN_cours_editeur.md, étape 2) : on n'édite que cette page du
    * tableau `boardId`. Pas de navigation entre pages, pas de nouvelle page, format 16:9 fixe
@@ -179,6 +182,18 @@ export interface WhiteboardProps {
    * serveur (en classe : copie de l'encart préparé, la séance garde ensuite sa propre version).
    */
   initialPage?: BoardPage;
+  /**
+   * Écrans d'un cours (face écran, PLAN_preparation_semaine.md, étape 2) : seules ces pages du
+   * tableau `boardId` sont chargées, dans cet ordre ; les autres pages du cours sont des encarts.
+   * On peut en ajouter et en retirer : `onPageIdsChange` reçoit la liste des pages non vides.
+   */
+  pageIds?: string[];
+  onPageIdsChange?: (ids: string[]) => void;
+  /**
+   * Pages de départ d'un tableau sans stockage (`localKey` null, `remote` false) : l'essai des
+   * écrans d'un cours, où rien n'est gardé en quittant.
+   */
+  initialPages?: BoardPage[];
   /**
    * Habillage : 'tbi' (défaut — barre flottante, pastille, gros boutons : la classe) ou 'ribbon'
    * (ruban façon traitement de texte, pour préparer à l'ordinateur). Avec 'ribbon', l'utilisateur
@@ -383,7 +398,7 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, chrome = 'tbi', onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, chrome = 'tbi', onClose }: WhiteboardProps) {
   /** Clé du stockage local ; `null` = aucun stockage local. */
   const storeKey = localKey === undefined ? sessionId : localKey;
   const activeRef = useRef(active);
@@ -395,7 +410,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Encart de cours : une seule page, toujours au format 16:9. */
   const singlePage = !!onlyPageId;
   const [pages, setPages] = useState<Page[]>(() => {
-    const local = storeKey === null ? [newPage()] : loadLocal(storeKey).pages;
+    const given = initialPages && initialPages.length > 0 ? normalizePages(JSON.parse(JSON.stringify(initialPages)) as Page[]) : null;
+    const local = storeKey === null ? given ?? [newPage()] : loadLocal(storeKey).pages;
     if (!onlyPageId) return local;
     const own = storeKey === null ? undefined : local.find((p) => p.id === onlyPageId);
     const start = initialPage ? (JSON.parse(JSON.stringify(initialPage)) as Page) : newPage();
@@ -830,6 +846,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   // Local (navigateur) : immédiat, sert de cache et de secours hors ligne.
   // Distant (Supabase, table board_pages) : différé, rattache les pages à la séance.
   const remoteReady = useRef(false);
+  /** Vrai une fois les pages lues sur le serveur (faux si la lecture a échoué : hors ligne). */
+  const remoteLoadedRef = useRef(false);
   const syncedRef = useRef<Map<string, Page>>(new Map());
   const syncedPosRef = useRef<Map<string, number>>(new Map());
   const [remoteDirty, setRemoteDirty] = useState(0);
@@ -847,7 +865,12 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           // Encart : seule sa page compte ; absente du serveur = encart encore vierge
           const own = remote.pages.find((p) => p.id === onlyPageId);
           remote.pages = own ? [own] : [];
+        } else if (pageIds) {
+          // Écrans d'un cours : seules les pages listées, dans l'ordre de la liste
+          const byId = new Map(remote.pages.map((p) => [p.id, p]));
+          remote.pages = pageIds.flatMap((id) => byId.get(id) ?? []);
         }
+        remoteLoadedRef.current = true;
         const useRemote = remote.pages.length > 0 && (remote.updatedAt >= local.savedAt || !hasInk(local.pages));
         let loaded = local.pages;
         if (useRemote) {
@@ -894,6 +917,16 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const t = window.setTimeout(() => saveLocal(storeKey, pages), LOCAL_SAVE_MS);
     return () => window.clearTimeout(t);
   }, [pages, storeKey]);
+
+  // Écrans d'un cours : la liste des pages non vides remonte au document. Jamais avant la
+  // lecture du serveur : hors ligne, la page blanche locale viderait la liste du cours.
+  const onPageIdsChangeRef = useRef(onPageIdsChange);
+  useEffect(() => { onPageIdsChangeRef.current = onPageIdsChange; });
+  const screenIds = pageIds ? pages.filter((p) => p.strokes.length > 0 || (p.objects ?? []).length > 0 || !!p.image).map((p) => p.id).join('|') : null;
+  useEffect(() => {
+    if (screenIds === null || !remoteLoadedRef.current) return;
+    onPageIdsChangeRef.current?.(screenIds ? screenIds.split('|') : []);
+  }, [screenIds, remoteDirty]);
 
   const flushRemote = useCallback(async () => {
     if (!remote || !remoteReady.current) return;
@@ -1405,11 +1438,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
    * encore vide elles remplacent la page blanche ; sinon elles s'insèrent après la page courante.
    * Pour une séance, on retient l'origine (session_boards) — l'original n'est jamais modifié.
    */
-  const insertPreparedBoard = useCallback(async (board: Pick<Board, 'id' | 'title'>) => {
+  const insertPreparedBoard = useCallback(async (board: NonNullable<WhiteboardProps['seedBoard']>) => {
     setLibraryDialog(null);
     setImporting({ done: 0, total: 1, label: `Ouverture de « ${board.title} »…` });
     try {
-      const copied = normalizePages(await copyBoardPages(board.id));
+      const copied = normalizePages(await copyBoardPages(board.id, board.pageIds));
       if (copied.length === 0) { window.alert('Ce tableau préparé est vide.'); return; }
       const current = pagesRef.current;
       if (!hasInk(current)) {
@@ -1430,7 +1463,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [isSessionBoard, sessionId, userId]);
 
   // Tableau du cours à verser dans la séance (posé par le chargement initial)
-  const [pendingSeed, setPendingSeed] = useState<Pick<Board, 'id' | 'title'> | null>(null);
+  const [pendingSeed, setPendingSeed] = useState<NonNullable<WhiteboardProps['seedBoard']> | null>(null);
   useEffect(() => {
     if (!pendingSeed) return;
     setPendingSeed(null);
@@ -4174,7 +4207,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             )}
           </>
           {/* Les dernières modifications partent au serveur avant de fermer (sinon elles attendraient le minuteur) */}
-          <button className="wb__btn wb__close" onClick={closeBoard} title={singlePage ? 'Revenir au cours' : 'Retour au plan de classe'}>
+          <button className="wb__btn wb__close" onClick={closeBoard} title={singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : 'Retour au plan de classe'}>
             <svg viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4" /></svg>
           </button>
         </div>

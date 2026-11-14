@@ -6,8 +6,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { CourseEditor } from './CourseEditor';
 import { CoursePresenter } from './CoursePresenter';
+import { ScreensTest } from './CourseScreens';
 import { BoardWorkspace } from '../classroom/BoardWorkspace';
-import { boardIsCourse, fetchCourse, type CourseDoc } from '../../lib/course/courseDoc';
+import { boardIsCourse, courseScreens, fetchCourse, type CourseDoc } from '../../lib/course/courseDoc';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { boardTab } from '../../lib/boardTabs';
 
@@ -33,14 +34,14 @@ export function OpenPreparedBoard({ board, userId, kind: knownKind, present, onC
 
   const kind = knownKind ?? (fetched?.id === board.id ? fetched.kind : null);
 
-  if (kind === 'course' && present) return <PresentCourse board={board} onClose={onClose} />;
+  if (kind === 'course' && present) return <PresentCourse board={board} userId={userId} onClose={onClose} />;
   if (kind === 'course') return <CourseEditor boardId={board.id} title={board.title} userId={userId} onClose={onClose} />;
   if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome="ribbon" onClose={onClose} />;
   return null;
 }
 
 /** Présentation En classe d'un cours enregistré, ouverte depuis le calendrier de l'accueil. */
-function PresentCourse({ board, onClose }: { board: { id: string; title: string }; onClose: () => void }) {
+function PresentCourse({ board, userId, onClose }: { board: { id: string; title: string }; userId: string; onClose: () => void }) {
   const { toast } = useUIFeedback();
   const [course, setCourse] = useState<{ doc: CourseDoc; title: string } | null>(null);
   const closeRef = useRef(onClose);
@@ -63,5 +64,8 @@ function PresentCourse({ board, onClose }: { board: { id: string; title: string 
   }, [board.id, toast]);
 
   if (!course) return null;
+  // Un cours qui a des écrans les montre ; sinon la feuille en bande
+  const screens = courseScreens(course.doc);
+  if (screens.length > 0) return <ScreensTest boardId={board.id} userId={userId} title={course.title} screens={screens} onClose={onClose} />;
   return <CoursePresenter boardId={board.id} doc={course.doc} title={course.title} onClose={onClose} />;
 }
