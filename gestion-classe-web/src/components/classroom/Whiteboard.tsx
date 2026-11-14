@@ -1528,7 +1528,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     void insertPreparedBoard(pendingSeed);
   }, [pendingSeed, insertPreparedBoard]);
 
-  /** Copie des pages actuelles dans un nouveau tableau préparé (Mes tableaux). */
+  /** Copie des pages actuelles dans un nouveau tableau préparé (Mes cours). */
   const saveToLibrary = useCallback(async (meta: BoardMeta) => {
     await createBoardFromPages(userId, meta, pagesRef.current);
     setLibraryDialog(null);
@@ -3407,7 +3407,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         ...(userId ? [
           { id: 'file-library-open', label: onOpenInTab ? 'Tableau préparé : copier ici ou ouvrir dans un onglet…' : 'Ouvrir un tableau préparé…', icon: '📚', disabled: !!importing, onSelect: () => setLibraryDialog('open') },
           ...(onOpenDraftTab && sessionId !== FREE_BOARD_ID ? [{ id: 'file-draft-tab', label: 'Brouillon dans un onglet', icon: '🖊', onSelect: onOpenDraftTab }] : []),
-          { id: 'file-library-save', label: 'Enregistrer dans Mes tableaux…', icon: '🗂', disabled: !!importing, onSelect: () => setLibraryDialog('save') },
+          { id: 'file-library-save', label: 'Enregistrer dans Mes cours…', icon: '🗂', disabled: !!importing, onSelect: () => setLibraryDialog('save') },
         ] : []),
         { id: 'file-save', label: `Enregistrer un fichier ${GCBOARD_EXTENSION}`, icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
         { id: 'file-pdf', label: 'Exporter en PDF', icon: '⤓', onSelect: () => setExportOpen(true) },

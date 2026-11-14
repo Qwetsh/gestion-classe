@@ -66,8 +66,8 @@ export const boardsUnavailable = () => tableMissing;
 const clean = (s: string | null | undefined) => { const t = (s ?? '').trim(); return t ? t : null; };
 
 /**
- * Tableaux de la bibliothèque (« Mes tableaux »). Les tableaux reliés à un cours de l'emploi du
- * temps (migration 065, lesson_boards) en sont écartés : ils se retrouvent sur l'accueil.
+ * Tableaux de la bibliothèque (page « Mes cours »). Les tableaux reliés à un cours de l'emploi du
+ * temps (migration 065, lesson_boards) en sont écartés : ils se retrouvent sur le calendrier de l'accueil.
  */
 export async function listBoards(userId: string): Promise<Board[]> {
   if (tableMissing) return [];
@@ -121,6 +121,47 @@ export async function updateBoard(id: string, meta: Partial<BoardMeta>): Promise
   if (meta.chapter !== undefined) patch.chapter = clean(meta.chapter);
   const { error } = await supabase.from('boards').update(patch).eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * Un tableau par son identifiant, qu'il soit dans la bibliothèque ou placé sur un cours de
+ * l'emploi du temps (adresse `/cours?ouvrir=<id>`). Introuvable ou illisible : null.
+ */
+export async function fetchBoard(id: string): Promise<Board | null> {
+  const query = (columns: string) => supabase.from('boards').select(columns).eq('id', id).maybeSingle();
+  type Res = { data: unknown; error: { message?: string; code?: string } | null };
+  let { data, error } = (await query(`${COLUMNS}, doc_version:doc->version`)) as Res;
+  // Colonne `doc` absente (migration 071 non appliquée) : même ligne, type inconnu
+  const noDoc = !!error && error.code !== '42P01' && (error.code === '42703' || /\bdoc\b/i.test(error.message ?? ''));
+  if (noDoc) ({ data, error } = (await query(COLUMNS)) as Res);
+  if (error || !data) return null;
+  const { doc_version, ...board } = data as Board & { doc_version?: unknown };
+  return noDoc ? board : { ...board, is_course: doc_version != null };
+}
+
+/**
+ * Renomme une séquence : tous les tableaux du niveau qui portent ce chapitre (bibliothèque,
+ * copies placées, modèles). La date de modification n'est pas touchée : rien n'a été retravaillé.
+ */
+export async function renameChapter(userId: string, level: string | null, from: string, to: string): Promise<void> {
+  const next = clean(to);
+  if (!next || next === from) return;
+  const query = supabase.from('boards').update({ chapter: next }).eq('user_id', userId).eq('chapter', from);
+  const { error } = await (level === null ? query.is('level', null) : query.eq('level', level));
+  if (error) throw error;
+}
+
+/** Copie d'un tableau blanc (pages recopiées avec de nouveaux identifiants). */
+export async function duplicateBoard(userId: string, sourceBoardId: string, meta: BoardMeta): Promise<Board> {
+  const board = await createBoard(userId, meta);
+  try {
+    const pages = await copyBoardPages(sourceBoardId);
+    if (pages.length > 0) await upsertBoardPages(userId, { boardId: board.id }, pages.map((page, position) => ({ page, position })));
+    return { ...board, is_course: false };
+  } catch (err) {
+    await deleteBoard(board.id).catch(() => { /* copie incomplète : supprimée si possible */ });
+    throw err;
+  }
 }
 
 export async function renameBoard(id: string, title: string): Promise<void> {

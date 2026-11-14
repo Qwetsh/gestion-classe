@@ -23,6 +23,7 @@ import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
 import { Brevets } from './pages/Brevets';
 import { Clouds } from './pages/Clouds';
+import { Courses } from './pages/Courses';
 import { Evaluations } from './pages/Evaluations';
 import { AssessmentSheet } from './pages/AssessmentSheet';
 import { Productions } from './pages/Productions';
@@ -56,6 +57,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        {/* Mes cours : bibliothèque des cours préparés ; ?ouvrir=<id> ouvre un cours (PLAN_mes_cours.md) */}
+        <Route
+          path="/cours"
+          element={
+            <ProtectedRoute>
+              <Courses />
             </ProtectedRoute>
           }
         />

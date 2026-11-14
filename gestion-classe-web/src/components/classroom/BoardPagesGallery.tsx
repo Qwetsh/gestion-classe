@@ -11,7 +11,7 @@ interface BoardPagesGalleryProps {
   sessionId: string;
   /** Nom de fichier (sans extension) pour l'export PDF. */
   exportName: string;
-  /** Rouvrir le tableau de la séance dans l'éditeur (corriger, compléter, enregistrer dans Mes tableaux). */
+  /** Rouvrir le tableau de la séance dans l'éditeur (corriger, compléter, enregistrer dans Mes cours). */
   onOpenEditor?: () => void;
 }
 
@@ -71,7 +71,7 @@ export function BoardPagesGallery({ sessionId, exportName, onOpenEditor }: Board
           Tableau ({inkPages.length} page{inkPages.length > 1 ? 's' : ''})
         </h2>
         {onOpenEditor && (
-          <button className="btn btn--ghost" onClick={onOpenEditor} title="Rouvrir le tableau dans l'éditeur : corriger, compléter, l'enregistrer dans Mes tableaux">
+          <button className="btn btn--ghost" onClick={onOpenEditor} title="Rouvrir le tableau dans l'éditeur : corriger, compléter, l'enregistrer dans Mes cours">
             Ouvrir
           </button>
         )}

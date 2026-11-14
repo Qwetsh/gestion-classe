@@ -246,11 +246,11 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
             <>
               <Group label="Ouvrir">
                 {big("file-open", "openFile", "Importer", "Importer un fichier .gcboard, un PDF ou une image")}
-                {big("file-library-open", "library", "Tableau préparé", "Copier ici les pages d'un tableau de « Mes tableaux »")}
+                {big("file-library-open", "library", "Tableau préparé", "Copier ici les pages d'un tableau de « Mes cours »")}
                 {big("file-draft-tab", "doc", "Brouillon", "Ouvrir le brouillon dans un onglet à côté")}
               </Group>
               <Group label="Enregistrer">
-                {big("file-library-save", "saveLibrary", "Dans Mes tableaux", "Enregistrer une copie dans « Mes tableaux »")}
+                {big("file-library-save", "saveLibrary", "Dans Mes cours", "Enregistrer une copie dans « Mes cours »")}
                 {big("file-save", "save", "Fichier .gcboard", "Enregistrer un fichier ré-ouvrable (images comprises)")}
               </Group>
               <Group label="Exporter">

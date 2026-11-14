@@ -22,6 +22,7 @@ interface LayoutProps {
 
 const primaryNavItems = [
   { path: '/', label: 'Accueil', icon: 'home' },
+  { path: '/cours', label: 'Mes cours', icon: 'courses' },
   { path: '/classes', label: 'Classes', icon: 'classes' },
   { path: '/students', label: 'Suivi élèves', icon: 'students' },
   { path: '/sessions', label: 'Séances', icon: 'sessions' },
@@ -59,6 +60,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
   };
   switch (name) {
     case 'home': return <svg {...common}><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/></svg>;
+    case 'courses': return <svg {...common}><rect x="7" y="3" width="13" height="16" rx="2"/><path d="M4 7v12a2 2 0 002 2h10M11 8h5M11 12h5"/></svg>;
     case 'classes': return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>;
     case 'students': return <svg {...common}><circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M15 15c3-.5 6 1.5 7 5"/></svg>;
     case 'sessions': return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>;
