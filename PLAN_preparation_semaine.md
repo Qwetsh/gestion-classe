@@ -15,23 +15,45 @@ Précisions du 14/11/2026 :
   bonnes séances, Thomas revient dessus si besoin dans l'éditeur de cours.
 - Une base personnelle remplacera peut-être Supabase un jour, pas maintenant.
 
+Retour du 14/11/2026 au soir, après l'essai de l'étape 0 :
+
+> Le mode « En classe », là c'est juste le visuel de la version papier mais zoomé. Je veux
+> vraiment un travail d'adaptation pour afficher que les éléments importants. Ce travail sera
+> fait à chaque fois, et par Claude, avec moi derrière pour modifier ou améliorer.
+
+Il veut aussi une vraie gomme (qui efface là où elle passe) et le bouton à menu radial
+personnalisable.
+
 ## 2. Décisions
 
 | # | Décision | Raison |
 |---|---|---|
 | D1 | **L'app est la seule source.** Un document créé dans l'app ne retourne jamais dans OneDrive | Une seule version à tenir à jour |
 | D2 | **Migration par l'usage.** Une activité de OneDrive est convertie le jour où Thomas la demande. Pas de grand import | 76 dossiers d'activité : seuls ceux qui servent migrent, au rythme des semaines |
-| D3 | **Des blocs, pas de page HTML libre.** Tout est un document de l'éditeur de cours | Modifiable par Thomas, imprimable, projetable, encre de séance déjà enregistrée |
-| D4 | **Deux documents par activité** : la *fiche* (imprimée et projetée pendant l'activité) et la *correction* (projetée à la séance suivante) | L'éditeur repose sur un document unique qui s'imprime et se projette ; le calendrier rattache un document par cours |
+| D3 | **Des blocs, pas de page HTML libre.** La fiche est un document de l'éditeur de cours ; les écrans sont des pages de tableau blanc | Modifiable par Thomas dans l'app, encre de séance enregistrée, pilotable du téléphone |
+| D4 | **Une activité = un cours à deux faces** (révisé le 14/11/2026). La *face papier* est le document, qui s'imprime. La *face écran* est une suite d'écrans 16:9, préparée par Claude pour chaque activité et retouchée par Thomas. La fiche zoomée n'est plus le tableau d'activité | Retour de Thomas : la feuille zoomée ne suffit pas. Le tableau blanc a déjà la vraie gomme, le menu radial, les réponses cachées, les boutons d'action et le minuteur ; la projection d'un cours n'en a aucun |
 | D5 | **Un original par niveau, une copie par classe.** L'original vit dans la bibliothèque (niveau › chapitre) ; chaque cours du calendrier reçoit sa copie | Thomas corrige différemment selon la classe ; la copie d'une classe ne doit pas écraser l'original |
 | D6 | **Le travail se lance dans Claude Code, sur le PC** | Seul endroit qui réunit les fichiers, le vérificateur `course:check` et l'accès à la base |
 | D7 | **Claude ne modifie ni ne supprime rien sans demande.** Un créneau qui a déjà un document n'est jamais écrasé : Claude pose la question | Règle de sûreté de la skill `cours-gestion-classe` |
 | D8 | **Rester déménageable.** Documents en JSON dans `boards.doc`, fichiers dans un dossier du stockage, rien d'autre | Une base personnelle reste possible plus tard |
 
-À confirmer par l'essai de l'étape 0 :
+Ce que l'essai de l'étape 0 a tranché :
 
-- La fiche projetée suffit-elle comme « tableau d'activité » ?
-- Une fiche « proche du Word », et non identique, convient-elle ?
+- La fiche projetée suffit-elle comme « tableau d'activité » ? **Non** (14/11/2026) : d'où D4.
+- Une fiche « proche du Word », et non identique, convient-elle ? En attente de l'impression.
+
+Les deux surfaces de l'app, relevées dans le code le 14/11/2026 :
+
+| | Tableau blanc | Projection d'un cours |
+|---|---|---|
+| Gomme qui découpe le trait | Oui | Non : elle supprime le trait entier |
+| Bouton à menu radial personnalisable | Oui (8 quartiers, réglés par clic droit) | Non |
+| Format | Écrans 16:9 | Bande de la feuille A4 |
+| Réponse cachée, rideau, ticket à gratter, texte à trous | Oui | Non, rien n'est codé |
+| Boutons d'action | Oui, 23 actions (montrer, zoomer, ouvrir une fenêtre, lancer un minuteur…) | Non |
+| Minuteur, tirage, sonomètre, vidéo, page web | Oui | Non |
+| S'imprime en fiche A4 | Non | Oui |
+| Claude sait l'écrire | Pas encore (étape 3) | Oui |
 
 ## 3. Le modèle, avec ce qui existe
 
@@ -40,11 +62,13 @@ Aucune nouvelle table n'est nécessaire pour commencer.
 | Notion | Où elle vit déjà |
 |---|---|
 | Séquence | `boards.chapter` (« Séquence 1 — Micro-organismes »), sous `boards.level` (« 3e ») |
-| Activité | Deux lignes de `boards`, rangées dans la même séquence. Titres : « Activité 2 — L'activité du microbiote » et « Activité 2 — L'activité du microbiote (correction) » |
+| Activité | Une ligne de `boards`, rangée dans sa séquence. Elle porte les deux faces |
+| Face papier | `boards.doc`, le document de l'éditeur |
+| Face écran | Des lignes de `board_pages` rattachées au même cours (`board_id`), une par écran. Leur ordre est écrit dans le document (`doc.screens`). Une page absente de cette liste reste une page d'encart |
 | Original | Ligne de `boards` sans classe (`class_id` vide) : visible dans la bibliothèque |
 | Copie placée | Ligne de `boards` avec sa classe, reliée au cours par `lesson_boards` (clé : heure de début à la minute + libellé de l'emploi du temps). Elle n'apparaît pas dans la bibliothèque, mais sur le cours du calendrier |
 | Cours du calendrier | `timetable_entries` ; le lien libellé → classe est dans `timetable_label_links` |
-| Tableau de fin de séance | `session_boards` : la séance, le document joué, l'encre de séance (`course_ink`) |
+| Tableau de fin de séance | Les écrans sont copiés dans la séance à son démarrage (`board_pages.session_id`) : l'encre y est enregistrée. `session_boards` garde le lien avec le cours d'origine |
 | Images | Fichiers du stockage `board-assets`, cités par leur chemin dans le document |
 
 Ce que les documents de l'éditeur remplacent :
@@ -54,7 +78,7 @@ Ce que les documents de l'éditeur remplacent :
 | `Fiche_eleve_….docx` | La fiche |
 | `… Documents (élève).docx` | Les pages suivantes de la fiche (même document, une impression) |
 | `…_ADAPTEE.docx` | Rien à créer : l'impression « version dys » de l'éditeur |
-| `…_CORRIGE.docx` | La correction |
+| `…_CORRIGE.docx` | Les réponses, cachées dans les écrans et révélées en classe |
 | `Fiche préparation ….docx` | Hors périmètre pour l'instant (voir § 7) |
 | `Cahier_de_texte_….txt` | Hors périmètre : la skill « cahier de texte » existe à part |
 
@@ -70,11 +94,13 @@ Ce que les documents de l'éditeur remplacent :
 ### Ce que Claude fait
 
 1. **Trouver l'activité.** D'abord dans la bibliothèque de l'app. Si elle n'y est pas, dans le
-   dossier OneDrive : Claude la convertit et crée les deux originaux (D2).
+   dossier OneDrive : Claude la convertit et crée l'original, avec sa fiche et ses écrans (D2, D4).
 2. **Trouver les créneaux.** Les prochains cours de la classe dans l'emploi du temps, hors cours
-   annulés. Par défaut : la fiche sur le prochain cours sans document, la correction sur le
-   suivant. Les demi-groupes reçoivent chacun leur copie.
-3. **Vérifier.** Chaque document passe par `npm run course:check` avant toute écriture.
+   annulés. Par défaut : l'activité sur le prochain cours sans document ; si la correction se
+   fait à la séance suivante, une copie aussi sur le cours suivant. Les demi-groupes reçoivent
+   chacun leur copie.
+3. **Vérifier.** La fiche passe par `npm run course:check`, les écrans par
+   `npm run screens:check`, avant toute écriture.
 4. **Placer.** Une copie de l'original par cours, reliée au cours.
 5. **Rendre compte.**
 
@@ -84,8 +110,8 @@ Un tableau court, toujours le même :
 
 | Classe | Cours | Document | État |
 |---|---|---|---|
-| 3B | mar. 17 nov., 10 h | Activité 2 — fiche | Placé |
-| 3B | jeu. 19 nov., 14 h | Activité 2 — correction | Placé |
+| 3B | mar. 17 nov., 10 h | Activité 2 — fiche de 2 pages, 9 écrans | Placé |
+| 3B | jeu. 19 nov., 14 h | Activité 2 — les mêmes écrans, pour la correction | Placé |
 
 Suivi de ce qui reste à faire à la main (par exemple : « 2 images à insérer »), et de ce que Claude
 n'a pas pu vérifier (par exemple : le nombre de pages, qui ne se calcule qu'à l'affichage).
@@ -127,22 +153,24 @@ Chaque étape est livrable seule. Une PR par lot de code ; une migration n'est a
 
 **Risque :** la séance doit être démarrée par le téléphone pour que l'encre soit gardée.
 
-### Étape 1 — Claude envoie les images
+### Étape 1 — Claude envoie fichiers et documents
 
-**But :** lever le seul vrai blocage. Aujourd'hui Claude écrit dans la base, mais ne peut déposer
-aucun fichier dans le stockage. La fiche Microbiote n'a pas d'image ; sa feuille de documents en a
-3, son corrigé 6.
+**But :** lever le blocage de l'envoi. Aujourd'hui Claude écrit dans la base par des requêtes,
+mais ne peut déposer aucun fichier dans le stockage, et doit retaper en entier chaque document
+qu'il envoie.
 
 **Contenu :**
 
 - **Jeton d'import personnel.** Thomas le crée dans Réglages et peut le révoquer. La base n'en
   garde qu'une empreinte.
-- **Fonction serveur de dépôt.** Elle vérifie le jeton et n'écrit que dans le dossier de Thomas
-  du stockage `board-assets`. Elle refuse tout ce qui n'est pas une image, et tout fichier trop
-  lourd. Elle renvoie le chemin du fichier.
-- **Côté skill.** Un bloc `Image(fichier)` : il envoie le fichier, puis cite son chemin dans le
-  document. Les images d'un `.docx` sont extraites de son dossier `word/media`.
-- **Côté vérificateur.** `course:check` refuse une image dont le chemin n'existe pas.
+- **Fonction serveur de dépôt.** Elle vérifie le jeton et n'écrit que dans l'espace de Thomas.
+  Elle accepte trois choses : une image (vers le stockage `board-assets`), un document de cours,
+  une suite d'écrans. Elle refuse le reste, et tout fichier trop lourd.
+- **Elle ne crée que du neuf.** Remplacer un cours existant demande un paramètre explicite, et
+  garde d'abord une version.
+- **Côté skill.** Un bloc `Image(fichier)` : il envoie le fichier, puis cite son chemin. Les
+  images d'un `.docx` sont extraites de son dossier `word/media`.
+- **Côté vérificateur.** Une image dont le chemin n'existe pas est une erreur.
 
 **Règles :**
 
@@ -153,70 +181,123 @@ aucun fichier dans le stockage. La fiche Microbiote n'a pas d'image ; sa feuille
 **Demande une migration** (table des jetons).
 
 **Terminé quand** la feuille de documents de l'activité Microbiote est dans l'app, images
-comprises, sans que Thomas ait glissé un seul fichier.
+comprises, sans que Thomas ait glissé un seul fichier ni que Claude ait retapé le document.
 
-### Étape 2 — La skill « prépare ma semaine »
+### Étape 2 — Les écrans : le socle dans l'app
+
+**But :** un cours peut porter des écrans, et la classe les ouvre à la place de la feuille zoomée.
+
+**Contenu :**
+
+- **La liste des écrans** est écrite dans le document (`doc.screens`, des identifiants de pages
+  dans l'ordre). Pas de migration pour cela.
+- **Ouverture.** « En classe » (depuis l'éditeur et depuis le calendrier) et l'écran `/classe`
+  ouvrent les écrans dans le tableau blanc quand le cours en a. Sinon, la projection actuelle.
+- **Retouche.** Dans l'éditeur, un accès « Écrans » : le tableau blanc avec son ruban, pour
+  modifier un écran, en ajouter, en supprimer, les réordonner.
+- **Séance.** Au démarrage, les écrans sont copiés dans la séance : l'original reste intact,
+  l'encre est enregistrée dans la séance. C'est le mécanisme actuel du tableau blanc.
+- **Copie d'un cours** vers une autre classe : les écrans suivent.
+- **Deux défauts du tableau blanc à corriger** (lus dans le code, à confirmer dans l'app) :
+  - la couleur, le rideau et la hauteur d'une page ne sont pas enregistrés en base ;
+  - l'état des révélations d'une séance reste sur l'ordinateur : il doit suivre la séance.
+
+**Demande une migration** (état d'une page, révélations d'une séance).
+
+**Terminé quand** un cours portant trois écrans faits à la main s'ouvre en écrans depuis le
+calendrier et depuis `/classe`, et que l'encre et les révélations sont retrouvées sur un autre
+ordinateur.
+
+### Étape 3 — Les écrans : gabarits, générateur, vérificateur
+
+**But :** Claude écrit les écrans d'une activité comme il écrit une fiche.
+
+**Contenu :**
+
+- **Les règles d'adaptation.** À l'écran : la problématique, les consignes raccourcies, les
+  documents en grand, une question par écran, la place pour écrire, les réponses cachées, le
+  bilan. Sur le papier seulement : cartouche, ligne d'identité, barème, « J'ai réussi ».
+- **Une famille de gabarits**, pour que le texte tombe juste sans réglage à la main :
+
+  | Gabarit | Contenu |
+  |---|---|
+  | Titre | Séquence, activité, problématique |
+  | Situation | Texte court, image à côté |
+  | Consigne | Verbe d'action en grand, étapes, minuteur |
+  | Document | Image ou texte en grand, légende |
+  | Question | Énoncé, zone pour écrire, réponse sous cache |
+  | Tableau à compléter | Cases vides, réponse sous cache dans chaque case |
+  | Calcul | Énoncé, zone à carreaux, résultat sous cache |
+  | Bilan | Texte à trous ou zone pour écrire |
+
+- **Lisibilité.** Une taille de texte minimale, fixée sur le TBI de Thomas (1280 × 720).
+- **Le générateur** (`gc_ecrans.py`, dans la skill) : un écran s'écrit en une ligne par gabarit.
+- **Le vérificateur** (`npm run screens:check`) : types d'objets connus, texte dans le format
+  accepté par le tableau blanc, cibles des boutons et des caches existantes, images existantes,
+  rien hors de l'écran.
+- **Le contrôle de mise en page.** La hauteur d'un texte dépend de son contenu : seul un rendu le
+  dit. Le brouillon est chargé dans un cours de test, et un contrôle signale les textes qui
+  débordent ou se chevauchent.
+
+**Terminé quand** les écrans de l'activité « Wegener » sont générés, vérifiés, joués en classe par
+Thomas, et qu'il en retouche un dans l'app.
+
+### Étape 4 — La skill « prépare ma semaine »
 
 **But :** le dialogue du § 4 marche d'une phrase, sans requête écrite à la main.
 
 **Contenu :**
 
-- **Conversion d'une activité OneDrive.** Source, par ordre de préférence : le script
-  `generate_fiche_….py` quand il existe (19 activités), sinon le `.docx`. La correction part du
-  `_CORRIGE.docx`.
+- **Conversion d'une activité OneDrive** en un cours à deux faces. Source, par ordre de
+  préférence : le `.docx` (Thomas le retouche après coup), aidé du script `generate_fiche_….py`
+  quand il existe (19 activités). Les réponses viennent du `_CORRIGE.docx`.
 - **Lecture de l'emploi du temps** et proposition des créneaux.
 - **Placement** : copie de l'original, lien au cours, une copie par classe et par demi-groupe.
 - **Provenance.** Une colonne « copié depuis » sur le lien cours → document, pour savoir de quel
-  original vient chaque copie. Elle sert aux étapes 4 et 5.
+  original vient chaque copie. Elle sert aux étapes 5 et 6.
 - **Relance sans doublon.** Redemander la même chose ne crée pas une deuxième copie.
-- **Compte rendu** du § 4.
+- **Compte rendu** du § 4, avec le nombre de pages de la fiche et le nombre d'écrans.
 - **Corrections après coup** : déplacer un document vers un autre cours, le retirer d'un cours,
   toujours sur demande.
+- **Les retouches de Thomas nourrissent la skill.** Quand il corrige un écran de la même façon
+  deux fois, la règle entre dans les habitudes de la skill.
+- **Les manques relevés à l'étape 0** : cartouche à trois compétences, barème en fin de question,
+  cadre « à coller », encadrés en 10 pt, contrôle du nombre de pages.
 
 **Demande une migration** (la colonne de provenance).
 
-**Terminé quand** « Prépare ma semaine : 3e → S1 A3, 4e → S2 A1 » produit tous les documents de
+**Terminé quand** « Prépare ma semaine : 3e → S1 A3, 4e → S2 A1 » produit la fiche et les écrans de
 toutes les classes concernées, et que le relancer ne change rien.
 
-### Étape 3 — La correction animée
-
-**But :** les réponses sont dans la correction, cachées, et Thomas les révèle au clic.
-
-**Dépend du lot 5 de `PLAN_cours_editeur.md`** (apparition au clic, mot caché), mené par la
-session de l'éditeur. Ce plan n'y ajoute que deux choses :
-
-- **Blocs « écran seulement » et « impression seulement »**, pour qu'un même document serve au
-  papier et à l'écran sans doublon.
-- **Côté skill** : un bloc `Reponse(...)` (cachée, révélée au clic) et la génération de la
-  correction à partir du corrigé. Le vérificateur apprend ces blocs.
-
-L'état des révélations d'une séance reste dans la séance, jamais dans le document : la copie de
-la 3B repart cachée pour la 3A.
-
-**Terminé quand** une correction générée par Claude se joue en classe : question, écriture au
-stylet, révélation de la réponse, et que tout se retrouve dans la séance.
-
-### Étape 4 — Retrouver les tableaux de fin de séance
+### Étape 5 — Retrouver les tableaux de fin de séance
 
 **But :** l'encre est déjà gardée ; il manque le chemin pour y revenir.
 
 **Contenu :**
 
-- **Par classe** : la suite des séances, avec le document joué et son encre.
+- **Par classe** : la suite des séances, avec les écrans annotés et ce qui a été révélé.
 - **Par activité** : toutes les classes qui l'ont faite, côte à côte.
-- **Export PDF** du document annoté, pour les absents.
+- **Export PDF** des écrans annotés, pour les absents.
 
-**Terminé quand** Thomas retrouve « la correction de l'activité 2 avec la 3B » en trois clics.
+**Terminé quand** Thomas retrouve « la correction de l'activité 3 avec la 4B » en trois clics.
 
-### Étape 5 — Plus tard
+### Étape 6 — Plus tard
 
 - **Où en est chaque classe** : Claude propose l'activité suivante de la progression.
-- **Animations HTML** : un bloc isolé, dans un encart, pour les animations que les blocs ne
-  savent pas faire. La page est enfermée : elle ne peut rien lire de l'app.
+- **Animations sur mesure** : le tableau blanc a déjà un objet « page web » ; y loger une
+  animation HTML, enfermée, pour ce que les objets ne savent pas faire.
+- **Import d'un fichier de tableau** : il casse les liens entre boutons et objets (lu dans le
+  code) ; à corriger si ce chemin sert.
 - **Archivage de OneDrive** : marquer les dossiers migrés, puis les ranger.
 - **Rédiger depuis le téléphone** : le bouton « Coller un cours rédigé par Claude » (voie B de
   `AUDIT_fiche_word.md`).
 - **Base personnelle.**
+
+### Lot à part — La vraie gomme dans la projection actuelle
+
+La projection d'un cours reste le repli quand un cours n'a pas d'écrans. Sa gomme supprime le
+trait entier. Petit lot : y porter la découpe du tableau blanc. À faire si Thomas le demande
+(question 5 du § 7).
 
 ## 6. Risques et points non vérifiés
 
@@ -226,27 +307,39 @@ stylet, révélation de la réponse, et que tout se retrouve dans la séance.
 | 2 | ~~Le placement d'un document sur un cours par Claude n'a jamais été essayé~~ | Levé le 14/11/2026 : huit copies placées, visibles sur le calendrier, « En classe » les ouvre | — |
 | 3 | L'encre de séance n'a pas été vérifiée en vraie classe | Le besoin n° 4 de Thomas n'est pas acquis | Étape 0, question 3 |
 | 4 | La séance doit être démarrée par le téléphone | Sans téléphone, rien n'est gardé | Connu, accepté pour l'instant |
-| 5 | Le libellé d'un cours peut changer dans l'emploi du temps (Pronote) | Un document placé ne retrouverait plus son cours | À observer à l'étape 2 |
-| 6 | Conversion d'un `.docx` sans script : mise en page complexe (colonnes, zones de texte) | Claude reconstruit à la main, plus lent | Étape 2 ; les cas rebelles sont signalés dans le compte rendu |
+| 5 | Le libellé d'un cours peut changer dans l'emploi du temps (Pronote) | Un document placé ne retrouverait plus son cours | À observer à l'étape 4 |
+| 6 | Conversion d'un `.docx` sans script : mise en page complexe (colonnes, zones de texte) | Claude reconstruit à la main, plus lent | Étape 4 ; les cas rebelles sont signalés dans le compte rendu |
+| 7 | Les écrans sont placés sans être vus : un texte long déborde ou en recouvre un autre | Écran illisible en classe | Étape 3 : gabarits et contrôle de mise en page |
+| 8 | Trois défauts du tableau blanc lus dans le code, non constatés dans l'app (état de page non enregistré, révélations locales, import qui casse les liens) | Un écran préparé pourrait perdre son rideau ou sa hauteur | Étape 2 : les confirmer avant de corriger |
+| 9 | Les séances du 16 au 25/11 se jouent avec la projection actuelle | Thomas juge l'essai sur un mode qu'il a déjà écarté | Accepté : seules l'impression et l'encre retrouvée restent à juger |
 
 ## 7. Questions ouvertes
 
 1. **Fiche de préparation** (68 fichiers) : la garder dans OneDrive, ou verser ses points clés dans
    les notes du cours, qui s'affichent déjà sur le téléphone ?
-2. **Corrigé avec barème** : le barème du professeur a-t-il sa place dans la correction projetée
-   (bloc « impression seulement »), ou dans un document à part ?
+2. **Corrigé avec barème** : le barème détaillé du professeur reste-t-il hors de l'app, ou
+   va-t-il dans une page du cours réservée au professeur, jamais projetée ?
 3. **Activité sur deux séances** : la même copie sur les deux cours, ou une copie par cours ?
+   Aujourd'hui un document ne peut être relié qu'à un seul cours.
+4. **Activité et correction** : les mêmes écrans, avec les réponses cachées (proposé), ou deux
+   séries d'écrans ?
+5. **Vraie gomme dans la projection actuelle** : la veut-il avant que les écrans existent ?
 
 ## 8. Avancement
 
 | Étape | État |
 |---|---|
 | 0 — Essai réel | **En cours** depuis le 14/11/2026 : documents créés et placés (§ 9) ; reste le jugement de Thomas en classe |
-| 1 — Images | À faire |
-| 2 — Skill « prépare ma semaine » | À faire |
-| 3 — Correction animée | À faire ; dépend du lot 5 de l'éditeur |
-| 4 — Tableaux de fin de séance | À faire |
-| 5 — Plus tard | — |
+| 1 — Envoi des fichiers et des documents | À faire |
+| 2 — Écrans : le socle | À faire |
+| 3 — Écrans : gabarits, générateur, vérificateur | À faire |
+| 4 — Skill « prépare ma semaine » | À faire |
+| 5 — Tableaux de fin de séance | À faire |
+| 6 — Plus tard | — |
+
+Révision du 14/11/2026 (soir) : l'ancienne étape 3, « la correction animée », disparaît. Elle
+dépendait d'animations à construire dans l'éditeur de cours ; les écrans s'appuient sur les
+réponses cachées du tableau blanc, qui existent.
 
 ## 9. Étape 0 — ce qui a été fait (14/11/2026)
 
@@ -268,13 +361,16 @@ mouvement ») : la fiche (2 pages) et la correction (4 pages, zones au stylet, s
 
 | # | Constat | Suite |
 |---|---|---|
-| 1 | La source de vérité est le `.docx`, que Thomas retouche après le script `generate_fiche_….py` | Étape 2 : toujours comparer les deux |
+| 1 | La source de vérité est le `.docx`, que Thomas retouche après le script `generate_fiche_….py` | Étape 4 : toujours comparer les deux |
 | 2 | Avec les marges de 2,5 cm, la fiche Word de 2 pages en faisait 3 (le cadre du puzzle ne tenait plus en page 1) | Tenue sur 2 pages par une mise en page compacte : consigne 1 et Rappel à côté du cadre, encadrés en 10 pt comme dans Word, « Questions » en texte bleu. Marge restante : 22 px. À juger par Thomas |
 | 3 | Envoyer un document par SQL oblige à le retaper en entier | Contourné par une requête compressée et une empreinte (`md5`) comparée au brouillon. **Étape 1 : la fonction de dépôt doit accepter les documents, pas seulement les images** |
-| 4 | L'éditeur réécrit un document à la première ouverture (identifiants de blocs, numéro d'enregistrement, textes voisins fusionnés) : le texte ne change pas | Étape 2 : comparer le texte, pas l'empreinte, après une ouverture |
-| 5 | La skill ne sait pas faire : cartouche à trois compétences, barème rouge en fin de question, cadre « à coller », encadrés en 10 pt | Étape 2 : les ajouter à `gc_cours.py` |
+| 4 | L'éditeur réécrit un document à la première ouverture (identifiants de blocs, numéro d'enregistrement, textes voisins fusionnés) : le texte ne change pas | Étape 4 : comparer le texte, pas l'empreinte, après une ouverture |
+| 5 | La skill ne sait pas faire : cartouche à trois compétences, barème rouge en fin de question, cadre « à coller », encadrés en 10 pt | Étape 4 : les ajouter à `gc_cours.py` |
 | 6 | La projection « En classe » n'appliquait pas la police ni la taille du cours | Corrigé, PR #81 |
-| 7 | Une mise en page se mesure sans rien retaper : cours de test vide, puis chargement du brouillon dans l'éditeur ouvert | Étape 2 : en faire un contrôle « nombre de pages » |
+| 8 | L'impression d'un cours sortait blanche (règle d'impression du plan de classe, valable pour toute l'app) | Corrigé, PR #82 |
+| 9 | En projection, le bas du cours sautait sans fin (la pagination y tournait) | Corrigé, PR #82 |
+| 10 | Thomas écarte la fiche zoomée comme tableau d'activité | Décision D4 révisée ; étapes 2 et 3 |
+| 7 | Une mise en page se mesure sans rien retaper : cours de test vide, puis chargement du brouillon dans l'éditeur ouvert | Étape 4 : en faire un contrôle « nombre de pages » |
 
 **Reste à juger par Thomas** (les quatre questions de l'étape 0) : l'impression, la fiche projetée
 comme tableau d'activité, l'encre retrouvée après la séance, l'ouverture depuis `/classe`.
