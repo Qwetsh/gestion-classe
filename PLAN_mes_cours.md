@@ -159,8 +159,9 @@ de la séance, et sort en PDF.
 | C2 — Recherche | **Fusionné dans master le 14/11/2026** (PR #93, migration 076) |
 | C3 — Provenance et placement | **Fusionné dans master le 14/11/2026** (PR #94, migration 077) |
 | C4 — Par classe et fins de séance | **Fusionné dans master le 14/11/2026** (PR #95 ; la partie « passé » reste à voir après une vraie séance) |
-| N1 — Ménage du menu | **Codé** le 14/11/2026 (branche `feat/menu-menage`), pas commité |
-| N2 / N3 — Menu regroupé | À faire |
+| N1 — Ménage du menu | **Fusionné dans master le 14/11/2026** (PR #96) |
+| N2 — Maquette du menu regroupé | **Faite** le 14/11/2026 ; Thomas a retenu la variante A |
+| N3 — Menu regroupé | **Codé** le 14/11/2026 (branche `feat/menu-regroupe`, avec la maquette), pas commité |
 | R1 — Recherche globale | À faire |
 | F1 — Fichiers | En attente de la décision de stockage |
 
@@ -314,8 +315,71 @@ GitHub Pages réussi. À regarder en vraie séance : la section « Passé » et 
   reste masqué ; rétabli. Annales : un sujet de 6 pages s'ouvre dans le lecteur commun.
 - **Nettoyage** : la ligne `hidden_tabs` créée par l'essai a été supprimée du compte, pour que le
   premier appareil réel de Thomas y envoie son propre réglage.
-- **Non vérifié** : l'espace élève (`/eleve`, il faut un code d'élève) ; un vrai téléphone ; le
-  repli sur l'aperçu natif.
+- **Espace élève** : essayé par Thomas le 14/11/2026 dans la prévisualisation, le lecteur commun
+  y fonctionne. PR #96 fusionnée dans la foulée (commit `800f70b`).
+- **Non vérifié** : le repli sur l'aperçu natif.
 - **Reste** : l'en-tête de l'aperçu des annales et la barre du lecteur proposent chacun un bouton
   « ouvrir dans un onglet » (doublon mineur).
+
+### Lot N2 — maquette du menu regroupé, faite le 14/11/2026 (branche `docs/maquette-menu`)
+
+Maquette cliquable : `gestion-classe-web/public/_maquettes/menu-regroupe.html`
+(servie par Vite : `/gestion-classe/_maquettes/menu-regroupe.html`). Rien n'est branché.
+
+- **Trois états à comparer** : « Aujourd'hui » (15 entrées en trois sections), « A · Menu dépliable »
+  (5 entrées, celle où l'on se trouve montre ses pages), « B · Onglets en haut de page » (5 entrées,
+  les pages d'une entrée deviennent des onglets sous le titre). Sur ordinateur et sur téléphone.
+- **Regroupement proposé** (révisé par rapport au § 5) :
+
+  | Entrée | Pages |
+  |---|---|
+  | Accueil | Accueil |
+  | Mes cours | Bibliothèque et classes (la page actuelle), Mes TP, Annales, Mes clouds |
+  | Classes | Classes et plans, Suivi élèves, Séances, Analyses |
+  | Évaluations | Carnet et fiches, Activité en direct |
+  | Plus | Récompenses, Académie, Outils, Pronote |
+
+  Écart avec le premier jet : « Analyses » passe sous Classes (elle parle des élèves), et
+  « Activité en direct » sous Évaluations (elle suit des productions).
+- **Téléphone** : barre du bas Accueil, Cours, Classes, Évals, Plus ; les pages d'une entrée sont
+  des puces sous le titre ; « Plus » ouvre une feuille de quatre pages (onze aujourd'hui).
+- **Ne change pas** : les adresses, Réglages › Onglets visibles, les écrans sans menu.
+- **Recommandation de Claude : la variante A.** Les pages ne changent pas, rien à réapprendre
+  dedans, et moins de travail. La variante B ajoute une barre d'onglets à chaque page, par-dessus
+  les deux vues de « Mes cours ».
+- **Non montré** : l'entrée « Dev » (réservée à Thomas, elle irait sous Plus) ; le menu réduit aux
+  icônes en variante A (les pages d'une entrée s'ouvriraient dans une fenêtre à côté de l'icône).
+- **Vérifié dans le navigateur** : les trois états, le passage d'une entrée à l'autre, le
+  téléphone, la feuille « Plus », le tableau « Où va chaque onglet » (15 lignes).
+
+**Choix de Thomas (14/11/2026) : la variante A.** Les trois autres points n'ont pas reçu de réponse :
+les propositions de Claude sont appliquées (Analyses sous Classes, Récompenses sous Plus, Cours et
+Évals dans la barre du téléphone) et restent faciles à changer dans `lib/appNav.ts`.
+
+### Lot N3 — menu regroupé, codé le 14/11/2026 (branche `feat/menu-regroupe`)
+
+- **Une définition du menu** (`lib/appNav.ts`, avec tests) : cinq entrées et leurs pages, partagée
+  par la barre latérale, la barre du bas du téléphone et les Réglages. Changer le regroupement,
+  c'est modifier cette liste.
+- **Barre latérale** (`Layout.tsx`) : l'entrée de la page affichée se déplie et montre ses pages ;
+  les autres sont fermées, un clic mène à leur première page. Les titres « Vie de classe »,
+  « Ressources » et « Développement » disparaissent. « Dev » est sous Plus, pour Thomas seul.
+- **Page active** reconnue aussi sur ses sous-pages (`/sessions/42`, `/evaluations/…`,
+  `/tools/…`) ; `/productions` et `/group-sessions`, sans entrée, allument « Carnet et fiches ».
+- **Menu réduit aux icônes** : les pages de l'entrée courante sont ses icônes, entre deux filets.
+- **Téléphone et tablette** : barre du bas Accueil, Cours, Classes, Évals, Plus ; les pages de
+  l'entrée sont des puces sous la barre du haut ; « Plus » ouvre la feuille de ses pages, des
+  Réglages et du retour.
+- **Onglets masqués** : une page masquée quitte son entrée ; une entrée réduite à une page devient
+  un lien simple ; une entrée vide disparaît. Les Réglages nomment chaque page avec son entrée
+  (« Mes cours › Annales »), dans l'ordre du menu.
+- **Les adresses ne changent pas.**
+- **Vérifié** : `tsc -b`, 538 tests ; le lint ne signale aucune erreur nouvelle. Dans le navigateur :
+  les cinq entrées, l'entrée courante dépliée (Mes cours, Classes, Plus avec Dev), « Séances »
+  active, `/productions` rangé sous Évaluations, le menu réduit, le téléphone (barre, puces,
+  feuille « Plus », pas de débordement), les libellés des Réglages.
+- **Non vérifié** : le masquage d'un onglet dans le vrai menu (couvert par les tests seulement, pour
+  ne pas écrire dans le compte de Thomas) ; une tablette ; un vrai téléphone.
+- **Reste** : en menu réduit, l'icône de l'entrée « Classes » et celle de sa page « Classes et
+  plans » sont les mêmes (idem Mes cours et Évaluations).
 

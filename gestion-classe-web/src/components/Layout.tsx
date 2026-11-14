@@ -8,6 +8,7 @@ import { FeedbackDialog } from './FeedbackDialog';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { HeldWorksAlert } from './productions/HeldWorksAlert';
 import { supabase } from '../lib/supabase';
+import { MORE_GROUP_ID, activeGroup, isPageActive, singlePageLabel, visibleGroups, type NavGroup } from '../lib/appNav';
 import { LogOut, Info, AlertTriangle, CheckCircle2, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 
 const DEV_EMAIL = 'tomicharles@gmail.com';
@@ -19,37 +20,6 @@ interface LayoutProps {
   /** Set true for full-bleed pages with no max-width and no padding (e.g. Academy) */
   fullBleed?: boolean;
 }
-
-const primaryNavItems = [
-  { path: '/', label: 'Accueil', icon: 'home' },
-  { path: '/cours', label: 'Mes cours', icon: 'courses' },
-  { path: '/classes', label: 'Classes', icon: 'classes' },
-  { path: '/students', label: 'Suivi élèves', icon: 'students' },
-  { path: '/sessions', label: 'Séances', icon: 'sessions' },
-  { path: '/analytics', label: 'Analyses', icon: 'analytics' },
-];
-
-/**
- * Vie de classe — le quotidien avec les élèves.
- * Groupes et Productions ne sont plus ici (hub Évaluations, phase 6) : TP de groupe et
- * productions numériques se retrouvent dans Évaluations (carnet et fiche de l'éval). Leurs
- * pages restent joignables (/group-sessions, /productions).
- */
-const classLifeItems = [
-  { path: '/rewards', label: 'Récompenses', icon: 'star' },
-  { path: '/evaluations', label: 'Évaluations', icon: 'evaluations' },
-  { path: '/direct', label: 'Activité en direct', icon: 'direct' },
-  { path: '/academy', label: 'Académie', icon: 'academy' },
-];
-
-/** Ressources — ce que le prof prépare ou consulte */
-const resourceItems = [
-  { path: '/tp-templates', label: 'Mes TP', icon: 'flask' },
-  { path: '/brevets', label: 'Annales', icon: 'book' },
-  { path: '/clouds', label: 'Mes clouds', icon: 'cloud' },
-  { path: '/tools', label: 'Outils', icon: 'wrench' },
-  { path: '/pronote', label: 'Pronote', icon: 'link' },
-];
 
 /* ---- SVG icon component (from design handoff) ---- */
 function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
@@ -82,6 +52,8 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
     case 'plus': return <svg {...common}><path d="M12 5v14M5 12h14"/></svg>;
     case 'info': return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>;
     case 'message': return <svg {...common}><path d="M4 5.5A1.5 1.5 0 015.5 4h13A1.5 1.5 0 0120 5.5v9a1.5 1.5 0 01-1.5 1.5H9l-5 4V5.5z"/></svg>;
+    case 'more': return <svg {...common}><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>;
+    case 'chevron': return <svg {...common}><path d="M9 6l6 6-6 6"/></svg>;
     default: return null;
   }
 }
@@ -404,10 +376,9 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const [rail, toggleRail] = useSidebarRail();
   const isDev = user?.email === DEV_EMAIL;
 
-  const visibleClassLife = classLifeItems.filter(item => isTabVisible(item.path.slice(1)));
-  const visibleResources = resourceItems.filter(item => isTabVisible(item.path.slice(1)));
-  const devItems = isDev ? [{ path: '/dev', label: 'Dev', icon: 'dev' }] : [];
-  const allNavItems = [...primaryNavItems, ...visibleClassLife, ...visibleResources, ...devItems];
+  // Menu regroupé (lib/appNav.ts) : cinq entrées, celle de la page affichée se déplie
+  const groups = visibleGroups(isTabVisible, isDev);
+  const currentGroup = activeGroup(groups, location.pathname);
 
   // État Pronote (encart bas de sidebar) — même clé que le Dashboard.
   // L'encart « non connecté » se ferme pour la session de navigation (audit V8).
@@ -420,18 +391,43 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
     try { sessionStorage.setItem('gc_pronote_hint_hidden', '1'); } catch { /* stockage indisponible */ }
   };
 
-  const renderNavLink = (item: { path: string; label: string; icon: string }) => {
-    const isActive = location.pathname === item.path;
+  const renderNavLink = (item: { path: string; label: string; icon: string }, isActive: boolean) => (
+    <Link
+      key={item.path}
+      to={item.path}
+      className={`gc-sidenav__item ${isActive ? 'gc-sidenav__item--active' : ''}`}
+      title={rail ? item.label : undefined}
+    >
+      <NavIcon name={item.icon} size={16} />
+      <span>{item.label}</span>
+    </Link>
+  );
+
+  const renderNavGroup = (group: NavGroup) => {
+    // Une seule page (Accueil, ou une entrée dont les autres pages sont masquées) : un lien simple
+    if (group.pages.length === 1) {
+      const page = group.pages[0];
+      return renderNavLink({ path: page.path, label: singlePageLabel(group), icon: group.id === MORE_GROUP_ID ? page.icon : group.icon }, isPageActive(page, location.pathname));
+    }
+    const open = group.id === currentGroup?.id;
     return (
-      <Link
-        key={item.path}
-        to={item.path}
-        className={`gc-sidenav__item ${isActive ? 'gc-sidenav__item--active' : ''}`}
-        title={rail ? item.label : undefined}
-      >
-        <NavIcon name={item.icon} size={16} />
-        <span>{item.label}</span>
-      </Link>
+      <div key={group.id} className="gc-sidenav__group">
+        <Link
+          to={group.pages[0].path}
+          className={`gc-sidenav__item gc-sidenav__head${open ? ' gc-sidenav__head--open' : ''}`}
+          title={rail ? group.label : undefined}
+          aria-expanded={open}
+        >
+          <NavIcon name={group.icon} size={16} />
+          <span>{group.label}</span>
+          <span className="gc-sidenav__chevron"><NavIcon name="chevron" size={13} /></span>
+        </Link>
+        {open && (
+          <div className="gc-sidenav__sub">
+            {group.pages.map((page) => renderNavLink(page, isPageActive(page, location.pathname)))}
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -444,28 +440,7 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
         </div>
 
         <nav className="gc-sidenav">
-          {primaryNavItems.map(renderNavLink)}
-
-          {visibleClassLife.length > 0 && (
-            <>
-              <div className="gc-sidenav__section">Vie de classe</div>
-              {visibleClassLife.map(renderNavLink)}
-            </>
-          )}
-
-          {visibleResources.length > 0 && (
-            <>
-              <div className="gc-sidenav__section">Ressources</div>
-              {visibleResources.map(renderNavLink)}
-            </>
-          )}
-
-          {devItems.length > 0 && (
-            <>
-              <div className="gc-sidenav__section">Développement</div>
-              {devItems.map(renderNavLink)}
-            </>
-          )}
+          {groups.map(renderNavGroup)}
         </nav>
 
         <div className="gc-sidebar__foot">
@@ -529,6 +504,20 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
           />
         </header>
 
+        {currentGroup && currentGroup.pages.length > 1 && (
+          <nav className="gc-subnav" aria-label={currentGroup.label}>
+            {currentGroup.pages.map((page) => (
+              <Link
+                key={page.path}
+                to={page.path}
+                className={`gc-subnav__item${isPageActive(page, location.pathname) ? ' gc-subnav__item--active' : ''}`}
+              >
+                {page.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+
         <HeldWorksAlert />
         <AnnouncementBanner />
 
@@ -545,7 +534,8 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
 
       {/* Tab bar mobile (reskin Direction B) — masquee sur desktop via .mobile-nav */}
       <MobileTabBar
-        items={allNavItems}
+        groups={groups}
+        currentGroup={currentGroup}
         currentPath={location.pathname}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenFeedback={() => setIsFeedbackOpen(true)}
@@ -558,33 +548,26 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
 }
 
 /* ============================================================
-   Tab bar mobile — 4 onglets + "Plus" (reskin Direction B)
+   Tab bar mobile — une case par entrée du menu + "Plus" (reskin Direction B)
    ============================================================ */
 
-const TAB_BAR_PATHS = ['/', '/classes', '/sessions', '/students'];
-
-const TAB_LABELS: Record<string, string> = {
-  '/': 'Accueil',
-  '/classes': 'Classes',
-  '/sessions': 'Séances',
-  '/students': 'Élèves',
-};
-
 function MobileTabBar({
-  items,
+  groups,
+  currentGroup,
   currentPath,
   onOpenSettings,
   onOpenFeedback,
 }: {
-  items: { path: string; label: string; icon: string }[];
+  groups: NavGroup[];
+  currentGroup: NavGroup | null;
   currentPath: string;
   onOpenSettings: () => void;
   onOpenFeedback: () => void;
 }) {
   const [showMore, setShowMore] = useState(false);
-  const tabs = TAB_BAR_PATHS.map(path => items.find(i => i.path === path)).filter(Boolean) as typeof items;
-  const moreItems = items.filter(i => !TAB_BAR_PATHS.includes(i.path));
-  const isMoreActive = moreItems.some(i => i.path === currentPath);
+  const tabs = groups.filter((g) => g.id !== MORE_GROUP_ID);
+  const moreItems = groups.find((g) => g.id === MORE_GROUP_ID)?.pages ?? [];
+  const isMoreActive = currentGroup?.id === MORE_GROUP_ID;
 
   return (
     <>
@@ -601,12 +584,12 @@ function MobileTabBar({
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        {tabs.map(item => {
-          const isActive = currentPath === item.path;
+        {tabs.map(group => {
+          const isActive = group.id === currentGroup?.id;
           return (
             <Link
-              key={item.path}
-              to={item.path}
+              key={group.id}
+              to={group.pages[0].path}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -618,9 +601,9 @@ function MobileTabBar({
                 color: isActive ? 'var(--indigo-ink)' : 'var(--text-muted)',
               }}
             >
-              <NavIcon name={item.icon} size={22} />
+              <NavIcon name={group.icon} size={22} />
               <span style={{ fontSize: 11, fontWeight: isActive ? 600 : 500 }}>
-                {TAB_LABELS[item.path] ?? item.label}
+                {group.short}
               </span>
             </Link>
           );
@@ -674,7 +657,7 @@ function MobileTabBar({
           >
             <div style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto 16px' }} />
             {moreItems.map(item => {
-              const isActive = currentPath === item.path;
+              const isActive = isPageActive(item, currentPath);
               return (
                 <Link
                   key={item.path}

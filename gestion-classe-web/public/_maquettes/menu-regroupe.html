@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu regroupé — maquette</title>
+<style>
+/* =====================================================================
+   Maquette — menu regroupé (lot N2 de PLAN_mes_cours.md).
+   Rien ici n'est branché à l'application : les pages sont des cartons.
+   Couleurs, tailles et icônes reprises du vrai menu (index.css, Layout.tsx).
+   ===================================================================== */
+:root {
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --bg: #FFFFFF; --bg-alt: #F6F6F7; --surface: #FFFFFF; --surface-2: #F7F7F8; --surface-3: #F0F0F2;
+  --border: #E6E6E9; --border-strong: #D4D4D8;
+  --text: #18181B; --text-muted: #52525B; --text-dim: #71717A;
+  --indigo: #4F46E5; --indigo-soft: #EEF0FF;
+  --warn: #B45309; --warn-soft: #FDF1E3; --pos: #15803D; --pos-soft: #EAF6EE;
+  --radius: 8px; --radius-sm: 6px; --radius-xs: 4px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 14px/1.45 var(--font); color: var(--text); background: var(--bg-alt); }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, p { margin: 0; }
+
+/* ---------- Bandeau de la maquette ---------- */
+.mq-bar { position: sticky; top: 0; z-index: 10; background: #18181B; color: #F4F4F5; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.mq-bar__title { font-weight: 700; font-size: 14px; }
+.mq-bar__title small { font-weight: 500; color: #A1A1AA; margin-left: 8px; }
+.mq-seg { display: inline-flex; padding: 3px; gap: 2px; background: #27272A; border-radius: 8px; }
+.mq-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: none; color: #D4D4D8; font-size: 13px; font-weight: 600; }
+.mq-seg button[aria-pressed='true'] { background: #F4F4F5; color: #18181B; }
+.mq-count { margin-left: auto; font-size: 13px; color: #D4D4D8; }
+.mq-count b { color: #fff; font-size: 16px; }
+
+.mq-wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 20px; }
+
+/* ---------- Fausse fenêtre de l'application ---------- */
+.app { display: flex; height: 600px; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; }
+.side { width: 216px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); }
+.side__brand { padding: 16px 16px 10px; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15.5px; }
+.side__logo { width: 26px; height: 26px; border-radius: 7px; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+.nav { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 10px 14px; display: flex; flex-direction: column; gap: 1px; }
+.nav__section { margin: 16px 0 6px; padding: 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); }
+.nav__item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--radius-xs); background: none; text-align: left; font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.nav__item:hover { background: var(--surface-3); color: var(--text); }
+.nav__item.is-active { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+.nav__item.is-open { color: var(--text); font-weight: 600; }
+.nav__item svg { flex-shrink: 0; }
+.nav__chev { margin-left: auto; color: var(--text-dim); transition: transform .12s; }
+.nav__item.is-open .nav__chev { transform: rotate(90deg); }
+.nav__sub { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 6px 17px; padding-left: 9px; border-left: 1px solid var(--border); }
+.nav__sub .nav__item { padding: 6px 10px; font-size: 12.5px; }
+
+.main { flex: 1; min-width: 0; padding: 24px 28px; overflow: auto; }
+.main__crumb { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+.main__title { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 16px; border-bottom: 1px solid var(--border); }
+.tabs button { height: 36px; padding: 0 14px; border: 0; background: none; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--indigo); border-bottom-color: var(--indigo); }
+.carton { margin-top: 20px; padding: 28px; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface-2); color: var(--text-muted); }
+.carton b { color: var(--text); }
+.path { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.path span { padding: 4px 10px; border-radius: 999px; background: var(--surface-3); color: var(--text-muted); }
+.path span.is-new { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+
+/* ---------- Téléphone ---------- */
+.phone { width: 375px; height: 680px; margin: 0 auto; display: flex; flex-direction: column; position: relative; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 28px; overflow: hidden; }
+.phone__top { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.phone__main { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+.phone__main .main__title { font-size: 22px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; margin-top: 12px; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex-shrink: 0; height: 34px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.chips button[aria-selected='true'] { background: var(--indigo-soft); border-color: var(--indigo); color: var(--indigo); }
+.tabbar { display: flex; border-top: 1px solid var(--border); background: var(--surface); }
+.tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px 9px; border: 0; background: none; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.tabbar button.is-active { color: var(--indigo); font-weight: 600; }
+.sheet { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); display: flex; align-items: flex-end; }
+.sheet__panel { width: 100%; max-height: 80%; overflow: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 10px 16px 18px; }
+.sheet__grip { width: 38px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 12px; }
+.sheet .nav__item { padding: 12px; font-size: 15px; border-radius: 10px; }
+
+/* ---------- Explications ---------- */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+.card h2 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.card p + p { margin-top: 8px; }
+.card p { color: var(--text-muted); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+td.is-same { color: var(--text-dim); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.tag--pour { background: var(--pos-soft); color: var(--pos); }
+.tag--contre { background: var(--warn-soft); color: var(--warn); }
+ul { margin: 0; padding-left: 18px; color: var(--text-muted); }
+li + li { margin-top: 4px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="mq-bar">
+  <span class="mq-bar__title">Maquette — menu regroupé<small>rien n'est branché</small></span>
+  <span class="mq-seg" role="group" aria-label="Variante">
+    <button type="button" data-variant="today">Aujourd'hui</button>
+    <button type="button" data-variant="fold">A · Menu dépliable</button>
+    <button type="button" data-variant="tabs">B · Onglets en haut de page</button>
+  </span>
+  <span class="mq-seg" role="group" aria-label="Appareil">
+    <button type="button" data-device="desktop">Ordinateur</button>
+    <button type="button" data-device="phone">Téléphone</button>
+  </span>
+  <span class="mq-count">Entrées visibles dans le menu : <b id="count">16</b></span>
+</div>
+
+<div class="mq-wrap">
+  <div id="stage"></div>
+
+  <div class="two">
+    <div class="card">
+      <h2>A · Menu dépliable</h2>
+      <p>Cinq entrées. Celle où l'on se trouve se déplie et montre ses pages ; les autres restent fermées.</p>
+      <p><span class="tag tag--pour">Pour</span> Les pages ne changent pas. Une page voisine reste à un clic. Les adresses sont les mêmes.</p>
+      <p><span class="tag tag--contre">Contre</span> Le menu bouge quand on change d'entrée. Menu réduit aux icônes : les pages d'une entrée s'ouvrent dans une petite fenêtre à côté de l'icône.</p>
+    </div>
+    <div class="card">
+      <h2>B · Onglets en haut de page</h2>
+      <p>Cinq entrées, jamais plus. Les pages d'une entrée sont des onglets sous le titre.</p>
+      <p><span class="tag tag--pour">Pour</span> Le menu ne bouge plus du tout. Même principe que « Bibliothèque / Par classe » dans Mes cours.</p>
+      <p><span class="tag tag--contre">Contre</span> Chaque page reçoit une barre d'onglets en plus : dans Mes cours, elle s'ajoute aux deux vues existantes. Plus de travail, plus de risque.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Où va chaque onglet</h2>
+    <table>
+      <thead><tr><th>Aujourd'hui</th><th>Demain, sous…</th><th>Nom de la page</th></tr></thead>
+      <tbody id="moves"></tbody>
+    </table>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2>Ce qui ne change pas</h2>
+      <ul>
+        <li>Les adresses des pages : un favori ou un lien continue de marcher.</li>
+        <li>Réglages › Onglets visibles : une page masquée disparaît de son entrée ; une entrée dont toutes les pages sont masquées disparaît.</li>
+        <li>L'écran de classe, l'éditeur de cours et le tableau, qui n'ont pas de menu.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>À trancher</h2>
+      <ul>
+        <li><b>A ou B ?</b> Proposé : A, moins de travail et rien à réapprendre dans les pages.</li>
+        <li><b>Analyses</b> sous Classes (proposé ici), ou sous Plus comme dans le premier jet du plan ?</li>
+        <li><b>Récompenses</b> sous Plus (proposé), ou reste-t-il visible en permanence ?</li>
+        <li><b>Téléphone :</b> Cours et Évals remplacent Séances et Élèves dans la barre du bas. D'accord ?</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Icônes du vrai menu (Layout.tsx) */
+const ICONS = {
+  home: '<path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z"/>',
+  courses: '<rect x="7" y="3" width="13" height="16" rx="2"/><path d="M4 7v12a2 2 0 002 2h10M11 8h5M11 12h5"/>',
+  classes: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/>',
+  students: '<circle cx="9" cy="8" r="3.5"/><path d="M2 21c.5-3.5 3.5-6 7-6s6.5 2.5 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M15 15c3-.5 6 1.5 7 5"/>',
+  sessions: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  analytics: '<path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/>',
+  star: '<path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5z"/>',
+  evaluations: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12l2.2 2.2 4.5-4.5"/>',
+  direct: '<circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"/>',
+  academy: '<path d="M4 21V9l4-2.5V4l4 2 4-2v2.5L20 9v12"/><path d="M4 21h16M10 21v-5h4v5"/>',
+  flask: '<path d="M9.5 3v6L4.8 17.4A2 2 0 006.55 20.5h10.9a2 2 0 001.75-3.1L14.5 9V3"/><path d="M8.5 3h7M7.2 14.5h9.6"/>',
+  book: '<path d="M4 4.5A1.5 1.5 0 015.5 3H19v16H5.5A1.5 1.5 0 004 20.5V4.5z"/><path d="M4 17.5h15"/>',
+  cloud: '<path d="M7 18h10.5a3.5 3.5 0 000-7 5 5 0 00-9.7-1.3A3.85 3.85 0 007 18z"/>',
+  wrench: '<path d="M15.5 3.5a5 5 0 00-6.1 6.4l-6 6a2 2 0 102.8 2.8l6-6a5 5 0 006.4-6.1l-3 3-2.8-.3-.3-2.8 3-3z"/>',
+  link: '<path d="M10 13.5a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1.4 1.4"/><path d="M14 10.5a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1.4-1.4"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+};
+const icon = (name, size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+
+/* Pages d'aujourd'hui : nom actuel, nom proposé dans son entrée, ce qu'elle contient */
+const PAGES = {
+  accueil: { now: 'Accueil', next: 'Accueil', icon: 'home', what: "L'emploi du temps de la semaine, les raccourcis, les cours repris récemment." },
+  cours: { now: 'Mes cours', next: 'Bibliothèque et classes', icon: 'courses', what: 'La bibliothèque des cours et la vue par classe.' },
+  tp: { now: 'Mes TP', next: 'Mes TP', icon: 'flask', what: 'Les modèles de TP de groupe.' },
+  annales: { now: 'Annales', next: 'Annales', icon: 'book', what: 'Les sujets de Brevet.' },
+  clouds: { now: 'Mes clouds', next: 'Mes clouds', icon: 'cloud', what: 'OneDrive et Google Drive, en lecture.' },
+  classes: { now: 'Classes', next: 'Classes et plans', icon: 'classes', what: 'Les classes, leurs élèves, les plans de classe.' },
+  eleves: { now: 'Suivi élèves', next: 'Suivi élèves', icon: 'students', what: 'Le suivi, élève par élève.' },
+  seances: { now: 'Séances', next: 'Séances', icon: 'sessions', what: "L'historique des séances." },
+  analyses: { now: 'Analyses', next: 'Analyses', icon: 'analytics', what: "Les statistiques d'implication." },
+  evaluations: { now: 'Évaluations', next: 'Carnet et fiches', icon: 'evaluations', what: 'Le carnet de notes, les fiches, les copies, les productions.' },
+  direct: { now: 'Activité en direct', next: 'Activité en direct', icon: 'direct', what: "Le suivi d'une activité numérique pendant le cours." },
+  recompenses: { now: 'Récompenses', next: 'Récompenses', icon: 'star', what: 'Les tampons et les cartes.' },
+  academie: { now: 'Académie', next: 'Académie', icon: 'academy', what: 'Les quatre maisons.' },
+  outils: { now: 'Outils', next: 'Outils', icon: 'wrench', what: 'La boîte à outils.' },
+  pronote: { now: 'Pronote', next: 'Pronote', icon: 'link', what: 'La connexion et les imports.' },
+};
+
+const TODAY = [
+  { section: null, pages: ['accueil', 'cours', 'classes', 'eleves', 'seances', 'analyses'] },
+  { section: 'Vie de classe', pages: ['recompenses', 'evaluations', 'direct', 'academie'] },
+  { section: 'Ressources', pages: ['tp', 'annales', 'clouds', 'outils', 'pronote'] },
+];
+
+const GROUPS = [
+  { id: 'accueil', label: 'Accueil', short: 'Accueil', icon: 'home', pages: ['accueil'] },
+  { id: 'cours', label: 'Mes cours', short: 'Cours', icon: 'courses', pages: ['cours', 'tp', 'annales', 'clouds'] },
+  { id: 'classes', label: 'Classes', short: 'Classes', icon: 'classes', pages: ['classes', 'eleves', 'seances', 'analyses'] },
+  { id: 'evals', label: 'Évaluations', short: 'Évals', icon: 'evaluations', pages: ['evaluations', 'direct'] },
+  { id: 'plus', label: 'Plus', short: 'Plus', icon: 'more', pages: ['recompenses', 'academie', 'outils', 'pronote'] },
+];
+const groupOf = (page) => GROUPS.find((g) => g.pages.includes(page));
+const PHONE_TODAY = ['accueil', 'classes', 'seances', 'eleves'];
+
+const state = { variant: 'fold', device: 'desktop', page: 'cours', sheet: false };
+
+const navItem = (page, label, extra = '') => `<button type="button" class="nav__item${state.page === page ? ' is-active' : ''}" data-page="${page}">${icon(PAGES[page].icon)}<span>${label}</span>${extra}</button>`;
+
+function sidebar() {
+  if (state.variant === 'today') {
+    return TODAY.map((s) => (s.section ? `<div class="nav__section">${s.section}</div>` : '') + s.pages.map((p) => navItem(p, PAGES[p].now)).join('')).join('');
+  }
+  return GROUPS.map((g) => {
+    const here = g.pages.includes(state.page);
+    if (g.pages.length === 1) return navItem(g.pages[0], g.label);
+    const open = here && state.variant === 'fold';
+    const cls = here && state.variant === 'tabs' ? ' is-active' : open ? ' is-open' : '';
+    const head = `<button type="button" class="nav__item${cls}" data-page="${g.pages[0]}">${icon(g.icon)}<span>${g.label}</span>${state.variant === 'fold' ? `<span class="nav__chev">${icon('chev', 13)}</span>` : ''}</button>`;
+    const sub = open ? `<div class="nav__sub">${g.pages.map((p) => `<button type="button" class="nav__item${state.page === p ? ' is-active' : ''}" data-page="${p}"><span>${PAGES[p].next}</span></button>`).join('')}</div>` : '';
+    return head + sub;
+  }).join('');
+}
+
+function pageBody(phone) {
+  const p = PAGES[state.page];
+  const g = groupOf(state.page);
+  const grouped = state.variant !== 'today';
+  const multi = grouped && g.pages.length > 1;
+  const title = grouped && multi && (state.variant === 'tabs' || phone) ? g.label : grouped ? p.next : p.now;
+  const crumb = grouped && multi && state.variant === 'fold' && !phone ? `<div class="main__crumb">${g.label}</div>` : '';
+  let tabs = '';
+  if (multi && phone) tabs = `<div class="chips" role="tablist">${g.pages.map((x) => `<button type="button" role="tab" aria-selected="${x === state.page}" data-page="${x}">${PAGES[x].next}</button>`).join('')}</div>`;
+  else if (multi && state.variant === 'tabs') tabs = `<div class="tabs" role="tablist">${g.pages.map((x) => `<button type="button" role="tab" aria-selected="${x === state.page}" data-page="${x}">${PAGES[x].next}</button>`).join('')}</div>`;
+  const was = `<span>Aujourd'hui : ${PAGES[state.page].now}</span>`;
+  const will = grouped ? `<span class="is-new">Demain : ${multi ? `${g.label} › ${p.next}` : g.label}</span>` : '';
+  return `${crumb}<h1 class="main__title">${title}</h1>${tabs}<div class="carton"><b>${grouped ? p.next : p.now}</b> — ${p.what}<br>La page elle-même ne change pas.</div><div class="path">${was}${will}</div>`;
+}
+
+function desktop() {
+  return `<div class="app"><aside class="side"><div class="side__brand"><span class="side__logo">GC</span>Gestion Classe</div><nav class="nav">${sidebar()}</nav></aside><main class="main">${pageBody(false)}</main></div>`;
+}
+
+function phone() {
+  const grouped = state.variant !== 'today';
+  const g = groupOf(state.page);
+  let bar;
+  let sheetItems;
+  if (grouped) {
+    bar = GROUPS.map((x) => `<button type="button" class="${x.id === g.id ? 'is-active' : ''}" ${x.id === 'plus' ? 'data-sheet="1"' : `data-page="${x.pages[0]}"`}>${icon(x.icon, 22)}<span>${x.short}</span></button>`).join('');
+    sheetItems = GROUPS.find((x) => x.id === 'plus').pages;
+  } else {
+    const inBar = PHONE_TODAY.includes(state.page);
+    bar = PHONE_TODAY.map((p) => `<button type="button" class="${state.page === p ? 'is-active' : ''}" data-page="${p}">${icon(PAGES[p].icon, 22)}<span>${p === 'eleves' ? 'Élèves' : PAGES[p].now}</span></button>`).join('')
+      + `<button type="button" class="${inBar ? '' : 'is-active'}" data-sheet="1">${icon('more', 22)}<span>Plus</span></button>`;
+    sheetItems = Object.keys(PAGES).filter((p) => !PHONE_TODAY.includes(p));
+  }
+  const sheet = state.sheet ? `<div class="sheet" data-close="1"><div class="sheet__panel"><div class="sheet__grip"></div>${sheetItems.map((p) => navItem(p, grouped ? PAGES[p].next : PAGES[p].now)).join('')}</div></div>` : '';
+  return `<div class="phone"><div class="phone__top"><span class="side__logo">GC</span>Gestion Classe</div><div class="phone__main">${pageBody(true)}</div><nav class="tabbar">${bar}</nav>${sheet}</div>`;
+}
+
+function count() {
+  if (state.device === 'phone') return state.variant === 'today' ? '5, puis 11 dans « Plus »' : '5, puis 4 dans « Plus »';
+  if (state.variant === 'today') return '15';
+  if (state.variant === 'tabs') return '5';
+  const g = groupOf(state.page);
+  return g.pages.length > 1 ? `5 + ${g.pages.length} dépliées` : '5';
+}
+
+function render() {
+  document.getElementById('stage').innerHTML = state.device === 'phone' ? phone() : desktop();
+  document.getElementById('count').textContent = count();
+  document.querySelectorAll('[data-variant]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.variant === state.variant)));
+  document.querySelectorAll('[data-device]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.device === state.device)));
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-variant], [data-device], [data-page], [data-sheet], [data-close]');
+  if (!el) return;
+  if (el.dataset.variant) { state.variant = el.dataset.variant; state.sheet = false; }
+  else if (el.dataset.device) { state.device = el.dataset.device; state.sheet = false; }
+  else if (el.dataset.page) { state.page = el.dataset.page; state.sheet = false; }
+  else if (el.dataset.sheet) state.sheet = true;
+  else if (el.dataset.close && e.target === el) state.sheet = false;
+  render();
+});
+
+document.getElementById('moves').innerHTML = TODAY.flatMap((s) => s.pages).map((p) => {
+  const g = groupOf(p);
+  const same = g.pages.length === 1;
+  const renamed = PAGES[p].now !== PAGES[p].next;
+  return `<tr><td>${PAGES[p].now}</td><td${same ? ' class="is-same"' : ''}>${same ? 'inchangé' : g.label}</td><td${renamed ? '' : ' class="is-same"'}>${renamed ? PAGES[p].next : 'même nom'}</td></tr>`;
+}).join('');
+
+render();
+</script>
+</body>
+</html>
