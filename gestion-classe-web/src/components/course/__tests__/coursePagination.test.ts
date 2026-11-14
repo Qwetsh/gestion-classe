@@ -79,4 +79,33 @@ describe('répartition en pages', () => {
     expect(l.pages).toBe(2);
     expect(l.spacers).toEqual([{ pos: 20, h: STRIDE - 21 }]);
   });
+
+  it('tableau coupé : ligne fantôme, puis la ligne suivante sous l’en-tête répété', () => {
+    const row = { cols: 3, headPos: 1, headH: 30 };
+    const units: Unit[] = [
+      { pos: 0, top: 0, h: 60, mt: 4, mb: 12, type: 'tableRow' },
+      ...Array.from({ length: 39 }, (_, i) => ({ pos: 100 + i * 10, top: 60 + i * 28, h: 28, mt: 0, mb: 0, type: 'tableRow', row })),
+    ];
+    units[units.length - 1].mb = 12;
+    const l = paginate(units, SHEET_GAP);
+    const s = l.spacers[0];
+    expect(s.row).toEqual(row);
+    expect(s.cut).toBeDefined();
+    const idx = units.findIndex((u) => u.pos === s.pos);
+    const prev = units[idx - 1];
+    expect(prev.top + prev.h).toBeLessThanOrEqual(CONTENT_H);
+    expect(prev.top + prev.h + s.h).toBeCloseTo(STRIDE, 5);
+    expect(l.pages).toBe(2);
+  });
+
+  it('la place de l’en-tête répété est comptée : moins de lignes de données sur la page suivante', () => {
+    const make = (row: Unit['row']): Unit[] => [
+      { pos: 0, top: 0, h: 60, mt: 0, mb: 0, type: 'tableRow' },
+      ...Array.from({ length: 79 }, (_, i) => ({ pos: 100 + i * 10, top: 60 + i * 28, h: 28, mt: 0, mb: 0, type: 'tableRow', row })),
+    ];
+    const withHead = paginate(make({ cols: 3, headPos: 1, headH: 56 }), SHEET_GAP);
+    const without = paginate(make({ cols: 3, headPos: null, headH: 0 }), SHEET_GAP);
+    expect(withHead.spacers[0].pos).toBe(without.spacers[0].pos);
+    expect(withHead.spacers[1].pos).toBe(without.spacers[1].pos - 20);
+  });
 });

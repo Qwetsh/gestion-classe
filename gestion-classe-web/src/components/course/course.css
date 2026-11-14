@@ -134,6 +134,24 @@ body.ce-open { overflow: hidden; }
 .ce-spacer--cut::before { content: ''; position: absolute; top: 0; bottom: 0; left: -64px; right: -24px; background: linear-gradient(to bottom, #fff 0 var(--cut-a), var(--ce-desk, #E7E9EE) var(--cut-a) var(--cut-b), #fff var(--cut-b)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 /* Encadré « À retenir » (cadre complet) : on referme le cadre au bas de la page et on le rouvre en haut de la suivante */
 .ce-doc .ce-callout[data-callout="retenir"] > .ce-spacer--cut::before { left: -16px; right: -16px; border-top: 2px solid var(--ce-ret-line, #F59E0B); border-bottom: 2px solid var(--ce-ret-line, #F59E0B); }
+/* Lot T15b : tableau coupé entre deux lignes. Ligne fantôme sans bordure (même bandes que
+   l'encadré), puis copie non éditable de la ligne d'en-tête. */
+.ce-doc tr.ce-spacer--row { display: table-row; }
+.ce-doc tr.ce-spacer--row > td { padding: 0 !important; border: none !important; outline: none !important; min-width: 0; background: linear-gradient(to bottom, #fff 0 var(--cut-a), var(--ce-desk, #E7E9EE) var(--cut-a) var(--cut-b), #fff var(--cut-b)) !important; }
+.ce-doc tr.ce-spacer--row.ce-spacer--box > td::before { content: ''; position: absolute; top: 0; bottom: 0; left: -64px; right: -24px; background: inherit; }
+/* Le débord doit sortir de l'enveloppe du tableau (qui rogne : défilement horizontal) */
+.ce-doc .tableWrapper:has(.ce-spacer--box) { overflow-x: visible; }
+.ce-doc tr.ce-spacer-head { pointer-events: none; user-select: none; }
+/* « Cadre » : le contour du tableau entier traverserait l'espace entre les feuilles ; une fois
+   coupé, le cadre est dessiné par les cellules, refermé et rouvert à la coupure */
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) table { outline: none; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr > :first-child { border-left-color: #475569; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr > :last-child { border-right-color: #475569; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:first-child > *,
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr.ce-spacer--row + tr > *,
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr.ce-spacer--row + tr.ce-spacer-head > * { border-top-color: #475569; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:last-child > *,
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:has(+ tr.ce-spacer--row) > * { border-bottom-color: #475569; }
 
 /* ---------- Le texte du cours ---------- */
 .ce-doc { display: flow-root; outline: none; font: 16px/1.45 var(--ce-doc-font); color: #111827; caret-color: #111827; word-wrap: break-word; }
@@ -196,7 +214,7 @@ body.ce-open { overflow: hidden; }
 .ce-doc .tableWrapper[data-tstyle="lines"] th, .ce-doc .tableWrapper[data-tstyle="lines"] td { border-left-color: transparent; border-right-color: transparent; }
 .ce-doc .tableWrapper[data-tstyle="lines"] th { background: transparent; border-bottom: 2px solid #475569; }
 .ce-doc .tableWrapper[data-tstyle="zebra"] th, .ce-doc .tableWrapper[data-tstyle="zebra"] td { border-color: #CBD5E1; }
-.ce-doc .tableWrapper[data-tstyle="zebra"] tr:nth-child(even) > td { background: #F1F5F9; }
+.ce-doc .tableWrapper[data-tstyle="zebra"] tr:nth-child(even of :not(.ce-spacer, .ce-spacer-head)) > td { background: #F1F5F9; }
 .ce-doc .tableWrapper[data-tstyle="header"] th { background: #4F46E5; color: #fff; border-color: #4F46E5; }
 .ce-doc .tableWrapper[data-tstyle="none"] th, .ce-doc .tableWrapper[data-tstyle="none"] td { border-color: transparent; }
 .ce-doc .tableWrapper[data-tstyle="none"] th { background: transparent; }
@@ -684,6 +702,8 @@ body.ce-presenting { overflow: hidden; }
 /* Pas de pages en classe : un trait discret à la place de l'espace entre deux feuilles */
 .ce-pres .ce-spacer { height: 0 !important; border-top: 1px dashed #CBD5E1; margin: 10px 0 !important; }
 .ce-pres .ce-spacer--cut::before { display: none; }
+.ce-pres tr.ce-spacer--row > td { height: 0 !important; background: none !important; }
+.ce-pres tr.ce-spacer-head { display: none; }
 .ce-pres .ce-doc { caret-color: transparent; }
 .ce-pres .ce-encart__edit, .ce-pres .ce-encart__label { display: none !important; }
 .ce-pres__band { position: absolute; border: 3px solid var(--ce-accent); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(15,23,42,.12); pointer-events: none; }
