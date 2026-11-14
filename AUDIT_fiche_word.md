@@ -79,8 +79,8 @@ La colonne « Après » indique le lot de ce chantier qui comble l'écart.
 
 | # | Écart | Effet visible | Piste |
 |---|---|---|---|
-| 1 | **Marges fixes de 2,5 cm**, contre 1,5 cm et 2 cm dans Word (décision du 13/11/2026, T9b abandonné) | La fiche Microbiote (370 mots) passe sur **deux pages** : l'encadré « J'ai réussi » (209 px) ne tient pas dans les 134 px restants. Il manque environ 2,4 cm | Rouvrir T9b sous une forme réduite : un réglage « marges étroites » (1,5 / 2 cm) par cours. C'est à Thomas de décider |
-| 2 | Colonne de 16 cm au lieu de 17,7 cm | Le cartouche est plus serré, les cellules étroites passent à la ligne (« (questions 2 et 3) ») | Suit le n° 1 |
+| 1 | **Marges fixes de 2,5 cm**, contre 1,5 cm et 2 cm dans Word | La fiche Microbiote (370 mots) passe sur **deux pages** : l'encadré « J'ai réussi » (209 px) ne tient pas dans les 134 px restants. Il manque environ 2,4 cm | **Décision maintenue (Thomas, 14/11/2026)** : la projection en classe (bande de la largeur de colonne, PR #71) exige la colonne de 16 cm ; le lot Q4 « marges étroites » (PR #70) est fermé. Pour tenir sur une page : texte du cours en 10 ou 10,5 pt (Mise en page › Texte du cours), interligne 1,0 et espacements serrés, ou fiche de 300 mots environ au plus |
+| 2 | Colonne de 16 cm au lieu de 17,7 cm | Le cartouche est plus serré, les cellules étroites passent à la ligne (« (questions 2 et 3) ») | Conséquence du n° 1, acceptée |
 | 3 | Un encadré ou une ligne de tableau ne se coupe pas entre deux pages | Un grand blanc en bas de page quand un encadré passe à la page suivante | T15 (pagination fine), prévu après le lot 4 |
 | 4 | Taille des titres fixe (Titre 2 : 21 px, Word : 13 pt) | « Questions » un peu plus grand que dans Word | Une taille de titres par thème, si Thomas le juge utile |
 | 5 | Images : Claude ne peut pas envoyer de fichier dans le stockage | Les documents (photos, schémas) sont à insérer à la main avec le bouton Image | Hors de portée du connecteur ; un emplacement « [Image : …] » est laissé à la place |
