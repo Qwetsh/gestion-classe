@@ -305,3 +305,20 @@ tableau de la séance est un cours, encre de séance enregistrée dans la séanc
 - Vérifié : côté web, avec un canal simulé (Suivant ×2, Précédent, vue d'ensemble, Suivant qui en
   sort, autres commandes ignorées) ; côté mobile, compilation TypeScript. **Non vérifié** : le
   téléphone réel (APK pas encore construit).
+
+### Lot 4d — « En classe » depuis le calendrier, fait le 14/11/2026 (branche `feat/cours-calendrier`)
+
+- Détail d'un cours de l'emploi du temps (`LessonPopover.tsx`) : quand le tableau préparé du cours
+  est un **cours rédigé**, un lien **« ▶ En classe »** ouvre directement la présentation (mode
+  test : pastille TEST, encre effacée en quittant, Échap revient à l'accueil). Disponible aussi
+  pour un cours passé (revoir ce qui a été projeté) ; Copier / Supprimer restent réservés aux cours
+  à venir.
+- Le type est lu avec la liste des tableaux de la semaine (`lesson_boards` → `boards.doc->version`,
+  champ `isCourse`), sans requête de plus à l'ouverture du détail.
+- `openBoard({ …, present: true })` → `OpenPreparedBoard` (`present`) charge le cours et ouvre
+  `CoursePresenter` au lieu de l'éditeur.
+- Le jour J ne change pas : « Lancer la séance » ouvre `/classe` et le cours s'affiche quand le
+  téléphone démarre la séance (4b), qui le fait avancer (4c) ; l'infobulle le dit pour un cours.
+- Vérifié dans le navigateur : cours de test créé sur un créneau de la semaine suivante, lien
+  affiché, présentation ouverte en mode test, Échap, puis cours supprimé (base vérifiée vide).
+  Reste du lot 4 : 4e (dessiner dans un encart en classe sans toucher au cours préparé).
