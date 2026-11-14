@@ -20,7 +20,7 @@ import { createPortal } from 'react-dom';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { courseExtensions } from './courseExtensions';
 import { CourseLayer } from './CourseLayer';
-import { themeStyle } from './courseThemes';
+import { flowStyle } from './courseThemes';
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import type { LayerItem } from '../../lib/course/courseLayer';
 import { COL_W, MARGIN, PAGE_W } from '../../lib/course/coursePage';
@@ -248,7 +248,7 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
         <div
           ref={flowRef}
           className="ce-flow"
-          style={{ left: MARGIN, top: TOP_PAD, width: COL_W, ...themeStyle(settings.theme) }}
+          style={{ left: MARGIN, top: TOP_PAD, width: COL_W, ...flowStyle(settings) }}
           data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined}
           data-hyphens={settings.hyphens ? '' : undefined}
           data-caption={settings.captionLabel ?? 'document'}
