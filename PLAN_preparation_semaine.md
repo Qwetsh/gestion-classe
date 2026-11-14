@@ -108,7 +108,7 @@ Chaque étape est livrable seule. Une PR par lot de code ; une migration n'est a
 
 **But :** juger sur pièce avant de construire.
 
-**Prérequis :** les PR #66, #67 et #68 fusionnées (la skill `cours-gestion-classe`).
+**Prérequis :** la skill `cours-gestion-classe` (PR #66, #67 et #68, fusionnées le 14/11/2026).
 
 **Contenu :**
 
@@ -228,7 +228,6 @@ stylet, révélation de la réponse, et que tout se retrouve dans la séance.
 | 4 | La séance doit être démarrée par le téléphone | Sans téléphone, rien n'est gardé | Connu, accepté pour l'instant |
 | 5 | Le libellé d'un cours peut changer dans l'emploi du temps (Pronote) | Un document placé ne retrouverait plus son cours | À observer à l'étape 2 |
 | 6 | Conversion d'un `.docx` sans script : mise en page complexe (colonnes, zones de texte) | Claude reconstruit à la main, plus lent | Étape 2 ; les cas rebelles sont signalés dans le compte rendu |
-| 7 | Les PR #66 à #68 ne sont pas fusionnées | Rien ne démarre | Thomas : « Oui, fusionne » |
 
 ## 7. Questions ouvertes
 
@@ -242,7 +241,7 @@ stylet, révélation de la réponse, et que tout se retrouve dans la séance.
 
 | Étape | État |
 |---|---|
-| 0 — Essai réel | À faire : attend la fusion des PR #66 à #68, puis le choix d'une activité et d'une classe |
+| 0 — Essai réel | À faire : attend le choix d'une activité et d'une classe (PR #66 à #68 fusionnées le 14/11/2026) |
 | 1 — Images | À faire |
 | 2 — Skill « prépare ma semaine » | À faire |
 | 3 — Correction animée | À faire ; dépend du lot 5 de l'éditeur |
