@@ -22,9 +22,10 @@ import { CAPTION_LABELS, HEADING_NUMBERING_LABELS, type CaptionLabel, type Cours
 import { COLUMNS_LAYOUTS, findColumns, type ColumnsLayout } from './courseColumns';
 import { PAGE_NUMBER_PRESETS, footerOf, pageNumberPreset } from './courseHeaderFooter';
 import { COURSE_THEMES, DOC_FONT_SIZES_PT, defaultThemeId, docFontSizePt, setDefaultThemeId, themeById, type CourseThemeId } from './courseThemes';
+import { DRAW_COLORS, type DrawStyle, type DrawTool } from './courseDraw';
 import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, IMAGE_FRAMES, flipCrop, rotateCrop, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
-export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'revision' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
+export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'revision' | 'affichage' | 'dessin' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
 
 interface Props {
   editor: Editor;
@@ -68,6 +69,19 @@ interface Props {
   onSpellNext: () => void;
   onSpellLive: () => void;
   onSpellHide: () => void;
+  /** Mode Tableau (lot 3) : calque d'annotations. */
+  mode: 'texte' | 'tableau';
+  onMode: (m: 'texte' | 'tableau') => void;
+  drawStyle: DrawStyle;
+  onDrawStyle: (patch: Partial<DrawStyle>) => void;
+  layerCanUndo: boolean;
+  layerCanRedo: boolean;
+  onLayerUndo: () => void;
+  onLayerRedo: () => void;
+  layerHasSelection: boolean;
+  layerCount: number;
+  onLayerDelete: () => void;
+  onLayerClear: () => void;
 }
 
 const LIST_TYPES: { label: string; value: string | null }[] = [
@@ -151,7 +165,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onSoon, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -223,7 +237,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
 
   // Onglets contextuels (image, encart, zone) : on y bascule quand ils apparaissent ; quand ils
   // disparaissent, on revient à l'onglet d'où l'on venait. Calculé au rendu (pas d'effet).
-  const ctx: RibbonTab | null = s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : s.onDots ? 'dots' : s.onPoints ? 'points' : null;
+  const ctx: RibbonTab | null = mode === 'tableau' ? 'dessin' : s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : s.onDots ? 'dots' : s.onPoints ? 'points' : null;
   if (view.ctx !== ctx) {
     const back: RibbonTab = view.ctx === 'image' ? 'accueil' : 'insertion';
     setView({ tab: ctx ?? (view.tab === view.ctx ? back : view.tab), ctx });
@@ -329,6 +343,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     { id: 'miseenpage', label: 'Mise en page' },
     { id: 'revision', label: 'Révision' },
     { id: 'affichage', label: 'Affichage' },
+    ...(mode === 'tableau' ? [{ id: 'dessin' as const, label: 'Dessin', contextual: true }] : []),
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
     ...(s.inColumns ? [{ id: 'colonnes' as const, label: 'Colonnes', contextual: true }] : []),
     ...(s.onImage ? [{ id: 'image' as const, label: 'Image', contextual: true }] : []),
@@ -667,11 +682,64 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
           </>
         )}
 
+        {tab === 'dessin' && (
+          <>
+            <Group label="Outils">
+              {([
+                ['select', 'select', 'Sélection', 'Choisir, déplacer (Suppr pour retirer) ; double-clic sur un texte pour le modifier'],
+                ['pen', 'pen', 'Stylo', 'Écrire ou dessiner à main levée'],
+                ['highlighter', 'highlighter', 'Surligneur', 'Surligner par-dessus le texte'],
+                ['eraser', 'eraser', 'Gomme', 'Effacer une annotation en passant dessus'],
+              ] as [DrawTool, IconName, string, string][]).map(([t, ic, l, title]) => (
+                <Big key={t} icon={ic} label={l} title={title} on={drawStyle.tool === t} onClick={() => onDrawStyle({ tool: t })} />
+              ))}
+            </Group>
+            <Group label="Formes">
+              <div className="ce-stack">
+                <Sm icon="drawLine" label="Trait" title="Trait droit" on={drawStyle.tool === 'line'} onClick={() => onDrawStyle({ tool: 'line' })} />
+                <Sm icon="drawArrow" label="Flèche" title="Flèche (vers un mot, un schéma…)" on={drawStyle.tool === 'arrow'} onClick={() => onDrawStyle({ tool: 'arrow' })} />
+                <Sm icon="drawText" label="Texte" title="Étiquette de texte posée sur le cours" on={drawStyle.tool === 'text'} onClick={() => onDrawStyle({ tool: 'text' })} />
+              </div>
+              <div className="ce-stack">
+                <Sm icon="drawRect" label="Rectangle" title="Encadrer" on={drawStyle.tool === 'rect'} onClick={() => onDrawStyle({ tool: 'rect' })} />
+                <Sm icon="drawEllipse" label="Ellipse" title="Entourer" on={drawStyle.tool === 'ellipse'} onClick={() => onDrawStyle({ tool: 'ellipse' })} />
+              </div>
+            </Group>
+            <Group label="Couleur · épaisseur">
+              <div className="ce-stack">
+                <div className="ce-row">
+                  {DRAW_COLORS.map((c) => (
+                    <button key={c} type="button" className={`ce-swatch ${drawStyle.color === c ? 'is-on' : ''}`} style={{ background: c }} title={c} aria-label={`Couleur ${c}`} onClick={() => onDrawStyle({ color: c })} />
+                  ))}
+                </div>
+                <div className="ce-row">
+                  {(['S', 'M', 'L'] as const).map((sz) => (
+                    <Sm key={sz} title={sz === 'S' ? 'Fin' : sz === 'M' ? 'Moyen' : 'Épais'} on={drawStyle.size === sz} onClick={() => onDrawStyle({ size: sz })}>
+                      <span className="ce-thick" style={{ height: sz === 'S' ? 2 : sz === 'M' ? 4 : 7 }} />
+                    </Sm>
+                  ))}
+                </div>
+              </div>
+            </Group>
+            <Group label="Calque">
+              <div className="ce-stack">
+                <Sm icon="undo" label="Annuler" title="Annuler la dernière annotation (Ctrl+Z)" disabled={!layerCanUndo} onClick={onLayerUndo} />
+                <Sm icon="redo" label="Rétablir" title="Rétablir (Ctrl+Y)" disabled={!layerCanRedo} onClick={onLayerRedo} />
+              </div>
+              <div className="ce-stack">
+                <Sm icon="trash" label="Supprimer" title="Retirer l'annotation sélectionnée (Suppr)" disabled={!layerHasSelection} onClick={onLayerDelete} />
+                <Sm icon="clearPage" label="Tout effacer" title="Retirer toutes les annotations du cours" disabled={layerCount === 0} onClick={onLayerClear} />
+              </div>
+              <Big icon="doc" label="Retour au texte" title="Revenir à la rédaction (le calque reste visible)" onClick={() => onMode('texte')} />
+            </Group>
+          </>
+        )}
+
         {tab === 'affichage' && (
           <>
             <Group label="Mode">
-              <Big icon="doc" label="Texte" on onClick={() => undefined} />
-              <Big icon="board" label="Tableau" title="Bientôt : dessiner par-dessus le cours" onClick={() => onSoon('Le mode Tableau arrive à l’étape 3.')} />
+              <Big icon="doc" label="Texte" on={mode === 'texte'} onClick={() => onMode('texte')} />
+              <Big icon="board" label="Tableau" title="Dessiner par-dessus le cours : flèches, entourages, annotations" on={mode === 'tableau'} onClick={() => onMode('tableau')} />
               <Big icon="play" label="En classe" title="Bientôt : le cours projeté en classe" onClick={() => onSoon('Le mode En classe arrive à l’étape 4.')} />
             </Group>
             <Group label="Zoom">
