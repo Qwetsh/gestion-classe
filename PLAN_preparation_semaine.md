@@ -223,10 +223,26 @@ d'« En classe ». Le modèle est celui de Genially : un éditeur, une présenta
 - **Lot 1, fait** : « Écrans » devient « Tableau » ; l'ancien mode « Tableau » (calque dessiné sur
   la feuille) n'est plus un mode mais l'outil Stylet du mode Texte. Aucun cours ne portait de
   dessin sur ce calque : rien n'est perdu, et le calque d'un cours qui en aurait reste lu.
-- **Lot 2, à faire** : « En classe » devient une vraie présentation. Règle proposée, à confirmer
-  par Thomas : on peut écrire, gommer, pointer au laser, révéler, jouer les actions, changer de
-  page et ajouter une page blanche ; on ne peut ni déplacer ni supprimer les objets préparés.
-  L'encre de la séance reste rangée dans la séance.
+- **Lot 2, fait** : « En classe » est une présentation. Règle validée par Thomas :
+
+  | En classe | |
+  |---|---|
+  | Permis | Écrire, gommer, pointer au laser, tirer un rideau, révéler un trou, jouer une action, changer de page, ajouter une page blanche |
+  | Bloqué | Déplacer, modifier ou supprimer ce qui a été préparé |
+  | À l'ouverture | Rideaux fermés, trous cachés, objets cachés absents |
+  | Encre et ajouts de la séance | Rangés dans la séance ; ce qu'on ajoute en classe reste déplaçable |
+  | « Effacer la page » | Retire l'encre et les ajouts de la séance ; le préparé reste |
+
+  Comment : en classe, le tableau est toujours « en lecture », quel que soit l'outil (avant, il
+  fallait l'outil Stylo pour qu'un bouton se joue ou qu'un rideau s'ouvre au toucher). Les objets
+  préparés sont verrouillés au moment où les pages sont copiées pour la classe (séance ou essai) :
+  c'est le verrou ordinaire de l'application, que Thomas peut lever sur un objet (Accueil ›
+  Disposition › Verrouiller). Hors de la classe, rien ne change : l'éditeur montre les ficelles
+  avec l'outil Sélection.
+
+  Limites connues : le ruban garde en classe ses commandes de préparation (insérer, rideau, fond) ;
+  un tableau rouvert après la séance garde ses objets
+  verrouillés (tout sélectionner, puis déverrouiller).
 
 Dans le code et la skill, ces pages gardent leur nom d'origine : `doc.screens`, « écrans »,
 `gc_envoi.py ecrans`. Seuls les libellés de l'application changent.
@@ -373,7 +389,8 @@ Hors étapes, le 14/11/2026 :
 
 - **Trait décalé, onglet « Texte », pastille** (PR #89) : le tableau sort de la page agrandie des
   grands écrans ; la mise en forme du texte passe dans le ruban ; la pastille prend son habillage.
-- **Trois modes** (voir « Les trois modes d'un cours », § 5) : lot 1 fait, lot 2 à faire.
+- **Trois modes** (voir « Les trois modes d'un cours », § 5) : lots 1 et 2 faits (PR #90 et #91) ;
+  à essayer en vraie séance.
 
 Révision du 14/11/2026 (soir) : l'ancienne étape 3, « la correction animée », disparaît. Elle
 dépendait d'animations à construire dans l'éditeur de cours ; les écrans s'appuient sur les

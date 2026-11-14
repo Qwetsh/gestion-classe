@@ -77,6 +77,7 @@ import { BoardPopover } from './BoardPopover';
 import { BoardMoreMenu, type MoreSection } from './BoardMoreMenu';
 import { BoardFloatingToolbar } from './BoardFloatingToolbar';
 import { BoardRibbonText } from './BoardRibbonText';
+import { lockPreparedPages } from '../../lib/boardPresent';
 import { BoardObjectToolbar } from './BoardObjectToolbar';
 import { BoardPickOverlay, type PickableStudent } from './BoardPickOverlay';
 import { BoardCameraOverlay } from './BoardCameraOverlay';
@@ -1107,16 +1108,20 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const p = pagesRef.current[pageIndexRef.current];
     if (!p) return;
     const objects = p.objects ?? [];
-    if (p.strokes.length === 0 && objects.length === 0) return;
-    if (objects.length > 0) pushOp(p.id, { type: 'objects', before: objects, after: [] });
+    // En classe, effacer la page retire ce qu'on y a écrit et ajouté : ce qui a été préparé
+    // (verrouillé à la copie, lib/boardPresent) reste.
+    const kept = inClass ? objects.filter((o) => o.locked) : [];
+    const removed = objects.length - kept.length;
+    if (p.strokes.length === 0 && removed === 0) return;
+    if (removed > 0) pushOp(p.id, { type: 'objects', before: objects, after: kept });
     if (p.strokes.length > 0) pushOp(p.id, { type: 'clear', strokes: p.strokes });
     setEditingId(null);
     setSelectedIds(new Set());
-    updatePage(p.id, (pg) => ({ ...pg, strokes: [], objects: [] }));
+    updatePage(p.id, (pg) => ({ ...pg, strokes: [], objects: kept }));
     // Deux opérations ont pu être empilées (objets puis encre) : on les dépile toutes les deux.
-    const steps = (objects.length > 0 ? 1 : 0) + (p.strokes.length > 0 ? 1 : 0);
-    offerUndo('Page effacée.', () => { for (let i = 0; i < steps; i += 1) applyUndo(); });
-  }, [pushOp, updatePage, offerUndo, applyUndo]);
+    const steps = (removed > 0 ? 1 : 0) + (p.strokes.length > 0 ? 1 : 0);
+    offerUndo(kept.length > 0 ? 'Page effacée — ce qui était préparé est resté.' : 'Page effacée.', () => { for (let i = 0; i < steps; i += 1) applyUndo(); });
+  }, [pushOp, updatePage, offerUndo, applyUndo, inClass]);
 
   const setBackground = useCallback((bg: Background) => {
     const p = pagesRef.current[pageIndexRef.current];
@@ -1493,8 +1498,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setLibraryDialog(null);
     setImporting({ done: 0, total: 1, label: `Ouverture de « ${board.title} »…` });
     try {
-      const copied = normalizePages(await copyBoardPages(board.id, board.pageIds));
-      if (copied.length === 0) { window.alert('Ce tableau préparé est vide.'); return; }
+      const fetched = normalizePages(await copyBoardPages(board.id, board.pageIds));
+      if (fetched.length === 0) { window.alert('Ce tableau préparé est vide.'); return; }
+      // En classe, ce qui a été préparé ne bouge pas : verrouillé à la copie (lib/boardPresent)
+      const copied = inClass ? lockPreparedPages(fetched) : fetched;
       const current = pagesRef.current;
       if (!hasInk(current)) {
         setPages(copied);
@@ -1511,7 +1518,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     } finally {
       setImporting(null);
     }
-  }, [isSessionBoard, sessionId, userId]);
+  }, [isSessionBoard, sessionId, userId, inClass]);
 
   // Tableau du cours à verser dans la séance (posé par le chargement initial)
   const [pendingSeed, setPendingSeed] = useState<NonNullable<WhiteboardProps['seedBoard']> | null>(null);
@@ -1857,13 +1864,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12 || performance.now() - d.t > 400) return;
       const el = e.target as HTMLElement | null;
       if (el?.closest?.('[data-obj].is-playable, [data-obj].is-extractor, button, .wbib, .wbm, .wbpal, .wbr, .wbx, .wbft, .wb__bar, .wbrail, [role="dialog"]')) return;
-      if (!(displayMode || !OBJECT_TOOLS.includes(toolRef.current))) return;
+      if (!(displayMode || inClass || !OBJECT_TOOLS.includes(toolRef.current))) return;
       returnFromZoom();
     };
     window.addEventListener('pointerdown', onDown, true);
     window.addEventListener('pointerup', onUp, true);
     return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('pointerup', onUp, true); };
-  }, [zoomedByButton, displayMode, returnFromZoom]);
+  }, [zoomedByButton, displayMode, inClass, returnFromZoom]);
 
   /** Navigation unique : index borné aux pages existantes. */
   const goToPage = useCallback((i: number) => {
@@ -3339,7 +3346,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [interactionsFor, interactionTrigger]);
   // Flèches d'interaction : visibles seulement quand le bouton est sélectionné seul (édition) ;
   // en mode liaison, la flèche du bouton au pointeur s'y ajoute
-  const selectedTrigger = !displayMode && OBJECT_TOOLS.includes(tool) && selectedIds.size === 1 ? pageObjects.find((o) => selectedIds.has(o.id) && (o.interactions?.length ?? 0) > 0) ?? null : null;
+  const selectedTrigger = !displayMode && !inClass && OBJECT_TOOLS.includes(tool) && selectedIds.size === 1 ? pageObjects.find((o) => selectedIds.has(o.id) && (o.interactions?.length ?? 0) > 0) ?? null : null;
   const ghostLinks: GhostLink[] = [
     ...(selectedTrigger ? (selectedTrigger.interactions ?? []).flatMap((it, index) => (it.targetId && pageObjects.some((o) => o.id === it.targetId) ? [{
       key: `link:${selectedTrigger.id}:${index}`,
@@ -3662,7 +3669,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           students={classroom ? classroom.students.filter((st) => !st.absent).map((st) => st.pseudo.split(' ')[0] || st.pseudo) : undefined}
           spellCheck={spellCheck && !displayMode}
           onSpellStatus={setSpellStatus}
-          play={displayMode || !OBJECT_TOOLS.includes(tool)}
+          // En classe, le tableau se présente : quel que soit l'outil, les objets cachés n'y sont pas,
+          // les boutons se jouent, les rideaux et les trous se découvrent au toucher.
+          play={displayMode || !!inClass || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
           onEditWindow={(id) => setWindowEdit(id)}
           commands={commands}
