@@ -158,7 +158,7 @@ de la séance, et sort en PDF.
 | C1 — Page et bibliothèque | **Fait** le 14/11/2026 (branche `feat/mes-cours`, worktree `gc-worktrees/mes-cours`), pas encore commité |
 | C2 — Recherche | **Codé** le 14/11/2026 (branche `feat/mes-cours-recherche`), pas commité ; migration 076 appliquée en prod le 14/11/2026 |
 | C3 — Provenance et placement | **Codé** le 14/11/2026 (branche `feat/mes-cours-provenance`), pas commité ; migration 077 (sans clé étrangère) et rattrapage appliqués en prod le 14/11/2026 |
-| C4 — Par classe et fins de séance | À faire |
+| C4 — Par classe et fins de séance | **Codé** le 14/11/2026 (branche `feat/mes-cours-par-classe`), pas commité ; la partie « passé » reste à voir après une vraie séance |
 | N1 — Ménage du menu | À faire |
 | N2 / N3 — Menu regroupé | À faire |
 | R1 — Recherche globale | À faire |
@@ -253,4 +253,35 @@ de la séance, et sort en PDF.
   mobile ne lit pas cette table.
 - **Conséquence** : la colonne peut désigner un original supprimé. Sans effet aujourd'hui (une
   pastille ne s'affiche que sur un original présent) ; à garder en tête pour le lot C4.
+
+### Lot C4 — vue par classe et fins de séance, codé le 14/11/2026 (branche `feat/mes-cours-par-classe`, empilée sur C3)
+
+- **Deux vues** en tête de page : « Bibliothèque » et « Par classe » (`?vue=classes&classe=…`). La
+  vue reste la même sous l'éditeur, et le bouton Précédent y revient.
+- **Par classe** (`components/courses/ClassCourses.tsx`) : onglets des classes qui portent un
+  document (et « Sans classe » s'il en reste), puis « À venir » (du plus proche au plus lointain) et
+  « Passé » (du plus récent au plus ancien). Une ligne : date, demi-groupe, titre (ouvre la copie
+  de la classe), essai en classe.
+- **Lecture directe de `lesson_boards`** (`fetchPlacedDocuments`), sans passer par l'emploi du temps :
+  un document dont le créneau a disparu reste trouvable. Une seule lecture sert aux pastilles de la
+  bibliothèque et à cette vue.
+- **Fin de séance** : un cours qu'une séance a joué (table `session_boards`) porte un bouton « Fin de
+  séance » qui déplie, sous la ligne, la galerie existante (`BoardPagesGallery`) : pages annotées,
+  agrandissement, export PDF. Un cours du jour passe dans « Passé » dès qu'une séance l'a joué.
+- **« Voir les autres classes »** (`?activite=<original>`), dans le menu « ⋯ » d'une copie placée dans
+  plusieurs classes : la même activité, une ligne par classe avec sa pastille.
+- **Vérifié** : `tsc -b`, lint des fichiers touchés, 519 tests (dont le rangement à venir / passé et
+  le choix de la séance). Dans le navigateur, avec les 10 documents réels : onglets 4A, 4B, 4C, 4D,
+  5D ; les deux documents de la 4A ; les trois de la 4B, dont « 4B · lun. 16 nov. » sans menu (pas
+  d'original) ; « Voir les autres classes » (4 lignes avec pastilles) ; Précédent ; essai en classe
+  depuis la vue, puis retour sur la même classe.
+- **Non vérifié, faute de données** : aucune séance n'est encore reliée à un document dans la base
+  (0 ligne dans `session_boards`), et aucun document n'est passé. La section « Passé », le bouton
+  « Fin de séance », la galerie dépliée et l'export PDF depuis cette vue restent à voir après les
+  cours du 16 au 25/11.
+- **Limite (risque 4 du § 6, confirmé)** : la galerie montre les pages de tableau de la séance. Un
+  cours projeté en bande, sans pages projetées, ne laisse que de l'encre rangée à part
+  (`session_boards.course_ink`) : elle n'apparaît pas ici, la galerie dit alors qu'aucune page n'a
+  été laissée.
+- **Limite** : au-delà de 1 000 documents placés, seuls les plus récents sont lus.
 

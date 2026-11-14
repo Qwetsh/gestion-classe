@@ -13,6 +13,8 @@ interface BoardPagesGalleryProps {
   exportName: string;
   /** Rouvrir le tableau de la séance dans l'éditeur (corriger, compléter, enregistrer dans Mes cours). */
   onOpenEditor?: () => void;
+  /** Phrase affichée quand la séance n'a laissé aucune page ; sans elle, rien ne s'affiche. */
+  emptyText?: string;
 }
 
 // Les pages sont dessinées sur un écran 16:9 (ou allongées) ; on garde leur format à la relecture.
@@ -36,7 +38,7 @@ function PageCanvas({ page, width, className }: { page: BoardPage; width: number
   return <canvas ref={ref} width={width} height={height} className={className} style={{ width: '100%', height: 'auto', display: 'block' }} />;
 }
 
-export function BoardPagesGallery({ sessionId, exportName, onOpenEditor }: BoardPagesGalleryProps) {
+export function BoardPagesGallery({ sessionId, exportName, onOpenEditor, emptyText }: BoardPagesGalleryProps) {
   const [pages, setPages] = useState<BoardPage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -53,7 +55,7 @@ export function BoardPagesGallery({ sessionId, exportName, onOpenEditor }: Board
   const inkPages = (pages || []).filter((p) => p.strokes.length > 0 || p.image || (p.objects ?? []).length > 0);
   if (pages === null && !error) return null;
   if (error) return <div className="p-5 text-sm text-[var(--neg)]">Tableau : {error}</div>;
-  if (inkPages.length === 0) return null;
+  if (inkPages.length === 0) return emptyText ? <div className="p-5 text-sm text-[var(--text-muted)]">{emptyText}</div> : null;
 
   return (
     <div
