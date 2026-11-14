@@ -52,6 +52,9 @@ import '@fontsource/opendyslexic/400.css';
 import '@fontsource/opendyslexic/700.css';
 import '@fontsource/playwrite-fr-moderne/400.css';
 import { themeStyle } from './courseThemes';
+import { CourseLayer } from './CourseLayer';
+import type { DrawStyle } from './courseDraw';
+import type { LayerItem } from '../../lib/course/courseLayer';
 
 interface Props {
   boardId: string;
@@ -196,6 +199,16 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const deskRef = useRef<HTMLDivElement>(null);
   /** Feuilles du cours (copie figée pour « deux par feuille », lot T13). */
   const sheetsRef = useRef<HTMLDivElement>(null);
+  /** Mode Tableau (lot 3) : calque d'annotations par-dessus le texte, rangé dans le cours. */
+  const [mode, setMode] = useState<'texte' | 'tableau'>('texte');
+  const [layerItems, setLayerItems] = useState<LayerItem[]>(() => initialDoc.layer?.items ?? []);
+  const layerRef = useRef<LayerItem[]>(initialDoc.layer?.items ?? []);
+  const layerUndo = useRef<LayerItem[][]>([]);
+  const layerRedo = useRef<LayerItem[][]>([]);
+  const [layerSel, setLayerSel] = useState<string | null>(null);
+  const [drawStyle, setDrawStyle] = useState<DrawStyle>({ tool: 'pen', color: '#DC2626', size: 'M' });
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
   /** Fenêtre « Imprimer » / « Exporter en PDF » (lot T13). */
   const [printDialog, setPrintDialog] = useState<'print' | 'pdf' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -230,7 +243,9 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
 
   const currentDoc = (): CourseDoc | null => {
     const ed = editorRef.current;
-    return ed ? { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current } : null;
+    if (!ed) return null;
+    const layer = layerRef.current.length ? { layer: { items: layerRef.current } } : {};
+    return { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current, ...layer };
   };
 
   /** Toujours la dernière version de `flush` (minuteries, raccourcis, nouvel essai). */
@@ -560,6 +575,52 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   }, [editor, boardId, userId, toast]);
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
 
+  // ---- Calque Tableau (lot 3) ----
+
+  const markDirty = () => {
+    pendingRef.current = true;
+    setSave('dirty');
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => { void flushRef.current(); }, SAVE_DELAY_MS);
+  };
+
+  const changeLayer = (next: LayerItem[], record = true) => {
+    if (record) { layerUndo.current.push(layerRef.current); layerRedo.current = []; }
+    layerRef.current = next;
+    setLayerItems(next);
+    if (layerSel && !next.some((i) => i.id === layerSel)) setLayerSel(null);
+    markDirty();
+  };
+  const undoLayer = () => {
+    const prev = layerUndo.current.pop();
+    if (!prev) return;
+    layerRedo.current.push(layerRef.current);
+    layerRef.current = prev;
+    setLayerItems(prev);
+    markDirty();
+  };
+  const redoLayer = () => {
+    const next = layerRedo.current.pop();
+    if (!next) return;
+    layerUndo.current.push(layerRef.current);
+    layerRef.current = next;
+    setLayerItems(next);
+    markDirty();
+  };
+  const layerActionsRef = useRef({ undoLayer, redoLayer, layerSel, changeLayer });
+  useEffect(() => { layerActionsRef.current = { undoLayer, redoLayer, layerSel, changeLayer }; });
+
+  const switchMode = (m: 'texte' | 'tableau') => {
+    setMode(m);
+    setLayerSel(null);
+    if (m === 'texte') editor?.commands.focus();
+  };
+
+  // En mode Tableau, le texte ne bouge pas sous le stylet
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.setEditable(mode === 'texte');
+  }, [editor, mode]);
+
   const changeSettings = (patch: Partial<CourseSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
@@ -651,6 +712,19 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         e.preventDefault();
         pendingRef.current = true;
         void flushRef.current().then((ok) => { if (ok) toast('Cours enregistré.', 'success'); });
+      }
+      // Mode Tableau : Ctrl+Z / Ctrl+Y / Suppr / Échap s'appliquent au calque
+      if (modeRef.current === 'tableau' && !editingEncartRef.current && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
+        const k0 = e.key.toLowerCase();
+        const a = layerActionsRef.current;
+        if ((e.ctrlKey || e.metaKey) && k0 === 'z' && !e.shiftKey) { e.preventDefault(); a.undoLayer(); return; }
+        if ((e.ctrlKey || e.metaKey) && (k0 === 'y' || (k0 === 'z' && e.shiftKey))) { e.preventDefault(); a.redoLayer(); return; }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && a.layerSel) {
+          e.preventDefault();
+          a.changeLayer(layerRef.current.filter((i) => i.id !== a.layerSel));
+          return;
+        }
+        if (e.key === 'Escape') { setLayerSel(null); setDrawStyle((s) => ({ ...s, tool: 'select' })); return; }
       }
       // Ctrl+F, Ctrl+H : la recherche du cours plutôt que celle du navigateur (pas dans un encart)
       const k = e.key.toLowerCase();
@@ -844,7 +918,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   /** Clic dans une marge ou sous le texte : le curseur va au point le plus proche, comme dans Word. */
   const onSheetsMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (!editor || target.closest('.ce-flow')) return;
+    if (!editor || target.closest('.ce-flow') || mode === 'tableau') return;
     e.preventDefault();
     const flow = (e.currentTarget as HTMLElement).querySelector('.ce-flow') as HTMLElement | null;
     if (!flow) return;
@@ -889,6 +963,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     setSettings(doc.settings ?? {});
     settingsRef.current = doc.settings ?? {};
     editor.commands.setContent(doc.content, { emitUpdate });
+    const items = doc.layer?.items ?? [];
+    layerRef.current = items;
+    setLayerItems(items);
+    layerUndo.current = [];
+    layerRedo.current = [];
+    setLayerSel(null);
   };
 
   const saveVersion = async (label: string) => {
@@ -1089,6 +1169,21 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         showRuler={showRuler}
         onToggleRuler={() => setShowRuler((v) => { store(RULER_KEY, v ? '0' : '1'); return !v; })}
         onSoon={(what) => toast(what, 'info')}
+        mode={mode}
+        onMode={switchMode}
+        drawStyle={drawStyle}
+        onDrawStyle={(patch) => setDrawStyle((s) => ({ ...s, ...patch }))}
+        layerCanUndo={layerUndo.current.length > 0}
+        layerCanRedo={layerRedo.current.length > 0}
+        onLayerUndo={undoLayer}
+        onLayerRedo={redoLayer}
+        layerHasSelection={!!layerSel}
+        layerCount={layerItems.length}
+        onLayerDelete={() => { if (layerSel) changeLayer(layerItems.filter((i) => i.id !== layerSel)); }}
+        onLayerClear={() => {
+          void confirm({ title: 'Effacer tout le calque ?', message: 'Toutes les annotations du mode Tableau sont retirées (Ctrl+Z pour revenir en arrière). Le texte ne change pas.', confirmLabel: 'Effacer', variant: 'warning' })
+            .then((ok) => { if (ok) changeLayer([]); });
+        }}
         onEditEncart={(pageId) => setEditingEncart(pageId)}
         settings={settings}
         onSettings={changeSettings}
@@ -1156,6 +1251,16 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
             <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...themeStyle(settings.theme) }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
               <EditorContent editor={editor} />
             </div>
+            <CourseLayer
+              editor={editor}
+              items={layerItems}
+              height={sheetsH}
+              active={mode === 'tableau'}
+              style={drawStyle}
+              selected={layerSel}
+              onSelect={setLayerSel}
+              onChange={changeLayer}
+            />
           </div>
         </div>
       </div>
@@ -1207,8 +1312,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         )}
         <span className="ce-spacer-flex" />
         <div className="ce-modes" role="group" aria-label="Mode">
-          <button type="button" className="is-on" title="Rédiger le cours">¶ Texte</button>
-          <button type="button" title="Bientôt : dessiner par-dessus le cours" onClick={() => toast('Le mode Tableau arrive à l’étape 3.', 'info')}>✎ Tableau</button>
+          <button type="button" className={mode === 'texte' ? 'is-on' : ''} title="Rédiger le cours" onClick={() => switchMode('texte')}>¶ Texte</button>
+          <button type="button" className={mode === 'tableau' ? 'is-on' : ''} title="Dessiner par-dessus le cours : flèches, entourages, annotations (ancrées aux paragraphes)" onClick={() => switchMode('tableau')}>✎ Tableau</button>
           <button type="button" className="ce-modes__play" title="Bientôt : le cours projeté en classe" onClick={() => toast('Le mode En classe arrive à l’étape 4.', 'info')}>▶ En classe</button>
         </div>
         <div className="ce-zoom">

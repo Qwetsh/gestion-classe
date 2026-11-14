@@ -10,6 +10,7 @@ import type { CourseDoc } from '../../lib/course/courseDoc';
 import { VERSION_KIND_LABELS, type CourseVersion } from '../../lib/course/courseVersions';
 import { CourseSheetChrome } from './CourseSheetChrome';
 import { themeStyle } from './courseThemes';
+import { CourseLayer } from './CourseLayer';
 import type { FieldValues } from './courseHeaderFooter';
 
 interface Props {
@@ -60,6 +61,10 @@ export function CourseVersionPreview({ boardId, version, doc, zoom, chromeValues
             <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...themeStyle(doc.settings?.theme) }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>
               {editor && <EditorContent editor={editor} />}
             </div>
+            {editor && (
+              <CourseLayer editor={editor} items={doc.layer?.items ?? []} height={sheetsH} active={false} readOnly
+                style={{ tool: 'select', color: '#000', size: 'M' }} selected={null} onSelect={() => {}} onChange={() => {}} />
+            )}
           </div>
         </div>
       </div>

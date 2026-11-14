@@ -144,6 +144,11 @@ const PATHS = {
   spellLive: '<path d="M4 6h16M4 10h10"/><path d="M4 14.5c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0" stroke="#DC2626"/><path d="M18 13v6M15 16h6"/>',
   spellHide: '<path d="M4 9h16"/><path d="M4 13.5c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0 2.4-1 3.6 0" opacity=".45"/><path d="M4 4l16 16"/>',
   star: '<path d="m12 3 2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/>',
+  drawLine: '<path d="M5 19 19 5"/>',
+  drawArrow: '<path d="M5 19 19 5"/><path d="M10 5h9v9"/>',
+  drawText: '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+  drawRect: '<rect x="4" y="6" width="16" height="12" rx="1.5"/>',
+  drawEllipse: '<ellipse cx="12" cy="12" rx="9" ry="6.5"/>',
   versionSave: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><circle cx="12" cy="15" r="2.5"/>',
 } as const;
 
