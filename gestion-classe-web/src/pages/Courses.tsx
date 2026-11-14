@@ -31,6 +31,7 @@ import {
 import { createCourse, duplicateCourse, emptyCourseDoc } from '../lib/course/courseDoc';
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, parseOpenTarget, type OpenMode } from '../lib/courseLibrary';
+import { fetchClasses, fetchPlacements, placementChips, type ClassRef, type Placement } from '../lib/coursePlacements';
 import { filterBoards, highlightParts, searchCourseText, searchWords, type CourseTextHit } from '../lib/courseSearch';
 import { draftTab } from '../lib/boardTabs';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
@@ -39,6 +40,7 @@ import { withDefaultTheme } from '../components/course/courseThemes';
 import { BUILTIN_TEMPLATES } from '../components/course/courseTemplates';
 import { BoardMetaForm, type TemplateChoice } from '../components/courses/BoardMetaForm';
 import { CourseLibrary } from '../components/courses/CourseLibrary';
+import { PlaceCourseDialog } from '../components/courses/PlaceCourseDialog';
 import '../styles/mes-cours.css';
 
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
@@ -57,6 +59,10 @@ export function Courses() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Board | 'new' | null>(null);
+  /** Copies placées sur des créneaux, et classes : pastilles des originaux (lot C3). */
+  const [placements, setPlacements] = useState<Placement[]>([]);
+  const [classes, setClasses] = useState<ClassRef[]>([]);
+  const [placing, setPlacing] = useState<Board | null>(null);
 
   const target = useMemo(() => parseOpenTarget(params), [params]);
   const targetId = target?.id ?? null;
@@ -68,6 +74,10 @@ export function Courses() {
       setBoards(list);
       setUsages(used);
       setError(null);
+      // Les pastilles sont un plus : leur échec ne vide pas la bibliothèque
+      void Promise.all([fetchPlacements(userId), fetchClasses(userId)])
+        .then(([placed, cls]) => { setPlacements(placed); setClasses(cls); })
+        .catch((err: unknown) => console.warn('[Courses] placements :', err));
     } catch (err) {
       setError(message(err, 'La liste des cours ne répond pas.'));
     } finally {
@@ -141,6 +151,7 @@ export function Courses() {
   }, [textSettled, textResult, boards]);
 
   const shown = useMemo(() => filterBoards(boards, words), [boards, words]);
+  const chips = useMemo(() => placementChips(placements, classes, new Date()), [placements, classes]);
   const levels = useMemo(() => groupLibrary(shown), [shown]);
 
   const save = async (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
@@ -252,6 +263,9 @@ export function Courses() {
           <CourseLibrary
             levels={levels}
             expandAll={searching}
+            chips={chips}
+            onOpenCopy={(id) => open(id)}
+            onPlace={setPlacing}
             onOpen={(b) => open(b.id)}
             onPresent={(b) => open(b.id, 'classe')}
             onEdit={setEditing}
@@ -293,6 +307,10 @@ export function Courses() {
           onSave={save}
           onClose={() => setEditing(null)}
         />
+      )}
+
+      {placing && (
+        <PlaceCourseDialog userId={userId} board={placing} onClose={() => setPlacing(null)} onPlaced={() => void refresh()} />
       )}
 
       {targetId === DRAFT_ID && userId && (

@@ -157,7 +157,7 @@ de la séance, et sort en PDF.
 |---|---|
 | C1 — Page et bibliothèque | **Fait** le 14/11/2026 (branche `feat/mes-cours`, worktree `gc-worktrees/mes-cours`), pas encore commité |
 | C2 — Recherche | **Codé** le 14/11/2026 (branche `feat/mes-cours-recherche`), pas commité ; migration 076 appliquée en prod le 14/11/2026 |
-| C3 — Provenance et placement | À faire |
+| C3 — Provenance et placement | **Codé** le 14/11/2026 (branche `feat/mes-cours-provenance`), pas commité ; migration 077 (sans clé étrangère) et rattrapage appliqués en prod le 14/11/2026 |
 | C4 — Par classe et fins de séance | À faire |
 | N1 — Ménage du menu | À faire |
 | N2 / N3 — Menu regroupé | À faire |
@@ -216,4 +216,41 @@ de la séance, et sort en PDF.
   l'extrait et les trois mots surlignés.
 - **Non fait** : le texte des pages projetées n'est pas cherché (second temps du § 4).
 - Le risque 2 du § 6 est levé pour l'instant : la recherche lit une dizaine de cours courts.
+
+### Lot C3 — provenance et placement, codé le 14/11/2026 (branche `feat/mes-cours-provenance`, empilée sur C2)
+
+- **Migration `077_lesson_board_source.sql`** : `lesson_boards.source_board_id` et son index, **sans clé
+  étrangère** (voir l'incident plus bas). Appliquée en prod le 14/11/2026.
+- **Écriture de la provenance** (`createLessonBoard`) : une copie faite depuis la bibliothèque note
+  son original ; une copie faite depuis le tableau d'un autre cours (« copier vers les autres
+  classes ») garde l'original de celui-ci. Sans la migration, le cours est placé quand même.
+- **Pastilles de classes** sur chaque original (`lib/coursePlacements.ts`, avec tests) : une par
+  classe, à la couleur de son niveau ; elle ouvre la copie du prochain cours de cette classe, sinon
+  du dernier passé ; l'infobulle donne les dates.
+- **« Placer sur un cours… »** (`PlaceCourseDialog.tsx`), dans le menu « ⋯ » : onglets de classes (celle
+  du niveau du cours d'abord), prochains cours sur 5 semaines, cases à cocher sur plusieurs classes à
+  la fois ; un créneau qui a déjà un document est grisé, avec son titre. La copie garde le titre de
+  l'activité (avant : « 4A · mer. 18 nov. »).
+- **Créneaux lus dans l'emploi du temps enregistré** (import .ics). Pronote en direct n'est pas lu ici.
+- **Vérifié** : `tsc -b`, lint des fichiers touchés, 511 tests. Dans le navigateur, sans la
+  migration : la page s'affiche sans pastille et sans erreur ; la fenêtre de placement de la fiche
+  Wegener s'ouvre sur la 4A, grise les 18 et 25 novembre (déjà pris) et propose les cinq cours
+  suivants ; fermée sans rien placer.
+- **Rattrapage fait** le 14/11/2026 : 8 copies « Wegener » ont chacune un seul original du même titre. Deux
+  tableaux créés à la main sur un créneau (« 4B · lun. 16 nov. », « 5D · lun. 16 nov. ») n'ont pas
+  d'original et restent sans provenance.
+- **Vérifié après la migration** : pastilles 4A, 4B, 4C, 4D sur la fiche Wegener et sur sa correction.
+  Avec un cours d'essai : placé sur le cours de la 3A du 18 décembre, la pastille « 3A » apparaît,
+  elle ouvre la copie (même titre que l'original), la base porte bien l'original. Les deux lignes
+  d'essai ont été supprimées ; la base est revenue à ses 10 liens, dont 8 avec original.
+- **Incident du 14/11/2026.** La première version de la migration ajoutait une clé étrangère
+  `source_board_id → boards`. C'était une seconde relation entre `lesson_boards` et `boards` : les
+  lectures `lesson_boards → boards(...)` de l'application en ligne sont devenues ambiguës pour
+  PostgREST (PGRST201) et ont échoué pendant quelques minutes — documents absents du calendrier
+  et de `/classe`. Repéré par l'échec du placement d'essai, corrigé en retirant la contrainte
+  (la colonne et ses valeurs sont restées). Le fichier 077 décrit l'état final ; un commentaire
+  garde-fou est posé à côté de la lecture concernée (`lessonBoardsQueries.ts`). L'application
+  mobile ne lit pas cette table.
+- **Conséquence** : la colonne peut désigner un original supprimé. Sans effet aujourd'hui (une
+  pastille ne s'affiche que sur un original présent) ; à garder en tête pour le lot C4.
 
