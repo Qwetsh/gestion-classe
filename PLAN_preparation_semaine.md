@@ -193,7 +193,8 @@ comprises, sans que Thomas ait glissé un seul fichier ni que Claude ait retapé
   dans l'ordre). Pas de migration pour cela.
 - **Ouverture.** « En classe » (depuis l'éditeur et depuis le calendrier) et l'écran `/classe`
   ouvrent les écrans dans le tableau blanc quand le cours en a. Sinon, la projection actuelle.
-- **Retouche.** Dans l'éditeur, un accès « Écrans » : le tableau blanc avec son ruban, pour
+- **Retouche.** Dans l'éditeur, un accès « Écrans » (renommé « Tableau » le 14/11, voir plus bas) :
+  le tableau blanc avec son ruban, pour
   modifier un écran, en ajouter, en supprimer, les réordonner.
 - **Séance.** Au démarrage, les écrans sont copiés dans la séance : l'original reste intact,
   l'encre est enregistrée dans la séance. C'est le mécanisme actuel du tableau blanc.
@@ -207,6 +208,28 @@ comprises, sans que Thomas ait glissé un seul fichier ni que Claude ait retapé
 **Terminé quand** un cours portant trois écrans faits à la main s'ouvre en écrans depuis le
 calendrier et depuis `/classe`, et que l'encre et les révélations sont retrouvées sur un autre
 ordinateur.
+
+### Les trois modes d'un cours (décision du 14/11/2026, soir)
+
+Thomas, après l'essai : quatre modes, c'était un de trop, et « Écrans » ne se distinguait pas
+d'« En classe ». Le modèle est celui de Genially : un éditeur, une présentation.
+
+| Mode | Rôle | Ce qu'on y voit |
+|---|---|---|
+| **Texte** | La feuille : ce que les élèves reçoivent, à imprimer et à coller | Le document A4. Un outil **Stylet** pour annoter l'imprimable si on veut le projeter tel quel |
+| **Tableau** (l'ancien « Écrans ») | L'éditeur des pages projetées. Claude y dépose ses pages ; Thomas les retouche ou en crée de zéro | Les ficelles : rideaux à placer, textes à trous, actions |
+| **En classe** | La présentation | Rideaux fermés, trous cachés, actions qui se jouent au toucher |
+
+- **Lot 1, fait** : « Écrans » devient « Tableau » ; l'ancien mode « Tableau » (calque dessiné sur
+  la feuille) n'est plus un mode mais l'outil Stylet du mode Texte. Aucun cours ne portait de
+  dessin sur ce calque : rien n'est perdu, et le calque d'un cours qui en aurait reste lu.
+- **Lot 2, à faire** : « En classe » devient une vraie présentation. Règle proposée, à confirmer
+  par Thomas : on peut écrire, gommer, pointer au laser, révéler, jouer les actions, changer de
+  page et ajouter une page blanche ; on ne peut ni déplacer ni supprimer les objets préparés.
+  L'encre de la séance reste rangée dans la séance.
+
+Dans le code et la skill, ces pages gardent leur nom d'origine : `doc.screens`, « écrans »,
+`gc_envoi.py ecrans`. Seuls les libellés de l'application changent.
 
 ### Étape 3 — Les écrans : gabarits, générateur, vérificateur
 
@@ -331,7 +354,7 @@ trait entier. Petit lot : y porter la découpe du tableau blanc. À faire si Tho
 |---|---|
 | 0 — Essai réel | **En cours** depuis le 14/11/2026 : documents créés et placés (§ 9) ; reste le jugement de Thomas en classe |
 | 1 — Envoi des fichiers et des documents | **Fait** le 14/11/2026 (PR #86, migration 075, fonction `depot-cours`) : jeton d'import créé dans Réglages, envoi par `gc_envoi.py`, essayé de bout en bout avec l'image du puzzle |
-| 2 — Écrans : le socle | **Fait** le 14/11/2026 (PR #84 et #85, migration 074) : un cours porte des écrans (`doc.screens`), bouton « Écrans », état de page et réponses révélées gardés en base |
+| 2 — Écrans : le socle | **Fait** le 14/11/2026 (PR #84 et #85, migration 074) : un cours porte des écrans (`doc.screens`), bouton « Écrans » (devenu « Tableau »), état de page et réponses révélées gardés en base |
 | 3 — Écrans : gabarits, générateur, vérificateur | À faire |
 | 4 — Skill « prépare ma semaine » | À faire |
 | 5 — Tableaux de fin de séance | À faire |
@@ -347,6 +370,10 @@ Hors étapes, le 14/11/2026 :
 - **Ruban : étiquettes et libellés coupés.** Le ruban des deux éditeurs (cours et tableau blanc)
   coupait l'étiquette des groupes dans presque tous les onglets. Corrigé : ruban de 104 px, libellés
   sur deux lignes au plus, pas de barre de défilement (molette et ombre au bord).
+
+- **Trait décalé, onglet « Texte », pastille** (PR #89) : le tableau sort de la page agrandie des
+  grands écrans ; la mise en forme du texte passe dans le ruban ; la pastille prend son habillage.
+- **Trois modes** (voir « Les trois modes d'un cours », § 5) : lot 1 fait, lot 2 à faire.
 
 Révision du 14/11/2026 (soir) : l'ancienne étape 3, « la correction animée », disparaît. Elle
 dépendait d'animations à construire dans l'éditeur de cours ; les écrans s'appuient sur les

@@ -207,8 +207,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const deskRef = useRef<HTMLDivElement>(null);
   /** Feuilles du cours (copie figée pour « deux par feuille », lot T13). */
   const sheetsRef = useRef<HTMLDivElement>(null);
-  /** Mode Tableau (lot 3) : calque d'annotations par-dessus le texte, rangé dans le cours. */
-  const [mode, setMode] = useState<'texte' | 'tableau'>('texte');
+  /**
+   * Stylet : calque d'annotations par-dessus la feuille, rangé dans le cours. C'était le mode
+   * « Tableau » ; ce nom désigne maintenant les pages projetées (`screens`), et le stylet n'est plus
+   * qu'un outil du mode Texte, pour qui veut montrer l'imprimable tel quel.
+   */
+  const [mode, setMode] = useState<'texte' | 'stylet'>('texte');
   const [layerItems, setLayerItems] = useState<LayerItem[]>(() => initialDoc.layer?.items ?? []);
   const layerRef = useRef<LayerItem[]>(initialDoc.layer?.items ?? []);
   // Face écran (PLAN_preparation_semaine.md, étape 2) : pages de tableau blanc de ce cours
@@ -663,13 +667,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const layerActionsRef = useRef({ undoLayer, redoLayer, layerSel, changeLayer });
   useEffect(() => { layerActionsRef.current = { undoLayer, redoLayer, layerSel, changeLayer }; });
 
-  const switchMode = (m: 'texte' | 'tableau') => {
+  const switchMode = (m: 'texte' | 'stylet') => {
     setMode(m);
     setLayerSel(null);
     if (m === 'texte') editor?.commands.focus();
   };
 
-  // En mode Tableau, le texte ne bouge pas sous le stylet
+  // Stylet sorti : le texte ne bouge pas dessous
   useEffect(() => {
     if (editor && !editor.isDestroyed) editor.setEditable(mode === 'texte');
   }, [editor, mode]);
@@ -766,8 +770,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         pendingRef.current = true;
         void flushRef.current().then((ok) => { if (ok) toast('Cours enregistré.', 'success'); });
       }
-      // Mode Tableau : Ctrl+Z / Ctrl+Y / Suppr / Échap s'appliquent au calque
-      if (modeRef.current === 'tableau' && !editingEncartRef.current && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
+      // Stylet sorti : Ctrl+Z / Ctrl+Y / Suppr / Échap s'appliquent au calque
+      if (modeRef.current === 'stylet' && !editingEncartRef.current && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
         const k0 = e.key.toLowerCase();
         const a = layerActionsRef.current;
         if ((e.ctrlKey || e.metaKey) && k0 === 'z' && !e.shiftKey) { e.preventDefault(); a.undoLayer(); return; }
@@ -971,7 +975,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   /** Clic dans une marge ou sous le texte : le curseur va au point le plus proche, comme dans Word. */
   const onSheetsMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (!editor || target.closest('.ce-flow') || mode === 'tableau') return;
+    if (!editor || target.closest('.ce-flow') || mode === 'stylet') return;
     e.preventDefault();
     const flow = (e.currentTarget as HTMLElement).querySelector('.ce-flow') as HTMLElement | null;
     if (!flow) return;
@@ -1227,6 +1231,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         mode={mode}
         onMode={switchMode}
         onPresent={present}
+        onBoard={() => setScreensOpen('edit')}
+        boardCount={screens.length}
         drawStyle={drawStyle}
         onDrawStyle={(patch) => setDrawStyle((s) => ({ ...s, ...patch }))}
         layerCanUndo={layerUndo.current.length > 0}
@@ -1237,7 +1243,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         layerCount={layerItems.length}
         onLayerDelete={() => { if (layerSel) changeLayer(layerItems.filter((i) => i.id !== layerSel)); }}
         onLayerClear={() => {
-          void confirm({ title: 'Effacer tout le calque ?', message: 'Toutes les annotations du mode Tableau sont retirées (Ctrl+Z pour revenir en arrière). Le texte ne change pas.', confirmLabel: 'Effacer', variant: 'warning' })
+          void confirm({ title: 'Effacer tout le calque ?', message: 'Toutes les annotations au stylet sont retirées (Ctrl+Z pour revenir en arrière). Le texte ne change pas.', confirmLabel: 'Effacer', variant: 'warning' })
             .then((ok) => { if (ok) changeLayer([]); });
         }}
         onEditEncart={(pageId) => setEditingEncart(pageId)}
@@ -1311,7 +1317,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
               editor={editor}
               items={layerItems}
               height={sheetsH}
-              active={mode === 'tableau'}
+              active={mode === 'stylet'}
               style={drawStyle}
               selected={layerSel}
               onSelect={setLayerSel}
@@ -1367,11 +1373,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           </button>
         )}
         <span className="ce-spacer-flex" />
+        {/* Le stylet n'est pas un mode : un outil de la feuille, pour annoter l'imprimable */}
+        <button type="button" className={`ce-stylus ${mode === 'stylet' ? 'is-on' : ''}`} aria-pressed={mode === 'stylet'} title="Stylet : écrire par-dessus la feuille (flèches, entourages, annotations), pour projeter l’imprimable tel quel" onClick={() => switchMode(mode === 'stylet' ? 'texte' : 'stylet')}>✎ Stylet</button>
+        {/* Trois temps : la feuille à imprimer, le tableau qu'on prépare, la classe où on le présente */}
         <div className="ce-modes" role="group" aria-label="Mode">
-          <button type="button" className={mode === 'texte' ? 'is-on' : ''} title="Rédiger le cours" onClick={() => switchMode('texte')}>¶ Texte</button>
-          <button type="button" className={mode === 'tableau' ? 'is-on' : ''} title="Dessiner par-dessus le cours : flèches, entourages, annotations (ancrées aux paragraphes)" onClick={() => switchMode('tableau')}>✎ Tableau</button>
-          <button type="button" title="Les écrans du cours : ce qui s’affiche en classe à la place de la feuille (tableau blanc)" onClick={() => setScreensOpen('edit')}>▣ Écrans{screens.length > 0 ? ` (${screens.length})` : ''}</button>
-          <button type="button" className="ce-modes__play" title="Essayer comme en classe : les écrans du cours s’il en a, sinon la feuille en bande (rien n’est gardé)" onClick={present}>▶ En classe</button>
+          <button type="button" className="is-on" title="La feuille : ce que les élèves reçoivent, à imprimer et à coller" onClick={() => switchMode('texte')}>¶ Texte</button>
+          <button type="button" title="Le tableau du cours : les pages projetées en classe. On les prépare ici — rideaux, textes à trous, actions" onClick={() => setScreensOpen('edit')}>▣ Tableau{screens.length > 0 ? ` (${screens.length})` : ''}</button>
+          <button type="button" className="ce-modes__play" title="Essayer comme en classe : le tableau du cours s’il a des pages, sinon la feuille en bande (rien n’est gardé)" onClick={present}>▶ En classe</button>
         </div>
         <div className="ce-zoom">
           <button type="button" onClick={() => setZoom(zoom - 0.1)} aria-label="Zoom arrière">−</button>

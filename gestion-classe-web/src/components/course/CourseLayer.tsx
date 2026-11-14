@@ -1,7 +1,7 @@
 /**
  * Calque Tableau du cours (lot 3) : SVG posé dans `.ce-sheets`, au-dessus du texte, aux
  * dimensions de la feuille (il suit le zoom et le défilement du bureau). En mode Texte il ne
- * capte rien ; en mode Tableau il reçoit la souris, le stylet et le doigt.
+ * capte rien ; stylet sorti, il reçoit la souris, le stylet et le doigt.
  *
  * Les éléments sont ancrés aux blocs du document (voir `lib/course/courseLayer.ts`) : leur
  * position verticale est recalculée à chaque changement de mise en page.
@@ -20,7 +20,7 @@ interface Props {
   items: LayerItem[];
   /** Hauteur des feuilles (px de feuille). */
   height: number;
-  /** Mode Tableau : le calque reçoit les gestes. */
+  /** Stylet sorti : le calque reçoit les gestes. */
   active: boolean;
   style: DrawStyle;
   selected: string | null;
