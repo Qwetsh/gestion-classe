@@ -1431,3 +1431,30 @@ renvoie 429 (message prévu, pas provoqué).
 d'une liste ou d'un encadré renvoyée à la page suivante (il reste ancré au haut du bloc et se
 décale de la hauteur de l'intercalaire — ancrage par élément à prévoir). Restent T15b (tableaux,
 ligne d'en-tête répétée) et T15c (paragraphes, si le besoin se confirme).
+
+### T15b — fait le 14/11/2026 (branche `feat/texte-t15b`, pas de migration)
+
+- **Un tableau se coupe entre deux lignes** au lieu de partir entier à la page suivante ou de
+  déborder. L'intercalaire est une ligne `<tr>` fantôme (une cellule sur toute la largeur, sans
+  bordure, mêmes bandes blanc / bureau / blanc que l'encadré coupé).
+- **Ligne d'en-tête répétée** : si la première ligne est une ligne d'en-tête, une copie non
+  éditable (dessinée à partir du nœud, `DOMSerializer`) est posée en haut de la suite ; sa
+  hauteur est comptée dans la répartition. Clic dessus : rien n'est modifié.
+- On ne coupe jamais **à l'intérieur d'une cellule fusionnée** sur plusieurs lignes
+  (`TableMap`), ni **entre l'en-tête et la première ligne de données**.
+- Styles suivis : « Alterné » garde son alternance (la rayure ne compte plus les lignes
+  ajoutées : `:nth-child(even of …)`) ; « Cadre » (contour du tableau entier) est redessiné par
+  les cellules une fois coupé, refermé et rouvert ; tableau coupé dans un encadré : l'enveloppe
+  du tableau laisse dépasser la bande pour couper aussi le cadre de l'encadré. En classe : simple
+  trait, en-tête répété masqué.
+- Tests vitest : coupure de tableau (ligne fantôme, place de l'en-tête comptée).
+- Vérifié dans le navigateur (cours de 8 pages : grille 40 lignes avec en-tête, « Alterné » 45
+  lignes, « Cadre » 40 lignes sans en-tête, tableau dans une définition, cellules fusionnées
+  par 3) : 7 coupures, chaque suite commence à 0,01 px du haut de sa feuille, en-tête répété,
+  alternance gardée, cadre refermé / rouvert, définition coupée avec son tableau, coupure avant
+  le groupe fusionné ; frappe dans la dernière ligne d'une page (la ligne grandit et passe sous
+  l'en-tête de la page suivante) puis annulation ; aucune erreur. Cours de test supprimé.
+
+**Non vérifié** : impression papier d'un tableau coupé (en-tête répété imprimé) ; une ligne plus
+haute qu'une page déborde toujours (T15c ne la coupe pas non plus). Reste T15c (paragraphes, si
+le besoin se confirme).
