@@ -156,7 +156,7 @@ de la séance, et sort en PDF.
 | Lot | État |
 |---|---|
 | C1 — Page et bibliothèque | **Fait** le 14/11/2026 (branche `feat/mes-cours`, worktree `gc-worktrees/mes-cours`), pas encore commité |
-| C2 — Recherche | À faire |
+| C2 — Recherche | **Codé** le 14/11/2026 (branche `feat/mes-cours-recherche`), pas commité ; migration 076 appliquée en prod le 14/11/2026 |
 | C3 — Provenance et placement | À faire |
 | C4 — Par classe et fins de séance | À faire |
 | N1 — Ménage du menu | À faire |
@@ -194,3 +194,26 @@ de la séance, et sort en PDF.
 - **Constat** : la bibliothèque compte 9 cours, dont 5 sans niveau (plusieurs brouillons : « gfds »,
   « gfh », « rty », « test »). Le risque 1 du § 6 est levé : rien à migrer, un peu de ménage à faire.
 - **Écart** : l'erreur de lint de `Layout.tsx` (un `any`, ligne 226) existait avant ce lot.
+
+### Lot C2 — recherche, codé le 14/11/2026 (branche `feat/mes-cours-recherche`, empilée sur C1)
+
+- **Champ de recherche** en tête de la page. Sans casse ni accents ; tous les mots demandés doivent
+  être présents ; Échap efface.
+- **Titres, séquences et niveaux** : à chaque frappe, sur la liste chargée (`filterBoards`). La
+  bibliothèque garde son rangement et déplie tous les niveaux pendant la recherche.
+- **Texte des cours rédigés** : fonction `search_courses` (migration `076_search_courses.sql`), appelée
+  0,3 s après la dernière frappe. Section « Dans le texte » : titre du cours et extrait, mots trouvés
+  surlignés. Seuls les cours de la bibliothèque y figurent (pas les copies placées).
+- **Sans la migration** : la recherche se limite aux titres, sans message d'erreur (un avertissement
+  dans la console).
+- **Vérifié** : `tsc -b`, 505 tests (dont `courseSearch.test.ts`). Dans le navigateur : « derive
+  wegener » (2 cours), « 3e microb » (1 cours, par le niveau), terme absent (« Aucun cours ne
+  correspond »), Échap. La requête de la fonction, essayée en lecture seule sur la base : 11 cours
+  rédigés, 10 avec du texte, le plus long de 4 462 caractères ; « Dérive WEGENER » en trouve 10
+  (les 2 originaux et les 8 copies placées) ; longueurs du texte et de sa version repliée égales.
+- **Migration 076 appliquée en prod le 14/11/2026.** Vérifié ensuite dans le navigateur : « demarches
+  scientifiques » (absents de tout titre) affiche la fiche Wegener dans « Dans le texte », avec
+  l'extrait et les trois mots surlignés.
+- **Non fait** : le texte des pages projetées n'est pas cherché (second temps du § 4).
+- Le risque 2 du § 6 est levé pour l'instant : la recherche lit une dizaine de cours courts.
+

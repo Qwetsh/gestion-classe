@@ -70,3 +70,25 @@
   .mc-row__play { width: 44px; height: 44px; }
   .mc-seq__menu { opacity: 1; }
 }
+
+/* ---- Recherche (lot C2) ---- */
+.mc-search { position: relative; display: block; max-width: 460px; }
+.mc-search__icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.mc-search__input {
+  width: 100%; height: 40px; padding: 0 12px 0 36px; font: inherit; font-size: 14px;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.mc-search__input:focus { outline: none; border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-soft); }
+
+/* Cours trouvé par son texte : titre, puis l'extrait où le mot apparaît */
+.mc-row__open--hit { align-items: flex-start; padding-top: 8px; padding-bottom: 8px; }
+.mc-row__open--hit .mc-row__icon { margin-top: 2px; }
+.mc-hit { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mc-hit__excerpt { font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
+.mc-hit__excerpt mark { background: var(--indigo-soft); color: var(--indigo-ink); border-radius: 3px; padding: 0 2px; }
+
+@media (max-width: 767px) {
+  .mc-search { max-width: none; }
+  .mc-search__input { height: 44px; font-size: 16px; }
+}

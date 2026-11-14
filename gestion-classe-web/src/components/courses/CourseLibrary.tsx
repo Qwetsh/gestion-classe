@@ -17,6 +17,8 @@ function readCollapsed(): Record<string, boolean> {
 
 interface Props {
   levels: LibraryLevel[];
+  /** Recherche en cours : tous les niveaux sont dépliés, sans toucher au choix mémorisé. */
+  expandAll?: boolean;
   onOpen: (board: Board) => void;
   /** Cours rédigé : l'essayer en classe (rien n'est gardé en quittant). */
   onPresent: (board: Board) => void;
@@ -27,7 +29,7 @@ interface Props {
   onRenameSequence: (level: string | null, from: string, to: string) => Promise<void>;
 }
 
-export function CourseLibrary({ levels, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence }: Props) {
+export function CourseLibrary({ levels, expandAll, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
   /** Séquence en cours de renommage : son niveau, son nom d'origine, la saisie. */
   const [renaming, setRenaming] = useState<{ level: string | null; from: string; value: string; busy: boolean } | null>(null);
@@ -53,7 +55,7 @@ export function CourseLibrary({ levels, onOpen, onPresent, onEdit, onDuplicate, 
     <div className="mc-levels">
       {levels.map(({ level, count, sequences }) => {
         const key = level ?? NO_LEVEL;
-        const open = !collapsed[key];
+        const open = expandAll || !collapsed[key];
         const named = sequences.some((s) => s.chapter !== '');
         return (
           <section key={key} className="mc-level">
