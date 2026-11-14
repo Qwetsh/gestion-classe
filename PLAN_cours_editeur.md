@@ -219,3 +219,30 @@ l'habillage de l'éditeur de cours, adapté au tableau.
 - Reste (étape 3b) : le calque tableau **par-dessus le texte du cours**, ancré aux paragraphes.
   Les barres d'objet (texte, forme…) et les panneaux (Ressources, Rechercher) n'ont que les
   couleurs du thème clair, pas encore une mise en forme « ruban ».
+
+### Étape 3b — mode Tableau, faite le 14/11/2026 (branche `feat/cours-mode-tableau`)
+
+Choix de Thomas : un **calque léger** propre au cours plutôt que le tableau blanc complet
+(4 300 lignes, plein écran, hauteur de page non enregistrée, toile trop grande pour un long
+cours). Le tableau blanc de la classe n'est pas touché ; les outils riches (widgets, boutons,
+connecteurs, post-it) restent dans les encarts 16:9.
+
+- **Calque SVG** (`CourseLayer.tsx`) posé dans `.ce-sheets` au-dessus du texte : il suit le zoom
+  et le défilement, reste net à tout zoom et s'imprime avec le cours (sans la sélection).
+- **Rangé dans le cours** (`doc.layer.items`, `lib/course/courseLayer.ts`) : versions, copies,
+  modèles, garde-fou d'enregistrement et aperçu des versions le suivent sans migration.
+- **Ancrage** : chaque élément est accroché au bloc de premier niveau sous son origine
+  (`blockId` + décalage vertical `dy`, x absolu) ; il descend avec son paragraphe quand du texte
+  est ajouté plus haut ; si le bloc disparaît, il reste à sa dernière place connue. Déplacer un
+  élément le réancre au bloc d'arrivée.
+- **Mode** Texte / Tableau (barre d'état, Affichage) ; en mode Tableau, le texte est en lecture
+  seule et l'onglet contextuel **Dessin** s'ouvre : Sélection (déplacer, Suppr), Stylo,
+  Surligneur, Gomme, Trait, Flèche, Rectangle, Ellipse, Texte (double-clic pour modifier),
+  7 couleurs, 3 épaisseurs, Annuler / Rétablir propres au calque (Ctrl+Z / Ctrl+Y), Tout effacer.
+- Vérifié dans le navigateur : tracés des 5 types, ajout de 4 lignes en haut du cours (paragraphe
+  et annotations descendent tous de 125 px), gomme, Ctrl+Z, déplacement de 100 px puis Suppr,
+  enregistrement dans le cours et réouverture identique. Tests unitaires de l'ancrage.
+
+**Non vérifié** : stylet et doigt sur tablette (événements pointeur, `touch-action: none`) ;
+impression ; un annotation posée à cheval sur un saut de page (elle suit son bloc, qui peut
+changer de page). Lot suivant : 4, mode En classe (bande de colonne, Suivant, encre de séance).

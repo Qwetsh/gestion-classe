@@ -646,6 +646,22 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
 .ce-iconpick__none { grid-column: 1 / -1; color: var(--ce-muted); font-size: 12px; padding: 8px 2px; }
 .ce-iconpick__foot { font-size: 11px; color: var(--ce-muted); }
 
+/* ---------- Calque Tableau (lot 3) : annotations par-dessus le texte ---------- */
+.ce-layer { position: absolute; left: 0; top: 0; z-index: 2; overflow: visible; pointer-events: none; }
+.ce-layer.is-active { pointer-events: auto; cursor: crosshair; touch-action: none; }
+.ce-layer.is-active.ce-layer--select { cursor: default; }
+.ce-layer.is-active.ce-layer--text { cursor: text; }
+.ce-layer.is-active.ce-layer--eraser { cursor: cell; }
+.ce-layer__item { pointer-events: none; }
+.ce-layer__item.is-hit { pointer-events: visiblePainted; cursor: move; }
+.ce-layer--eraser .ce-layer__item.is-hit { cursor: cell; }
+.ce-layer__text { font-family: var(--ce-doc-font); font-weight: 600; white-space: pre; }
+.ce-layer__sel { fill: none; stroke: var(--ce-accent); stroke-width: 1.5; stroke-dasharray: 5 4; pointer-events: none; }
+.ce-layer__input { position: absolute; z-index: 3; min-width: 140px; border: 1px dashed var(--ce-accent); background: rgba(255,255,255,.9); font-family: var(--ce-doc-font); font-weight: 600; padding: 0 4px; outline: none; line-height: 1.3; }
+.ce-thick { display: block; width: 18px; background: currentColor; border-radius: 4px; }
+/* Mode Tableau : le texte est en lecture seule, on le montre un peu en retrait */
+.ce-root.is-drawing .ce-flow { opacity: .92; }
+
 @media print {
   @page { size: A4; margin: 0; }
   body.ce-open { overflow: visible !important; background: #fff !important; }
@@ -666,6 +682,7 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   .ce-doc .ce-col { outline: 0 !important; }
   .ce-hf--empty, .ce-hf__missing { display: none !important; }
   .ce-hf { outline: 0 !important; }
+  .ce-layer__sel, .ce-layer__input { display: none !important; }
   .ce-spell { text-decoration: none !important; }
   .ce-spellpop { display: none !important; }
   .ce-img__caption:has(.is-empty), .ce-img__crop-hint { display: none !important; }
