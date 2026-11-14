@@ -91,7 +91,8 @@ export function checkCourseDraft(schema: Schema, draft: CourseDraft, iconNames?:
     const a = (node.attrs ?? {}) as Record<string, unknown>;
     switch (node.type) {
       case 'image':
-        if (!a.path) errors.push(`${path} : image sans fichier (path) — une image doit être envoyée depuis l’éditeur`);
+        if (!a.path) errors.push(`${path} : image sans fichier (path) — l’envoyer avec le jeton d’import (bloc Image de gc_cours) ou depuis l’éditeur`);
+        else if (/^(https?:|data:)/i.test(String(a.path))) errors.push(`${path} : une image se cite par son chemin dans le stockage, jamais par une adresse`);
         break;
       case 'courseIcon':
         if (iconNames && !iconNames.has(String(a.name))) errors.push(`${path} : icône « ${String(a.name)} » inconnue (voir le jeu d’icônes)`);

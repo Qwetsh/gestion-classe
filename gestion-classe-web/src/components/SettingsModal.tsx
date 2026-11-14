@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
 import { HOME_MODULES } from './home/homeModules';
 import { TimetableImportPanel } from './timetable/TimetableImportPanel';
+import { ImportTokensPanel } from './ImportTokensPanel';
 import { resetHomeLayout, setEditing, toggleModule, useHomeLayoutStore } from './home/homeLayoutStore';
 
 // ── Types ──
@@ -12,7 +13,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SectionKey = 'tabs' | 'home' | 'timetable' | 'establishment' | 'teacher' | 'schoolYear' | 'theme' | 'data';
+type SectionKey = 'tabs' | 'home' | 'timetable' | 'establishment' | 'teacher' | 'schoolYear' | 'theme' | 'import' | 'data';
 
 interface SidebarItem {
   key: SectionKey;
@@ -30,6 +31,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { key: 'teacher', label: 'Profil enseignant', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { key: 'schoolYear', label: 'Annee scolaire', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
   { key: 'theme', label: 'Theme', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
+  { key: 'import', label: 'Jeton d’import', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z' },
   { key: 'data', label: 'Donnees', icon: 'M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7zm0 5h16' },
 ];
 
@@ -354,6 +356,10 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             </div>
           </div>
         );
+
+      // Jeton d'import : dépôt de cours par Claude (migration 075)
+      case 'import':
+        return <ImportTokensPanel />;
 
       // Section 6 : Donnees
       case 'data':

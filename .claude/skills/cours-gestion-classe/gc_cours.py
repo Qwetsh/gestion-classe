@@ -195,6 +195,20 @@ def Zone(style='lignes', lignes=4):
     return {'type': 'writingZone', 'attrs': {'style': style, 'lines': lignes}}
 
 
+def Image(fichier, largeur_cm=None, legende=None, alignement='center'):
+    """Image du cours. Le fichier est envoyé dans l'application (jeton d'import, voir gc_envoi.py),
+    puis cité par son chemin : une image déjà envoyée n'est pas renvoyée.
+    largeur_cm : largeur affichée (sinon la largeur naturelle, plafonnée à la colonne de 16 cm).
+    legende : texte sous l'image. alignement : 'left', 'center' ou 'right'."""
+    from gc_envoi import envoyer_image
+    attrs = {'path': envoyer_image(fichier), 'align': alignement}
+    if largeur_cm:
+        attrs['width'] = int(round(min(largeur_cm, 16) * 96 / 2.54))
+    if legende is not None:
+        attrs['caption'] = legende
+    return {'type': 'image', 'attrs': attrs}
+
+
 def SautDePage():
     return {'type': 'pageBreak'}
 
