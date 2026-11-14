@@ -58,6 +58,34 @@ export const emptyReveal = (): RevealState => ({ pages: {}, objects: {}, gaps: {
 
 const STORAGE_PREFIX = 'classroom-board-reveal:';
 
+/** Remet en forme un état lu (navigateur ou serveur) : toute rubrique absente ou invalide est vide. */
+export function normalizeReveal(raw: unknown): RevealState {
+  const parsed = (raw && typeof raw === 'object' ? raw : {}) as Partial<RevealState>;
+  return {
+    pages: parsed.pages && typeof parsed.pages === 'object' ? parsed.pages : {},
+    objects: parsed.objects && typeof parsed.objects === 'object' ? parsed.objects : {},
+    gaps: parsed.gaps && typeof parsed.gaps === 'object' ? parsed.gaps : {},
+    shown: parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {},
+    unfolded: parsed.unfolded && typeof parsed.unfolded === 'object' ? parsed.unfolded : {},
+    fired: parsed.fired && typeof parsed.fired === 'object' ? parsed.fired : {},
+    moved: parsed.moved && typeof parsed.moved === 'object' ? parsed.moved : {},
+  };
+}
+
+/** Vrai si rien n'a été révélé, montré, déplié, joué ni déplacé. */
+export const isRevealEmpty = (s: RevealState) =>
+  [s.pages, s.objects, s.gaps, s.shown, s.unfolded, s.fired, s.moved].every((part) => Object.keys(part ?? {}).length === 0);
+
+/** Date du dernier enregistrement dans ce navigateur (ms), 0 si inconnue. */
+export function revealSavedAt(sessionId: string): number {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_PREFIX + sessionId) || 'null') as { savedAt?: unknown } | null;
+    return typeof parsed?.savedAt === 'number' ? parsed.savedAt : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function loadRevealState(sessionId: string): RevealState {
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + sessionId);
@@ -79,7 +107,8 @@ export function loadRevealState(sessionId: string): RevealState {
 
 export function saveRevealState(sessionId: string, state: RevealState) {
   try {
-    localStorage.setItem(STORAGE_PREFIX + sessionId, JSON.stringify(state));
+    // `savedAt` : pour savoir, à la reprise, qui du navigateur ou du serveur est le plus récent
+    localStorage.setItem(STORAGE_PREFIX + sessionId, JSON.stringify({ ...state, savedAt: Date.now() }));
   } catch {
     /* quota : l'état de révélation n'est pas vital */
   }
