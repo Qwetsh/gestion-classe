@@ -63,5 +63,5 @@ export function CourseSessionView({ sessionId, boardId, userId, bus }: Props) {
 
   if (!state) return <div className="classroom__waiting"><p>Ouverture du cours…</p></div>;
   if ('error' in state) return <div className="classroom__waiting"><p>{state.error}</p></div>;
-  return <CoursePresenter boardId={boardId} doc={state.doc} title={state.title} session={{ initialInk: state.ink, onInkChange }} bus={bus} />;
+  return <CoursePresenter boardId={boardId} doc={state.doc} title={state.title} session={{ sessionId, userId, initialInk: state.ink, onInkChange }} bus={bus} />;
 }

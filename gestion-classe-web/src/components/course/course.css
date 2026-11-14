@@ -669,6 +669,12 @@ body.ce-presenting { overflow: hidden; }
 .ce-pres__test { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #F59E0B; color: #111827; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 /* Dans l'écran de classe : sous les surimpressions de la page (minuteur, tirage, rideau) */
 .ce-pres--embedded { z-index: 10; }
+/* Encart ouvert en classe (lot 4e) : le tableau blanc par-dessus la présentation */
+.ce-pres-encart { position: fixed; inset: 0; z-index: 1300; }
+.ce-pres-encart--embedded { z-index: 11; }
+.ce-pres__encart { white-space: nowrap; margin-left: 4px; height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--ce-accent); color: #fff; font-weight: 600; cursor: pointer; }
+.ce-pres .ce-encart { cursor: pointer; }
+.ce-pres.is-overview .ce-flow { pointer-events: none; }
 .ce-pres__test--live { background: #10B981; color: #fff; }
 .ce-pres__quit { margin-left: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: #fff; color: #111827; font-weight: 600; cursor: pointer; }
 
