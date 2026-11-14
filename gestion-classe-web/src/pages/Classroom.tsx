@@ -364,6 +364,10 @@ export function Classroom() {
             // Traités par le tableau blanc : on l'affiche s'il ne l'est pas déjà
             setView('board');
             break;
+          case 'nav':
+            // Suivant / Précédent du cours (traités par le cours affiché) : on le montre s'il ne l'est pas
+            setView('board');
+            break;
         }
     });
 
@@ -584,7 +588,7 @@ export function Classroom() {
           <footer className="classroom__footer">Bureau</footer>
 
           {view === 'board' && seedKind === 'course' && seedBoardId && userId && (
-            <CourseSessionView sessionId={session.id} boardId={seedBoardId} userId={userId} />
+            <CourseSessionView sessionId={session.id} boardId={seedBoardId} userId={userId} bus={bus} />
           )}
           {view === 'board' && (seedKind === 'none' || seedKind === 'board') && (
             <BoardWorkspace

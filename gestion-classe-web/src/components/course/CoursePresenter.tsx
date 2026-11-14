@@ -22,6 +22,7 @@ import type { LayerItem } from '../../lib/course/courseLayer';
 import { COL_W, MARGIN, PAGE_W } from '../../lib/course/coursePage';
 import { Icon } from './courseIcons';
 import type { DrawTool } from './courseDraw';
+import type { ClassroomBus } from '../../lib/classroomBus';
 
 interface Props {
   boardId: string;
@@ -34,6 +35,8 @@ interface Props {
    * remonté par `onInkChange` (rangé dans la séance). Sans : mode test, encre perdue en quittant.
    */
   session?: { initialInk: LayerItem[]; onInkChange: (items: LayerItem[]) => void };
+  /** Canal de la séance (lot 4c) : le téléphone envoie Suivant / Précédent / Vue d'ensemble. */
+  bus?: ClassroomBus | null;
 }
 
 /** Marge visible de chaque côté de la colonne (les annotations posées au bord restent visibles). */
@@ -46,7 +49,7 @@ const INK_COLORS = ['#DC2626', '#2563EB', '#16A34A', '#111827'];
 
 type InkTool = 'none' | Extract<DrawTool, 'pen' | 'highlighter' | 'eraser'>;
 
-export function CoursePresenter({ boardId, doc, title, onClose, session }: Props) {
+export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -150,6 +153,20 @@ export function CoursePresenter({ boardId, doc, title, onClose, session }: Props
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [next, prev, overview, maxY, close, toggleFullscreen, embedded]);
+
+  // Télécommande du téléphone (lot 4c)
+  const navRef = useRef({ next, prev });
+  useEffect(() => { navRef.current = { next, prev }; });
+  useEffect(() => {
+    if (!bus) return;
+    return bus.subscribe((cmd) => {
+      if (cmd.kind !== 'nav') return;
+      if (cmd.action === 'overview') { setOverview((v) => !v); return; }
+      setOverview(false);
+      if (cmd.action === 'next') navRef.current.next();
+      else navRef.current.prev();
+    });
+  }, [bus]);
 
   const onWheel = (e: React.WheelEvent) => {
     if (overview) return;

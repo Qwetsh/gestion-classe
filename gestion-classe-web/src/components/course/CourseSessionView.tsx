@@ -9,16 +9,19 @@ import { CoursePresenter } from './CoursePresenter';
 import { fetchCourse, type CourseDoc } from '../../lib/course/courseDoc';
 import { fetchSessionCourseInk, linkSessionBoard, saveSessionCourseInk } from '../../lib/boardsQueries';
 import type { LayerItem } from '../../lib/course/courseLayer';
+import type { ClassroomBus } from '../../lib/classroomBus';
 
 interface Props {
   sessionId: string;
   boardId: string;
   userId: string;
+  /** Canal de la séance : Suivant / Précédent / Vue d'ensemble envoyés du téléphone (lot 4c). */
+  bus?: ClassroomBus | null;
 }
 
 const SAVE_DELAY_MS = 1200;
 
-export function CourseSessionView({ sessionId, boardId, userId }: Props) {
+export function CourseSessionView({ sessionId, boardId, userId, bus }: Props) {
   const [state, setState] = useState<{ doc: CourseDoc; title: string; ink: LayerItem[] } | { error: string } | null>(null);
   const pending = useRef<LayerItem[] | null>(null);
   const timer = useRef(0);
@@ -60,5 +63,5 @@ export function CourseSessionView({ sessionId, boardId, userId }: Props) {
 
   if (!state) return <div className="classroom__waiting"><p>Ouverture du cours…</p></div>;
   if ('error' in state) return <div className="classroom__waiting"><p>{state.error}</p></div>;
-  return <CoursePresenter boardId={boardId} doc={state.doc} title={state.title} session={{ initialInk: state.ink, onInkChange }} />;
+  return <CoursePresenter boardId={boardId} doc={state.doc} title={state.title} session={{ initialInk: state.ink, onInkChange }} bus={bus} />;
 }

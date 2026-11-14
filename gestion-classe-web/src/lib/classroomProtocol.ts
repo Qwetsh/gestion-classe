@@ -11,6 +11,8 @@ export type ClassroomCommand =
   | { kind: 'pick'; studentId: string | null; label?: string; source?: 'phone' | 'board' }
   | { kind: 'curtain'; on: boolean }
   | { kind: 'view'; mode: 'plan' | 'board' }
+  /** Téléphone → écran : avancer dans un cours rédigé projeté (lot 4c) : écran suivant, précédent, vue d'ensemble. */
+  | { kind: 'nav'; action: 'next' | 'prev' | 'overview' }
   /** Téléphone → écran : photo déposée dans le bucket board-assets, à poser sur la page du tableau. */
   | { kind: 'photo'; path: string; width: number; height: number; caption?: string }
   /** Écran → téléphone : « +1 tampon » demandé depuis le tableau (le téléphone reste la source de vérité). */

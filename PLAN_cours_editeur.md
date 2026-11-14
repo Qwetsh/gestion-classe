@@ -292,3 +292,16 @@ tableau de la séance est un cours, encre de séance enregistrée dans la séanc
   base). **Non vérifié** : le parcours complet avec une vraie séance démarrée au téléphone
   (pas de fausse séance créée en base, pour ne pas en laisser une sur le téléphone) ;
   l'enregistrement serveur, qui attend la migration 073.
+
+### Lot 4c — télécommande du téléphone, fait le 14/11/2026 (branche `feat/cours-classe-telephone`)
+
+- Nouvelle commande du canal de classe : `{ kind: 'nav', action: 'next' | 'prev' | 'overview' }`,
+  identique dans `lib/classroomProtocol.ts` (web) et `services/sync/classroomChannel.ts` (mobile).
+- Web : le cours affiché dans `/classe` l'écoute (écran suivant, précédent, vue d'ensemble ;
+  Suivant quitte la vue d'ensemble) ; reçue pendant que le plan est affiché, elle remontre le cours.
+- Mobile (PR à part dans gestion-classe-mobile, branche `feat/cours-classe-nav`) : section
+  « Cours projeté » dans la feuille « Écran de la classe » : Précédent, **Suivant** (grand bouton),
+  Vue d'ensemble ; « Tableau blanc » devient « Tableau ou cours ». **APK à reconstruire.**
+- Vérifié : côté web, avec un canal simulé (Suivant ×2, Précédent, vue d'ensemble, Suivant qui en
+  sort, autres commandes ignorées) ; côté mobile, compilation TypeScript. **Non vérifié** : le
+  téléphone réel (APK pas encore construit).
