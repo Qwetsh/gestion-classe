@@ -98,12 +98,15 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
   }, [sessionId]);
   useEffect(() => () => clearEncartOverrides(scope), [scope]);
 
+  // Sans la pagination : à l'écran il n'y a pas de pages. Laissée active, elle posait ses
+  // intercalaires (réduits à un trait par le style), se trompait en les remesurant et les
+  // retirait puis les remettait sans fin : tout le bas du cours sautait plusieurs fois par seconde.
   const extensions = useMemo(() => courseExtensions(
     () => { /* pas de pages en classe */ },
     { boardId, scope, onEdit: openEncart },
     () => { /* lecture seule */ },
     { getMode: () => 'adapt', onDroppedImages: () => {}, onDuplicateEncart: () => {}, onImageFiles: () => {} },
-  ), [boardId, scope, openEncart]);
+  ).filter((e) => e.name !== 'coursePagination'), [boardId, scope, openEncart]);
   const editor = useEditor({ extensions, content: doc.content, editable: false, editorProps: { attributes: { class: 'ce-doc', lang: 'fr' } } }, [doc]);
 
   // ---- Géométrie : la colonne (et un peu de marge) remplit la largeur de l'écran ----

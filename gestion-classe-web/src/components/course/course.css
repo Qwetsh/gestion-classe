@@ -716,11 +716,6 @@ body.ce-presenting { overflow: hidden; }
 .ce-pres.is-overview { background: #E5E7EB; cursor: zoom-in; }
 .ce-pres__page { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .35s ease; background: #fff; }
 .ce-pres.is-overview .ce-pres__page { box-shadow: 0 6px 30px rgba(15,23,42,.18); }
-/* Pas de pages en classe : un trait discret à la place de l'espace entre deux feuilles */
-.ce-pres .ce-spacer { height: 0 !important; border-top: 1px dashed #CBD5E1; margin: 10px 0 !important; }
-.ce-pres .ce-spacer--cut::before { display: none; }
-.ce-pres tr.ce-spacer--row > td { height: 0 !important; background: none !important; }
-.ce-pres tr.ce-spacer-head { display: none; }
 .ce-pres .ce-doc { caret-color: transparent; }
 .ce-pres .ce-encart__edit, .ce-pres .ce-encart__label { display: none !important; }
 .ce-pres__band { position: absolute; border: 3px solid var(--ce-accent); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(15,23,42,.12); pointer-events: none; }
