@@ -37,7 +37,8 @@ import { checkCourse, setLiveSpell, spellHits, spellKey, hideSpell, type SpellHi
 import { CourseSpellPopover } from './CourseSpellPopover';
 import { CoursePrintDialog } from './CoursePrintDialog';
 import { buildTwoUp, printClasses, type PrintOptions } from './coursePrint';
-import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
+import { COL_W, PAGE_H, PAGE_W, SHEET_GAP, pageGeometry } from '../../lib/course/coursePage';
+import { rescaleToColumn } from './courseTable';
 import { updateBoard } from '../../lib/boardsQueries';
 import { uploadBoardImage } from '../../lib/boardImport';
 import { fetchLessonBoardByBoardId } from '../../lib/timetable/lessonBoardsQueries';
@@ -53,7 +54,7 @@ import './course.css';
 import '@fontsource/opendyslexic/400.css';
 import '@fontsource/opendyslexic/700.css';
 import '@fontsource/playwrite-fr-moderne/400.css';
-import { flowStyle } from './courseThemes';
+import { flowStyle, sheetVars } from './courseThemes';
 
 interface Props {
   boardId: string;
@@ -206,6 +207,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   /** Import en cours : texte de la barre d'état. */
   const [importing, setImporting] = useState<string | null>(null);
   const editorRef = useRef<Editor | null>(null);
+  /** Largeur réelle de la colonne de texte (dépend des marges du cours). */
+  const columnWidth = () => (editorRef.current?.view.dom as HTMLElement | undefined)?.clientWidth || COL_W;
   const saveTimer = useRef(0);
   const pendingRef = useRef(restored);
   /**
@@ -337,7 +340,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       try {
         toast('Envoi de l’image…', 'info');
         const img = await uploadBoardImage(f, userId, `board:${boardId}`, { keepTransparency: true });
-        const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
+        const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(columnWidth(), widthPx ?? img.width)) } };
         if (at != null) ed.chain().focus().insertContentAt(at, node).run();
         else ed.chain().focus().insertContent(node).run();
       } catch (err) {
@@ -430,7 +433,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           setImporting(`Envoi des pages : ${i + 1} sur ${blobs.length}…`);
           const img = await uploadBoardImage(new File([blobs[i]], `page-${i + 1}.jpg`, { type: 'image/jpeg' }), userId, `board:${boardId}`);
           // Bordure fine : le bord d'une page blanche reste visible sur la feuille
-          nodes.push({ type: 'image', attrs: { path: img.path, width: Math.round(COL_W), frame: 'border', alt: `${file.name}, page ${i + 1}` } });
+          nodes.push({ type: 'image', attrs: { path: img.path, width: Math.round(columnWidth()), frame: 'border', alt: `${file.name}, page ${i + 1}` } });
         }
         const pos = at ?? ed.state.selection.to;
         // Une seule étape : un Ctrl+Z retire toutes les pages
@@ -521,6 +524,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
 
   useEffect(() => { editorRef.current = editor; }, [editor]);
 
+  // Marges du cours (lot Q4) : géométrie des feuilles, hauteur utile pour la pagination
+  const geo = useMemo(() => pageGeometry(settings.margins), [settings.margins]);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    relayoutNow(editor, undefined, geo.contentH);
+  }, [editor, geo]);
+
   // Document illisible : lecture seule, et on le dit (le cours en base reste intact)
   useEffect(() => {
     if (!editor || !unreadable) return;
@@ -565,7 +575,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           let changed = false;
           editor.state.doc.descendants((node, pos) => {
             if (node.type.name === 'image' && node.attrs.src === src && !node.attrs.path) {
-              tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, width: node.attrs.width ?? Math.round(Math.min(COL_W, img.width)) });
+              tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, width: node.attrs.width ?? Math.round(Math.min(columnWidth(), img.width)) });
               changed = true;
             }
           });
@@ -585,6 +595,11 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
 
   const changeSettings = (patch: Partial<CourseSettings>) => {
+    // Marges (lot Q4) : les tableaux et images pleine largeur suivent la nouvelle colonne
+    if ('margins' in patch && editor) {
+      const tr = rescaleToColumn(editor.state, pageGeometry(settingsRef.current.margins).colW, pageGeometry(patch.margins).colW);
+      if (tr) editor.view.dispatch(tr);
+    }
     setSettings((prev) => {
       const next = { ...prev, ...patch };
       settingsRef.current = next;
@@ -1153,8 +1168,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       {showRuler && (
         <div className="ce-rulerbar" style={{ paddingRight: scrollbarW, paddingLeft: showOutline ? OUTLINE_W : 0 }} aria-hidden>
           <div className="ce-ruler" style={{ width: PAGE_W * zoom }}>
-            <div className="ce-ruler__margin" style={{ left: 0, width: MARGIN * zoom }} />
-            <div className="ce-ruler__margin" style={{ right: 0, width: MARGIN * zoom }} />
+            <div className="ce-ruler__margin" style={{ left: 0, width: geo.marginX * zoom }} />
+            <div className="ce-ruler__margin" style={{ right: 0, width: geo.marginX * zoom }} />
             {Array.from({ length: 22 }).map((_, i) => (
               <span key={i}>
                 <i className="ce-ruler__tick" style={{ left: i * 37.795 * zoom, height: i % 5 === 0 ? 8 : 4 }} />
@@ -1171,13 +1186,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       )}
       <div className="ce-desk" ref={deskRef} onScroll={onDeskScroll}>
         <div className="ce-sheets-outer" style={{ width: PAGE_W * zoom, height: sheetsH * zoom }}>
-          <div ref={sheetsRef} className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }} onMouseDown={onSheetsMouseDown}>
+          <div ref={sheetsRef} className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})`, ...sheetVars(geo) }} onMouseDown={onSheetsMouseDown}>
             {Array.from({ length: pages }).map((_, i) => (
               <div key={i} className="ce-sheet" style={{ top: i * (PAGE_H + gap), width: PAGE_W, height: PAGE_H }}>
                 <CourseSheetChrome page={i + 1} pages={pages} settings={settings} values={chromeValues} onEdit={() => setHfOpen(true)} />
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...flowStyle(settings) }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
+            <div className="ce-flow" style={{ left: geo.marginX, top: geo.marginY, width: geo.colW, ...flowStyle(settings) }} data-numbering={settings.numbering && settings.numbering !== 'none' ? settings.numbering : undefined} data-hyphens={settings.hyphens ? '' : undefined} data-invisibles={showInvisibles ? '' : undefined} data-caption={settings.captionLabel ?? 'document'}>
               <EditorContent editor={editor} />
             </div>
           </div>

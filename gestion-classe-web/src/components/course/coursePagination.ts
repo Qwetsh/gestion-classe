@@ -42,6 +42,8 @@ interface PaginationOptions {
 
 interface PaginationStorage {
   gap: number;
+  /** Hauteur utile d'une page (dépend des marges du cours, lot Q4). */
+  contentH: number;
 }
 
 declare module '@tiptap/core' {
@@ -69,7 +71,7 @@ function spacerWidget(s: { pos: number; h: number }) {
  * confond plus de part et d'autre (sans intercalaire : max(mb, mt) ; avec : mb + mt) — pour
  * retrouver la position « naturelle », indépendante de la mise en page précédente.
  */
-export function computeLayout(view: EditorView, gap: number): PageLayout {
+export function computeLayout(view: EditorView, gap: number, contentH: number = CONTENT_H): PageLayout {
   const stride = PAGE_H + gap;
   const spacers: PageLayout['spacers'] = [];
   const dom = view.dom as HTMLElement;
@@ -107,7 +109,7 @@ export function computeLayout(view: EditorView, gap: number): PageLayout {
       // Titre « solidaire du suivant » (comme dans Word) : il emmène au moins le début du bloc suivant
       const next = blocks[i + 1];
       const keep = b.type === 'heading' && next && next.type !== 'pageBreak' ? Math.max(0, next.natural - b.natural - h) + Math.min(next.h, KEEP_WITH_NEXT_PX) : 0;
-      if (forceBreak || (notFirstOnPage && top + h + keep > pageTop + CONTENT_H)) {
+      if (forceBreak || (notFirstOnPage && top + h + keep > pageTop + contentH)) {
         const next = pageTop + stride;
         const spacer = next - prevBottom - prevMb;
         if (spacer > 0) {
@@ -143,11 +145,16 @@ function applyLayout(view: EditorView, layout: PageLayout, onLayout?: (l: PageLa
   onLayout?.(layout);
 }
 
-/** Recalcule tout de suite (impression : l'espace entre feuilles passe à 0 avant le rendu). */
-export function relayoutNow(editor: Editor, gap?: number) {
+/**
+ * Recalcule tout de suite (impression : l'espace entre feuilles passe à 0 avant le rendu ;
+ * marges : la hauteur utile des pages change).
+ */
+export function relayoutNow(editor: Editor, gap?: number, contentH?: number) {
   if (gap !== undefined) editor.storage.coursePagination.gap = gap;
+  if (contentH !== undefined) editor.storage.coursePagination.contentH = contentH;
   const ext = editor.extensionManager.extensions.find((e) => e.name === 'coursePagination');
-  applyLayout(editor.view, computeLayout(editor.view, editor.storage.coursePagination.gap), (ext?.options as PaginationOptions | undefined)?.onLayout);
+  const st = editor.storage.coursePagination;
+  applyLayout(editor.view, computeLayout(editor.view, st.gap, st.contentH), (ext?.options as PaginationOptions | undefined)?.onLayout);
 }
 
 export const CoursePagination = Extension.create<PaginationOptions, PaginationStorage>({
@@ -158,7 +165,7 @@ export const CoursePagination = Extension.create<PaginationOptions, PaginationSt
   },
 
   addStorage() {
-    return { gap: SHEET_GAP };
+    return { gap: SHEET_GAP, contentH: CONTENT_H };
   },
 
   addProseMirrorPlugins() {
@@ -188,7 +195,7 @@ export const CoursePagination = Extension.create<PaginationOptions, PaginationSt
           const schedule = () => {
             window.clearTimeout(timer);
             timer = window.setTimeout(() => {
-              if (!view.isDestroyed) applyLayout(view, computeLayout(view, storage.gap), options.onLayout);
+              if (!view.isDestroyed) applyLayout(view, computeLayout(view, storage.gap, storage.contentH), options.onLayout);
             }, LAYOUT_DELAY_MS);
           };
           schedule();

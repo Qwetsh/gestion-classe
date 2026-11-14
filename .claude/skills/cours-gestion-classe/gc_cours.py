@@ -21,8 +21,13 @@ final reste `npm run course:check`.
 import json
 import sys
 
-# Géométrie de la feuille (lib/course/coursePage.ts) : colonne de texte en px CSS
-COL_W = 793.7 - 2 * 94.49
+# Géométrie de la feuille (lib/course/coursePage.ts) : colonne de texte en px CSS.
+# Marges normales : 2,5 cm partout (colonne de 16 cm) ; étroites : 1,5 cm en haut et en bas,
+# 2 cm sur les côtés (colonne de 17 cm). Cours(...) règle COL_W selon ses marges : créer le Cours
+# AVANT les tableaux (Cartouche, Tableau…), dont les largeurs en dépendent.
+MM = 96 / 25.4
+COLONNES = {'normales': 793.7 - 2 * 94.49, 'etroites': 793.7 - 2 * 20 * MM}
+COL_W = COLONNES['etroites']
 
 ARIAL = 'Arial, Helvetica, sans-serif'
 POLICES = {
@@ -341,10 +346,15 @@ def JaiReussi(*criteres):
 class Cours:
     """Un brouillon de cours. Réglages : police (nom du menu), taille du texte (10 à 14 pt),
     theme ('classique', 'sobre', 'nature', 'chaleureux', 'ecolier', 'fiche'), numerotation des titres
-    ('none', 'roman', 'alpha', 'decimal'), premiere_page_vide (pas d'en-tête ni de pied en page 1)."""
+    ('none', 'roman', 'alpha', 'decimal'), premiere_page_vide (pas d'en-tête ni de pied en page 1),
+    marges ('etroites' : 1,5 et 2 cm comme les fiches Word, par défaut ; 'normales' : 2,5 cm)."""
 
     def __init__(self, titre, niveau=None, chapitre=None, police='Arial', taille=11, theme='fiche',
-                 numerotation=None, premiere_page_vide=True, en_tete=None, pied=None):
+                 numerotation=None, premiere_page_vide=True, en_tete=None, pied=None, marges='etroites'):
+        global COL_W
+        if marges not in COLONNES:
+            raise ValueError("marges : 'etroites' ou 'normales'")
+        COL_W = COLONNES[marges]
         self.titre, self.niveau, self.chapitre = titre, niveau, chapitre
         self.blocs = []
         s = {}
@@ -353,6 +363,7 @@ class Cours:
         if theme and theme != 'classique': s['theme'] = theme
         if numerotation: s['numbering'] = numerotation
         if premiere_page_vide: s['firstPageBlank'] = True
+        if marges == 'etroites': s['margins'] = 'etroites'
         if en_tete: s['header'] = en_tete      # {'left': '{titre}', 'center': '', 'right': '{classe}'}
         if pied: s['footer'] = pied            # {'center': 'Page {page} sur {pages}'}
         self.settings = s

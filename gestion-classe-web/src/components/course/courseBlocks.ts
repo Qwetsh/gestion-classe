@@ -43,8 +43,8 @@ const box = (ws: number[], content: JSONContent[], opts: { rowspan?: number; bg?
  * gauche, titre et niveau, note et commentaire, compétences, durée et modalité, problématique,
  * objectifs. Précédé de la ligne Nom, Prénom, Classe, Date.
  */
-export function activityCartouche(): JSONContent[] {
-  const [a, b, c, d, e] = widths(17.6, 11, 23.7, 23.7, 24);
+export function activityCartouche(colW: number = COL_W): JSONContent[] {
+  const [a, b, c, d, e] = widths(colW, 17.6, 11, 23.7, 23.7, 24);
   const grey = '#595959';
   const comp = (label: string, color: string, ws: number[]) => box(ws, [
     tight('center', styled(label, { i: true, color, pt: 8 })),
@@ -98,11 +98,11 @@ const head = (width: number, content: JSONContent[]): JSONContent => ({ type: 't
 const row = (...cells: JSONContent[]): JSONContent => ({ type: 'tableRow', content: cells });
 const table = (...rows: JSONContent[]): JSONContent => ({ type: 'table', content: rows });
 
-/** Largeurs de colonnes (px) dont la somme fait la colonne de texte. */
-function widths(...parts: number[]): number[] {
+/** Largeurs de colonnes (px) dont la somme fait la colonne de texte (`colW`, selon les marges). */
+function widths(colW: number, ...parts: number[]): number[] {
   const total = parts.reduce((a, b) => a + b, 0);
-  const w = parts.map((x) => Math.floor((x / total) * COL_W));
-  w[0] += Math.floor(COL_W) - w.reduce((a, b) => a + b, 0);
+  const w = parts.map((x) => Math.floor((x / total) * colW));
+  w[0] += Math.floor(colW) - w.reduce((a, b) => a + b, 0);
   return w;
 }
 
@@ -111,7 +111,8 @@ export interface CourseBlock {
   label: string;
   hint: string;
   icon: IconName;
-  build: () => JSONContent[];
+  /** `colW` : largeur de la colonne de texte du cours (marges normales par défaut). */
+  build: (colW?: number) => JSONContent[];
 }
 
 export const COURSE_BLOCKS: CourseBlock[] = [
@@ -120,15 +121,15 @@ export const COURSE_BLOCKS: CourseBlock[] = [
     label: 'Cartouche d’activité',
     hint: 'Séquence, titre, niveau, note, compétences, durée, problématique et objectifs',
     icon: 'cartouche',
-    build: () => [...activityCartouche(), p()],
+    build: (colW = COL_W) => [...activityCartouche(colW), p()],
   },
   {
     id: 'cartouche',
     label: 'Cartouche d’évaluation',
     hint: 'Nom, prénom, classe, date, note sur le total du barème, appréciation',
     icon: 'cartouche',
-    build: () => {
-      const [a, b, c, d] = widths(27, 27, 22, 24);
+    build: (colW = COL_W) => {
+      const [a, b, c, d] = widths(colW, 27, 27, 22, 24);
       return [
         table(
           row(
@@ -174,8 +175,8 @@ export const COURSE_BLOCKS: CourseBlock[] = [
     label: 'Vrai ou faux',
     hint: 'Un tableau d’affirmations avec les cases Vrai et Faux',
     icon: 'table',
-    build: () => {
-      const [a, b, c] = widths(74, 13, 13);
+    build: (colW = COL_W) => {
+      const [a, b, c] = widths(colW, 74, 13, 13);
       const line = (n: number) => row(cell(a, [p(text(`Affirmation ${n}`))]), cell(b, [centered(text('☐'))]), cell(c, [centered(text('☐'))]));
       return [
         table(row(head(a, [p(text('Affirmation'))]), head(b, [centered(text('Vrai'))]), head(c, [centered(text('Faux'))])), line(1), line(2), line(3)),
@@ -188,8 +189,8 @@ export const COURSE_BLOCKS: CourseBlock[] = [
     label: 'Tableau de compétences',
     hint: 'Compétences évaluées et quatre niveaux de maîtrise (I, F, S, TB)',
     icon: 'competences',
-    build: () => {
-      const [a, b, c, d, e] = widths(60, 10, 10, 10, 10);
+    build: (colW = COL_W) => {
+      const [a, b, c, d, e] = widths(colW, 60, 10, 10, 10, 10);
       const line = () => row(cell(a, [p()]), cell(b, [p()]), cell(c, [p()]), cell(d, [p()]), cell(e, [p()]));
       return [
         table(

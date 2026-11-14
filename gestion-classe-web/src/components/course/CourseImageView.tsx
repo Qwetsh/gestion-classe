@@ -57,7 +57,7 @@ export function CourseImageView({ node, updateAttributes, selected }: NodeViewPr
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const measure = () => setAvail(Math.max(40, Math.min(COL_W, el.offsetWidth || COL_W)));
+    const measure = () => { const col = (el.closest('.ce-doc') as HTMLElement | null)?.clientWidth || COL_W; setAvail(Math.max(40, Math.min(col, el.offsetWidth || col))); };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);

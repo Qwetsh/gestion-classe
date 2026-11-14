@@ -9,6 +9,7 @@
  */
 import type { CSSProperties } from 'react';
 import type { CourseDoc, CourseSettings } from '../../lib/course/courseDoc';
+import type { PageGeometry } from '../../lib/course/coursePage';
 
 export type CourseThemeId = 'classique' | 'sobre' | 'nature' | 'chaleureux' | 'ecolier' | 'fiche';
 
@@ -113,6 +114,11 @@ export function flowStyle(settings: CourseSettings | undefined): CSSProperties {
   const pt = docFontSizePt(settings);
   if (pt !== 12) v['--ce-doc-size'] = `${pt}pt`;
   return v as CSSProperties;
+}
+
+/** Variables CSS des feuilles : position de l'en-tête et du pied selon les marges (lot Q4). */
+export function sheetVars(geo: PageGeometry): CSSProperties {
+  return { '--ce-margin-x': `${geo.marginX}px`, '--ce-hf-top': `${geo.headerTop}px`, '--ce-hf-bottom': `${geo.footerBottom}px` } as CSSProperties;
 }
 
 // ---- Thème des nouveaux cours (réglage de l'ordinateur) ----

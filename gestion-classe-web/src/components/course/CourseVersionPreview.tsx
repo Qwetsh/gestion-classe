@@ -2,14 +2,15 @@
  * Aperçu d'une version du cours (lot T6) : le document de l'époque, en lecture seule, sur ses
  * feuilles A4, par-dessus le cours en cours d'édition. Bandeau : date, « Restaurer », « Retour ».
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { courseExtensions } from './courseExtensions';
-import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
+import { PAGE_H, PAGE_W, SHEET_GAP, pageGeometry } from '../../lib/course/coursePage';
+import { relayoutNow } from './coursePagination';
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import { VERSION_KIND_LABELS, type CourseVersion } from '../../lib/course/courseVersions';
 import { CourseSheetChrome } from './CourseSheetChrome';
-import { flowStyle } from './courseThemes';
+import { flowStyle, sheetVars } from './courseThemes';
 import type { FieldValues } from './courseHeaderFooter';
 
 interface Props {
@@ -33,6 +34,13 @@ export function CourseVersionPreview({ boardId, version, doc, zoom, chromeValues
   ), [boardId]);
   const editor = useEditor({ extensions, content: doc.content, editable: false, editorProps: { attributes: { class: 'ce-doc', lang: 'fr' } } }, [doc]);
 
+  // Marges de la version (lot Q4)
+  const geo = pageGeometry(doc.settings?.margins);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    relayoutNow(editor, undefined, geo.contentH);
+  }, [editor, geo]);
+
   const at = new Date(version.created_at);
   const when = `${at.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
   const sheetsH = pages * PAGE_H + (pages - 1) * SHEET_GAP;
@@ -51,13 +59,13 @@ export function CourseVersionPreview({ boardId, version, doc, zoom, chromeValues
       </div>
       <div className="ce-desk ce-preview__desk">
         <div className="ce-sheets-outer" style={{ width: PAGE_W * zoom, height: sheetsH * zoom }}>
-          <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})` }}>
+          <div className="ce-sheets" style={{ width: PAGE_W, height: sheetsH, transform: `scale(${zoom})`, ...sheetVars(geo) }}>
             {Array.from({ length: pages }).map((_, i) => (
               <div key={i} className="ce-sheet" style={{ top: i * (PAGE_H + SHEET_GAP), width: PAGE_W, height: PAGE_H }}>
                 <CourseSheetChrome page={i + 1} pages={pages} settings={doc.settings ?? {}} values={chromeValues ?? { titre: '', classe: '', date: '' }} />
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...flowStyle(doc.settings) }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>
+            <div className="ce-flow" style={{ left: geo.marginX, top: geo.marginY, width: geo.colW, ...flowStyle(doc.settings) }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>
               {editor && <EditorContent editor={editor} />}
             </div>
           </div>

@@ -28,10 +28,13 @@ describe.runIf(drafts.length > 0)('brouillons de cours', () => {
       throw new Error(`${file} : JSON illisible — ${String(err)}`);
     }
     const { errors, warnings, words = 0 } = checkCourseDraft(schema, draft, new Set(COURSE_ICONS.map((i) => i.name)));
+    // Repère mesuré sur la fiche Microbiote : 374 mots tiennent sur une page en marges étroites, pas en normales
+    const narrow = draft.doc?.settings?.margins === 'etroites';
+    const limit = narrow ? 400 : 300;
     const lines = [
       `Brouillon : ${file}`,
       `Titre : ${draft.title}`,
-      `Longueur : ${words} mots${words > 300 ? ' — une fiche avec cartouche passe sur deux pages au-delà de 300 mots environ' : ''}`,
+      `Longueur : ${words} mots${words > limit ? ` — une fiche avec cartouche passe sur deux pages au-delà de ${limit} mots environ (marges ${narrow ? 'étroites' : 'normales'})` : ''}`,
       errors.length ? `${errors.length} ERREUR(S) :` : 'Aucune erreur.',
       ...errors.map((e) => `  ✗ ${e}`),
       ...(warnings.length ? [`${warnings.length} avertissement(s) :`, ...warnings.map((w) => `  ! ${w}`)] : []),

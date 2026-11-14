@@ -61,6 +61,11 @@ La colonne « Après » indique le lot de ce chantier qui comble l'écart.
 
 ## 3. Les lots
 
+- **Q4 — Marges étroites.** Mise en page › Marges : Normales (2,5 cm) ou Étroites (1,5 et 2 cm).
+  - Feuilles, pagination, règle, en-tête et pied suivent.
+  - Les tableaux et images pleine largeur suivent la colonne quand on change de marges.
+  - Le modèle « Fiche à cartouche » et la skill sont en marges étroites par défaut.
+
 - **Q1 — Encadrés et texte du cours façon fiche Word.**
   - Bordure d'encadré au choix (Barre, Cadre, Fond seul) et allure du titre (Étiquette ou Gras),
     dans l'onglet Encadré.
@@ -79,8 +84,8 @@ La colonne « Après » indique le lot de ce chantier qui comble l'écart.
 
 | # | Écart | Effet visible | Piste |
 |---|---|---|---|
-| 1 | **Marges fixes de 2,5 cm**, contre 1,5 cm et 2 cm dans Word (décision du 13/11/2026, T9b abandonné) | La fiche Microbiote (370 mots) passe sur **deux pages** : l'encadré « J'ai réussi » (209 px) ne tient pas dans les 134 px restants. Il manque environ 2,4 cm | Rouvrir T9b sous une forme réduite : un réglage « marges étroites » (1,5 / 2 cm) par cours. C'est à Thomas de décider |
-| 2 | Colonne de 16 cm au lieu de 17,7 cm | Le cartouche est plus serré, les cellules étroites passent à la ligne (« (questions 2 et 3) ») | Suit le n° 1 |
+| 1 | ~~Marges fixes de 2,5 cm~~ — **comblé par le lot Q4** | Avec le réglage « Étroites » (1,5 cm en haut et en bas, 2 cm sur les côtés), la fiche Microbiote complète (374 mots) tient sur **une page**, comme dans Word | Réglage Mise en page › Marges (Thomas, 14/11/2026, revient sur la décision du 13/11) |
+| 2 | ~~Colonne de 16 cm~~ — **comblé par le lot Q4** | Colonne de 17 cm en marges étroites ; le cartouche reprend la largeur de Word | — |
 | 3 | Un encadré ou une ligne de tableau ne se coupe pas entre deux pages | Un grand blanc en bas de page quand un encadré passe à la page suivante | T15 (pagination fine), prévu après le lot 4 |
 | 4 | Taille des titres fixe (Titre 2 : 21 px, Word : 13 pt) | « Questions » un peu plus grand que dans Word | Une taille de titres par thème, si Thomas le juge utile |
 | 5 | Images : Claude ne peut pas envoyer de fichier dans le stockage | Les documents (photos, schémas) sont à insérer à la main avec le bouton Image | Hors de portée du connecteur ; un emplacement « [Image : …] » est laissé à la place |

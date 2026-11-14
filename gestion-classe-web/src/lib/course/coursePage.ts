@@ -27,6 +27,41 @@ export const BASE_FONT_PX = 16;
 /** Hauteur d'un écran de classe en unités de colonne (16:9). */
 export const SCREEN_H = COL_W * 9 / 16;
 
+/**
+ * Marges du cours (lot Q4) : « normales » (2,5 cm partout, la colonne de 16 cm de la projection)
+ * ou « étroites » (1,5 cm en haut et en bas, 2 cm sur les côtés, comme les fiches Word de Thomas :
+ * colonne de 17 cm, une page de fiche tient sur une page).
+ */
+export type PageMargins = 'normales' | 'etroites';
+
+export const PAGE_MARGINS_LABELS: Record<PageMargins, string> = {
+  normales: 'Normales (2,5 cm)',
+  etroites: 'Étroites (1,5 et 2 cm)',
+};
+
+export interface PageGeometry {
+  /** Marges gauche et droite. */
+  marginX: number;
+  /** Marges haute et basse. */
+  marginY: number;
+  /** Largeur de la colonne de texte. */
+  colW: number;
+  /** Hauteur utile d'une page. */
+  contentH: number;
+  /** Position de l'en-tête (depuis le haut) et du pied (depuis le bas) de la feuille. */
+  headerTop: number;
+  footerBottom: number;
+}
+
+const NORMAL_GEOMETRY: PageGeometry = { marginX: MARGIN, marginY: MARGIN, colW: COL_W, contentH: CONTENT_H, headerTop: 40, footerBottom: 38 };
+const NARROW_X = 20 * MM;
+const NARROW_Y = 15 * MM;
+const NARROW_GEOMETRY: PageGeometry = { marginX: NARROW_X, marginY: NARROW_Y, colW: PAGE_W - 2 * NARROW_X, contentH: PAGE_H - 2 * NARROW_Y, headerTop: 18, footerBottom: 16 };
+
+/** Géométrie de la feuille selon les marges du cours (absentes : normales). */
+export const pageGeometry = (margins: string | undefined | null): PageGeometry =>
+  (margins === 'etroites' ? NARROW_GEOMETRY : NORMAL_GEOMETRY);
+
 /** Tailles de police proposées (pt), comme dans Word. */
 export const FONT_SIZES_PT = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
 

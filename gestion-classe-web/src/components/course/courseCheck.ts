@@ -11,7 +11,7 @@ import type { Schema } from '@tiptap/pm/model';
 import { TableMap } from '@tiptap/pm/tables';
 import { COURSE_DOC_VERSION, type CourseDoc } from '../../lib/course/courseDoc';
 import { BOARD_LEVELS } from '../../lib/boardsQueries';
-import { COL_W, FONT_FAMILIES } from '../../lib/course/coursePage';
+import { FONT_FAMILIES, pageGeometry } from '../../lib/course/coursePage';
 import { COURSE_THEMES, DOC_FONT_SIZES_PT } from './courseThemes';
 import { countWords } from '../../lib/course/courseVersions';
 
@@ -39,11 +39,11 @@ export interface DraftReport {
   errors: string[];
   /** À relire : le cours s'ouvrira, mais pas tout à fait comme prévu. */
   warnings: string[];
-  /** Nombre de mots (repère de longueur : une fiche à cartouche tient sur une page jusqu'à 300 mots environ). */
+  /** Nombre de mots (repère : une fiche à cartouche tient sur une page jusqu'à 400 mots environ en marges étroites, 300 en normales). */
   words?: number;
 }
 
-const SETTINGS_KEYS = ['numbering', 'hyphens', 'captionLabel', 'header', 'footer', 'firstPageBlank', 'theme', 'font', 'fontSize'];
+const SETTINGS_KEYS = ['numbering', 'hyphens', 'captionLabel', 'header', 'footer', 'firstPageBlank', 'theme', 'font', 'fontSize', 'margins'];
 const NUMBERINGS = ['none', 'roman', 'alpha', 'decimal'];
 const CAPTIONS = ['document', 'figure', 'doc', 'none'];
 const CALLOUT_KINDS = ['definition', 'retenir', 'consigne', 'exemple', 'libre'];
@@ -74,6 +74,8 @@ export function checkCourseDraft(schema: Schema, draft: CourseDraft, iconNames?:
   if (st.captionLabel != null && !CAPTIONS.includes(String(st.captionLabel))) errors.push(`settings.captionLabel : « ${String(st.captionLabel)} » inconnu`);
   if (st.theme != null && !COURSE_THEMES.some((t) => t.id === st.theme)) errors.push(`settings.theme : « ${String(st.theme)} » inconnu (${COURSE_THEMES.map((t) => t.id).join(', ')})`);
   if (st.font != null && !FONT_FAMILIES.some((f) => f.value === st.font)) errors.push(`settings.font : « ${String(st.font)} » n’est pas une police du menu`);
+  if (st.margins != null && st.margins !== 'normales' && st.margins !== 'etroites') errors.push(`settings.margins : « ${String(st.margins)} » (attendu : normales ou etroites)`);
+  const colW = pageGeometry(st.margins as string | undefined).colW;
   if (st.fontSize != null && !DOC_FONT_SIZES_PT.includes(Number(st.fontSize))) errors.push(`settings.fontSize : ${String(st.fontSize)} (attendu : ${DOC_FONT_SIZES_PT.join(', ')})`);
 
   // ---- Schéma de l'éditeur ----
@@ -145,7 +147,8 @@ export function checkCourseDraft(schema: Schema, draft: CourseDraft, iconNames?:
       if (!cw || cw.length !== span) complete = false;
       else width += cw.reduce((x, y) => x + y, 0);
     });
-    if (complete && width > COL_W + 2) warnings.push(`tableau n° ${tableIndex} : ${Math.round(width)} px de large, plus que la colonne (${Math.round(COL_W)} px)`);
+    if (complete && width > colW + 2) warnings.push(`tableau n° ${tableIndex} : ${Math.round(width)} px de large, plus que la colonne (${Math.round(colW)} px)`);
+    else if (complete && width < colW - 30 && width > colW * 0.9) warnings.push(`tableau n° ${tableIndex} : ${Math.round(width)} px de large pour une colonne de ${Math.round(colW)} px (largeurs calculées pour d’autres marges ?)`);
     return false;
   });
 

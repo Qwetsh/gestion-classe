@@ -14,7 +14,7 @@ import { CourseBlocksMenu } from './CourseBlocksMenu';
 import { formatPoints } from './courseEval';
 import { CourseTableGrid } from './CourseTableGrid';
 import { CELL_COLORS, ROW_HEIGHTS, TABLE_STYLES, type TableStyle } from './courseTable';
-import { COL_W, FONT_FAMILIES, FONT_SIZES_PT } from '../../lib/course/coursePage';
+import { COL_W, FONT_FAMILIES, FONT_SIZES_PT, PAGE_MARGINS_LABELS, type PageMargins } from '../../lib/course/coursePage';
 import { CourseSymbolPicker } from './CourseSymbolPicker';
 import { CourseIconPicker } from './CourseIconPicker';
 import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
@@ -607,6 +607,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               </div>
               <ThemeDefaultButton current={themeById(settings.theme).id} />
             </Group>
+            <Group label="Marges">
+              <div className="ce-stack">
+                <select className="ce-select ce-select--wide" value={settings.margins ?? 'normales'} onChange={(e) => onSettings({ margins: e.target.value === 'etroites' ? 'etroites' : undefined })} title="Marges de toutes les pages. Étroites : 1,5 cm en haut et en bas, 2 cm sur les côtés, comme une fiche Word (colonne de 17 cm au lieu de 16)" aria-label="Marges">
+                  {(Object.keys(PAGE_MARGINS_LABELS) as PageMargins[]).map((m) => <option key={m} value={m}>{PAGE_MARGINS_LABELS[m]}</option>)}
+                </select>
+              </div>
+            </Group>
             <Group label="Texte du cours">
               <div className="ce-stack">
                 <select className="ce-select ce-select--font" value={settings.font ?? ''} onChange={(e) => onSettings({ font: e.target.value || undefined })} title="Police de tout le texte du cours (le texte mis dans une autre police la garde)" aria-label="Police du cours">
@@ -783,7 +790,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         )}
 
         {blocks && (
-          <CourseBlocksMenu left={blocks.left} top={blocks.top} onPick={(b) => c().insertContent(b.build()).run()} onClose={() => setBlocks(null)} />
+          <CourseBlocksMenu left={blocks.left} top={blocks.top} onPick={(b) => c().insertContent(b.build((editor.view.dom as HTMLElement).clientWidth || COL_W)).run()} onClose={() => setBlocks(null)} />
         )}
 
         {tab === 'encadre' && (
@@ -947,7 +954,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Taille">
               <div className="ce-stack">
                 {[25, 50, 75, 100].map((p) => (
-                  <Sm key={p} label={`${p} % de la largeur`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100) })} />
+                  <Sm key={p} label={`${p} % de la largeur`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((((editor.view.dom as HTMLElement).clientWidth || COL_W) * p) / 100) })} />
                 ))}
               </div>
             </Group>

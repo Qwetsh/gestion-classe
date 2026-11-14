@@ -62,7 +62,51 @@ class CourseTableView extends TableView {
   }
 }
 
+// ---- Changement de marges (lot Q4) ----
+
+/**
+ * Le cours change de marges : la colonne passe de `from` à `to` px. Les tableaux et les images qui
+ * occupaient toute la largeur (à 3 px près) la gardent ; les plus étroits ne bougent pas.
+ * Renvoie null si rien n'est à changer.
+ */
+export function rescaleToColumn(state: EditorState, from: number, to: number): Transaction | null {
+  if (Math.abs(from - to) < 1) return null;
+  const tr = state.tr;
+  const k = to / from;
+  state.doc.descendants((node, pos) => {
+    if (node.type.name === 'image') {
+      const w = Number(node.attrs.width);
+      if (w && Math.abs(w - from) <= 3) tr.setNodeMarkup(pos, undefined, { ...node.attrs, width: Math.round(to) });
+      return false;
+    }
+    if (node.type.name !== 'table') return true;
+    const widths: number[] = [];
+    let complete = true;
+    node.firstChild?.forEach((cell) => {
+      const cw = cell.attrs.colwidth as number[] | null;
+      const span = Number(cell.attrs.colspan) || 1;
+      for (let j = 0; j < span; j++) { if (cw?.[j]) widths.push(cw[j]); else complete = false; }
+    });
+    const total = widths.reduce((a, b) => a + b, 0);
+    if (complete && Math.abs(total - from) <= 3) {
+      // Chaque cellule garde ses propres largeurs, mises à l'échelle : juste aussi avec des cellules
+      // fusionnées sur plusieurs lignes (applyColumnWidths suppose des lignes sans fusion verticale)
+      node.descendants((cell, cellPos) => {
+        if (cell.type.name !== 'tableCell' && cell.type.name !== 'tableHeader') return true;
+        const cw = cell.attrs.colwidth as number[] | null;
+        if (cw?.length) tr.setNodeMarkup(pos + 1 + cellPos, undefined, { ...cell.attrs, colwidth: cw.map((w) => Math.round(w * k)) });
+        return false;
+      });
+    }
+    return false;
+  });
+  return tr.docChanged ? tr.setMeta('addToHistory', false) : null;
+}
+
 // ---- Nœuds ----
+
+/** Largeur réelle de la colonne de texte (elle dépend des marges du cours, lot Q4). */
+const columnWidth = (view: EditorView) => (view.dom as HTMLElement).clientWidth || COL_W;
 
 /** Position du tableau dans la table du document, depuis la sélection. */
 function findTable(state: EditorState): { pos: number; node: PMNode } | null {
@@ -115,7 +159,7 @@ export const CourseTable = Table.extend({
   addCommands() {
     return {
       ...this.parent?.(),
-      setTableWidth: (percent) => ({ state, tr, dispatch }) => {
+      setTableWidth: (percent) => ({ state, tr, dispatch, view }) => {
         const found = findTable(state);
         if (!found) return false;
         if (!dispatch) return true;
@@ -128,14 +172,14 @@ export const CourseTable = Table.extend({
           for (let j = 0; j < span; j++) current.push(cw?.[j] || 0);
         });
         const known = current.filter((w) => w > 0);
-        const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : COL_W / n;
+        const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : columnWidth(view) / n;
         const filled = current.map((w) => w || fallback);
         const total = filled.reduce((a, b) => a + b, 0);
-        const target = (COL_W * percent) / 100;
+        const target = (columnWidth(view) * percent) / 100;
         applyColumnWidths(tr, found.pos, found.node, filled.map((w) => (w / total) * target));
         return true;
       },
-      equalizeColumns: () => ({ state, tr, dispatch }) => {
+      equalizeColumns: () => ({ state, tr, dispatch, view }) => {
         const found = findTable(state);
         if (!found) return false;
         if (!dispatch) return true;
@@ -147,7 +191,7 @@ export const CourseTable = Table.extend({
           const span = Number(cell.attrs.colspan) || 1;
           for (let j = 0; j < span; j++) { if (cw?.[j]) total += cw[j]; else complete = false; }
         });
-        const width = complete ? total : COL_W;
+        const width = complete ? total : columnWidth(view);
         applyColumnWidths(tr, found.pos, found.node, Array.from({ length: n }, () => width / n));
         return true;
       },

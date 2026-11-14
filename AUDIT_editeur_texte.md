@@ -1379,6 +1379,8 @@ Chantier à part, suivi dans `AUDIT_fiche_word.md` (analyse de la fiche Microbio
 
 - **Q1** (PR #66) : encadrés à cadre fin et titre en gras ; police et taille du texte du cours.
 - **Q2** (PR #67) : bloc « Cartouche d'activité », modèle « Fiche à cartouche », thème « Fiche ».
+- **Q4** : marges étroites (1,5 et 2 cm) au choix par cours. Thomas revient le 14/11/2026 sur
+  la décision Q1 du 13/11 (T9b abandonné), pour que ses fiches tiennent sur une page.
 - **Q3** : Claude écrit les cours directement en base :
   - skill `.claude/skills/cours-gestion-classe/` et bibliothèque `gc_cours.py` ;
   - vérificateur `npm run course:check` ;

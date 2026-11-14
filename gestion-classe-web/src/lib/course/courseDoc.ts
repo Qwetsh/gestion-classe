@@ -41,6 +41,8 @@ export interface CourseSettings {
   font?: string;
   /** Taille du texte « Normal » en points (absente = 12 pt). */
   fontSize?: number;
+  /** Marges (lot Q4) : 'etroites' = 1,5 cm en haut et en bas, 2 cm sur les côtés ; absentes = 2,5 cm. */
+  margins?: 'normales' | 'etroites';
 }
 
 /** Une ligne d'en-tête ou de pied de page : trois cases. */

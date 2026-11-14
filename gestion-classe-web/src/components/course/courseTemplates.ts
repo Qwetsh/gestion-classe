@@ -5,6 +5,7 @@
  */
 import type { JSONContent } from '@tiptap/core';
 import { COURSE_DOC_VERSION, emptyCourseDoc, type CourseDoc, type CourseSettings } from '../../lib/course/courseDoc';
+import { pageGeometry } from '../../lib/course/coursePage';
 import { COURSE_BLOCKS, activityCartouche } from './courseBlocks';
 
 const text = (t: string, bold = false): JSONContent => (bold ? { type: 'text', text: t, marks: [{ type: 'bold' }] } : { type: 'text', text: t });
@@ -91,7 +92,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     hint: 'Le cartouche des fiches SVT, situation de départ, rappel, questions, bonus et « J’ai réussi »',
     emoji: '🧪',
     build: () => doc([
-      ...activityCartouche(),
+      ...activityCartouche(pageGeometry('etroites').colW),
       p(text('Situation de départ : ', true), text('ce que les élèves savent déjà, et la question qui se pose.')),
       fiche('', '#B8860B', p(colored('💡 Rappel : ', '#8B6F00', true), colored('une méthode ou une notion utile pour cette activité.', '#5C4A00'))),
       h(2, 'Questions'),
@@ -99,7 +100,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
       question(2, text('À partir des documents 2 et 3, '), text('explique', true), text(' …')),
       fiche('★ Pour aller plus loin (question expert, bonus)', '#7030A0', p(text('Une question pour aller plus loin.'))),
       fiche('✅ J’ai réussi l’activité si je peux :', '#548235', task('premier objectif ;', 'deuxième objectif ;', 'rédiger des phrases complètes, sans recopier les documents mot à mot.')),
-    ], { font: 'Arial, Helvetica, sans-serif', fontSize: 11, firstPageBlank: true, theme: 'fiche' }),
+    ], { font: 'Arial, Helvetica, sans-serif', fontSize: 11, firstPageBlank: true, theme: 'fiche', margins: 'etroites' }),
   },
   {
     id: 'evaluation',
