@@ -9,7 +9,7 @@ import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/cours
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import { VERSION_KIND_LABELS, type CourseVersion } from '../../lib/course/courseVersions';
 import { CourseSheetChrome } from './CourseSheetChrome';
-import { themeStyle } from './courseThemes';
+import { flowStyle } from './courseThemes';
 import type { FieldValues } from './courseHeaderFooter';
 
 interface Props {
@@ -57,7 +57,7 @@ export function CourseVersionPreview({ boardId, version, doc, zoom, chromeValues
                 <CourseSheetChrome page={i + 1} pages={pages} settings={doc.settings ?? {}} values={chromeValues ?? { titre: '', classe: '', date: '' }} />
               </div>
             ))}
-            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...themeStyle(doc.settings?.theme) }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>
+            <div className="ce-flow" style={{ left: MARGIN, top: MARGIN, width: COL_W, ...flowStyle(doc.settings) }} data-numbering={numbering && numbering !== 'none' ? numbering : undefined} data-hyphens={doc.settings?.hyphens ? '' : undefined} data-caption={doc.settings?.captionLabel ?? 'document'}>
               {editor && <EditorContent editor={editor} />}
             </div>
           </div>

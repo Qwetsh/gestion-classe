@@ -37,6 +37,10 @@ export interface CourseSettings {
   firstPageBlank?: boolean;
   /** Thème : couleurs des titres et encadrés, police des titres (lot T16a ; absent = Classique). */
   theme?: string;
+  /** Police du texte du cours (valeur CSS de FONT_FAMILIES ; absente = Atkinson Hyperlegible). */
+  font?: string;
+  /** Taille du texte « Normal » en points (absente = 12 pt). */
+  fontSize?: number;
 }
 
 /** Une ligne d'en-tête ou de pied de page : trois cases. */

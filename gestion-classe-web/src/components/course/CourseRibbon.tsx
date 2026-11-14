@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { Icon, type IconName } from './courseIcons';
-import { CALLOUT_COLORS, CALLOUT_LABELS, WRITING_ZONE_LABELS, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
+import { CALLOUT_COLORS, CALLOUT_FRAMES, CALLOUT_LABELS, WRITING_ZONE_LABELS, calloutFrameOf, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
 import { CourseBlocksMenu } from './CourseBlocksMenu';
 import { formatPoints } from './courseEval';
 import { CourseTableGrid } from './CourseTableGrid';
@@ -21,7 +21,7 @@ import { LINE_HEIGHTS, SPACE_AFTER, SPACE_BEFORE } from './courseParagraph';
 import { CAPTION_LABELS, HEADING_NUMBERING_LABELS, type CaptionLabel, type CourseSettings, type HeadingNumbering } from '../../lib/course/courseDoc';
 import { COLUMNS_LAYOUTS, findColumns, type ColumnsLayout } from './courseColumns';
 import { PAGE_NUMBER_PRESETS, footerOf, pageNumberPreset } from './courseHeaderFooter';
-import { COURSE_THEMES, defaultThemeId, setDefaultThemeId, themeById, type CourseThemeId } from './courseThemes';
+import { COURSE_THEMES, DOC_FONT_SIZES_PT, defaultThemeId, docFontSizePt, setDefaultThemeId, themeById, type CourseThemeId } from './courseThemes';
 import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, IMAGE_FRAMES, flipCrop, rotateCrop, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
 export type RibbonTab = 'fichier' | 'accueil' | 'insertion' | 'miseenpage' | 'revision' | 'affichage' | 'tableau' | 'encadre' | 'image' | 'encart' | 'zone' | 'dots' | 'points' | 'colonnes';
@@ -187,6 +187,8 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         callout: (Object.keys(CALLOUT_LABELS) as CalloutKind[]).find((k) => e.isActive('callout', { kind: k })) ?? null,
         calloutTitle: (e.getAttributes('callout') as { title?: string | null }).title ?? null,
         calloutColor: ((e.getAttributes('callout') as { color?: string | null }).color ?? '') as string,
+        calloutFrame: calloutFrameOf(e.getAttributes('callout') as { kind?: string; frame?: string | null }),
+        calloutBoldTitle: (e.getAttributes('callout') as { titleStyle?: string | null }).titleStyle === 'bold',
         onDots: e.isActive('dots'),
         dotsCm: (e.getAttributes('dots') as { cm?: number | null }).cm ?? null,
         onPoints: e.isActive('points'),
@@ -238,12 +240,18 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     else c().indentParagraph(dir).run();
   };
 
-  /** Taille suivante ou précédente dans la liste des tailles (12 pt = taille du style). */
+  /** Atkinson nommée explicitement : utile quand le cours est dans une autre police. */
+  const ATKINSON = "'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', sans-serif";
+  /** Taille du texte « Normal » du cours (réglage Mise en page › Texte du cours). */
+  const basePt = docFontSizePt(settings);
+  const baseFontLabel = FONT_FAMILIES.find((f) => (f.value ?? '') === (settings.font ?? ''))?.label ?? 'Atkinson Hyperlegible';
+
+  /** Taille suivante ou précédente dans la liste des tailles (la taille du cours = taille du style). */
   const stepFontSize = (dir: 1 | -1) => {
-    const current = s.fontSize.endsWith('pt') ? Number(s.fontSize.slice(0, -2)) : 12;
+    const current = s.fontSize.endsWith('pt') ? Number(s.fontSize.slice(0, -2)) : basePt;
     const next = dir > 0 ? FONT_SIZES_PT.find((p) => p > current) : [...FONT_SIZES_PT].reverse().find((p) => p < current);
     if (!next) return;
-    if (next === 12) c().unsetFontSize().run(); else c().setFontSize(`${next}pt`).run();
+    if (next === basePt) c().unsetFontSize().run(); else c().setFontSize(`${next}pt`).run();
   };
 
   // Menu « Options de collage », sous le bouton Coller
@@ -407,12 +415,13 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                     title="Police"
                     aria-label="Police"
                   >
-                    {FONT_FAMILIES.map((f) => <option key={f.label} value={f.value ?? ''}>{f.label}</option>)}
+                    <option value="">{baseFontLabel} (du cours)</option>
+                    {FONT_FAMILIES.filter((f) => f.value !== (settings.font ?? null)).map((f) => <option key={f.label} value={f.value ?? ATKINSON}>{f.label}</option>)}
                   </select>
                   <select
                     className="ce-select"
-                    value={sizePt || (s.fontSize ? '' : '12')}
-                    onChange={(e) => { const v = e.target.value; if (v === '12') c().unsetFontSize().run(); else c().setFontSize(`${v}pt`).run(); }}
+                    value={sizePt || (s.fontSize ? '' : String(basePt))}
+                    onChange={(e) => { const v = e.target.value; if (v === String(basePt)) c().unsetFontSize().run(); else c().setFontSize(`${v}pt`).run(); }}
                     title="Taille de police"
                     aria-label="Taille de police"
                   >
@@ -597,6 +606,19 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 })}
               </div>
               <ThemeDefaultButton current={themeById(settings.theme).id} />
+            </Group>
+            <Group label="Texte du cours">
+              <div className="ce-stack">
+                <select className="ce-select ce-select--font" value={settings.font ?? ''} onChange={(e) => onSettings({ font: e.target.value || undefined })} title="Police de tout le texte du cours (le texte mis dans une autre police la garde)" aria-label="Police du cours">
+                  {FONT_FAMILIES.map((f) => <option key={f.label} value={f.value ?? ''}>{f.label}</option>)}
+                </select>
+                <div className="ce-row">
+                  <span className="ce-minilabel">Taille</span>
+                  <select className="ce-select" value={String(basePt)} onChange={(e) => { const v = Number(e.target.value); onSettings({ fontSize: v === 12 ? undefined : v }); }} title="Taille du texte « Normal » de tout le cours (le texte mis dans une autre taille la garde)" aria-label="Taille du texte du cours">
+                    {DOC_FONT_SIZES_PT.map((p) => <option key={p} value={String(p)}>{p} pt</option>)}
+                  </select>
+                </div>
+              </div>
             </Group>
             <Group label="Titres">
               <div className="ce-stack">
@@ -796,6 +818,23 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                     <input type="color" value={/^#[0-9a-f]{6}$/i.test(s.calloutColor) ? s.calloutColor : '#0ea5e9'} onChange={(e) => c().updateAttributes('callout', { kind: 'libre', color: e.target.value }).run()} aria-label="Autre couleur d'encadré" />
                   </label>
                 </div>
+              </div>
+            </Group>
+            <Group label="Bordure">
+              <div className="ce-stack">
+                <div className="ce-row">
+                  {CALLOUT_FRAMES.map((f) => (
+                    <button key={f.id} type="button" className={`ce-style ${s.calloutFrame === f.id ? 'is-on' : ''}`} onClick={() => c().updateAttributes('callout', { frame: f.id }).run()} title={f.hint}>
+                      <span className={`ce-style__frame ce-style__frame--${f.id}`} /><small>{f.label}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Group>
+            <Group label="Allure du titre">
+              <div className="ce-stack">
+                <Sm on={!s.calloutBoldTitle} title="Titre en petites majuscules espacées" onClick={() => c().updateAttributes('callout', { titleStyle: null }).run()}><span className="ce-glyph ce-glyph--sm" style={{ textTransform: 'uppercase', letterSpacing: '.06em', fontSize: 10, fontWeight: 700 }}>Étiquette</span></Sm>
+                <Sm on={s.calloutBoldTitle} title="Titre en gras, à la taille du texte (comme une fiche Word)" onClick={() => c().updateAttributes('callout', { titleStyle: 'bold' }).run()}><span className="ce-glyph ce-glyph--sm" style={{ fontWeight: 700 }}>Gras</span></Sm>
               </div>
             </Group>
             <Group label="Encadré">

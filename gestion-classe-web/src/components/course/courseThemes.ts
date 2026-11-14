@@ -8,7 +8,7 @@
  * les nouveaux cours à leur création.
  */
 import type { CSSProperties } from 'react';
-import type { CourseDoc } from '../../lib/course/courseDoc';
+import type { CourseDoc, CourseSettings } from '../../lib/course/courseDoc';
 
 export type CourseThemeId = 'classique' | 'sobre' | 'nature' | 'chaleureux' | 'ecolier';
 
@@ -84,6 +84,25 @@ export function themeStyle(id: string | undefined): CSSProperties {
     '--ce-ex-line': t.ex.line, '--ce-ex-bg': t.ex.bg, '--ce-ex-ink': t.ex.ink,
   };
   if (t.headFont) v['--ce-head-font'] = t.headFont;
+  return v as CSSProperties;
+}
+
+/** Tailles proposées pour le texte de tout le cours (pt). */
+export const DOC_FONT_SIZES_PT = [10, 11, 12, 13, 14];
+
+/** Taille du texte « Normal » du cours, en points (12 par défaut). */
+export const docFontSizePt = (settings: CourseSettings | undefined): number =>
+  settings?.fontSize && DOC_FONT_SIZES_PT.includes(settings.fontSize) ? settings.fontSize : 12;
+
+/**
+ * Variables CSS de la colonne de texte : thème, police et taille du texte du cours (lot Q2).
+ * Le texte sans police ni taille choisies prend celles du cours.
+ */
+export function flowStyle(settings: CourseSettings | undefined): CSSProperties {
+  const v: Record<string, string> = { ...(themeStyle(settings?.theme) as Record<string, string>) };
+  if (settings?.font) v['--ce-doc-font'] = settings.font;
+  const pt = docFontSizePt(settings);
+  if (pt !== 12) v['--ce-doc-size'] = `${pt}pt`;
   return v as CSSProperties;
 }
 
