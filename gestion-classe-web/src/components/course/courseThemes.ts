@@ -10,7 +10,7 @@
 import type { CSSProperties } from 'react';
 import type { CourseDoc, CourseSettings } from '../../lib/course/courseDoc';
 
-export type CourseThemeId = 'classique' | 'sobre' | 'nature' | 'chaleureux' | 'ecolier';
+export type CourseThemeId = 'classique' | 'sobre' | 'nature' | 'chaleureux' | 'ecolier' | 'fiche';
 
 interface ThemeColors {
   h1: string; h2: string; h3: string;
@@ -66,6 +66,15 @@ export const COURSE_THEMES: CourseTheme[] = [
     id: 'ecolier', label: 'Écolier', hint: 'Titres en écriture attachée, rouge et bleu du cahier',
     ...CLASSIQUE,
     h1: '#B91C1C', h2: '#1D4ED8', h3: '#15803D', headFont: '"Playwrite FR Moderne", cursive',
+  },
+  {
+    // Lot Q2 : les couleurs des fiches Word de Thomas (bleus du cartouche, rappel jaune, réussite verte)
+    id: 'fiche', label: 'Fiche', hint: 'Les couleurs des fiches d’activité Word : bleus, jaune, vert, violet',
+    h1: '#1F4E79', h2: '#2E75B6', h3: '#2E75B6', headFont: null,
+    def: { line: '#548235', bg: '#EAF3E0', ink: '#385723' },
+    ret: { line: '#B8860B', bg: '#FFF8DC', ink: '#8B6F00' },
+    con: { bg: '#EAF1F9', text: '#1F3864', ink: '#2E75B6' },
+    ex: { line: '#7030A0', bg: '#F2EBF7', ink: '#7030A0' },
   },
 ];
 

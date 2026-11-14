@@ -5,7 +5,7 @@
  */
 import type { JSONContent } from '@tiptap/core';
 import { COURSE_DOC_VERSION, emptyCourseDoc, type CourseDoc, type CourseSettings } from '../../lib/course/courseDoc';
-import { COURSE_BLOCKS } from './courseBlocks';
+import { COURSE_BLOCKS, activityCartouche } from './courseBlocks';
 
 const text = (t: string, bold = false): JSONContent => (bold ? { type: 'text', text: t, marks: [{ type: 'bold' }] } : { type: 'text', text: t });
 const italic = (t: string): JSONContent => ({ type: 'text', text: t, marks: [{ type: 'italic' }] });
@@ -18,6 +18,11 @@ const points = (value: number): JSONContent => ({ type: 'points', attrs: { value
 const item = (...content: JSONContent[]): JSONContent => ({ type: 'listItem', content });
 const ol = (...items: string[]): JSONContent => ({ type: 'orderedList', content: items.map((t) => item(p(text(t)))) });
 const ul = (...items: string[]): JSONContent => ({ type: 'bulletList', content: items.map((t) => item(p(text(t)))) });
+/** Encadré à cadre fin et titre en gras, comme sur les fiches Word (lot Q2). */
+const fiche = (title: string, color: string, ...content: JSONContent[]): JSONContent => ({ type: 'callout', attrs: { kind: 'libre', title, color, frame: 'box', titleStyle: 'bold' }, content: content.length ? content : [p()] });
+const colored = (t: string, color: string, bold = false): JSONContent => ({ type: 'text', text: t, marks: [...(bold ? [{ type: 'bold' }] : []), { type: 'textStyle', attrs: { color } }] });
+const task = (...items: string[]): JSONContent => ({ type: 'taskList', content: items.map((t) => ({ type: 'taskItem', attrs: { checked: false }, content: [p(text(t))] })) });
+const question = (n: number, ...content: JSONContent[]): JSONContent => ({ type: 'paragraph', attrs: { lineHeight: '1.38', spaceBefore: 8, spaceAfter: 5 }, content: [text(`${n}. `, true), ...content] });
 const block = (id: string): JSONContent[] => COURSE_BLOCKS.find((b) => b.id === id)?.build() ?? [];
 
 const doc = (content: JSONContent[], settings?: CourseSettings): CourseDoc => ({
@@ -79,6 +84,22 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
       p(text('3. ', true), text('Troisième question.')),
       zone('lignes', 4),
     ]),
+  },
+  {
+    id: 'activite-cartouche',
+    label: 'Fiche à cartouche',
+    hint: 'Le cartouche des fiches SVT, situation de départ, rappel, questions, bonus et « J’ai réussi »',
+    emoji: '🧪',
+    build: () => doc([
+      ...activityCartouche(),
+      p(text('Situation de départ : ', true), text('ce que les élèves savent déjà, et la question qui se pose.')),
+      fiche('', '#B8860B', p(colored('💡 Rappel : ', '#8B6F00', true), colored('une méthode ou une notion utile pour cette activité.', '#5C4A00'))),
+      h(2, 'Questions'),
+      question(1, text('À partir du '), text('document 1', true), text(', '), text('explique', true), text(' …')),
+      question(2, text('À partir des documents 2 et 3, '), text('explique', true), text(' …')),
+      fiche('★ Pour aller plus loin (question expert, bonus)', '#7030A0', p(text('Une question pour aller plus loin.'))),
+      fiche('✅ J’ai réussi l’activité si je peux :', '#548235', task('premier objectif ;', 'deuxième objectif ;', 'rédiger des phrases complètes, sans recopier les documents mot à mot.')),
+    ], { font: 'Arial, Helvetica, sans-serif', fontSize: 11, firstPageBlank: true, theme: 'fiche' }),
   },
   {
     id: 'evaluation',
