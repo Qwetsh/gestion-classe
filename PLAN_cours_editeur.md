@@ -273,3 +273,22 @@ texte et les annotations sont perdus. **Tranche 4b** : `/classe` affiche le pré
 tableau de la séance est un cours, encre de séance enregistrée dans la séance. Puis 4c
 (commandes Suivant / Précédent / vue d'ensemble depuis le téléphone, protocole web + mobile),
 4d (bouton du calendrier), 4e (dessiner dans un encart en classe sans toucher au cours préparé).
+
+### Lot 4b — le cours dans l'écran de classe, fait le 14/11/2026 (branche `feat/cours-en-classe-seance`)
+
+- **`/classe`** (`pages/Classroom.tsx`) : quand le tableau de la séance (« Lancer la séance » ou
+  rattachement automatique) est un cours rédigé, l'écran affiche le présentateur
+  (`CourseSessionView.tsx`) au lieu de verser le cours dans le tableau blanc (qui n'en gardait
+  que les encarts). Tant que le type du tableau n'est pas connu, rien ne s'affiche (pour ne pas
+  verser un cours par erreur). La séance garde le lien vers le cours (`linkSessionBoard`), sans
+  copie des encarts.
+- **Encre de la séance** rangée dans la séance : `session_boards.course_ink` (migration 073), avec
+  une copie sur l'ordinateur de la classe ; enregistrée 1,2 s après le dernier trait et en
+  quittant la vue ; rechargée au retour (page rechargée, B puis B). Jamais dans le cours préparé.
+- Présentateur « intégré » : badge « Séance », pas de bouton Quitter (B revient au plan), F laissé
+  à la page, sous les surimpressions (minuteur, tirage, rideau).
+- Vérifié dans le navigateur : vue de séance montée sur un cours de test (annotations préparées,
+  badge, encre tracée, gardée sur l'ordinateur, rechargée après démontage ; cours inchangé en
+  base). **Non vérifié** : le parcours complet avec une vraie séance démarrée au téléphone
+  (pas de fausse séance créée en base, pour ne pas en laisser une sur le téléphone) ;
+  l'enregistrement serveur, qui attend la migration 073.
