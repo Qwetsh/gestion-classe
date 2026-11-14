@@ -1,13 +1,15 @@
 /**
  * Ruban du tableau blanc — l'habillage « ordinateur » (préparation au clavier et à la souris),
  * calqué sur celui de l'éditeur de cours : barre de titre, onglets, groupes étiquetés, barre
- * d'état. Il remplace la barre flottante, la pastille, le rail de pages et le menu « … » de
- * l'habillage tactile (TBI), qui reste celui de la classe.
+ * d'état. Il remplace la barre flottante, le rail de pages et le menu « … » de l'habillage
+ * tactile (TBI). C'est aussi celui de la classe : là, il s'ouvre replié (une seule rangée
+ * d'onglets, la page garde presque tout l'écran) et la pastille à menu radial reste posée sur
+ * la page. Replié, un onglet touché déroule son contenu par-dessus la page, le temps d'un choix.
  *
  * Le ruban ne connaît aucun geste : `Whiteboard` lui passe une table d'actions par identifiant
  * (les mêmes que la palette et le menu « Plus »), il ne fait que les ranger.
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '../course/courseIcons';
 import '../course/course.css';
 
@@ -46,6 +48,11 @@ interface Props {
   /** Encart d'un cours : une seule page, pas de gestion des pages. */
   single: boolean;
   onClose: () => void;
+  /** Libellé du bouton de sortie (« Fermer », « Revenir au cours », « Quitter l'essai »…). */
+  closeLabel: string;
+  /** Ruban replié : seule la rangée d'onglets reste, le contenu se déroule par-dessus la page. */
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }
 
 type Tab = 'fichier' | 'accueil' | 'insertion' | 'page' | 'outils' | 'affichage';
@@ -91,8 +98,25 @@ function columns<T>(items: T[], n: number): T[][] {
   return out;
 }
 
-export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onColor, onOtherColor, sizeKey, onSize, eraserKey, onEraserSize, backgrounds, bgColors, inserts, single, onClose }: Props) {
+export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onColor, onOtherColor, sizeKey, onSize, eraserKey, onEraserSize, backgrounds, bgColors, inserts, single, onClose, closeLabel, collapsed, onToggleCollapsed }: Props) {
   const [tab, setTab] = useState<Tab>('accueil');
+  /** Ruban replié : contenu de l'onglet déroulé par-dessus la page, jusqu'au prochain choix. */
+  const [peek, setPeek] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!peek) return;
+    // Un appui ailleurs (la page, un panneau) referme le contenu déroulé
+    const away = (e: PointerEvent) => { if (!rootRef.current?.contains(e.target as Node)) setPeek(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setPeek(false); };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); };
+  }, [peek]);
+  const showPanel = !collapsed || peek;
+  const pickTab = (id: Tab) => {
+    if (collapsed) setPeek(!(peek && tab === id));
+    setTab(id);
+  };
 
   const big = (id: string, icon: IconName, label: string, tip?: string) => {
     const a = act[id];
@@ -150,7 +174,8 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
   ];
 
   return (
-    <div className="ce-chrome wbrib" onPointerDown={(e) => e.stopPropagation()}>
+    <div ref={rootRef} className={`ce-chrome wbrib ${collapsed ? 'wbrib--min' : ''}`} onPointerDown={(e) => e.stopPropagation()}>
+      {!collapsed && (
       <header className="ce-titlebar">
         <div className="ce-logo" aria-hidden>GC</div>
         <div className="ce-qa">
@@ -160,24 +185,46 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
         <span className="wbrib__title">{title}</span>
         <span className={`ce-saved ${saveFailed ? 'ce-saved--error' : ''}`} role="status">{saveFailed ? 'Pas enregistré — nouvel essai bientôt' : 'Enregistré automatiquement'}</span>
         <span className="ce-spacer-flex" />
-        <button type="button" className="ce-btn ce-btn--primary" onClick={onClose}>{single ? 'Revenir au cours' : 'Fermer'}</button>
+        <button type="button" className="ce-btn ce-btn--primary" onClick={onClose}>{closeLabel}</button>
       </header>
+      )}
 
       <div className="ce-ribbonwrap">
         <nav className="ce-tabs" role="tablist">
           {tabs.map((t) => (
-            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`ce-tab ${t.id === 'fichier' ? 'ce-tab--file' : ''} ${tab === t.id ? 'is-active' : ''}`} onClick={() => setTab(t.id)}>
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`ce-tab ${t.id === 'fichier' ? 'ce-tab--file' : ''} ${tab === t.id && showPanel ? 'is-active' : ''}`} onClick={() => pickTab(t.id)} onDoubleClick={() => { setPeek(false); onToggleCollapsed(); }}>
               {t.label}
             </button>
           ))}
+          <span className="ce-spacer-flex" />
+          {collapsed && saveFailed && <span className="ce-saved ce-saved--error" role="status">Pas enregistré</span>}
+          {collapsed && (
+            <div className="ce-qa">
+              <button type="button" title="Annuler (Ctrl+Z)" aria-label="Annuler" onClick={act.undo?.onSelect} disabled={act.undo?.disabled}><Icon name="undo" size={16} /></button>
+              <button type="button" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" onClick={act.redo?.onSelect} disabled={act.redo?.disabled}><Icon name="redo" size={16} /></button>
+            </div>
+          )}
+          <button
+            type="button"
+            className="wbrib__fold"
+            aria-pressed={collapsed}
+            aria-label={collapsed ? 'Déplier le ruban' : 'Replier le ruban'}
+            title={collapsed ? 'Déplier le ruban (double-clic sur un onglet)' : 'Replier le ruban : plus de place pour la page (double-clic sur un onglet)'}
+            onClick={() => { setPeek(false); onToggleCollapsed(); }}
+          >
+            {collapsed ? '▾' : '▴'}
+          </button>
+          {collapsed && <button type="button" className="ce-btn ce-btn--primary wbrib__closemin" onClick={onClose}>{closeLabel}</button>}
         </nav>
 
-        <div className="ce-ribbon" role="toolbar" aria-label="Ruban">
+        {showPanel && (
+        <div className={`ce-ribbon ${collapsed ? 'wbrib__peek' : ''}`} role="toolbar" aria-label="Ruban" onClick={collapsed ? () => setPeek(false) : undefined}>
           {tab === 'fichier' && (
             <>
               <Group label="Ouvrir">
                 {big("file-open", "openFile", "Importer", "Importer un fichier .gcboard, un PDF ou une image")}
                 {big("file-library-open", "library", "Tableau préparé", "Copier ici les pages d'un tableau de « Mes tableaux »")}
+                {big("file-draft-tab", "doc", "Brouillon", "Ouvrir le brouillon dans un onglet à côté")}
               </Group>
               <Group label="Enregistrer">
                 {big("file-library-save", "saveLibrary", "Dans Mes tableaux", "Enregistrer une copie dans « Mes tableaux »")}
@@ -384,10 +431,15 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
                   {sm("set-doc-fit", "fit", "Documents importés réduits à la page")}
                   {sm("set-gestures", "touch", "Pincer pour zoomer")}
                 </div>
+                <div className="ce-stack">
+                  {sm("set-palette", "target", "Personnaliser la pastille", "Choisir les huit raccourcis de la pastille à menu radial (en classe)")}
+                  {sm("set-probe", "pen", "Test du stylet", "Diagnostic : ce que le stylet et le doigt envoient à l'écran")}
+                </div>
               </Group>
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );

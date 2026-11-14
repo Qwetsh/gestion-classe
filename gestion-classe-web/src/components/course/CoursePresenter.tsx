@@ -313,6 +313,8 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
         onlyPageId={editingEncart}
         initialPage={getEncartOverride(scope, editingEncart) ?? getEncartPage(boardId, editingEncart)}
         title={`${title} — encart`}
+        chrome="ribbon"
+        inClass
         onClose={(pages) => closeEncart(editingEncart, pages)}
       />
     </div>,
