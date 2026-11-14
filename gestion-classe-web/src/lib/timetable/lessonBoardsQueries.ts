@@ -27,6 +27,8 @@ export interface LessonBoard {
   /** niveau du tableau (6e, 5e…), déduit du nom de la classe à la création */
   level: string | null;
   updatedAt: Date;
+  /** Cours rédigé (boards.doc) plutôt que tableau blanc : ouvrable « En classe » depuis le calendrier. */
+  isCourse: boolean;
 }
 
 /** Ce qu'il faut savoir d'un cours pour lui rattacher un tableau. */
@@ -40,10 +42,12 @@ type Row = {
   label: string;
   class_id: string | null;
   group_id: string | null;
-  boards: { title: string; level: string | null; updated_at: string } | { title: string; level: string | null; updated_at: string }[] | null;
+  boards: BoardCols | BoardCols[] | null;
 };
 
-const SELECT = 'id, board_id, starts_at, ends_at, label, class_id, group_id, boards(title, level, updated_at)';
+type BoardCols = { title: string; level: string | null; updated_at: string; course?: unknown };
+
+const SELECT = 'id, board_id, starts_at, ends_at, label, class_id, group_id, boards(title, level, updated_at, course:doc->version)';
 
 function fromRow(r: Row): LessonBoard {
   const b = Array.isArray(r.boards) ? r.boards[0] : r.boards;
@@ -58,6 +62,7 @@ function fromRow(r: Row): LessonBoard {
     groupId: r.group_id,
     level: b?.level ?? null,
     updatedAt: new Date(b?.updated_at ?? r.starts_at),
+    isCourse: b?.course != null,
   };
 }
 

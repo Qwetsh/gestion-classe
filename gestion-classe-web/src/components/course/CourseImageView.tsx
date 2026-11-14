@@ -5,6 +5,7 @@
  * Lot T8 : rognage non destructif (`crop`, fractions de l'image tournée), rotation par quarts
  * de tour (`rotate`), miroir (`flip`), cadre (`frame`) et légende (`caption`, numérotée par un
  * compteur CSS : « Document 1 : … »). Le fichier n'est jamais modifié : tout est affiché.
+ * Lot T16b : crédit d'une image de la banque (`credit`), écrit en petit sous l'image.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
@@ -20,9 +21,10 @@ type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 export function CourseImageView({ node, updateAttributes, selected }: NodeViewProps) {
-  const { path, src, alt, width, align, caption, crop, rotate, flip, frame } = node.attrs as {
+  const { path, src, alt, width, align, caption, crop, rotate, flip, frame, credit } = node.attrs as {
     path: string | null; src: string | null; alt: string | null; width: number | null; align: 'left' | 'center' | 'right';
     caption: string | null; crop: ImageCrop | null; rotate: number; flip: boolean; frame: ImageFrame;
+    credit: { text: string; url: string } | null;
   };
   const [signed, setSigned] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -280,6 +282,7 @@ export function CourseImageView({ node, updateAttributes, selected }: NodeViewPr
             )}
           </div>
         )}
+        {credit?.text && !cropping && <div className="ce-img__credit" title={credit.url}>{credit.text}</div>}
       </div>
     </NodeViewWrapper>
   );

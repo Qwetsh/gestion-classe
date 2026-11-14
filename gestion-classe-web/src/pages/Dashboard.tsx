@@ -22,7 +22,7 @@ import '../styles/refonte-accueil.css';
 export function Dashboard() {
   const { user } = useAuth();
   /** Ardoise libre, ou tableau préparé (cours rédigé ou tableau blanc, choisi à l'ouverture). */
-  const [boardOpen, setBoardOpen] = useState<'draft' | { id: string; title: string } | null>(null);
+  const [boardOpen, setBoardOpen] = useState<'draft' | { id: string; title: string; present?: boolean } | null>(null);
   const [boardVersion, setBoardVersion] = useState(0);
 
   // Chargement de la disposition enregistrée
@@ -42,7 +42,7 @@ export function Dashboard() {
         <BoardWorkspace initial={draftTab()} userId={user?.id ?? ''} chrome="ribbon" onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
       )}
       {boardOpen && boardOpen !== 'draft' && (
-        <OpenPreparedBoard key={boardOpen.id} board={boardOpen} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
+        <OpenPreparedBoard key={`${boardOpen.id}:${boardOpen.present ? 'p' : 'e'}`} board={boardOpen} present={boardOpen.present} userId={user?.id ?? ''} onClose={() => { setBoardOpen(null); setBoardVersion(v => v + 1); }} />
       )}
     </Layout>
   );
