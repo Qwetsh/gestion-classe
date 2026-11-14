@@ -67,10 +67,21 @@ export interface CourseDoc {
   /** Calque Tableau (lot 3) : annotations ancrées aux blocs, par-dessus le texte. */
   layer?: CourseLayer;
   /**
+   * Face écran du cours (PLAN_preparation_semaine.md, étape 2) : identifiants, dans l'ordre, des
+   * pages de tableau blanc (`board_pages` de ce cours) à afficher en classe à la place de la
+   * feuille. Une page du cours absente de cette liste est une page d'encart.
+   */
+  screens?: string[];
+  /**
    * Numéro d'enregistrement, changé à chaque écriture de l'éditeur (lot T6) : un enregistrement
    * ne passe que si le cours n'a pas été réécrit entre-temps par un autre onglet ou appareil.
    */
   rev?: string;
+}
+
+/** Écrans du cours, dans l'ordre (liste vide : le cours n'a que sa face papier). */
+export function courseScreens(doc: Pick<CourseDoc, 'screens'> | null | undefined): string[] {
+  return Array.isArray(doc?.screens) ? doc.screens.filter((id): id is string => typeof id === 'string' && id.length > 0) : [];
 }
 
 /** Document de départ : un titre à remplir et un premier paragraphe. */

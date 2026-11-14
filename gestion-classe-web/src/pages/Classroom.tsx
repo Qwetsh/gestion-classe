@@ -25,7 +25,7 @@ import { buildCellToGroup, tableColor } from '../lib/seatingLayouts';
 import type { ClassroomCommand } from '../lib/classroomProtocol';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
 import { CourseSessionView } from '../components/course/CourseSessionView';
-import { boardIsCourse } from '../lib/course/courseDoc';
+import { courseScreens, fetchCourseDoc } from '../lib/course/courseDoc';
 import { sessionTab } from '../lib/boardTabs';
 import { createClassroomBus, type ClassroomBus } from '../lib/classroomBus';
 import {
@@ -317,19 +317,22 @@ export function Classroom() {
   // Lot 4b : un cours rédigé ne se verse pas dans le tableau blanc (seuls ses encarts y
   // passeraient) ; il s'affiche en bande de colonne, avec l'encre de la séance par-dessus.
   const seedBoardId = seedReady ? seed?.board?.id ?? null : null;
-  const [seedCourse, setSeedCourse] = useState<{ boardId: string; isCourse: boolean } | null>(null);
+  const [seedCourse, setSeedCourse] = useState<{ boardId: string; isCourse: boolean; screens: string[] } | null>(null);
   useEffect(() => {
     if (!seedBoardId) return;
     let cancelled = false;
-    boardIsCourse(seedBoardId)
-      .then((isCourse) => { if (!cancelled) setSeedCourse({ boardId: seedBoardId, isCourse }); })
-      .catch(() => { if (!cancelled) setSeedCourse({ boardId: seedBoardId, isCourse: false }); });
+    fetchCourseDoc(seedBoardId)
+      .then((doc) => { if (!cancelled) setSeedCourse({ boardId: seedBoardId, isCourse: !!doc, screens: courseScreens(doc) }); })
+      .catch(() => { if (!cancelled) setSeedCourse({ boardId: seedBoardId, isCourse: false, screens: [] }); });
     return () => { cancelled = true; };
   }, [seedBoardId]);
   /** null : on ne sait pas encore (rien ne s'affiche, pour ne pas verser un cours dans le tableau). */
   const seedKind: 'none' | 'course' | 'board' | null = !seedReady ? null
     : !seedBoardId ? 'none'
-      : seedCourse?.boardId === seedBoardId ? (seedCourse.isCourse ? 'course' : 'board') : null;
+      : seedCourse?.boardId === seedBoardId ? (seedCourse.isCourse && seedCourse.screens.length === 0 ? 'course' : 'board') : null;
+  // Étape 2 du plan « préparer la semaine » : un cours qui a des écrans les verse dans le tableau
+  // blanc de la séance (eux seuls, pas ses encarts) ; la feuille en bande reste le repli.
+  const seedScreens = seedCourse?.boardId === seedBoardId && seedCourse.isCourse && seedCourse.screens.length > 0 ? seedCourse.screens : null;
 
   // Canal de commandes du téléphone : minuteur, tirage au sort, rideau, photo, caméra
   const [bus, setBus] = useState<ClassroomBus | null>(null);
@@ -593,7 +596,7 @@ export function Classroom() {
           {view === 'board' && (seedKind === 'none' || seedKind === 'board') && (
             <BoardWorkspace
               initial={sessionTab(session.id, className ? `Séance ${className}` : 'Séance')}
-              seedBoard={seed?.board ?? undefined}
+              seedBoard={seed?.board ? (seedScreens ? { ...seed.board, pageIds: seedScreens } : seed.board) : undefined}
               userId={userId ?? ''}
               ticker={tickerText}
               className={className}

@@ -19,7 +19,7 @@ import { relayoutNow } from './coursePagination';
 import { CourseRibbon } from './CourseRibbon';
 import { Icon } from './courseIcons';
 import {
-  COURSE_DOC_VERSION, duplicateCourse, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDocGuarded, saveLocalCourse,
+  COURSE_DOC_VERSION, courseScreens, duplicateCourse, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDocGuarded, saveLocalCourse,
   templatesUnavailable, type CourseDoc, type CourseSettings,
 } from '../../lib/course/courseDoc';
 import { countWords, createVersion, fetchVersionDoc, lastVersionAt, versionsUnavailable, type CourseVersion } from '../../lib/course/courseVersions';
@@ -58,6 +58,7 @@ import '@fontsource/playwrite-fr-moderne/400.css';
 import { flowStyle } from './courseThemes';
 import { CourseLayer } from './CourseLayer';
 import { CoursePresenter } from './CoursePresenter';
+import { ScreensEditor, ScreensTest } from './CourseScreens';
 import type { DrawStyle } from './courseDraw';
 import type { LayerItem } from '../../lib/course/courseLayer';
 
@@ -210,6 +211,10 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [mode, setMode] = useState<'texte' | 'tableau'>('texte');
   const [layerItems, setLayerItems] = useState<LayerItem[]>(() => initialDoc.layer?.items ?? []);
   const layerRef = useRef<LayerItem[]>(initialDoc.layer?.items ?? []);
+  // Face écran (PLAN_preparation_semaine.md, étape 2) : pages de tableau blanc de ce cours
+  const [screens, setScreens] = useState<string[]>(() => courseScreens(initialDoc));
+  const screensRef = useRef<string[]>(courseScreens(initialDoc));
+  const [screensOpen, setScreensOpen] = useState<'edit' | 'test' | null>(null);
   const layerUndo = useRef<LayerItem[][]>([]);
   const layerRedo = useRef<LayerItem[][]>([]);
   const [layerSel, setLayerSel] = useState<string | null>(null);
@@ -259,7 +264,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     const ed = editorRef.current;
     if (!ed) return null;
     const layer = layerRef.current.length ? { layer: { items: layerRef.current } } : {};
-    return { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current, ...layer };
+    const face = screensRef.current.length ? { screens: screensRef.current } : {};
+    return { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current, ...layer, ...face };
   };
 
   /** Toujours la dernière version de `flush` (minuteries, raccourcis, nouvel essai). */
@@ -501,9 +507,9 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   // Pages des encarts (aperçus) ; relues au retour du tableau blanc
   useEffect(() => { void loadEncartPages(boardId); }, [boardId]);
   useEffect(() => {
-    document.body.classList.toggle('ce-encart-editing', !!editingEncart);
+    document.body.classList.toggle('ce-encart-editing', !!editingEncart || !!screensOpen);
     return () => document.body.classList.remove('ce-encart-editing');
-  }, [editingEncart]);
+  }, [editingEncart, screensOpen]);
   const closeEncart = useCallback(() => {
     setEditingEncart(null);
     void loadEncartPages(boardId, true);
@@ -616,6 +622,19 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     setSave('dirty');
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => { void flushRef.current(); }, SAVE_DELAY_MS);
+  };
+
+  /** Le tableau blanc des écrans signale la liste de ses pages non vides. */
+  const changeScreens = (ids: string[]) => {
+    if (ids.join('|') === screensRef.current.join('|')) return;
+    screensRef.current = ids;
+    setScreens(ids);
+    markDirty();
+  };
+  /** « En classe » : les écrans du cours s'il en a, sinon la feuille en bande. */
+  const present = () => {
+    if (screensRef.current.length > 0) setScreensOpen('test');
+    else setPresenting(currentDoc());
   };
 
   const changeLayer = (next: LayerItem[], record = true) => {
@@ -1000,6 +1019,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     const items = doc.layer?.items ?? [];
     layerRef.current = items;
     setLayerItems(items);
+    screensRef.current = courseScreens(doc);
+    setScreens(screensRef.current);
     layerUndo.current = [];
     layerRedo.current = [];
     setLayerSel(null);
@@ -1205,7 +1226,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onToggleRuler={() => setShowRuler((v) => { store(RULER_KEY, v ? '0' : '1'); return !v; })}
         mode={mode}
         onMode={switchMode}
-        onPresent={() => setPresenting(currentDoc())}
+        onPresent={present}
         drawStyle={drawStyle}
         onDrawStyle={(patch) => setDrawStyle((s) => ({ ...s, ...patch }))}
         layerCanUndo={layerUndo.current.length > 0}
@@ -1349,7 +1370,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         <div className="ce-modes" role="group" aria-label="Mode">
           <button type="button" className={mode === 'texte' ? 'is-on' : ''} title="Rédiger le cours" onClick={() => switchMode('texte')}>¶ Texte</button>
           <button type="button" className={mode === 'tableau' ? 'is-on' : ''} title="Dessiner par-dessus le cours : flèches, entourages, annotations (ancrées aux paragraphes)" onClick={() => switchMode('tableau')}>✎ Tableau</button>
-          <button type="button" className="ce-modes__play" title="Projeter le cours : bande de la largeur du texte, Suivant / Précédent, encre de séance (test)" onClick={() => setPresenting(currentDoc())}>▶ En classe</button>
+          <button type="button" title="Les écrans du cours : ce qui s’affiche en classe à la place de la feuille (tableau blanc)" onClick={() => setScreensOpen('edit')}>▣ Écrans{screens.length > 0 ? ` (${screens.length})` : ''}</button>
+          <button type="button" className="ce-modes__play" title="Essayer comme en classe : les écrans du cours s’il en a, sinon la feuille en bande (rien n’est gardé)" onClick={present}>▶ En classe</button>
         </div>
         <div className="ce-zoom">
           <button type="button" onClick={() => setZoom(zoom - 0.1)} aria-label="Zoom arrière">−</button>
@@ -1360,6 +1382,18 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       </footer>
 
       {presenting && <CoursePresenter boardId={boardId} doc={presenting} title={title} onClose={() => { setPresenting(null); editor.commands.focus(); }} />}
+
+      {screensOpen === 'edit' && (
+        <ScreensEditor
+          boardId={boardId}
+          userId={userId}
+          title={title}
+          screens={screens}
+          onChange={changeScreens}
+          onClose={() => { setScreensOpen(null); void flushRef.current(); }}
+        />
+      )}
+      {screensOpen === 'test' && <ScreensTest boardId={boardId} userId={userId} title={title} screens={screens} onClose={() => setScreensOpen(null)} />}
 
       {printDialog && <CoursePrintDialog pdf={printDialog === 'pdf'} onPrint={printWith} onClose={() => setPrintDialog(null)} />}
 

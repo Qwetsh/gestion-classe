@@ -149,9 +149,12 @@ export function clonePages(pages: BoardPage[]): BoardPage[] {
 }
 
 /** Pages d'un tableau préparé, prêtes à être insérées ailleurs (nouveaux identifiants). */
-export async function copyBoardPages(boardId: string): Promise<BoardPage[]> {
+export async function copyBoardPages(boardId: string, pageIds?: string[]): Promise<BoardPage[]> {
   const { pages } = await fetchBoardPages({ boardId });
-  return clonePages(pages);
+  if (!pageIds) return clonePages(pages);
+  // Écrans d'un cours : seules les pages listées, dans l'ordre de la liste
+  const byId = new Map(pages.map((p) => [p.id, p]));
+  return clonePages(pageIds.flatMap((id) => byId.get(id) ?? []));
 }
 
 /**
