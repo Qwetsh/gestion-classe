@@ -34,6 +34,8 @@ interface Props {
   onRename: () => void;
   onInsertImage: () => void;
   onInsertQr: () => void;
+  /** Banque d'images libres (Wikimedia Commons, lot T16b). */
+  onSearchImage: () => void;
   onInsertLink: () => void;
   onPaste: (mode: 'adapt' | 'keep' | 'text') => void;
   zoom: number;
@@ -166,7 +168,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -556,6 +558,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
           <>
             <Group label="Illustrations">
               <Big icon="image" label="Image" title="Image depuis l'ordinateur (ou collez / glissez une image dans le cours)" onClick={onInsertImage} />
+              <Big icon="imageSearch" label="Banque d'images" title="Photos et schémas libres (Wikimedia Commons) ; l'auteur et la licence s'écrivent sous l'image" onClick={onSearchImage} />
               <span ref={tableBtnRef} style={{ display: 'contents' }}>
                 <Big icon="table" label="Tableau" title="Tableau : choisir le nombre de lignes et de colonnes" on={!!tableGrid} onClick={toggleTableGrid} />
               </span>
