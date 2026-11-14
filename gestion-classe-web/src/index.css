@@ -2113,12 +2113,14 @@ a.dash__card-link:hover { text-decoration: underline; }
   .dash__kpi-progress .dash__kpi-hint { white-space: normal; }
 }
 
-/* ---- Print: only show seating plan ---- */
+/* ---- Print: only show seating plan ----
+   Limité à la page qui affiche un plan de classe : écrite pour tout <body>, la règle rendait
+   invisible tout ce qui s'imprime ailleurs (un cours ouvert dans l'éditeur sortait blanc). */
 @media print {
-  body * { visibility: hidden; }
-  .room-canvas,
-  .room-canvas * { visibility: visible; }
-  .room-canvas {
+  body:not(.ce-open):has(.room-canvas) * { visibility: hidden; }
+  body:not(.ce-open):has(.room-canvas) .room-canvas,
+  body:not(.ce-open):has(.room-canvas) .room-canvas * { visibility: visible; }
+  body:not(.ce-open) .room-canvas {
     position: absolute;
     top: 0;
     left: 0;
@@ -2128,7 +2130,7 @@ a.dash__card-link:hover { text-decoration: underline; }
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .room-canvas::before { opacity: 0.1; }
+  body:not(.ce-open) .room-canvas::before { opacity: 0.1; }
 }
 
 
