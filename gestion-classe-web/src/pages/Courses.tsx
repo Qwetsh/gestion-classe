@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { FileText, Search } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -30,6 +31,7 @@ import {
 import { createCourse, duplicateCourse, emptyCourseDoc } from '../lib/course/courseDoc';
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, parseOpenTarget, type OpenMode } from '../lib/courseLibrary';
+import { filterBoards, highlightParts, searchCourseText, searchWords, type CourseTextHit } from '../lib/courseSearch';
 import { draftTab } from '../lib/boardTabs';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
 import { OpenPreparedBoard } from '../components/course/OpenPreparedBoard';
@@ -112,7 +114,34 @@ export function Courses() {
 
   // ---- Actions de la bibliothèque ----
 
-  const levels = useMemo(() => groupLibrary(boards), [boards]);
+  // ---- Recherche : titres, séquences et niveaux tout de suite ; texte des cours après une courte pause ----
+
+  const [query, setQuery] = useState('');
+  const words = useMemo(() => searchWords(query), [query]);
+  const wordsKey = words.join(' ');
+  const searching = words.length > 0;
+  const [textResult, setTextResult] = useState<{ key: string; hits: CourseTextHit[] } | null>(null);
+
+  useEffect(() => {
+    if (!wordsKey) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void searchCourseText(wordsKey.split(' ')).then((hits) => { if (!cancelled) setTextResult({ key: wordsKey, hits }); });
+    }, 300);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [wordsKey]);
+
+  /** La réponse affichée est celle de la demande en cours (pas d'une frappe précédente). */
+  const textSettled = searching && textResult?.key === wordsKey;
+  const textHits = useMemo(() => {
+    if (!textSettled || !textResult) return [];
+    const byId = new Map(boards.map((b) => [b.id, b]));
+    // Seuls les cours de la bibliothèque : les copies placées se retrouvent par le calendrier
+    return textResult.hits.flatMap((hit) => { const b = byId.get(hit.boardId); return b ? [{ board: b, excerpt: hit.excerpt }] : []; });
+  }, [textSettled, textResult, boards]);
+
+  const shown = useMemo(() => filterBoards(boards, words), [boards, words]);
+  const levels = useMemo(() => groupLibrary(shown), [shown]);
 
   const save = async (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
     if (editing === 'new') {
@@ -201,8 +230,28 @@ export function Courses() {
         )}
 
         {boards.length > 0 && (
+          <label className="mc-search">
+            <Search size={16} className="mc-search__icon" aria-hidden />
+            <input
+              type="search"
+              className="mc-search__input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); setQuery(''); } }}
+              placeholder="Chercher un cours, une séquence, un mot du texte"
+              aria-label="Chercher dans mes cours"
+            />
+          </label>
+        )}
+
+        {searching && textSettled && shown.length === 0 && textHits.length === 0 && (
+          <div className="mc-empty">Aucun cours ne correspond à « {query.trim()} ».</div>
+        )}
+
+        {shown.length > 0 && (
           <CourseLibrary
             levels={levels}
+            expandAll={searching}
             onOpen={(b) => open(b.id)}
             onPresent={(b) => open(b.id, 'classe')}
             onEdit={setEditing}
@@ -211,6 +260,27 @@ export function Courses() {
             onDelete={(b) => void remove(b)}
             onRenameSequence={renameSequence}
           />
+        )}
+
+        {textHits.length > 0 && (
+          <section className="mc-level" aria-label="Cours dont le texte contient les mots cherchés">
+            <div className="mc-seq__head"><span className="mc-seq__name">Dans le texte</span></div>
+            <ul className="mc-rows">
+              {textHits.map(({ board: b, excerpt }) => (
+                <li key={b.id} className="mc-row">
+                  <button type="button" className="mc-row__open mc-row__open--hit" onClick={() => open(b.id)} title="Ouvrir le cours">
+                    <FileText size={17} className="mc-row__icon" aria-hidden />
+                    <span className="mc-hit">
+                      <span className="mc-row__title">{b.title}</span>
+                      <span className="mc-hit__excerpt">
+                        {highlightParts(excerpt, words).map((part, i) => (part.hit ? <mark key={i}>{part.text}</mark> : <span key={i}>{part.text}</span>))}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </div>
 
