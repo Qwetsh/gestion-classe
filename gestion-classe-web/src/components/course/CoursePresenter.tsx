@@ -27,7 +27,13 @@ interface Props {
   boardId: string;
   doc: CourseDoc;
   title: string;
-  onClose: () => void;
+  /** Absent dans l'écran de classe (on revient au plan avec B). */
+  onClose?: () => void;
+  /**
+   * Séance réelle (lot 4b, écran /classe) : l'encre part de `initialInk` et chaque changement est
+   * remonté par `onInkChange` (rangé dans la séance). Sans : mode test, encre perdue en quittant.
+   */
+  session?: { initialInk: LayerItem[]; onInkChange: (items: LayerItem[]) => void };
 }
 
 /** Marge visible de chaque côté de la colonne (les annotations posées au bord restent visibles). */
@@ -40,7 +46,7 @@ const INK_COLORS = ['#DC2626', '#2563EB', '#16A34A', '#111827'];
 
 type InkTool = 'none' | Extract<DrawTool, 'pen' | 'highlighter' | 'eraser'>;
 
-export function CoursePresenter({ boardId, doc, title, onClose }: Props) {
+export function CoursePresenter({ boardId, doc, title, onClose, session }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -49,7 +55,9 @@ export function CoursePresenter({ boardId, doc, title, onClose }: Props) {
   const [y, setY] = useState(0);
   const [overview, setOverview] = useState(false);
   const [stops, setStops] = useState<number[]>([]);
-  const [ink, setInk] = useState<LayerItem[]>([]);
+  const [ink, setInkState] = useState<LayerItem[]>(() => session?.initialInk ?? []);
+  const onInkChange = session?.onInkChange;
+  const setInk = useCallback((items: LayerItem[]) => { setInkState(items); onInkChange?.(items); }, [onInkChange]);
   const [tool, setTool] = useState<InkTool>('none');
   const [color, setColor] = useState(INK_COLORS[0]);
 
@@ -120,9 +128,11 @@ export function CoursePresenter({ boardId, doc, title, onClose }: Props) {
   }, []);
 
   const close = useCallback(() => {
+    if (!onClose) return;
     if (document.fullscreenElement) void document.exitFullscreen();
     onClose();
   }, [onClose]);
+  const embedded = !!session;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -133,12 +143,13 @@ export function CoursePresenter({ boardId, doc, title, onClose }: Props) {
       else if (k === 'Home') { e.preventDefault(); setY(0); }
       else if (k === 'End') { e.preventDefault(); setY(maxY); }
       else if (k === 'o' || k === 'O' || k === 'z' || k === 'Z') { e.preventDefault(); setOverview((v) => !v); }
-      else if (k === 'f' || k === 'F') { e.preventDefault(); toggleFullscreen(); }
+      // Dans l'écran de classe, F (plein écran) et B (plan) appartiennent à la page /classe
+      else if ((k === 'f' || k === 'F') && !embedded) { e.preventDefault(); toggleFullscreen(); }
       else if (k === 'Escape') { e.preventDefault(); if (overview) setOverview(false); else if (!document.fullscreenElement) close(); }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [next, prev, overview, maxY, close, toggleFullscreen]);
+  }, [next, prev, overview, maxY, close, toggleFullscreen, embedded]);
 
   const onWheel = (e: React.WheelEvent) => {
     if (overview) return;
@@ -167,7 +178,7 @@ export function CoursePresenter({ boardId, doc, title, onClose }: Props) {
   const settings = doc.settings ?? {};
 
   return createPortal(
-    <div ref={rootRef} className={`ce-pres ${overview ? 'is-overview' : ''}`} role="dialog" aria-label={`En classe : ${title}`} onWheel={onWheel}>
+    <div ref={rootRef} className={`ce-pres ${embedded ? 'ce-pres--embedded' : ''} ${overview ? 'is-overview' : ''}`} role="dialog" aria-label={`En classe : ${title}`} onWheel={onWheel}>
       <div
         ref={pageRef}
         className="ce-pres__page"
@@ -213,9 +224,11 @@ export function CoursePresenter({ boardId, doc, title, onClose }: Props) {
         <button type="button" className="ce-pres__btn" onClick={() => setInk([])} disabled={ink.length === 0} title="Effacer toute l'encre de la séance" aria-label="Effacer l'encre"><Icon name="clearPage" size={18} /></button>
         <span className="ce-pres__sep" />
         <button type="button" className={`ce-pres__btn ${overview ? 'is-on' : ''}`} onClick={() => setOverview((v) => !v)} title="Vue d'ensemble (O)" aria-label="Vue d'ensemble"><Icon name="fitPage" size={18} /></button>
-        <button type="button" className="ce-pres__btn" onClick={toggleFullscreen} title="Plein écran (F)" aria-label="Plein écran"><Icon name="present" size={18} /></button>
-        <span className="ce-pres__test" title="L'encre n'est pas gardée : elle disparaît en quittant">Test</span>
-        <button type="button" className="ce-pres__quit" onClick={close} title="Quitter (Échap)">Quitter</button>
+        {!embedded && <button type="button" className="ce-pres__btn" onClick={toggleFullscreen} title="Plein écran (F)" aria-label="Plein écran"><Icon name="present" size={18} /></button>}
+        {embedded
+          ? <span className="ce-pres__test ce-pres__test--live" title="L'encre est gardée dans la séance, jamais dans le cours préparé">Séance</span>
+          : <span className="ce-pres__test" title="L'encre n'est pas gardée : elle disparaît en quittant">Test</span>}
+        {onClose && <button type="button" className="ce-pres__quit" onClick={close} title="Quitter (Échap)">Quitter</button>}
       </div>
     </div>,
     document.body,
