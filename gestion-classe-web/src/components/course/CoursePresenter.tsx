@@ -8,7 +8,7 @@
  * d'ensemble montre tout le cours ; un clic y ramène la bande à cet endroit.
  *
  * Pas de pages en classe : les sauts de page deviennent un trait discret. Les annotations du
- * mode Tableau s'affichent ; l'encre de la séance se pose au-dessus (mode test : elle n'est
+ * stylet s'affichent ; l'encre de la séance se pose au-dessus (mode test : elle n'est
  * jamais enregistrée et disparaît en quittant).
  *
  * Un encart (lot 4e) s'ouvre dans le tableau blanc, sur sa seule page : en séance, sur une copie
@@ -260,7 +260,7 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
         </div>
         {editor && (
           <>
-            {/* Annotations préparées (mode Tableau), en lecture seule */}
+            {/* Annotations préparées au stylet, en lecture seule */}
             <CourseLayer editor={editor} items={doc.layer?.items ?? []} height={pageH} active={false} readOnly
               style={{ tool: 'select', color: '#000', size: 'M' }} selected={null} onSelect={() => {}} onChange={() => {}} />
             {/* Encre de la séance (mode test : jamais enregistrée) */}

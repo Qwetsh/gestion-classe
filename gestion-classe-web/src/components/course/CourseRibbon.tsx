@@ -71,9 +71,12 @@ interface Props {
   onSpellNext: () => void;
   onSpellLive: () => void;
   onSpellHide: () => void;
-  /** Mode Tableau (lot 3) : calque d'annotations. */
-  mode: 'texte' | 'tableau';
-  onMode: (m: 'texte' | 'tableau') => void;
+  /** Stylet sorti (calque d'annotations par-dessus la feuille) ou non. */
+  mode: 'texte' | 'stylet';
+  onMode: (m: 'texte' | 'stylet') => void;
+  /** Ouvre le tableau du cours (ses pages projetées) ; `boardCount` = nombre de pages. */
+  onBoard: () => void;
+  boardCount: number;
   /** Mode En classe (lot 4). */
   onPresent: () => void;
   drawStyle: DrawStyle;
@@ -169,7 +172,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onBoard, boardCount, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -241,7 +244,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
 
   // Onglets contextuels (image, encart, zone) : on y bascule quand ils apparaissent ; quand ils
   // disparaissent, on revient à l'onglet d'où l'on venait. Calculé au rendu (pas d'effet).
-  const ctx: RibbonTab | null = mode === 'tableau' ? 'dessin' : s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : s.onDots ? 'dots' : s.onPoints ? 'points' : null;
+  const ctx: RibbonTab | null = mode === 'stylet' ? 'dessin' : s.onImage ? 'image' : s.onEncart ? 'encart' : s.onZone ? 'zone' : s.onDots ? 'dots' : s.onPoints ? 'points' : null;
   if (view.ctx !== ctx) {
     const back: RibbonTab = view.ctx === 'image' ? 'accueil' : 'insertion';
     setView({ tab: ctx ?? (view.tab === view.ctx ? back : view.tab), ctx });
@@ -347,7 +350,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
     { id: 'miseenpage', label: 'Mise en page' },
     { id: 'revision', label: 'Révision' },
     { id: 'affichage', label: 'Affichage' },
-    ...(mode === 'tableau' ? [{ id: 'dessin' as const, label: 'Dessin', contextual: true }] : []),
+    ...(mode === 'stylet' ? [{ id: 'dessin' as const, label: 'Stylet', contextual: true }] : []),
     ...(s.inTable ? [{ id: 'tableau' as const, label: 'Tableau', contextual: true }] : []),
     ...(s.inColumns ? [{ id: 'colonnes' as const, label: 'Colonnes', contextual: true }] : []),
     ...(s.onImage ? [{ id: 'image' as const, label: 'Image', contextual: true }] : []),
@@ -735,7 +738,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 <Sm icon="trash" label="Supprimer" title="Retirer l'annotation sélectionnée (Suppr)" disabled={!layerHasSelection} onClick={onLayerDelete} />
                 <Sm icon="clearPage" label="Tout effacer" title="Retirer toutes les annotations du cours" disabled={layerCount === 0} onClick={onLayerClear} />
               </div>
-              <Big icon="doc" label="Retour au texte" title="Revenir à la rédaction (le calque reste visible)" onClick={() => onMode('texte')} />
+              <Big icon="doc" label="Ranger le stylet" title="Revenir à la rédaction (les annotations restent visibles)" onClick={() => onMode('texte')} />
             </Group>
           </>
         )}
@@ -743,9 +746,12 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         {tab === 'affichage' && (
           <>
             <Group label="Mode">
-              <Big icon="doc" label="Texte" on={mode === 'texte'} onClick={() => onMode('texte')} />
-              <Big icon="board" label="Tableau" title="Dessiner par-dessus le cours : flèches, entourages, annotations" on={mode === 'tableau'} onClick={() => onMode('tableau')} />
-              <Big icon="play" label="En classe" title="Projeter le cours (bande de la largeur du texte, Suivant / Précédent)" onClick={onPresent} />
+              <Big icon="doc" label="Texte" title="La feuille : ce que les élèves reçoivent, à imprimer et à coller" on onClick={() => onMode('texte')} />
+              <Big icon="board" label={boardCount > 0 ? `Tableau (${boardCount})` : 'Tableau'} title="Le tableau du cours : les pages projetées en classe. On les prépare ici — rideaux, textes à trous, actions" onClick={onBoard} />
+              <Big icon="play" label="En classe" title="Essayer comme en classe : le tableau du cours s'il a des pages, sinon la feuille en bande (rien n'est gardé)" onClick={onPresent} />
+            </Group>
+            <Group label="Annoter">
+              <Big icon="pen" label="Stylet" title="Écrire par-dessus la feuille (flèches, entourages, annotations), pour projeter l'imprimable tel quel" on={mode === 'stylet'} onClick={() => onMode(mode === 'stylet' ? 'texte' : 'stylet')} />
             </Group>
             <Group label="Zoom">
               <Big icon="zoomin" label={`${Math.round(zoom * 100)} %`} title="Revenir à 100 %" onClick={() => onZoom(1)} />

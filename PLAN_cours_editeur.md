@@ -222,6 +222,10 @@ l'habillage de l'éditeur de cours, adapté au tableau.
 
 ### Étape 3b — mode Tableau, faite le 14/11/2026 (branche `feat/cours-mode-tableau`)
 
+> **Depuis le 14/11/2026 au soir**, ce calque n'est plus un mode : c'est l'outil « Stylet » du
+> mode Texte. « Tableau » désigne désormais les pages projetées du cours (l'ancien « Écrans »).
+> Voir `PLAN_preparation_semaine.md`, « Les trois modes d'un cours ».
+
 Choix de Thomas : un **calque léger** propre au cours plutôt que le tableau blanc complet
 (4 300 lignes, plein écran, hauteur de page non enregistrée, toile trop grande pour un long
 cours). Le tableau blanc de la classe n'est pas touché ; les outils riches (widgets, boutons,

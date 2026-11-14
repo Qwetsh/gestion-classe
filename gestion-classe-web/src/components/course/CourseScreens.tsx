@@ -40,7 +40,7 @@ export function ScreensEditor({ boardId, userId, title, screens, onChange, onClo
       pageIds={initial}
       onPageIdsChange={onChange}
       userId={userId}
-      title={`${title} — écrans`}
+      title={`${title} — tableau`}
       chrome="ribbon"
       remote
       onClose={(pages) => { onChange(pages.filter(hasContent).map((p) => p.id)); onClose(); }}
@@ -72,7 +72,7 @@ export function ScreensTest({ boardId, userId, title, screens, onClose }: TestPr
     copyBoardPages(boardId, list ? list.split('|') : [])
       .then((copies) => {
         if (cancelled) return;
-        if (copies.length === 0) { toast('Les écrans de ce cours ne sont pas encore enregistrés.'); closeRef.current(); return; }
+        if (copies.length === 0) { toast('Le tableau de ce cours n’est pas encore enregistré.'); closeRef.current(); return; }
         setPages(copies);
       })
       .catch((err: unknown) => {
