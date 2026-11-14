@@ -6,14 +6,15 @@
  * La clé d'un onglet est son adresse sans la barre (« /rewards » → `rewards`).
  */
 
+/** Dans l'ordre du menu (lib/appNav.ts) : Mes cours, Évaluations, Plus. */
 export const MASKABLE_TABS = [
-  { key: 'rewards', label: 'Récompenses' },
-  { key: 'evaluations', label: 'Évaluations' },
-  { key: 'direct', label: 'Activité en direct' },
-  { key: 'academy', label: 'Académie' },
   { key: 'tp-templates', label: 'Mes TP' },
   { key: 'brevets', label: 'Annales' },
   { key: 'clouds', label: 'Mes clouds' },
+  { key: 'evaluations', label: 'Évaluations' },
+  { key: 'direct', label: 'Activité en direct' },
+  { key: 'rewards', label: 'Récompenses' },
+  { key: 'academy', label: 'Académie' },
   { key: 'tools', label: 'Outils' },
   { key: 'pronote', label: 'Pronote' },
 ] as const;

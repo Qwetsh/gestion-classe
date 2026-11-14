@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
 import { MASKABLE_TABS } from '../lib/appTabs';
+import { settingsLabel } from '../lib/appNav';
 import { HOME_MODULES } from './home/homeModules';
 import { TimetableImportPanel } from './timetable/TimetableImportPanel';
 import { ImportTokensPanel } from './ImportTokensPanel';
@@ -38,8 +39,8 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 
 // ── Configuration des onglets masquables ──
 
-// Même liste que le menu (lib/appTabs.ts) : un onglet retiré du menu n'a plus de bascule ici
-const TAB_OPTIONS: readonly { key: keyof HiddenTabs; label: string }[] = MASKABLE_TABS;
+// Même liste que le menu (lib/appTabs.ts), nommée avec son entrée (lib/appNav.ts) : « Mes cours › Annales »
+const TAB_OPTIONS: readonly { key: keyof HiddenTabs; label: string }[] = MASKABLE_TABS.map((t) => ({ key: t.key, label: settingsLabel(t.key) ?? t.label }));
 
 // ── Composant Toggle Switch ──
 

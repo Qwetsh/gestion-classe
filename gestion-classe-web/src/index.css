@@ -2467,3 +2467,42 @@ body { font-variant-numeric: tabular-nums; }
 .gc-card, .dash__card, .classes-pane, .pool, .toolbar, .distrib, .indic, .scard,
 .class-detail__head, .home-card { box-shadow: none !important; }
 .gc-card__head { padding: 14px 16px 8px; }
+
+/* ============================================================
+   Menu regroupé (lot N3 de PLAN_mes_cours.md) : cinq entrées, celle de la page affichée se
+   déplie. Définition dans lib/appNav.ts.
+   ============================================================ */
+.gc-sidenav__group { display: flex; flex-direction: column; gap: 1px; }
+.gc-sidenav__head--open { color: var(--text); font-weight: 600; }
+.gc-sidenav__chevron { margin-left: auto; display: grid; color: var(--text-dim); transition: transform 0.12s; }
+.gc-sidenav__head--open .gc-sidenav__chevron { transform: rotate(90deg); }
+.gc-sidenav__sub {
+  display: flex; flex-direction: column; gap: 1px;
+  margin: 1px 0 6px 17px; padding-left: 9px; border-left: 1px solid var(--border);
+}
+.gc-sidenav__sub .gc-sidenav__item { padding-top: 6px; padding-bottom: 6px; font-size: 12.5px; }
+@media (min-width: 1920px) { .gc-sidenav__sub .gc-sidenav__item { font-size: 13.5px; padding-top: 7px; padding-bottom: 7px; } }
+@media (min-width: 2400px) { .gc-sidenav__sub .gc-sidenav__item { font-size: 14.5px; padding-top: 8px; padding-bottom: 8px; } }
+.gc-sidenav__sub .gc-sidenav__item svg { display: none; }
+
+/* Menu réduit aux icônes : les pages de l'entrée courante sont ses icônes, entre deux filets */
+.gc-sidebar--rail .gc-sidenav__sub {
+  margin: 3px 0 6px; padding: 3px 0; border-left: 0;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.gc-sidebar--rail .gc-sidenav__sub .gc-sidenav__item svg { display: block; }
+
+/* Téléphone et tablette (pas de barre latérale) : les pages de l'entrée, en puces sous la barre du haut */
+.gc-subnav { display: none; }
+@media (max-width: 1023px) {
+  .gc-subnav {
+    display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px 2px; scrollbar-width: none;
+  }
+  .gc-subnav::-webkit-scrollbar { display: none; }
+  .gc-subnav__item {
+    flex-shrink: 0; display: inline-flex; align-items: center; height: 36px; padding: 0 14px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
+    font-size: 13px; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap;
+  }
+  .gc-subnav__item--active { background: var(--indigo-soft); border-color: var(--indigo); color: var(--indigo-ink); }
+}
