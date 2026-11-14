@@ -11,8 +11,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
+import { getSchema } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { courseExtensions } from './courseExtensions';
+import { docProblem } from './courseCheck';
 import { relayoutNow } from './coursePagination';
 import { CourseRibbon } from './CourseRibbon';
 import { Icon } from './courseIcons';
@@ -226,6 +228,11 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const editorRef = useRef<Editor | null>(null);
   const saveTimer = useRef(0);
   const pendingRef = useRef(restored);
+  /**
+   * Le document en base contient un élément que l'éditeur ne sait pas lire (cours écrit hors de
+   * l'éditeur, par exemple par Claude) : TipTap l'ouvrirait vide. Rien n'est alors enregistré.
+   */
+  const brokenRef = useRef(false);
   /** Numéro d'enregistrement attendu en base (contrôle des écritures concurrentes). */
   const revRef = useRef<string | null>(loaded.rev);
   /** Un autre onglet ou appareil a enregistré le cours : plus d'écriture avant le choix. */
@@ -261,6 +268,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const flush = useCallback(async (): Promise<boolean> => {
     window.clearTimeout(saveTimer.current);
     if (!pendingRef.current) return true;
+    if (brokenRef.current) return false;
     const doc = currentDoc();
     if (!doc) return true;
     saveLocalCourse(boardId, doc);
@@ -484,6 +492,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     },
   ), [boardId, userId, toast]);
 
+  // Document illisible par l'éditeur (cours écrit hors de l'éditeur) : vérifié avant l'ouverture,
+  // car TipTap l'ouvrirait vide et l'enregistrement automatique écraserait le cours
+  const unreadable = useMemo(() => docProblem(getSchema(extensions), initialDoc.content), [extensions, initialDoc]);
+  useEffect(() => { brokenRef.current = unreadable !== null; }, [unreadable]);
+  const warnedUnreadable = useRef(false);
+
   // Pages des encarts (aperçus) ; relues au retour du tableau blanc
   useEffect(() => { void loadEncartPages(boardId); }, [boardId]);
   useEffect(() => {
@@ -531,6 +545,16 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   });
 
   useEffect(() => { editorRef.current = editor; }, [editor]);
+
+  // Document illisible : lecture seule, et on le dit (le cours en base reste intact)
+  useEffect(() => {
+    if (!editor || !unreadable) return;
+    editor.setEditable(false);
+    if (warnedUnreadable.current) return;
+    warnedUnreadable.current = true;
+    console.error('[CourseEditor] document illisible, rien ne sera enregistré :', unreadable);
+    toast('Ce cours contient un élément que l’éditeur ne sait pas lire : il s’affiche vide et rien n’est enregistré. Le cours en base n’a pas été modifié.');
+  }, [editor, toast, unreadable]);
 
   // Cours créé « à partir d'un fichier Word » : le fichier attend l'ouverture de l'éditeur
   useEffect(() => {

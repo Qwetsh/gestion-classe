@@ -25,3 +25,6 @@ dist-ssr
 
 # Brevets — cache local des PDF (scripts/make_brevets_data.py)
 scripts/.pdf_cache/
+
+# Brouillons de cours écrits par Claude (npm run course:check)
+course-drafts/

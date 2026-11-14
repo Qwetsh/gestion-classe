@@ -1373,6 +1373,17 @@ Firefox et Safari (`@page` injecté).
 **Non vérifié** : impression des thèmes (le thème Sobre en photocopie) ; l'écriture attachée
 dans les encadrés et le texte courant sur papier.
 
+### Q1 à Q3 — qualité des fiches Word et cours écrits par Claude (14/11/2026)
+
+Chantier à part, suivi dans `AUDIT_fiche_word.md` (analyse de la fiche Microbiote, écarts restants) :
+
+- **Q1** (PR #66) : encadrés à cadre fin et titre en gras ; police et taille du texte du cours.
+- **Q2** (PR #67) : bloc « Cartouche d'activité », modèle « Fiche à cartouche », thème « Fiche ».
+- **Q3** : Claude écrit les cours directement en base :
+  - skill `.claude/skills/cours-gestion-classe/` et bibliothèque `gc_cours.py` ;
+  - vérificateur `npm run course:check` ;
+  - garde-fou de l'éditeur contre un document illisible.
+
 ### T16b — fait le 14/11/2026 (branche `feat/texte-t16b`, pas de migration)
 
 - **Banque d'images** (Insertion › Banque d'images) : recherche de photos et de schémas dans

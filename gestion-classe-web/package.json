@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "course:check": "vitest run src/components/course/__tests__/courseDrafts.test.ts",
     "preview": "vite preview",
     "postinstall": "patch-package"
   },

@@ -75,8 +75,37 @@ La colonne « Après » indique le lot de ce chantier qui comble l'écart.
 
 ## 4. Écarts restants
 
-*(complété après la démonstration)*
+*Après les lots Q1 et Q2 ; mesurés sur la fiche Microbiote reconstruite (captures avant / après).*
+
+| # | Écart | Effet visible | Piste |
+|---|---|---|---|
+| 1 | **Marges fixes de 2,5 cm**, contre 1,5 cm et 2 cm dans Word | La fiche Microbiote (370 mots) passe sur **deux pages** : l'encadré « J'ai réussi » (209 px) ne tient pas dans les 134 px restants. Il manque environ 2,4 cm | **Décision maintenue (Thomas, 14/11/2026)** : la projection en classe (bande de la largeur de colonne, PR #71) exige la colonne de 16 cm ; le lot Q4 « marges étroites » (PR #70) est fermé. Pour tenir sur une page : texte du cours en 10 ou 10,5 pt (Mise en page › Texte du cours), interligne 1,0 et espacements serrés, ou fiche de 300 mots environ au plus |
+| 2 | Colonne de 16 cm au lieu de 17,7 cm | Le cartouche est plus serré, les cellules étroites passent à la ligne (« (questions 2 et 3) ») | Conséquence du n° 1, acceptée |
+| 3 | Un encadré ou une ligne de tableau ne se coupe pas entre deux pages | Un grand blanc en bas de page quand un encadré passe à la page suivante | T15 (pagination fine), prévu après le lot 4 |
+| 4 | Taille des titres fixe (Titre 2 : 21 px, Word : 13 pt) | « Questions » un peu plus grand que dans Word | Une taille de titres par thème, si Thomas le juge utile |
+| 5 | Images : Claude ne peut pas envoyer de fichier dans le stockage | Les documents (photos, schémas) sont à insérer à la main avec le bouton Image | Hors de portée du connecteur ; un emplacement « [Image : …] » est laissé à la place |
+| 6 | Le nombre de pages ne se calcule qu'à l'affichage | `course:check` ne peut pas dire si la fiche tient sur une page | Vérifier dans le navigateur, ou demander à Thomas |
+| 7 | Émojis du cartouche (⏱ 👥 🔧 📖) | Leur dessin dépend du système (Windows, Android, imprimante) | Icônes Lucide (`Icone(...)`) si le rendu imprimé déçoit |
+| 8 | Impression papier non vérifiée | Nouveaux encadrés, thème Fiche et fonds de cellules à contrôler sur papier | À faire par Thomas sur une vraie imprimante |
 
 ## 5. Faire écrire Claude directement dans l'app
 
-*(complété après le choix de Thomas)*
+**Voie retenue (Thomas, 14/11/2026) : insertion directe.** Claude crée le cours en base, sans
+copier-coller.
+
+| Pièce | Rôle |
+|---|---|
+| Skill `.claude/skills/cours-gestion-classe/` | Décrit la méthode, les blocs, les habitudes des fiches de Thomas et les règles de sûreté ; disponible dans toute session Claude Code ouverte sur le dépôt |
+| `gc_cours.py` (dans la skill) | Bibliothèque Python : une fiche s'écrit en quelques lignes (`Cartouche(...)`, `Question(...)`, `JaiReussi(...)`), sans JSON TipTap à la main |
+| `exemples/microbiote.py` | La fiche Microbiote complète : l'exemple de référence |
+| `npm run course:check` | Vérifie chaque brouillon de `course-drafts/` contre le **schéma réel** de l'éditeur, plus les réglages, couleurs, icônes et fusions de tableaux ; écrit le rapport et la requête `INSERT` |
+| Garde-fou dans l'éditeur | Un cours que l'éditeur ne sait pas lire s'ouvre en lecture seule, avec un message, et **n'est jamais enregistré** (TipTap l'aurait ouvert vide et l'enregistrement automatique l'aurait écrasé) |
+
+Compromis acceptés :
+
+- Il faut une session Claude qui a le dépôt (pour la vérification) et le connecteur Supabase.
+- L'écriture se fait avec les droits d'administration : la skill limite Claude à **créer** des cours,
+  et à n'en modifier un qu'à la demande, après en avoir gardé une version.
+
+Pour plus tard, si Thomas veut rédiger depuis son téléphone, la voie B (bouton « Coller un cours
+rédigé par Claude » dans l'éditeur) réutiliserait le même vérificateur.

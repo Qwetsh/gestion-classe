@@ -26,3 +26,6 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Cache Python (bibliothèque de la skill cours-gestion-classe)
+__pycache__/
