@@ -86,6 +86,7 @@ const PATHS = {
   meter: '<path d="M4 18a8 8 0 0 1 16 0"/><path d="M12 18l4-6"/><path d="M4 18h16"/>',
   groups: '<circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M2 20c.8-3.5 3-5 6-5s5.2 1.5 6 5M15 15.200c3 0 5 1.3 6 4.3"/>',
   traffic: '<rect x="8" y="2.5" width="8" height="19" rx="3"/><circle cx="12" cy="7" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="17" r="1.6"/>',
+  imageSearch: '<rect x="3" y="4" width="13" height="12" rx="1.5"/><path d="m3 13 3.5-3.5L10 13"/><circle cx="17" cy="16" r="3.5"/><path d="m19.5 18.5 2.5 2.5"/>',
   qr: '<rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2M20 14v2M14 20h2M18 18h2v2"/>',
   calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01" stroke-width="2.4"/>',
   widget: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 14v6M14 17h6"/>',

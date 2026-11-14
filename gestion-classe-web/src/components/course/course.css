@@ -20,7 +20,7 @@
 body.ce-open { overflow: hidden; }
 
 /* Variables de l'habillage : l'éditeur de cours (.ce-root) et le ruban du tableau blanc (.ce-chrome) */
-.ce-root, .ce-chrome {
+.ce-root, .ce-chrome, .ce-pres {
   --ce-accent: var(--indigo, #4F46E5);
   --ce-accent-soft: var(--indigo-soft, #EEF0FF);
   --ce-accent-ink: #3730A3;
@@ -127,6 +127,31 @@ body.ce-open { overflow: hidden; }
 .ce-sheet { position: absolute; left: 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06); }
 .ce-flow { position: absolute; z-index: 1; }
 .ce-spacer { display: block; margin: 0 !important; padding: 0; pointer-events: none; }
+/* Lot T15a : intercalaire dans un encadré coupé entre deux pages. Il « efface » le cadre sur sa
+   hauteur : blanc (bas de la feuille), bureau (entre les feuilles), blanc (haut de la suivante).
+   Débord à gauche large : l'intercalaire peut être dans une liste, en retrait dans l'encadré. */
+.ce-spacer--cut { position: relative; }
+.ce-spacer--cut::before { content: ''; position: absolute; top: 0; bottom: 0; left: -64px; right: -24px; background: linear-gradient(to bottom, #fff 0 var(--cut-a), var(--ce-desk, #E7E9EE) var(--cut-a) var(--cut-b), #fff var(--cut-b)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* Encadré « À retenir » (cadre complet) : on referme le cadre au bas de la page et on le rouvre en haut de la suivante */
+.ce-doc .ce-callout[data-callout="retenir"] > .ce-spacer--cut::before { left: -16px; right: -16px; border-top: 2px solid var(--ce-ret-line, #F59E0B); border-bottom: 2px solid var(--ce-ret-line, #F59E0B); }
+/* Lot T15b : tableau coupé entre deux lignes. Ligne fantôme sans bordure (même bandes que
+   l'encadré), puis copie non éditable de la ligne d'en-tête. */
+.ce-doc tr.ce-spacer--row { display: table-row; }
+.ce-doc tr.ce-spacer--row > td { padding: 0 !important; border: none !important; outline: none !important; min-width: 0; background: linear-gradient(to bottom, #fff 0 var(--cut-a), var(--ce-desk, #E7E9EE) var(--cut-a) var(--cut-b), #fff var(--cut-b)) !important; }
+.ce-doc tr.ce-spacer--row.ce-spacer--box > td::before { content: ''; position: absolute; top: 0; bottom: 0; left: -64px; right: -24px; background: inherit; }
+/* Le débord doit sortir de l'enveloppe du tableau (qui rogne : défilement horizontal) */
+.ce-doc .tableWrapper:has(.ce-spacer--box) { overflow-x: visible; }
+.ce-doc tr.ce-spacer-head { pointer-events: none; user-select: none; }
+/* « Cadre » : le contour du tableau entier traverserait l'espace entre les feuilles ; une fois
+   coupé, le cadre est dessiné par les cellules, refermé et rouvert à la coupure */
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) table { outline: none; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr > :first-child { border-left-color: #475569; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr > :last-child { border-right-color: #475569; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:first-child > *,
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr.ce-spacer--row + tr > *,
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr.ce-spacer--row + tr.ce-spacer-head > * { border-top-color: #475569; }
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:last-child > *,
+.ce-doc .tableWrapper[data-tstyle="outer"]:has(.ce-spacer--row) tr:has(+ tr.ce-spacer--row) > * { border-bottom-color: #475569; }
 
 /* ---------- Le texte du cours ---------- */
 .ce-doc { display: flow-root; outline: none; font: var(--ce-doc-size, 16px)/1.45 var(--ce-doc-font); color: #111827; caret-color: #111827; word-wrap: break-word; }
@@ -206,7 +231,7 @@ body.ce-open { overflow: hidden; }
 .ce-doc .tableWrapper[data-tstyle="lines"] th, .ce-doc .tableWrapper[data-tstyle="lines"] td { border-left-color: transparent; border-right-color: transparent; }
 .ce-doc .tableWrapper[data-tstyle="lines"] th { background: transparent; border-bottom: 2px solid #475569; }
 .ce-doc .tableWrapper[data-tstyle="zebra"] th, .ce-doc .tableWrapper[data-tstyle="zebra"] td { border-color: #CBD5E1; }
-.ce-doc .tableWrapper[data-tstyle="zebra"] tr:nth-child(even) > td { background: #F1F5F9; }
+.ce-doc .tableWrapper[data-tstyle="zebra"] tr:nth-child(even of :not(.ce-spacer, .ce-spacer-head)) > td { background: #F1F5F9; }
 .ce-doc .tableWrapper[data-tstyle="header"] th { background: #4F46E5; color: #fff; border-color: #4F46E5; }
 .ce-doc .tableWrapper[data-tstyle="none"] th, .ce-doc .tableWrapper[data-tstyle="none"] td { border-color: transparent; }
 .ce-doc .tableWrapper[data-tstyle="none"] th { background: transparent; }
@@ -276,6 +301,10 @@ body.ce-open { overflow: hidden; }
 .ce-img__caption:has(textarea) { display: flex; gap: 4px; align-items: baseline; }
 .ce-flow[data-caption="none"] .ce-img__num { display: none; }
 .ce-img__caption-text.is-empty { color: #94A3B8; }
+/* Lot T16b : crédit d'une image de la banque (auteur · licence · source), exigé par la licence */
+.ce-img__credit { margin-top: 2px; font-size: .62em; line-height: 1.3; font-style: normal; color: #64748B; text-align: center; overflow-wrap: anywhere; }
+.ce-img--left .ce-img__credit { text-align: left; }
+.ce-img--right .ce-img__credit { text-align: right; }
 .ce-img__caption-input { flex: 1; min-width: 0; border: 0; outline: 1px dashed var(--ce-accent); outline-offset: 2px; background: transparent; resize: none; overflow: hidden; font: inherit; color: inherit; text-align: center; padding: 0; line-height: inherit; }
 
 /* Colonnes (lot T8) : un bloc, deux ou trois colonnes ; repère pointillé à l'écran seulement */
@@ -403,6 +432,23 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-input { height: 26px; width: 190px; padding: 0 8px; border: 1px solid var(--ce-line-2); border-radius: 5px; font: 12px Inter, sans-serif; color: var(--ce-text); background: #fff; }
 .ce-input:focus { outline: 2px solid var(--ce-accent); outline-offset: 0; border-color: transparent; }
 .ce-qr { display: flex; gap: 14px; align-items: flex-end; }
+/* Banque d'images (lot T16b) */
+.ce-dialog.ce-bank { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+.ce-bank__search { display: flex; gap: 8px; }
+.ce-bank__search .ce-input { flex: 1; min-width: 0; }
+.ce-bank__results { flex: 1; min-height: 220px; max-height: 52vh; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.ce-bank__empty { margin: auto; max-width: 420px; text-align: center; color: #64748B; font-size: 13px; line-height: 1.5; }
+.ce-bank__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.ce-bank__item { position: relative; display: flex; align-items: center; justify-content: center; height: 120px; padding: 4px; border: 2px solid transparent; border-radius: 8px; background: #F1F5F9; cursor: pointer; overflow: hidden; }
+.ce-bank__item:hover { border-color: #CBD5E1; }
+.ce-bank__item.is-picked { border-color: var(--ce-accent); background: #EEF2FF; }
+.ce-bank__item img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ce-bank__lic { position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 4px; background: rgba(15,23,42,.72); color: #fff; font-size: 10px; line-height: 1.4; }
+.ce-bank__more { align-self: center; }
+.ce-bank__error { margin: 0; color: #B91C1C; font-size: 13px; }
+.ce-bank__picked { display: flex; flex-direction: column; gap: 2px; min-height: 36px; font-size: 12px; color: #475569; }
+.ce-bank__picked-title { font-weight: 600; color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ce-bank__picked-credit a { color: var(--ce-accent); }
 .ce-qr__preview { width: 120px; height: 120px; flex: none; border: 1px solid var(--ce-line-2); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9CA3AF; font-size: 12px; overflow: hidden; }
 .ce-qr__preview img { width: 100%; height: 100%; }
 .ce-qr .ce-field { flex: 1; }
@@ -606,6 +652,7 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   /* Noir et blanc : texte noir, fonds gris clair, images en niveaux de gris */
   body.ce-print-bw .ce-doc, body.ce-print-bw .ce-doc *, body.ce-print-bw .ce-hf { color: #000 !important; }
   body.ce-print-bw .ce-doc .ce-callout { background: #F1F1F1 !important; border-color: #555 !important; }
+  body.ce-print-bw .ce-doc .ce-callout > .ce-spacer--cut::before { border-color: #555 !important; }
   body.ce-print-bw .ce-doc mark { background: #DDD !important; }
   body.ce-print-bw .ce-doc th { background: #E8E8E8 !important; }
   body.ce-print-bw .ce-doc td { background: transparent !important; }
@@ -613,6 +660,7 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   /* Économie d'encre : aucun fond, images éclaircies, traits fins */
   body.ce-print-eco .ce-doc, body.ce-print-eco .ce-doc *, body.ce-print-eco .ce-hf { color: #000 !important; }
   body.ce-print-eco .ce-doc .ce-callout { background: none !important; border-color: #999 !important; }
+  body.ce-print-eco .ce-doc .ce-callout > .ce-spacer--cut::before { border-color: #999 !important; }
   body.ce-print-eco .ce-doc mark { background: none !important; text-decoration: underline; text-decoration-thickness: 2px; }
   body.ce-print-eco .ce-doc th, body.ce-print-eco .ce-doc td { background: none !important; }
   body.ce-print-eco .ce-doc img, body.ce-print-eco .ce-encart img { filter: grayscale(1) opacity(.6); }
@@ -661,6 +709,42 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
 .ce-thick { display: block; width: 18px; background: currentColor; border-radius: 4px; }
 /* Mode Tableau : le texte est en lecture seule, on le montre un peu en retrait */
 .ce-root.is-drawing .ce-flow { opacity: .92; }
+
+/* ---------- Mode En classe (lot 4a) : le cours projeté ---------- */
+body.ce-presenting { overflow: hidden; }
+.ce-pres { position: fixed; inset: 0; z-index: 1200; background: #fff; overflow: hidden; user-select: none; }
+.ce-pres.is-overview { background: #E5E7EB; cursor: zoom-in; }
+.ce-pres__page { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .35s ease; background: #fff; }
+.ce-pres.is-overview .ce-pres__page { box-shadow: 0 6px 30px rgba(15,23,42,.18); }
+/* Pas de pages en classe : un trait discret à la place de l'espace entre deux feuilles */
+.ce-pres .ce-spacer { height: 0 !important; border-top: 1px dashed #CBD5E1; margin: 10px 0 !important; }
+.ce-pres .ce-spacer--cut::before { display: none; }
+.ce-pres tr.ce-spacer--row > td { height: 0 !important; background: none !important; }
+.ce-pres tr.ce-spacer-head { display: none; }
+.ce-pres .ce-doc { caret-color: transparent; }
+.ce-pres .ce-encart__edit, .ce-pres .ce-encart__label { display: none !important; }
+.ce-pres__band { position: absolute; border: 3px solid var(--ce-accent); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(15,23,42,.12); pointer-events: none; }
+.ce-pres__bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 4px; padding: 6px 8px; background: rgba(17,24,39,.86); color: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); font: 13px Inter, sans-serif; opacity: .35; transition: opacity .2s; }
+.ce-pres__bar:hover, .ce-pres__bar:focus-within { opacity: 1; }
+.ce-pres__btn { min-width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.ce-pres__btn:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+.ce-pres__btn.is-on { background: rgba(255,255,255,.24); }
+.ce-pres__btn:disabled { opacity: .35; cursor: default; }
+.ce-pres__count { min-width: 104px; text-align: center; font-variant-numeric: tabular-nums; }
+.ce-pres__sep { width: 1px; height: 22px; background: rgba(255,255,255,.25); margin: 0 4px; }
+.ce-pres__color { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); cursor: pointer; padding: 0; }
+.ce-pres__color.is-on { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+.ce-pres__test { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #F59E0B; color: #111827; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+/* Dans l'écran de classe : sous les surimpressions de la page (minuteur, tirage, rideau) */
+.ce-pres--embedded { z-index: 10; }
+/* Encart ouvert en classe (lot 4e) : le tableau blanc par-dessus la présentation */
+.ce-pres-encart { position: fixed; inset: 0; z-index: 1300; }
+.ce-pres-encart--embedded { z-index: 11; }
+.ce-pres__encart { white-space: nowrap; margin-left: 4px; height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--ce-accent); color: #fff; font-weight: 600; cursor: pointer; }
+.ce-pres .ce-encart { cursor: pointer; }
+.ce-pres.is-overview .ce-flow { pointer-events: none; }
+.ce-pres__test--live { background: #10B981; color: #fff; }
+.ce-pres__quit { margin-left: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: #fff; color: #111827; font-weight: 600; cursor: pointer; }
 
 @media print {
   @page { size: A4; margin: 0; }

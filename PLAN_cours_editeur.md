@@ -246,3 +246,101 @@ connecteurs, post-it) restent dans les encarts 16:9.
 **Non vérifié** : stylet et doigt sur tablette (événements pointeur, `touch-action: none`) ;
 impression ; un annotation posée à cheval sur un saut de page (elle suit son bloc, qui peut
 changer de page). Lot suivant : 4, mode En classe (bande de colonne, Suivant, encre de séance).
+
+### Lot 4a — mode En classe (présentation), fait le 14/11/2026 (branche `feat/cours-en-classe`)
+
+- **« ▶ En classe »** (barre d'état, Affichage) ouvre `CoursePresenter.tsx` en plein écran, avec le
+  cours tel qu'à l'instant du clic.
+- **Bande de la largeur de la colonne** (+ 18 px de marge de chaque côté) : sur un écran de
+  1 280 px, le texte 12 pt est agrandi 2 fois. Pas de pages : les sauts deviennent un trait
+  discret.
+- **Suivant / Précédent** : flèches, espace, Entrée, Page suivante / précédente (télécommandes),
+  boutons ◀ ▶ ; molette pour un réglage fin ; Début / Fin. Pas d'un écran moins 56 px (la
+  dernière ligne reste visible). **Un encart 16:9** atteint en descendant est calé en haut et
+  remplit l'écran (même s'il faut descendre d'un quart d'écran de plus).
+- **Vue d'ensemble** (O) : tout le cours, la bande encadrée ; un clic ramène la bande à cet endroit.
+- Annotations du mode Tableau affichées ; **encre de séance** (stylo, surligneur, gomme,
+  4 couleurs, tout effacer) au-dessus, **mode test** : jamais enregistrée, perdue en quittant.
+  Plein écran (F), Quitter (Échap). Barre d'outils discrète (transparente hors survol).
+- Calque rendu plus robuste au passage : tracé en cours lu dans une référence (des événements
+  rapprochés arrivent avant le rendu), capture du pointeur protégée.
+- Vérifié dans le navigateur à 1 280 × 720 : bande (police du cours), arrêt sur l'encart en
+  3 pas, Précédent, vue d'ensemble + clic, encre tracée puis disparue, cours inchangé en base.
+
+**Constat** : aujourd'hui, un cours lancé dans `/classe` (« Lancer la séance », ou rattachement
+automatique à la séance) n'envoie à l'écran que les pages de ses encarts (`copyBoardPages`) : le
+texte et les annotations sont perdus. **Tranche 4b** : `/classe` affiche le présentateur quand le
+tableau de la séance est un cours, encre de séance enregistrée dans la séance. Puis 4c
+(commandes Suivant / Précédent / vue d'ensemble depuis le téléphone, protocole web + mobile),
+4d (bouton du calendrier), 4e (dessiner dans un encart en classe sans toucher au cours préparé).
+
+### Lot 4b — le cours dans l'écran de classe, fait le 14/11/2026 (branche `feat/cours-en-classe-seance`)
+
+- **`/classe`** (`pages/Classroom.tsx`) : quand le tableau de la séance (« Lancer la séance » ou
+  rattachement automatique) est un cours rédigé, l'écran affiche le présentateur
+  (`CourseSessionView.tsx`) au lieu de verser le cours dans le tableau blanc (qui n'en gardait
+  que les encarts). Tant que le type du tableau n'est pas connu, rien ne s'affiche (pour ne pas
+  verser un cours par erreur). La séance garde le lien vers le cours (`linkSessionBoard`), sans
+  copie des encarts.
+- **Encre de la séance** rangée dans la séance : `session_boards.course_ink` (migration 073), avec
+  une copie sur l'ordinateur de la classe ; enregistrée 1,2 s après le dernier trait et en
+  quittant la vue ; rechargée au retour (page rechargée, B puis B). Jamais dans le cours préparé.
+- Présentateur « intégré » : badge « Séance », pas de bouton Quitter (B revient au plan), F laissé
+  à la page, sous les surimpressions (minuteur, tirage, rideau).
+- Vérifié dans le navigateur : vue de séance montée sur un cours de test (annotations préparées,
+  badge, encre tracée, gardée sur l'ordinateur, rechargée après démontage ; cours inchangé en
+  base). **Non vérifié** : le parcours complet avec une vraie séance démarrée au téléphone
+  (pas de fausse séance créée en base, pour ne pas en laisser une sur le téléphone) ;
+  l'enregistrement serveur, qui attend la migration 073.
+
+### Lot 4c — télécommande du téléphone, fait le 14/11/2026 (branche `feat/cours-classe-telephone`)
+
+- Nouvelle commande du canal de classe : `{ kind: 'nav', action: 'next' | 'prev' | 'overview' }`,
+  identique dans `lib/classroomProtocol.ts` (web) et `services/sync/classroomChannel.ts` (mobile).
+- Web : le cours affiché dans `/classe` l'écoute (écran suivant, précédent, vue d'ensemble ;
+  Suivant quitte la vue d'ensemble) ; reçue pendant que le plan est affiché, elle remontre le cours.
+- Mobile (PR à part dans gestion-classe-mobile, branche `feat/cours-classe-nav`) : section
+  « Cours projeté » dans la feuille « Écran de la classe » : Précédent, **Suivant** (grand bouton),
+  Vue d'ensemble ; « Tableau blanc » devient « Tableau ou cours ». **APK à reconstruire.**
+- Vérifié : côté web, avec un canal simulé (Suivant ×2, Précédent, vue d'ensemble, Suivant qui en
+  sort, autres commandes ignorées) ; côté mobile, compilation TypeScript. **Non vérifié** : le
+  téléphone réel (APK pas encore construit).
+
+### Lot 4d — « En classe » depuis le calendrier, fait le 14/11/2026 (branche `feat/cours-calendrier`)
+
+- Détail d'un cours de l'emploi du temps (`LessonPopover.tsx`) : quand le tableau préparé du cours
+  est un **cours rédigé**, un lien **« ▶ En classe »** ouvre directement la présentation (mode
+  test : pastille TEST, encre effacée en quittant, Échap revient à l'accueil). Disponible aussi
+  pour un cours passé (revoir ce qui a été projeté) ; Copier / Supprimer restent réservés aux cours
+  à venir.
+- Le type est lu avec la liste des tableaux de la semaine (`lesson_boards` → `boards.doc->version`,
+  champ `isCourse`), sans requête de plus à l'ouverture du détail.
+- `openBoard({ …, present: true })` → `OpenPreparedBoard` (`present`) charge le cours et ouvre
+  `CoursePresenter` au lieu de l'éditeur.
+- Le jour J ne change pas : « Lancer la séance » ouvre `/classe` et le cours s'affiche quand le
+  téléphone démarre la séance (4b), qui le fait avancer (4c) ; l'infobulle le dit pour un cours.
+- Vérifié dans le navigateur : cours de test créé sur un créneau de la semaine suivante, lien
+  affiché, présentation ouverte en mode test, Échap, puis cours supprimé (base vérifiée vide).
+  Reste du lot 4 : 4e (dessiner dans un encart en classe sans toucher au cours préparé).
+
+### Lot 4e — dessiner dans un encart en classe, fait le 14/11/2026 (branche `feat/cours-encarts-classe`)
+
+- Dans la présentation, un encart entièrement à l'écran fait apparaître **« ✎ Encart »** dans la
+  barre (ou double-clic sur l'encart, outil Main) : il s'ouvre dans le **tableau blanc tactile**,
+  sur sa seule page, avec tous les outils (stylo, formes, texte, insertions…), en partant du
+  contenu préparé.
+- **En séance** : la page est rangée dans la séance (`board_pages.session_id`, même identifiant
+  de page que l'encart), jamais dans le cours préparé ; stockage local par séance et par encart
+  (`encart-seance:<séance>:<page>`). Au retour (« Revenir au cours ») et au rechargement, la
+  présentation affiche la version de la séance. Aucune migration.
+- **En mode test** : copie en mémoire seulement (ni serveur ni stockage local), perdue en quittant.
+- Pendant qu'un encart est ouvert, le clavier et les commandes du téléphone ne font pas bouger le
+  cours dessous.
+- Technique : `Whiteboard` reçoit `localKey` (`null` = aucun stockage local) et `initialPage`, et
+  rend ses pages à la fermeture ; `encartStore` garde des versions par séance / par essai
+  (`setEncartOverrides`), que `EncartView` affiche à la place de l'encart préparé (option `scope`).
+- Vérifié dans le navigateur (mode test) : encart préparé avec un trait, ouvert en classe par le
+  bouton et par double-clic, second trait, retour : la présentation montre les deux traits, la base
+  n'en garde qu'un (cours inchangé) ; après Quitter puis réouverture, seul le trait préparé reste ;
+  flèches et Début ignorés pendant l'édition. **Non vérifié** : l'enregistrement dans une vraie
+  séance (la clé étrangère `board_pages.session_id → sessions` interdit une séance factice).

@@ -333,6 +333,12 @@ export const CourseImage = Image.extend({
         parseHTML: (el: HTMLElement) => el.getAttribute('data-frame') || 'none',
         renderHTML: (a: { frame?: string }) => (a.frame && a.frame !== 'none' ? { 'data-frame': a.frame } : {}),
       },
+      /** Lot T16b : crédit d'une image de la banque ({ text, url }), écrit sous l'image. */
+      credit: {
+        default: null,
+        parseHTML: (el: HTMLElement) => { try { return JSON.parse(el.getAttribute('data-credit') || 'null'); } catch { return null; } },
+        renderHTML: (a: { credit?: unknown }) => (a.credit ? { 'data-credit': JSON.stringify(a.credit) } : {}),
+      },
     };
   },
   addNodeView() {

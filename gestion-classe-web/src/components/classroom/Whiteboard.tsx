@@ -170,12 +170,23 @@ export interface WhiteboardProps {
    */
   onlyPageId?: string;
   /**
+   * Clé du stockage local (défaut : `sessionId`). `null` : rien n'est gardé dans le navigateur
+   * (encart essayé en mode test, effacé en quittant).
+   */
+  localKey?: string | null;
+  /**
+   * Encart : contenu de départ quand sa page n'existe encore ni dans le navigateur ni sur le
+   * serveur (en classe : copie de l'encart préparé, la séance garde ensuite sa propre version).
+   */
+  initialPage?: BoardPage;
+  /**
    * Habillage : 'tbi' (défaut — barre flottante, pastille, gros boutons : la classe) ou 'ribbon'
    * (ruban façon traitement de texte, pour préparer à l'ordinateur). Avec 'ribbon', l'utilisateur
    * peut repasser à l'habillage tactile ; son choix est mémorisé sur l'appareil.
    */
   chrome?: 'tbi' | 'ribbon';
-  onClose: () => void;
+  /** Fermeture (« Retour »), après l'envoi des dernières modifications ; reçoit les pages telles quelles. */
+  onClose: (pages: BoardPage[]) => void;
 }
 
 /** Clé locale : le panneau « Tableaux préparés » ne s'ouvre tout seul qu'une fois par séance. */
@@ -372,7 +383,9 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, chrome = 'tbi', onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, chrome = 'tbi', onClose }: WhiteboardProps) {
+  /** Clé du stockage local ; `null` = aucun stockage local. */
+  const storeKey = localKey === undefined ? sessionId : localKey;
   const activeRef = useRef(active);
   useEffect(() => { activeRef.current = active; }, [active]);
   /** Tableau d'une séance (ni tableau nommé, ni brouillon local) : c'est lui qu'on relie à un tableau préparé. */
@@ -382,10 +395,11 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Encart de cours : une seule page, toujours au format 16:9. */
   const singlePage = !!onlyPageId;
   const [pages, setPages] = useState<Page[]>(() => {
-    const local = loadLocal(sessionId).pages;
+    const local = storeKey === null ? [newPage()] : loadLocal(storeKey).pages;
     if (!onlyPageId) return local;
-    const own = local.find((p) => p.id === onlyPageId);
-    return [own ?? { ...newPage(), id: onlyPageId }];
+    const own = storeKey === null ? undefined : local.find((p) => p.id === onlyPageId);
+    const start = initialPage ? (JSON.parse(JSON.stringify(initialPage)) as Page) : newPage();
+    return [own ?? { ...start, id: onlyPageId }];
   });
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<Tool>('pen');
@@ -825,7 +839,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     if (!remote) return;
     let cancelled = false;
     (async () => {
-      const local = loadLocal(sessionId);
+      const local = storeKey === null ? { savedAt: 0, pages: [] as Page[] } : loadLocal(storeKey);
       try {
         const remote = await fetchBoardPages(remoteRef);
         if (cancelled) return;
@@ -876,9 +890,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, [sessionId, boardId, remote]);
 
   useEffect(() => {
-    const t = window.setTimeout(() => saveLocal(sessionId, pages), LOCAL_SAVE_MS);
+    if (storeKey === null) return;
+    const t = window.setTimeout(() => saveLocal(storeKey, pages), LOCAL_SAVE_MS);
     return () => window.clearTimeout(t);
-  }, [pages, sessionId]);
+  }, [pages, storeKey]);
 
   const flushRemote = useCallback(async () => {
     if (!remote || !remoteReady.current) return;
@@ -3389,7 +3404,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     'zoom-out': { onSelect: () => zoomAt(1 / 1.5, window.innerWidth / 2, window.innerHeight / 2), disabled: view.zoom <= 1 },
     'chrome-tbi': { onSelect: () => chooseChrome('tbi') },
   } : {};
-  const closeBoard = () => { void flushRemote().finally(onClose); };
+  const closeBoard = () => { void flushRemote().finally(() => onClose(pagesRef.current)); };
 
   return (
     <div

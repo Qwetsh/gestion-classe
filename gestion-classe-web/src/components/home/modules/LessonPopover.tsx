@@ -323,16 +323,28 @@ export function LessonPopover({
                   modifié le {lessonBoard.updatedAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                 </span>
               </button>
-              {!past && !canceled && !dupOpen && (
+              {!dupOpen && (lessonBoard.isCourse || (!past && !canceled)) && (
                 <div className="wtt-pop__links">
-                  {dupCandidates.length > 0 && (
+                  {lessonBoard.isCourse && (
+                    <button
+                      type="button"
+                      className="wtt__link"
+                      onClick={() => { onClose(); openBoard({ id: lessonBoard.boardId, title: lessonBoard.title, present: true }); }}
+                      title="Voir le cours comme en classe (bande de la largeur du texte, Suivant / Précédent) ; l’encre de test est effacée en quittant"
+                    >
+                      ▶ En classe
+                    </button>
+                  )}
+                  {!past && !canceled && dupCandidates.length > 0 && (
                     <button type="button" className="wtt__link" onClick={openDuplicate} disabled={boardBusy}>
                       Copier pour les autres {level}…
                     </button>
                   )}
-                  <button type="button" className="wtt__link wtt__link--muted" onClick={removeBoard} disabled={boardBusy}>
-                    Supprimer
-                  </button>
+                  {!past && !canceled && (
+                    <button type="button" className="wtt__link wtt__link--muted" onClick={removeBoard} disabled={boardBusy}>
+                      Supprimer
+                    </button>
+                  )}
                 </div>
               )}
               {dupOpen && (
@@ -432,7 +444,9 @@ export function LessonPopover({
           <div className="wtt-pop__actions">
             {(current || (!past && sameDay(lesson.start, now))) && !canceled && (
               lessonBoard ? (
-                <Link to={`/classe?board=${lessonBoard.boardId}`} className="wtt-pop__btn wtt-pop__btn--primary" title="Ouvre l’écran de classe ; le tableau s’affiche quand la séance démarre sur le téléphone">
+                <Link to={`/classe?board=${lessonBoard.boardId}`} className="wtt-pop__btn wtt-pop__btn--primary" title={lessonBoard.isCourse
+                  ? 'Ouvre l’écran de classe ; le cours s’affiche quand la séance démarre sur le téléphone, qui le fait avancer'
+                  : 'Ouvre l’écran de classe ; le tableau s’affiche quand la séance démarre sur le téléphone'}>
                   Lancer la séance
                 </Link>
               ) : (
