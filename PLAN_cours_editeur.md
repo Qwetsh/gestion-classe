@@ -246,3 +246,30 @@ connecteurs, post-it) restent dans les encarts 16:9.
 **Non vérifié** : stylet et doigt sur tablette (événements pointeur, `touch-action: none`) ;
 impression ; un annotation posée à cheval sur un saut de page (elle suit son bloc, qui peut
 changer de page). Lot suivant : 4, mode En classe (bande de colonne, Suivant, encre de séance).
+
+### Lot 4a — mode En classe (présentation), fait le 14/11/2026 (branche `feat/cours-en-classe`)
+
+- **« ▶ En classe »** (barre d'état, Affichage) ouvre `CoursePresenter.tsx` en plein écran, avec le
+  cours tel qu'à l'instant du clic.
+- **Bande de la largeur de la colonne** (+ 18 px de marge de chaque côté) : sur un écran de
+  1 280 px, le texte 12 pt est agrandi 2 fois. Pas de pages : les sauts deviennent un trait
+  discret.
+- **Suivant / Précédent** : flèches, espace, Entrée, Page suivante / précédente (télécommandes),
+  boutons ◀ ▶ ; molette pour un réglage fin ; Début / Fin. Pas d'un écran moins 56 px (la
+  dernière ligne reste visible). **Un encart 16:9** atteint en descendant est calé en haut et
+  remplit l'écran (même s'il faut descendre d'un quart d'écran de plus).
+- **Vue d'ensemble** (O) : tout le cours, la bande encadrée ; un clic ramène la bande à cet endroit.
+- Annotations du mode Tableau affichées ; **encre de séance** (stylo, surligneur, gomme,
+  4 couleurs, tout effacer) au-dessus, **mode test** : jamais enregistrée, perdue en quittant.
+  Plein écran (F), Quitter (Échap). Barre d'outils discrète (transparente hors survol).
+- Calque rendu plus robuste au passage : tracé en cours lu dans une référence (des événements
+  rapprochés arrivent avant le rendu), capture du pointeur protégée.
+- Vérifié dans le navigateur à 1 280 × 720 : bande (police du cours), arrêt sur l'encart en
+  3 pas, Précédent, vue d'ensemble + clic, encre tracée puis disparue, cours inchangé en base.
+
+**Constat** : aujourd'hui, un cours lancé dans `/classe` (« Lancer la séance », ou rattachement
+automatique à la séance) n'envoie à l'écran que les pages de ses encarts (`copyBoardPages`) : le
+texte et les annotations sont perdus. **Tranche 4b** : `/classe` affiche le présentateur quand le
+tableau de la séance est un cours, encre de séance enregistrée dans la séance. Puis 4c
+(commandes Suivant / Précédent / vue d'ensemble depuis le téléphone, protocole web + mobile),
+4d (bouton du calendrier), 4e (dessiner dans un encart en classe sans toucher au cours préparé).
