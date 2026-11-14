@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { Icon, type IconName } from './courseIcons';
+import { scrollRibbon } from './ribbonScroll';
 import { CALLOUT_COLORS, CALLOUT_FRAMES, CALLOUT_LABELS, WRITING_ZONE_LABELS, calloutFrameOf, type CalloutKind, type WritingZoneStyle } from './courseExtensions';
 import { CourseBlocksMenu } from './CourseBlocksMenu';
 import { formatPoints } from './courseEval';
@@ -374,7 +375,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         ))}
       </nav>
 
-      <div className="ce-ribbon" role="toolbar" aria-label="Ruban">
+      <div className="ce-ribbon" role="toolbar" aria-label="Ruban" onWheel={scrollRibbon}>
         {tab === 'fichier' && (
           <>
             <Group label="Imprimer">
@@ -387,11 +388,11 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Cours">
               <Big icon="rename" label="Renommer" onClick={onRename} />
               <Big icon="duplicate" label="Dupliquer" title="Faire une copie indépendante de ce cours (texte et encarts)" onClick={onDuplicate} />
-              <Big icon="template" label="Enregistrer comme modèle" title="Garder ce cours comme point de départ des prochains" onClick={onSaveTemplate} />
+              <Big icon="template" label="Comme modèle" title="Enregistrer comme modèle : garder ce cours comme point de départ des prochains" onClick={onSaveTemplate} />
             </Group>
             <Group label="Versions">
               <Big icon="history" label="Historique" title="Revoir et restaurer les versions précédentes du cours" onClick={onHistory} on={historyOpen} />
-              <Big icon="versionSave" label="Enregistrer une version" title="Garder l'état actuel du cours dans l'historique, sous un nom" onClick={onSaveVersion} />
+              <Big icon="versionSave" label="Nouvelle version" title="Enregistrer une version : garder l'état actuel du cours dans l'historique, sous un nom" onClick={onSaveVersion} />
             </Group>
           </>
         )}
@@ -403,7 +404,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 <Big icon="paste" label="Coller" title="Coller en adaptant au cours (Ctrl+V)" onClick={() => onPaste('adapt')} />
                 <button type="button" className="ce-split__caret" title="Options de collage" aria-label="Options de collage" onClick={togglePasteMenu}>▾</button>
               </div>
-              <div className="ce-stack">
+              <div className="ce-stack ce-stack--compact">
                 <Sm icon="cut" label="Couper" title="Couper (Ctrl+X)" onClick={() => { editor.commands.focus(); document.execCommand('cut'); }} />
                 <Sm icon="copy" label="Copier" title="Copier (Ctrl+C)" onClick={() => { editor.commands.focus(); document.execCommand('copy'); }} />
                 <button
@@ -555,7 +556,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             </Group>
 
             <Group label="Modification">
-              <div className="ce-stack">
+              <div className="ce-stack ce-stack--compact">
                 <Sm icon="search" label="Rechercher" title="Rechercher (Ctrl+F)" onClick={onFind} />
                 <Sm icon="replace" label="Remplacer" title="Remplacer (Ctrl+H)" onClick={onReplace} />
               </div>
@@ -1017,9 +1018,15 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
               <Big icon="alignImgRight" label="À droite" on={s.imageAlign === 'right'} onClick={() => updateNode('image', { align: 'right' })} />
             </Group>
             <Group label="Taille">
+              {/* Deux rangées de deux : quatre boutons empilés dépassaient la hauteur du ruban */}
               <div className="ce-stack">
-                {[25, 50, 75, 100].map((p) => (
-                  <Sm key={p} label={`${p} % de la largeur`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100) })} />
+                <span className="ce-minilabel">Largeur du texte</span>
+                {[[25, 50], [75, 100]].map((row) => (
+                  <div key={row[0]} className="ce-row">
+                    {row.map((p) => (
+                      <Sm key={p} label={`${p} %`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100) })} />
+                    ))}
+                  </div>
                 ))}
               </div>
             </Group>

@@ -723,7 +723,7 @@ body.wb-ribbon-on .wbsr, body.wb-ribbon-on .wbp, body.wb-ribbon-on .wbk, body.wb
 .wbrib__closemin { flex: none; margin-left: 6px; height: 28px; }
 .wbrib--min .ce-saved { margin-right: 6px; }
 /* Contenu d'un onglet déroulé par-dessus la page, le temps d'un choix */
-.wbrib__peek { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background: #fff; border-bottom: 1px solid #D1D5DB; box-shadow: 0 8px 24px rgba(15,23,42,.16); }
+.wbrib__peek { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background-color: #fff; border-bottom: 1px solid #D1D5DB; box-shadow: 0 8px 24px rgba(15,23,42,.16); }
 .wb.wb--ribbon.wb--ribbon-min .wb__stage { margin-top: 6px; margin-bottom: 6px; margin-left: 6px; }
 .wbrib__title { font-weight: 600; font-size: 14px; padding: 4px 6px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wbrib__wheel { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EF4444); flex: none; }
@@ -737,7 +737,7 @@ body.wb-ribbon-on .wbsr, body.wb-ribbon-on .wbp, body.wb-ribbon-on .wbk, body.wb
 .wbrib .ce-zoom button:disabled, .wbrib__status .ce-zoom button:disabled { opacity: .35; cursor: default; }
 
 /* Volet des pages : sous le ruban, au-dessus de la barre d'état */
-body.wb-ribbon-on .wbn.wbn { top: var(--wb-ribbon-top, 178px); bottom: 30px; background: #F3F4F6; border-left: 1px solid #E2E4E9; }
+body.wb-ribbon-on .wbn.wbn { top: var(--wb-ribbon-top, 184px); bottom: 30px; background: #F3F4F6; border-left: 1px solid #E2E4E9; }
 body.wb-ribbon-on .wbn.wbn .wbn__foot { border-top-color: #E2E4E9; }
 
 /* Barres posées sur l'objet et panneaux : clairs, bordure fine */

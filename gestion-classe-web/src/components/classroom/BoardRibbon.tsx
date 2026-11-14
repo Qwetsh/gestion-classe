@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '../course/courseIcons';
+import { scrollRibbon } from '../course/ribbonScroll';
 import '../course/course.css';
 
 export interface RibbonAction {
@@ -218,7 +219,7 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
         </nav>
 
         {showPanel && (
-        <div className={`ce-ribbon ${collapsed ? 'wbrib__peek' : ''}`} role="toolbar" aria-label="Ruban" onClick={collapsed ? () => setPeek(false) : undefined}>
+        <div className={`ce-ribbon ${collapsed ? 'wbrib__peek' : ''}`} role="toolbar" aria-label="Ruban" onWheel={scrollRibbon} onClick={collapsed ? () => setPeek(false) : undefined}>
           {tab === 'fichier' && (
             <>
               <Group label="Ouvrir">
