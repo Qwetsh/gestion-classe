@@ -714,6 +714,17 @@ body.wb-ribbon-on .wbsr, body.wb-ribbon-on .wbp, body.wb-ribbon-on .wbk, body.wb
 
 /* Le ruban et la barre d'état encadrent la scène (la racine .wb est une colonne flex) */
 .wbrib { flex: none; position: relative; z-index: 20; user-select: none; }
+/* Ruban replié : une rangée d'onglets, la page garde presque tout l'écran (défaut en classe) */
+.wbrib .ce-tabs { align-items: center; }
+.wbrib--min .ce-tabs { padding-right: 8px; }
+.wbrib--min .ce-ribbonwrap { position: relative; }
+.wbrib__fold { flex: none; margin-left: 4px; width: 32px; height: 28px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: #4B5563; font-size: 13px; line-height: 1; }
+.wbrib__fold:hover { background: #EEF0FF; color: #1F2937; }
+.wbrib__closemin { flex: none; margin-left: 6px; height: 28px; }
+.wbrib--min .ce-saved { margin-right: 6px; }
+/* Contenu d'un onglet déroulé par-dessus la page, le temps d'un choix */
+.wbrib__peek { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background: #fff; border-bottom: 1px solid #D1D5DB; box-shadow: 0 8px 24px rgba(15,23,42,.16); }
+.wb.wb--ribbon.wb--ribbon-min .wb__stage { margin-top: 6px; margin-bottom: 6px; margin-left: 6px; }
 .wbrib__title { font-weight: 600; font-size: 14px; padding: 4px 6px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wbrib__wheel { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EF4444); flex: none; }
 .wbrib__size { width: 30px; justify-content: center; padding: 0; }

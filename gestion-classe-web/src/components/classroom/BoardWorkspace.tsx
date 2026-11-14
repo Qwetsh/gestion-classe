@@ -19,7 +19,7 @@ const STORAGE_PREFIX = 'classroom-board-tabs:';
 /** Hauteur de la barre d'onglets (px), réservée en haut de chaque tableau. */
 const TAB_BAR_H = 36;
 
-type Shared = Pick<WhiteboardProps, 'userId' | 'ticker' | 'classroom' | 'className' | 'chrome'>;
+type Shared = Pick<WhiteboardProps, 'userId' | 'ticker' | 'classroom' | 'className' | 'chrome' | 'inClass'>;
 
 interface Props extends Shared {
   /** Onglet de départ : la séance en classe, le tableau ouvert depuis l'accueil, le brouillon. */

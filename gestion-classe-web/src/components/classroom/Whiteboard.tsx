@@ -198,6 +198,12 @@ export interface WhiteboardProps {
    */
   initialPages?: BoardPage[];
   /**
+   * Tableau montré à la classe (séance, essai des écrans, encart en présentation). Avec le ruban :
+   * il s'ouvre replié pour laisser l'écran à la page, et la pastille à menu radial reste posée
+   * sur la page. Le choix replié / déplié est mémorisé à part de celui de la préparation.
+   */
+  inClass?: boolean;
+  /**
    * Habillage : 'tbi' (défaut — barre flottante, pastille, gros boutons : la classe) ou 'ribbon'
    * (ruban façon traitement de texte, pour préparer à l'ordinateur). Avec 'ribbon', l'utilisateur
    * peut repasser à l'habillage tactile ; son choix est mémorisé sur l'appareil.
@@ -401,7 +407,7 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, chrome = 'tbi', onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, inClass, chrome = 'tbi', onClose }: WhiteboardProps) {
   /** Clé du stockage local ; `null` = aucun stockage local. */
   const storeKey = localKey === undefined ? sessionId : localKey;
   const activeRef = useRef(active);
@@ -543,6 +549,16 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     setTouchChrome(mode === 'tbi');
     try { localStorage.setItem(CHROME_KEY, mode); } catch { /* stockage indisponible */ }
   };
+  // Ruban replié (une rangée d'onglets) : par défaut en classe, déplié en préparation ; chaque
+  // contexte garde son choix sur l'appareil
+  const ribbonMinKey = `classroom-board-ribbon-min:${inClass ? 'classe' : 'prep'}`;
+  const [ribbonMin, setRibbonMin] = useState(() => {
+    try { const v = localStorage.getItem(ribbonMinKey); return v === null ? !!inClass : v === '1'; } catch { return !!inClass; }
+  });
+  const toggleRibbonMin = () => setRibbonMin((v) => {
+    try { localStorage.setItem(ribbonMinKey, v ? '0' : '1'); } catch { /* stockage indisponible */ }
+    return !v;
+  });
   // Les couches portalées (menus, panneaux, barres flottantes) suivent le thème clair du ruban
   useEffect(() => {
     if (!ribbon || !active) return;
@@ -551,7 +567,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const rib = rootRef.current?.querySelector('.wbrib');
     if (rib) document.body.style.setProperty('--wb-ribbon-top', `${Math.round(rib.getBoundingClientRect().bottom)}px`);
     return () => { document.body.classList.remove('wb-ribbon-on'); document.body.style.removeProperty('--wb-ribbon-top'); };
-  }, [ribbon, active, topOffset, displayMode]);
+  }, [ribbon, active, topOffset, displayMode, ribbonMin]);
   const [pickOpen, setPickOpen] = useState(false);
   /** Élèves déjà tirés dans la séance (sans remise), mémorisés sur l'appareil. */
   const [pickedIds, setPickedIds] = useState<ReadonlySet<string>>(() => {
@@ -3475,7 +3491,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   return (
     <div
       ref={rootRef}
-      className={`wb ${dragOver ? 'is-dragover' : ''} ${ribbon && !displayMode ? 'wb--ribbon' : ''}`}
+      className={`wb ${dragOver ? 'is-dragover' : ''} ${ribbon && !displayMode ? 'wb--ribbon' : ''} ${ribbon && !displayMode && ribbonMin ? 'wb--ribbon-min' : ''}`}
       style={topOffset ? { top: topOffset } : undefined}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
@@ -3501,6 +3517,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           inserts={insertEntries().map((e) => ({ id: e.id, label: e.label, run: e.run, active: e.id === 'record' && recording }))}
           single={singlePage}
           onClose={closeBoard}
+          closeLabel={singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : inClass && isSessionBoard ? 'Plan de classe' : 'Fermer'}
+          collapsed={ribbonMin}
+          onToggleCollapsed={toggleRibbonMin}
         />
       )}
       <input
@@ -3545,7 +3564,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       <div
         className={`wb__stage ${view.zoom > 1 ? 'is-zoomed' : ''}`}
         ref={containerRef}
-        style={{ marginRight: (navOpen && !displayMode ? navWidth : 0) + (ribbon && !displayMode ? 24 : 0) }}
+        style={{ marginRight: (navOpen && !displayMode ? navWidth : 0) + (ribbon && !displayMode ? (ribbonMin ? 6 : 24) : 0) }}
         onPointerDownCapture={onStagePointerDown}
         onPointerMoveCapture={onStagePointerMove}
         onPointerUpCapture={onStagePointerUp}
@@ -3777,7 +3796,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             <button type="button" onClick={cancelLinking}>Annuler</button>
           </div>
         )}
-        {!displayMode && !ribbon && !palette.hidden && (
+        {/* La pastille à menu radial : habillage tactile, et ruban quand le tableau est montré à la classe */}
+        {!displayMode && (!ribbon || !!inClass) && !palette.hidden && (
           <BoardPalette
             x={palette.x}
             y={palette.y}
