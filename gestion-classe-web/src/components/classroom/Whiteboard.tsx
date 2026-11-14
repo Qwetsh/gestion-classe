@@ -43,6 +43,9 @@ import {
   gapIdsIn,
   stripGaps as stripGapsHtml,
   loadRevealState,
+  isRevealEmpty,
+  normalizeReveal,
+  revealSavedAt,
   pageRevealedFraction,
   recoverPage,
   saveRevealState,
@@ -82,7 +85,7 @@ import type { LibraryItem, LibraryObject } from '../../lib/boardLibrary';
 import { recognizeHandwriting } from '../../lib/boardHandwriting';
 import { pullKeys, setKeysOwner } from '../../lib/userKeys';
 import { newInstrument, snapToInstruments, type Instrument, type InstrumentKind } from '../../lib/boardInstruments';
-import { fetchBoardPages, upsertBoardPages } from '../../lib/boardQueries';
+import { fetchBoardPages, fetchSessionReveal, saveSessionReveal, upsertBoardPages } from '../../lib/boardQueries';
 import { fullWidthPageHeight, importFilesToPages, isImportableFile, isImageFile, uploadBoardImage, uploadCoverImage, type ImportLayout, type ImportProgress } from '../../lib/boardImport';
 import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName, GCBOARD_EXTENSION } from '../../lib/boardFile';
 import { renderPageToCanvas } from '../../lib/boardRender';
@@ -685,7 +688,37 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   useEffect(() => { viewRef.current = view; }, [view]);
   useEffect(() => { instrumentsRef.current = instruments; }, [instruments]);
 
-  useEffect(() => { saveRevealState(sessionId, reveal); }, [sessionId, reveal]);
+  // Révélations : gardées dans le navigateur, et pour une séance aussi sur le serveur (migration
+  // 074) — rouvert sur un autre ordinateur, le tableau retrouve ce qui a été découvert.
+  /** État lu au montage, puis dernier état connu du serveur : rien à écrire tant qu'il n'a pas changé. */
+  const revealSyncedRef = useRef(reveal);
+  const revealLoadedRef = useRef(reveal);
+  useEffect(() => {
+    if (reveal === revealLoadedRef.current) return; // l'état relu au montage : pas une modification
+    saveRevealState(sessionId, reveal);
+  }, [sessionId, reveal]);
+  useEffect(() => {
+    if (!isSessionBoard) return;
+    let cancelled = false;
+    void fetchSessionReveal(sessionId).then((remoteState) => {
+      if (cancelled || !remoteState) return;
+      const local = revealRef.current;
+      // Le serveur l'emporte s'il est plus récent, ou si ce navigateur n'a encore rien
+      if (remoteState.updatedAt <= revealSavedAt(sessionId) && !isRevealEmpty(local)) return;
+      const next = normalizeReveal(remoteState.reveal);
+      revealSyncedRef.current = next;
+      setReveal(next);
+    });
+    return () => { cancelled = true; };
+  }, [sessionId, isSessionBoard]);
+  useEffect(() => {
+    if (!isSessionBoard || !userId || reveal === revealSyncedRef.current) return;
+    const t = window.setTimeout(() => {
+      const sent = reveal;
+      void saveSessionReveal(userId, sessionId, sent).then((ok) => { if (ok) revealSyncedRef.current = sent; });
+    }, REMOTE_SAVE_MS);
+    return () => window.clearTimeout(t);
+  }, [isSessionBoard, userId, sessionId, reveal]);
 
   // Clés d'intégrations (YouTube, Notion, Drive…) : le compte alimente cet appareil
   useEffect(() => {
