@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Whiteboard } from '../classroom/Whiteboard';
 import { copyBoardPages } from '../../lib/boardsQueries';
+import { lockPreparedPages } from '../../lib/boardPresent';
 import type { BoardPage } from '../../lib/boardRender';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 
@@ -73,7 +74,8 @@ export function ScreensTest({ boardId, userId, title, screens, onClose }: TestPr
       .then((copies) => {
         if (cancelled) return;
         if (copies.length === 0) { toast('Le tableau de ce cours n’est pas encore enregistré.'); closeRef.current(); return; }
-        setPages(copies);
+        // Comme en classe : ce qui est préparé est verrouillé (lib/boardPresent)
+        setPages(lockPreparedPages(copies));
       })
       .catch((err: unknown) => {
         if (cancelled) return;

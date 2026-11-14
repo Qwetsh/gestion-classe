@@ -1045,6 +1045,9 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               }
               // En saisie, le contenu appartient à l'éditeur (curseur, sélection de texte)
               if (isEditing && (e.target as HTMLElement).closest('.wbo__editor')) { e.stopPropagation(); return; }
+              // En présentation, toucher un trou le révèle, même avec l'outil Sélection : l'appui est
+              // laissé au texte (son clic révèle le trou) au lieu de sélectionner le cadre.
+              if (play && (e.target as HTMLElement).closest('[data-gap].is-hidden')) { e.stopPropagation(); return; }
               startPress(e, o, 'move');
             }}
             onPointerMove={movePress}
@@ -1349,9 +1352,12 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                 if (d.moved) onRevealObject(o.id, settleCurtain(d.slide));
                 else if (tapReveals) onRevealObject(o.id, true);
               };
+              // En préparation (outil Sélection, hors présentation), seule la tirette tire le rideau :
+              // le reste le sélectionne et le déplace. En présentation, tout le rideau répond.
+              const arranging = active && !play;
               return (
                 <div
-                  className={`wbo__cover wbo__cover--curtain ${active ? 'is-editing' : ''}`}
+                  className={`wbo__cover wbo__cover--curtain ${arranging ? 'is-editing' : ''}`}
                   style={style}
                   onDoubleClick={(e) => { e.stopPropagation(); onRevealObject(o.id, true); }}
                 >
@@ -1362,8 +1368,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
                       transform: ty ? `translateY(${ty}px)` : undefined,
                       clipPath: ty ? `inset(${Math.max(0, -ty)}px 0 ${Math.max(0, ty)}px 0)` : undefined,
                     }}
-                    title={active ? 'Tirette : glisser vers le haut ou le bas pour découvrir · double-clic : tout découvrir' : 'Glisser vers le haut ou le bas pour tirer le rideau · toucher : tout découvrir'}
-                    onPointerDown={(e) => { if (!active) beginDrag(e); }}
+                    title={arranging ? 'Tirette : glisser vers le haut ou le bas pour découvrir · double-clic : tout découvrir' : 'Glisser vers le haut ou le bas pour tirer le rideau · toucher : tout découvrir'}
+                    onPointerDown={(e) => { if (!arranging) beginDrag(e); }}
                     onPointerMove={moveDrag}
                     onPointerUp={(e) => endDrag(e, true)}
                     onPointerCancel={(e) => endDrag(e, false)}
