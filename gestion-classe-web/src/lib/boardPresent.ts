@@ -2,7 +2,7 @@
  * Présentation « En classe » d'un tableau préparé.
  *
  * Un tableau a deux temps, comme une présentation Genially : on le prépare (mode Tableau de
- * l'éditeur de cours, « Mes tableaux »), puis on le montre à la classe. En classe, ce qui a été
+ * l'éditeur de cours, « Mes cours »), puis on le montre à la classe. En classe, ce qui a été
  * préparé ne doit pas bouger sous le stylet ou le doigt : au moment où les pages sont copiées
  * pour la classe (séance ou essai), leurs objets sont verrouillés.
  *

@@ -66,6 +66,8 @@ interface Props {
   boardId: string;
   title: string;
   userId: string;
+  /** Ouvrir directement le mode Tableau (pages projetées) : adresse `/cours?ouvrir=…&mode=tableau`. */
+  startInScreens?: boolean;
   onClose: () => void;
 }
 
@@ -121,7 +123,7 @@ function documentFiles(data: DataTransfer | null): File[] {
   return Array.from(data?.files ?? []).filter((f) => isDocxFile(f) || isPdfFile(f) || isOldDocFile(f));
 }
 
-export function CourseEditor({ boardId, title, userId, onClose }: Props) {
+export function CourseEditor({ boardId, title, userId, startInScreens, onClose }: Props) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,7 +150,7 @@ export function CourseEditor({ boardId, title, userId, onClose }: Props) {
   return createPortal(
     <div className="ce-root" role="dialog" aria-label={`Cours ${title}`}>
       {loaded ? (
-        <CourseEditorInner boardId={boardId} userId={userId} loaded={loaded} onClose={onClose} />
+        <CourseEditorInner boardId={boardId} userId={userId} loaded={loaded} startInScreens={startInScreens} onClose={onClose} />
       ) : (
         <div className="ce-loading">
           {error ? (
@@ -166,10 +168,11 @@ export function CourseEditor({ boardId, title, userId, onClose }: Props) {
   );
 }
 
-function CourseEditorInner({ boardId, userId, loaded, onClose }: {
+function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }: {
   boardId: string;
   userId: string;
   loaded: Loaded;
+  startInScreens?: boolean;
   onClose: () => void;
 }) {
   const { doc: initialDoc, title: initialTitle, restored } = loaded;
@@ -218,7 +221,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   // Face écran (PLAN_preparation_semaine.md, étape 2) : pages de tableau blanc de ce cours
   const [screens, setScreens] = useState<string[]>(() => courseScreens(initialDoc));
   const screensRef = useRef<string[]>(courseScreens(initialDoc));
-  const [screensOpen, setScreensOpen] = useState<'edit' | 'test' | null>(null);
+  const [screensOpen, setScreensOpen] = useState<'edit' | 'test' | null>(startInScreens ? 'edit' : null);
   const layerUndo = useRef<LayerItem[][]>([]);
   const layerRedo = useRef<LayerItem[][]>([]);
   const [layerSel, setLayerSel] = useState<string | null>(null);
@@ -618,6 +621,12 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
     return () => { editor.off('update', rescue); };
   }, [editor, boardId, userId, toast]);
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
+  // Éditeur retiré sans passer par « Fermer » (bouton Précédent du navigateur) : ce qui attendait
+  // part quand même, avec sa copie locale (`flush` lit le document avant tout délai)
+  useEffect(() => () => {
+    if (!pendingRef.current) return;
+    flushRef.current().catch((err: unknown) => console.warn('[CourseEditor] enregistrement à la fermeture :', err));
+  }, []);
 
   // ---- Calque Tableau (lot 3) ----
 
@@ -1074,7 +1083,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       setNameDialog(null);
       toast(asTemplate
         ? `Modèle « ${name} » enregistré : il est proposé à la création d’un cours.`
-        : `Copie « ${name} » créée dans Mes tableaux.`, 'success');
+        : `Copie « ${name} » créée dans Mes cours.`, 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Copie impossible.');
     }
@@ -1428,7 +1437,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           initial={nameDialog === 'duplicate' ? `${title} (copie)` : title}
           hint={nameDialog === 'duplicate'
             ? 'La copie (texte et encarts) est indépendante : la modifier ne change pas ce cours.'
-            : templatesUnavailable() ? 'Les modèles demandent la migration 072.' : 'Le modèle sera proposé dans « + Nouveau » de Mes tableaux. Ce cours-ci ne change pas.'}
+            : templatesUnavailable() ? 'Les modèles demandent la migration 072.' : 'Le modèle sera proposé dans « + Nouveau » de Mes cours. Ce cours-ci ne change pas.'}
           confirmLabel={nameDialog === 'duplicate' ? 'Dupliquer' : 'Enregistrer le modèle'}
           onConfirm={(name) => duplicate(name, nameDialog === 'template')}
           onClose={() => setNameDialog(null)}

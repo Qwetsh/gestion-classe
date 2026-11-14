@@ -20,10 +20,12 @@ interface Props {
   kind?: 'course' | 'board';
   /** Cours rédigé : ouvrir la présentation En classe (test, encre perdue en quittant) plutôt que l'éditeur. */
   present?: boolean;
+  /** Cours rédigé : ouvrir l'éditeur sur ses pages projetées (mode Tableau). */
+  screens?: boolean;
   onClose: () => void;
 }
 
-export function OpenPreparedBoard({ board, userId, kind: knownKind, present, onClose }: Props) {
+export function OpenPreparedBoard({ board, userId, kind: knownKind, present, screens, onClose }: Props) {
   const [fetched, setFetched] = useState<{ id: string; kind: 'course' | 'board' } | null>(null);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export function OpenPreparedBoard({ board, userId, kind: knownKind, present, onC
   const kind = knownKind ?? (fetched?.id === board.id ? fetched.kind : null);
 
   if (kind === 'course' && present) return <PresentCourse board={board} userId={userId} onClose={onClose} />;
-  if (kind === 'course') return <CourseEditor boardId={board.id} title={board.title} userId={userId} onClose={onClose} />;
+  if (kind === 'course') return <CourseEditor boardId={board.id} title={board.title} userId={userId} startInScreens={screens} onClose={onClose} />;
   if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome="ribbon" onClose={onClose} />;
   return null;
 }

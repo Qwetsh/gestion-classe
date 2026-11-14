@@ -134,7 +134,7 @@
 }
 .rf-accueil .dash__quick-card--dark .dash__quick-sub { color: var(--text-muted); }
 
-/* Mes tableaux (BoardsPanel) : rangées plates */
+/* Repris récemment (BoardsModule) : rangées plates */
 .rf-accueil .dash__shortcuts > * { box-shadow: none; border-bottom: 1px solid var(--border); }
 .rf-accueil .dash__shortcut { padding: 8px; min-height: 40px; }
 

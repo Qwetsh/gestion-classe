@@ -107,10 +107,10 @@ export const HOME_MODULES: HomeModuleDef[] = [
   },
   {
     id: 'boards',
-    title: 'Mes tableaux',
-    description: 'Les cours préparés à l\'avance, rangés par niveau et chapitre.',
+    title: 'Repris récemment',
+    description: 'Les derniers cours retouchés, le brouillon, et un accès à « Mes cours ».',
     icon: 'pen',
-    minW: 3, minH: 9,
+    minW: 3, minH: 6,
     Component: BoardsModule,
   },
 ];

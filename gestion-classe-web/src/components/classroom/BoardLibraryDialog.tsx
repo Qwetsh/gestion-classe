@@ -130,7 +130,7 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
         {boards !== null && groups.length === 0 && (
           <div className="wblb__empty">
             {boards.length === 0
-              ? 'Aucun tableau préparé pour l’instant. Prépare tes cours depuis « Mes tableaux » sur l’accueil, ou enregistre ce tableau via Plus ⋯ › Fichier.'
+              ? 'Aucun tableau préparé pour l’instant. Prépare tes cours depuis « Mes cours », ou enregistre ce tableau via Plus ⋯ › Fichier.'
               : 'Aucun tableau ne correspond.'}
           </div>
         )}
@@ -197,7 +197,7 @@ function SaveView({ defaultMeta, onSave, onClose }: Extract<Props, { mode: 'save
     <form onSubmit={(e) => void submit(e)}>
       <div className="wblb__head">
         <div className="wblb__title">
-          <strong>Enregistrer dans Mes tableaux</strong>
+          <strong>Enregistrer dans Mes cours</strong>
           <small>Une copie des pages actuelles devient un tableau préparé, réutilisable dans d’autres séances.</small>
         </div>
         <button type="button" className="wblb__close" onClick={onClose} title="Fermer (Échap)">✕</button>
