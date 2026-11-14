@@ -37,7 +37,7 @@ export const TEXT_KEYS = {
   exit: 'Échap',
 } as const;
 
-interface ToolbarProps {
+export interface TextToolbarProps {
   api: React.RefObject<BoardTextApi | null>;
   format: FormatState;
   /** Zone sélectionnée, ou null : la barre agit alors sur les réglages par défaut. */
@@ -67,7 +67,7 @@ interface ToolbarProps {
 export function BoardTextToolbar({
   api, format, box, editing, fontId, size, onFontChange, onSizeChange, onColor, color, onDelete, onInteractions,
   spell, spellStatus, onToggleSpell, gapCount, onGap, onRevealGaps, onRemoveGaps,
-}: ToolbarProps) {
+}: TextToolbarProps) {
   // Nuanciers personnalisables (clic droit sur une pastille), partagés et mémorisés
   const colors = useSwatches(SWATCHES.text);
   const highlights = useSwatches(SWATCHES.highlights);

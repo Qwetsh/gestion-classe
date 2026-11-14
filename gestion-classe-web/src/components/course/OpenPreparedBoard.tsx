@@ -4,6 +4,7 @@
  * Avec `present`, un cours s'ouvre directement « En classe » (mode test, lot 4d).
  */
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CourseEditor } from './CourseEditor';
 import { CoursePresenter } from './CoursePresenter';
 import { ScreensTest } from './CourseScreens';
@@ -67,5 +68,6 @@ function PresentCourse({ board, userId, onClose }: { board: { id: string; title:
   // Un cours qui a des écrans les montre ; sinon la feuille en bande
   const screens = courseScreens(course.doc);
   if (screens.length > 0) return <ScreensTest boardId={board.id} userId={userId} title={course.title} screens={screens} onClose={onClose} />;
-  return <CoursePresenter boardId={board.id} doc={course.doc} title={course.title} onClose={onClose} />;
+  // Dans <body>, hors de l'agrandissement « grand écran » de la page : il décalait l'encre du stylet
+  return createPortal(<CoursePresenter boardId={board.id} doc={course.doc} title={course.title} onClose={onClose} />, document.body);
 }

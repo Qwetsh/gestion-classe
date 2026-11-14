@@ -54,9 +54,14 @@ interface Props {
   /** Ruban replié : seule la rangée d'onglets reste, le contenu se déroule par-dessus la page. */
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /**
+   * Onglet contextuel « Texte » : présent tant qu'une zone de texte est en saisie (ou que l'outil
+   * Texte attend sa zone). `key` identifie la zone ; `panel` est le contenu de l'onglet.
+   */
+  text?: { key: string | null; panel: ReactNode } | null;
 }
 
-type Tab = 'fichier' | 'accueil' | 'insertion' | 'page' | 'outils' | 'affichage';
+type Tab = 'fichier' | 'accueil' | 'insertion' | 'page' | 'outils' | 'affichage' | 'texte';
 
 const INSERT_META: Record<string, { icon: IconName; short: string }> = {
   image: { icon: 'image', short: 'Image' },
@@ -99,7 +104,7 @@ function columns<T>(items: T[], n: number): T[][] {
   return out;
 }
 
-export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onColor, onOtherColor, sizeKey, onSize, eraserKey, onEraserSize, backgrounds, bgColors, inserts, single, onClose, closeLabel, collapsed, onToggleCollapsed }: Props) {
+export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onColor, onOtherColor, sizeKey, onSize, eraserKey, onEraserSize, backgrounds, bgColors, inserts, single, onClose, closeLabel, collapsed, onToggleCollapsed, text }: Props) {
   const [tab, setTab] = useState<Tab>('accueil');
   /** Ruban replié : contenu de l'onglet déroulé par-dessus la page, jusqu'au prochain choix. */
   const [peek, setPeek] = useState(false);
@@ -113,6 +118,16 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
     document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); };
   }, [peek]);
+  // Onglet « Texte » : il s'ouvre de lui-même quand il apparaît ou change de zone, et rend la main à
+  // l'onglet d'avant quand il disparaît. Ajusté au rendu, pas dans un effet (pas de rendu en cascade).
+  const textKey = text ? (text.key ?? '') : null;
+  const [seenText, setSeenText] = useState<string | null>(null);
+  const [backTab, setBackTab] = useState<Tab>('accueil');
+  if (seenText !== textKey) {
+    setSeenText(textKey);
+    if (textKey === null) { if (tab === 'texte') setTab(backTab); }
+    else if (tab !== 'texte') { setBackTab(tab); setTab('texte'); }
+  }
   const showPanel = !collapsed || peek;
   const pickTab = (id: Tab) => {
     if (collapsed) setPeek(!(peek && tab === id));
@@ -197,6 +212,11 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
               {t.label}
             </button>
           ))}
+          {text && (
+            <button type="button" role="tab" aria-selected={tab === 'texte'} className={`ce-tab ce-tab--ctx ${tab === 'texte' && showPanel ? 'is-active' : ''}`} onClick={() => pickTab('texte')} onDoubleClick={() => { setPeek(false); onToggleCollapsed(); }}>
+              Texte
+            </button>
+          )}
           <span className="ce-spacer-flex" />
           {collapsed && saveFailed && <span className="ce-saved ce-saved--error" role="status">Pas enregistré</span>}
           {collapsed && (
@@ -219,7 +239,9 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
         </nav>
 
         {showPanel && (
-        <div className={`ce-ribbon ${collapsed ? 'wbrib__peek' : ''}`} role="toolbar" aria-label="Ruban" onWheel={scrollRibbon} onClick={collapsed ? () => setPeek(false) : undefined}>
+        <div className={`ce-ribbon ${collapsed ? 'wbrib__peek' : ''}`} role="toolbar" aria-label="Ruban" onWheel={scrollRibbon} onClick={collapsed && tab !== 'texte' ? () => setPeek(false) : undefined}>
+          {/* Mise en forme du texte : plusieurs réglages à la suite, le contenu déroulé reste ouvert */}
+          {tab === 'texte' && text?.panel}
           {tab === 'fichier' && (
             <>
               <Group label="Ouvrir">
