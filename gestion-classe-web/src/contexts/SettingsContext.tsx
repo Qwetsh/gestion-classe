@@ -1,4 +1,9 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { HIDDEN_TABS_PREFERENCE, NO_HIDDEN_TABS, hasHiddenTab, sameHiddenTabs, sanitizeHiddenTabs, type HiddenTabs } from '../lib/appTabs';
+import { fetchPreference, savePreference } from '../lib/userPreferences';
+
+export type { HiddenTabs };
 
 // ── Types ──
 
@@ -22,19 +27,6 @@ export interface SchoolYear {
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-export interface HiddenTabs {
-  rewards: boolean;
-  'group-sessions': boolean;
-  evaluations: boolean;
-  productions: boolean;
-  academy: boolean;
-  'tp-templates': boolean;
-  brevets: boolean;
-  clouds: boolean;
-  tools: boolean;
-  pronote: boolean;
-}
-
 export interface AppSettings {
   hiddenTabs: HiddenTabs;
   establishment: EstablishmentInfo;
@@ -54,18 +46,7 @@ export function currentSchoolYear(now: Date = new Date()): SchoolYear {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  hiddenTabs: {
-    rewards: false,
-    'group-sessions': false,
-    evaluations: false,
-    productions: false,
-    academy: false,
-    'tp-templates': false,
-    brevets: false,
-    clouds: false,
-    tools: false,
-    pronote: false,
-  },
+  hiddenTabs: NO_HIDDEN_TABS,
   establishment: {
     name: 'College Pierre Mendes France',
     tel: '03 87 54 36 40',
@@ -84,6 +65,8 @@ function loadSettings(): AppSettings {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const merged: AppSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    // Onglets d'aujourd'hui seulement (un réglage ancien peut citer des onglets retirés du menu)
+    merged.hiddenTabs = sanitizeHiddenTabs(merged.hiddenTabs);
     // Une annee scolaire perimee (reglage d'une annee precedente) est reinitialisee.
     const current = currentSchoolYear();
     if (!merged.schoolYear?.label || merged.schoolYear.label < current.label) {
@@ -113,14 +96,52 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const userIdRef = useRef<string | null>(userId);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
+  /** Onglets masqués à l'instant, lisibles hors du rendu (réponse du compte). */
+  const hiddenTabsRef = useRef(settings.hiddenTabs);
+  useEffect(() => { hiddenTabsRef.current = settings.hiddenTabs; }, [settings.hiddenTabs]);
+  /** Le professeur a touché aux onglets avant la réponse du compte : son geste l'emporte. */
+  const tabsTouched = useRef(false);
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
+    if (patch.hiddenTabs) {
+      tabsTouched.current = true;
+      // Onglets visibles : rangés dans le compte, pour suivre le professeur d'un appareil à l'autre
+      if (userIdRef.current) void savePreference(userIdRef.current, HIDDEN_TABS_PREFERENCE, patch.hiddenTabs);
+    }
     setSettings(prev => {
       const next = { ...prev, ...patch };
       persistSettings(next);
       return next;
     });
   }, []);
+
+  // À la connexion : le réglage du compte fait foi. S'il n'y en a pas encore, celui de cet
+  // appareil y est envoyé (premier passage après la mise à jour), sauf s'il ne masque rien.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    tabsTouched.current = false;
+    void fetchPreference<unknown>(userId, HIDDEN_TABS_PREFERENCE).then((remote) => {
+      if (cancelled || tabsTouched.current) return;
+      if (remote === null) {
+        const local = hiddenTabsRef.current;
+        if (hasHiddenTab(local)) void savePreference(userId, HIDDEN_TABS_PREFERENCE, local);
+        return;
+      }
+      const hiddenTabs = sanitizeHiddenTabs(remote);
+      setSettings(prev => {
+        if (sameHiddenTabs(prev.hiddenTabs, hiddenTabs)) return prev;
+        const next = { ...prev, hiddenTabs };
+        persistSettings(next);
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const isTabVisible = useCallback((tabKey: string) => {
     const key = tabKey as keyof HiddenTabs;
