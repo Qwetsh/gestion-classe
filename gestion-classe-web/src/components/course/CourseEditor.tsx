@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import { courseExtensions } from './courseExtensions';
 import { relayoutNow } from './coursePagination';
 import { CourseRibbon } from './CourseRibbon';
@@ -45,6 +46,7 @@ import { duplicateEncartPage, loadEncartPages } from './encartStore';
 import type { PasteMode } from './coursePaste';
 import { CourseLinkDialog } from './CourseLinkDialog';
 import { CourseQrDialog } from './CourseQrDialog';
+import { CourseImageSearch } from './CourseImageSearch';
 import { MM } from '../../lib/course/coursePage';
 import './course.css';
 // Polices ajoutées au lot T16a (OFL) : OpenDyslexic et l'écriture attachée de l'école française
@@ -194,8 +196,10 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [scrollbarW, setScrollbarW] = useState(0);
   /** Encart ouvert dans le tableau blanc (identifiant de sa page), ou null. */
   const [editingEncart, setEditingEncart] = useState<string | null>(null);
-  /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
   const [qrOpen, setQrOpen] = useState(false);
+  /** Fenêtre « Banque d'images » (lot T16b). */
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
   const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   /** Feuilles du cours (copie figée pour « deux par feuille », lot T13). */
@@ -340,15 +344,18 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
 
   // ---- Images (bouton, collage, glisser-déposer) ----
 
-  const uploadImages = useCallback(async (files: File[], at?: number, widthPx?: number) => {
+  const uploadImages = useCallback(async (files: File[], at?: number, widthPx?: number, extra?: Record<string, unknown>) => {
     const ed = editorRef.current;
     if (!ed) return;
     for (const f of files) {
       try {
         toast('Envoi de l’image…', 'info');
         const img = await uploadBoardImage(f, userId, `board:${boardId}`, { keepTransparency: true });
-        const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
-        if (at != null) ed.chain().focus().insertContentAt(at, node).run();
+        const node = { type: 'image', attrs: { ...extra, path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
+        // Une image (ou un bloc) sélectionnée n'est pas remplacée : la nouvelle se place après
+        const sel = ed.state.selection;
+        const pos = at ?? (sel instanceof NodeSelection ? sel.to : null);
+        if (pos != null) ed.chain().focus().insertContentAt(pos, node).run();
         else ed.chain().focus().insertContent(node).run();
       } catch (err) {
         toast(`Image non envoyée : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
@@ -370,7 +377,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       // Taille, place, cadre et légende gardés ; rognage, rotation et texte de remplacement (propres à
       // l'ancienne image) retirés
       ed.chain().command(({ tr }) => {
-        tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, crop: null, rotate: 0, flip: false, alt: null });
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, crop: null, rotate: 0, flip: false, alt: null, credit: null });
         return true;
       }).setNodeSelection(pos).run();
     } catch (err) {
@@ -1164,6 +1171,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onRename={() => setRenaming(true)}
         onInsertImage={() => { replacePosRef.current = null; fileRef.current?.click(); }}
         onInsertQr={() => setQrOpen(true)}
+        onSearchImage={() => setImageSearchOpen(true)}
         onInsertLink={insertLink}
         onPaste={(mode) => void paste(mode)}
         zoom={zoom}
@@ -1358,6 +1366,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           confirmLabel={nameDialog === 'duplicate' ? 'Dupliquer' : 'Enregistrer le modèle'}
           onConfirm={(name) => duplicate(name, nameDialog === 'template')}
           onClose={() => setNameDialog(null)}
+        />
+      )}
+
+      {imageSearchOpen && (
+        <CourseImageSearch
+          onInsert={(file, credit) => { void uploadImages([file], undefined, undefined, { credit }); }}
+          onClose={() => { setImageSearchOpen(false); editor.commands.focus(); }}
         />
       )}
 

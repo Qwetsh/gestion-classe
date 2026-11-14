@@ -1372,3 +1372,31 @@ Firefox et Safari (`@page` injecté).
 
 **Non vérifié** : impression des thèmes (le thème Sobre en photocopie) ; l'écriture attachée
 dans les encadrés et le texte courant sur papier.
+
+### T16b — fait le 14/11/2026 (branche `feat/texte-t16b`, pas de migration)
+
+- **Banque d'images** (Insertion › Banque d'images) : recherche de photos et de schémas dans
+  **Wikimedia Commons** (`courseImageBank.ts`, `CourseImageSearch.tsx`), mots en français ou en
+  anglais, 24 résultats par page avec la licence en pastille, « Plus de résultats ». Un clic
+  montre le crédit, un double-clic (ou Insérer) place l'image au curseur.
+- **Conditions d'usage vérifiées** : Commons n'héberge que des fichiers libres (domaine public,
+  CC0, CC BY, CC BY-SA). CC BY et CC BY-SA exigent de citer l'auteur, la licence et la source :
+  le crédit (« Auteur · Licence · Wikimedia Commons », attribut `credit` de l'image, avec le lien
+  vers la page du fichier) s'écrit d'office en petit sous l'image (sous la légende numérotée),
+  à l'écran, en classe et à l'impression ; « Remplacer » l'efface. API : une requête à la fois,
+  en-tête `Api-User-Agent`, vignettes aux tailles standard (330 px pour la grille, 1280 px pour
+  l'insertion ; un SVG arrive en PNG). L'API et les vignettes acceptent les appels depuis une
+  page web (CORS ouvert), sans clé.
+- Openverse écarté : limites anonymes basses, images hébergées chez des tiers qu'un navigateur
+  ne peut pas toujours télécharger.
+- L'image est **copiée dans le bucket du cours** : le cours ne dépend pas de Wikimedia.
+- Au passage : une image insérée (ordinateur, banque, QR code) alors qu'une image est
+  sélectionnée se place après elle au lieu de la remplacer.
+- Vérifié dans le navigateur : « volcan » (photos, licences variées), insertion d'une photo
+  CC BY 3.0 avec légende + crédit, enregistrés dans le cours ; crédit visible dans la
+  présentation En classe ; « cellule animale » : schéma SVG du domaine public inséré en PNG
+  1280 px, après la première image sans la remplacer. Cours et fichiers de test supprimés. Tests
+  unitaires du crédit.
+
+**Non vérifié** : impression papier du crédit (taille .62 em) ; comportement si Wikimedia
+renvoie 429 (message prévu, pas provoqué).
