@@ -10,8 +10,12 @@
  * Pas de pages en classe : les sauts de page deviennent un trait discret. Les annotations du
  * mode Tableau s'affichent ; l'encre de la séance se pose au-dessus (mode test : elle n'est
  * jamais enregistrée et disparaît en quittant).
+ *
+ * Un encart (lot 4e) s'ouvre dans le tableau blanc, sur sa seule page : en séance, sur une copie
+ * rangée dans la séance (board_pages.session_id), jamais dans le cours préparé ; en mode test,
+ * sur une copie en mémoire, perdue en quittant.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { courseExtensions } from './courseExtensions';
@@ -23,6 +27,10 @@ import { COL_W, MARGIN, PAGE_W } from '../../lib/course/coursePage';
 import { Icon } from './courseIcons';
 import type { DrawTool } from './courseDraw';
 import type { ClassroomBus } from '../../lib/classroomBus';
+import type { BoardPage } from '../../lib/boardRender';
+import { fetchBoardPages } from '../../lib/boardQueries';
+import { Whiteboard } from '../classroom/Whiteboard';
+import { clearEncartOverrides, getEncartOverride, getEncartPage, setEncartOverrides } from './encartStore';
 
 interface Props {
   boardId: string;
@@ -34,7 +42,7 @@ interface Props {
    * Séance réelle (lot 4b, écran /classe) : l'encre part de `initialInk` et chaque changement est
    * remonté par `onInkChange` (rangé dans la séance). Sans : mode test, encre perdue en quittant.
    */
-  session?: { initialInk: LayerItem[]; onInkChange: (items: LayerItem[]) => void };
+  session?: { sessionId: string; userId: string; initialInk: LayerItem[]; onInkChange: (items: LayerItem[]) => void };
   /** Canal de la séance (lot 4c) : le téléphone envoie Suivant / Précédent / Vue d'ensemble. */
   bus?: ClassroomBus | null;
 }
@@ -46,6 +54,8 @@ const TOP_PAD = 24;
 /** Recouvrement entre deux écrans : la dernière ligne lue reste visible. */
 const OVERLAP = 56;
 const INK_COLORS = ['#DC2626', '#2563EB', '#16A34A', '#111827'];
+/** Hauteur d'un encart 16:9 de la largeur de colonne. */
+const ENCART_H = (COL_W * 9) / 16;
 
 type InkTool = 'none' | Extract<DrawTool, 'pen' | 'highlighter' | 'eraser'>;
 
@@ -57,19 +67,43 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
   const [flowH, setFlowH] = useState(800);
   const [y, setY] = useState(0);
   const [overview, setOverview] = useState(false);
-  const [stops, setStops] = useState<number[]>([]);
+  /** Encarts du cours : haut (px du document) et page du tableau ; ce sont aussi les arrêts de la descente. */
+  const [stops, setStops] = useState<{ top: number; pageId: string }[]>([]);
   const [ink, setInkState] = useState<LayerItem[]>(() => session?.initialInk ?? []);
   const onInkChange = session?.onInkChange;
   const setInk = useCallback((items: LayerItem[]) => { setInkState(items); onInkChange?.(items); }, [onInkChange]);
   const [tool, setTool] = useState<InkTool>('none');
   const [color, setColor] = useState(INK_COLORS[0]);
 
+  // ---- Encarts dessinés en classe (lot 4e) ----
+  const testScope = useId();
+  const sessionId = session?.sessionId;
+  const scope = sessionId ? `s:${sessionId}` : `t:${testScope}`;
+  const [editingEncart, setEditingEncart] = useState<string | null>(null);
+  // (en vue d'ensemble, le cours ne reçoit pas les clics : un double-clic n'ouvre pas d'encart)
+  const openEncart = useCallback((pageId: string) => setEditingEncart(pageId), []);
+  const closeEncart = (pageId: string, pages: BoardPage[]) => {
+    const page = pages.find((p) => p.id === pageId);
+    if (page) setEncartOverrides(scope, [page]);
+    setEditingEncart(null);
+  };
+  // En séance : les encarts déjà dessinés en classe (page rechargée, retour du plan)
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    fetchBoardPages(sessionId)
+      .then(({ pages }) => { if (!cancelled) setEncartOverrides(`s:${sessionId}`, pages); })
+      .catch((err) => console.warn('[présentation] encarts de la séance illisibles :', err));
+    return () => { cancelled = true; };
+  }, [sessionId]);
+  useEffect(() => () => clearEncartOverrides(scope), [scope]);
+
   const extensions = useMemo(() => courseExtensions(
     () => { /* pas de pages en classe */ },
-    { boardId, onEdit: () => { /* les encarts se dessinent en classe dans une tranche suivante */ } },
+    { boardId, scope, onEdit: openEncart },
     () => { /* lecture seule */ },
     { getMode: () => 'adapt', onDroppedImages: () => {}, onDuplicateEncart: () => {}, onImageFiles: () => {} },
-  ), [boardId]);
+  ), [boardId, scope, openEncart]);
   const editor = useEditor({ extensions, content: doc.content, editable: false, editorProps: { attributes: { class: 'ce-doc', lang: 'fr' } } }, [doc]);
 
   // ---- Géométrie : la colonne (et un peu de marge) remplit la largeur de l'écran ----
@@ -97,7 +131,10 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
       const pr = page.getBoundingClientRect();
       const s = pr.width / PAGE_W || 1;
       setFlowH(flow.offsetHeight);
-      setStops([...flow.querySelectorAll('.ce-encart')].map((el) => (el.getBoundingClientRect().top - pr.top) / s));
+      setStops([...flow.querySelectorAll<HTMLElement>('.ce-encart')].map((el) => ({
+        top: (el.getBoundingClientRect().top - pr.top) / s,
+        pageId: el.dataset.pageId ?? '',
+      })));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -111,16 +148,16 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
       let target = cur + step;
       // Un encart pas encore en haut de l'écran : on s'arrête dessus (il remplit alors l'écran),
       // même s'il faut descendre d'un quart d'écran de plus pour le caler
-      const encart = stops.find((s) => s > cur + 8 && s - 6 < target + screenH / 4);
-      if (encart !== undefined) target = encart - 6;
+      const encart = stops.find((s) => s.top > cur + 8 && s.top - 6 < target + screenH / 4);
+      if (encart !== undefined) target = encart.top - 6;
       return clampY(target);
     });
   }, [step, stops, clampY, screenH]);
   const prev = useCallback(() => {
     setY((cur) => {
       let target = cur - step;
-      const encart = [...stops].reverse().find((s) => s - 6 < cur - 8 && s - 6 > target);
-      if (encart !== undefined) target = encart - 6;
+      const encart = [...stops].reverse().find((s) => s.top - 6 < cur - 8 && s.top - 6 > target);
+      if (encart !== undefined) target = encart.top - 6;
       return clampY(target);
     });
   }, [step, stops, clampY]);
@@ -139,6 +176,8 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Encart ouvert dans le tableau blanc : le clavier lui appartient
+      if (editingEncart) return;
       if ((e.target as HTMLElement)?.closest?.('input, textarea')) return;
       const k = e.key;
       if (['ArrowDown', 'ArrowRight', 'PageDown', ' ', 'Enter'].includes(k)) { e.preventDefault(); if (overview) setOverview(false); else next(); }
@@ -152,15 +191,16 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [next, prev, overview, maxY, close, toggleFullscreen, embedded]);
+  }, [next, prev, overview, maxY, close, toggleFullscreen, embedded, editingEncart]);
 
   // Télécommande du téléphone (lot 4c)
-  const navRef = useRef({ next, prev });
-  useEffect(() => { navRef.current = { next, prev }; });
+  const navRef = useRef({ next, prev, editing: false });
+  useEffect(() => { navRef.current = { next, prev, editing: !!editingEncart }; });
   useEffect(() => {
     if (!bus) return;
     return bus.subscribe((cmd) => {
-      if (cmd.kind !== 'nav') return;
+      // Encart ouvert : on termine d'abord (« Retour »), le cours ne bouge pas dessous
+      if (cmd.kind !== 'nav' || navRef.current.editing) return;
       if (cmd.action === 'overview') { setOverview((v) => !v); return; }
       setOverview(false);
       if (cmd.action === 'next') navRef.current.next();
@@ -190,11 +230,14 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
     setOverview(false);
   };
 
+  /** Encart entièrement visible à l'écran : un bouton propose de dessiner dedans. */
+  const encartOnScreen = overview ? undefined : stops.find((s) => s.pageId && s.top >= y - 2 && s.top + ENCART_H <= y + screenH + 2);
+
   const screens = Math.max(1, Math.ceil(maxY / step) + 1);
   const screenNo = Math.min(screens, Math.round(y / step) + 1);
   const settings = doc.settings ?? {};
 
-  return createPortal(
+  return (<>{createPortal(
     <div ref={rootRef} className={`ce-pres ${embedded ? 'ce-pres--embedded' : ''} ${overview ? 'is-overview' : ''}`} role="dialog" aria-label={`En classe : ${title}`} onWheel={onWheel}>
       <div
         ref={pageRef}
@@ -239,6 +282,12 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
           <button key={c} type="button" className={`ce-pres__color ${color === c ? 'is-on' : ''}`} style={{ background: c }} onClick={() => { setColor(c); if (tool === 'none' || tool === 'eraser') setTool('pen'); }} aria-label={`Couleur ${c}`} />
         ))}
         <button type="button" className="ce-pres__btn" onClick={() => setInk([])} disabled={ink.length === 0} title="Effacer toute l'encre de la séance" aria-label="Effacer l'encre"><Icon name="clearPage" size={18} /></button>
+        {encartOnScreen && (
+          <button type="button" className="ce-pres__encart" onClick={() => openEncart(encartOnScreen.pageId)}
+            title={embedded ? 'Ouvrir l’encart dans le tableau blanc (gardé dans la séance, le cours préparé ne change pas) — ou double-clic sur l’encart' : 'Ouvrir l’encart dans le tableau blanc (essai : rien n’est gardé) — ou double-clic sur l’encart'}>
+            ✎ Encart
+          </button>
+        )}
         <span className="ce-pres__sep" />
         <button type="button" className={`ce-pres__btn ${overview ? 'is-on' : ''}`} onClick={() => setOverview((v) => !v)} title="Vue d'ensemble (O)" aria-label="Vue d'ensemble"><Icon name="fitPage" size={18} /></button>
         {!embedded && <button type="button" className="ce-pres__btn" onClick={toggleFullscreen} title="Plein écran (F)" aria-label="Plein écran"><Icon name="present" size={18} /></button>}
@@ -249,5 +298,22 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
       </div>
     </div>,
     document.body,
-  );
+  )}
+  {editingEncart && createPortal(
+    <div className={`ce-pres-encart ${embedded ? 'ce-pres-encart--embedded' : ''}`}>
+      <Whiteboard
+        key={editingEncart}
+        sessionId={session ? session.sessionId : 'encart-test'}
+        userId={session?.userId ?? ''}
+        remote={!!session}
+        localKey={session ? `encart-seance:${session.sessionId}:${editingEncart}` : null}
+        onlyPageId={editingEncart}
+        initialPage={getEncartOverride(scope, editingEncart) ?? getEncartPage(boardId, editingEncart)}
+        title={`${title} — encart`}
+        onClose={(pages) => closeEncart(editingEncart, pages)}
+      />
+    </div>,
+    document.body,
+  )}
+  </>);
 }

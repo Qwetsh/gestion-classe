@@ -322,3 +322,25 @@ tableau de la séance est un cours, encre de séance enregistrée dans la séanc
 - Vérifié dans le navigateur : cours de test créé sur un créneau de la semaine suivante, lien
   affiché, présentation ouverte en mode test, Échap, puis cours supprimé (base vérifiée vide).
   Reste du lot 4 : 4e (dessiner dans un encart en classe sans toucher au cours préparé).
+
+### Lot 4e — dessiner dans un encart en classe, fait le 14/11/2026 (branche `feat/cours-encarts-classe`)
+
+- Dans la présentation, un encart entièrement à l'écran fait apparaître **« ✎ Encart »** dans la
+  barre (ou double-clic sur l'encart, outil Main) : il s'ouvre dans le **tableau blanc tactile**,
+  sur sa seule page, avec tous les outils (stylo, formes, texte, insertions…), en partant du
+  contenu préparé.
+- **En séance** : la page est rangée dans la séance (`board_pages.session_id`, même identifiant
+  de page que l'encart), jamais dans le cours préparé ; stockage local par séance et par encart
+  (`encart-seance:<séance>:<page>`). Au retour (« Revenir au cours ») et au rechargement, la
+  présentation affiche la version de la séance. Aucune migration.
+- **En mode test** : copie en mémoire seulement (ni serveur ni stockage local), perdue en quittant.
+- Pendant qu'un encart est ouvert, le clavier et les commandes du téléphone ne font pas bouger le
+  cours dessous.
+- Technique : `Whiteboard` reçoit `localKey` (`null` = aucun stockage local) et `initialPage`, et
+  rend ses pages à la fermeture ; `encartStore` garde des versions par séance / par essai
+  (`setEncartOverrides`), que `EncartView` affiche à la place de l'encart préparé (option `scope`).
+- Vérifié dans le navigateur (mode test) : encart préparé avec un trait, ouvert en classe par le
+  bouton et par double-clic, second trait, retour : la présentation montre les deux traits, la base
+  n'en garde qu'un (cours inchangé) ; après Quitter puis réouverture, seul le trait préparé reste ;
+  flèches et Début ignorés pendant l'édition. **Non vérifié** : l'enregistrement dans une vraie
+  séance (la clé étrangère `board_pages.session_id → sessions` interdit une séance factice).
