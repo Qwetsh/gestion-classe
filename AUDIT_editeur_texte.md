@@ -1383,3 +1383,89 @@ Chantier à part, suivi dans `AUDIT_fiche_word.md` (analyse de la fiche Microbio
   - skill `.claude/skills/cours-gestion-classe/` et bibliothèque `gc_cours.py` ;
   - vérificateur `npm run course:check` ;
   - garde-fou de l'éditeur contre un document illisible.
+
+### T16b — fait le 14/11/2026 (branche `feat/texte-t16b`, pas de migration)
+
+- **Banque d'images** (Insertion › Banque d'images) : recherche de photos et de schémas dans
+  **Wikimedia Commons** (`courseImageBank.ts`, `CourseImageSearch.tsx`), mots en français ou en
+  anglais, 24 résultats par page avec la licence en pastille, « Plus de résultats ». Un clic
+  montre le crédit, un double-clic (ou Insérer) place l'image au curseur.
+- **Conditions d'usage vérifiées** : Commons n'héberge que des fichiers libres (domaine public,
+  CC0, CC BY, CC BY-SA). CC BY et CC BY-SA exigent de citer l'auteur, la licence et la source :
+  le crédit (« Auteur · Licence · Wikimedia Commons », attribut `credit` de l'image, avec le lien
+  vers la page du fichier) s'écrit d'office en petit sous l'image (sous la légende numérotée),
+  à l'écran, en classe et à l'impression ; « Remplacer » l'efface. API : une requête à la fois,
+  en-tête `Api-User-Agent`, vignettes aux tailles standard (330 px pour la grille, 1280 px pour
+  l'insertion ; un SVG arrive en PNG). L'API et les vignettes acceptent les appels depuis une
+  page web (CORS ouvert), sans clé.
+- Openverse écarté : limites anonymes basses, images hébergées chez des tiers qu'un navigateur
+  ne peut pas toujours télécharger.
+- L'image est **copiée dans le bucket du cours** : le cours ne dépend pas de Wikimedia.
+- Au passage : une image insérée (ordinateur, banque, QR code) alors qu'une image est
+  sélectionnée se place après elle au lieu de la remplacer.
+- Vérifié dans le navigateur : « volcan » (photos, licences variées), insertion d'une photo
+  CC BY 3.0 avec légende + crédit, enregistrés dans le cours ; crédit visible dans la
+  présentation En classe ; « cellule animale » : schéma SVG du domaine public inséré en PNG
+  1280 px, après la première image sans la remplacer. Cours et fichiers de test supprimés. Tests
+  unitaires du crédit.
+
+**Non vérifié** : impression papier du crédit (taille .62 em) ; comportement si Wikimedia
+renvoie 429 (message prévu, pas provoqué).
+
+### T15a — fait le 14/11/2026 (branche `feat/texte-t15a`, pas de migration)
+
+- **Listes, encadrés et citations se coupent entre deux pages** au lieu de partir entiers à la
+  page suivante (grand blanc) ou de déborder. `coursePagination.ts` mesure des « unités » : un
+  conteneur sécable (liste, élément de liste, encadré, citation, liste de cases) est remplacé par
+  ses enfants, récursivement ; le premier emmène le haut du conteneur (titre de l'encadré), le
+  dernier son bas. L'intercalaire se pose entre deux éléments de liste, deux paragraphes d'un
+  encadré, ou dans une liste à l'intérieur d'un encadré. Marges confondues (paragraphe dans un
+  élément de liste) prises en compte.
+- **Encadré coupé** : l'intercalaire efface le cadre sur sa hauteur (blanc en bas de feuille,
+  bureau entre les feuilles, blanc en haut de la suivante) ; « À retenir » (cadre complet) est
+  refermé en bas de page et rouvert en haut de la suivante. Impression : bande vide, couleurs des
+  variantes noir et blanc / économie suivies. En classe : simple trait, comme avant.
+- **Calcul séparé de la mesure** : `measureUnits` (DOM) puis `paginate` (pur), testé avec vitest
+  (`__tests__/coursePagination.test.ts`, 7 cas : 60 éléments, bande de l'encadré, impression,
+  titre solidaire, bloc plus haut qu'une page, saut de page).
+- **Correctif au passage** : le facteur de zoom était calculé avec `offsetWidth` (arrondi :
+  605 px pour 604,72), d'où ≈ 0,45 px de dérive par page (le haut de chaque page remontait) ;
+  largeur exacte lue dans le style calculé.
+- Vérifié dans le navigateur (cours de 6 pages : liste de 60 éléments, encadré « À retenir » de
+  25 paragraphes, définition avec liste imbriquée) : 5 coupures, toutes à l'intérieur des
+  conteneurs, chaque page commence à 0,01 px du haut de sa feuille ; numérotation continue (35 en
+  haut de la page 2) ; cadre « À retenir » refermé et rouvert ; Entrée et frappe dans un élément
+  en bas de page, puis annulation : retour exact ; calcul en 1,6 ms ; présentation En classe :
+  trait sans bande. Cours de test supprimé.
+
+**Non vérifié** : impression papier d'un encadré coupé ; un dessin du calque posé sur la partie
+d'une liste ou d'un encadré renvoyée à la page suivante (il reste ancré au haut du bloc et se
+décale de la hauteur de l'intercalaire — ancrage par élément à prévoir). Restent T15b (tableaux,
+ligne d'en-tête répétée) et T15c (paragraphes, si le besoin se confirme).
+
+### T15b — fait le 14/11/2026 (branche `feat/texte-t15b`, pas de migration)
+
+- **Un tableau se coupe entre deux lignes** au lieu de partir entier à la page suivante ou de
+  déborder. L'intercalaire est une ligne `<tr>` fantôme (une cellule sur toute la largeur, sans
+  bordure, mêmes bandes blanc / bureau / blanc que l'encadré coupé).
+- **Ligne d'en-tête répétée** : si la première ligne est une ligne d'en-tête, une copie non
+  éditable (dessinée à partir du nœud, `DOMSerializer`) est posée en haut de la suite ; sa
+  hauteur est comptée dans la répartition. Clic dessus : rien n'est modifié.
+- On ne coupe jamais **à l'intérieur d'une cellule fusionnée** sur plusieurs lignes
+  (`TableMap`), ni **entre l'en-tête et la première ligne de données**.
+- Styles suivis : « Alterné » garde son alternance (la rayure ne compte plus les lignes
+  ajoutées : `:nth-child(even of …)`) ; « Cadre » (contour du tableau entier) est redessiné par
+  les cellules une fois coupé, refermé et rouvert ; tableau coupé dans un encadré : l'enveloppe
+  du tableau laisse dépasser la bande pour couper aussi le cadre de l'encadré. En classe : simple
+  trait, en-tête répété masqué.
+- Tests vitest : coupure de tableau (ligne fantôme, place de l'en-tête comptée).
+- Vérifié dans le navigateur (cours de 8 pages : grille 40 lignes avec en-tête, « Alterné » 45
+  lignes, « Cadre » 40 lignes sans en-tête, tableau dans une définition, cellules fusionnées
+  par 3) : 7 coupures, chaque suite commence à 0,01 px du haut de sa feuille, en-tête répété,
+  alternance gardée, cadre refermé / rouvert, définition coupée avec son tableau, coupure avant
+  le groupe fusionné ; frappe dans la dernière ligne d'une page (la ligne grandit et passe sous
+  l'en-tête de la page suivante) puis annulation ; aucune erreur. Cours de test supprimé.
+
+**Non vérifié** : impression papier d'un tableau coupé (en-tête répété imprimé) ; une ligne plus
+haute qu'une page déborde toujours (T15c ne la coupe pas non plus). Reste T15c (paragraphes, si
+le besoin se confirme).

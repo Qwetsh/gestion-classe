@@ -12,6 +12,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal, flushSync } from 'react-dom';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import { getSchema } from '@tiptap/core';
+import { NodeSelection } from '@tiptap/pm/state';
 import { courseExtensions } from './courseExtensions';
 import { docProblem } from './courseCheck';
 import { relayoutNow } from './coursePagination';
@@ -47,6 +48,7 @@ import { duplicateEncartPage, loadEncartPages } from './encartStore';
 import type { PasteMode } from './coursePaste';
 import { CourseLinkDialog } from './CourseLinkDialog';
 import { CourseQrDialog } from './CourseQrDialog';
+import { CourseImageSearch } from './CourseImageSearch';
 import { MM } from '../../lib/course/coursePage';
 import './course.css';
 // Polices ajoutées au lot T16a (OFL) : OpenDyslexic et l'écriture attachée de l'école française
@@ -55,6 +57,7 @@ import '@fontsource/opendyslexic/700.css';
 import '@fontsource/playwrite-fr-moderne/400.css';
 import { flowStyle } from './courseThemes';
 import { CourseLayer } from './CourseLayer';
+import { CoursePresenter } from './CoursePresenter';
 import type { DrawStyle } from './courseDraw';
 import type { LayerItem } from '../../lib/course/courseLayer';
 
@@ -195,8 +198,10 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const [scrollbarW, setScrollbarW] = useState(0);
   /** Encart ouvert dans le tableau blanc (identifiant de sa page), ou null. */
   const [editingEncart, setEditingEncart] = useState<string | null>(null);
-  /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
   const [qrOpen, setQrOpen] = useState(false);
+  /** Fenêtre « Banque d'images » (lot T16b). */
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
   const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   /** Feuilles du cours (copie figée pour « deux par feuille », lot T13). */
@@ -209,6 +214,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
   const layerRedo = useRef<LayerItem[][]>([]);
   const [layerSel, setLayerSel] = useState<string | null>(null);
   const [drawStyle, setDrawStyle] = useState<DrawStyle>({ tool: 'pen', color: '#DC2626', size: 'M' });
+  /** Mode En classe (lot 4) : le cours tel qu'à l'instant du clic, projeté en plein écran. */
+  const [presenting, setPresenting] = useState<CourseDoc | null>(null);
   const modeRef = useRef(mode);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   /** Fenêtre « Imprimer » / « Exporter en PDF » (lot T13). */
@@ -345,15 +352,18 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
 
   // ---- Images (bouton, collage, glisser-déposer) ----
 
-  const uploadImages = useCallback(async (files: File[], at?: number, widthPx?: number) => {
+  const uploadImages = useCallback(async (files: File[], at?: number, widthPx?: number, extra?: Record<string, unknown>) => {
     const ed = editorRef.current;
     if (!ed) return;
     for (const f of files) {
       try {
         toast('Envoi de l’image…', 'info');
         const img = await uploadBoardImage(f, userId, `board:${boardId}`, { keepTransparency: true });
-        const node = { type: 'image', attrs: { path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
-        if (at != null) ed.chain().focus().insertContentAt(at, node).run();
+        const node = { type: 'image', attrs: { ...extra, path: img.path, width: Math.round(Math.min(COL_W, widthPx ?? img.width)) } };
+        // Une image (ou un bloc) sélectionnée n'est pas remplacée : la nouvelle se place après
+        const sel = ed.state.selection;
+        const pos = at ?? (sel instanceof NodeSelection ? sel.to : null);
+        if (pos != null) ed.chain().focus().insertContentAt(pos, node).run();
         else ed.chain().focus().insertContent(node).run();
       } catch (err) {
         toast(`Image non envoyée : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
@@ -375,7 +385,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
       // Taille, place, cadre et légende gardés ; rognage, rotation et texte de remplacement (propres à
       // l'ancienne image) retirés
       ed.chain().command(({ tr }) => {
-        tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, crop: null, rotate: 0, flip: false, alt: null });
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, path: img.path, src: null, crop: null, rotate: 0, flip: false, alt: null, credit: null });
         return true;
       }).setNodeSelection(pos).run();
     } catch (err) {
@@ -1185,6 +1195,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onRename={() => setRenaming(true)}
         onInsertImage={() => { replacePosRef.current = null; fileRef.current?.click(); }}
         onInsertQr={() => setQrOpen(true)}
+        onSearchImage={() => setImageSearchOpen(true)}
         onInsertLink={insertLink}
         onPaste={(mode) => void paste(mode)}
         zoom={zoom}
@@ -1192,9 +1203,9 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         onFitWidth={fitWidth}
         showRuler={showRuler}
         onToggleRuler={() => setShowRuler((v) => { store(RULER_KEY, v ? '0' : '1'); return !v; })}
-        onSoon={(what) => toast(what, 'info')}
         mode={mode}
         onMode={switchMode}
+        onPresent={() => setPresenting(currentDoc())}
         drawStyle={drawStyle}
         onDrawStyle={(patch) => setDrawStyle((s) => ({ ...s, ...patch }))}
         layerCanUndo={layerUndo.current.length > 0}
@@ -1338,7 +1349,7 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
         <div className="ce-modes" role="group" aria-label="Mode">
           <button type="button" className={mode === 'texte' ? 'is-on' : ''} title="Rédiger le cours" onClick={() => switchMode('texte')}>¶ Texte</button>
           <button type="button" className={mode === 'tableau' ? 'is-on' : ''} title="Dessiner par-dessus le cours : flèches, entourages, annotations (ancrées aux paragraphes)" onClick={() => switchMode('tableau')}>✎ Tableau</button>
-          <button type="button" className="ce-modes__play" title="Bientôt : le cours projeté en classe" onClick={() => toast('Le mode En classe arrive à l’étape 4.', 'info')}>▶ En classe</button>
+          <button type="button" className="ce-modes__play" title="Projeter le cours : bande de la largeur du texte, Suivant / Précédent, encre de séance (test)" onClick={() => setPresenting(currentDoc())}>▶ En classe</button>
         </div>
         <div className="ce-zoom">
           <button type="button" onClick={() => setZoom(zoom - 0.1)} aria-label="Zoom arrière">−</button>
@@ -1347,6 +1358,8 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           <span className="ce-zoom__pct">{Math.round(zoom * 100)} %</span>
         </div>
       </footer>
+
+      {presenting && <CoursePresenter boardId={boardId} doc={presenting} title={title} onClose={() => { setPresenting(null); editor.commands.focus(); }} />}
 
       {printDialog && <CoursePrintDialog pdf={printDialog === 'pdf'} onPrint={printWith} onClose={() => setPrintDialog(null)} />}
 
@@ -1377,6 +1390,13 @@ function CourseEditorInner({ boardId, userId, loaded, onClose }: {
           confirmLabel={nameDialog === 'duplicate' ? 'Dupliquer' : 'Enregistrer le modèle'}
           onConfirm={(name) => duplicate(name, nameDialog === 'template')}
           onClose={() => setNameDialog(null)}
+        />
+      )}
+
+      {imageSearchOpen && (
+        <CourseImageSearch
+          onInsert={(file, credit) => { void uploadImages([file], undefined, undefined, { credit }); }}
+          onClose={() => { setImageSearchOpen(false); editor.commands.focus(); }}
         />
       )}
 

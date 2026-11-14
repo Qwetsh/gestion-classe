@@ -52,11 +52,16 @@ export function CourseLayer({ editor, items, height, active, style, selected, on
   const svgRef = useRef<SVGSVGElement>(null);
   const [blocks, setBlocks] = useState<BlockBox[]>([]);
   const [tick, setTick] = useState(0);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraftState] = useState<Draft | null>(null);
+  /** Tracé en cours, lu par les gestionnaires (des événements rapprochés arrivent avant le rendu suivant). */
+  const draftRef = useRef<Draft | null>(null);
+  const setDraft = (d: Draft | null) => { draftRef.current = d; setDraftState(d); };
   const [textEdit, setTextEdit] = useState<{ id: string | null; x: number; y: number; value: string } | null>(null);
   const dragRef = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
   /** Élément en cours de déplacement et décalage (état : lu pendant le rendu). */
-  const [drag, setDrag] = useState<{ id: string; delta: [number, number] } | null>(null);
+  const [drag, setDragState] = useState<{ id: string; delta: [number, number] } | null>(null);
+  const dragDeltaRef = useRef<[number, number] | null>(null);
+  const setDrag = (v: { id: string; delta: [number, number] } | null) => { dragDeltaRef.current = v?.delta ?? null; setDragState(v); };
   const erasedRef = useRef<Set<string>>(new Set());
   const [erasing, setErasing] = useState<Set<string>>(new Set());
 
@@ -106,6 +111,11 @@ export function CourseLayer({ editor, items, height, active, style, selected, on
   };
 
   // ---- Gestes ----
+
+  /** Garder le pointeur pendant le geste (refusé pour un pointeur inconnu : on continue sans). */
+  const capture = (e: React.PointerEvent) => {
+    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+  };
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!active || readOnly || e.button > 0) return;
     const p = toSheet(e);
@@ -117,13 +127,13 @@ export function CourseLayer({ editor, items, height, active, style, selected, on
       const it = items.find((i) => i.id === hitId);
       if (!it) return;
       dragRef.current = { id: hitId, sx: p[0], sy: p[1], ox: it.x, oy: resolveY(it, tops), moved: false };
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      capture(e);
       return;
     }
     if (style.tool === 'eraser') {
       erasedRef.current = new Set(hitId ? [hitId] : []);
       setErasing(new Set(erasedRef.current));
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      capture(e);
       return;
     }
     if (style.tool === 'text') {
@@ -131,7 +141,7 @@ export function CourseLayer({ editor, items, height, active, style, selected, on
       setTextEdit({ id: null, x: p[0], y: p[1], value: '' });
       return;
     }
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    capture(e);
     if (style.tool === 'pen' || style.tool === 'highlighter') setDraft({ kind: 'ink', tool: style.tool, points: [p] });
     else setDraft({ kind: style.tool, a: p, b: p });
   };
@@ -153,10 +163,11 @@ export function CourseLayer({ editor, items, height, active, style, selected, on
       setDrag({ id: d.id, delta: [dx, dy] });
       return;
     }
-    if (!draft) return;
+    const cur = draftRef.current;
+    if (!cur) return;
     const p = toSheet(e);
-    if (draft.kind === 'ink') setDraft({ ...draft, points: [...draft.points, p] });
-    else setDraft({ ...draft, b: p });
+    if (cur.kind === 'ink') setDraft({ ...cur, points: [...cur.points, p] });
+    else setDraft({ ...cur, b: p });
   };
 
   const onPointerUp = () => {
@@ -170,12 +181,14 @@ export function CourseLayer({ editor, items, height, active, style, selected, on
     const d = dragRef.current;
     if (d) {
       dragRef.current = null;
-      if (d.moved && drag) {
-        commit(items.map((i) => (i.id === d.id ? placeAt(i, r1(d.ox + drag.delta[0]), r1(d.oy + drag.delta[1]), blocks) : i)));
+      const delta = dragDeltaRef.current;
+      if (d.moved && delta) {
+        commit(items.map((i) => (i.id === d.id ? placeAt(i, r1(d.ox + delta[0]), r1(d.oy + delta[1]), blocks) : i)));
       }
       setDrag(null);
       return;
     }
+    const draft = draftRef.current;
     if (!draft) return;
     setDraft(null);
     if (draft.kind === 'ink') {

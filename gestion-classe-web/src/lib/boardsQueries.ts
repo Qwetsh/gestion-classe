@@ -207,6 +207,40 @@ export async function linkSessionBoard(userId: string, sessionId: string, boardI
   if (error) console.warn('[boardsQueries] lien séance → tableau :', error);
 }
 
+// ---- Encre de séance sur un cours rédigé (lot 4b, migration 073 : session_boards.course_ink) ----
+
+let inkColumnMissing = false;
+const inkKey = (sessionId: string) => `session-course-ink:${sessionId}`;
+
+const isMissingInkColumn = (error: { message?: string; code?: string } | null) =>
+  !!error && (error.code === '42703' || /course_ink/i.test(error.message ?? ''));
+
+/** Encre déjà posée pendant cette séance (serveur, sinon copie de l'ordinateur). */
+export async function fetchSessionCourseInk(sessionId: string): Promise<unknown[]> {
+  const local = (() => { try { return JSON.parse(localStorage.getItem(inkKey(sessionId)) || 'null') as { items?: unknown[] } | null; } catch { return null; } })();
+  if (linksMissing || inkColumnMissing) return local?.items ?? [];
+  const { data, error } = await supabase.from('session_boards').select('course_ink').eq('session_id', sessionId).maybeSingle();
+  if (isMissingInkColumn(error)) { inkColumnMissing = true; return local?.items ?? []; }
+  if (isMissingLinks(error)) { linksMissing = true; return local?.items ?? []; }
+  const remote = (data as { course_ink: { items?: unknown[] } | null } | null)?.course_ink;
+  return remote?.items ?? local?.items ?? [];
+}
+
+/**
+ * Range l'encre de la séance (dans le lien séance → cours, jamais dans le cours). Une copie reste
+ * sur l'ordinateur : sans réseau ou sans la migration 073, rien n'est perdu au rechargement.
+ */
+export async function saveSessionCourseInk(userId: string, sessionId: string, boardId: string, items: unknown[]): Promise<void> {
+  try { localStorage.setItem(inkKey(sessionId), JSON.stringify({ items, savedAt: Date.now() })); } catch { /* stockage plein */ }
+  if (linksMissing || inkColumnMissing) return;
+  const { error } = await supabase
+    .from('session_boards')
+    .upsert({ session_id: sessionId, board_id: boardId, user_id: userId, course_ink: { items } }, { onConflict: 'session_id' });
+  if (isMissingInkColumn(error)) { inkColumnMissing = true; return; }
+  if (isMissingLinks(error)) { linksMissing = true; return; }
+  if (error) console.warn('[boardsQueries] encre de séance :', error);
+}
+
 /** Tableau préparé dont une séance est partie, ou null. */
 export async function fetchSessionSourceBoard(sessionId: string): Promise<Board | null> {
   if (linksMissing) return null;

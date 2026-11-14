@@ -67,3 +67,26 @@ export async function duplicateEncartPage(boardId: string, userId: string, fromI
   pagesByBoard.get(boardId)?.set(toId, copy);
   notify();
 }
+
+/**
+ * Versions d'encarts propres à une séance (lot 4e : ce qu'on a dessiné en classe, rangé dans la
+ * séance) ou à un essai en mode test, affichées à la place de l'encart préparé. `scope` :
+ * `s:<séance>` ou `t:<présentation>`.
+ */
+const overrides = new Map<string, Map<string, BoardPage>>();
+
+export function getEncartOverride(scope: string, pageId: string): BoardPage | undefined {
+  return overrides.get(scope)?.get(pageId);
+}
+
+export function setEncartOverrides(scope: string, pages: BoardPage[]): void {
+  if (pages.length === 0) return;
+  const map = overrides.get(scope) ?? new Map<string, BoardPage>();
+  for (const pg of pages) map.set(pg.id, pg);
+  overrides.set(scope, map);
+  notify();
+}
+
+export function clearEncartOverrides(scope: string): void {
+  if (overrides.delete(scope)) notify();
+}
