@@ -31,7 +31,8 @@ import {
 import { createCourse, duplicateCourse, emptyCourseDoc } from '../lib/course/courseDoc';
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, parseOpenTarget, type OpenMode } from '../lib/courseLibrary';
-import { fetchClasses, fetchPlacements, placementChips, type ClassRef, type Placement } from '../lib/coursePlacements';
+import { fetchClassGroupsForUser } from '../lib/classGroupQueries';
+import { fetchClasses, fetchPlacedDocuments, placementChips, placementsOf, type ClassRef, type DocumentSession, type PlacedDocument } from '../lib/coursePlacements';
 import { filterBoards, highlightParts, searchCourseText, searchWords, type CourseTextHit } from '../lib/courseSearch';
 import { draftTab } from '../lib/boardTabs';
 import { BoardWorkspace } from '../components/classroom/BoardWorkspace';
@@ -39,6 +40,7 @@ import { OpenPreparedBoard } from '../components/course/OpenPreparedBoard';
 import { withDefaultTheme } from '../components/course/courseThemes';
 import { BUILTIN_TEMPLATES } from '../components/course/courseTemplates';
 import { BoardMetaForm, type TemplateChoice } from '../components/courses/BoardMetaForm';
+import { ClassCourses } from '../components/courses/ClassCourses';
 import { CourseLibrary } from '../components/courses/CourseLibrary';
 import { PlaceCourseDialog } from '../components/courses/PlaceCourseDialog';
 import '../styles/mes-cours.css';
@@ -59,9 +61,10 @@ export function Courses() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Board | 'new' | null>(null);
-  /** Copies placées sur des créneaux, et classes : pastilles des originaux (lot C3). */
-  const [placements, setPlacements] = useState<Placement[]>([]);
+  /** Documents placés sur des créneaux, classes et demi-groupes : pastilles (lot C3) et vue « Par classe » (lot C4). */
+  const [documents, setDocuments] = useState<PlacedDocument[]>([]);
   const [classes, setClasses] = useState<ClassRef[]>([]);
+  const [groupNames, setGroupNames] = useState<Map<string, string>>(new Map());
   const [placing, setPlacing] = useState<Board | null>(null);
 
   const target = useMemo(() => parseOpenTarget(params), [params]);
@@ -74,9 +77,13 @@ export function Courses() {
       setBoards(list);
       setUsages(used);
       setError(null);
-      // Les pastilles sont un plus : leur échec ne vide pas la bibliothèque
-      void Promise.all([fetchPlacements(userId), fetchClasses(userId)])
-        .then(([placed, cls]) => { setPlacements(placed); setClasses(cls); })
+      // Les placements sont un plus : leur échec ne vide pas la bibliothèque
+      void Promise.all([fetchPlacedDocuments(userId), fetchClasses(userId), fetchClassGroupsForUser(userId)])
+        .then(([placed, cls, groups]) => {
+          setDocuments(placed);
+          setClasses(cls);
+          setGroupNames(new Map(groups.map((g) => [g.id, g.name])));
+        })
         .catch((err: unknown) => console.warn('[Courses] placements :', err));
     } catch (err) {
       setError(message(err, 'La liste des cours ne répond pas.'));
@@ -105,16 +112,38 @@ export function Courses() {
   const opened = known ?? (fetched && fetched.id === targetId ? fetched.board : null);
   const notFound = mustFetch && fetched?.id === targetId && fetched.board === null;
 
+  // ---- Vue affichée sous l'éditeur : Bibliothèque ou Par classe (?vue=classes&classe=…&activite=…) ----
+
+  const view: 'library' | 'classes' = params.get('vue') === 'classes' ? 'classes' : 'library';
+  const classKey = params.get('classe');
+  const activity = params.get('activite');
+
+  /** Adresse de la page avec ces réglages de vue (sans cours ouvert). */
+  const viewHref = useCallback((next: { view: 'library' | 'classes'; classKey?: string | null; activity?: string | null }) => {
+    const q = new URLSearchParams();
+    if (next.view === 'classes') {
+      q.set('vue', 'classes');
+      if (next.classKey) q.set('classe', next.classKey);
+      if (next.activity) q.set('activite', next.activity);
+    }
+    const text = q.toString();
+    return text ? `/cours?${text}` : '/cours';
+  }, []);
+
+  const here = viewHref({ view, classKey, activity });
+
   const open = useCallback((id: string, mode: OpenMode = 'texte') => {
-    // `retour` : l'éditeur a été ouvert depuis l'application, sa fermeture revient d'un pas en arrière
-    void navigate(courseHref(id, mode), { state: { retour: true } });
-  }, [navigate]);
+    // La vue reste la même sous l'éditeur. `retour` : ouvert depuis l'application, la fermeture
+    // revient d'un pas en arrière
+    const href = courseHref(id, mode);
+    void navigate(here === '/cours' ? href : `${here}&${href.split('?')[1]}`, { state: { retour: true } });
+  }, [navigate, here]);
 
   const close = useCallback(() => {
     const cameFromApp = (location.state as { retour?: boolean } | null)?.retour === true;
     if (cameFromApp) void navigate(-1);
-    else void navigate('/cours', { replace: true });
-  }, [location.state, navigate]);
+    else void navigate(here, { replace: true });
+  }, [location.state, navigate, here]);
 
   useEffect(() => {
     if (!notFound) return;
@@ -151,7 +180,13 @@ export function Courses() {
   }, [textSettled, textResult, boards]);
 
   const shown = useMemo(() => filterBoards(boards, words), [boards, words]);
-  const chips = useMemo(() => placementChips(placements, classes, new Date()), [placements, classes]);
+  const chips = useMemo(() => placementChips(placementsOf(documents), classes, new Date()), [documents, classes]);
+  /** Séances parties de chaque document (table session_boards, déjà lue pour la bibliothèque). */
+  const sessions = useMemo(() => {
+    const map = new Map<string, DocumentSession[]>();
+    for (const [boardId, list] of usages) map.set(boardId, list.map((u) => ({ sessionId: u.session_id, startedAt: new Date(u.started_at) })));
+    return map;
+  }, [usages]);
   const levels = useMemo(() => groupLibrary(shown), [shown]);
 
   const save = async (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
@@ -232,15 +267,39 @@ export function Courses() {
           </div>
         </div>
 
+        <div className="mc-views" role="tablist" aria-label="Vue">
+          <button type="button" role="tab" aria-selected={view === 'library'} className="mc-view" onClick={() => { if (view !== 'library') void navigate(viewHref({ view: 'library' })); }}>
+            Bibliothèque
+          </button>
+          <button type="button" role="tab" aria-selected={view === 'classes'} className="mc-view" onClick={() => { if (view !== 'classes') void navigate(viewHref({ view: 'classes' })); }}>
+            Par classe
+          </button>
+        </div>
+
         {error && <p className="mc-error" role="alert">{error}</p>}
 
-        {ready && !error && boards.length === 0 && (
+        {view === 'classes' && ready && (
+          <ClassCourses
+            documents={documents}
+            classes={classes}
+            groupNames={groupNames}
+            sessions={sessions}
+            classKey={classKey}
+            activity={activity}
+            activityTitle={activity ? boards.find((b) => b.id === activity)?.title ?? null : null}
+            onClass={(key) => void navigate(viewHref({ view: 'classes', classKey: key }), { replace: true })}
+            onActivity={(source) => void navigate(viewHref({ view: 'classes', classKey, activity: source }))}
+            onOpen={open}
+          />
+        )}
+
+        {view === 'library' && ready && !error && boards.length === 0 && (
           <div className="mc-empty">
             Aucun cours pour l’instant. « + Nouveau » crée un cours rédigé ou un tableau blanc ; ils se rangent ici par niveau et par séquence.
           </div>
         )}
 
-        {boards.length > 0 && (
+        {view === 'library' && boards.length > 0 && (
           <label className="mc-search">
             <Search size={16} className="mc-search__icon" aria-hidden />
             <input
@@ -255,11 +314,11 @@ export function Courses() {
           </label>
         )}
 
-        {searching && textSettled && shown.length === 0 && textHits.length === 0 && (
+        {view === 'library' && searching && textSettled && shown.length === 0 && textHits.length === 0 && (
           <div className="mc-empty">Aucun cours ne correspond à « {query.trim()} ».</div>
         )}
 
-        {shown.length > 0 && (
+        {view === 'library' && shown.length > 0 && (
           <CourseLibrary
             levels={levels}
             expandAll={searching}
@@ -276,7 +335,7 @@ export function Courses() {
           />
         )}
 
-        {textHits.length > 0 && (
+        {view === 'library' && textHits.length > 0 && (
           <section className="mc-level" aria-label="Cours dont le texte contient les mots cherchés">
             <div className="mc-seq__head"><span className="mc-seq__name">Dans le texte</span></div>
             <ul className="mc-rows">

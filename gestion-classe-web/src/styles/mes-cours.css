@@ -127,3 +127,37 @@
   .mc-chip { height: 28px; line-height: 28px; padding: 0 10px; font-size: 12.5px; }
   .mc-place__slot { min-height: 48px; }
 }
+
+/* ---- Vues Bibliothèque / Par classe, documents d'une classe (lot C4) ---- */
+.mc-views { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.mc-view {
+  height: 32px; padding: 0 14px; border: 0; border-radius: calc(var(--radius-sm) - 2px);
+  background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted);
+}
+.mc-view[aria-selected='true'] { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border); }
+
+.mc-doc + .mc-doc { border-top: 1px solid var(--border); }
+.mc-doc__when {
+  flex-shrink: 0; width: 168px; padding-left: 8px; font-size: 13px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mc-chip--static { cursor: default; flex-shrink: 0; }
+.mc-chip--static:hover { filter: none; }
+.mc-doc__session {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+  cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; color: var(--text);
+}
+.mc-doc__session:hover, .mc-doc__session[aria-expanded='true'] { border-color: var(--indigo); color: var(--indigo-ink); }
+.mc-doc__gallery { padding: 4px 12px 14px; }
+
+.mc-activity { display: flex; align-items: center; gap: 12px; }
+.mc-activity .btn { display: inline-flex; align-items: center; gap: 6px; }
+.mc-activity__title { min-width: 0; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 767px) {
+  /* La date passe au-dessus du titre */
+  .mc-doc .mc-row { padding-top: 6px; }
+  .mc-doc__when { order: -1; flex-basis: 100%; width: auto; padding: 2px 8px 0; font-size: 12px; }
+  .mc-activity { flex-wrap: wrap; }
+}

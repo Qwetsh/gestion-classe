@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../supabase', () => ({ supabase: {} }));
 
-import { placementChips, type Placement } from '../coursePlacements';
+import { NO_CLASS, buildTimeline, classesWithDocuments, documentsOfActivity, documentsOfClass, placementChips, placementsOf, type DocumentSession, type PlacedDocument, type Placement } from '../coursePlacements';
 
 const classes = [
   { id: 'c4a', name: '4A' },
@@ -64,5 +64,76 @@ describe('placementChips', () => {
 
   it('ne rend rien pour un original sans copie', () => {
     expect(placementChips([], classes, now).get('orig')).toBeUndefined();
+  });
+});
+
+// ---- Vue « Par classe » (lot C4) ----
+
+const doc = (boardId: string, classId: string | null, iso: string, sourceBoardId: string | null = null): PlacedDocument => ({
+  boardId, sourceBoardId, classId, groupId: null, startsAt: new Date(iso), label: '4X', title: `Document ${boardId}`, isCourse: true,
+});
+
+const played = (sessionId: string, iso: string): DocumentSession => ({ sessionId, startedAt: new Date(iso) });
+
+describe('buildTimeline', () => {
+  const documents = [
+    doc('hier', 'c4a', '2026-11-17T08:15:00'),
+    doc('ce-matin', 'c4a', '2026-11-18T08:15:00'),
+    doc('ce-soir', 'c4a', '2026-11-18T15:40:00'),
+    doc('demain', 'c4a', '2026-11-19T08:15:00'),
+    doc('avant-hier', 'c4a', '2026-11-16T08:15:00'),
+  ];
+
+  it('range les cours du jour sans séance dans « à venir », du plus proche au plus lointain', () => {
+    const t = buildTimeline(documents, new Map(), now);
+    expect(t.upcoming.map((e) => e.doc.boardId)).toEqual(['ce-matin', 'ce-soir', 'demain']);
+  });
+
+  it('range le passé du plus récent au plus ancien', () => {
+    const t = buildTimeline(documents, new Map(), now);
+    expect(t.past.map((e) => e.doc.boardId)).toEqual(['hier', 'avant-hier']);
+    expect(t.past.every((e) => e.session === null)).toBe(true);
+  });
+
+  it('passe un cours du jour dans « passé » dès qu’une séance l’a joué', () => {
+    const sessions = new Map([['ce-matin', [played('s1', '2026-11-18T08:20:00')]]]);
+    const t = buildTimeline(documents, sessions, now);
+    expect(t.upcoming.map((e) => e.doc.boardId)).toEqual(['ce-soir', 'demain']);
+    expect(t.past[0]).toMatchObject({ doc: { boardId: 'ce-matin' }, session: { sessionId: 's1' } });
+  });
+
+  it('garde la séance la plus récente quand un document en a plusieurs', () => {
+    const sessions = new Map([['hier', [played('ancienne', '2026-11-17T08:20:00'), played('reprise', '2026-11-17T10:20:00')]]]);
+    const t = buildTimeline(documents, sessions, now);
+    expect(t.past.find((e) => e.doc.boardId === 'hier')?.session?.sessionId).toBe('reprise');
+  });
+});
+
+describe('documents par classe et par activité', () => {
+  const documents = [
+    doc('a1', 'c4a', '2026-11-18T08:15:00', 'fiche'),
+    doc('b1', 'c4b', '2026-11-20T08:15:00', 'fiche'),
+    doc('a2', 'c4a', '2026-11-25T08:15:00', 'correction'),
+    doc('x', null, '2026-11-25T10:15:00'),
+    doc('y', 'disparue', '2026-11-26T10:15:00'),
+  ];
+
+  it('liste les classes qui portent un document, dans l’ordre des classes', () => {
+    const tabs = classesWithDocuments(documents, classes);
+    expect(tabs.classes.map((c) => c.name)).toEqual(['4A', '4B']);
+    expect(tabs.other).toBe(true);
+  });
+
+  it('rend les documents d’une classe, et à part ceux sans classe connue', () => {
+    expect(documentsOfClass(documents, 'c4a', classes).map((d) => d.boardId)).toEqual(['a1', 'a2']);
+    expect(documentsOfClass(documents, NO_CLASS, classes).map((d) => d.boardId)).toEqual(['x', 'y']);
+  });
+
+  it('réunit les copies d’un même original', () => {
+    expect(documentsOfActivity(documents, 'fiche').map((d) => d.boardId)).toEqual(['a1', 'b1']);
+  });
+
+  it('ne garde pour les pastilles que les copies dont l’original est connu', () => {
+    expect(placementsOf(documents).map((p) => p.boardId)).toEqual(['a1', 'b1', 'a2']);
   });
 });
