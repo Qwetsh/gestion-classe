@@ -330,12 +330,23 @@ trait entier. Petit lot : y porter la découpe du tableau blanc. À faire si Tho
 | Étape | État |
 |---|---|
 | 0 — Essai réel | **En cours** depuis le 14/11/2026 : documents créés et placés (§ 9) ; reste le jugement de Thomas en classe |
-| 1 — Envoi des fichiers et des documents | À faire |
-| 2 — Écrans : le socle | À faire |
+| 1 — Envoi des fichiers et des documents | **Fait** le 14/11/2026 (PR #86, migration 075, fonction `depot-cours`) : jeton d'import créé dans Réglages, envoi par `gc_envoi.py`, essayé de bout en bout avec l'image du puzzle |
+| 2 — Écrans : le socle | **Fait** le 14/11/2026 (PR #84 et #85, migration 074) : un cours porte des écrans (`doc.screens`), bouton « Écrans », état de page et réponses révélées gardés en base |
 | 3 — Écrans : gabarits, générateur, vérificateur | À faire |
 | 4 — Skill « prépare ma semaine » | À faire |
 | 5 — Tableaux de fin de séance | À faire |
 | 6 — Plus tard | — |
+
+Hors étapes, le 14/11/2026 :
+
+- **Écrans Wegener.** 13 écrans écrits à la main et posés sur les deux originaux et les huit cours
+  des 4e ; l'écran 5 montre le puzzle assemblé sous un rideau. Premier essai réel : 4C, lundi 16/11.
+- **Un seul visuel** (demande de Thomas : la classe doit ressembler au mode Écrans). Lot 1, PR #87 :
+  la classe s'ouvre avec le ruban, repliable, et garde la pastille. Lot 2, après essai sur le TBI :
+  supprimer l'ancien habillage tactile.
+- **Ruban : étiquettes et libellés coupés.** Le ruban des deux éditeurs (cours et tableau blanc)
+  coupait l'étiquette des groupes dans presque tous les onglets. Corrigé : ruban de 104 px, libellés
+  sur deux lignes au plus, pas de barre de défilement (molette et ombre au bord).
 
 Révision du 14/11/2026 (soir) : l'ancienne étape 3, « la correction animée », disparaît. Elle
 dépendait d'animations à construire dans l'éditeur de cours ; les écrans s'appuient sur les
