@@ -160,9 +160,9 @@ de la séance, et sort en PDF.
 | C3 — Provenance et placement | **Fusionné dans master le 14/11/2026** (PR #94, migration 077) |
 | C4 — Par classe et fins de séance | **Fusionné dans master le 14/11/2026** (PR #95 ; la partie « passé » reste à voir après une vraie séance) |
 | N1 — Ménage du menu | **Fusionné dans master le 14/11/2026** (PR #96) |
-| N2 — Maquette du menu regroupé | **Faite** le 14/11/2026 ; Thomas a retenu la variante A |
-| N3 — Menu regroupé | **Codé** le 14/11/2026 (branche `feat/menu-regroupe`, avec la maquette), pas commité |
-| R1 — Recherche globale | À faire |
+| N2 — Maquette du menu regroupé | **Fusionnée dans master le 15/11/2026** (PR #97) ; Thomas a retenu la variante A |
+| N3 — Menu regroupé | **Fusionné dans master le 15/11/2026** (PR #97), après essai de Thomas dans la prévisualisation |
+| R1 — Recherche globale | **Codé** le 15/11/2026 (branche `feat/recherche-globale`), pas commité |
 | F1 — Fichiers | En attente de la décision de stockage |
 
 ### Lot C1 — page et bibliothèque, fait le 14/11/2026 (branche `feat/mes-cours`)
@@ -382,4 +382,36 @@ les propositions de Claude sont appliquées (Analyses sous Classes, Récompenses
   ne pas écrire dans le compte de Thomas) ; une tablette ; un vrai téléphone.
 - **Reste** : en menu réduit, l'icône de l'entrée « Classes » et celle de sa page « Classes et
   plans » sont les mêmes (idem Mes cours et Évaluations).
+
+### Lot R1 — recherche globale, codé le 15/11/2026 (branche `feat/recherche-globale`, depuis master)
+
+- **Une fenêtre pour aller partout** (`components/GlobalSearch.tsx`) : Ctrl+K, le bouton
+  « Rechercher » en haut du menu, ou la loupe de la barre du haut sur téléphone.
+- **Sept familles**, dans cet ordre : Pages, Cours, Classes, Élèves, Évaluations, Outils, Réglages.
+  Six résultats au plus par famille. Sans rien de tapé : les pages du menu, comme un sommaire.
+- **Même règle que la recherche de « Mes cours »** : sans casse ni accents, tous les mots demandés.
+  Un titre qui commence par le mot cherché passe devant (`lib/globalSearch.ts`, avec tests).
+- **Ce qui s'ouvre** : la page ; le cours (`/cours?ouvrir=…`) ; le plan de la classe
+  (`/classes?class=…`) ; la fiche de l'élève (`/students?class=…&student=…`) ; la fiche de
+  l'évaluation ; l'outil ; les Réglages sur la section trouvée.
+- **Lecture en base** (`lib/globalSearchQueries.ts`) : cours de la bibliothèque, classes, élèves,
+  évaluations — quatre lectures légères à la première ouverture, gardées une minute. Une lecture
+  qui échoue retire seulement sa famille. Aucune migration.
+- **Réglages** : sections décrites dans `lib/settingsSections.ts` (libellés accentués au passage :
+  « Établissement », « Année scolaire », « Thème », « Données ») ; la fenêtre accepte une section
+  d'ouverture.
+- **Inactive quand un éditeur est ouvert** (cours, tableau blanc, présentation) : Ctrl+K reste à eux.
+  Elle n'existe pas sur l'écran de classe ni dans l'espace élève, qui n'ont pas de menu : les
+  pseudonymes des élèves n'y apparaissent donc jamais par ce biais.
+- **Vérifié** : `tsc -b`, 548 tests ; le lint ne signale aucune erreur nouvelle. Dans le navigateur,
+  avec les données réelles : ouverture par Ctrl+K et par le bouton ; sommaire des pages ; « wegener »
+  (2 cours, titres entiers) ; « 4a » (classe, élèves, évaluations) ; « qr » (2 outils) ; « theme »
+  puis Entrée (Réglages ouverts sur Thème) ; « annales » puis Entrée (page ouverte, entrée « Mes
+  cours » dépliée) ; flèches, tour complet de la liste, Échap ; Ctrl+K sans effet sous le tableau
+  blanc.
+- **Non vérifié** : l'ouverture d'un cours, d'une classe, d'un élève ou d'une évaluation depuis un
+  résultat (seules les adresses sont construites ; elles reprennent celles de l'accueil) ; la loupe
+  sur un vrai téléphone ; ⌘K sur Mac.
+- **Non fait** : la recherche dans le texte des cours reste dans « Mes cours » ; les copies placées
+  sur un créneau ne sont pas proposées (elles se retrouvent par « Mes cours » › « Par classe »).
 
