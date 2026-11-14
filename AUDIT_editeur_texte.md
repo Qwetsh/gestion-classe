@@ -1400,3 +1400,34 @@ dans les encadrés et le texte courant sur papier.
 
 **Non vérifié** : impression papier du crédit (taille .62 em) ; comportement si Wikimedia
 renvoie 429 (message prévu, pas provoqué).
+
+### T15a — fait le 14/11/2026 (branche `feat/texte-t15a`, pas de migration)
+
+- **Listes, encadrés et citations se coupent entre deux pages** au lieu de partir entiers à la
+  page suivante (grand blanc) ou de déborder. `coursePagination.ts` mesure des « unités » : un
+  conteneur sécable (liste, élément de liste, encadré, citation, liste de cases) est remplacé par
+  ses enfants, récursivement ; le premier emmène le haut du conteneur (titre de l'encadré), le
+  dernier son bas. L'intercalaire se pose entre deux éléments de liste, deux paragraphes d'un
+  encadré, ou dans une liste à l'intérieur d'un encadré. Marges confondues (paragraphe dans un
+  élément de liste) prises en compte.
+- **Encadré coupé** : l'intercalaire efface le cadre sur sa hauteur (blanc en bas de feuille,
+  bureau entre les feuilles, blanc en haut de la suivante) ; « À retenir » (cadre complet) est
+  refermé en bas de page et rouvert en haut de la suivante. Impression : bande vide, couleurs des
+  variantes noir et blanc / économie suivies. En classe : simple trait, comme avant.
+- **Calcul séparé de la mesure** : `measureUnits` (DOM) puis `paginate` (pur), testé avec vitest
+  (`__tests__/coursePagination.test.ts`, 7 cas : 60 éléments, bande de l'encadré, impression,
+  titre solidaire, bloc plus haut qu'une page, saut de page).
+- **Correctif au passage** : le facteur de zoom était calculé avec `offsetWidth` (arrondi :
+  605 px pour 604,72), d'où ≈ 0,45 px de dérive par page (le haut de chaque page remontait) ;
+  largeur exacte lue dans le style calculé.
+- Vérifié dans le navigateur (cours de 6 pages : liste de 60 éléments, encadré « À retenir » de
+  25 paragraphes, définition avec liste imbriquée) : 5 coupures, toutes à l'intérieur des
+  conteneurs, chaque page commence à 0,01 px du haut de sa feuille ; numérotation continue (35 en
+  haut de la page 2) ; cadre « À retenir » refermé et rouvert ; Entrée et frappe dans un élément
+  en bas de page, puis annulation : retour exact ; calcul en 1,6 ms ; présentation En classe :
+  trait sans bande. Cours de test supprimé.
+
+**Non vérifié** : impression papier d'un encadré coupé ; un dessin du calque posé sur la partie
+d'une liste ou d'un encadré renvoyée à la page suivante (il reste ancré au haut du bloc et se
+décale de la hauteur de l'intercalaire — ancrage par élément à prévoir). Restent T15b (tableaux,
+ligne d'en-tête répétée) et T15c (paragraphes, si le besoin se confirme).

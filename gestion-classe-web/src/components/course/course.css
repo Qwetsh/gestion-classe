@@ -127,6 +127,13 @@ body.ce-open { overflow: hidden; }
 .ce-sheet { position: absolute; left: 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06); }
 .ce-flow { position: absolute; z-index: 1; }
 .ce-spacer { display: block; margin: 0 !important; padding: 0; pointer-events: none; }
+/* Lot T15a : intercalaire dans un encadré coupé entre deux pages. Il « efface » le cadre sur sa
+   hauteur : blanc (bas de la feuille), bureau (entre les feuilles), blanc (haut de la suivante).
+   Débord à gauche large : l'intercalaire peut être dans une liste, en retrait dans l'encadré. */
+.ce-spacer--cut { position: relative; }
+.ce-spacer--cut::before { content: ''; position: absolute; top: 0; bottom: 0; left: -64px; right: -24px; background: linear-gradient(to bottom, #fff 0 var(--cut-a), var(--ce-desk, #E7E9EE) var(--cut-a) var(--cut-b), #fff var(--cut-b)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* Encadré « À retenir » (cadre complet) : on referme le cadre au bas de la page et on le rouvre en haut de la suivante */
+.ce-doc .ce-callout[data-callout="retenir"] > .ce-spacer--cut::before { left: -16px; right: -16px; border-top: 2px solid var(--ce-ret-line, #F59E0B); border-bottom: 2px solid var(--ce-ret-line, #F59E0B); }
 
 /* ---------- Le texte du cours ---------- */
 .ce-doc { display: flow-root; outline: none; font: 16px/1.45 var(--ce-doc-font); color: #111827; caret-color: #111827; word-wrap: break-word; }
@@ -610,6 +617,7 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   /* Noir et blanc : texte noir, fonds gris clair, images en niveaux de gris */
   body.ce-print-bw .ce-doc, body.ce-print-bw .ce-doc *, body.ce-print-bw .ce-hf { color: #000 !important; }
   body.ce-print-bw .ce-doc .ce-callout { background: #F1F1F1 !important; border-color: #555 !important; }
+  body.ce-print-bw .ce-doc .ce-callout > .ce-spacer--cut::before { border-color: #555 !important; }
   body.ce-print-bw .ce-doc mark { background: #DDD !important; }
   body.ce-print-bw .ce-doc th { background: #E8E8E8 !important; }
   body.ce-print-bw .ce-doc td { background: transparent !important; }
@@ -617,6 +625,7 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   /* Économie d'encre : aucun fond, images éclaircies, traits fins */
   body.ce-print-eco .ce-doc, body.ce-print-eco .ce-doc *, body.ce-print-eco .ce-hf { color: #000 !important; }
   body.ce-print-eco .ce-doc .ce-callout { background: none !important; border-color: #999 !important; }
+  body.ce-print-eco .ce-doc .ce-callout > .ce-spacer--cut::before { border-color: #999 !important; }
   body.ce-print-eco .ce-doc mark { background: none !important; text-decoration: underline; text-decoration-thickness: 2px; }
   body.ce-print-eco .ce-doc th, body.ce-print-eco .ce-doc td { background: none !important; }
   body.ce-print-eco .ce-doc img, body.ce-print-eco .ce-encart img { filter: grayscale(1) opacity(.6); }
@@ -674,6 +683,7 @@ body.ce-presenting { overflow: hidden; }
 .ce-pres.is-overview .ce-pres__page { box-shadow: 0 6px 30px rgba(15,23,42,.18); }
 /* Pas de pages en classe : un trait discret à la place de l'espace entre deux feuilles */
 .ce-pres .ce-spacer { height: 0 !important; border-top: 1px dashed #CBD5E1; margin: 10px 0 !important; }
+.ce-pres .ce-spacer--cut::before { display: none; }
 .ce-pres .ce-doc { caret-color: transparent; }
 .ce-pres .ce-encart__edit, .ce-pres .ce-encart__label { display: none !important; }
 .ce-pres__band { position: absolute; border: 3px solid var(--ce-accent); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(15,23,42,.12); pointer-events: none; }
