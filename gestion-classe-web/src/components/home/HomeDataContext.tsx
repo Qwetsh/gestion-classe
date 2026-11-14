@@ -154,8 +154,11 @@ export interface HomeData {
   now: Date;
   tomorrow: Date;
 
-  /** Ouvre l'ardoise libre, ou un tableau préparé (le tableau blanc vit dans la page, pas dans un module) */
-  openBoard: (board?: { id: string; title: string }) => void;
+  /**
+   * Ouvre l'ardoise libre, ou un tableau préparé (le tableau blanc vit dans la page, pas dans un
+   * module). `present` : un cours rédigé s'ouvre directement « En classe », en mode test (lot 4d).
+   */
+  openBoard: (board?: { id: string; title: string; present?: boolean }) => void;
 }
 
 // ---- Pronote helpers ----
@@ -214,7 +217,7 @@ export function useHomeData(): HomeData {
 
 export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
   children: ReactNode;
-  onOpenBoard: (board?: { id: string; title: string }) => void;
+  onOpenBoard: (board?: { id: string; title: string; present?: boolean }) => void;
   /** Augmente à chaque fermeture du tableau blanc : les tableaux de cours sont relus (titre, date de modification) */
   boardVersion?: number;
 }) {
