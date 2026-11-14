@@ -78,7 +78,8 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - listes : `Puces`, `Numeros`, `Cases` (cases à cocher) ;
 - `Encadre(..., type_, titre, couleur, bordure, titre_gras)`, et `EncadreFiche(titre, couleur, ...)` pour le cadre fin des fiches Word ;
 - `Zone(style, lignes)` : zone d'écriture Seyès, carreaux, lignes, pointillés ou blanc ;
-- `Colonnes([...], [...])`, `SautDePage()`, `Trait()`.
+- `Colonnes([...], [...])`, `SautDePage()`, `Trait()` ;
+- `Image(fichier, largeur_cm, legende)` : envoie le fichier puis l'insère (demande le jeton d'import, § 5).
 
 **Tableaux** :
 
@@ -172,26 +173,41 @@ Le compte propriétaire est lu dans `course-drafts/owner.txt`. S'il manque, lanc
 
 ## 5. Créer le cours
 
-- Lire `course-drafts/<nom>.sql` et l'exécuter tel quel avec l'outil `execute_sql` du connecteur
-  Supabase, projet `djodkjysovalpufgevrr`.
-- La requête **crée un nouveau cours** et renvoie son `id`.
-- Dire à Thomas où le trouver : Accueil › Mes tableaux, rangé sous son niveau.
+**Voie normale : le jeton d'import.** Thomas crée un jeton dans Réglages › Jeton d'import et le
+colle dans `~/.gestion-classe/jeton-import.txt`. Ne jamais lui demander de le coller dans la
+conversation, ne jamais l'afficher ni l'écrire ailleurs.
+
+```bash
+python -I <skill>/gc_envoi.py verifier                      # le jeton est-il valable ?
+python -I <skill>/gc_envoi.py cours course-drafts/<nom>.json    # crée le cours, affiche son id
+python -I <skill>/gc_envoi.py ecrans <id du cours> <pages.json> # pose les écrans d'un cours
+```
+
+- L'envoi **crée un nouveau cours** et affiche son `id`.
+- Les images passent par le même jeton : `Image('schema.png', largeur_cm=8)` dans le script du
+  brouillon envoie le fichier et l'insère. La fonction refuse un document qui cite une image
+  qu'elle n'a pas reçue.
+- Dire à Thomas où trouver le cours : Accueil › Mes tableaux, rangé sous son niveau.
+
+**Sans jeton** (pas encore créé, fonction indisponible) : lire `course-drafts/<nom>.sql` et
+l'exécuter tel quel avec l'outil `execute_sql` du connecteur Supabase, projet
+`djodkjysovalpufgevrr`. Pas d'image dans ce cas : mettre un paragraphe `[Image : …]` et le
+signaler à Thomas.
 
 Règles de sûreté :
 
-- Ne jamais exécuter une requête que `course:check` n'a pas produite sans erreur.
+- Ne jamais envoyer un brouillon que `course:check` n'a pas validé sans erreur.
 - **Ne jamais modifier ni supprimer un cours existant** sans demande explicite de Thomas.
 - Pour une correction demandée sur un cours existant :
-  1. lire le document actuel (`select doc from boards where id = …`) ;
-  2. l'enregistrer d'abord comme version :
-     `insert into board_doc_versions (user_id, board_id, doc, kind, label) values (…, 'manual', 'Avant la modification par Claude')` ;
-  3. écrire le nouveau document vérifié avec un nouveau `rev`
-     (`update boards set doc = jsonb_set(<doc>, '{rev}', to_jsonb('claude-' || extract(epoch from now())::text)), updated_at = now() where id = …`) ;
-  4. si Thomas a le cours ouvert, son prochain enregistrement est refusé : l'éditeur signale
-     le conflit et le laisse choisir entre les deux versions.
-- Pas d'image : un fichier doit être envoyé depuis l'éditeur. Mettre à la place un paragraphe
-  `[Image : …]` ou un `Encadre` qui décrit le document attendu, et le signaler à Thomas.
+  `python -I <skill>/gc_envoi.py cours <brouillon.json> --remplacer <id>`. La fonction garde
+  d'abord une version (« Avant la modification par Claude »), conserve les écrans du cours et
+  pose un nouveau `rev` : si Thomas a le cours ouvert, l'éditeur signale le conflit et le laisse
+  choisir entre les deux versions.
+- Remplacer les écrans d'un cours : `ecrans <id> <pages.json> --remplacer`, seulement sur
+  demande ; les anciens écrans sont supprimés, sans version.
 - Ne pas écrire `rev` dans un nouveau cours. Ne pas mettre d'URL d'image.
+- Dans un texte d'écran, écrire `&lt;` pour le signe « < » : la fonction refuse toute balise
+  autre que la mise en forme.
 - Un brouillon reste dans `course-drafts/` : il peut servir à recréer le cours.
 
 ## 6. Contrôler le rendu (si le navigateur intégré est disponible)
