@@ -8,6 +8,8 @@ import { FeedbackDialog } from './FeedbackDialog';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { HeldWorksAlert } from './productions/HeldWorksAlert';
 import { supabase } from '../lib/supabase';
+import { GlobalSearch } from './GlobalSearch';
+import type { SettingsSectionKey } from '../lib/settingsSections';
 import { MORE_GROUP_ID, activeGroup, isPageActive, singlePageLabel, visibleGroups, type NavGroup } from '../lib/appNav';
 import { LogOut, Info, AlertTriangle, CheckCircle2, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 
@@ -52,6 +54,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
     case 'plus': return <svg {...common}><path d="M12 5v14M5 12h14"/></svg>;
     case 'info': return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>;
     case 'message': return <svg {...common}><path d="M4 5.5A1.5 1.5 0 015.5 4h13A1.5 1.5 0 0120 5.5v9a1.5 1.5 0 01-1.5 1.5H9l-5 4V5.5z"/></svg>;
+    case 'search': return <svg {...common}><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>;
     case 'more': return <svg {...common}><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>;
     case 'chevron': return <svg {...common}><path d="M9 6l6 6-6 6"/></svg>;
     default: return null;
@@ -372,6 +375,21 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  /** Recherche globale (Ctrl+K), et section des Réglages qu'elle demande d'ouvrir. */
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionKey | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'k') return;
+      // Éditeur de cours, tableau blanc ou présentation ouverts par-dessus la page : Ctrl+K est à eux
+      if (document.querySelector('.ce-root, .wb') || document.body.classList.contains('ce-presenting')) return;
+      e.preventDefault();
+      setIsSearchOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const notifs = useNotifications(user?.id, user?.email);
   const [rail, toggleRail] = useSidebarRail();
   const isDev = user?.email === DEV_EMAIL;
@@ -439,6 +457,14 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
           <Brand trimestre={settings.schoolYear.trimestre} year={settings.schoolYear.label} />
         </div>
 
+        <div className="gc-sidebar__search">
+          <button type="button" className="gc-search-button" onClick={() => setIsSearchOpen(true)} title="Rechercher (Ctrl+K)" aria-label="Rechercher dans l'application">
+            <NavIcon name="search" size={15} />
+            <span>Rechercher</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+        </div>
+
         <nav className="gc-sidenav">
           {groups.map(renderNavGroup)}
         </nav>
@@ -494,14 +520,19 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
         {/* Barre du haut — mobile / tablette uniquement */}
         <header className="gc-topbar">
           <Brand trimestre={settings.schoolYear.trimestre} year={settings.schoolYear.label} />
-          <AccountRow
-            notifs={notifs}
-            email={user?.email}
-            onSignOut={signOut}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenFeedback={() => setIsFeedbackOpen(true)}
-            placement="down"
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button type="button" className="gc-topbar__search" onClick={() => setIsSearchOpen(true)} aria-label="Rechercher dans l'application">
+              <NavIcon name="search" size={20} />
+            </button>
+            <AccountRow
+              notifs={notifs}
+              email={user?.email}
+              onSignOut={signOut}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenFeedback={() => setIsFeedbackOpen(true)}
+              placement="down"
+            />
+          </div>
         </header>
 
         {currentGroup && currentGroup.pages.length > 1 && (
@@ -542,7 +573,21 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
       />
 
       <FeedbackDialog open={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
-      <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {/* Une section demandée par la recherche remonte la fenêtre dessus ; fermée, elle repart des onglets */}
+      <SettingsModal
+        key={settingsSection ?? 'tabs'}
+        open={isSettingsOpen}
+        initialSection={settingsSection ?? undefined}
+        onClose={() => { setIsSettingsOpen(false); setSettingsSection(null); }}
+      />
+      {isSearchOpen && (
+        <GlobalSearch
+          userId={user?.id ?? null}
+          groups={groups}
+          onOpenSettings={(section) => { setSettingsSection(section); setIsSettingsOpen(true); }}
+          onClose={() => setIsSearchOpen(false)}
+        />
+      )}
     </div>
   );
 }
