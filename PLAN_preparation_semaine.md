@@ -223,7 +223,7 @@ stylet, révélation de la réponse, et que tout se retrouve dans la séance.
 | # | Point | Conséquence | Levé par |
 |---|---|---|---|
 | 1 | Marges fixes de 2,5 cm : une fiche de plus de 300 mots environ passe sur deux pages. Un texte plus petit n'a pas été essayé | La fiche ne ressemble plus au Word | Étape 0, question 1 |
-| 2 | Le placement d'un document sur un cours par Claude n'a jamais été essayé | L'étape 2 repose dessus | Étape 0, question 4 |
+| 2 | ~~Le placement d'un document sur un cours par Claude n'a jamais été essayé~~ | Levé le 14/11/2026 : huit copies placées, visibles sur le calendrier, « En classe » les ouvre | — |
 | 3 | L'encre de séance n'a pas été vérifiée en vraie classe | Le besoin n° 4 de Thomas n'est pas acquis | Étape 0, question 3 |
 | 4 | La séance doit être démarrée par le téléphone | Sans téléphone, rien n'est gardé | Connu, accepté pour l'instant |
 | 5 | Le libellé d'un cours peut changer dans l'emploi du temps (Pronote) | Un document placé ne retrouverait plus son cours | À observer à l'étape 2 |
@@ -241,9 +241,40 @@ stylet, révélation de la réponse, et que tout se retrouve dans la séance.
 
 | Étape | État |
 |---|---|
-| 0 — Essai réel | À faire : attend le choix d'une activité et d'une classe (PR #66 à #68 fusionnées le 14/11/2026) |
+| 0 — Essai réel | **En cours** depuis le 14/11/2026 : documents créés et placés (§ 9) ; reste le jugement de Thomas en classe |
 | 1 — Images | À faire |
 | 2 — Skill « prépare ma semaine » | À faire |
 | 3 — Correction animée | À faire ; dépend du lot 5 de l'éditeur |
 | 4 — Tableaux de fin de séance | À faire |
 | 5 — Plus tard | — |
+
+## 9. Étape 0 — ce qui a été fait (14/11/2026)
+
+Activité choisie par Thomas : 4e, séquence 2, activité 3 « Wegener et la dérive des continents ».
+
+**Créé.** Deux originaux dans la bibliothèque (4e › « Séquence 2 — Sous nos pieds, une Terre en
+mouvement ») : la fiche (2 pages) et la correction (4 pages, zones au stylet, sans réponses).
+
+**Placé.** Une copie par cours, pour les quatre classes :
+
+| Classe | Fiche | Correction |
+|---|---|---|
+| 4A | mer. 18 nov., 8 h 15 | mer. 25 nov., 8 h 15 |
+| 4B | ven. 20 nov., 8 h 15 | lun. 23 nov., 8 h 15 |
+| 4C | lun. 16 nov., 10 h 15 | mar. 17 nov., 15 h 40 |
+| 4D | mer. 18 nov., 10 h 15 | lun. 23 nov., 13 h 40 |
+
+**Constats.**
+
+| # | Constat | Suite |
+|---|---|---|
+| 1 | La source de vérité est le `.docx`, que Thomas retouche après le script `generate_fiche_….py` | Étape 2 : toujours comparer les deux |
+| 2 | Avec les marges de 2,5 cm, la fiche Word de 2 pages en faisait 3 (le cadre du puzzle ne tenait plus en page 1) | Tenue sur 2 pages par une mise en page compacte : consigne 1 et Rappel à côté du cadre, encadrés en 10 pt comme dans Word, « Questions » en texte bleu. Marge restante : 22 px. À juger par Thomas |
+| 3 | Envoyer un document par SQL oblige à le retaper en entier | Contourné par une requête compressée et une empreinte (`md5`) comparée au brouillon. **Étape 1 : la fonction de dépôt doit accepter les documents, pas seulement les images** |
+| 4 | L'éditeur réécrit un document à la première ouverture (identifiants de blocs, numéro d'enregistrement, textes voisins fusionnés) : le texte ne change pas | Étape 2 : comparer le texte, pas l'empreinte, après une ouverture |
+| 5 | La skill ne sait pas faire : cartouche à trois compétences, barème rouge en fin de question, cadre « à coller », encadrés en 10 pt | Étape 2 : les ajouter à `gc_cours.py` |
+| 6 | La projection « En classe » n'appliquait pas la police ni la taille du cours | Corrigé, PR #81 |
+| 7 | Une mise en page se mesure sans rien retaper : cours de test vide, puis chargement du brouillon dans l'éditeur ouvert | Étape 2 : en faire un contrôle « nombre de pages » |
+
+**Reste à juger par Thomas** (les quatre questions de l'étape 0) : l'impression, la fiche projetée
+comme tableau d'activité, l'encre retrouvée après la séance, l'ouverture depuis `/classe`.
