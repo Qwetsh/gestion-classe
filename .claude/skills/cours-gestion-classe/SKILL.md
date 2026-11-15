@@ -185,6 +185,7 @@ conversation, ne jamais l'afficher ni l'écrire ailleurs.
 ```bash
 python -I <skill>/gc_envoi.py verifier                      # le jeton est-il valable ?
 python -I <skill>/gc_envoi.py cours course-drafts/<nom>.json    # crée le cours, affiche son id
+npm run screens:check                                       # contrôle course-drafts/ecrans/*.json
 python -I <skill>/gc_envoi.py ecrans <id du cours> <pages.json> # pose les écrans d'un cours
 ```
 
@@ -210,6 +211,13 @@ Règles de sûreté :
   choisir entre les deux versions.
 - Remplacer les écrans d'un cours : `ecrans <id> <pages.json> --remplacer`, seulement sur
   demande ; les anciens écrans sont supprimés, sans version.
+- **Ne jamais envoyer des écrans que `screens:check` n'a pas validés sans erreur.** Ranger le
+  fichier dans `course-drafts/ecrans/`, lancer `npm run screens:check` (dans `gestion-classe-web`),
+  lire `<nom>.report.txt`. Une erreur bloque l'envoi : type d'objet inconnu, balise refusée, bouton
+  ou cache qui vise un objet absent, objet hors de l'écran (la page fait 1000 × 562,5).
+- Les avertissements du rapport sont des **estimations** : texte courant sous la taille 22 (28 px
+  sur le TBI), texte qui descendrait sur le suivant ou sous l'écran. Les corriger quand c'est
+  simple, et les citer à Thomas dans le compte rendu : seul l'affichage dans l'application tranche.
 - Ne pas écrire `rev` dans un nouveau cours. Ne pas mettre d'URL d'image.
 - Dans un texte d'écran, écrire `&lt;` pour le signe « < » : la fonction refuse toute balise
   autre que la mise en forme.

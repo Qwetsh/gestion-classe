@@ -186,6 +186,7 @@ lit toute la classe.
 | 4b | **Les cartes** : une par élève, un numéro et jamais de nom (P7), quatre orientations pour quatre réponses ; PDF généré comme les cartes QR actuelles | P |
 | 4c | **La question** : un module du tableau (énoncé, deux à quatre choix, bonne réponse). Le téléphone lance la lecture ; `/classe` affiche qui a répondu, puis l'histogramme, puis la bonne réponse | M |
 | 4d | **Le rangement** : réponses gardées par élève et par séance, d'abord sur le téléphone, puis envoyées ; vue de suivi | M |
+| 4e | **Relié aux codes d'élève** (demande de Thomas, 15/11/2026) : la carte d'un élève est rattachée à son code, celui de l'espace élève. Ce qu'il répond pendant les jeux lui revient donc, et peut être noté | M |
 
 **Le risque est en 4a.** L'app mobile n'a aujourd'hui qu'un scanner de documents : lire plusieurs
 marqueurs en vidéo demande un module natif de caméra, donc un nouvel APK, et la technique reste à
@@ -197,6 +198,10 @@ menu radial, par exemple).
 **Terminé quand** une question posée en classe donne son histogramme en moins de 30 secondes et
 que les réponses se retrouvent sur la fiche de chaque élève.
 
+**À préciser au début de la phase** (lecture de Claude, à confirmer) : « les jeux » désigne-t-il les
+questions posées au tableau, les activités numériques comme l'Hôpital virtuel, ou les deux ? Et
+« noter » : une note dans le carnet, des points de maison, ou les deux ?
+
 ### Fil continu — petits lots à intercaler
 
 | Lot | Remplace | Taille |
@@ -204,10 +209,9 @@ que les réponses se retrouvent sur la fiche de chaque élève.
 | Version élève / corrigé à l'impression ; menu clic droit ; sommaire inséré | Word | P chacun |
 | Glisser-déposer avec zones de dépôt, bonne / mauvaise réponse (lot D) | Genially | M |
 | **Atelier image** commun au cours et au tableau : rogner, pivoter, détourer, luminosité / contraste, flouter, légender | Photoshop | M |
-| Tableaux qui calculent (somme, moyenne) et graphique tiré d'un tableau | Excel | M |
-| Partage d'un cours avec un autre professeur | — | M |
 
-Le contenu exact des trois derniers dépend des réponses du § 7.
+Retirés le 15/11/2026 (décisions du § 7) : les tableaux qui calculent, et le partage d'un cours
+entre professeurs. Le contenu de l'atelier image dépend de la question encore ouverte du § 7.
 
 ## 6. Risques et points non vérifiés
 
@@ -216,30 +220,34 @@ Le contenu exact des trois derniers dépend des réponses du § 7.
 | 1 | Les modes Texte / Tableau / En classe n'ont jamais servi en séance | Tout le plan repose dessus | Phase 0 |
 | 2 | `Whiteboard.tsx` grossit à chaque ajout | Phases 2 et 3 lentes et fragiles | Les étapes et les modules vivent hors du composant ; un découpage préalable est à estimer en 2 |
 | 3 | Lecture des cartes à distance | La phase 4 peut ne pas aboutir | Lot 4a, avant tout autre travail |
-| 4 | Stockage : 1 Go, images seulement | Pas de vidéos ni de modèles 3D | Question 4 du § 7, avant 1e et 3c |
+| 4 | Stockage : 1 Go pour toute l'organisation, environ 320 Mo occupés le 15/11/2026 | Pas de vidéos ; les modèles 3D de la phase 3 devront rester légers | Décidé : on reste sur l'offre gratuite, avec 20 Mo par fichier et une jauge. À revoir avant 3c |
 | 5 | Le mobile n'est pas fusionné | Chaque phase qui touche le téléphone repart d'une branche instable | Phase 0 |
 | 6 | Le menu regroupé change les habitudes | Thomas et Aurélie cherchent leurs pages | Maquette validée avant 1c ; anciennes adresses conservées |
 | 7 | Un module enfermé reçoit mal le stylet et le doigt | Visualiseur inutilisable au TBI | Essai dès 3a, sur le TBI |
 | 8 | Cet état des lieux vient d'une lecture du code | Un « absent » peut exister sous un autre nom | Vérifier chaque point au début de sa phase |
 
-## 7. Questions ouvertes
+## 7. Décisions de Thomas et question ouverte
 
-1. **Excel :** à quoi sert-il vraiment aujourd'hui ? Si ce sont surtout les notes, le carnet les
-   couvre ; des tableaux qui calculent et un graphique suffiraient, sans tableur généraliste.
-2. **Plickers :** bien les cartes papier lues par le téléphone ? `PLAN_tableau_blanc.md` avait
-   écarté le vote par boîtiers.
-3. **Photoshop :** quels gestes précis (détourer, légender, flouter des visages, assembler) ?
-4. **Stockage :** rester sous 1 Go, passer à une offre payante, ou viser la base personnelle ?
-5. **Aurélie :** le partage de cours entre professeurs est-il dans le périmètre ?
-6. **Ordre des phases 2, 3 et 4 :** l'animation d'abord (proposé), ou le vote, qui sert chaque
-   semaine dans toutes les classes ?
+Décisions du 15/11/2026 :
+
+| Sujet | Décision |
+|---|---|
+| Excel | Peu utilisé, pas important : rien à construire. Le carnet de notes suffit |
+| Plickers | Oui, les cartes papier lues par le téléphone. À relier aux codes d'élève, pour récupérer ce qui se passe pendant les jeux et, éventuellement, le noter (lot 4e) |
+| Partage de cours entre professeurs | Hors périmètre |
+| Ordre des phases 2, 3 et 4 | L'animation d'abord |
+| Stockage | Rester dans le stockage actuel : 20 Mo par fichier, pas de vidéo, une jauge |
+
+Encore ouverte :
+
+1. **Photoshop :** quels gestes précis (détourer, légender, flouter des visages, assembler) ?
 
 ## 8. Avancement
 
 | Phase | État |
 |---|---|
-| 0 — Valider | En cours (essais du 16 au 25/11 ; étapes 3 et 4 du plan « semaine » à faire) |
-| 1 — Le foyer | À faire |
+| 0 — Valider | En cours : essais en classe du 16 au 25/11 ; vérificateur d'écrans fait le 15/11/2026 (`npm run screens:check`) ; restent les gabarits, le générateur, la skill « prépare ma semaine », la fusion du mobile |
+| 1 — Le foyer | **Terminée le 15/11/2026** : lots C1 à C4, N1 à N3, R1 et F1 en ligne (PR #92 à #99) ; détail dans `PLAN_mes_cours.md`. À regarder en vraie séance : « Passé » et « Fin de séance » |
 | 2 — Animation par étapes | À faire |
 | 3 — Modules | À faire |
 | 4 — Vote par cartes | À faire |
