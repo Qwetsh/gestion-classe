@@ -1823,6 +1823,19 @@ a.dash__card-link:hover { text-decoration: underline; }
   background: var(--warn-soft); color: var(--text); border-radius: 4px; padding: 1px 4px;
 }
 .wtt-pop__section--note-live { background: var(--warn-soft); }
+
+/* Évals à faire rattraper aux absents (migration 066) */
+.wtt__lesson-makeup {
+  display: flex; align-items: center; gap: 3px; margin-top: 2px;
+  font-size: 11px; font-weight: 600; color: var(--warn);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.wtt__lesson--current .wtt__lesson-makeup {
+  background: var(--warn-soft); color: var(--text); border-radius: 4px; padding: 1px 4px;
+}
+.wtt-pop__makeup { display: flex; flex-direction: column; gap: 2px; }
+.wtt-pop__makeup + .wtt-pop__makeup { margin-top: 6px; }
+.wtt-pop__makeup-eval { color: var(--indigo-ink, var(--indigo)); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .wtt-pop__note { white-space: pre-wrap; font-size: 13px; line-height: 1.4; }
 .wtt-pop__note--done { color: var(--text-muted); text-decoration: line-through; }
 .wtt-pop__note-input {

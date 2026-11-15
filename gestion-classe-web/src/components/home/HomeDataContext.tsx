@@ -16,6 +16,8 @@ import {
   type StoredTimetableEntry, type TimetableImportInfo,
 } from '../../lib/timetable/timetableQueries';
 import { resolveLabel, type LabelLink } from '../../lib/timetable/labelMatching';
+import type { MakeupReminder } from '../../lib/timetable/makeupReminders';
+import { useMakeupReminders } from './useMakeupReminders';
 import { buildWeek, type TimetableLesson, type TimetableWeek } from '../../lib/timetable/weekView';
 import { fetchClassGroupsForUser, type ClassGroupInfo } from '../../lib/classGroupQueries';
 import {
@@ -120,6 +122,10 @@ export interface HomeData {
 
   /** Semaine affichée, toutes sources confondues (Pronote prioritaire, sinon emploi du temps stocké) */
   week: TimetableWeek;
+  /** Évals à faire rattraper aux absents (migration 066), placées sur le prochain cours de chaque élève à l'heure `now` */
+  placeMakeupsAt: (now: Date) => Map<string, MakeupReminder[]>;
+  /** « Ne plus rappeler » pour une éval */
+  dismissMakeup: (assessmentId: string) => Promise<void>;
   weekSource: 'pronote' | 'stored' | 'none';
   weekLoading: boolean;
 
@@ -482,6 +488,24 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
   }
   const week = buildWeek(viewedMonday, weekLessons, weekHolidays);
 
+  // Rattrapages des absents (migration 066) : calculés, rien n'est stocké par cours
+  const { placeMakeupsAt, dismissMakeup } = useMakeupReminders({
+    userId: user?.id,
+    weekLessons,
+    viewedMonday,
+    pronoteConnected,
+    toLesson: e => ({
+      id: e.id,
+      start: new Date(e.starts_at),
+      end: new Date(e.ends_at),
+      label: e.label,
+      subject: e.subject,
+      room: e.room,
+      status: e.status,
+      ...resolveLabel(e.label, e.class_label, linkMap, classes, classGroups),
+    }),
+  });
+
   const alertsByClass = new Map<string, StudentAlert[]>();
   for (const a of allStudentAlerts) {
     const list = alertsByClass.get(a.class_id) ?? [];
@@ -727,6 +751,8 @@ export function HomeDataProvider({ children, onOpenBoard }: { children: ReactNod
     timetableImport,
     reloadTimetableImport: () => setTimetableReload(n => n + 1),
     week,
+    placeMakeupsAt,
+    dismissMakeup,
     weekSource,
     weekLoading: pronoteConnected ? ttLoading : storedLoading,
     weekSessions,

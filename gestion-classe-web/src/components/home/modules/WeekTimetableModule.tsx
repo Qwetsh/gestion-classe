@@ -8,6 +8,7 @@ import { assignSessions, percentOfDay, sameDay, type PlacedLesson } from '../../
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
 import { noteForLesson, type LessonNote } from '../../../lib/timetable/lessonNotesQueries';
 import { LessonPopover } from './LessonPopover';
+import { makeupsForLesson, makeupSentence, type MakeupReminder } from '../../../lib/timetable/makeupReminders';
 import { classTone } from '../../../lib/classColors';
 
 /**
@@ -19,6 +20,7 @@ export function WeekTimetableModule() {
   const {
     week, weekSource, weekLoading, weekOffset, isCurrentWeek, loadWeek,
     classNames, timetableImport, reloadTimetableImport, weekSessions, lessonNotes,
+    placeMakeupsAt,
   } = useHomeData();
   const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<{ lesson: PlacedLesson; anchor: DOMRect } | null>(null);
@@ -29,6 +31,9 @@ export function WeekTimetableModule() {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // Évals à faire rattraper : chaque absent sur le prochain cours de sa classe (migration 066)
+  const makeupsByLesson = placeMakeupsAt(now);
 
   // Téléphone : un seul jour à la fois, choisi par des pastilles (audit V4).
   // Jour initial : aujourd'hui si la semaine le contient, sinon le premier jour.
@@ -185,6 +190,7 @@ export function WeekTimetableModule() {
                   current={l.start <= now && l.end > now}
                   session={sessionByLesson.get(l.id) ?? null}
                   note={noteForLesson(lessonNotes, l)}
+                  makeups={makeupsForLesson(makeupsByLesson, l)}
                   selected={selected?.lesson.id === l.id}
                   onSelect={(anchor) => setSelected(prev => (prev?.lesson.id === l.id ? null : { lesson: l, anchor }))}
                 />
@@ -221,7 +227,7 @@ export function WeekTimetableModule() {
 }
 
 function LessonBlock({
-  lesson, startHour, endHour, color, showSubject, past, current, session, note, selected, onSelect,
+  lesson, startHour, endHour, color, showSubject, past, current, session, note, makeups, selected, onSelect,
 }: {
   lesson: PlacedLesson;
   startHour: number;
@@ -233,6 +239,8 @@ function LessonBlock({
   session: WeekSession | null;
   /** note écrite sur ce cours depuis l'accueil (null : aucune) */
   note: LessonNote | null;
+  /** évals à faire rattraper pendant ce cours (prochain cours des absents) */
+  makeups: MakeupReminder[];
   selected: boolean;
   onSelect: (anchor: DOMRect) => void;
 }) {
@@ -244,6 +252,7 @@ function LessonBlock({
   const canceled = lesson.status === 'canceled';
   const time = `${formatTime(lesson.start)} – ${formatTime(lesson.end)}`;
   const tone = classTone(lesson.className);
+  const makeupCount = makeups.reduce((n, r) => n + r.students.length, 0);
 
   return (
     <button
@@ -266,7 +275,7 @@ function LessonBlock({
         width: `calc(${100 / lesson.lanes}% - 6px)`,
         ['--lesson-color' as string]: color,
       }}
-      title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null, note ? `Note : ${note.content}` : null].filter(Boolean).join(' · ')}
+      title={[name, lesson.subject, time, lesson.room, canceled ? 'Annulé' : null, note ? `Note : ${note.content}` : null, ...makeups.map(makeupSentence)].filter(Boolean).join(' · ')}
     >
       <div className="wtt__lesson-name">
         {/* Direction C : la classe en puce teintée par niveau ; un cours sans classe garde son libellé neutre */}
@@ -290,6 +299,12 @@ function LessonBlock({
         // Note écrite pour ce cours : en avant tant que le cours n'est pas passé (ni marquée « vue »)
         <div className={`wtt__lesson-note ${note.done || past ? 'wtt__lesson-note--done' : ''}`} title={note.content}>
           <span aria-hidden>📝</span> {note.content.split('\n')[0]}
+        </div>
+      )}
+      {makeupCount > 0 && (
+        // Absents à une éval : à faire rattraper pendant ce cours (le détail est dans le popover)
+        <div className="wtt__lesson-makeup" title={makeups.map(makeupSentence).join('\n')}>
+          <span aria-hidden>↻</span> Rattrapage · {makeupCount} élève{makeupCount > 1 ? 's' : ''}
         </div>
       )}
     </button>

@@ -7,6 +7,7 @@ import { sameDay, type PlacedLesson } from '../../../lib/timetable/weekView';
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
 import { noteForLesson } from '../../../lib/timetable/lessonNotesQueries';
 import { useUIFeedback } from '../../../contexts/UIFeedbackContext';
+import { MakeupReminderSection } from './MakeupReminderSection';
 
 const POPOVER_WIDTH = 300;
 const MARGIN = 8;
@@ -152,6 +153,9 @@ export function LessonPopover({
               <p className="wtt-pop__muted">Aucune séance enregistrée sur ce créneau.</p>
             </div>
           ) : null}
+
+          {/* Évals à faire rattraper aux absents (migration 066) : calculées, placées sur le prochain cours */}
+          {!past && !canceled && <MakeupReminderSection lesson={lesson} now={now} />}
 
           {/* Note pour ce cours : rédigée à l'avance, rappelée au moment du cours (accueil + téléphone) */}
           {!canceled && (note || !past) && (
