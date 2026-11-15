@@ -281,6 +281,36 @@ contenu ne tient pas, alerte au-delà) :
 `p.cadre(...)`, `p.minuteur(x, y, secondes)`, `p.image(x, y, w, h, chemin, largeur, hauteur, cache)`
 (l'image est d'abord envoyée par `gc_envoi.py image`).
 
+**L'interactivité** (lot A, 15/11/2026 ; exemple complet : `exemples/interactifs_4e.py`, contrôlé
+dans l'application). Le procédé qui s'en sert est la skill `tableau-seance`.
+
+| Gabarit interactif | Ce qu'il pose |
+|---|---|
+| `etapes(titre, etapes, image=…/dessin=…)` | un processus : chaque toucher sur « Suivant » montre l'étape suivante |
+| `schema(titre, legendes, image=…/dessin=…, mode='suivant'\|'toucher')` | étiquettes reliées par une flèche à leur point, une à une, ou au toucher du point |
+| `vrai_faux(titre, [(texte, vrai, explication)])` | 4 lignes au plus, bouton « Verdict » par ligne |
+| `qcm(titre, question, choix, bonne, explication)` | toucher un choix montre une coche ou une croix |
+| `loupe(titre, image, zones)` | toucher une zone de l'image cadre la vue dessus |
+| `sommaire(titre, [(libellé, écran)], position)` | boutons qui mènent chacun à un écran |
+
+Primitives : `p.bouton(x, y, w, h, texte, actions)`, `p.suivant(x, y, [[actions], [actions]…])`
+(un bouton « Suivant 1/n » qui déroule des étapes, puis « ↺ Rejouer »), `p.zone(x, y, w, h,
+actions)` (zone invisible), `p.cacher(objets…)` (cachés au départ), `p.fleche(de, vers)` (objet ou
+point), `p.dessin(item, x, y, w)` (`DESSINS` : cell-animal, neuron, heart, volcano, check…),
+`p.forme(kind, …)`, `p.tableau_fixe(x, y, w, lignes)`, `p.fenetre(titre, html)`,
+`p.coup_de_pouce(html)`, `p.outil(kind, …)` (dé, roue, feu…), `p.video(x, y, w, url)`,
+`p.site(x, y, w, h, url)`, `p.fond('grid')`, `p.rideau()`.
+Actions : `Afficher`, `Masquer`, `Basculer`, `Decouvrir`, `Recouvrir`, `DeplacerVers(o, x, y)`,
+`Decaler(o, dx, dy)`, `Replacer`, `Zoomer`, `Ouvrir(fenetre)`, `AllerA(écran)`, `PageSuivante`,
+`Lancer`/`Arreter` (minuteur), `Tirer` (dé, roue), `Reinitialiser`, `UneFois(action)`.
+
+Pièges vérifiés dans l'application :
+
+- une flèche accrochée à un objet ne suit pas un objet **déplacé par un bouton** ;
+- les boutons ne réagissent qu'avec l'outil de sélection (pas avec le stylo) ;
+- un libellé de bouton est en gras : compter 15 % plus large que le texte courant (`ecrire()`
+  alerte quand il passerait sur deux lignes).
+
 Règles :
 
 - **Une idée par écran**, des phrases courtes. Un texte courant ne descend pas sous la taille 22.
