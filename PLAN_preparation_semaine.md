@@ -371,7 +371,7 @@ trait entier. Petit lot : y porter la découpe du tableau blanc. À faire si Tho
 | 0 — Essai réel | **En cours** depuis le 14/11/2026 : documents créés et placés (§ 9) ; reste le jugement de Thomas en classe |
 | 1 — Envoi des fichiers et des documents | **Fait** le 14/11/2026 (PR #86, migration 075, fonction `depot-cours`) : jeton d'import créé dans Réglages, envoi par `gc_envoi.py`, essayé de bout en bout avec l'image du puzzle |
 | 2 — Écrans : le socle | **Fait** le 14/11/2026 (PR #84 et #85, migration 074) : un cours porte des écrans (`doc.screens`), bouton « Écrans » (devenu « Tableau »), état de page et réponses révélées gardés en base |
-| 3 — Écrans : gabarits, générateur, vérificateur | **En cours** : vérificateur fait le 15/11/2026 (`npm run screens:check`) ; restent les gabarits et le générateur |
+| 3 — Écrans : gabarits, générateur, vérificateur | **En cours** : vérificateur (`npm run screens:check`, § 10) puis gabarits et générateur (`gc_ecrans.py`, § 11) faits le 15/11/2026 ; restent le contrôle par rendu automatique et le jugement de Thomas en classe |
 | 4 — Skill « prépare ma semaine » | À faire |
 | 5 — Tableaux de fin de séance | À faire |
 | 6 — Plus tard | — |
@@ -455,3 +455,32 @@ Premier lot de l'étape 3, fait avant les gabarits : il protège tout ce qui ser
 `gc_ecrans.py`, le contrôle par rendu. Le script `course-drafts/_outils/wegener_ecrans.py`, écrit à
 la main le 14/11, en est le brouillon : sa classe `Ecran` (texte, réponse sous cache, cadre,
 minuteur) donne la forme des gabarits.
+
+## 11. Étape 3 — les gabarits et le générateur (15/11/2026, branche `feat/ecrans-generateur`)
+
+- **`gc_ecrans.py`** dans la skill `cours-gestion-classe` : un écran s'écrit en une ligne par
+  gabarit. Huit gabarits (titre, situation, consigne, document, question, tableau à compléter,
+  calcul, bilan) et, dessous, les primitives du script d'origine (texte, réponse sous cache, cadre,
+  minuteur, image) pour ce qu'aucun gabarit ne fait.
+- **Mise en page automatique** : chaque gabarit estime la hauteur de ses textes, répartit les
+  blocs dans la page, garde une réponse sous son intitulé, descend la taille de 2 en 2 jusqu'à 22,
+  et note une alerte quand le contenu ne tient pas (raccourcir ou couper en deux écrans).
+- **Non-régression** : `exemples/wegener_ecrans.py` réécrit les 13 écrans Wegener avec le
+  générateur (titre, tableau, calcul et bilan par gabarits) ; le résultat est identique, objet par
+  objet, à ce qui est en base.
+- **Exemple par gabarits seuls** : `exemples/microbiote_ecrans.py`, huit écrans, sans erreur ni
+  avertissement au vérificateur.
+- **Contrôlé dans l'application** (cours d'essai, supprimé ensuite) : les 21 écrans des deux jeux
+  ont été affichés en mode « En classe » et leurs 114 textes mesurés. L'estimation est juste
+  102 fois, compte trop haut 11 fois, trop bas 1 fois (« 390 000 000 cm = 3 900 km » : les chiffres
+  sont plus larges que la moyenne). Aucun chevauchement, rien sous l'écran.
+- **Deux défauts trouvés par cette mesure, corrigés** : une ligne vide entre deux paragraphes
+  (`<div><br></div>`) n'était comptée ni par le générateur ni par le vérificateur ; l'énoncé d'un
+  calcul sur trois lignes descendait sur le cadre.
+- **Effet de bord connu** : avec les lignes vides comptées, le vérificateur signale que le bilan
+  Wegener descendrait à 565 ; mesuré, il s'arrête à 495. L'avertissement reste, marqué
+  « estimation ».
+
+**Reste de l'étape 3** : faire de la mesure ci-dessus un contrôle automatique (charger le brouillon
+dans un cours d'essai, mesurer, comparer), et affiner l'estimation (largeur par caractère, coupure
+par mots) si les écarts gênent.

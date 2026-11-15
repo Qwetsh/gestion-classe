@@ -16,7 +16,7 @@ ne saute jamais la vérification.
 
 Chemins (dépôt `Gestion classe`, à adapter si la session est dans un worktree) :
 
-- skill : `.claude/skills/cours-gestion-classe/` (`gc_cours.py`, `exemples/microbiote.py`, `icones.md`)
+- skill : `.claude/skills/cours-gestion-classe/` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `exemples/`, `icones.md`)
 - brouillons : `gestion-classe-web/course-drafts/` (ignoré par git)
 - projet Supabase de production : `djodkjysovalpufgevrr`
 
@@ -231,3 +231,63 @@ Ouvrir l'app (serveur de dev ou site déployé), puis le cours, et vérifier :
 - qu'aucun tableau ne déborde.
 
 Sinon, demander à Thomas de l'ouvrir et de le dire.
+
+## 7. Les écrans d'une activité (`gc_ecrans.py`)
+
+Les écrans sont ce que la classe voit au TBI pendant l'activité : des pages de tableau blanc
+(1000 × 562,5), portées par le cours. Ce n'est pas la fiche zoomée (Thomas l'a écartée).
+
+**Ce qui va à l'écran** : la problématique, les consignes raccourcies, un document en grand, une
+question par écran, la place pour écrire, les réponses sous cache, le bilan.
+**Ce qui reste sur le papier** : cartouche, ligne d'identité, barème détaillé, « J'ai réussi ».
+
+Lire d'abord les deux exemples :
+
+- `exemples/microbiote_ecrans.py` : huit écrans écrits avec les seuls gabarits (à lire à côté de
+  `exemples/microbiote.py`, la fiche de la même activité) ;
+- `exemples/wegener_ecrans.py` : les 13 écrans joués en classe, gabarits et primitives mêlés. Il
+  reproduit à l'identique ce qui est en base : c'est le contrôle de non-régression du générateur.
+
+```python
+import sys; sys.path.insert(0, r'<dépôt>/.claude/skills/cours-gestion-classe')
+from gc_ecrans import *
+
+e = Ecrans('mic', "Activité 2 · L'activité du microbiote")   # préfixe court, propre à l'activité
+e.titre('Séquence 1 — Micro-organismes', 'Activité 2', "L'activité du microbiote",
+        problematique='Quelles aides les microbiotes nous apportent-ils ?')
+e.question('Question 1 — La souche A', 'À partir du <b>document 1</b>, <b>explique</b> …',
+           [('J’observe', '…'), ('J’en déduis', '…')])
+e.bilan('<div>Le ' + e.trou('microbiote') + ' est …</div>')
+e.ecrire(r'<dépôt>/gestion-classe-web/course-drafts/ecrans/microbiote-ecrans.json')
+```
+
+**Les gabarits** placent seuls leurs blocs (hauteur estimée, taille réduite jusqu'à 22 si le
+contenu ne tient pas, alerte au-delà) :
+
+| Gabarit | Ce qu'il pose |
+|---|---|
+| `titre(sequence, activite, titre, problematique)` | l'écran d'ouverture |
+| `situation(paragraphes, question)` | deux ou trois phrases, la question en rouge |
+| `consigne(titre, etapes, minuteur, note, bareme)` | étapes numérotées `(verbe, suite)`, minuteur à droite |
+| `document(titre, paragraphes, encadre)` ou `document(titre, image=…, legende=…)` | un document en grand |
+| `question(titre, enonce, reponses, bareme)` | l'énoncé, puis `(intitulé, réponse)` sous cache |
+| `tableau(titre, entetes, lignes, bareme, par_ecran=2)` | tableau à compléter, deux lignes par écran, suite sur l'écran suivant |
+| `calcul(titre, enonce, etapes, bareme)` | zone où poser le calcul, étapes sous cache à droite |
+| `bilan(html)` | le bilan en rouge ; `e.trou('mot')` pour un texte à trous |
+
+**Les primitives**, pour ce qu'aucun gabarit ne fait : `p = e.ecran(titre, bareme)`, puis
+`p.texte(x, y, w, taille, html, couleur, cache, fond)`, `p.reponse(...)` (rouge, sous rideau),
+`p.cadre(...)`, `p.minuteur(x, y, secondes)`, `p.image(x, y, w, h, chemin, largeur, hauteur, cache)`
+(l'image est d'abord envoyée par `gc_envoi.py image`).
+
+Règles :
+
+- **Une idée par écran**, des phrases courtes. Un texte courant ne descend pas sous la taille 22.
+- **Le bilan en rouge**, titre compris (le gabarit le fait).
+- Lire les **alertes** qu'affiche `ecrire()` : elles disent quel écran raccourcir ou couper.
+- Puis `npm run screens:check`, et seulement ensuite `gc_envoi.py ecrans <id du cours> <fichier>`.
+- Les hauteurs sont **estimées**, en comptant large (mesuré le 15/11/2026 sur 114 textes : 102
+  justes, 11 comptés trop hauts, 1 trop bas, une ligne de chiffres). Si le navigateur intégré est
+  disponible, ouvrir le cours en mode « En classe » et regarder chaque écran ; sinon le dire à
+  Thomas. Ne jamais faire ce contrôle sur un cours placé pour une classe : la page affichée y est
+  gardée en base.

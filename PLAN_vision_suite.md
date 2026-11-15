@@ -246,7 +246,7 @@ Encore ouverte :
 
 | Phase | État |
 |---|---|
-| 0 — Valider | En cours : essais en classe du 16 au 25/11 ; vérificateur d'écrans fait le 15/11/2026 (`npm run screens:check`) ; restent les gabarits, le générateur, la skill « prépare ma semaine », la fusion du mobile |
+| 0 — Valider | En cours : essais en classe du 16 au 25/11 ; vérificateur d'écrans (`npm run screens:check`), gabarits et générateur (`gc_ecrans.py`) faits le 15/11/2026 ; restent le contrôle par rendu automatique, la skill « prépare ma semaine », la fusion du mobile |
 | 1 — Le foyer | **Terminée le 15/11/2026** : lots C1 à C4, N1 à N3, R1 et F1 en ligne (PR #92 à #99) ; détail dans `PLAN_mes_cours.md`. À regarder en vraie séance : « Passé » et « Fin de séance » |
 | 2 — Animation par étapes | À faire |
 | 3 — Modules | À faire |
