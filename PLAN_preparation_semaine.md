@@ -371,7 +371,7 @@ trait entier. Petit lot : y porter la découpe du tableau blanc. À faire si Tho
 | 0 — Essai réel | **En cours** depuis le 14/11/2026 : documents créés et placés (§ 9) ; reste le jugement de Thomas en classe |
 | 1 — Envoi des fichiers et des documents | **Fait** le 14/11/2026 (PR #86, migration 075, fonction `depot-cours`) : jeton d'import créé dans Réglages, envoi par `gc_envoi.py`, essayé de bout en bout avec l'image du puzzle |
 | 2 — Écrans : le socle | **Fait** le 14/11/2026 (PR #84 et #85, migration 074) : un cours porte des écrans (`doc.screens`), bouton « Écrans » (devenu « Tableau »), état de page et réponses révélées gardés en base |
-| 3 — Écrans : gabarits, générateur, vérificateur | À faire |
+| 3 — Écrans : gabarits, générateur, vérificateur | **En cours** : vérificateur fait le 15/11/2026 (`npm run screens:check`) ; restent les gabarits et le générateur |
 | 4 — Skill « prépare ma semaine » | À faire |
 | 5 — Tableaux de fin de séance | À faire |
 | 6 — Plus tard | — |
@@ -429,3 +429,29 @@ mouvement ») : la fiche (2 pages) et la correction (4 pages, zones au stylet, s
 
 **Reste à juger par Thomas** (les quatre questions de l'étape 0) : l'impression, la fiche projetée
 comme tableau d'activité, l'encre retrouvée après la séance, l'ouverture depuis `/classe`.
+
+## 10. Étape 3 — le vérificateur d'écrans (15/11/2026, branche `feat/ecrans-verificateur`)
+
+Premier lot de l'étape 3, fait avant les gabarits : il protège tout ce qui sera généré ensuite.
+
+- **`npm run screens:check`** (`src/components/course/__tests__/screensDrafts.test.ts`) lit
+  `course-drafts/ecrans/*.json` et écrit `<nom>.report.txt` à côté de chaque fichier.
+- **Règles** dans `src/lib/course/screensCheck.ts`, avec 18 tests :
+  - *erreurs* : ce que la fonction de dépôt refuserait (identifiant ou fond de page, plus de
+    60 pages, balise hors mise en forme, signe « < » nu) ; ce que le tableau ne sait pas afficher
+    (type d'objet, forme ou outil inconnus, hauteur manquante) ; identifiant en double ; image
+    citée par une adresse ; bouton qui vise un objet ou une page absents ; cache inconnu ; objet
+    hors de l'écran ;
+  - *avertissements* : texte courant (plus de 60 caractères) sous la taille 22, soit 28 px sur le
+    TBI de 1 280 px ; tout texte sous la taille 14 ; et, sur une **estimation** de la hauteur des
+    textes, un texte qui descendrait sur le suivant, sous l'écran, ou hors de son cadre.
+- **Étalonné sur les 13 écrans Wegener** écrits à la main : aucune erreur, 6 avertissements, tous
+  sur le tableau des arguments (écrans 7 et 8, textes en taille 20).
+- **Limite** : la hauteur d'un texte est estimée (0,52 fois la taille par caractère). Le contrôle
+  de mise en page par un rendu dans l'application, prévu par l'étape 3, reste à faire.
+- La skill `cours-gestion-classe` impose ce contrôle avant `gc_envoi.py ecrans`.
+
+**Reste de l'étape 3** : les règles d'adaptation, la famille de gabarits, le générateur
+`gc_ecrans.py`, le contrôle par rendu. Le script `course-drafts/_outils/wegener_ecrans.py`, écrit à
+la main le 14/11, en est le brouillon : sa classe `Ecran` (texte, réponse sous cache, cadre,
+minuteur) donne la forme des gabarits.

@@ -163,7 +163,7 @@ de la séance, et sort en PDF.
 | N2 — Maquette du menu regroupé | **Fusionnée dans master le 15/11/2026** (PR #97) ; Thomas a retenu la variante A |
 | N3 — Menu regroupé | **Fusionné dans master le 15/11/2026** (PR #97), après essai de Thomas dans la prévisualisation |
 | R1 — Recherche globale | **Fusionné dans master le 15/11/2026** (PR #98), après essai de Thomas dans la prévisualisation |
-| F1 — Fichiers | **Codé** le 15/11/2026 (branche `feat/cours-fichiers`), pas commité ; migration 078 appliquée en prod le 15/11/2026 |
+| F1 — Fichiers | **Fusionné dans master le 15/11/2026** (PR #99, migration 078) ; la phase 1 est terminée |
 
 ### Lot C1 — page et bibliothèque, fait le 14/11/2026 (branche `feat/mes-cours`)
 

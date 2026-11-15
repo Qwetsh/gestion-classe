@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "course:check": "vitest run src/components/course/__tests__/courseDrafts.test.ts",
+    "screens:check": "vitest run src/components/course/__tests__/screensDrafts.test.ts",
     "preview": "vite preview",
     "postinstall": "patch-package"
   },
