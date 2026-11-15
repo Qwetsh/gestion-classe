@@ -19,6 +19,7 @@ import {
   type Board,
   type BoardMeta,
 } from '../../lib/boardsQueries';
+import { groupActivities, VARIANT_LABEL } from '../../lib/courseLibrary';
 
 type Props =
   | {
@@ -141,7 +142,34 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
               <div key={chapter || '—'} className="wblb__chapter">
                 {chapter && <h4>{chapter}</h4>}
                 <div className="wblb__list">
-                  {list.map((b) => (
+                  {groupActivities(list).map(({ key, title, members }) => members.length > 1 ? (
+                    // Activité : un bouton par original (fiche, correction, documents)
+                    <div key={key} className="wblb__row wblb__row--activity">
+                      <span className="wblb__icon">📋</span>
+                      <div>
+                        <span>{title}</span>
+                        <small>modifié le {fmtDate(members.reduce((d, m) => (m.board.updated_at > d ? m.board.updated_at : d), ''))}</small>
+                      </div>
+                      <span className="wblb__variants">
+                        {members.map(({ variant, board: b }) => (
+                          <span key={b.id} className="wblb__variant">
+                            <button
+                              type="button"
+                              className="wblb__go"
+                              disabled={busy !== null}
+                              title={`${onPickTab ? 'Copier ici les pages de' : 'Ouvrir'} ${b.title}`}
+                              onClick={() => pick(b)}
+                            >
+                              {busy === b.id ? '…' : VARIANT_LABEL[variant]}
+                            </button>
+                            {onPickTab && (
+                              <button type="button" className="wblb__tabbtn" disabled={busy !== null} title={`Ouvrir ${b.title} dans un nouvel onglet, sans toucher au tableau courant`} aria-label={`Ouvrir ${b.title} dans un nouvel onglet`} onClick={() => onPickTab(b)}>↗</button>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ) : members.map(({ board: b }) => (
                     <div key={b.id} className="wblb__rowwrap">
                       <button type="button" className="wblb__row wblb__row--pick" disabled={busy !== null} onClick={() => pick(b)}>
                         <span className="wblb__icon">📋</span>
@@ -155,7 +183,7 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
                         <button type="button" className="wblb__tabbtn" disabled={busy !== null} title="Ouvrir dans un nouvel onglet, sans toucher au tableau courant" onClick={() => onPickTab(b)}>↗ Onglet</button>
                       )}
                     </div>
-                  ))}
+                  )))}
                 </div>
               </div>
             ))}
@@ -265,6 +293,14 @@ const CSS = `
 .wblb__row--pick:disabled { opacity: .6; cursor: default; }
 .wblb__row--pick > div > span { font-weight: 600; font-size: 16px; }
 .wblb__icon { font-size: 22px; flex: none; }
+.wblb__row--activity { min-height: 56px; }
+.wblb__row--activity > div > span { font-weight: 600; font-size: 16px; }
+.wblb__variants { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.wblb__variant { display: inline-flex; align-items: stretch; gap: 4px; }
+.wblb__variant .wblb__go { min-height: 40px; border: 0; cursor: pointer; }
+.wblb__variant .wblb__go:hover:not(:disabled) { outline: 2px solid #A5B4FC; }
+.wblb__variant .wblb__go:disabled { opacity: .6; cursor: default; }
+.wblb__variant .wblb__tabbtn { padding: 0 10px; }
 .wblb__go { flex: none; padding: 8px 12px; border-radius: 8px; background: #4F46E5; color: #FFFFFF; font: 600 13px/1 Inter, system-ui, sans-serif; }
 .wblb__foot { display: flex; justify-content: flex-end; gap: 10px; padding: 10px 16px 16px; }
 .wblb__primary { min-height: 44px; }

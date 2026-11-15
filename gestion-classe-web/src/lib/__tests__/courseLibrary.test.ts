@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
-import { chaptersOfLevel, courseHref, groupLibrary, naturalCompare, parseOpenTarget, recentBoards } from '../courseLibrary';
+import { chaptersOfLevel, courseHref, groupActivities, groupLibrary, naturalCompare, parseOpenTarget, recentBoards, splitVariant } from '../courseLibrary';
 
 const board = (id: string, title: string, level: string | null, chapter: string | null, updated = '2026-11-01T08:00:00Z'): Board => ({
   id, title, level, chapter, class_id: null, created_at: updated, updated_at: updated,
@@ -54,6 +54,61 @@ describe('groupLibrary', () => {
     expect(fourth.sequences[1].boards).toEqual([]);
     expect(fourth.count).toBe(4);
     expect(withFiles.map((g) => g.level)).toEqual(['6e', '5e', '4e', 'Autre', null]);
+  });
+});
+
+describe('splitVariant', () => {
+  it('lit la correction et les documents à la fin du titre', () => {
+    expect(splitVariant('Activité 3 — Wegener (correction)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'correction' });
+    expect(splitVariant('Activité 3 — Wegener (Documents)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'documents' });
+    expect(splitVariant('Activité 3 — Wegener (corrigé) ')).toEqual({ base: 'Activité 3 — Wegener', variant: 'correction' });
+    expect(splitVariant('Activité 3 — Wegener')).toEqual({ base: 'Activité 3 — Wegener', variant: 'fiche' });
+    expect(splitVariant('La correction (bilan)').variant).toBe('fiche');
+  });
+});
+
+describe('groupActivities', () => {
+  const seq = 'Séquence 2 — Terre en mouvement';
+  const sorted = (list: Board[]) => [...list].sort((x, y) => naturalCompare(x.title, y.title));
+
+  it('rattache la correction et les documents à leur activité, dans l’ordre fiche › correction › documents', () => {
+    const groups = groupActivities(sorted([
+      board('c1', 'Activité 1 — Plaques (correction)', '4e', seq),
+      board('d1', 'Activité 1 — Plaques (documents)', '4e', seq),
+      board('f1', 'Activité 1 — Plaques', '4e', seq),
+      board('f2', 'Activité 2 — Subduction', '4e', seq),
+      board('c2', 'Activité 2 — Subduction (correction)', '4e', seq),
+    ]));
+    expect(groups.map((g) => g.title)).toEqual(['Activité 1 — Plaques', 'Activité 2 — Subduction']);
+    expect(groups[0].members.map((m) => m.board.id)).toEqual(['f1', 'c1', 'd1']);
+    expect(groups[1].members.map((m) => m.variant)).toEqual(['fiche', 'correction']);
+  });
+
+  it('laisse seule une correction orpheline ou un cours sans activité', () => {
+    const groups = groupActivities(sorted([
+      board('o', 'Activité 2 — Patiente 2 (correction)', '3e', seq),
+      board('f', 'Activité 3 — Antibiogramme', '3e', seq),
+    ]));
+    expect(groups.map((g) => g.members.length)).toEqual([1, 1]);
+    expect(groups[0].members[0].variant).toBe('correction');
+  });
+
+  it('compte une activité et sa correction pour une seule ligne du niveau', () => {
+    const [level] = groupLibrary([
+      board('f1', 'Activité 1 — Plaques', '4e', seq),
+      board('c1', 'Activité 1 — Plaques (correction)', '4e', seq),
+      board('o', 'Activité 2 — Seule (correction)', '4e', seq),
+    ]);
+    expect(level.count).toBe(2);
+  });
+
+  it('garde un doublon de titre à part', () => {
+    const groups = groupActivities([
+      board('a', 'Activité 1', '4e', seq),
+      board('b', 'Activité 1', '4e', seq),
+      board('c', 'Activité 1 (correction)', '4e', seq),
+    ]);
+    expect(groups.map((g) => g.members.map((m) => m.board.id))).toEqual([['a', 'c'], ['b']]);
   });
 });
 

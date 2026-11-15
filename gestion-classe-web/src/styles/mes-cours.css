@@ -101,6 +101,29 @@
 }
 .mc-chip:hover { filter: brightness(0.95); }
 
+/* ---- Activité : fiche, correction, documents sur une seule ligne ---- */
+.mc-variants { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+.mc-variant {
+  display: inline-flex; align-items: center; gap: 4px; height: 30px; padding-right: 3px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+}
+.mc-variant:not(:has(.mc-row__chips, .mc-variant__play)) { padding-right: 0; }
+.mc-variant__open {
+  align-self: stretch; padding: 0 9px; border: 0; border-radius: calc(var(--radius-sm) - 1px); background: none;
+  cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap;
+}
+.mc-variant__open:hover { background: var(--indigo-soft); color: var(--indigo-ink); }
+.mc-variant--correction .mc-variant__open,
+.mc-variant--documents .mc-variant__open { color: var(--text-muted); }
+.mc-variant--correction .mc-variant__open:hover,
+.mc-variant--documents .mc-variant__open:hover { color: var(--indigo-ink); }
+.mc-variant .mc-row__chips { gap: 3px; }
+.mc-variant__play {
+  display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 5px;
+  background: none; cursor: pointer; color: var(--text-muted);
+}
+.mc-variant__play:hover { background: var(--indigo-soft); color: var(--indigo-ink); }
+
 .mc-place__what { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); }
 .mc-place__note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
 .mc-place__classes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -125,6 +148,13 @@
   .mc-row { flex-wrap: wrap; }
   .mc-row__chips { order: 5; flex-basis: 100%; flex-wrap: wrap; padding: 0 0 8px 44px; }
   .mc-chip { height: 28px; line-height: 28px; padding: 0 10px; font-size: 12.5px; }
+  /* Activité : les boutons passent sous le titre, pastilles gardées dans leur bouton */
+  .mc-row--activity .mc-variants { order: 5; flex-basis: 100%; min-width: 0; flex-wrap: wrap; padding: 0 0 8px 36px; }
+  .mc-variant .mc-row__chips { order: 0; flex-basis: auto; flex-wrap: wrap; padding: 0; }
+  .mc-variant { height: auto; min-height: 40px; max-width: 100%; flex-wrap: wrap; }
+  .mc-variant__open { align-self: center; min-height: 38px; padding: 0 10px; font-size: 13.5px; }
+  .mc-variant .mc-chip { padding: 0 7px; }
+  .mc-variant__play { width: 34px; height: 36px; }
   .mc-place__slot { min-height: 48px; }
 }
 

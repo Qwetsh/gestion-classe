@@ -55,11 +55,67 @@ export function groupLibrary(boards: Board[], extraSequences: { level: string | 
     .sort((a, b) => rank(a[0]) - rank(b[0]) || naturalCompare(a[0] ?? '', b[0] ?? ''))
     .map(([level, sequences]) => ({
       level,
-      count: [...sequences.values()].reduce((n, list) => n + list.length, 0),
+      // Lignes affichées : une activité et sa correction comptent pour une
+      count: [...sequences.values()].reduce((n, list) => n + groupActivities(list).length, 0),
       sequences: [...sequences.entries()]
         .sort((a, b) => (a[0] === '' ? 1 : b[0] === '' ? -1 : naturalCompare(a[0], b[0])))
         .map(([chapter, list]) => ({ chapter, boards: [...list].sort((x, y) => naturalCompare(x.title, y.title)) })),
     }));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Activité › correction › documents : rattachés par le titre, sans colonne en base
+// ---------------------------------------------------------------------------------------------
+
+/** Rôle d'un original dans son activité, lu à la fin de son titre. */
+export type CourseVariant = 'fiche' | 'correction' | 'documents';
+
+export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'correction', 'documents'];
+
+export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', correction: 'Correction', documents: 'Documents' };
+
+/** « Activité 3 — Wegener (correction) » → correction de « Activité 3 — Wegener ». */
+const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?)\)\s*$/i;
+
+export function splitVariant(title: string): { base: string; variant: CourseVariant } {
+  const m = VARIANT_SUFFIX.exec(title);
+  if (!m) return { base: title.trim(), variant: 'fiche' };
+  const word = m[1].toLowerCase();
+  return { base: title.slice(0, m.index).trim(), variant: word.startsWith('doc') ? 'documents' : 'correction' };
+}
+
+export interface ActivityGroup {
+  /** Identifiant stable pour React : celui du premier original du groupe. */
+  key: string;
+  /** Titre de l'activité, sans « (correction) ». */
+  title: string;
+  /** Dans l'ordre fiche, correction, documents ; au plus un original par rôle. */
+  members: { variant: CourseVariant; board: Board }[];
+}
+
+/**
+ * Rassemble, dans une séquence, la fiche d'une activité avec sa correction et ses documents
+ * (même titre, suivi de « (correction) » ou « (documents) »). L'ordre des activités suit
+ * celui de la liste reçue. Un original seul (correction orpheline comprise) forme un groupe
+ * d'un membre ; un doublon de titre reste à part, au lieu d'en cacher un.
+ */
+export function groupActivities(boards: Board[]): ActivityGroup[] {
+  const groups: ActivityGroup[] = [];
+  const byBase = new Map<string, ActivityGroup>();
+  for (const board of boards) {
+    const { base, variant } = splitVariant(board.title);
+    const key = base.normalize('NFC').toLocaleLowerCase('fr');
+    const found = byBase.get(key);
+    if (found && !found.members.some((m) => m.variant === variant)) {
+      found.members.push({ variant, board });
+      found.members.sort((a, b) => VARIANT_ORDER.indexOf(a.variant) - VARIANT_ORDER.indexOf(b.variant));
+      continue;
+    }
+    const group: ActivityGroup = { key: board.id, title: base || board.title, members: [{ variant, board }] };
+    groups.push(group);
+    if (!found) byBase.set(key, group);
+  }
+  return groups;
 }
 
 /** Les cours modifiés le plus récemment (module « Repris récemment » de l'accueil). */

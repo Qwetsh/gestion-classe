@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 export interface MoreMenuItem {
   label: string;
@@ -6,6 +6,8 @@ export interface MoreMenuItem {
   danger?: boolean;
   disabled?: boolean;
   title?: string;
+  /** Intitulé de section : affiché au-dessus du premier élément d'une suite qui le partage. */
+  group?: string;
 }
 
 /**
@@ -66,9 +68,21 @@ export function MoreMenu({ items, label = '⋯', title, align = 'right', compact
             boxShadow: 'var(--shadow-2)', zIndex: 20, padding: 4,
           }}
         >
-          {items.map((it) => (
+          {items.map((it, i) => (
+            <Fragment key={`${it.group ?? ''}|${it.label}`}>
+            {it.group && it.group !== items[i - 1]?.group && (
+              <div
+                role="presentation"
+                style={{
+                  padding: i === 0 ? '6px 10px 2px' : '10px 10px 2px', marginTop: i === 0 ? 0 : 4,
+                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                  fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)',
+                }}
+              >
+                {it.group}
+              </div>
+            )}
             <button
-              key={it.label}
               role="menuitem"
               disabled={it.disabled}
               onClick={() => { setOpen(false); it.onClick(); }}
@@ -81,6 +95,7 @@ export function MoreMenu({ items, label = '⋯', title, align = 'right', compact
             >
               {it.label}
             </button>
+            </Fragment>
           ))}
         </div>
       )}
