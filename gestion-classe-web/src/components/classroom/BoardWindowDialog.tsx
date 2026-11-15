@@ -126,9 +126,10 @@ const CSS = `
 .wbwin__body.is-portrait .wbwin__image { width: 40%; }
 .wbwin__body.is-portrait .wbwin__image img { width: 100%; max-height: 70vh; border-radius: 12px; object-fit: contain; }
 .wbwin__wait { color: #9CA3AF; }
-.wbwin__text { flex: 1; min-width: 0; font-size: 22px; line-height: 1.45; color: #F9FAFB; white-space: pre-wrap; overflow-wrap: break-word; }
+/* Couleur du cadre (sombre en tbi, claire sous le thème du ruban) : jamais un blanc fixe, illisible sur la boîte claire */
+.wbwin__text { flex: 1; min-width: 0; font-size: 22px; line-height: 1.45; color: inherit; white-space: pre-wrap; overflow-wrap: break-word; }
 .wbwin__text ul, .wbwin__text ol { margin: 0.3em 0; padding-left: 1.4em; }
-.wbwin__editor { min-height: 160px; padding: 12px 14px; border: 1px solid #374151; border-radius: 12px; background: #0B1220; outline: none; caret-color: #6366F1; user-select: text; }
+.wbwin__editor { min-height: 160px; padding: 12px 14px; border: 1px solid #374151; border-radius: 12px; background: #0B1220; color: #F9FAFB; outline: none; caret-color: #6366F1; user-select: text; }
 .wbwin__editor:focus { border-color: #6366F1; }
 .wbwin .wbx__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 22px 18px; }
 .wbwin .wbx__btn { min-height: 44px; padding: 0 18px; border: 1px solid #374151; border-radius: 12px; background: transparent; color: #E5E7EB; font: 600 15px/1 Inter, system-ui, sans-serif; cursor: pointer; }

@@ -34,7 +34,7 @@ import { expandGroups, objectRect, type BoardObject, type TextObject } from '../
 import { snapMove, unionRect } from '../../lib/boardSnap';
 import { defaultShapeText, shapeTextBox } from '../../lib/boardShapes';
 import { BoardConnectorLayer, type GhostLink } from './BoardConnectorLayer';
-import { objectUnderPoint, type FixedSide } from '../../lib/boardConnectors';
+import { isAttachedEnd, objectUnderPoint, type FixedSide } from '../../lib/boardConnectors';
 
 /** Fin d'un geste depuis un bouton de connexion (↑ → ↓ ←) d'une forme. */
 export type ConnectDrop =
@@ -992,6 +992,21 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
     else { const u = clientToUnit(e.clientX, e.clientY); onConnectFrom(o.id, d.side, { kind: 'point', x: Math.round(u.x), y: Math.round(u.y) }); }
   };
 
+  // En lecture, une flèche suit la visibilité de séance : cachée au départ, ou accrochée à un objet
+  // caché, elle n'est pas dessinée (sinon une légende révélée pas à pas montre sa flèche d'avance).
+  // En lecture le calque des flèches n'édite rien : lui passer une liste filtrée ne perd rien.
+  const connectorObjects = play
+    ? objects.filter((o) => {
+      if (o.type !== 'connector') return true;
+      if (!isObjectVisible(reveal, o)) return false;
+      return [o.from, o.to].every((end) => {
+        if (!isAttachedEnd(end)) return true;
+        const target = objects.find((t) => t.id === end.objectId);
+        return !target || isObjectVisible(reveal, target);
+      });
+    })
+    : objects;
+
   return (
     <div ref={layerRef} className="wbo" style={{ left: stage.left, top: stage.top, width: stage.width, height: stage.height }}>
       {objects.map((raw) => {
@@ -1449,7 +1464,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
         );
       })}
       <BoardConnectorLayer
-        objects={objects}
+        objects={connectorObjects}
         ghosts={links}
         scale={scale}
         width={stage.width}

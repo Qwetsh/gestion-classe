@@ -184,9 +184,24 @@ export async function deleteBoard(id: string): Promise<void> {
 
 const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-/** Copie profonde des pages avec de nouveaux identifiants (les fichiers du bucket sont partagés, pas dupliqués). */
+/**
+ * Copie profonde des pages avec de nouveaux identifiants (les fichiers du bucket sont partagés, pas
+ * dupliqués). Un bouton « Aller à la page » qui vise une page copiée avec lui suit sa copie : sans
+ * cela, un sommaire ne mène plus nulle part en classe ni à l'essai (les pages y sont des copies).
+ */
 export function clonePages(pages: BoardPage[]): BoardPage[] {
-  return pages.map((p) => ({ ...(JSON.parse(JSON.stringify(p)) as BoardPage), id: newId() }));
+  const ids = new Map(pages.map((p) => [p.id, newId()]));
+  return pages.map((p) => {
+    const copy = JSON.parse(JSON.stringify(p)) as BoardPage;
+    copy.id = ids.get(p.id) ?? newId();
+    for (const o of copy.objects ?? []) {
+      for (const it of o.interactions ?? []) {
+        const target = it.params?.pageId;
+        if (target && ids.has(target)) it.params = { ...it.params, pageId: ids.get(target) };
+      }
+    }
+    return copy;
+  });
 }
 
 /** Pages d'un tableau préparé, prêtes à être insérées ailleurs (nouveaux identifiants). */
