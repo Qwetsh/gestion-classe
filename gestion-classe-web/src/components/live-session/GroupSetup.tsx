@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGroupSession } from '../../contexts/GroupSessionContext';
+import { templatesForClass } from '../../lib/tpLibrary';
 
 export function GroupSetup() {
   const {
@@ -12,6 +13,8 @@ export function GroupSetup() {
     startGrading, goBack, cancelFlow,
   } = useGroupSession();
 
+  /** Modèles du niveau de la classe (et ceux sans niveau) : avec une trentaine de TP, la ligne resterait lisible. */
+  const classTemplates = templatesForClass(templates, selectedClass?.name);
   const [newLabel, setNewLabel] = useState('');
   const [newPoints, setNewPoints] = useState('');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
@@ -125,9 +128,9 @@ export function GroupSetup() {
           </div>
 
           {/* Templates */}
-          {templates.length > 0 && (
+          {classTemplates.length > 0 && (
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
-              {templates.map(t => (
+              {classTemplates.map(t => (
                 <button
                   key={t.id}
                   onClick={() => applyTemplate(t)}
