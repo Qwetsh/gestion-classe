@@ -104,6 +104,28 @@ describe('groupActivities', () => {
     expect(evaluation.members.map((m) => variantLabel(m.variant, evaluation.evaluation))).toEqual(['Sujet', 'Documents', 'Correction']);
   });
 
+  it('garde les parenthèses du titre (« partie n », « TP ») et ne lit que le dernier suffixe', () => {
+    const groups = groupActivities(sorted([
+      board('p1', 'Activité 1 — Le changement climatique (partie 1 : parcours GIEC)', '3e', seq),
+      board('p1c', 'Activité 1 — Le changement climatique (partie 1 : parcours GIEC) (correction)', '3e', seq),
+      board('p1d', 'Activité 1 — Le changement climatique (partie 1 : parcours GIEC) (documents)', '3e', seq),
+      board('p2', 'Activité 1 — Le changement climatique (partie 2 : cours)', '3e', seq),
+      board('p2c', 'Activité 1 — Le changement climatique (partie 2 : cours) (correction)', '3e', seq),
+      board('tp', 'Activité 2 — Que fabrique la plante à la lumière ? (TP)', '5e', seq),
+      board('tpc', 'Activité 2 — Que fabrique la plante à la lumière ? (TP) (correction)', '5e', seq),
+    ]));
+    expect(groups.map((g) => g.members.map((m) => m.board.id))).toEqual([['p1', 'p1d', 'p1c'], ['p2', 'p2c'], ['tp', 'tpc']]);
+    expect(groups[0].title).toBe('Activité 1 — Le changement climatique (partie 1 : parcours GIEC)');
+  });
+
+  it('rapproche apostrophe droite et typographique', () => {
+    const groups = groupActivities([
+      board('f', 'Activité 5 — Le choix d’avoir un enfant', '4e', seq),
+      board('d', "Activité 5 — Le choix d'avoir un enfant (documents)", '4e', seq),
+    ]);
+    expect(groups.map((g) => g.members.map((m) => m.board.id))).toEqual([['f', 'd']]);
+  });
+
   it('reconnaît le préfixe, avec ou sans accent ni majuscule', () => {
     expect(isEvaluationTitle('Évaluation — Le système immunitaire')).toBe(true);
     expect(isEvaluationTitle('evaluation : séismes')).toBe(true);

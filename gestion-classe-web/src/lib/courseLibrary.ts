@@ -123,7 +123,8 @@ export function groupActivities(boards: Board[]): ActivityGroup[] {
   const byBase = new Map<string, ActivityGroup>();
   for (const board of boards) {
     const { base, variant } = splitVariant(board.title);
-    const key = base.normalize('NFC').toLocaleLowerCase('fr');
+    // Même activité malgré une apostrophe typographique ou une espace en trop dans un des titres
+    const key = base.normalize('NFC').replace(/[’ʼ]/g, "'").replace(/\s+/g, ' ').toLocaleLowerCase('fr');
     const found = byBase.get(key);
     if (found && !found.members.some((m) => m.variant === variant)) {
       found.members.push({ variant, board });
