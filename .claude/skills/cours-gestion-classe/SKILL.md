@@ -16,7 +16,8 @@ ne saute jamais la vérification.
 
 Chemins (dépôt `Gestion classe`, à adapter si la session est dans un worktree) :
 
-- skill : `.claude/skills/cours-gestion-classe/` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `exemples/`, `icones.md`)
+- skill : `.claude/skills/cours-gestion-classe/` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `gc_semaine.py`, `exemples/`, `icones.md`)
+- poser un cours sur l'emploi du temps : skill `prepare-semaine` (`gc_semaine.py placer`), jamais par une requête écrite à la main
 - brouillons : `gestion-classe-web/course-drafts/` (ignoré par git)
 - projet Supabase de production : `djodkjysovalpufgevrr`
 

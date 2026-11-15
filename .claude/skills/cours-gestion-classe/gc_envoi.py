@@ -13,7 +13,10 @@ En ligne de commande (python -I gc_envoi.py ...) :
     ecrans <id du cours> <pages.json>      pose les écrans d'un cours
     ecrans <id du cours> <pages.json> --remplacer   remplace les écrans existants
 
-Depuis un script : envoyer_image(chemin), envoyer_cours(brouillon), envoyer_ecrans(id, pages).
+Placer sur l'emploi du temps : voir gc_semaine.py (agenda, bibliothèque, placer, retirer).
+
+Depuis un script : envoyer_image(chemin), envoyer_cours(brouillon), envoyer_ecrans(id, pages),
+lire_agenda(depuis, jours), placer(id original, cours), retirer(id copie).
 """
 import base64
 import hashlib
@@ -43,6 +46,11 @@ MESSAGES = {
     'not_found': "Cours introuvable, ou il n'est pas à vous.",
     'bad_html': "Un texte d'écran contient une balise interdite (écrire &lt; pour le signe <).",
     'bad_pages': "La suite d'écrans est vide ou trop longue (60 au plus).",
+    'read_failed': "Lecture de l'emploi du temps impossible.",
+    'not_placed': "Ce document n'est placé sur aucun cours.",
+    'used_in_session': 'Une séance a déjà utilisé cette copie : elle reste (son encre en dépend).',
+    'edited': 'Cette copie a été ouverte ou retouchée depuis sa pose : la retirer seulement si Thomas le demande (--forcer).',
+    'bad_request': 'Demande mal formée.',
 }
 
 
@@ -161,6 +169,29 @@ def envoyer_ecrans(cours_id, pages, remplacer=False):
     if remplacer:
         corps['replace'] = True
     return _appel(corps)['pages']
+
+
+def lire_agenda(depuis=None, jours=14):
+    """Cours à venir (avec leur classe et le document déjà placé) et originaux de la bibliothèque.
+    `depuis` : date ISO (maintenant par défaut) ; `jours` : 60 au plus."""
+    corps = {'action': 'agenda', 'days': jours}
+    if depuis:
+        corps['from'] = depuis
+    return _appel(corps)
+
+
+def placer(original, cours):
+    """Une copie de `original` sur chacun des `cours` ([{starts_at, label}]) ; rend les résultats
+    (status : placed, already, occupied, not_found…). Un cours occupé n'est jamais écrasé."""
+    return _appel({'action': 'place', 'source_board_id': original, 'lessons': cours})['results']
+
+
+def retirer(copie, forcer=False):
+    """Retire la copie placée sur un cours (jamais un original). Sur demande de Thomas seulement."""
+    corps = {'action': 'unplace', 'board_id': copie}
+    if forcer:
+        corps['force'] = True
+    return _appel(corps)
 
 
 def _principal(args):

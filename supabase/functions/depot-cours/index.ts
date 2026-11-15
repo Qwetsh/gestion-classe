@@ -19,8 +19,19 @@ import { decodeBase64, encodeBase64Url } from "jsr:@std/encoding@1";
  *      avoir gardé une version ; les écrans et le titre du cours sont conservés
  *  - "screens" (jeton)        { token, board_id, pages }  → { pages }   écrans d'un cours
  *      refusé si le cours a déjà des écrans, sauf { replace: true } (les anciens sont supprimés)
+ *  - "agenda"  (jeton)        { token, from?, days? }  → { lessons, library }
+ *      cours de l'emploi du temps (14 jours par défaut, 60 au plus) avec leur classe et le
+ *      document déjà placé, et les originaux de la bibliothèque (titres, sans leur contenu)
+ *  - "place"   (jeton)        { token, source_board_id, lessons: [{ starts_at, label }] }
+ *      → { results: [{ starts_at, label, status, board_id?, title? }] }
+ *      une copie de l'original par cours, reliée au cours avec sa provenance ; un cours qui a déjà
+ *      un document n'est jamais écrasé (status "occupied", ou "already" si c'est le même original)
+ *  - "unplace" (jeton)        { token, board_id, force? }  → { ok }
+ *      retire la copie d'un cours ; refusé si une séance l'a utilisée, et si elle a été ouverte ou
+ *      modifiée depuis sa pose (sauf { force: true }, sur demande du professeur)
  *
- * Le jeton ne donne aucun accès en lecture, et n'écrit que dans l'espace de son propriétaire.
+ * Le jeton n'écrit que dans l'espace de son propriétaire. Il ne lit que l'emploi du temps et les
+ * titres de la bibliothèque (action "agenda") : rien sur les élèves, aucun contenu de cours.
  * Ce que la fonction vérifie : la forme des données, la taille, l'appartenance des images citées
  * et le HTML des objets du tableau blanc (balises de mise en forme seulement). La validation
  * fine d'un document de cours reste celle de `npm run course:check`, avant l'envoi.
@@ -184,6 +195,89 @@ function pageMeta(p: Record<string, unknown>): Record<string, unknown> | null {
 }
 
 const newRev = () => `claude-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+// ---- Emploi du temps (actions "agenda", "place") ----
+
+const DEFAULT_DAYS = 14;
+const MAX_DAYS = 60;
+const MAX_PLACES = 30;
+/** Une copie ouverte ou retouchée après sa pose n'est pas retirée sans { force: true }. */
+const EDIT_GRACE_MS = 2 * 60 * 1000;
+
+/** Minuscules, sans accents ni ponctuation (même règle que lib/timetable/labelMatching.ts). */
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** Début d'un cours à la minute : la clé de lesson_boards (cf. lessonBoardsQueries.ts). */
+function minuteIso(d: Date): string {
+  const t = new Date(d);
+  t.setSeconds(0, 0);
+  return t.toISOString();
+}
+
+interface Lesson {
+  starts_at: string;
+  ends_at: string;
+  label: string;
+  class_id: string;
+  class_name: string;
+  group_id: string | null;
+  group_name: string | null;
+  status: string;
+}
+
+/**
+ * Cours d'une classe qui commencent dans [from, to[, hors cours annulés. La classe vient de la
+ * correspondance mémorisée du libellé (timetable_label_links) ; sans elle, d'une classe au nom
+ * identique. Un libellé ignoré, ou sans classe, n'est pas un cours d'une de mes classes.
+ */
+async function lessonsBetween(sb: SupabaseClient, userId: string, from: Date, to: Date): Promise<Lesson[]> {
+  const [entries, links, classes, groups] = await Promise.all([
+    sb.from("timetable_entries").select("starts_at, ends_at, label, class_label, status")
+      .eq("user_id", userId).eq("kind", "lesson")
+      .gte("starts_at", from.toISOString()).lt("starts_at", to.toISOString()).order("starts_at"),
+    sb.from("timetable_label_links").select("label, class_id, group_id, ignored").eq("user_id", userId),
+    sb.from("classes").select("id, name, is_deleted").eq("user_id", userId),
+    sb.from("class_groups").select("id, class_id, name").eq("user_id", userId),
+  ]);
+  if (entries.error) throw entries.error;
+  const live = (classes.data ?? []).filter((c) => c.is_deleted !== true) as { id: string; name: string }[];
+  const groupList = (groups.data ?? []) as { id: string; class_id: string; name: string }[];
+  const linkMap = new Map((links.data ?? []).map((l) => [l.label as string, l as { class_id: string | null; group_id: string | null; ignored: boolean }]));
+  const out: Lesson[] = [];
+  for (const e of entries.data ?? []) {
+    if (e.status === "canceled") continue;
+    const link = linkMap.get(e.label);
+    let cls: { id: string; name: string } | null = null;
+    let grp: { id: string; name: string } | null = null;
+    if (link) {
+      if (link.ignored || !link.class_id) continue;
+      cls = live.find((c) => c.id === link.class_id) ?? null;
+      grp = link.group_id ? groupList.find((g) => g.id === link.group_id && g.class_id === link.class_id) ?? null : null;
+    } else {
+      const target = norm(e.class_label ?? e.label);
+      const same = live.filter((c) => norm(c.name) === target);
+      cls = same.length === 1 ? same[0] : null;
+    }
+    if (!cls) continue;
+    out.push({
+      starts_at: e.starts_at,
+      ends_at: e.ends_at,
+      label: e.label,
+      class_id: cls.id,
+      class_name: cls.name,
+      group_id: grp?.id ?? null,
+      group_name: grp?.name ?? null,
+      status: e.status,
+    });
+  }
+  return out;
+}
+
+/** Original d'un cours : l'original de la copie s'il est placé, sinon le cours lui-même. */
+async function originOf(sb: SupabaseClient, userId: string, boardId: string): Promise<string | null> {
+  const { data } = await sb.from("lesson_boards").select("source_board_id").eq("user_id", userId).eq("board_id", boardId).maybeSingle();
+  return data ? (data.source_board_id as string | null) ?? null : boardId;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
@@ -365,6 +459,168 @@ Deno.serve(async (req: Request) => {
         .eq("user_id", t.user_id);
       if (error) return json({ error: "write_failed" }, 500);
       return json({ id: boardId, pages: ids.length, replaced: oldIds.length > 0 });
+    }
+
+    case "agenda": {
+      const t = await liveToken(sb, body.token);
+      if (!t) return json({ error: "invalid_token" }, 401);
+      const from = body.from == null ? new Date() : new Date(String(body.from));
+      const days = body.days == null ? DEFAULT_DAYS : Number(body.days);
+      if (Number.isNaN(from.getTime()) || !Number.isInteger(days) || days < 1 || days > MAX_DAYS) return json({ error: "bad_request" }, 400);
+      const to = new Date(from.getTime() + days * 86_400_000);
+      let lessons: Lesson[];
+      try {
+        lessons = await lessonsBetween(sb, t.user_id, from, to);
+      } catch {
+        return json({ error: "read_failed" }, 500);
+      }
+      // Documents déjà placés (une seule clé étrangère lesson_boards → boards : l'embed est sûr)
+      const { data: placed } = await sb
+        .from("lesson_boards")
+        .select("board_id, starts_at, label, source_board_id, boards(title)")
+        .eq("user_id", t.user_id)
+        .gte("starts_at", minuteIso(from))
+        .lt("starts_at", to.toISOString());
+      const byKey = new Map<string, Record<string, unknown>>();
+      for (const p of placed ?? []) byKey.set(`${minuteIso(new Date(p.starts_at))}|${p.label}`, p);
+      const { data: library } = await sb
+        .from("boards")
+        .select("id, title, level, chapter, is_template, updated_at, screens:doc->screens, version:doc->version")
+        .eq("user_id", t.user_id)
+        .is("class_id", null)
+        .order("level")
+        .order("chapter")
+        .order("title");
+      return json({
+        lessons: lessons.map((l) => {
+          const p = byKey.get(`${minuteIso(new Date(l.starts_at))}|${l.label}`);
+          const b = p ? (Array.isArray(p.boards) ? p.boards[0] : p.boards) as { title?: string } | null : null;
+          return { ...l, placed: p ? { board_id: p.board_id, title: b?.title ?? null, source_board_id: p.source_board_id ?? null } : null };
+        }),
+        library: (library ?? []).map((b) => ({
+          id: b.id,
+          title: b.title,
+          level: b.level,
+          chapter: b.chapter,
+          template: b.is_template === true,
+          course: b.version != null,
+          screens: Array.isArray(b.screens) ? b.screens.length : 0,
+          updated_at: b.updated_at,
+        })),
+      });
+    }
+
+    case "place": {
+      const t = await liveToken(sb, body.token);
+      if (!t) return json({ error: "invalid_token" }, 401);
+      const sourceId = String(body.source_board_id ?? "");
+      const wanted = body.lessons;
+      if (!UUID.test(sourceId) || !Array.isArray(wanted) || wanted.length === 0 || wanted.length > MAX_PLACES) return json({ error: "bad_request" }, 400);
+      const { data: source } = await sb.from("boards").select("id, title, level, doc").eq("id", sourceId).eq("user_id", t.user_id).maybeSingle();
+      if (!source) return json({ error: "not_found" }, 404);
+      const origin = await originOf(sb, t.user_id, sourceId);
+      const { data: pages, error: pagesError } = await sb
+        .from("board_pages")
+        .select("page_id, position, background, strokes, image, objects, meta")
+        .eq("board_id", sourceId)
+        .is("session_id", null)
+        .order("position");
+      if (pagesError) return json({ error: "read_failed" }, 500);
+
+      const results: Record<string, unknown>[] = [];
+      for (const w of wanted) {
+        const item = (w ?? {}) as Record<string, unknown>;
+        const label = typeof item.label === "string" ? item.label : "";
+        const start = new Date(String(item.starts_at ?? ""));
+        if (!label || Number.isNaN(start.getTime())) {
+          results.push({ starts_at: item.starts_at ?? null, label, status: "bad_lesson" });
+          continue;
+        }
+        const key = minuteIso(start);
+        const base = { starts_at: key, label };
+        let lesson: Lesson | undefined;
+        try {
+          lesson = (await lessonsBetween(sb, t.user_id, new Date(key), new Date(new Date(key).getTime() + 60_000))).find((l) => l.label === label);
+        } catch {
+          results.push({ ...base, status: "read_failed" });
+          continue;
+        }
+        if (!lesson) {
+          results.push({ ...base, status: "not_found" });
+          continue;
+        }
+        const { data: existing } = await sb
+          .from("lesson_boards")
+          .select("board_id, source_board_id, boards(title)")
+          .eq("user_id", t.user_id)
+          .eq("label", label)
+          .eq("starts_at", key)
+          .maybeSingle();
+        if (existing) {
+          const b = (Array.isArray(existing.boards) ? existing.boards[0] : existing.boards) as { title?: string } | null;
+          const same = origin !== null && existing.source_board_id === origin;
+          results.push({ ...base, status: same ? "already" : "occupied", board_id: existing.board_id, title: b?.title ?? null });
+          continue;
+        }
+        // Copie : même document (nouveau numéro d'enregistrement), mêmes pages, mêmes identifiants
+        // de page (le document cite ses écrans et ses encarts par identifiant)
+        const doc = source.doc ? { ...(source.doc as Record<string, unknown>), rev: newRev() } : null;
+        const { data: copy, error: copyError } = await sb
+          .from("boards")
+          .insert({ user_id: t.user_id, title: source.title, level: source.level, chapter: null, class_id: lesson.class_id, doc })
+          .select("id")
+          .single();
+        if (copyError || !copy) {
+          results.push({ ...base, status: "write_failed" });
+          continue;
+        }
+        const now = new Date().toISOString();
+        let failed: string | null = null;
+        if ((pages ?? []).length > 0) {
+          const { error } = await sb.from("board_pages").insert((pages ?? []).map((p) => ({ ...p, user_id: t.user_id, board_id: copy.id, updated_at: now })));
+          if (error) failed = "write_failed";
+        }
+        if (!failed) {
+          const { error } = await sb.from("lesson_boards").insert({
+            user_id: t.user_id,
+            starts_at: key,
+            ends_at: lesson.ends_at,
+            label,
+            class_id: lesson.class_id,
+            group_id: lesson.group_id,
+            board_id: copy.id,
+            source_board_id: origin,
+          });
+          // Posé entre-temps par l'application (autre onglet) : le cours n'est pas écrasé
+          if (error) failed = error.code === "23505" ? "occupied" : "write_failed";
+        }
+        if (failed) {
+          await sb.from("boards").delete().eq("id", copy.id).eq("user_id", t.user_id);
+          results.push({ ...base, status: failed });
+          continue;
+        }
+        results.push({ ...base, status: "placed", board_id: copy.id, title: source.title, class_name: lesson.class_name, group_name: lesson.group_name });
+      }
+      return json({ results });
+    }
+
+    case "unplace": {
+      const t = await liveToken(sb, body.token);
+      if (!t) return json({ error: "invalid_token" }, 401);
+      const boardId = String(body.board_id ?? "");
+      if (!UUID.test(boardId)) return json({ error: "bad_request" }, 400);
+      const { data: link } = await sb.from("lesson_boards").select("id, starts_at, label").eq("user_id", t.user_id).eq("board_id", boardId).maybeSingle();
+      if (!link) return json({ error: "not_placed" }, 404);
+      const { data: used } = await sb.from("session_boards").select("session_id").eq("board_id", boardId).limit(1);
+      if ((used ?? []).length > 0) return json({ error: "used_in_session" }, 409);
+      const { data: board } = await sb.from("boards").select("created_at, updated_at").eq("id", boardId).eq("user_id", t.user_id).maybeSingle();
+      if (!board) return json({ error: "not_found" }, 404);
+      const touched = new Date(board.updated_at).getTime() - new Date(board.created_at).getTime() > EDIT_GRACE_MS;
+      if (touched && body.force !== true) return json({ error: "edited" }, 409);
+      // Le lien et les pages partent avec la copie (ON DELETE CASCADE) ; l'original ne bouge pas
+      const { error } = await sb.from("boards").delete().eq("id", boardId).eq("user_id", t.user_id);
+      if (error) return json({ error: "write_failed" }, 500);
+      return json({ ok: true, starts_at: link.starts_at, label: link.label });
     }
 
     default:
