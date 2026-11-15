@@ -29,9 +29,16 @@ export interface LibraryLevel {
  * Niveau › séquence › activités. Niveaux dans l'ordre du collège, séquences et activités triées
  * par leur titre : l'ordre ne bouge pas quand on retouche un cours. Les cours sans séquence
  * viennent en dernier dans leur niveau, les cours sans niveau en dernier dans la liste.
+ * `extraSequences` : séquences à montrer même sans cours (elles portent des fichiers).
  */
-export function groupLibrary(boards: Board[]): LibraryLevel[] {
+export function groupLibrary(boards: Board[], extraSequences: { level: string | null; chapter: string }[] = []): LibraryLevel[] {
   const byLevel = new Map<string | null, Map<string, Board[]>>();
+  // Séquences sans cours mais avec des fichiers : elles gardent leur place, vides de cours
+  for (const extra of extraSequences) {
+    const sequences = byLevel.get(extra.level) ?? new Map<string, Board[]>();
+    if (!sequences.has(extra.chapter)) sequences.set(extra.chapter, []);
+    byLevel.set(extra.level, sequences);
+  }
   for (const b of boards) {
     const level = b.level ?? null;
     const sequences = byLevel.get(level) ?? new Map<string, Board[]>();

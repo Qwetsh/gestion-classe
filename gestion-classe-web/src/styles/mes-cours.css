@@ -161,3 +161,26 @@
   .mc-doc__when { order: -1; flex-basis: 100%; width: auto; padding: 2px 8px 0; font-size: 12px; }
   .mc-activity { flex-wrap: wrap; }
 }
+
+/* ---- Fichiers d'une séquence et jauge du stockage (lot F1) ---- */
+.mc-files { margin-top: 2px; }
+.mc-row--file .mc-row__open { min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
+.mc-row--file .mc-row__title { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.mc-row--file .mc-row__open:hover .mc-row__title { color: var(--indigo-ink); }
+.mc-file__size { margin-left: auto; flex-shrink: 0; padding-left: 12px; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.mc-file__input { margin: 3px 8px; }
+.mc-file__busy { min-height: 34px; padding-left: 42px; font-size: 13px; color: var(--text-dim); }
+/* Fichiers glissés au-dessus d'une séquence : elle se signale */
+.mc-seq--drop { background: var(--indigo-soft); box-shadow: inset 0 0 0 2px var(--indigo); }
+
+.mc-usage { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-dim); }
+.mc-usage__bar { flex: 0 0 140px; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.mc-usage__bar > span { display: block; height: 100%; border-radius: 2px; background: var(--text-dim); }
+.mc-usage--warn { color: var(--warn); }
+.mc-usage--warn .mc-usage__bar > span { background: var(--warn); }
+.mc-usage--full { color: var(--neg); }
+.mc-usage--full .mc-usage__bar > span { background: var(--neg); }
+
+@media (max-width: 767px) {
+  .mc-row--file .mc-row__open { min-height: 44px; }
+}

@@ -162,8 +162,8 @@ de la séance, et sort en PDF.
 | N1 — Ménage du menu | **Fusionné dans master le 14/11/2026** (PR #96) |
 | N2 — Maquette du menu regroupé | **Fusionnée dans master le 15/11/2026** (PR #97) ; Thomas a retenu la variante A |
 | N3 — Menu regroupé | **Fusionné dans master le 15/11/2026** (PR #97), après essai de Thomas dans la prévisualisation |
-| R1 — Recherche globale | **Codé** le 15/11/2026 (branche `feat/recherche-globale`), pas commité |
-| F1 — Fichiers | En attente de la décision de stockage |
+| R1 — Recherche globale | **Fusionné dans master le 15/11/2026** (PR #98), après essai de Thomas dans la prévisualisation |
+| F1 — Fichiers | **Codé** le 15/11/2026 (branche `feat/cours-fichiers`), pas commité ; migration 078 appliquée en prod le 15/11/2026 |
 
 ### Lot C1 — page et bibliothèque, fait le 14/11/2026 (branche `feat/mes-cours`)
 
@@ -409,9 +409,50 @@ les propositions de Claude sont appliquées (Analyses sous Classes, Récompenses
   puis Entrée (Réglages ouverts sur Thème) ; « annales » puis Entrée (page ouverte, entrée « Mes
   cours » dépliée) ; flèches, tour complet de la liste, Échap ; Ctrl+K sans effet sous le tableau
   blanc.
-- **Non vérifié** : l'ouverture d'un cours, d'une classe, d'un élève ou d'une évaluation depuis un
-  résultat (seules les adresses sont construites ; elles reprennent celles de l'accueil) ; la loupe
-  sur un vrai téléphone ; ⌘K sur Mac.
+- **Essai de Thomas (15/11/2026)** : il devait ouvrir un élève, une évaluation et un cours depuis un
+  résultat ; il a répondu « c'est bon ». PR #98 fusionnée dans la foulée (commit `c880825`).
+- **Non vérifié** : la loupe sur un vrai téléphone ; ⌘K sur Mac.
 - **Non fait** : la recherche dans le texte des cours reste dans « Mes cours » ; les copies placées
   sur un créneau ne sont pas proposées (elles se retrouvent par « Mes cours » › « Par classe »).
+
+### Lot F1 — fichiers d'une séquence, codé le 15/11/2026 (branche `feat/cours-fichiers`, depuis master)
+
+**Décision de stockage (Thomas, 15/11/2026)** : rester dans le stockage actuel, avec un plafond par
+fichier et une jauge. Mesuré ce jour-là : environ 320 Mo occupés (copies d'évaluation 207 Mo, annales
+78 Mo, images des cours 19 Mo, photos 8 Mo). L'organisation est sur l'offre gratuite : 1 Go de
+stockage en tout (documentation Supabase), partagé avec son second projet.
+
+- **Migration `078_course_files.sql`** (appliquée en prod le 15/11/2026) : table `course_files`, dossier de
+  stockage privé `course-files` (20 Mo par fichier ; PDF, images, sons, documents Word / PowerPoint
+  / Excel et leurs équivalents libres, texte ; pas de vidéo), fonction `storage_usage()` pour la
+  jauge. Aucune clé étrangère vers `boards` (leçon de la migration 077).
+- **Un fichier appartient à une séquence** par (niveau, nom de séquence), comme les cours. Renommer
+  une séquence renomme aussi ses fichiers. Une séquence qui n'a plus que des fichiers reste affichée.
+- **Dans la bibliothèque** : les fichiers d'une séquence sont listés sous ses cours
+  (`components/courses/SequenceFiles.tsx`). Ajout par le menu « ⋯ » de la séquence, ou en glissant
+  des fichiers sur elle. Un clic ouvre le fichier dans la visionneuse de « Mes clouds » (PDF, image,
+  son ; un Word est converti en PDF à l'ouverture). Menu « ⋯ » : Télécharger, Renommer, Supprimer.
+- **Refus expliqués** (`lib/courseFiles.ts`, avec tests) : vidéo (« colle son lien »), type non
+  accepté, plus de 20 Mo, fichier vide, stockage presque plein.
+- **Jauge** au pied de la bibliothèque : « Stockage : 320 Mo sur 1,00 Go », orange à 80 %, rouge à 95 %.
+- **Sans la migration**, la bibliothèque s'affiche comme avant, sans fichiers ni jauge.
+- **Vérifié** : `tsc -b`, lint sans erreur sur les fichiers touchés, 562 tests. Dans le navigateur,
+  sans la migration : la page s'affiche, le menu d'une séquence ne propose pas d'ajouter un fichier,
+  pas de jauge.
+- **Vérifié après la migration**, avec un PDF d'essai glissé sur la séquence Wegener : survol
+  signalé, « Envoi en cours… », fichier listé avec sa taille ; refus d'une vidéo, d'une archive et
+  d'un fichier vide, chacun avec sa phrase ; ouverture dans la visionneuse (lecteur PDF, une page) ;
+  renommage sans extension (elle est remise) ; suppression avec confirmation. La jauge affiche
+  « 320 Mo sur 1,00 Go ». Après l'essai : aucune ligne dans `course_files`, aucun objet dans le
+  dossier. Les pastilles de classes et l'accueil se chargent toujours (pas de régression des
+  lectures existantes).
+- **Non vérifié** : l'ajout par le menu « ⋯ » (sélecteur de fichiers du système) ; un vrai Word, une
+  image, un son ; le téléchargement ; le renommage d'une séquence qui porte des fichiers ; une
+  séquence qui n'a plus que des fichiers (couverte par un test) ; le téléphone.
+- **Non fait** : « Reprendre depuis OneDrive » par la connexion aux clouds. Le dossier OneDrive de
+  Thomas est synchronisé sur son ordinateur : le sélecteur de fichiers et le glisser-déposer y
+  accèdent directement. Les séquences sans nom ne reçoivent pas de fichiers. Les fichiers ne sont
+  pas cherchés par la recherche.
+- **Constat** : la bibliothèque ne compte plus que les deux cours Wegener (les sept autres ont été
+  supprimés entre-temps).
 
