@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 export interface TpTemplate {
   id: string;
   name: string;
+  /** Niveau du TP (migration 079) : la séance ne propose que ceux du niveau de la classe. */
+  level: string | null;
   criteria: TpTemplateCriteria[];
 }
 
@@ -39,7 +41,7 @@ export interface GroupData {
 export async function fetchTpTemplates(userId: string): Promise<TpTemplate[]> {
   const { data, error } = await supabase
     .from('tp_templates')
-    .select('id, name, tp_template_criteria (id, label, max_points, display_order)')
+    .select('id, name, level, tp_template_criteria (id, label, max_points, display_order)')
     .eq('user_id', userId)
     .order('name');
   if (error) throw error;
@@ -48,6 +50,7 @@ export async function fetchTpTemplates(userId: string): Promise<TpTemplate[]> {
   return data.map((t: any) => ({
     id: t.id,
     name: t.name,
+    level: t.level ?? null,
     criteria: (t.tp_template_criteria || []).sort((a: any, b: any) => a.display_order - b.display_order),
   }));
 }
