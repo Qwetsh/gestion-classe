@@ -34,12 +34,18 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
 
 1. **Dans la bibliothèque** : `gc_semaine.py bibliotheque --niveau <n> --cherche <mot>`.
    - L'activité et sa correction sont deux originaux distincts (« Activité 3 — Wegener… » et
-     « … (correction) »).
+     « … (correction) »). Depuis le 15/11/2026, la feuille de documents élève est un troisième
+     original, « … (documents) » ; la bibliothèque de « Mes cours » les montre sur une seule
+     ligne (boutons Fiche, Correction, Documents). `placer` pose la fiche et la correction ; poser
+     aussi les documents n'est pas encore prévu (un cours de l'emploi du temps ne porte qu'un
+     document) : si Thomas le demande, lui poser la question.
    - Deux originaux qui se ressemblent : poser la question.
 2. **Pas dans la bibliothèque** : la convertir depuis OneDrive, puis la créer comme original.
    - Les dossiers sont dans `C:\Users\Utilisateur\OneDrive\Documents\Ecole\2026-2027\<niveau>ème\Séquence …\Activité …`.
    - Source : `Fiche_eleve_….docx`, sinon le `.docx` élève le plus récent.
-   - Les documents élève vont dans le **même** cours, après un saut de page.
+   - Les documents élève (feuille « Documents » à part, pages PDF jointes) vont dans un **cours
+     à part**, même titre suivi de « (documents) », même niveau et même séquence, sans écrans.
+     Des documents mêlés aux questions sur la même feuille restent dans la fiche.
    - Les réponses viennent du `_CORRIGE.docx` ou du `corrigé`.
    - Ignorer `_ADAPTEE` (l'impression « dys » de l'app la remplace), la fiche de préparation, le
      cahier de texte, et les dossiers `_Archive`, `_backup`, `_anciennes_versions`.
