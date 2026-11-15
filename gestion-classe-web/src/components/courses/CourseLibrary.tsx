@@ -6,11 +6,13 @@
  * l'activité, puis un bouton par original, avec ses classes et son essai en classe.
  */
 import { useRef, useState } from 'react';
-import { ChevronDown, FileText, Play, Presentation } from 'lucide-react';
+import { ChevronDown, ClipboardCheck, FileText, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
 import { classTone } from '../../lib/classColors';
 import { ACCEPTED_FILES, filesOfSequence, sequenceKey, type CourseFile } from '../../lib/courseFiles';
-import { groupActivities, VARIANT_LABEL, type CourseVariant, type LibraryLevel } from '../../lib/courseLibrary';
+import {
+  groupActivities, VARIANT_LABEL, variantLabel, withoutEvaluationPrefix, type CourseVariant, type LibraryLevel,
+} from '../../lib/courseLibrary';
 import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu, type MoreMenuItem } from '../MoreMenu';
 import { SequenceFiles } from './SequenceFiles';
@@ -122,6 +124,16 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
     { label: 'Supprimer', onClick: () => onDelete(b), danger: true, group },
   ];
 
+  /** Titre d'une ligne ; une évaluation porte la pastille « Évaluation » à la place de son préfixe. */
+  const rowTitle = (text: string, evaluation: boolean) => (evaluation ? (
+    <span className="mc-row__title mc-row__title--eval">
+      <span className="mc-eval-pill">Évaluation</span>
+      <span className="mc-row__title-text">{withoutEvaluationPrefix(text)}</span>
+    </span>
+  ) : <span className="mc-row__title">{text}</span>);
+
+  const evalIcon = <ClipboardCheck size={17} className="mc-row__icon mc-row__icon--eval" aria-label="Évaluation" />;
+
   const kindIcon = (b: Board) => (b.is_course
     ? <FileText size={17} className="mc-row__icon" aria-label="Cours rédigé" />
     : <Presentation size={17} className="mc-row__icon" aria-label="Tableau blanc" />);
@@ -209,15 +221,19 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                     </div>
                   )}
                   <ul className="mc-rows">
-                    {groupActivities(boards).map(({ key: groupKey, title, members }) => {
+                    {groupActivities(boards).map(({ key: groupKey, title, members, evaluation }, index, groups) => {
+                      // Les évaluations ferment la séquence : un trait les sépare des activités
+                      const evalClass = evaluation
+                        ? ` mc-row--eval${index > 0 && !groups[index - 1].evaluation ? ' mc-row--eval-first' : ''}`
+                        : '';
                       if (members.length === 1) {
                         // Original seul (correction orpheline comprise) : son titre complet
                         const b = members[0].board;
                         return (
-                          <li key={groupKey} className="mc-row">
+                          <li key={groupKey} className={`mc-row${evalClass}`}>
                             <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours' : 'Ouvrir le tableau blanc'}>
-                              {kindIcon(b)}
-                              <span className="mc-row__title">{b.title}</span>
+                              {evaluation ? evalIcon : kindIcon(b)}
+                              {rowTitle(b.title, evaluation)}
                             </button>
                             {renderChips(b)}
                             {b.is_course && (
@@ -232,16 +248,16 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                       // Activité : son titre ouvre la fiche (à défaut, le premier original)
                       const first = members[0];
                       return (
-                        <li key={groupKey} className="mc-row mc-row--activity">
+                        <li key={groupKey} className={`mc-row mc-row--activity${evalClass}`}>
                           <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`}>
-                            {kindIcon(first.board)}
-                            <span className="mc-row__title">{title}</span>
+                            {evaluation ? evalIcon : kindIcon(first.board)}
+                            {rowTitle(title, evaluation)}
                           </button>
                           <span className="mc-variants">
                             {members.map(({ variant, board: b }) => (
                               <span key={b.id} className={`mc-variant mc-variant--${variant}`}>
                                 <button type="button" className="mc-variant__open" onClick={() => onOpen(b)} title={`Ouvrir ${b.title}`}>
-                                  {VARIANT_LABEL[variant]}
+                                  {variantLabel(variant, evaluation)}
                                 </button>
                                 {renderChips(b, variant)}
                                 {b.is_course && (
@@ -255,7 +271,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                           <MoreMenu
                             compact
                             title={`Actions de ${title}`}
-                            items={members.flatMap(({ variant, board: b }) => menuItems(b, VARIANT_LABEL[variant]))}
+                            items={members.flatMap(({ variant, board: b }) => menuItems(b, variantLabel(variant, evaluation)))}
                           />
                         </li>
                       );

@@ -19,7 +19,7 @@ import {
   type Board,
   type BoardMeta,
 } from '../../lib/boardsQueries';
-import { groupActivities, VARIANT_LABEL } from '../../lib/courseLibrary';
+import { groupActivities, variantLabel, withoutEvaluationPrefix } from '../../lib/courseLibrary';
 
 type Props =
   | {
@@ -142,12 +142,19 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
               <div key={chapter || '—'} className="wblb__chapter">
                 {chapter && <h4>{chapter}</h4>}
                 <div className="wblb__list">
-                  {groupActivities(list).map(({ key, title, members }) => members.length > 1 ? (
-                    // Activité : un bouton par original (fiche, correction, documents)
-                    <div key={key} className="wblb__row wblb__row--activity">
-                      <span className="wblb__icon">📋</span>
+                  {groupActivities(list).map(({ key, title, members, evaluation }, index, groups) => {
+                    // Les évaluations ferment le chapitre : un trait les sépare des activités
+                    const evalClass = evaluation ? ` wblb__eval${index > 0 && !groups[index - 1].evaluation ? ' wblb__eval--first' : ''}` : '';
+                    const icon = <span className="wblb__icon">{evaluation ? '📝' : '📋'}</span>;
+                    const name = (text: string) => (evaluation
+                      ? <span><em className="wblb__evalpill">Évaluation</em>{withoutEvaluationPrefix(text)}</span>
+                      : <span>{text}</span>);
+                    return members.length > 1 ? (
+                    // Activité : un bouton par original (fiche, documents, correction)
+                    <div key={key} className={`wblb__row wblb__row--activity${evalClass}`}>
+                      {icon}
                       <div>
-                        <span>{title}</span>
+                        {name(title)}
                         <small>modifié le {fmtDate(members.reduce((d, m) => (m.board.updated_at > d ? m.board.updated_at : d), ''))}</small>
                       </div>
                       <span className="wblb__variants">
@@ -160,7 +167,7 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
                               title={`${onPickTab ? 'Copier ici les pages de' : 'Ouvrir'} ${b.title}`}
                               onClick={() => pick(b)}
                             >
-                              {busy === b.id ? '…' : VARIANT_LABEL[variant]}
+                              {busy === b.id ? '…' : variantLabel(variant, evaluation)}
                             </button>
                             {onPickTab && (
                               <button type="button" className="wblb__tabbtn" disabled={busy !== null} title={`Ouvrir ${b.title} dans un nouvel onglet, sans toucher au tableau courant`} aria-label={`Ouvrir ${b.title} dans un nouvel onglet`} onClick={() => onPickTab(b)}>↗</button>
@@ -170,11 +177,11 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
                       </span>
                     </div>
                   ) : members.map(({ board: b }) => (
-                    <div key={b.id} className="wblb__rowwrap">
+                    <div key={b.id} className={`wblb__rowwrap${evalClass}`}>
                       <button type="button" className="wblb__row wblb__row--pick" disabled={busy !== null} onClick={() => pick(b)}>
-                        <span className="wblb__icon">📋</span>
+                        {icon}
                         <div>
-                          <span>{b.title}</span>
+                          {name(b.title)}
                           <small>modifié le {fmtDate(b.updated_at)}</small>
                         </div>
                         <span className="wblb__go">{busy === b.id ? '…' : onPickTab ? 'Copier ici' : 'Ouvrir'}</span>
@@ -183,7 +190,8 @@ function OpenView({ userId, defaultLevel, excludeBoardId, allowBlank, onPick, on
                         <button type="button" className="wblb__tabbtn" disabled={busy !== null} title="Ouvrir dans un nouvel onglet, sans toucher au tableau courant" onClick={() => onPickTab(b)}>↗ Onglet</button>
                       )}
                     </div>
-                  )))}
+                  ));
+                  })}
                 </div>
               </div>
             ))}
@@ -301,6 +309,9 @@ const CSS = `
 .wblb__variant .wblb__go:hover:not(:disabled) { outline: 2px solid #A5B4FC; }
 .wblb__variant .wblb__go:disabled { opacity: .6; cursor: default; }
 .wblb__variant .wblb__tabbtn { padding: 0 10px; }
+.wblb__eval--first { margin-top: 6px; position: relative; }
+.wblb__eval--first::before { content: ''; position: absolute; left: 0; right: 0; top: -8px; border-top: 1px dashed #4B5563; }
+.wblb__evalpill { display: inline-block; margin-right: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(129,140,248,0.18); color: #C7D2FE; font: 600 11px/1.3 Inter, system-ui, sans-serif; font-style: normal; vertical-align: 2px; }
 .wblb__go { flex: none; padding: 8px 12px; border-radius: 8px; background: #4F46E5; color: #FFFFFF; font: 600 13px/1 Inter, system-ui, sans-serif; }
 .wblb__foot { display: flex; justify-content: flex-end; gap: 10px; padding: 10px 16px 16px; }
 .wblb__primary { min-height: 44px; }

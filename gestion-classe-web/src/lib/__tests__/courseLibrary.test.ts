@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
-import { chaptersOfLevel, courseHref, groupActivities, groupLibrary, naturalCompare, parseOpenTarget, recentBoards, splitVariant } from '../courseLibrary';
+import {
+  chaptersOfLevel, courseHref, groupActivities, groupLibrary, isEvaluationTitle, naturalCompare, parseOpenTarget,
+  recentBoards, splitVariant, variantLabel, withoutEvaluationPrefix,
+} from '../courseLibrary';
 
 const board = (id: string, title: string, level: string | null, chapter: string | null, updated = '2026-11-01T08:00:00Z'): Board => ({
   id, title, level, chapter, class_id: null, created_at: updated, updated_at: updated,
@@ -71,7 +74,7 @@ describe('groupActivities', () => {
   const seq = 'Séquence 2 — Terre en mouvement';
   const sorted = (list: Board[]) => [...list].sort((x, y) => naturalCompare(x.title, y.title));
 
-  it('rattache la correction et les documents à leur activité, dans l’ordre fiche › correction › documents', () => {
+  it('rattache la correction et les documents à leur activité, dans l’ordre fiche › documents › correction', () => {
     const groups = groupActivities(sorted([
       board('c1', 'Activité 1 — Plaques (correction)', '4e', seq),
       board('d1', 'Activité 1 — Plaques (documents)', '4e', seq),
@@ -80,8 +83,40 @@ describe('groupActivities', () => {
       board('c2', 'Activité 2 — Subduction (correction)', '4e', seq),
     ]));
     expect(groups.map((g) => g.title)).toEqual(['Activité 1 — Plaques', 'Activité 2 — Subduction']);
-    expect(groups[0].members.map((m) => m.board.id)).toEqual(['f1', 'c1', 'd1']);
+    expect(groups[0].members.map((m) => m.board.id)).toEqual(['f1', 'd1', 'c1']);
     expect(groups[1].members.map((m) => m.variant)).toEqual(['fiche', 'correction']);
+    expect(groups.every((g) => !g.evaluation)).toBe(true);
+  });
+
+  it('regroupe l’évaluation avec ses documents et sa correction, et la range après les activités', () => {
+    const groups = groupActivities(sorted([
+      board('es', 'Évaluation — La Terre en mouvement', '4e', seq),
+      board('ec', 'Évaluation — La Terre en mouvement (correction)', '4e', seq),
+      board('ed', 'Évaluation — La Terre en mouvement (documents)', '4e', seq),
+      board('f1', 'Activité 1 — Plaques', '4e', seq),
+      board('fm', 'Fiche méthode — Lire un graphique', '4e', seq),
+      board('z', 'Activité 9 — Zénith', '4e', seq),
+    ]));
+    expect(groups.map((g) => g.key)).toEqual(['f1', 'z', 'fm', 'es']);
+    const evaluation = groups[3];
+    expect(evaluation.evaluation).toBe(true);
+    expect(evaluation.members.map((m) => m.board.id)).toEqual(['es', 'ed', 'ec']);
+    expect(evaluation.members.map((m) => variantLabel(m.variant, evaluation.evaluation))).toEqual(['Sujet', 'Documents', 'Correction']);
+  });
+
+  it('reconnaît le préfixe, avec ou sans accent ni majuscule', () => {
+    expect(isEvaluationTitle('Évaluation — Le système immunitaire')).toBe(true);
+    expect(isEvaluationTitle('evaluation : séismes')).toBe(true);
+    expect(isEvaluationTitle('EVALUATION séismes')).toBe(true);
+    expect(isEvaluationTitle('Évaluations de fin de séquence')).toBe(true);
+    expect(isEvaluationTitle('Évaluation — forme décomposée')).toBe(true);
+    expect(isEvaluationTitle('Évaluationnel')).toBe(false);
+    expect(isEvaluationTitle('Activité 1 — Préparer l’évaluation')).toBe(false);
+  });
+
+  it('retire le préfixe pour l’affichage, sans vider le titre', () => {
+    expect(withoutEvaluationPrefix('Évaluation — Le système immunitaire')).toBe('Le système immunitaire');
+    expect(withoutEvaluationPrefix('Évaluation')).toBe('Évaluation');
   });
 
   it('laisse seule une correction orpheline ou un cours sans activité', () => {

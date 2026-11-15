@@ -70,9 +70,25 @@ export function groupLibrary(boards: Board[], extraSequences: { level: string | 
 /** Rôle d'un original dans son activité, lu à la fin de son titre. */
 export type CourseVariant = 'fiche' | 'correction' | 'documents';
 
-export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'correction', 'documents'];
+/** Ordre de la séance : la fiche, ses documents, puis la correction (toujours en dernier). */
+export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'documents', 'correction'];
 
 export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', correction: 'Correction', documents: 'Documents' };
+
+/** Intitulé du bouton d'un original : pour une évaluation, la fiche est le « Sujet ». */
+export const variantLabel = (variant: CourseVariant, evaluation = false): string =>
+  (evaluation && variant === 'fiche' ? 'Sujet' : VARIANT_LABEL[variant]);
+
+/** « Évaluation — La Terre… », « Evaluation : … », « Évaluations … » (accent et casse indifférents). */
+const EVALUATION_PREFIX = /^\s*[ée]valuations?(?![\p{L}\p{N}])\s*[—–:-]?\s*/iu;
+
+export const isEvaluationTitle = (title: string): boolean => EVALUATION_PREFIX.test(title.normalize('NFC'));
+
+/** Titre d'une évaluation sans son préfixe, quand une pastille « Évaluation » le précède. */
+export function withoutEvaluationPrefix(title: string): string {
+  const rest = title.normalize('NFC').replace(EVALUATION_PREFIX, '').trim();
+  return rest || title;
+}
 
 /** « Activité 3 — Wegener (correction) » → correction de « Activité 3 — Wegener ». */
 const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?)\)\s*$/i;
@@ -89,15 +105,18 @@ export interface ActivityGroup {
   key: string;
   /** Titre de l'activité, sans « (correction) ». */
   title: string;
-  /** Dans l'ordre fiche, correction, documents ; au plus un original par rôle. */
+  /** Dans l'ordre fiche, documents, correction ; au plus un original par rôle. */
   members: { variant: CourseVariant; board: Board }[];
+  /** Évaluation de la séquence (titre « Évaluation — … ») plutôt qu'activité. */
+  evaluation: boolean;
 }
 
 /**
  * Rassemble, dans une séquence, la fiche d'une activité avec sa correction et ses documents
  * (même titre, suivi de « (correction) » ou « (documents) »). L'ordre des activités suit
- * celui de la liste reçue. Un original seul (correction orpheline comprise) forme un groupe
- * d'un membre ; un doublon de titre reste à part, au lieu d'en cacher un.
+ * celui de la liste reçue ; les évaluations viennent ensuite, dans leur ordre. Un original seul
+ * (correction orpheline comprise) forme un groupe d'un membre ; un doublon de titre reste à part,
+ * au lieu d'en cacher un.
  */
 export function groupActivities(boards: Board[]): ActivityGroup[] {
   const groups: ActivityGroup[] = [];
@@ -111,11 +130,12 @@ export function groupActivities(boards: Board[]): ActivityGroup[] {
       found.members.sort((a, b) => VARIANT_ORDER.indexOf(a.variant) - VARIANT_ORDER.indexOf(b.variant));
       continue;
     }
-    const group: ActivityGroup = { key: board.id, title: base || board.title, members: [{ variant, board }] };
+    const title = base || board.title;
+    const group: ActivityGroup = { key: board.id, title, members: [{ variant, board }], evaluation: isEvaluationTitle(title) };
     groups.push(group);
     if (!found) byBase.set(key, group);
   }
-  return groups;
+  return [...groups.filter((g) => !g.evaluation), ...groups.filter((g) => g.evaluation)];
 }
 
 /** Les cours modifiés le plus récemment (module « Repris récemment » de l'accueil). */
