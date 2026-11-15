@@ -109,24 +109,26 @@ function Stat({ label, value }: { label: string; value: string }) {
  * place, dans la fiche d'une évaluation.
  */
 export function AssessmentStatsBody({
-  assessment, entries, stats, userId,
+  assessment, entries, stats, userId, showComparison = true,
 }: {
   assessment: AssessmentRow;
   entries: GradeEntry[];
   stats: GradeStats;
   userId: string;
+  /** Comparaison entre classes de la série (la fiche l'a déjà dans son onglet Ensemble). */
+  showComparison?: boolean;
 }) {
   const [series, setSeries] = useState<SeriesClassRow[] | null>(null);
   const [seriesError, setSeriesError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!assessment.series_id) return;
+    if (!assessment.series_id || !showComparison) return;
     let alive = true;
     fetchSeriesComparison(userId, assessment.series_id)
       .then((rows) => { if (alive) setSeries(rows); })
       .catch((e) => { if (alive) setSeriesError(e instanceof Error ? e.message : 'Comparaison indisponible'); });
     return () => { alive = false; };
-  }, [assessment.series_id, userId]);
+  }, [assessment.series_id, userId, showComparison]);
 
   const total = entries.length;
 
@@ -169,7 +171,7 @@ export function AssessmentStatsBody({
       </div>
 
       {/* Comparaison entre classes de la série */}
-      {assessment.series_id && (
+      {assessment.series_id && showComparison && (
         <>
           <h4 style={sectionTitle}>Comparaison entre classes</h4>
           {seriesError ? (

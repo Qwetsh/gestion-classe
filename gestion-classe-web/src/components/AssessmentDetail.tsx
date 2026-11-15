@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CopyViewer } from './CopyViewer';
-import { MoreMenu, type MoreMenuItem } from './MoreMenu';
+import type { MoreMenuItem } from './MoreMenu';
 import { ExportCorrectionsDialog, exportableSheets, type ExportableRow } from './ExportCorrectionsDialog';
 import { PronoteColumnDialog } from './PronoteColumnDialog';
 import { PublishDialog } from './PublishDialog';
+import { AssessmentStatsBody } from './AssessmentStatsPanel';
+import { SeriesOverview, StatsStrip } from './AssessmentOverview';
+import type { ClassGradeSummary } from '../lib/seriesSummary';
 import { isApiGrade, mentionsOtherVersion } from '../lib/aiCorrection';
 import {
   COPY_RETENTION_DAYS,
@@ -13,11 +16,9 @@ import {
   type CopyStage,
 } from '../lib/copyStatus';
 import { describeKeptCopies } from '../lib/copyTranscript';
-import { docxToPdf, isDocx } from '../lib/docConvert';
 import {
   describeClassRow,
   formatSession,
-  groupDocPath,
   hasCopies,
   hasCopyContent,
   neverScanned,
@@ -26,31 +27,31 @@ import {
   stageLabel,
   type AssessmentGroup,
 } from '../lib/assessmentGroups';
+import { formatGrade, type GradeEntry, type GradeStats } from '../lib/gradeStats';
 import {
-  clearSeriesAssessmentDocs,
-  deleteAssessmentDoc,
-  deleteSeriesDoc,
   extendCopiesRetention,
   fetchAssessmentGrades,
   fetchAssessmentTranscripts,
   fetchExpectedStudents,
   fetchLatestAiCorrections,
-  getDocUrl,
   purgeCopiesNow,
   updateAssessment,
-  uploadAssessmentDoc,
-  uploadSeriesDoc,
   validateAllGrades,
-  type AssessmentDocKind,
   type AssessmentRow,
 } from '../lib/evaluationQueries';
 
 /**
- * Le corps d'une évaluation, commun à la fiche (/evaluations/:id) et à l'onglet Éval :
- * sujet et corrigé, puis une ligne par classe avec l'état des copies et les trois gestes
- * qui s'enchaînent — voir les copies, valider la classe, publier — et la visionneuse de la
- * classe ouverte. La rétention des scans est dans un menu ⋯ : elle sert une fois par trimestre.
+ * Le corps de la fiche d'une évaluation (/evaluations/:id) : un onglet par classe — et, pour
+ * une série, un onglet « Ensemble » qui compare les classes — puis, pour la classe choisie,
+ * une ligne de statistiques et la visionneuse des copies.
+ *
+ * Principe : à l'écran, seulement ce qui demande une action. L'état d'une classe se lit à la
+ * pastille de son onglet ; le détail (copies scannées, manquantes, rétention des scans) et les
+ * actions rares sont dans le menu de la classe. Seule l'action de l'étape en cours (Valider,
+ * Publier…) reste visible, à côté de ce menu.
  */
+
+export const ALL_CLASSES = 'all';
 
 const STAGE_COLORS: Record<CopyStage, [string, string]> = {
   vide: ['var(--surface-3)', 'var(--text-dim)'],
@@ -71,23 +72,51 @@ export function StageChip({ stage, overview, title }: { stage: CopyStage; overvi
   );
 }
 
+type Tone = 'done' | 'todo' | 'empty';
+const TONE_COLOR: Record<Tone, string> = { done: 'var(--pos)', todo: 'var(--warn)', empty: 'var(--border-strong)' };
+
+/** La pastille d'un onglet : publiée, en cours, ou rien encore — et son libellé au survol. */
+function classTone(a: AssessmentRow, o: CopyOverview | undefined): { tone: Tone; label: string } {
+  const pub = publicationState(a);
+  if (pub === 'all') return { tone: 'done', label: 'Publiée' };
+  if (pub === 'notes') return { tone: 'done', label: 'Notes publiées, corrections retenues' };
+  if (!hasCopyContent(o)) return { tone: 'empty', label: hasCopies(a) ? 'Pas encore de copie' : 'Pas encore de note' };
+  if (o!.stage === 'validee') return { tone: 'todo', label: 'À publier' };
+  return { tone: 'todo', label: stageLabel(o!) };
+}
+
+export interface SeriesSummary {
+  classes: ClassGradeSummary[];
+  level: GradeStats | null;
+  total: number;
+  loading: boolean;
+  error: string | null;
+}
+
 interface AssessmentDetailProps {
   group: AssessmentGroup;
   overviews: Record<string, CopyOverview>;
   sessionStarts: Record<string, string>;
   userId: string;
-  /** Classe (ligne d'éval) dont la visionneuse est ouverte. */
-  openId: string | null;
-  onOpen: (assessmentId: string | null) => void;
+  /** L'éval de la classe affichée, ou `ALL_CLASSES` pour l'onglet Ensemble. */
+  selected: string;
+  onSelect: (key: string) => void;
+  /** Moyenne de chaque classe (par id d'éval), pour les onglets. */
+  classMeans: Record<string, number | null>;
+  /** Statistiques de la classe affichée, une fois ses notes chargées. */
+  focusStats: { stats: GradeStats; entries: GradeEntry[] } | null;
+  /** Comparaison des classes d'une série (onglet Ensemble). */
+  series: SeriesSummary | null;
   onError: (message: string) => void;
-  /** Recharge les évals et leur état (après un fichier déposé, une validation, une publication). */
+  /** Recharge les évals et leur état (après une validation, une publication, des copies ajoutées). */
   onReload: () => Promise<void>;
 }
 
-export function AssessmentDetail({ group, overviews, sessionStarts, userId, openId, onOpen, onError, onReload }: AssessmentDetailProps) {
-  const [uploading, setUploading] = useState<AssessmentDocKind | null>(null);
+export function AssessmentDetail({
+  group, overviews, sessionStarts, userId, selected, onSelect, classMeans, focusStats, series, onError, onReload,
+}: AssessmentDetailProps) {
   const [validating, setValidating] = useState<string | null>(null);
-  /** « Exporter en PDF » : classe et fiches chargées pour la fenêtre d'export. */
+  /** « Exporter » : classe et fiches chargées pour la fenêtre d'export. */
   const [exporting, setExporting] = useState<{ assessment: AssessmentRow; rows: ExportableRow[] } | null>(null);
   const [exportLoading, setExportLoading] = useState<string | null>(null);
   /** Publier : la fenêtre « notes et corrections, ou notes seules » de cette classe. */
@@ -96,84 +125,13 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
   const [pronoteFor, setPronoteFor] = useState<AssessmentRow | null>(null);
   /** Incrémenté quand une action d'ici change les copies ou les notes : la visionneuse recharge. */
   const [viewerKey, setViewerKey] = useState(0);
-  // « Ajouter les copies » sur une classe sans rien encore : ouvre la vue et la fenêtre de la classe.
+  /** « Ajouter les copies de la classe » : ouvre la visionneuse et sa fenêtre d'ajout. */
   const [classAddFor, setClassAddFor] = useState<string | null>(null);
-  const subjectInputRef = useRef<HTMLInputElement>(null);
-  const correctionInputRef = useRef<HTMLInputElement>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const reloadAll = async () => {
     await onReload();
     setViewerKey((k) => k + 1);
-  };
-
-  const openDoc = async (path: string) => {
-    const url = await getDocUrl(path);
-    if (url) window.open(url, '_blank', 'noopener');
-  };
-
-  const handleFile = async (kind: AssessmentDocKind, file: File | undefined) => {
-    if (!file) return;
-
-    // Le stockage ne contient que des PDF ou des images : l'élève comme le prof ouvrent
-    // toujours un format lisible sans Word. Un .docx doit donc être converti — mais la
-    // conversion faite dans le navigateur (mammoth + jsPDF) ne garde que la STRUCTURE du
-    // document : colonnes, zones de texte et position des images sont perdues. Word, lui,
-    // exporte un PDF parfait en un clic. On le dit, plutôt que de rendre une fiche illisible.
-    if (isDocx(file.name)) {
-      const ok = window.confirm(
-        [
-          `« ${file.name} » est un document Word.`,
-          'La conversion automatique ne respecte pas la mise en page : colonnes, zones de '
-            + 'texte et placement des images seront approximatifs.',
-          'Le mieux : dans Word, Fichier → Enregistrer sous → PDF, puis déposer ce PDF ici.',
-          'OK : convertir quand même · Annuler : je dépose un PDF.',
-        ].join('\n\n'),
-      );
-      if (!ok) return;
-    }
-
-    setUploading(kind);
-    try {
-      const toUpload = isDocx(file.name) ? await docxToPdf(file) : file;
-      if (group.seriesId) {
-        // Un seul fichier pour toutes les classes de la série, et on efface les copies
-        // propres qui le masqueraient (cf. effectiveDocPath).
-        const series = group.items[0]?.assessment_series ?? null;
-        const prev = kind === 'subject' ? series?.subject_path ?? null : series?.correction_path ?? null;
-        await uploadSeriesDoc(userId, group.seriesId, kind, toUpload, prev);
-        await clearSeriesAssessmentDocs(group.seriesId, kind);
-      } else {
-        const a = group.items[0];
-        const prev = kind === 'subject' ? a.subject_path : a.correction_path;
-        await uploadAssessmentDoc(userId, a.id, kind, toUpload, prev);
-      }
-      await onReload();
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Échec de l’upload');
-    } finally {
-      setUploading(null);
-    }
-  };
-
-  const handleDeleteDoc = async (kind: AssessmentDocKind) => {
-    const path = groupDocPath(group, kind);
-    if (!path) return;
-    const label = kind === 'subject' ? 'le sujet' : 'le corrigé';
-    const scope = group.items.length > 1 ? ` pour les ${group.items.length} classes` : '';
-    if (!window.confirm(`Supprimer ${label}${scope} ?`)) return;
-    try {
-      if (group.seriesId) {
-        const series = group.items[0]?.assessment_series ?? null;
-        const shared = kind === 'subject' ? series?.subject_path : series?.correction_path;
-        if (shared) await deleteSeriesDoc(group.seriesId, kind, shared);
-        await clearSeriesAssessmentDocs(group.seriesId, kind);
-      } else {
-        await deleteAssessmentDoc(group.items[0].id, kind, path);
-      }
-      await onReload();
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Échec de la suppression');
-    }
   };
 
   // Scans : supprimés automatiquement 30 j après la publication (migration 054). Le prof peut
@@ -196,15 +154,14 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
       : '';
     if (!window.confirm(`Supprimer définitivement les scans de « ${a.name} » (${cls}) ?\n\nLes notes, leur détail et les transcriptions restent.${keptNote}`)) return;
     try {
-      const { kept } = await purgeCopiesNow(a.id);
-      if (openId === a.id && kept === 0) onOpen(null);
+      await purgeCopiesNow(a.id);
       await reloadAll();
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Suppression impossible');
     }
   };
 
-  /** Élèves et notes d'une classe, dans l'ordre de la liste : pour l'export PDF et l'avertissement « autre version ». */
+  /** Élèves et notes d'une classe, dans l'ordre de la liste : pour l'export et l'avertissement « autre version ». */
   const loadRows = async (a: AssessmentRow): Promise<ExportableRow[]> => {
     const [roster, grades, transcripts] = await Promise.all([
       fetchExpectedStudents([a]), fetchAssessmentGrades(a.id), fetchAssessmentTranscripts(a.id),
@@ -239,7 +196,7 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     }
   };
 
-  // Exporter en PDF = les fiches de correction de la classe à imprimer (récapitulatif + une par élève).
+  // Exporter = les fiches de correction de la classe à imprimer (récapitulatif + une par élève).
   const handleExport = async (a: AssessmentRow) => {
     setExportLoading(a.id);
     try {
@@ -297,187 +254,148 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     }
   };
 
-  const withCopies = group.items.some(hasCopies);
-  /** Des copies sont passées par le scan quelque part dans la série : la chaîne « copies » s'applique. */
-  const anyScanned = group.items.some((a) => overviews[a.id] && !neverScanned(overviews[a.id]));
-  const target = group.items.find((a) => a.id === openId) ?? null;
+  const isSeries = group.items.length > 1;
+  const showAll = isSeries && selected === ALL_CLASSES;
+  const target = showAll ? null : group.items.find((a) => a.id === selected) ?? group.items[0];
+  const o = target ? overviews[target.id] : undefined;
+
+  // ---- L'action de l'étape en cours et le menu de la classe affichée ----
+  let primary: { label: string; onClick: () => void; title: string; busy?: boolean } | null = null;
+  const menu: MoreMenuItem[] = [];
+  if (target) {
+    const a = target;
+    const drafts = pendingDrafts(o);
+    const r = o ? retentionState(a, o.pages) : null;
+    const pub = publicationState(a);
+    const addCopies: MoreMenuItem = {
+      label: 'Ajouter les copies de la classe…',
+      onClick: () => setClassAddFor(a.id),
+      title: 'Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste',
+    };
+    // Rien encore (ni scan ni note) : la suite logique est d'ajouter les copies.
+    const addFirst = !!o && hasCopies(a) && neverScanned(o) && o.graded + o.absent === 0 && !a.copies_purged_at;
+    primary = addFirst
+      ? { label: 'Ajouter les copies', onClick: addCopies.onClick, title: addCopies.title ?? '' }
+      : drafts > 0
+        ? { label: validating === a.id ? 'Validation…' : `Valider (${drafts})`, onClick: () => handleValidateClass(a), busy: validating === a.id, title: 'Les brouillons du Correcteur deviennent des notes validées, visibles à la publication' }
+        : pub === 'none' && hasCopyContent(o)
+          ? { label: 'Publier…', onClick: () => setPublishing(a), title: 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' }
+          : pub === 'notes'
+            ? { label: 'Publier les corrections', onClick: () => setCorrections(a, true), title: 'Le détail, le commentaire, le corrigé et la copie corrigée deviennent visibles' }
+            : null;
+
+    if (hasCopies(a) && !addFirst) menu.push(addCopies);
+    if (pub === 'none' && drafts > 0) {
+      menu.push({ label: 'Publier…', onClick: () => setPublishing(a), title: 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' });
+    }
+    if (o && o.graded > 0 && hasCopies(a)) {
+      menu.push({
+        label: exportLoading === a.id ? 'Préparation…' : 'Exporter les corrections…',
+        onClick: () => handleExport(a),
+        disabled: exportLoading === a.id,
+        title: 'Fiches de correction : PDF à imprimer, Word modifiable, ou Markdown sans nom pour Claude',
+      });
+    }
+    if (o && o.graded + o.absent > 0) {
+      menu.push({ label: 'Copier pour Pronote', onClick: () => setPronoteFor(a), title: 'La colonne des notes, dans l’ordre de la liste Pronote' });
+    }
+    if (pub === 'all') menu.push({ label: 'Retenir les corrections', onClick: () => setCorrections(a, false), title: 'Les élèves gardent leur note, sans le détail ni le corrigé' });
+    if (r?.kind === 'scheduled') menu.push({ label: `Garder les scans ${COPY_RETENTION_DAYS} j de plus`, onClick: () => handleExtend(a), title: 'En cas de contestation' });
+    if (r?.kind === 'scheduled' || r?.kind === 'kept') menu.push({ label: 'Supprimer les scans maintenant', onClick: () => handlePurgeNow(a), danger: true });
+    if (pub !== 'none') menu.push({ label: 'Dépublier', onClick: () => unpublish(a), title: 'Retirer de l’espace élève' });
+  }
+
+  const showViewer = !!target && (hasCopyContent(o) || classAddFor === target.id);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Sujet & corrigé */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        {(['subject', 'correction'] as AssessmentDocKind[]).map((kind) => {
-          const path = groupDocPath(group, kind);
-          const label = kind === 'subject' ? 'Sujet' : 'Corrigé';
-          const inputRef = kind === 'subject' ? subjectInputRef : correctionInputRef;
-          return (
-            <div key={kind} style={card}>
-              <div style={cardTitle}>{label}</div>
-              <input
-                ref={inputRef}
-                type="file"
-                accept="application/pdf,image/*,.docx"
-                style={{ display: 'none' }}
-                onChange={(e) => { void handleFile(kind, e.target.files?.[0]); e.target.value = ''; }}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* ---- Onglets : Ensemble, puis une classe par onglet ; l'action en cours et le menu au bout ---- */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, borderBottom: '1px solid var(--border)' }}>
+        <div role="tablist" aria-label="Classes" style={{ display: 'flex', gap: 2, flex: 1, minWidth: 0, overflowX: 'auto' }}>
+          {isSeries && (
+            <Tab
+              on={showAll}
+              onClick={() => onSelect(ALL_CLASSES)}
+              label="Ensemble"
+              sub={series?.level ? formatGrade(series.level.mean) : '…'}
+              title="Comparer les classes"
+            />
+          )}
+          {group.items.map((a) => {
+            const t = classTone(a, overviews[a.id]);
+            const mean = classMeans[a.id];
+            return (
+              <Tab
+                key={a.id}
+                on={!showAll && target?.id === a.id}
+                onClick={() => onSelect(a.id)}
+                label={a.classes?.name ?? '—'}
+                sub={mean === undefined ? '…' : mean === null ? '—' : formatGrade(mean)}
+                dot={TONE_COLOR[t.tone]}
+                title={t.label}
               />
-              {path ? (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => openDoc(path)} style={btnPrimary}>Ouvrir</button>
-                  <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>
-                    {uploading === kind ? '…' : 'Remplacer'}
-                  </button>
-                  <button onClick={() => handleDeleteDoc(kind)} style={btnDanger}>Supprimer</button>
-                </div>
-              ) : (
-                <>
-                  <button onClick={() => inputRef.current?.click()} style={btnPrimary} disabled={uploading === kind}>
-                    {uploading === kind ? 'Envoi…' : `+ Ajouter le ${label.toLowerCase()} (PDF ou image)`}
-                  </button>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.5 }}>
-                    Document Word : dans Word, <strong>Fichier → Enregistrer sous → PDF</strong>.
-                    La conversion automatique d’un .docx abîme la mise en page.
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Copies et notes : une ligne par classe, puis la visionneuse de la classe ouverte */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-          <div style={cardTitle}>{withCopies ? 'Copies et notes' : 'Notes'}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-            {withCopies
-              ? 'scan au téléphone → correction sur le PC (Correcteur) → valider → publier'
-              : group.items.some((a) => a.kind === 'groupe')
-                ? 'notation en séance, par groupe et sur critères (détail plus bas) → publier'
-                : 'saisie dans le carnet, ou note d’une production numérique (section Activité plus bas) → publier'}
-          </div>
+            );
+          })}
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <tbody>
-            {group.items.map((a) => {
-              const o = overviews[a.id];
-              const on = openId === a.id;
-              const drafts = pendingDrafts(o);
-              const r = o ? retentionState(a, o.pages) : null;
-              const pub = publicationState(a);
-              // Une seule action principale par ligne, celle de l'étape en cours ; le reste passe dans « ⋯ ».
-              // Toutes les lignes gardent ainsi la même forme : Voir · action · ⋯.
-              const canAddCopies = !!o && hasCopies(a) && o.scanned === 0 && o.transcribed === 0 && !a.copies_purged_at;
-              const addCopies = {
-                label: 'Ajouter les copies',
-                onClick: () => { setClassAddFor(a.id); onOpen(a.id); },
-                title: 'Le PDF du photocopieur ou les photos de toutes les copies, découpés et attribués dans l’ordre de la liste',
-              };
-              // Déjà des notes sans scan (saisies au carnet) : la suite logique est de publier, pas d'ajouter des copies.
-              const addFirst = canAddCopies && o!.graded + o!.absent === 0;
-              const primary: { label: string; onClick: () => void; title: string; busy?: boolean } | null =
-                addFirst
-                  ? addCopies
-                  : drafts > 0
-                    ? { label: validating === a.id ? 'Validation…' : `Valider (${drafts})`, onClick: () => handleValidateClass(a), busy: validating === a.id, title: 'Les brouillons du Correcteur deviennent des notes validées, visibles à la publication' }
-                    : pub === 'none'
-                      ? { label: 'Publier…', onClick: () => setPublishing(a), title: 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' }
-                      : pub === 'notes'
-                        ? { label: 'Publier les corrections', onClick: () => setCorrections(a, true), title: 'Le détail, le commentaire, le corrigé et la copie corrigée deviennent visibles' }
-                        : null;
-              const menu: MoreMenuItem[] = [];
-              if (canAddCopies && !addFirst) menu.push(addCopies);
-              if (pub === 'none' && (addFirst || drafts > 0)) {
-                menu.push({ label: 'Publier…', onClick: () => setPublishing(a), title: 'Rendre visible dans l’espace élève : les notes, avec ou sans les corrections' });
-              }
-              if (o && o.graded > 0 && hasCopies(a)) {
-                menu.push({
-                  label: exportLoading === a.id ? 'Préparation…' : 'Exporter…',
-                  onClick: () => handleExport(a),
-                  disabled: exportLoading === a.id,
-                  title: 'Fiches de correction : PDF à imprimer, Word modifiable, ou Markdown sans nom pour Claude',
-                });
-              }
-              if (o && o.graded + o.absent > 0) {
-                menu.push({ label: 'Copier pour Pronote', onClick: () => setPronoteFor(a), title: 'La colonne des notes, dans l’ordre de la liste Pronote' });
-              }
-              if (pub === 'all') menu.push({ label: 'Retenir les corrections', onClick: () => setCorrections(a, false), title: 'Les élèves gardent leur note, sans le détail ni le corrigé' });
-              if (r?.kind === 'scheduled') menu.push({ label: `Garder les scans ${COPY_RETENTION_DAYS} j de plus`, onClick: () => handleExtend(a), title: 'En cas de contestation' });
-              if (r?.kind === 'scheduled' || r?.kind === 'kept') menu.push({ label: 'Supprimer les scans maintenant', onClick: () => handlePurgeNow(a), danger: true });
-              if (pub !== 'none') menu.push({ label: 'Dépublier', onClick: () => unpublish(a), title: 'Retirer de l’espace élève' });
-              return (
-                <tr key={a.id} style={{ borderTop: '1px solid var(--border)', background: on ? 'var(--indigo-soft)' : undefined }}>
-                  <td style={{ padding: '8px 6px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                    {a.classes?.name ?? '—'}
-                  </td>
-                  <td style={{ padding: '8px 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {sessionStarts[a.id] ? `séance du ${formatSession(sessionStarts[a.id])}` : a.date ? formatSession(a.date) : ''}
-                  </td>
-                  <td style={{ padding: '8px 6px' }}>{o && <StageChip stage={o.stage} overview={o} />}</td>
-                  <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>
-                    {o ? describeClassRow(o, hasCopies(a)) : '…'}
-                    {o && r && r.kind !== 'none' && (
-                      <div style={{ fontSize: 12, marginTop: 3, color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
-                        {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
-                        {r.kind === 'scheduled' && (r.days <= 0
-                          ? (o.untranscribed > 0 ? describeKeptCopies(o.untranscribed) : 'Scans supprimés cette nuit')
-                          : `Scans supprimés le ${formatSession(r.at)} (dans ${r.days} j)`)}
-                        {r.kind === 'scheduled' && r.days > 0 && o.untranscribed > 0 && ` · ${describeKeptCopies(o.untranscribed)}`}
-                        {r.kind === 'purged' && `Scans supprimés le ${formatSession(r.at)}`}
-                      </div>
-                    )}
-                    {pub === 'notes' && (
-                      <div style={{ fontSize: 12, marginTop: 3, color: 'var(--warn)' }}>
-                        Notes publiées · corrections retenues
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ padding: '8px 6px', whiteSpace: 'nowrap', width: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                      <button
-                        onClick={() => onOpen(on ? null : a.id)}
-                        disabled={!hasCopyContent(o)}
-                        style={{ ...btnGhost, ...rowBtn, opacity: hasCopyContent(o) ? 1 : 0.5 }}
-                      >
-                        {on ? 'Fermer' : o && o.scanned === 0 && o.transcribed === 0 ? 'Voir les notes' : 'Voir les copies'}
-                      </button>
-                      {primary ? (
-                        <button onClick={primary.onClick} disabled={primary.busy} style={{ ...btnPrimary, ...rowBtn, width: 168 }} title={primary.title}>
-                          {primary.label}
-                        </button>
-                      ) : (
-                        <span style={{ ...rowBtn, width: 168, color: 'var(--pos)', fontWeight: 700, textAlign: 'center' }} title="Notes et corrections visibles dans l’espace élève">
-                          ✓ Publiée
-                        </span>
-                      )}
-                      <span style={{ width: 30, display: 'inline-flex', justifyContent: 'center' }}>
-                        {menu.length > 0 && <MoreMenu items={menu} compact title="Plus d’actions : export, Pronote, scans, dépublier" />}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {withCopies && !anyScanned && (
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
-            Aucune copie scannée pour cette éval. Les copies se scannent au téléphone, en séance (bouton « Copies »),
-            ou s’ajoutent ici, élève par élève (« Ajouter une copie ») ou pour toute la classe d’un coup (« Ajouter les copies de la classe »).
+        {target && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 6, flexShrink: 0 }}>
+            {primary && (
+              <button onClick={primary.onClick} disabled={primary.busy} style={btnPrimary} title={primary.title}>
+                {primary.label}
+              </button>
+            )}
+            <ClassMenu
+              assessment={target}
+              overview={o}
+              sessionStart={sessionStarts[target.id]}
+              items={menu}
+            />
           </div>
         )}
-        {target && (
-          <div style={{ marginTop: 16 }}>
+      </div>
+
+      {/* ---- Ensemble : comparaison des classes ---- */}
+      {showAll && series && (
+        <SeriesOverview
+          classes={series.classes}
+          level={series.level}
+          total={series.total}
+          loading={series.loading}
+          error={series.error}
+          onOpenClass={onSelect}
+        />
+      )}
+
+      {/* ---- Une classe : statistiques en une ligne, puis les copies ---- */}
+      {target && (
+        <>
+          {focusStats ? (
+            <StatsStrip stats={focusStats.stats} open={statsOpen} onToggle={() => setStatsOpen((v) => !v)} />
+          ) : (
+            <div style={{ padding: '8px 2px', fontSize: 13, color: 'var(--text-dim)' }}>…</div>
+          )}
+          {statsOpen && focusStats && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+              <AssessmentStatsBody assessment={target} entries={focusStats.entries} stats={focusStats.stats} userId={userId} showComparison={false} />
+            </div>
+          )}
+          {showViewer ? (
             <CopyViewer
+              key={target.id}
               assessment={target}
               onError={onError}
               onChanged={onReload}
               refreshKey={viewerKey}
               openClassAdd={classAddFor === target.id}
               onClassAddClosed={() => setClassAddFor(null)}
+              showClassAddButton={false}
             />
-          </div>
-        )}
-      </div>
+          ) : (
+            <EmptyClass assessment={target} onAdd={() => setClassAddFor(target.id)} />
+          )}
+        </>
+      )}
+
       {publishing && (
         <PublishDialog
           assessment={publishing}
@@ -494,14 +412,160 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
   );
 }
 
-const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 };
-const cardTitle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: 'var(--text)' };
+function Tab({ on, onClick, label, sub, dot, title }: {
+  on: boolean;
+  onClick: () => void;
+  label: string;
+  sub: string;
+  dot?: string;
+  title?: string;
+}) {
+  return (
+    <button
+      role="tab"
+      aria-selected={on}
+      onClick={onClick}
+      title={title}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, padding: '6px 14px 7px',
+        background: 'none', border: 'none', borderBottom: `2px solid ${on ? 'var(--indigo)' : 'transparent'}`, marginBottom: -1,
+        cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+      }}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 700, color: on ? 'var(--indigo-ink)' : 'var(--text)' }}>
+        {label}
+        {dot && <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: dot }} />}
+      </span>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</span>
+    </button>
+  );
+}
+
+/**
+ * Le menu d'une classe : son état détaillé en tête (avancement des copies, publication,
+ * rétention des scans), puis les actions rares. Tout ce qui n'a pas à rester à l'écran.
+ */
+function ClassMenu({ assessment: a, overview: o, sessionStart, items }: {
+  assessment: AssessmentRow;
+  overview: CopyOverview | undefined;
+  sessionStart: string | undefined;
+  items: MoreMenuItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  const cls = a.classes?.name ?? '—';
+  const when = sessionStart ? `séance du ${formatSession(sessionStart)}` : a.date ? formatSession(a.date) : null;
+  const pub = publicationState(a);
+  const r = o ? retentionState(a, o.pages) : null;
+  const scannedFlow = !!o && hasCopies(a) && !neverScanned(o);
+  const progress = o && o.total > 0 ? (scannedFlow ? o.scanned : o.graded + o.absent) / o.total : 0;
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="État des copies et actions de la classe"
+        style={btnMenu}
+      >
+        {cls} ▾
+      </button>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute', right: 0, top: '100%', marginTop: 4, width: 300, zIndex: 20,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-2)',
+          }}
+        >
+          <div style={{ padding: 12, borderBottom: items.length ? '1px solid var(--border)' : undefined }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{cls}{when ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {when}</span> : null}</span>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap', color: pub === 'all' ? 'var(--pos)' : pub === 'notes' ? 'var(--warn)' : 'var(--text-dim)' }}>
+                {pub === 'all' ? '✓ Publiée' : pub === 'notes' ? 'Notes publiées' : 'Non publiée'}
+              </span>
+            </div>
+            {o && o.total > 0 && (
+              <div style={{ height: 4, borderRadius: 2, background: 'var(--surface-3)', overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ width: `${Math.round(progress * 100)}%`, height: '100%', background: 'var(--indigo)' }} />
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              {o ? describeClassRow(o, hasCopies(a)) : 'Chargement…'}
+              {pub === 'notes' && <div style={{ color: 'var(--warn)' }}>Corrections retenues : les élèves ne voient que leur note</div>}
+              {o && r && r.kind !== 'none' && (
+                <div style={{ color: r.kind === 'scheduled' && r.days <= 7 ? 'var(--warn)' : 'var(--text-dim)' }}>
+                  {r.kind === 'kept' && 'Scans conservés tant que l’éval n’est pas publiée'}
+                  {r.kind === 'scheduled' && (r.days <= 0
+                    ? (o.untranscribed > 0 ? describeKeptCopies(o.untranscribed) : 'Scans supprimés cette nuit')
+                    : `Scans supprimés le ${formatSession(r.at)} (dans ${r.days} j)`)}
+                  {r.kind === 'scheduled' && r.days > 0 && o.untranscribed > 0 && ` · ${describeKeptCopies(o.untranscribed)}`}
+                  {r.kind === 'purged' && `Scans supprimés le ${formatSession(r.at)}`}
+                </div>
+              )}
+            </div>
+          </div>
+          {items.length > 0 && (
+            <div style={{ padding: 4 }}>
+              {items.map((it) => (
+                <button
+                  key={it.label}
+                  role="menuitem"
+                  disabled={it.disabled}
+                  onClick={() => { setOpen(false); it.onClick(); }}
+                  title={it.title}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none',
+                    background: 'none', cursor: it.disabled ? 'default' : 'pointer', fontFamily: 'inherit', fontSize: 13,
+                    borderRadius: 6, color: it.danger ? 'var(--neg)' : 'var(--text)', opacity: it.disabled ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = 'var(--surface-3)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                >
+                  {it.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Une classe sans copie ni note : une ligne, et le geste qui démarre. */
+function EmptyClass({ assessment: a, onAdd }: { assessment: AssessmentRow; onAdd: () => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '20px 16px', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text-dim)' }}>
+      <span style={{ flex: 1, minWidth: 240 }}>
+        {hasCopies(a)
+          ? 'Aucune copie pour l’instant. Elles se scannent au téléphone, en séance (bouton « Copies »), ou s’ajoutent ici.'
+          : a.kind === 'groupe'
+            ? 'Notation en séance, par groupe et sur critères : le détail est plus bas.'
+            : 'Pas encore de note. Elles se saisissent dans le carnet, ou viennent d’une production numérique (plus bas).'}
+      </span>
+      {hasCopies(a) && <button onClick={onAdd} style={btnPrimary}>Ajouter les copies</button>}
+    </div>
+  );
+}
+
 const btnBase: React.CSSProperties = {
-  padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', border: '1px solid transparent', fontFamily: 'inherit',
+  padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+  cursor: 'pointer', border: '1px solid transparent', fontFamily: 'inherit', whiteSpace: 'nowrap',
 };
 const btnPrimary: React.CSSProperties = { ...btnBase, background: 'var(--indigo-ink)', color: '#fff' };
-const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };
-const btnDanger: React.CSSProperties = { ...btnBase, background: 'var(--neg-soft)', color: 'var(--neg)' };
-/** Boutons d'une ligne de classe : largeur fixe pour que les colonnes s'alignent d'une classe à l'autre. */
-const rowBtn: React.CSSProperties = { padding: '4px 10px', fontSize: 12, width: 120, boxSizing: 'border-box', display: 'inline-block' };
+const btnMenu: React.CSSProperties = { ...btnBase, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-strong)' };

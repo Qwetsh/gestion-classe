@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
-import { AssessmentDetail } from '../components/AssessmentDetail';
+import { ALL_CLASSES, AssessmentDetail, type SeriesSummary } from '../components/AssessmentDetail';
+import { AssessmentDocButtons } from '../components/AssessmentDocButtons';
 import { AssessmentModal } from '../components/AssessmentModal';
-import { AssessmentStatsBody } from '../components/AssessmentStatsPanel';
+import { MoreMenu, type MoreMenuItem } from '../components/MoreMenu';
 import { DuplicateAssessmentDialog } from '../components/DuplicateAssessmentDialog';
 import { GroupSessionDetail } from '../components/groups/GroupSessionDetail';
 import { ActivityClassPanel } from '../components/productions/ActivityClassPanel';
 import { fetchActivityForAssessment, type ActivityRow } from '../lib/productionsQueries';
-import { groupOf, hasCopies, hasCopyContent, neverScanned } from '../lib/assessmentGroups';
+import { groupOf } from '../lib/assessmentGroups';
 import { sequencesPresent } from '../lib/carnetView';
+import { summarizeSeries } from '../lib/seriesSummary';
 import type { CopyOverview } from '../lib/copyStatus';
 import { describeGrades, type GradeEntry, type GradeStatus } from '../lib/gradeStats';
 import {
@@ -19,6 +21,7 @@ import {
   fetchAssessments,
   fetchCarnetStudents,
   fetchCopyOverviews,
+  fetchSeriesComparison,
   rescaleGradesForBareme,
   setGradeAdapted,
   softDeleteAssessment,
@@ -27,14 +30,15 @@ import {
   type AssessmentRow,
   type CarnetStudent,
   type GradeRow,
+  type SeriesClassRow,
 } from '../lib/evaluationQueries';
 
 /**
  * La fiche d'une évaluation : tout ce qui la concerne, au même endroit (cf.
- * PLAN_ergonomie_evaluations.md). En-tête et réglages (Modifier, Supprimer), sujet et corrigé,
- * copies et notes classe par classe avec voir / valider / publier, la visionneuse, puis les
- * statistiques. L'URL porte l'éval d'une classe ; une série montre toutes ses classes, et
- * Modifier comme Statistiques portent sur la classe dont la visionneuse est ouverte.
+ * PLAN_ergonomie_evaluations.md). Un en-tête compact (sujet, corrigé, réglages dans ⋯), puis un
+ * onglet par classe — copies, statistiques en une ligne, valider / publier — et, pour une série,
+ * un onglet Ensemble qui compare les classes. L'URL porte l'éval d'une classe : son onglet
+ * s'ouvre à l'arrivée, et Modifier comme Supprimer portent sur la classe affichée.
  */
 export function AssessmentSheet() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +51,14 @@ export function AssessmentSheet() {
   const [rows, setRows] = useState<AssessmentRow[] | null>(null);
   const [overviews, setOverviews] = useState<Record<string, CopyOverview>>({});
   const [sessionStarts, setSessionStarts] = useState<Record<string, string>>({});
-  const [openId, setOpenId] = useState<string | null>(null);
+  /** Classe affichée (id d'éval) ; à défaut, celle de l'URL. */
+  const [classId, setClassId] = useState<string | null>(null);
+  /** Onglet Ensemble d'une série. */
+  const [showAll, setShowAll] = useState(false);
+  /** Notes de toutes les classes d'une série : moyennes des onglets et onglet Ensemble. */
+  const [seriesRows, setSeriesRows] = useState<SeriesClassRow[] | null>(null);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
+  const [seriesTick, setSeriesTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -57,18 +68,17 @@ export function AssessmentSheet() {
   /** Élèves et notes de la classe en cours : pour Modifier (aménagements, barème) et les stats. */
   const [students, setStudents] = useState<CarnetStudent[]>([]);
   const [grades, setGrades] = useState<GradeRow[]>([]);
+  /** Éval dont `students` et `grades` sont chargés : pas de statistiques d'une autre classe pendant un changement d'onglet. */
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   const handleError = useCallback((message: string) => setError(message), []);
 
   const group = useMemo(() => (rows && id ? groupOf(rows, id) : null), [rows, id]);
-  /** La classe en cours : celle dont la visionneuse est ouverte, sinon celle de l'URL. */
+  /** La classe en cours : celle de l'onglet choisi, sinon celle de l'URL. */
   const focus = useMemo(
-    () => group?.items.find((a) => a.id === openId) ?? group?.items.find((a) => a.id === id) ?? null,
-    [group, openId, id],
+    () => group?.items.find((a) => a.id === classId) ?? group?.items.find((a) => a.id === id) ?? null,
+    [group, classId, id],
   );
-
-  /** À l'arrivée seulement : la visionneuse de la classe de l'URL s'ouvre si elle a quelque chose à montrer. */
-  const openedOnce = useRef(false);
 
   const load = useCallback(async () => {
     if (!user || !id) return;
@@ -80,14 +90,6 @@ export function AssessmentSheet() {
       const d = await fetchCopyOverviews(g.items);
       setOverviews(d.overviews);
       setSessionStarts(d.sessionStarts);
-      if (!openedOnce.current) {
-        openedOnce.current = true;
-        // La visionneuse s'ouvre d'office pour des copies (écrit, DM, ou des scans). Un TP de groupe
-        // ou une production montre ses résultats dans sa propre section, plus bas.
-        const own = g.items.find((a) => a.id === id);
-        const o = d.overviews[id];
-        if (own && hasCopyContent(o) && (hasCopies(own) || (o && !neverScanned(o)))) setOpenId(id);
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement');
     }
@@ -101,6 +103,7 @@ export function AssessmentSheet() {
       const [st, gr] = await Promise.all([fetchCarnetStudents(user.id, focus.class_id), fetchAssessmentGrades(focus.id)]);
       setStudents(st);
       setGrades(gr);
+      setLoadedFor(focus.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Notes introuvables');
     }
@@ -119,9 +122,20 @@ export function AssessmentSheet() {
   }, [focusId]);
   const linkedActivity = activity && activity.assessmentId === focusId ? activity.row : null;
 
+  const seriesId = group && group.items.length > 1 ? group.seriesId : null;
+  useEffect(() => {
+    if (!user || !seriesId) return;
+    let alive = true;
+    fetchSeriesComparison(user.id, seriesId)
+      .then((r) => { if (alive) { setSeriesRows(r); setSeriesError(null); } })
+      .catch((e) => { if (alive) setSeriesError(e instanceof Error ? e.message : 'Comparaison indisponible'); });
+    return () => { alive = false; };
+  }, [user, seriesId, seriesTick]);
+
   const reload = useCallback(async () => {
     await load();
     await loadFocus();
+    setSeriesTick((t) => t + 1);
   }, [load, loadFocus]);
 
   const gradeBy = useMemo(() => new Map(grades.map((g) => [g.student_id, g])), [grades]);
@@ -133,6 +147,22 @@ export function AssessmentSheet() {
     [students, gradeBy],
   );
   const stats = useMemo(() => describeGrades(entries), [entries]);
+  const ready = !!focus && loadedFor === focus.id;
+  const focusStats = useMemo(() => (ready ? { stats, entries } : null), [ready, stats, entries]);
+
+  const series: SeriesSummary | null = useMemo(() => {
+    if (!seriesId) return null;
+    if (!seriesRows) return { classes: [], level: null, total: 0, loading: !seriesError, error: seriesError };
+    return { ...summarizeSeries(seriesRows), loading: false, error: seriesError };
+  }, [seriesId, seriesRows, seriesError]);
+
+  /** Moyenne de chaque classe pour les onglets : la série si elle est chargée, sinon la classe affichée. */
+  const classMeans = useMemo(() => {
+    const m: Record<string, number | null> = {};
+    for (const c of series?.classes ?? []) m[c.assessmentId] = c.stats.mean;
+    if (focusStats && focus) m[focus.id] = focusStats.stats.mean;
+    return m;
+  }, [series, focusStats, focus]);
   const adaptedIds = useMemo(() => new Set(grades.filter((g) => g.is_adapted).map((g) => g.student_id)), [grades]);
   const gradeRaws = useMemo(
     () => grades.filter((g) => g.status === 'noted' && g.grade_raw !== null).map((g) => Number(g.grade_raw)),
@@ -168,16 +198,29 @@ export function AssessmentSheet() {
 
   const bareme = focus ? Number(focus.bareme_total ?? 20) : 20;
 
+  // Réglages de l'éval : rares, ils passent dans ⋯. Dans une série, Modifier et Supprimer
+  // portent sur la classe affichée (Modifier propose ensuite d'appliquer à toute la série).
+  const forClass = group && group.items.length > 1 && focus?.classes?.name ? ` (${focus.classes.name})` : '';
+  const evalMenu: MoreMenuItem[] = focus
+    ? [
+        { label: `Modifier${forClass}…`, onClick: () => setEditing(true), title: 'Nom, type, date, barème, coefficient, aménagements' },
+        ...(focus.kind !== 'groupe'
+          ? [{ label: 'Dupliquer…', onClick: () => setDuplicating(true), title: 'Même éval pour une autre classe, ou une nouvelle fois : réglages, sujet et corrigé, sans les notes' }]
+          : []),
+        { label: `Supprimer${forClass}`, onClick: () => { void handleDelete(); }, danger: true },
+      ]
+    : [];
+
   return (
     <Layout fluid>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 6 }}>
         <Link to={backTo} style={{ fontSize: 13, color: 'var(--indigo)', fontWeight: 600, textDecoration: 'none' }}>
           ← Carnet{focus?.classes?.name ? ` ${focus.classes.name}` : ''}{focus?.period ? ` · T${focus.period}` : ''}
         </Link>
       </div>
 
       {error && (
-        <div style={{ background: 'var(--neg-soft)', color: 'var(--neg)', padding: '8px 12px', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+        <div style={{ background: 'var(--neg-soft)', color: 'var(--neg)', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {error}
           <button onClick={() => setError(null)} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--neg)', cursor: 'pointer' }}>✕</button>
         </div>
@@ -191,49 +234,44 @@ export function AssessmentSheet() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* En-tête : l'éval, ses classes, ses réglages */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <h1 className="page-title">
-                {group.name}
-              </h1>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                {ASSESSMENT_KIND_LABEL[focus.kind]} · {group.items.map((a) => a.classes?.name ?? '—').join(', ')}
-                {' '}· /{bareme} · coef {Number(focus.coefficient)}
-                {focus.period ? ` · T${focus.period}` : ''}
-                {focus.sequence ? ` · ${focus.sequence}` : ''}
-                {!focus.counts_in_average && ' · hors moyenne'}
-                {group.items.length > 1 ? ' · sujet et corrigé communs' : ''}
+          <div>
+            {/* En-tête : l'éval, sujet et corrigé, réglages rangés dans ⋯ */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <h1 className="page-title">{group.name}</h1>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {ASSESSMENT_KIND_LABEL[focus.kind]} · /{bareme} · coef {Number(focus.coefficient)}
+                  {focus.sequence ? ` · ${focus.sequence}` : ''}
+                  {!focus.counts_in_average && ' · hors moyenne'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AssessmentDocButtons group={group} userId={user.id} onReload={reload} onError={handleError} />
+                <MoreMenu items={evalMenu} title="Modifier, dupliquer, supprimer" />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setEditing(true)} style={btnGhost} title="Nom, type, date, barème, coefficient, aménagements">
-                Modifier{group.items.length > 1 ? ` (${focus.classes?.name ?? ''})` : ''}
-              </button>
-              {focus.kind !== 'groupe' && (
-                <button onClick={() => setDuplicating(true)} style={btnGhost} title="Même éval pour une autre classe, ou une nouvelle fois : réglages, sujet et corrigé, sans les notes">
-                  Dupliquer
-                </button>
-              )}
-              <button onClick={handleDelete} style={btnDanger}>
-                Supprimer{group.items.length > 1 ? ` (${focus.classes?.name ?? ''})` : ''}
-              </button>
-            </div>
+
+            <AssessmentDetail
+              group={group}
+              overviews={overviews}
+              sessionStarts={sessionStarts}
+              userId={user.id}
+              selected={showAll ? ALL_CLASSES : focus.id}
+              onSelect={(key) => {
+                if (key === ALL_CLASSES) { setShowAll(true); return; }
+                setShowAll(false);
+                setClassId(key);
+              }}
+              classMeans={classMeans}
+              focusStats={focusStats}
+              series={series}
+              onError={handleError}
+              onReload={reload}
+            />
           </div>
 
-          <AssessmentDetail
-            group={group}
-            overviews={overviews}
-            sessionStarts={sessionStarts}
-            userId={user.id}
-            openId={openId}
-            onOpen={setOpenId}
-            onError={handleError}
-            onReload={reload}
-          />
-
           {/* Production numérique (phase 6) : l'activité pour cette classe, ses envois et leur correction. */}
-          {linkedActivity && (
+          {!showAll && linkedActivity && (
             <section aria-label="Activité numérique" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Activité numérique{group.items.length > 1 ? ` · ${focus.classes?.name ?? ''}` : ''}</div>
               <ActivityClassPanel
@@ -250,7 +288,7 @@ export function AssessmentSheet() {
           )}
 
           {/* TP de groupe (migration 063) : la séance elle-même, ses critères, groupes, matériel et photos. */}
-          {focus.kind === 'groupe' && focus.group_session_id && (
+          {!showAll && focus.kind === 'groupe' && focus.group_session_id && (
             <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }} aria-label="Séance de groupe">
               <div style={{ padding: '14px 16px 0', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Séance de groupe</div>
               <GroupSessionDetail
@@ -260,19 +298,6 @@ export function AssessmentSheet() {
               />
             </section>
           )}
-
-          {/* Statistiques de la classe en cours, repliées par défaut */}
-          <details style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
-            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              Statistiques{group.items.length > 1 ? ` · ${focus.classes?.name ?? ''}` : ''}
-              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
-                {stats.mean !== null ? ` · moyenne ${String(Math.round(stats.mean * 10) / 10).replace('.', ',')}` : ''}
-              </span>
-            </summary>
-            <div style={{ marginTop: 14 }}>
-              <AssessmentStatsBody assessment={focus} entries={entries} stats={stats} userId={user.id} />
-            </div>
-          </details>
         </div>
       )}
 
@@ -336,10 +361,3 @@ export function AssessmentSheet() {
     </Layout>
   );
 }
-
-const btnBase: React.CSSProperties = {
-  padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', border: '1px solid transparent', fontFamily: 'inherit',
-};
-const btnGhost: React.CSSProperties = { ...btnBase, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)' };
-const btnDanger: React.CSSProperties = { ...btnBase, background: 'var(--neg-soft)', color: 'var(--neg)' };
