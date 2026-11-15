@@ -309,7 +309,12 @@ Pièges vérifiés dans l'application :
 - une flèche accrochée à un objet ne suit pas un objet **déplacé par un bouton** ;
 - les boutons ne réagissent qu'avec l'outil de sélection (pas avec le stylo) ;
 - un libellé de bouton est en gras : compter 15 % plus large que le texte courant (`ecrire()`
-  alerte quand il passerait sur deux lignes).
+  alerte quand il passerait sur deux lignes) ;
+- sans espaces insécables, le tableau coupe « 130 000 / 000 » et laisse un « ? » seul en début de
+  ligne : `ecrire()` les pose tout seul (nombres, unités, « : ; ! ? », guillemets, « − 400 ») —
+  écrire des espaces ordinaires, ne pas taper `&nbsp;` ;
+- des cartes déplacées par un bouton dans un cadre : leur largeur + la position d'arrivée doit
+  rester dans le cadre (marges intérieures du texte comprises, environ 11 de chaque côté).
 
 Règles :
 
