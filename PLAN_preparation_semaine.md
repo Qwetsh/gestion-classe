@@ -372,7 +372,7 @@ trait entier. Petit lot : y porter la découpe du tableau blanc. À faire si Tho
 | 1 — Envoi des fichiers et des documents | **Fait** le 14/11/2026 (PR #86, migration 075, fonction `depot-cours`) : jeton d'import créé dans Réglages, envoi par `gc_envoi.py`, essayé de bout en bout avec l'image du puzzle |
 | 2 — Écrans : le socle | **Fait** le 14/11/2026 (PR #84 et #85, migration 074) : un cours porte des écrans (`doc.screens`), bouton « Écrans » (devenu « Tableau »), état de page et réponses révélées gardés en base |
 | 3 — Écrans : gabarits, générateur, vérificateur | **En cours** : vérificateur (`npm run screens:check`, § 10) puis gabarits et générateur (`gc_ecrans.py`, § 11) faits le 15/11/2026 ; restent le contrôle par rendu automatique et le jugement de Thomas en classe |
-| 4 — Skill « prépare ma semaine » | À faire |
+| 4 — Skill « prépare ma semaine » | **En cours** : skill `prepare-semaine`, `gc_semaine.py` et actions `agenda` / `place` / `unplace` de `depot-cours` (déployées le 15/11/2026, § 12) ; restent un premier placement réel, les manques de l'étape 0 dans `gc_cours.py`, le contrôle du nombre de pages |
 | 5 — Tableaux de fin de séance | À faire |
 | 6 — Plus tard | — |
 
@@ -484,3 +484,31 @@ minuteur) donne la forme des gabarits.
 **Reste de l'étape 3** : faire de la mesure ci-dessus un contrôle automatique (charger le brouillon
 dans un cours d'essai, mesurer, comparer), et affiner l'estimation (largeur par caractère, coupure
 par mots) si les écarts gênent.
+
+## 12. Étape 4 — la skill et le placement (15/11/2026, branche `feat/prepare-semaine`)
+
+- **Skill `prepare-semaine`** (`.claude/skills/prepare-semaine/SKILL.md`) : ce que Thomas dit, ce
+  que Claude fait ; trouver l'activité (bibliothèque, sinon conversion OneDrive), proposer sans
+  écrire, une seule question dans les cas listés, corrections après coup, compte rendu.
+- **Fonction `depot-cours`, trois actions de plus** (version 2, déployée le 15/11/2026) :
+  - `agenda` : les cours de l'emploi du temps (14 jours par défaut, 60 au plus), avec leur classe
+    et le document déjà posé, et les titres de la bibliothèque. Les cours annulés et les libellés
+    ignorés sont écartés ; la classe vient de la correspondance mémorisée du libellé, sinon d'une
+    classe au nom identique. Rien sur les élèves, aucun contenu de cours.
+  - `place` : une copie de l'original par cours (document, écrans, mêmes identifiants de page),
+    reliée au cours avec sa provenance (`source_board_id`, qui existait déjà : **pas de
+    migration**). Un cours qui porte déjà un document n'est jamais écrasé (« occupé », ou « déjà
+    placé » si c'est le même original).
+  - `unplace` : retire une copie, sauf si une séance l'a utilisée, ou si elle a été ouverte ou
+    retouchée depuis sa pose (sauf `force`, sur demande de Thomas).
+- **`gc_semaine.py`** : `agenda`, `bibliotheque`, `placer` (proposition seule sans `--envoyer`),
+  `retirer`. L'activité va sur le premier cours libre, la correction sur le suivant ; une classe
+  ou tout un niveau (« 4e ») ; les demi-groupes avec `--groupes`. 11 tests (`test_gc_semaine.py`).
+- **Essayé en production, sans rien écrire** : agenda des 4e (12 cours, Wegener bien vu sur les
+  huit) ; Wegener relancé sur les 4e → huit fois « déjà placé » ; activité 4 de la séquence 2 →
+  proposée sur le premier cours libre de chaque 4e ; retrait d'un original refusé.
+- **Pas encore essayé** : une vraie pose et un vrai retrait (à faire sur un cours que Thomas
+  choisit).
+- **La bibliothèque** compte maintenant 22 originaux de 3e, 4e et 5e (séquences 1 et 2, face
+  papier), créés par une session à part le 15/11/2026. Trois activités de 3e (séquence 2, A1, A2,
+  A4) sont absentes : elles se font sur l'app hôpital et n'ont pas de fiche élève.
