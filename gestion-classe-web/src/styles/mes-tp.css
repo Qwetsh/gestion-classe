@@ -23,8 +23,9 @@
 .tp-sheet__cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 20px; }
 .tp-sheet__h { margin: 0 0 6px; display: flex; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
 .tp-sheet__total { font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--text); font-variant-numeric: tabular-nums; }
-.tp-sheet__list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: var(--text); }
+.tp-sheet__list { margin: 0; padding-left: 20px; list-style: disc; font-size: 14px; line-height: 1.5; color: var(--text); }
 .tp-sheet__list li + li { margin-top: 2px; }
+.tp-sheet__list--steps { list-style: decimal; }
 .tp-sheet__list--steps li::marker { font-weight: 600; color: var(--text-muted); }
 .tp-sheet__safety { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--neg-soft); }
 .tp-sheet__safety .tp-sheet__h { color: var(--neg); }
