@@ -79,14 +79,20 @@ export function htmlLines(html: string): string[] {
     .filter((l) => l !== '');
 }
 
+/** Blocs vides (`<div><br></div>`) : chacun occupe une ligne à l'écran, sans porter de texte. */
+export function emptyBlocks(html: string): number {
+  return (html.match(/<(div|p)\b[^>]*>(?:\s*(?:<br\s*\/?>|&nbsp;))+\s*<\/\1>/gi) ?? []).length;
+}
+
 /**
  * Hauteur estimée d'une zone de texte : chaque bloc occupe autant de lignes que sa longueur le
- * demande pour la largeur donnée. Estimation large (le gras et les majuscules sont plus larges).
+ * demande pour la largeur donnée, et chaque bloc vide une ligne. Estimation large (mesurée dans
+ * l'application le 15/11/2026 : juste ou par excès sur 42 textes).
  */
 export function estimateTextHeight(html: string, w: number, size: number, padded: boolean): number {
   const padding = padded ? size * 0.5 : 0;
   const perLine = Math.max(1, Math.floor((w - padding * 2) / (size * CHAR_WIDTH)));
-  const lines = htmlLines(html).reduce((n, line) => n + Math.max(1, Math.ceil(line.length / perLine)), 0);
+  const lines = htmlLines(html).reduce((n, line) => n + Math.max(1, Math.ceil(line.length / perLine)), 0) + emptyBlocks(html);
   return Math.max(1, lines) * size * LINE_HEIGHT + padding * 2;
 }
 

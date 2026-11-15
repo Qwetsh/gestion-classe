@@ -32,6 +32,14 @@ describe('estimation de la hauteur', () => {
     expect(long).toBeGreaterThan(one * 3);
   });
 
+  it('compte une ligne pour chaque bloc vide entre deux paragraphes', () => {
+    const line = 26 * 1.34;
+    expect(estimateTextHeight('<div>Un</div><div><br></div><div>Deux</div>', 880, 26, false)).toBeCloseTo(line * 3);
+    expect(estimateTextHeight('<div>Un</div><div><br/></div><p>&nbsp;</p><div>Deux</div>', 880, 26, false)).toBeCloseTo(line * 4);
+    // Un retour à la ligne dans un bloc qui porte du texte n'est pas un bloc vide
+    expect(estimateTextHeight('<div>Un<br>Deux</div>', 880, 26, false)).toBeCloseTo(line * 2);
+  });
+
   it('ajoute le rembourrage d’un fond coloré', () => {
     expect(estimateTextHeight('<div>Court</div>', 880, 28, true)).toBeCloseTo(28 * 1.34 + 28);
   });
