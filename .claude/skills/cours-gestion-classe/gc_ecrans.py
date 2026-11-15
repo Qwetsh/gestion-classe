@@ -107,6 +107,42 @@ def liste(*lignes):
     return ''.join('<div>• ' + l + '</div>' for l in lignes)
 
 
+# ---------------------------------------------------------------- typographie
+# Espaces insécables, posées par ecrire() sur tous les textes : sans elles, le tableau coupe
+# « 130 000 / 000 » ou laisse un « ? » seul en début de ligne (vu au TBI le 15/11/2026).
+INSECABLE = ' '
+_TAG = re.compile(r'(<[^>]*>)')
+_REGLES_TYPO = (
+    (re.compile(r'(?<=\d) (?=\d{3}(?!\d))'), INSECABLE),                    # 130 000 000
+    (re.compile(r'(?<=\d) (?=(?:cm|mm|km|m|kg|g|mg|mL|L|°C|°|%|ans?|Ma|millions?|milliards?|pts?)'
+                r'(?![A-Za-zÀ-ÖØ-öø-ÿ]))'), INSECABLE),                    # 3 cm, 1,5 pt, 30 %
+    (re.compile(r' (?=[?!:;»])'), INSECABLE),                                # Problématique : … ?
+    (re.compile(r'(?<=«) '), INSECABLE),                                     # « Ça…
+    (re.compile(r'(?<=[−–]) (?=\d)'), INSECABLE),                            # − 400 Ma
+)
+
+
+def typo(html):
+    """Remplace par des insécables les espaces que le français ne coupe pas (hors balises)."""
+    morceaux = _TAG.split(html)
+    for i in range(0, len(morceaux), 2):           # les indices impairs sont des balises
+        for motif, par in _REGLES_TYPO:
+            morceaux[i] = motif.sub(par, morceaux[i])
+    return ''.join(morceaux)
+
+
+_CLES_TEXTE = ('html', 'label', 'title')
+
+
+def _typo_partout(valeur):
+    """Applique typo() à tous les textes affichés d'une page (zones, formes, rideaux, fenêtres)."""
+    if isinstance(valeur, dict):
+        return {k: (typo(v) if k in _CLES_TEXTE and isinstance(v, str) else _typo_partout(v)) for k, v in valeur.items()}
+    if isinstance(valeur, list):
+        return [_typo_partout(v) for v in valeur]
+    return valeur
+
+
 # ---------------------------------------------------------------- actions des boutons
 #
 # Un bouton (ou une zone cliquable) porte une liste d'actions jouées dans l'ordre quand on le
@@ -907,7 +943,7 @@ class Ecrans:
     def ecrire(self, chemin):
         """Écrit le fichier des écrans. À ranger dans course-drafts/ecrans/, puis `npm run screens:check`."""
         with open(chemin, 'w', encoding='utf8') as f:
-            json.dump(self.pages, f, ensure_ascii=False)
+            json.dump(_typo_partout(self.pages), f, ensure_ascii=False)
         try:
             sys.stdout.reconfigure(encoding='utf-8')
         except Exception:

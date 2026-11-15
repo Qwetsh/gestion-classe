@@ -95,5 +95,41 @@ class Gabarits(unittest.TestCase):
         self.assertEqual(ex.e.alertes, [])
 
 
+class Typographie(unittest.TestCase):
+    N = g.INSECABLE
+
+    def test_nombres_et_unites(self):
+        self.assertEqual(g.typo('3 × 130 000 000 = 390 000 000 cm'),
+                         '3 × 130' + self.N + '000' + self.N + '000 = 390' + self.N + '000' + self.N + '000' + self.N + 'cm')
+        self.assertEqual(g.typo('1,5 pt'), '1,5' + self.N + 'pt')
+        self.assertEqual(g.typo('il y a 2 mois'), 'il y a 2 mois')        # « m » seul, pas « mois »
+        self.assertEqual(g.typo('en 1912 les'), 'en 1912 les')
+        self.assertEqual(g.typo('(− 400 à − 350 Ma)'), '(−' + self.N + '400 à −' + self.N + '350' + self.N + 'Ma)')
+
+    def test_ponctuation_et_guillemets(self):
+        self.assertEqual(g.typo('<b>Problématique</b> : pourquoi ?'),
+                         '<b>Problématique</b>' + self.N + ':' + ' pourquoi' + self.N + '?')
+        self.assertEqual(g.typo('« Ça »'), '«' + self.N + 'Ça' + self.N + '»')
+
+    def test_les_balises_ne_sont_pas_touchees(self):
+        html = '<span style="color: #C00000; font-size: 0.6em">1 pt</span>'
+        self.assertEqual(g.typo(html), '<span style="color: #C00000; font-size: 0.6em">1' + self.N + 'pt</span>')
+
+    def test_ecrire_pose_les_insecables_partout(self):
+        import json
+        import tempfile
+        e = g.Ecrans('t')
+        x = e.ecran('Pourquoi ?')
+        x.reponse(60, 120, 400, 24, '130 000 km')
+        chemin = os.path.join(tempfile.mkdtemp(), 'e.json')
+        e.ecrire(chemin)
+        with open(chemin, encoding='utf8') as f:
+            texte = json.load(f)[0]
+        htmls = [o['html'] for o in texte['objects'] if o['type'] == 'text']
+        self.assertIn('Pourquoi' + self.N + '?', htmls[0])
+        self.assertIn('130' + self.N + '000' + self.N + 'km', htmls[1])
+        self.assertNotIn(self.N, x.objets[1]['html'])                     # les objets en mémoire restent tels quels
+
+
 if __name__ == '__main__':
     unittest.main()
