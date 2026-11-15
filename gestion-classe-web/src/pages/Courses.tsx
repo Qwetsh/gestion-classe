@@ -32,6 +32,19 @@ import { createCourse, duplicateCourse, emptyCourseDoc } from '../lib/course/cou
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, parseOpenTarget, type OpenMode } from '../lib/courseLibrary';
 import { fetchClassGroupsForUser } from '../lib/classGroupQueries';
+import { openLocalFile, type OpenedFile } from '../lib/cloudFiles';
+import { STORAGE_QUOTA_BYTES, formatBytes, refuseCourseFile, renamedFile, sequenceKey, usageLevel, type CourseFile } from '../lib/courseFiles';
+import {
+  courseFilesUnavailable,
+  deleteCourseFile,
+  downloadCourseFile,
+  fetchStorageUsage,
+  listCourseFiles,
+  renameCourseFile,
+  renameFilesChapter,
+  uploadCourseFile,
+  type StorageUsage,
+} from '../lib/courseFilesQueries';
 import { fetchClasses, fetchPlacedDocuments, placementChips, placementsOf, type ClassRef, type DocumentSession, type PlacedDocument } from '../lib/coursePlacements';
 import { filterBoards, highlightParts, searchCourseText, searchWords, type CourseTextHit } from '../lib/courseSearch';
 import { draftTab } from '../lib/boardTabs';
@@ -41,7 +54,8 @@ import { withDefaultTheme } from '../components/course/courseThemes';
 import { BUILTIN_TEMPLATES } from '../components/course/courseTemplates';
 import { BoardMetaForm, type TemplateChoice } from '../components/courses/BoardMetaForm';
 import { ClassCourses } from '../components/courses/ClassCourses';
-import { CourseLibrary } from '../components/courses/CourseLibrary';
+import { CloudFileViewer } from '../components/clouds/CloudFileViewer';
+import { CourseLibrary, type SequenceFilesApi } from '../components/courses/CourseLibrary';
 import { PlaceCourseDialog } from '../components/courses/PlaceCourseDialog';
 import '../styles/mes-cours.css';
 
@@ -65,6 +79,11 @@ export function Courses() {
   const [documents, setDocuments] = useState<PlacedDocument[]>([]);
   const [classes, setClasses] = useState<ClassRef[]>([]);
   const [groupNames, setGroupNames] = useState<Map<string, string>>(new Map());
+  /** Fichiers des séquences (lot F1), jauge du stockage, envoi en cours, fichier ouvert. */
+  const [files, setFiles] = useState<CourseFile[]>([]);
+  const [usage, setUsage] = useState<StorageUsage | null>(null);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<{ opened: OpenedFile; title: string; subtitle: string } | null>(null);
   const [placing, setPlacing] = useState<Board | null>(null);
 
   const target = useMemo(() => parseOpenTarget(params), [params]);
@@ -85,6 +104,10 @@ export function Courses() {
           setGroupNames(new Map(groups.map((g) => [g.id, g.name])));
         })
         .catch((err: unknown) => console.warn('[Courses] placements :', err));
+      // Les fichiers aussi : sans la migration 078, la bibliothèque s'affiche sans eux
+      void Promise.all([listCourseFiles(userId), fetchStorageUsage()])
+        .then(([list, used]) => { setFiles(list); setUsage(used); })
+        .catch((err: unknown) => console.warn('[Courses] fichiers :', err));
     } catch (err) {
       setError(message(err, 'La liste des cours ne répond pas.'));
     } finally {
@@ -187,7 +210,11 @@ export function Courses() {
     for (const [boardId, list] of usages) map.set(boardId, list.map((u) => ({ sessionId: u.session_id, startedAt: new Date(u.started_at) })));
     return map;
   }, [usages]);
-  const levels = useMemo(() => groupLibrary(shown), [shown]);
+  // Hors recherche, une séquence qui n'a plus que des fichiers reste affichée
+  const levels = useMemo(
+    () => groupLibrary(shown, searching ? [] : files.map((f) => ({ level: f.level, chapter: f.chapter }))),
+    [shown, searching, files],
+  );
 
   const save = async (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
     if (editing === 'new') {
@@ -244,10 +271,95 @@ export function Courses() {
   const renameSequence = async (level: string | null, from: string, to: string) => {
     try {
       await renameChapter(userId, level, from, to);
+      await renameFilesChapter(userId, level, from, to);
       await refresh();
     } catch (err) {
       toast(message(err, 'La séquence n’a pas pu être renommée.'));
     }
+  };
+
+  // ---- Fichiers d'une séquence ----
+
+  const addFiles = async (level: string | null, chapter: string, picked: File[]) => {
+    setUploadingKey(sequenceKey(level, chapter));
+    let used = usage?.totalBytes ?? null;
+    const added: CourseFile[] = [];
+    for (const file of picked) {
+      const reason = refuseCourseFile(file, used);
+      if (reason) { toast(reason); continue; }
+      try {
+        added.push(await uploadCourseFile(userId, level, chapter, file));
+        if (used !== null) used += file.size;
+      } catch (err) {
+        toast(message(err, `Envoi de « ${file.name} » impossible.`));
+      }
+    }
+    if (added.length > 0) {
+      setFiles((prev) => [...prev, ...added]);
+      const bytes = added.reduce((n, f) => n + f.size, 0);
+      setUsage((prev) => (prev ? { totalBytes: prev.totalBytes + bytes, courseFilesBytes: prev.courseFilesBytes + bytes } : prev));
+    }
+    setUploadingKey(null);
+  };
+
+  const openFile = async (file: CourseFile) => {
+    try {
+      const opened = await openLocalFile(await downloadCourseFile(file));
+      setViewer({ opened, title: file.name, subtitle: [file.level, file.chapter].filter(Boolean).join(' · ') });
+    } catch (err) {
+      toast(message(err, `« ${file.name} » ne s’ouvre pas.`));
+    }
+  };
+
+  const saveFile = async (file: CourseFile) => {
+    try {
+      const url = URL.createObjectURL(await downloadCourseFile(file));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.name;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      toast(message(err, `« ${file.name} » ne se télécharge pas.`));
+    }
+  };
+
+  const renameFile = async (file: CourseFile, typed: string) => {
+    const name = renamedFile(file.name, typed);
+    if (name === file.name) return;
+    try {
+      await renameCourseFile(file.id, name);
+      setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, name } : f)));
+    } catch (err) {
+      toast(message(err, 'Le fichier n’a pas pu être renommé.'));
+    }
+  };
+
+  const removeFile = async (file: CourseFile) => {
+    const ok = await confirm({
+      title: 'Supprimer ce fichier ?',
+      message: `« ${file.name} » sera retiré de la séquence et du stockage.`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await deleteCourseFile(file);
+      setFiles((prev) => prev.filter((f) => f.id !== file.id));
+      setUsage((prev) => (prev ? { totalBytes: Math.max(0, prev.totalBytes - file.size), courseFilesBytes: Math.max(0, prev.courseFilesBytes - file.size) } : prev));
+    } catch (err) {
+      toast(message(err, 'Suppression impossible.'));
+    }
+  };
+
+  const filesApi: SequenceFilesApi | null = courseFilesUnavailable() ? null : {
+    list: files,
+    uploadingKey,
+    onAdd: (level, chapter, picked) => void addFiles(level, chapter, picked),
+    onOpen: (file) => void openFile(file),
+    onDownload: (file) => void saveFile(file),
+    onRename: renameFile,
+    onDelete: (file) => void removeFile(file),
   };
 
   const unavailable = boardsUnavailable();
@@ -318,7 +430,7 @@ export function Courses() {
           <div className="mc-empty">Aucun cours ne correspond à « {query.trim()} ».</div>
         )}
 
-        {view === 'library' && shown.length > 0 && (
+        {view === 'library' && levels.length > 0 && (
           <CourseLibrary
             levels={levels}
             expandAll={searching}
@@ -332,7 +444,15 @@ export function Courses() {
             onSaveAsTemplate={(b) => void duplicate(b, true)}
             onDelete={(b) => void remove(b)}
             onRenameSequence={renameSequence}
+            files={filesApi}
           />
+        )}
+
+        {view === 'library' && filesApi && usage && (
+          <div className={`mc-usage mc-usage--${usageLevel(usage.totalBytes)}`} title="Tout le stockage de l'application : copies d'évaluation, annales, images des cours, fichiers des séquences">
+            <span>Stockage : {formatBytes(usage.totalBytes)} sur {formatBytes(STORAGE_QUOTA_BYTES)}</span>
+            <span className="mc-usage__bar" aria-hidden><span style={{ width: `${Math.min(100, Math.round((usage.totalBytes / STORAGE_QUOTA_BYTES) * 100))}%` }} /></span>
+          </div>
         )}
 
         {view === 'library' && textHits.length > 0 && (
@@ -367,6 +487,8 @@ export function Courses() {
           onClose={() => setEditing(null)}
         />
       )}
+
+      {viewer && <CloudFileViewer opened={viewer.opened} title={viewer.title} subtitle={viewer.subtitle} onClose={() => setViewer(null)} />}
 
       {placing && (
         <PlaceCourseDialog userId={userId} board={placing} onClose={() => setPlacing(null)} onPlaced={() => void refresh()} />

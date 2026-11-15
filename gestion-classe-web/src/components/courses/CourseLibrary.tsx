@@ -3,13 +3,15 @@
  * Une ligne ne montre que ce qui sert à choisir (type, titre, essai en classe) ; le reste est
  * dans son menu « ⋯ ». Lot C1 de PLAN_mes_cours.md.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronDown, FileText, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
 import { classTone } from '../../lib/classColors';
+import { ACCEPTED_FILES, filesOfSequence, sequenceKey, type CourseFile } from '../../lib/courseFiles';
 import type { LibraryLevel } from '../../lib/courseLibrary';
 import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu } from '../MoreMenu';
+import { SequenceFiles } from './SequenceFiles';
 
 const COLLAPSED_KEY = 'mes-cours-collapsed';
 
@@ -34,9 +36,33 @@ interface Props {
   onSaveAsTemplate: (board: Board) => void;
   onDelete: (board: Board) => void;
   onRenameSequence: (level: string | null, from: string, to: string) => Promise<void>;
+  /** Fichiers des séquences (lot F1) ; null : le stockage des fichiers n'est pas disponible. */
+  files: SequenceFilesApi | null;
 }
 
-export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence }: Props) {
+export interface SequenceFilesApi {
+  list: CourseFile[];
+  /** Séquence qui reçoit un envoi en ce moment (`sequenceKey`), ou null. */
+  uploadingKey: string | null;
+  onAdd: (level: string | null, chapter: string, files: File[]) => void;
+  onOpen: (file: CourseFile) => void;
+  onDownload: (file: CourseFile) => void;
+  onRename: (file: CourseFile, name: string) => Promise<void>;
+  onDelete: (file: CourseFile) => void;
+}
+
+
+export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence, files }: Props) {
+  /** Sélecteur de fichiers unique : la séquence visée est notée au moment du clic. */
+  const fileInput = useRef<HTMLInputElement>(null);
+  const fileTarget = useRef<{ level: string | null; chapter: string } | null>(null);
+  /** Séquence survolée par des fichiers que l'on glisse. */
+  const [dropKey, setDropKey] = useState<string | null>(null);
+
+  const pickFiles = (level: string | null, chapter: string) => {
+    fileTarget.current = { level, chapter };
+    fileInput.current?.click();
+  };
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
   /** Séquence en cours de renommage : son niveau, son nom d'origine, la saisie. */
   const [renaming, setRenaming] = useState<{ level: string | null; from: string; value: string; busy: boolean } | null>(null);
@@ -60,6 +86,21 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
 
   return (
     <div className="mc-levels">
+      {files && (
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          hidden
+          accept={ACCEPTED_FILES}
+          onChange={(e) => {
+            const picked = [...(e.target.files ?? [])];
+            e.target.value = '';
+            const target = fileTarget.current;
+            if (target && picked.length > 0) files.onAdd(target.level, target.chapter, picked);
+          }}
+        />
+      )}
       {levels.map(({ level, count, sequences }) => {
         const key = level ?? NO_LEVEL;
         const open = expandAll || !collapsed[key];
@@ -73,8 +114,22 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
             </button>
             {open && sequences.map(({ chapter, boards }) => {
               const isRenaming = renaming !== null && renaming.level === level && renaming.from === chapter;
+              const seqKey = sequenceKey(level, chapter);
+              // Une séquence nommée accepte des fichiers : par son menu, ou glissés dessus
+              const acceptsFiles = files !== null && chapter !== '';
               return (
-                <div key={chapter || '—'} className="mc-seq">
+                <div
+                  key={chapter || '—'}
+                  className={`mc-seq${dropKey === seqKey ? ' mc-seq--drop' : ''}`}
+                  onDragOver={acceptsFiles ? (e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropKey(seqKey); } } : undefined}
+                  onDragLeave={acceptsFiles ? (e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropKey(null); } : undefined}
+                  onDrop={acceptsFiles ? (e) => {
+                    e.preventDefault();
+                    setDropKey(null);
+                    const dropped = [...e.dataTransfer.files];
+                    if (dropped.length > 0) files.onAdd(level, chapter, dropped);
+                  } : undefined}
+                >
                   {/* Sans séquence : un titre seulement s'il faut distinguer ces cours des séquences voisines */}
                   {(chapter || named) && (
                     <div className="mc-seq__head">
@@ -100,7 +155,10 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                               <MoreMenu
                                 compact
                                 title={`Actions de la séquence ${chapter}`}
-                                items={[{ label: 'Renommer la séquence', onClick: () => setRenaming({ level, from: chapter, value: chapter, busy: false }) }]}
+                                items={[
+                                  ...(files ? [{ label: 'Ajouter un fichier…', onClick: () => pickFiles(level, chapter), title: 'PDF, image, son ou document, 20 Mo au plus. On peut aussi glisser un fichier sur la séquence.' }] : []),
+                                  { label: 'Renommer la séquence', onClick: () => setRenaming({ level, from: chapter, value: chapter, busy: false }) },
+                                ]}
                               />
                             </span>
                           )}
@@ -156,6 +214,16 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                       </li>
                     ))}
                   </ul>
+                  {acceptsFiles && (
+                    <SequenceFiles
+                      files={filesOfSequence(files.list, level, chapter)}
+                      uploading={files.uploadingKey === seqKey}
+                      onOpen={files.onOpen}
+                      onDownload={files.onDownload}
+                      onRename={files.onRename}
+                      onDelete={files.onDelete}
+                    />
+                  )}
                 </div>
               );
             })}

@@ -42,6 +42,19 @@ describe('groupLibrary', () => {
   it('ne change pas la liste reçue', () => {
     expect(boards[0].id).toBe('a');
   });
+
+  it('garde une séquence sans cours quand on la lui demande (elle porte des fichiers)', () => {
+    const withFiles = groupLibrary(boards, [
+      { level: '4e', chapter: 'Séquence 3 — Fichiers seuls' },
+      { level: '5e', chapter: 'Séquence 1' },
+      { level: '4e', chapter: 'Séquence 2 — Terre en mouvement' },
+    ]);
+    const fourth = withFiles.find((g) => g.level === '4e')!;
+    expect(fourth.sequences.map((s) => s.chapter)).toEqual(['Séquence 2 — Terre en mouvement', 'Séquence 3 — Fichiers seuls', 'Séquence 10 — Reproduction', '']);
+    expect(fourth.sequences[1].boards).toEqual([]);
+    expect(fourth.count).toBe(4);
+    expect(withFiles.map((g) => g.level)).toEqual(['6e', '5e', '4e', 'Autre', null]);
+  });
 });
 
 describe('recentBoards', () => {
