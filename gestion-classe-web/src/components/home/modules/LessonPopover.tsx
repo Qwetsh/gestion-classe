@@ -330,9 +330,9 @@ export function LessonPopover({
                       type="button"
                       className="wtt__link"
                       onClick={() => { onClose(); openBoard({ id: lessonBoard.boardId, title: lessonBoard.title, present: true }); }}
-                      title="Voir le cours comme en classe (bande de la largeur du texte, Suivant / Précédent) ; l’encre de test est effacée en quittant"
+                      title="Essai : voir le cours comme en classe, sans séance — ni télécommande du téléphone, ni plan de classe, et rien n’est gardé. Pour faire cours : « Lancer la séance »"
                     >
-                      ▶ En classe
+                      ▶ Essayer
                     </button>
                   )}
                   {!past && !canceled && dupCandidates.length > 0 && (

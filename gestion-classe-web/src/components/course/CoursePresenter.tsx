@@ -30,6 +30,7 @@ import type { ClassroomBus } from '../../lib/classroomBus';
 import type { BoardPage } from '../../lib/boardRender';
 import { fetchBoardPages } from '../../lib/boardQueries';
 import { Whiteboard } from '../classroom/Whiteboard';
+import { ActiveSessionNotice } from './ActiveSessionNotice';
 import { clearEncartOverrides, getEncartOverride, getEncartPage, setEncartOverrides } from './encartStore';
 
 interface Props {
@@ -240,7 +241,7 @@ export function CoursePresenter({ boardId, doc, title, onClose, session, bus }: 
   const screenNo = Math.min(screens, Math.round(y / step) + 1);
   const settings = doc.settings ?? {};
 
-  return (<>{createPortal(
+  return (<>{!embedded && <ActiveSessionNotice boardId={boardId} />}{createPortal(
     <div ref={rootRef} className={`ce-pres ${embedded ? 'ce-pres--embedded' : ''} ${overview ? 'is-overview' : ''}`} role="dialog" aria-label={`En classe : ${title}`} onWheel={onWheel}>
       <div
         ref={pageRef}

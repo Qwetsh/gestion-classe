@@ -16,6 +16,7 @@ import { copyBoardPages } from '../../lib/boardsQueries';
 import { lockPreparedPages } from '../../lib/boardPresent';
 import type { BoardPage } from '../../lib/boardRender';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
+import { ActiveSessionNotice } from './ActiveSessionNotice';
 
 /** Une page compte comme écran dès qu'elle porte quelque chose (trait, objet ou image de fond). */
 const hasContent = (p: BoardPage) => p.strokes.length > 0 || (p.objects ?? []).length > 0 || !!p.image;
@@ -87,6 +88,8 @@ export function ScreensTest({ boardId, userId, title, screens, onClose }: TestPr
 
   if (!pages) return null;
   return createPortal(
+    <>
+    <ActiveSessionNotice boardId={boardId} />
     <Whiteboard
       sessionId={sessionId}
       userId={userId}
@@ -97,7 +100,8 @@ export function ScreensTest({ boardId, userId, title, screens, onClose }: TestPr
       chrome="ribbon"
       inClass
       onClose={onClose}
-    />,
+    />
+    </>,
     document.body,
   );
 }
