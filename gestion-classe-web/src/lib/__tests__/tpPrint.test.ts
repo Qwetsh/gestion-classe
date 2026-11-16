@@ -3,7 +3,7 @@ import { tpPrintHtml } from '../tpPrint';
 import type { Tp } from '../tpQueries';
 
 const tp: Tp = {
-  id: 'x', name: 'Eau iodée <amidon>', color: 'green', theme: null, level: '5e', chapter: 'Séquence 3 — Végétaux',
+  id: 'x', name: 'Eau iodée <amidon>', color: 'green', theme: null, level: '5e', chapter: 'Séquence 3 — Végétaux', activity: '3',
   problem: 'Que fabrique la plante ?', duration_min: 55, modality: 'Binôme',
   materials: ['Feuille de géranium'], protocol: ['Décolorer', 'Ajouter l\'eau iodée'], safety: ['Lunettes'],
   criteria: [{ label: 'Témoin', max_points: 1.5, hint: 'Feuille à l\'obscurité' }, { label: 'Conclusion', max_points: 2, hint: null }],

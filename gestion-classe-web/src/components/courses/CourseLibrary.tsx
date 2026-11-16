@@ -7,7 +7,8 @@
  * sites ou applications de l'activité. Au survol d'un bouton, la première page de l'original.
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ChevronDown, ClipboardCheck, ExternalLink, FileText, Play, Presentation } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronDown, ClipboardCheck, ExternalLink, FileText, FlaskConical, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
 import { classTone } from '../../lib/classColors';
 import { ACCEPTED_FILES, filesOfSequence, sequenceKey, type CourseFile } from '../../lib/courseFiles';
@@ -46,6 +47,8 @@ interface Props {
   onRenameSequence: (level: string | null, from: string, to: string) => Promise<void>;
   /** Fichiers des séquences (lot F1) ; null : le stockage des fichiers n'est pas disponible. */
   files: SequenceFilesApi | null;
+  /** TP de « Mes TP » faits dans chaque activité, par identifiant de sa fiche (migration 081). */
+  tps?: Map<string, { id: string; name: string }[]>;
 }
 
 export interface SequenceFilesApi {
@@ -60,7 +63,7 @@ export interface SequenceFilesApi {
 }
 
 
-export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onRenameSequence, files }: Props) {
+export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onRenameSequence, files, tps }: Props) {
   /** Sélecteur de fichiers unique : la séquence visée est notée au moment du clic. */
   const fileInput = useRef<HTMLInputElement>(null);
   const fileTarget = useRef<{ level: string | null; chapter: string } | null>(null);
@@ -103,6 +106,27 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
     },
     onPointerDown: () => { window.clearTimeout(peekTimer.current); setPeek(null); },
   });
+
+  /** TP de l'activité (« Mes TP »), après ses liens : un seul s'ouvre directement, plusieurs passent par un menu. */
+  const navigate = useNavigate();
+  const renderTps = (fiche: Board) => {
+    const list = tps?.get(fiche.id) ?? [];
+    if (list.length === 0) return null;
+    const href = (id: string) => `/tp-templates?ouvrir=${id}`;
+    if (list.length === 1) {
+      return (
+        <Link className="mc-variant mc-variant--link mc-variant--tp" to={href(list[0].id)} title={`TP : ${list[0].name}`}>
+          <FlaskConical size={13} aria-hidden />
+          TP
+        </Link>
+      );
+    }
+    return (
+      <span className="mc-variant--tps">
+        <MoreMenu compact label={`${list.length} TP`} title="TP de cette activité" items={list.map((t) => ({ label: t.name, onClick: () => void navigate(href(t.id)) }))} />
+      </span>
+    );
+  };
 
   /** Sites ou applications de l'activité, après ses boutons. */
   const renderLinks = (b: Board) => (b.links ?? []).map((link) => (
@@ -292,7 +316,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                               {rowTitle(b.title, evaluation)}
                             </button>
                             {renderChips(b)}
-                            {b.links?.length ? <span className="mc-variants mc-variants--links">{renderLinks(b)}</span> : null}
+                            {b.links?.length || tps?.get(b.id)?.length ? <span className="mc-variants mc-variants--links">{renderLinks(b)}{renderTps(b)}</span> : null}
                             {b.is_course && (
                               <button type="button" className="mc-row__play" onClick={() => onPresent(b)} title="Essayer en classe (rien n'est gardé en quittant)" aria-label={`Essayer ${b.title} en classe`}>
                                 <Play size={15} aria-hidden />
@@ -326,6 +350,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                             ))}
                             {/* Les liens de l'activité sont rangés sur sa fiche (son premier original) */}
                             {renderLinks(first.board)}
+                            {renderTps(members.find((m) => m.variant === 'fiche')?.board ?? first.board)}
                           </span>
                           <MoreMenu
                             compact

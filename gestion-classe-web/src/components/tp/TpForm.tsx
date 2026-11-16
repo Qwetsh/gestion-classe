@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Modal } from '../Modal';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
-import { PROGRAMME_THEMES, TP_LEVELS, formatPoints, totalPoints, tpChaptersOfLevel } from '../../lib/tpLibrary';
+import { PROGRAMME_THEMES, TP_LEVELS, activitiesOfSequence, activityLabel, formatPoints, librarySequences, totalPoints, tpChaptersOfLevel, type ActivityBoard } from '../../lib/tpLibrary';
 import type { Tp, TpCriterion, TpDraft } from '../../lib/tpQueries';
 import { deleteTemplatePhoto, fetchTemplatePhotos, getPhotoUrl, uploadTemplatePhoto, type TpTemplatePhoto } from '../../lib/tpTemplatePhotos';
 
@@ -19,13 +19,15 @@ interface Props {
   tp: Tp | null;
   /** Tous les TP : leurs séquences sont proposées à la saisie. */
   all: Tp[];
+  /** Cours de « Mes cours » : leurs séquences et activités sont proposées pour relier le TP. */
+  boards: ActivityBoard[];
   onSave: (draft: TpDraft) => Promise<void>;
   onClose: () => void;
 }
 
 const lines = (text: string) => text.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
 
-export function TpForm({ userId, tp, all, onSave, onClose }: Props) {
+export function TpForm({ userId, tp, all, boards, onSave, onClose }: Props) {
   const { toast } = useUIFeedback();
   const chaptersId = useId();
   const themesId = useId();
@@ -33,6 +35,7 @@ export function TpForm({ userId, tp, all, onSave, onClose }: Props) {
   const [name, setName] = useState(tp?.name ?? '');
   const [level, setLevel] = useState(tp?.level ?? '');
   const [chapter, setChapter] = useState(tp?.chapter ?? '');
+  const [activity, setActivity] = useState(tp?.activity ?? '');
   const [theme, setTheme] = useState(tp?.theme ?? '');
   const [problem, setProblem] = useState(tp?.problem ?? '');
   const [duration, setDuration] = useState(tp?.duration_min ? String(tp.duration_min) : '');
@@ -87,7 +90,9 @@ export function TpForm({ userId, tp, all, onSave, onClose }: Props) {
     setCriteria((prev) => prev.map((c, j) => (j === i ? { ...c, ...patch } : c)));
 
   const total = totalPoints(criteria.filter((c) => c.label.trim()));
-  const chapters = tpChaptersOfLevel(all, level || null);
+  // Séquences des autres TP et de « Mes cours » : en reprendre une relie le TP à ses activités
+  const chapters = [...new Set([...tpChaptersOfLevel(all, level || null), ...librarySequences(boards, level || null)])].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }));
+  const activities = activitiesOfSequence(boards, level || null, chapter);
 
   const submit = async () => {
     if (!name.trim()) { setError('Donne un nom au TP.'); return; }
@@ -96,7 +101,7 @@ export function TpForm({ userId, tp, all, onSave, onClose }: Props) {
     setError(null);
     try {
       await onSave({
-        name, color: tp?.color ?? 'green', theme: theme || null, level: level || null, chapter: chapter || null,
+        name, color: tp?.color ?? 'green', theme: theme || null, level: level || null, chapter: chapter || null, activity: activity || null,
         problem: problem || null, duration_min: duration ? Number(duration) : null, modality: modality || null,
         materials: lines(materials), protocol: lines(protocol), safety: lines(safety), criteria,
       });
@@ -143,6 +148,16 @@ export function TpForm({ userId, tp, all, onSave, onClose }: Props) {
             <datalist id={chaptersId}>{chapters.map((c) => <option key={c} value={c} />)}</datalist>
           </label>
         </div>
+
+        <label className="tp-field">
+          <span>Activité de « Mes cours »{activities.length === 0 && <em>aucune dans cette séquence</em>}</span>
+          <select className="tp-input" value={activity} onChange={(e) => setActivity(e.target.value)}>
+            <option value="">Aucune</option>
+            {activities.map(({ n, board }) => <option key={n} value={n}>{board.title}</option>)}
+            {/* Numéro gardé même si l'activité n'est pas (encore) dans la bibliothèque */}
+            {activity && !activities.some((a) => a.n === activity) && <option value={activity}>{activityLabel(activity)}</option>}
+          </select>
+        </label>
 
         <label className="tp-field">
           <span>Thème du programme</span>

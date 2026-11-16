@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { ChevronDown, FlaskConical } from 'lucide-react';
 import type { TpLevel } from '../../lib/tpLibrary';
-import { formatPoints, totalPoints } from '../../lib/tpLibrary';
+import { activityLabel, formatPoints, totalPoints } from '../../lib/tpLibrary';
 import type { Tp } from '../../lib/tpQueries';
 import { MoreMenu } from '../MoreMenu';
 
@@ -74,6 +74,7 @@ export function TpLibrary({ levels, expandAll, onOpen, onEdit, onDuplicate, onPr
                               {tp.usage_count} séance{tp.usage_count > 1 ? 's' : ''}
                             </span>
                           )}
+                          {tp.activity && <span className="tp-row__act">{activityLabel(tp.activity)}</span>}
                           {tp.duration_min ? <span className="tp-row__dur">{tp.duration_min} min</span> : null}
                           {points > 0 && <span className="tp-row__pts" title={`${tp.criteria.length} critère${tp.criteria.length > 1 ? 's' : ''}`}>{formatPoints(points)} pts</span>}
                         </span>

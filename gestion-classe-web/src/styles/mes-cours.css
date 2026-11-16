@@ -257,3 +257,8 @@
   .mc-variants--links { order: 5; flex-basis: 100%; min-width: 0; flex-wrap: wrap; padding: 0 0 8px 44px; }
   .mc-variant--link { min-height: 40px; font-size: 13.5px; }
 }
+
+/* ---- TP de l'activité (« Mes TP », migration 081) ---- */
+.mc-variant--tp { color: var(--text-muted); }
+.mc-variant--tp:hover { color: var(--indigo-ink); }
+.mc-variant--tps { display: inline-flex; align-items: center; }

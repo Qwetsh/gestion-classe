@@ -58,6 +58,8 @@ import { CloudFileViewer } from '../components/clouds/CloudFileViewer';
 import { CourseLibrary, type SequenceFilesApi } from '../components/courses/CourseLibrary';
 import { PlaceCourseDialog } from '../components/courses/PlaceCourseDialog';
 import { CourseLinksDialog } from '../components/courses/CourseLinksDialog';
+import { listTpRefs, type TpRef } from '../lib/tpQueries';
+import { tpsByActivity } from '../lib/tpLibrary';
 import '../styles/mes-cours.css';
 
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
@@ -88,6 +90,8 @@ export function Courses() {
   const [placing, setPlacing] = useState<Board | null>(null);
   /** Activité dont on règle les liens vers un site ou une app. */
   const [linking, setLinking] = useState<Board | null>(null);
+  // TP de « Mes TP » reliés aux activités (migration 081) : un plus, chargé à part
+  const [tpRefs, setTpRefs] = useState<TpRef[]>([]);
 
   const target = useMemo(() => parseOpenTarget(params), [params]);
   const targetId = target?.id ?? null;
@@ -107,6 +111,7 @@ export function Courses() {
           setGroupNames(new Map(groups.map((g) => [g.id, g.name])));
         })
         .catch((err: unknown) => console.warn('[Courses] placements :', err));
+      void listTpRefs(userId).then(setTpRefs).catch((err: unknown) => console.warn('[Courses] TP :', err));
       // Les fichiers aussi : sans la migration 078, la bibliothèque s'affiche sans eux
       void Promise.all([listCourseFiles(userId), fetchStorageUsage()])
         .then(([list, used]) => { setFiles(list); setUsage(used); })
@@ -214,6 +219,7 @@ export function Courses() {
     return map;
   }, [usages]);
   // Hors recherche, une séquence qui n'a plus que des fichiers reste affichée
+  const tpsOfActivities = useMemo(() => tpsByActivity(tpRefs, boards), [tpRefs, boards]);
   const levels = useMemo(
     () => groupLibrary(shown, searching ? [] : files.map((f) => ({ level: f.level, chapter: f.chapter }))),
     [shown, searching, files],
@@ -449,6 +455,7 @@ export function Courses() {
             onEditLinks={setLinking}
             onRenameSequence={renameSequence}
             files={filesApi}
+            tps={tpsOfActivities}
           />
         )}
 

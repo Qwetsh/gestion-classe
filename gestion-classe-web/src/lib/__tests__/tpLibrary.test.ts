@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterTps, formatPoints, groupTps, templatesForClass, themeShortName, themesOf, totalPoints, tpChaptersOfLevel, tpSearchWords } from '../tpLibrary';
+import { activityIndex, activityNumberOf, activityOfTp, filterTps, formatPoints, groupTps, tpsByActivity, templatesForClass, themeShortName, themesOf, totalPoints, tpChaptersOfLevel, tpSearchWords } from '../tpLibrary';
 
 const tp = (name: string, level: string | null, chapter: string | null, extra: Partial<{ theme: string; materials: string[]; problem: string }> = {}) =>
   ({ name, level, chapter, theme: extra.theme ?? null, materials: extra.materials ?? [], problem: extra.problem ?? null });
@@ -70,5 +70,52 @@ describe('points', () => {
   });
   it('propose les séquences d\'un niveau', () => {
     expect(tpChaptersOfLevel([tp('a', '5e', 'S2'), tp('b', '5e', 'S1'), tp('c', '4e', 'S9')], '5e')).toEqual(['S1', 'S2']);
+  });
+});
+
+describe('lien TP ↔ activité', () => {
+  const board = (id: string, title: string, chapter = 'Séquence 3 — L’intégration', level = '4e') => ({ id, title, level, chapter });
+  const boards = [
+    board('f3', 'Activité 3 — Observer des neurones'),
+    board('c3', 'Activité 3 — Observer des neurones (correction)'),
+    board('b', 'Activité bonus — Modéliser'),
+    board('f3bis', 'Activité 3 — Doublon'),
+    board('autre', 'Activité 3 — Autre séquence', 'Séquence 9'),
+    board('ev', 'Évaluation — L’intégration'),
+  ];
+  const t = (name: string, activity: string | null, chapter = "Séquence 3 — L'intégration") => ({ name, level: '4e', chapter, activity });
+
+  it('lit le numéro d’un titre d’activité', () => {
+    expect(activityNumberOf('Activité 3 — X')).toBe('3');
+    expect(activityNumberOf('Activité 12a — X')).toBe('12a');
+    expect(activityNumberOf('Activité bonus — X')).toBe('bonus');
+    expect(activityNumberOf('Activités 3')).toBeNull();
+    expect(activityNumberOf('Évaluation — X')).toBeNull();
+  });
+
+  it('relie à la fiche de la même séquence, apostrophes comprises, sinon au numéro sans lettre', () => {
+    const index = activityIndex(boards);
+    expect(activityOfTp(t('a', '3'), index)?.id).toBe('f3');
+    expect(activityOfTp(t('a', '3b'), index)?.id).toBe('f3');
+    expect(activityOfTp(t('a', 'Bonus'), index)?.id).toBe('b');
+    expect(activityOfTp(t('a', '4'), index)).toBeNull();
+    expect(activityOfTp(t('a', null), index)).toBeNull();
+    expect(activityOfTp(t('a', '3', 'Séquence 1'), index)).toBeNull();
+  });
+
+  it('range les TP par activité', () => {
+    const map = tpsByActivity([t('Zèbre', '3'), t('Abeille', '3a'), t('Seul', 'bonus'), t('Perdu', '7')], boards);
+    expect(map.get('f3')?.map((x) => x.name)).toEqual(['Abeille', 'Zèbre']);
+    expect(map.get('b')?.map((x) => x.name)).toEqual(['Seul']);
+    expect(map.size).toBe(2);
+  });
+
+  it('classe les TP d’une séquence dans l’ordre des activités', () => {
+    const items = [
+      { ...tp('Z', '4e', 'S1'), activity: '10' },
+      { ...tp('A', '4e', 'S1'), activity: null },
+      { ...tp('M', '4e', 'S1'), activity: '2' },
+    ];
+    expect(groupTps(items)[0].sequences[0].items.map((x) => x.name)).toEqual(['M', 'Z', 'A']);
   });
 });

@@ -2,7 +2,7 @@
  * Mes TP (page `/tp-templates`) : rangement niveau › séquence › TP, comme « Mes cours », et
  * recherche. Fonctions pures, sans accès à la base (migration 079).
  */
-import { naturalCompare } from './courseLibrary';
+import { naturalCompare, splitVariant } from './courseLibrary';
 import { classLevel } from './classColors';
 
 /** Niveaux du collège dans l'ordre d'affichage (mêmes valeurs que `boards.level`). */
@@ -29,6 +29,8 @@ export interface TpShelfItem {
   name: string;
   level: string | null;
   chapter: string | null;
+  /** Numéro de l'activité qui fait faire le TP (« 3 », « 3a », « bonus »). */
+  activity?: string | null;
   theme: string | null;
   problem?: string | null;
   materials?: string[];
@@ -53,6 +55,12 @@ const rank = (level: string | null) => {
   return i === -1 ? TP_LEVELS.length : i;
 };
 
+/** Dans une séquence : dans l'ordre des activités (sans activité en dernier), puis par nom. */
+const byActivityThenName = (x: TpShelfItem, y: TpShelfItem): number => {
+  if (!x.activity !== !y.activity) return x.activity ? -1 : 1;
+  return naturalCompare(x.activity ?? '', y.activity ?? '') || naturalCompare(x.name, y.name);
+};
+
 /**
  * Niveau › séquence › TP. Niveaux dans l'ordre du collège, séquences et TP par ordre « naturel »
  * (« Séquence 2 » avant « Séquence 10 »). Sans séquence en dernier dans son niveau, sans niveau
@@ -74,7 +82,7 @@ export function groupTps<T extends TpShelfItem>(items: T[]): TpLevel<T>[] {
       count: [...sequences.values()].reduce((n, list) => n + list.length, 0),
       sequences: [...sequences.entries()]
         .sort((a, b) => (a[0] === '' ? 1 : b[0] === '' ? -1 : naturalCompare(a[0], b[0])))
-        .map(([chapter, list]) => ({ chapter, items: [...list].sort((x, y) => naturalCompare(x.name, y.name)) })),
+        .map(([chapter, list]) => ({ chapter, items: [...list].sort(byActivityThenName) })),
     }));
 }
 
@@ -135,4 +143,94 @@ export function totalPoints(criteria: { max_points: number }[]): number {
 /** « 1,5 » plutôt que « 1.5 ». */
 export function formatPoints(points: number): string {
   return String(points).replace('.', ',');
+}
+
+// ---------------------------------------------------------------------------------------------
+// Lien TP ↔ activité de « Mes cours » (migration 081) : même niveau, même séquence, et le numéro
+// du titre « Activité <n> — … ». C'est la règle de rangement de la bibliothèque, donc le lien tient
+// quand une activité est réimportée.
+// ---------------------------------------------------------------------------------------------
+
+/** Ce qu'il faut d'un cours pour le relier : son titre et sa place dans la bibliothèque. */
+export interface ActivityBoard {
+  id: string;
+  title: string;
+  level: string | null;
+  chapter: string | null;
+}
+
+/** Ce qu'il faut d'un TP pour le relier. */
+export interface ActivityTp {
+  level: string | null;
+  chapter: string | null;
+  activity?: string | null;
+}
+
+/** Numéro d'un titre « Activité 3 — … » (« 3 », « 3a », « bonus »), en minuscules ; null sinon. */
+export function activityNumberOf(title: string): string | null {
+  const m = title.trim().match(/^activit[ée]\s+(\d+[a-z]?|bonus)(?![\p{L}\d])/iu);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** Séquence comparée sans tenir compte des apostrophes typographiques, espaces ni majuscules. */
+const sequenceKey = (level: string | null, chapter: string | null) =>
+  `${level ?? ''}|${(chapter ?? '').normalize('NFC').replace(/[’ʼ]/g, "'").replace(/\s+/g, ' ').trim().toLocaleLowerCase('fr')}`;
+
+/**
+ * Fiche de chaque activité de la bibliothèque, par séquence et numéro. Les corrections et documents
+ * (« (correction) », « (documents) ») ne comptent pas ; à titre égal, le premier cours reçu gagne.
+ */
+export function activityIndex<B extends ActivityBoard>(boards: B[]): Map<string, B> {
+  const index = new Map<string, B>();
+  for (const b of boards) {
+    if (!b.chapter || splitVariant(b.title).variant !== 'fiche') continue;
+    const n = activityNumberOf(b.title);
+    if (!n) continue;
+    const key = `${sequenceKey(b.level, b.chapter)}|${n}`;
+    if (!index.has(key)) index.set(key, b);
+  }
+  return index;
+}
+
+/**
+ * Activité qui fait faire le TP, ou null. Un TP « 3a » se relie à « Activité 3a », à défaut à
+ * « Activité 3 » (une activité en deux temps n'a souvent qu'une fiche).
+ */
+export function activityOfTp<B extends ActivityBoard>(tp: ActivityTp, index: Map<string, B>): B | null {
+  const n = tp.activity?.trim().toLowerCase();
+  if (!n || !tp.chapter) return null;
+  const base = sequenceKey(tp.level, tp.chapter);
+  const digits = n.match(/^\d+/)?.[0];
+  return index.get(`${base}|${n}`) ?? (digits && digits !== n ? index.get(`${base}|${digits}`) : undefined) ?? null;
+}
+
+/** TP de chaque activité, rangés par identifiant de la fiche, dans l'ordre des noms. */
+export function tpsByActivity<T extends ActivityTp & { name: string }, B extends ActivityBoard>(tps: T[], boards: B[]): Map<string, T[]> {
+  const index = activityIndex(boards);
+  const out = new Map<string, T[]>();
+  for (const tp of [...tps].sort((a, b) => naturalCompare(a.name, b.name))) {
+    const board = activityOfTp(tp, index);
+    if (board) out.set(board.id, [...(out.get(board.id) ?? []), tp]);
+  }
+  return out;
+}
+
+/** Libellé court d'un numéro : « Activité 3 », « Activité bonus ». */
+export const activityLabel = (n: string) => `Activité ${n}`;
+
+/** Activités de la bibliothèque dans une séquence, dans l'ordre des numéros (choix du formulaire). */
+export function activitiesOfSequence<B extends ActivityBoard>(boards: B[], level: string | null, chapter: string | null): { n: string; board: B }[] {
+  if (!chapter?.trim()) return [];
+  const prefix = `${sequenceKey(level, chapter)}|`;
+  return [...activityIndex(boards).entries()]
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([key, board]) => ({ n: key.slice(prefix.length), board }))
+    .sort((a, b) => naturalCompare(a.n, b.n));
+}
+
+/** Séquences de la bibliothèque dans un niveau (proposées à la saisie d'un TP, pour qu'il s'y relie). */
+export function librarySequences(boards: ActivityBoard[], level: string | null): string[] {
+  const set = new Set<string>();
+  for (const b of boards) if ((b.level || null) === level && b.chapter) set.add(b.chapter);
+  return [...set].sort(naturalCompare);
 }

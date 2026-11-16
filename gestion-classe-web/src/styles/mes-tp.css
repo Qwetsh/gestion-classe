@@ -8,17 +8,26 @@
 /* Ligne : durée et points alignés à droite, en chiffres tabulaires */
 .tp-row__meta { display: flex; flex-shrink: 0; align-items: center; gap: 12px; font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .tp-row__dur { min-width: 48px; text-align: right; }
+.tp-row__act { min-width: 72px; }
 .tp-row__pts { min-width: 44px; text-align: right; font-weight: 600; color: var(--text); }
 .tp-row__used { font-size: 12px; }
 
 @media (max-width: 767px) {
-  .tp-row__dur, .tp-row__used { display: none; }
+  .tp-row__dur, .tp-row__used, .tp-row__act { display: none; }
 }
 
 /* ---- Fiche ---- */
 .tp-sheet { display: flex; flex-direction: column; gap: 18px; }
 .tp-sheet__meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
 .tp-sheet__theme { padding: 2px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.tp-sheet__activity {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin: 0;
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 500; color: var(--text); text-decoration: none;
+}
+.tp-sheet__activity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.tp-sheet__activity:hover { border-color: var(--indigo); color: var(--indigo-ink); }
+.tp-sheet__activity--missing { border-style: dashed; font-weight: 400; color: var(--text-muted); }
 .tp-sheet__problem { margin: 0; padding: 8px 12px; border-left: 3px solid var(--indigo); background: var(--indigo-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 14px; font-style: italic; color: var(--text); }
 .tp-sheet__cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 20px; }
 .tp-sheet__h { margin: 0 0 6px; display: flex; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }

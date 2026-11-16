@@ -3,13 +3,18 @@
  * poste, protocole, sécurité, barème), puis les photos et les séances déjà faites.
  */
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BookOpen } from 'lucide-react';
 import { Modal } from '../Modal';
-import { formatPoints, totalPoints } from '../../lib/tpLibrary';
+import { activityLabel, formatPoints, totalPoints, type ActivityBoard } from '../../lib/tpLibrary';
+import { courseHref } from '../../lib/courseLibrary';
 import { fetchTpUsages, type Tp, type TpUsage } from '../../lib/tpQueries';
 import { fetchTemplatePhotos, getPhotoUrl, type TpTemplatePhoto } from '../../lib/tpTemplatePhotos';
 
 interface Props {
   tp: Tp;
+  /** Activité de « Mes cours » qui fait faire ce TP, si elle y est. */
+  activity: ActivityBoard | null;
   onClose: () => void;
   onEdit: () => void;
   onPrint: () => void;
@@ -17,7 +22,7 @@ interface Props {
 
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
-export function TpSheet({ tp, onClose, onEdit, onPrint }: Props) {
+export function TpSheet({ tp, activity, onClose, onEdit, onPrint }: Props) {
   const [photos, setPhotos] = useState<{ photo: TpTemplatePhoto; url: string }[]>([]);
   const [usages, setUsages] = useState<TpUsage[]>([]);
 
@@ -58,6 +63,14 @@ export function TpSheet({ tp, onClose, onEdit, onPrint }: Props) {
             {tp.theme && <span className="tp-sheet__theme">{tp.theme}</span>}
           </p>
         )}
+        {activity ? (
+          <Link to={courseHref(activity.id)} className="tp-sheet__activity" title="Ouvrir l’activité dans « Mes cours »">
+            <BookOpen size={15} aria-hidden />
+            <span>{activity.title}</span>
+          </Link>
+        ) : tp.activity ? (
+          <p className="tp-sheet__activity tp-sheet__activity--missing">{activityLabel(tp.activity)}, pas encore dans « Mes cours »</p>
+        ) : null}
         {tp.problem && <p className="tp-sheet__problem">{tp.problem}</p>}
 
         <div className="tp-sheet__cols">
