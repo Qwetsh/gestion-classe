@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Brevet, Matiere } from './brevets';
+import type { Programme } from './annalesLibrary';
 
 // Bucket public partage avec les annales statiques (cf. brevets.ts)
 const BUCKET = 'brevets';
@@ -15,6 +16,8 @@ interface CustomAnnaleRow {
   code: string | null;
   file_path: string;
   url: string;
+  /** Thème du programme (SVT), migration 080 ; null = déduit du titre. */
+  programme: Programme | null;
   created_at: string;
 }
 
@@ -24,6 +27,7 @@ export type BrevetItem = Brevet & {
   id?: string;
   isCustom?: boolean;
   file_path?: string;
+  programme?: Programme | null;
 };
 
 // Saisie du formulaire d'ajout
@@ -34,6 +38,8 @@ export interface NewAnnaleInput {
   theme: string;
   points: number;
   code: string;
+  /** SVT seulement : thème du programme choisi à l'ajout. */
+  programme: Programme | null;
 }
 
 function rowToBrevet(r: CustomAnnaleRow): BrevetItem {
@@ -49,6 +55,7 @@ function rowToBrevet(r: CustomAnnaleRow): BrevetItem {
     url: r.url,
     tailleKo: 0,
     matiere: r.matiere,
+    programme: r.programme ?? null,
   };
 }
 
@@ -86,6 +93,7 @@ export async function addCustomAnnale(input: NewAnnaleInput, file: File): Promis
       code: input.code.trim() || null,
       file_path: filePath,
       url: pub.publicUrl,
+      programme: input.matiere === 'SVT' ? input.programme : null,
     })
     .select()
     .single();

@@ -1,0 +1,64 @@
+/* Annales (page /brevets) : reprend la bibliothèque de « Mes cours » (mes-cours.css), plus le
+   lecteur d'un sujet et le formulaire d'ajout. */
+
+.an-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.an-toolbar .mc-search { flex: 1 1 280px; }
+.an-subjects { flex-wrap: wrap; }
+
+/* Ligne : précision en gris après le titre, année et points alignés à droite */
+.an-row__detail { flex-shrink: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--text-muted); }
+.an-row__meta { display: flex; flex-shrink: 0; align-items: center; gap: 12px; font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.an-row__year { min-width: 36px; text-align: right; }
+.an-row__pts { min-width: 44px; text-align: right; font-weight: 600; color: var(--text); }
+
+@media (max-width: 767px) {
+  /* Sur téléphone, le titre a besoin de toute la place : la précision passe dans le lecteur */
+  .an-rows .an-row__detail { display: none; }
+  .an-rows .mc-row__title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+}
+
+/* ---- Lecteur ---- */
+.an-viewer {
+  position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column;
+  padding: 24px; box-sizing: border-box;
+}
+.an-viewer__panel {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; max-width: 1100px; margin: 0 auto;
+  overflow: hidden; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-3, 0 20px 60px rgba(0, 0, 0, 0.3));
+}
+.an-viewer__head { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--border); }
+.an-viewer__titles { flex: 1; min-width: 0; }
+.an-viewer__title { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-viewer__meta { font-size: 12.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-viewer__close {
+  flex-shrink: 0; display: grid; place-items: center; width: 36px; height: 36px; border: 0;
+  border-radius: var(--radius-sm); background: none; color: var(--text-muted); cursor: pointer;
+}
+.an-viewer__close:hover { background: var(--surface-3); color: var(--text); }
+
+@media (max-width: 767px) {
+  .an-viewer { padding: 0; }
+  .an-viewer__panel { border-radius: 0; }
+  .an-viewer__close { width: 44px; height: 44px; }
+}
+
+/* ---- Formulaire d'ajout ---- */
+.an-form { display: flex; flex-direction: column; gap: 14px; }
+.an-form__row { display: flex; gap: 12px; }
+.an-form__row > .an-field { flex: 1; min-width: 0; }
+.an-form__row > .an-field--short { flex: 0 0 120px; }
+.an-field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.an-field em { font-style: normal; font-weight: 400; margin-left: 4px; }
+.an-input {
+  width: 100%; height: 40px; padding: 0 12px; font: inherit; font-size: 14px; font-weight: 400;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.an-input:focus { outline: none; border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-soft); }
+.an-file { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.an-form__error { margin-right: auto; font-size: 13px; color: var(--neg); }
+
+@media (max-width: 767px) {
+  .an-form__row { flex-direction: column; }
+  .an-form__row > .an-field--short { flex-basis: auto; }
+  .an-input { height: 44px; font-size: 16px; }
+}
