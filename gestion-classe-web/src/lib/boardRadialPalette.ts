@@ -14,7 +14,7 @@ export const PALETTE_SLOTS = 8;
 export type PaletteGroup = 'Outils' | 'Couleur et trait' | 'Historique' | 'Pages' | 'Instruments' | 'Insertion' | 'Séance';
 
 /** Ce qu'on peut insérer sur la page : médias, objets et widgets. */
-export type InsertKind = 'image' | 'table' | 'video' | 'web' | 'link' | 'audio' | 'record' | 'sticky' | 'equation' | 'window' | WidgetKind;
+export type InsertKind = 'image' | 'table' | 'video' | 'web' | 'animation' | 'link' | 'audio' | 'record' | 'sticky' | 'equation' | 'window' | WidgetKind;
 export const INSERT_WIDGETS: WidgetKind[] = ['timer', 'clock', 'meter', 'noise', 'traffic', 'dice', 'wheel', 'groups', 'qr', 'calc'];
 const WIDGET_ICONS: Record<WidgetKind, string> = { timer: '⏱', dice: '🎲', wheel: '🎡', noise: '🔔', calc: '🧮', meter: '🎚', groups: '👥', clock: '🕒', traffic: '🚦', qr: '▦' };
 
@@ -28,6 +28,7 @@ export const INSERT_ACTIONS: { id: InsertKind; label: string; icon: string }[] =
   { id: 'table', label: 'Tableau 3 × 3', icon: '▦' },
   { id: 'video', label: 'Vidéo (YouTube…)', icon: '▶' },
   { id: 'web', label: 'Site web', icon: '🌐' },
+  { id: 'animation', label: 'Animation (fichier HTML)', icon: '🎞' },
   { id: 'link', label: 'Lien', icon: '🔗' },
   { id: 'audio', label: 'Son (fichier)', icon: '🔊' },
   { id: 'record', label: 'Enregistrer au micro', icon: '🎙' },

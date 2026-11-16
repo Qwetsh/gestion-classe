@@ -63,6 +63,7 @@ const ICONS: Record<InteractionAction, string> = {
   play: '▶', pause: '⏸', playToggle: '⏯',
   start: '▶', stop: '⏹', startToggle: '⏯', roll: '🎲',
   window: '🗔', zoomTo: '🔍', moveTo: '📍', moveBy: '↔', moveBack: '↩',
+  stepNext: '⏭', stepPrev: '⏮', replay: '↺',
 };
 /** Libellés courts pour tenir sur une pastille (le libellé long reste dans les menus). */
 const SHORT: Record<InteractionAction, string> = {
@@ -73,9 +74,10 @@ const SHORT: Record<InteractionAction, string> = {
   play: 'Lire', pause: 'Pause', playToggle: 'Lire / pause',
   start: 'Lancer', stop: 'Arrêter', startToggle: 'Lancer / arrêter', roll: 'Tirer',
   window: 'Ouvrir', zoomTo: 'Zoomer', moveTo: 'Vers un point', moveBy: 'D’un cran', moveBack: 'Remettre',
+  stepNext: 'Étape suivante', stepPrev: 'Étape précédente', replay: 'Rejouer',
 };
 const VISIBILITY: readonly InteractionAction[] = ['show', 'hide', 'toggle'];
-const FAMILY_ORDER: readonly InteractionFamily[] = ['visibility', 'cover', 'note', 'content', 'view', 'motion', 'page', 'media', 'tool'];
+const FAMILY_ORDER: readonly InteractionFamily[] = ['visibility', 'cover', 'note', 'content', 'view', 'motion', 'animation', 'page', 'media', 'tool'];
 const STEPS = [25, 50, 100];
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 

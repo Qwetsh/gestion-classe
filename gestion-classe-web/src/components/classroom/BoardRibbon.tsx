@@ -69,6 +69,7 @@ const INSERT_META: Record<string, { icon: IconName; short: string }> = {
   equation: { icon: 'sigma', short: 'Équation' },
   video: { icon: 'video', short: 'Vidéo' },
   web: { icon: 'web', short: 'Site web' },
+  animation: { icon: 'animation', short: 'Animation' },
   link: { icon: 'link', short: 'Lien' },
   audio: { icon: 'audio', short: 'Son' },
   record: { icon: 'mic', short: 'Micro' },
@@ -336,6 +337,7 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
               <Group label="Médias">
                 {insertBig("video")}
                 {insertBig("web")}
+                {insertBig("animation")}
                 {insertBig("link")}
                 <div className="ce-stack">
                   {insertSm("audio")}

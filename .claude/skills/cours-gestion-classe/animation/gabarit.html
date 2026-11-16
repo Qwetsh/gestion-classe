@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITRE__</title>
+<!-- Animation « gc-anim » v1 pour le tableau de Gestion Classe. Fichier autonome, sans dépendance.
+     Les textes des étapes sont dans le bloc JSON ci-dessous : on peut les réécrire sans toucher au dessin. -->
+<script type="application/json" id="gc-anim">__DONNEES__</script>
+<style>
+  :root{--bleu:#1F4E79;--txt:#1d2433}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#fff;color:var(--txt);font-family:Inter,"Segoe UI",system-ui,Arial,Helvetica,sans-serif}
+  body{display:flex;flex-direction:column;height:100vh}
+  /* Tailles en vw : tout suit la largeur du cadre posé sur l'écran */
+  #gc-head{display:flex;align-items:center;gap:1.2vw;padding:.5vw 1.2vw;min-height:3.7vw}
+  #gc-num{background:var(--bleu);color:#fff;font-weight:700;border-radius:99vw;padding:.2vw 1.1vw;font-size:1.7vw;white-space:nowrap}
+  #gc-title{margin:0;font-size:2.35vw;font-weight:700;color:var(--bleu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #gc-main{flex:1;min-height:0;display:flex}
+  #gc-stage{width:100%;height:100%;display:block}
+  #gc-bar{height:.3vw;background:#DCE4EE}
+  #gc-progress{height:100%;width:0;background:#E07B00}
+  #gc-caption{min-height:6.7vw;padding:.5vw 2vw;font-size:2.15vw;line-height:1.3;text-align:center;display:flex;align-items:center;justify-content:center}
+  #gc-caption b{color:#C00000}
+  #gc-nav{display:flex;gap:1vw;justify-content:center;padding:.6vw;background:#E8EEF6}
+  #gc-nav button{font:inherit;font-size:1.3vw;padding:.4vw 1.1vw;border-radius:.6vw;border:1px solid #9fb3cc;background:#fff;cursor:pointer}
+  #gc-nav #gc-next{background:var(--bleu);color:#fff;border-color:var(--bleu)}
+  .gc-embedded #gc-nav{display:none}
+</style>
+</head>
+<body>
+<div id="gc-head"><span id="gc-num"></span><h1 id="gc-title"></h1></div>
+<div id="gc-main">
+  <svg id="gc-stage" viewBox="0 0 __LARGEUR__ __HAUTEUR__" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Segoe UI, Arial, sans-serif">
+    <defs>
+      <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+      <marker id="flB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"/></marker>
+    </defs>
+    <g id="gc-scene"></g>
+  </svg>
+</div>
+<div id="gc-bar"><div id="gc-progress"></div></div>
+<div id="gc-caption"><span id="gc-caption-text"></span></div>
+<div id="gc-nav"><button id="gc-prev">◀ Précédent</button><button id="gc-play">⏸ Pause</button><button id="gc-replay">↺ Rejouer l'étape</button><button id="gc-next">Suivant ▶</button></div>
+<script>
+__LECTEUR__
+__OUTILS__
+__BANQUES__
+__SCENE__
+</script>
+</body>
+</html>

@@ -10,6 +10,7 @@
  */
 import type { BoardPage } from './boardRender';
 import type { BoardObject, Interaction } from './boardObjects';
+import { animationStepCount } from './boardAnimation';
 
 export interface RevealCover {
   kind: 'curtain' | 'scratch';
@@ -50,11 +51,13 @@ export interface RevealState {
   fired: Record<string, true>;
   /** Objets déplacés par un bouton : décalage par rapport à leur position dans le document. */
   moved: Record<string, { dx: number; dy: number }>;
+  /** Étape en cours de chaque animation (absent = la première). */
+  steps: Record<string, number>;
 }
 
-export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {} };
+export const EMPTY_REVEAL: RevealState = { pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {}, steps: {} };
 /** État de séance vierge (nouvel objet à chaque appel, pour un `setState`). */
-export const emptyReveal = (): RevealState => ({ pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {} });
+export const emptyReveal = (): RevealState => ({ pages: {}, objects: {}, gaps: {}, shown: {}, unfolded: {}, fired: {}, moved: {}, steps: {} });
 
 const STORAGE_PREFIX = 'classroom-board-reveal:';
 
@@ -69,12 +72,13 @@ export function normalizeReveal(raw: unknown): RevealState {
     unfolded: parsed.unfolded && typeof parsed.unfolded === 'object' ? parsed.unfolded : {},
     fired: parsed.fired && typeof parsed.fired === 'object' ? parsed.fired : {},
     moved: parsed.moved && typeof parsed.moved === 'object' ? parsed.moved : {},
+    steps: parsed.steps && typeof parsed.steps === 'object' ? parsed.steps : {},
   };
 }
 
 /** Vrai si rien n'a été révélé, montré, déplié, joué ni déplacé. */
 export const isRevealEmpty = (s: RevealState) =>
-  [s.pages, s.objects, s.gaps, s.shown, s.unfolded, s.fired, s.moved].every((part) => Object.keys(part ?? {}).length === 0);
+  [s.pages, s.objects, s.gaps, s.shown, s.unfolded, s.fired, s.moved, s.steps].every((part) => Object.keys(part ?? {}).length === 0);
 
 /** Date du dernier enregistrement dans ce navigateur (ms), 0 si inconnue. */
 export function revealSavedAt(sessionId: string): number {
@@ -90,16 +94,7 @@ export function loadRevealState(sessionId: string): RevealState {
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + sessionId);
     if (!raw) return EMPTY_REVEAL;
-    const parsed = JSON.parse(raw) as Partial<RevealState>;
-    return {
-      pages: parsed.pages && typeof parsed.pages === 'object' ? parsed.pages : {},
-      objects: parsed.objects && typeof parsed.objects === 'object' ? parsed.objects : {},
-      gaps: parsed.gaps && typeof parsed.gaps === 'object' ? parsed.gaps : {},
-      shown: parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {},
-      unfolded: parsed.unfolded && typeof parsed.unfolded === 'object' ? parsed.unfolded : {},
-      fired: parsed.fired && typeof parsed.fired === 'object' ? parsed.fired : {},
-      moved: parsed.moved && typeof parsed.moved === 'object' ? parsed.moved : {},
-    };
+    return normalizeReveal(JSON.parse(raw));
   } catch {
     return EMPTY_REVEAL;
   }
@@ -130,8 +125,8 @@ export function settleCurtain(slide: CurtainSlide): true | CurtainSlide | null {
 /** Visibilité effective d'un objet : ce que la séance a décidé, sinon son réglage de départ. */
 export const isObjectVisible = (state: RevealState, o: Pick<BoardObject, 'id' | 'hidden'>) => state.shown[o.id] ?? !o.hidden;
 
-/** Commande envoyée à un widget ou à un son (`reset` : remise à zéro de la page). */
-export type CommandName = 'play' | 'pause' | 'playToggle' | 'start' | 'stop' | 'startToggle' | 'roll' | 'reset';
+/** Commande envoyée à un widget, à un son ou à une animation (`reset` : remise à zéro de la page). */
+export type CommandName = 'play' | 'pause' | 'playToggle' | 'start' | 'stop' | 'startToggle' | 'roll' | 'replay' | 'reset';
 /**
  * Commande en attente pour un objet, état éphémère du tableau (jamais persisté : un rechargement
  * ne doit pas relancer un minuteur). `at` change à chaque envoi pour rejouer la même commande.
@@ -161,6 +156,7 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
   const unfolded = { ...state.unfolded };
   const fired = { ...state.fired };
   const moved = { ...state.moved };
+  const steps = { ...state.steps };
   const effects: InteractionEffect[] = [];
   (trigger.interactions ?? []).forEach((it: Interaction, index) => {
     const key = `${trigger.id}:${index}`;
@@ -213,13 +209,20 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
         if (!target) return;
         delete moved[target.id];
         break;
+      case 'stepNext': case 'stepPrev': {
+        if (!target || target.type !== 'animation') return;
+        const current = steps[target.id] ?? 0;
+        const next = Math.max(0, Math.min(animationStepCount(target) - 1, current + (it.action === 'stepNext' ? 1 : -1)));
+        if (next === 0) delete steps[target.id]; else steps[target.id] = next;
+        break;
+      }
       default:
         if (!target) return;
         effects.push({ kind: 'command', targetId: target.id, command: it.action });
     }
     if (it.once) fired[key] = true;
   });
-  return { state: { ...state, shown, objects: covers, unfolded, fired, moved }, effects };
+  return { state: { ...state, shown, objects: covers, unfolded, fired, moved, steps }, effects };
 }
 export const pageRevealedFraction = (state: RevealState, pageId: string) => state.pages[pageId] ?? 0;
 export const revealedGaps = (state: RevealState, objectId: string): ReadonlySet<string> => new Set(state.gaps[objectId] ?? []);
@@ -232,6 +235,7 @@ export function recoverPage(state: RevealState, page: BoardPage): RevealState {
   const unfolded = { ...state.unfolded };
   const fired = { ...state.fired };
   const moved = { ...state.moved };
+  const steps = { ...state.steps };
   const ids = new Set((page.objects ?? []).map((o) => o.id));
   for (const id of ids) {
     delete objects[id];
@@ -239,12 +243,13 @@ export function recoverPage(state: RevealState, page: BoardPage): RevealState {
     delete shown[id];
     delete unfolded[id];
     delete moved[id];
+    delete steps[id];
   }
   // Les « une seule fois » des boutons de la page rejouent
   for (const key of Object.keys(fired)) if (ids.has(key.slice(0, key.lastIndexOf(':')))) delete fired[key];
   const pages = { ...state.pages };
   delete pages[page.id];
-  return { pages, objects, gaps, shown, unfolded, fired, moved };
+  return { pages, objects, gaps, shown, unfolded, fired, moved, steps };
 }
 
 // ---- Trous dans un texte ----

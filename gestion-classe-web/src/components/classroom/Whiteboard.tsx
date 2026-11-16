@@ -37,6 +37,7 @@ import { BoardColorPicker } from './BoardColorPicker';
 import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject, pointsInsideShape, contourToPolygon, type ZoneEntry } from '../../lib/boardShapes';
 import { BoardWindowDialog } from './BoardWindowDialog';
 import { WINDOW_CARD, type WindowObject } from '../../lib/boardMedia';
+import { ANIMATION_MAX_CHARS, animationInfo, type AnimationObject } from '../../lib/boardAnimation';
 import { recognizeShape, type RecognizedShape } from '../../lib/boardRecognize';
 import {
   fireInteractions,
@@ -582,6 +583,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const gesture = useRef<TouchGesture | null>(null);
   const tbiRef = useRef<TbiSettings>(DEFAULT_TBI);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const animationInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<{ rec: MediaRecorder; chunks: Blob[]; stream: MediaStream } | null>(null);
   const [recording, setRecording] = useState(false);
   /** Dernière cellule de tableau active (menu lignes / colonnes). */
@@ -1638,6 +1640,44 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     addObject(obj);
   }, [addObject]);
 
+  /**
+   * Animation : un fichier HTML autonome, joué dans un cadre isolé. S'il suit le contrat
+   * « gc-anim » et compte plusieurs étapes, trois boutons du tableau la pilotent, posés dessous.
+   */
+  const insertAnimation = useCallback(async (file: File) => {
+    const p = pagesRef.current[pageIndexRef.current];
+    if (!p) return;
+    if (file.size > ANIMATION_MAX_CHARS) { window.alert(`Animation trop lourde (${Math.round(file.size / 1000)} ko ; ${ANIMATION_MAX_CHARS / 1000} ko au plus).`); return; }
+    const code = await file.text();
+    if (!/<(html|body|svg|script|canvas|div)\b/i.test(code)) { window.alert('Ce fichier ne ressemble pas à une page HTML.'); return; }
+    const info = animationInfo(code);
+    const steered = info.contract && info.steps.length > 1;
+    const w = 880;
+    const pageH = Math.min(pageHeight(p), BOARD_PAGE_H);
+    const barH = steered ? 44 : 0;
+    const h = Math.round(Math.min(w / (info.ratio ?? 16 / 9), pageH - 40 - barH - (steered ? 12 : 0)));
+    const at = centered(w, h + (steered ? barH + 12 : 0));
+    const anim: AnimationObject = {
+      id: uid(), type: 'animation', ...at, w, h, code,
+      title: info.title ?? file.name.replace(/\.html?$/i, ''),
+      ...(info.contract ? {} : { interactive: true }),
+    };
+    const added: BoardObject[] = [anim];
+    if (steered) {
+      const y = at.y + h + 12;
+      const btn = (label: string, x: number, bw: number, action: 'stepPrev' | 'replay' | 'stepNext', primary = false): ShapeObject => ({
+        id: uid(), type: 'shape', kind: 'rounded-rect', x, y, w: bw, h: barH,
+        stroke: primary ? '#3730A3' : '#C7D2FE', strokeWidth: 2, fill: primary ? '#4F46E5' : '#EEF2FF',
+        text: { html: `<div style="text-align:center">${label}</div>`, size: 20, font: 'sans', color: primary ? '#FFFFFF' : '#3730A3' },
+        interactions: [{ action, targetId: anim.id }],
+      });
+      added.push(btn('◀ Précédent', at.x, 170, 'stepPrev'), btn('↺ Rejouer', at.x + 182, 150, 'replay'), btn('Suivant ▶', at.x + w - 190, 190, 'stepNext', true));
+    }
+    handleObjectsChange([...(p.objects ?? []), ...added], p.objects ?? []);
+    setSelectedIds(new Set([anim.id]));
+    if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
+  }, [handleObjectsChange]);
+
   const insertSticky = useCallback((bg = '#FDE68A') => {
     const obj: TextObject = { id: uid(), type: 'text', ...centered(240, 160), w: 240, size: 24, font: textFont, color: '#111827', html: '<div><br></div>', background: bg };
     addObject(obj, true);
@@ -1736,6 +1776,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       case 'video': { const u = window.prompt('Adresse de la vidéo (YouTube, Vimeo, PeerTube…)'); if (u) insertFromUrl(u, at); return; }
       case 'web': { const u = window.prompt('Adresse du site'); if (u) insertWeb(u); return; }
       case 'link': { const u = window.prompt('Adresse du lien'); if (u) insertFromUrl(u, at); return; }
+      case 'animation': animationInputRef.current?.click(); return;
       case 'audio': audioInputRef.current?.click(); return;
       case 'record': void toggleRecording(); return;
       case 'sticky': insertSticky(); return;
@@ -1896,7 +1937,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     for (const ef of effects) {
       if (ef.kind === 'reset') {
         next = recoverPage(next, p);
-        for (const o of objects) if (o.type === 'widget' || o.type === 'audio') cmds[o.id] = { command: 'reset', at: ++commandSeq.current };
+        for (const o of objects) if (o.type === 'widget' || o.type === 'audio' || o.type === 'animation') cmds[o.id] = { command: 'reset', at: ++commandSeq.current };
       } else if (ef.kind === 'command') {
         cmds[ef.targetId] = { command: ef.command, at: ++commandSeq.current };
       } else if (ef.kind === 'window') {
@@ -3579,6 +3620,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         multiple
         hidden
         onChange={(e) => { if (e.target.files) void importFiles(e.target.files); e.target.value = ''; }}
+      />
+      <input
+        ref={animationInputRef}
+        type="file"
+        accept=".html,.htm,text/html"
+        hidden
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void insertAnimation(f); e.target.value = ''; }}
       />
       <input
         ref={audioInputRef}

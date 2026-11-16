@@ -241,6 +241,20 @@ def Replacer(o):
     return {'action': 'moveBack', 'targetId': _cible(o)}
 
 
+def EtapeSuivante(animation):
+    """Fait passer une animation (`animation()`) à l'étape suivante."""
+    return {'action': 'stepNext', 'targetId': _cible(animation)}
+
+
+def EtapePrecedente(animation):
+    return {'action': 'stepPrev', 'targetId': _cible(animation)}
+
+
+def Rejouer(animation):
+    """Rejoue l'étape en cours d'une animation, depuis son début."""
+    return {'action': 'replay', 'targetId': _cible(animation)}
+
+
 def UneFois(action):
     """L'action ne se joue qu'une fois par séance."""
     return dict(action, once=True)
@@ -543,6 +557,25 @@ class Ecran:
         if titre:
             o['title'] = titre
         self.objets.append(o)
+        return o
+
+    def animation(self, x, y, w, h, code, titre=None, boutons=True):
+        """
+        Animation : une scène dessinée et animée, écrite avec `gc_animation.assembler()`, jouée dans
+        l'écran comme une image qui bouge. Elle porte le titre et la légende de chaque étape.
+        `boutons` : pose dessous « ◀ Précédent », « ↺ Rejouer » et « Suivant ▶ » (42 de haut en tout).
+        Pour un simple déplacement d'objet, `DeplacerVers` suffit ; pour un mécanisme (un cycle, une
+        réaction, un trajet), c'est une animation qu'il faut.
+        """
+        o = {'id': self._id(), 'type': 'animation', 'x': x, 'y': y, 'w': w, 'h': h, 'code': code}
+        if titre:
+            o['title'] = titre
+        self.objets.append(o)
+        if boutons:
+            yb = y + h + 4
+            self.bouton(x, yb, 170, 38, '◀ Précédent', [EtapePrecedente(o)], couleur=FOND_BLEU, taille=19, texte_couleur=BLEU)
+            self.bouton(x + 178, yb, 150, 38, '↺ Rejouer', [Rejouer(o)], couleur=FOND_BLEU, taille=19, texte_couleur=BLEU)
+            self.bouton(x + w - 190, yb, 190, 38, 'Suivant ▶', [EtapeSuivante(o)], couleur=BLEU2, taille=19)
         return o
 
 
@@ -916,6 +949,19 @@ class Ecrans:
                 e.texte(x, max(95, y - 26), max(w, 160), 18, B('🔍 ' + z[4]), BLEU2)
         if legende:
             e.texte(MARGE, 515, LARGEUR, 20, legende, GRIS)
+        return e
+
+    def animation(self, code, titre=None):
+        """
+        Un écran entier pour une animation (`gc_animation.assembler()`), avec ses trois boutons. Pas
+        de titre d'écran : l'animation affiche elle-même le titre et la légende de l'étape en cours.
+        Rend l'écran ; l'objet animation est `e.objets[0]` (pour d'autres boutons : `EtapeSuivante`).
+        """
+        e = Ecran(self, len(self.pages) + 1)
+        del e.objets[:]            # ni en-tête ni titre : toute la page à l'animation
+        e.n = 0
+        self.pages.append(e.page)
+        e.animation(20, 8, 960, 506, code, titre=titre)
         return e
 
     def sommaire(self, titre, entrees, position=None):
