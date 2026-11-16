@@ -13,7 +13,8 @@ import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { TpLibrary } from '../components/tp/TpLibrary';
 import { TpSheet } from '../components/tp/TpSheet';
 import { TpForm } from '../components/tp/TpForm';
-import { filterTps, groupTps, themesOf, tpSearchWords } from '../lib/tpLibrary';
+import { activityIndex, activityOfTp, filterTps, groupTps, themesOf, tpSearchWords, type ActivityBoard } from '../lib/tpLibrary';
+import { listBoards } from '../lib/boardsQueries';
 import { deleteTp, listTps, saveTp, type Tp, type TpDraft } from '../lib/tpQueries';
 import { printTp } from '../lib/tpPrint';
 import '../styles/mes-cours.css';
@@ -33,6 +34,8 @@ export function TpTemplates() {
   const [editing, setEditing] = useState<Tp | 'new' | null>(null);
   const [query, setQuery] = useState('');
   const [theme, setTheme] = useState<string | null>(null);
+  // Cours de « Mes cours » : chaque TP s'y relie à son activité (même séquence, même numéro)
+  const [boards, setBoards] = useState<ActivityBoard[]>([]);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -47,6 +50,15 @@ export function TpTemplates() {
   }, [userId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    listBoards(userId)
+      .then((list) => { if (!cancelled) setBoards(list.map(({ id, title, level, chapter }) => ({ id, title, level: level ?? null, chapter: chapter ?? null }))); })
+      .catch(() => { /* sans les cours, les TP restent lisibles, simplement pas reliés */ });
+    return () => { cancelled = true; };
+  }, [userId]);
+  const activities = useMemo(() => activityIndex(boards), [boards]);
 
   // ---- Fiche ouverte par l'adresse ----
   const openId = params.get('ouvrir');
@@ -74,7 +86,7 @@ export function TpTemplates() {
     try {
       const draft: TpDraft = {
         name: `${tp.name} (copie)`, color: tp.color, theme: tp.theme, level: tp.level, chapter: tp.chapter,
-        problem: tp.problem, duration_min: tp.duration_min, modality: tp.modality,
+        activity: tp.activity, problem: tp.problem, duration_min: tp.duration_min, modality: tp.modality,
         materials: tp.materials, protocol: tp.protocol, safety: tp.safety,
         criteria: tp.criteria.map((c) => ({ label: c.label, max_points: c.max_points, hint: c.hint })),
       };
@@ -167,7 +179,7 @@ export function TpTemplates() {
       </div>
 
       {opened && !editing && (
-        <TpSheet tp={opened} onClose={closeSheet} onEdit={() => setEditing(opened)} onPrint={() => print(opened)} />
+        <TpSheet tp={opened} activity={activityOfTp(opened, activities)} onClose={closeSheet} onEdit={() => setEditing(opened)} onPrint={() => print(opened)} />
       )}
 
       {editing && (
@@ -175,6 +187,7 @@ export function TpTemplates() {
           userId={userId}
           tp={editing === 'new' ? null : editing}
           all={tps}
+          boards={boards}
           onSave={save}
           onClose={() => setEditing(null)}
         />

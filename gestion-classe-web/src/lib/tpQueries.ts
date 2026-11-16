@@ -18,6 +18,8 @@ export interface Tp {
   theme: string | null;
   level: string | null;
   chapter: string | null;
+  /** Numéro de l'activité de « Mes cours » qui fait faire ce TP (« 3 », « 3a », « bonus ») ; migration 081. */
+  activity: string | null;
   problem: string | null;
   duration_min: number | null;
   modality: string | null;
@@ -42,11 +44,11 @@ export interface TpUsage {
   success_pct: number | null;
 }
 
-const COLUMNS = 'id, name, color, theme, level, chapter, problem, duration_min, modality, materials, protocol, safety, created_at, tp_template_criteria (id, label, max_points, hint, display_order)';
+const COLUMNS = 'id, name, color, theme, level, chapter, activity, problem, duration_min, modality, materials, protocol, safety, created_at, tp_template_criteria (id, label, max_points, hint, display_order)';
 
 interface Row {
   id: string; name: string; color: string | null; theme: string | null; level: string | null; chapter: string | null;
-  problem: string | null; duration_min: number | null; modality: string | null;
+  activity: string | null; problem: string | null; duration_min: number | null; modality: string | null;
   materials: string[] | null; protocol: string[] | null; safety: string[] | null; created_at: string;
   tp_template_criteria: { id: string; label: string; max_points: number; hint: string | null; display_order: number }[] | null;
 }
@@ -58,6 +60,7 @@ const fromRow = (r: Row, usage = 0): Tp => ({
   theme: r.theme,
   level: r.level,
   chapter: r.chapter,
+  activity: r.activity ?? null,
   problem: r.problem,
   duration_min: r.duration_min,
   modality: r.modality,
@@ -92,6 +95,7 @@ export async function saveTp(userId: string, draft: TpDraft, id?: string): Promi
     theme: draft.theme?.trim() || null,
     level: draft.level || null,
     chapter: draft.chapter?.trim() || null,
+    activity: draft.activity?.trim().toLowerCase() || null,
     problem: draft.problem?.trim() || null,
     duration_min: draft.duration_min && draft.duration_min > 0 ? Math.round(draft.duration_min) : null,
     modality: draft.modality?.trim() || null,
@@ -118,6 +122,26 @@ export async function saveTp(userId: string, draft: TpDraft, id?: string): Promi
     if (error) throw error;
   }
   return templateId!;
+}
+
+/** Ce que « Mes cours » montre d'un TP : de quoi le relier à son activité et l'ouvrir. */
+export interface TpRef {
+  id: string;
+  name: string;
+  level: string | null;
+  chapter: string | null;
+  activity: string | null;
+}
+
+/** TP reliés à une activité (lecture légère pour « Mes cours »). */
+export async function listTpRefs(userId: string): Promise<TpRef[]> {
+  const { data, error } = await supabase
+    .from('tp_templates')
+    .select('id, name, level, chapter, activity')
+    .eq('user_id', userId)
+    .not('activity', 'is', null);
+  if (error) throw error;
+  return (data ?? []) as TpRef[];
 }
 
 export async function deleteTp(id: string): Promise<void> {
