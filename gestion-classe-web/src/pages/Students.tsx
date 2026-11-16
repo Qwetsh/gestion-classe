@@ -2,16 +2,12 @@ import { classColor } from '../lib/classColors';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
-import { buildPhotoUrl } from '../lib/security';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
 import { generateBulletinContext, downloadBulletinContext, getOralLabel } from '../lib/generateBulletinContext';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import { fetchStudentGradeReport, fetchCurrentPeriod, type StudentGradeReport } from '../lib/evaluationQueries';
-import { formatGrade, STATUS_LABEL } from '../lib/gradeStats';
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import QRCode from 'qrcode';
@@ -22,7 +18,9 @@ import '../styles/refonte-eleves.css';
 import { AccommodationBadges } from '../components/AccommodationBadges';
 import { MoreMenu } from '../components/MoreMenu';
 import { useIsNarrowViewport } from '../hooks/useIsMobile';
-import { ACCOMMODATION_DEFS, type AccommodationKey, type StudentAccommodations } from '../lib/accommodations';
+import type { AccommodationKey, StudentAccommodations } from '../lib/accommodations';
+import { StudentDetailModal } from '../components/StudentDetailModal';
+import { engagementInfo } from '../lib/engagement';
 
 // Seuil de malus a partir duquel un eleve est signale dans le filtre "A suivre"
 const MALUS_ALERT_THRESHOLD = 5;
@@ -52,13 +50,6 @@ interface Event {
   timestamp: string;
   session_date: string;
   class_name: string;
-}
-
-interface SessionEvolutionData {
-  sessionDate: string;
-  label: string;
-  participation: number;
-  malus: number;
 }
 
 interface TrimesterSettings {
@@ -100,7 +91,7 @@ interface OralEvaluation {
   evaluated_at: string;
 }
 
-interface GroupSessionGrade {
+export interface GroupSessionGrade {
   session_id: string;
   session_name: string;
   class_name: string;
@@ -109,14 +100,6 @@ interface GroupSessionGrade {
   score: number;
   max_points: number;
 }
-
-const ORAL_GRADE_LABELS: Record<number, string> = {
-  1: 'Insuffisant',
-  2: 'Fragile',
-  3: 'Satisfaisant',
-  4: 'Bien',
-  5: 'Tres bien',
-};
 
 interface ManualParticipation {
   id: string;
@@ -128,7 +111,7 @@ interface ManualParticipation {
   created_at: string;
 }
 
-interface StudentGrade {
+export interface StudentGrade {
   student: Student;
   participations: number;
   manualParticipations: number;
@@ -165,34 +148,6 @@ interface ClassStats {
 
 type SortField = 'pseudo' | 'grade' | 'participations' | 'bonus' | 'abs';
 type SortOrder = 'asc' | 'desc';
-
-// Couleur + libellé d'engagement selon la dernière connexion à l'espace élève.
-function engagementInfo(last: string | null): { color: string; label: string } {
-  if (!last) return { color: 'var(--text-dim)', label: 'Jamais connecté' };
-  const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
-  let color = 'var(--text-dim)';
-  if (days <= 7) color = 'var(--pos)';
-  else if (days <= 21) color = 'var(--warn)';
-  let label: string;
-  if (days <= 0) label = "Aujourd'hui";
-  else if (days === 1) label = 'Hier';
-  else if (days < 7) label = `Il y a ${days} j`;
-  else if (days < 30) label = `Il y a ${Math.floor(days / 7)} sem`;
-  else label = `Il y a ${Math.floor(days / 30)} mois`;
-  return { color, label };
-}
-
-// Répartition des connexions sur les N dernières semaines (pour le mini-graphe).
-function weeklyBuckets(timestamps: string[], weeks = 10): number[] {
-  const now = Date.now();
-  const wk = 7 * 86400000;
-  const buckets = new Array(weeks).fill(0);
-  timestamps.forEach(ts => {
-    const idx = weeks - 1 - Math.floor((now - new Date(ts).getTime()) / wk);
-    if (idx >= 0 && idx < weeks) buckets[idx]++;
-  });
-  return buckets;
-}
 
 export function Students() {
   const { user } = useAuth();
@@ -1252,7 +1207,14 @@ export function Students() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedStudentId, studentGrades]);
 
+  // Fiche demandée en dernier : avec « précédent / suivant », une réponse lente
+  // ne doit pas réécrire la fiche d'un élève qu'on a déjà quitté.
+  const detailRequestRef = useRef<string | null>(null);
+
   const openStudentDetail = async (studentGrade: StudentGrade) => {
+    const studentId = studentGrade.student.id;
+    detailRequestRef.current = studentId;
+    const isCurrent = () => detailRequestRef.current === studentId;
     setSelectedStudentForDetail(studentGrade);
     setShowStudentDetailModal(true);
     setGroupSessionGrades([]);
@@ -1265,14 +1227,14 @@ export function Students() {
 
     // Connexions de l'élève (fire and forget)
     fetchStudentConnections(studentGrade.student.id)
-      .then(rows => setStudentConnections(rows))
+      .then(rows => { if (isCurrent()) setStudentConnections(rows); })
       .catch(() => {});
 
     // Load stamp detail in parallel (fire and forget, update state when ready)
     fetchStudentStampDetail(studentGrade.student.id)
-      .then(detail => setStudentStampDetail(detail))
+      .then(detail => { if (isCurrent()) setStudentStampDetail(detail); })
       .catch(() => {})
-      .finally(() => setStampDetailLoading(false));
+      .finally(() => { if (isCurrent()) setStampDetailLoading(false); });
 
     // Notes du carnet (toutes, pas seulement les validees : voir fetchStudentGradeReport)
     if (user) {
@@ -1280,9 +1242,9 @@ export function Students() {
       fetchCurrentPeriod(user.id)
         .then(({ schoolYear }) =>
           fetchStudentGradeReport(user.id, studentGrade.student.id, classIdForReport, schoolYear))
-        .then(report => setStudentGradeReport(report))
+        .then(report => { if (isCurrent()) setStudentGradeReport(report); })
         .catch(() => {})
-        .finally(() => setExamGradesLoading(false));
+        .finally(() => { if (isCurrent()) setExamGradesLoading(false); });
     } else {
       setExamGradesLoading(false);
     }
@@ -1298,6 +1260,7 @@ export function Students() {
         .eq('student_id', studentGrade.student.id)
         .order('timestamp', { ascending: false });
 
+      if (!isCurrent()) return;
       if (detailedEvents) {
         const enrichedEvents: Event[] = detailedEvents.map(e => ({
           id: e.id,
@@ -1338,6 +1301,7 @@ export function Students() {
         `)
         .eq('student_id', studentGrade.student.id);
 
+      if (!isCurrent()) return;
       if (membershipsData && membershipsData.length > 0) {
         const groupIds = membershipsData.map(m => (m.session_groups as any)?.id).filter(Boolean);
 
@@ -1379,12 +1343,12 @@ export function Students() {
 
         // Sort by date descending
         grades.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setGroupSessionGrades(grades);
+        if (isCurrent()) setGroupSessionGrades(grades);
       }
     } catch (err) {
       console.error('Error loading group session grades:', err);
     } finally {
-      setIsLoadingGroupGrades(false);
+      if (isCurrent()) setIsLoadingGroupGrades(false);
     }
   };
 
@@ -1562,69 +1526,6 @@ export function Students() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getGradeColor = (grade: number) => {
-    if (grade >= 16) return 'text-[var(--pos)]';
-    if (grade >= 12) return 'text-[var(--indigo-ink)]';
-    if (grade >= 8) return 'text-[var(--warn)]';
-    return 'text-[var(--neg)]';
-  };
-
-  const getGradeBgColor = (grade: number) => {
-    if (grade >= 16) return 'bg-[var(--pos-soft)]';
-    if (grade >= 12) return 'bg-[var(--indigo-soft)]';
-    if (grade >= 8) return 'bg-[var(--warn-soft)]';
-    return 'bg-[var(--neg-soft)]';
-  };
-
-  const getEventTypeLabel = (type: string, subtype: string | null) => {
-    const labels: Record<string, string> = {
-      participation: 'Implication',
-      bavardage: 'Malus',
-      absence: 'Absence',
-      remarque: 'Remarque',
-      sortie: 'Sortie',
-    };
-    const subtypeLabels: Record<string, string> = {
-      infirmerie: 'Infirmerie',
-      toilettes: 'Toilettes',
-      convocation: 'Convocation',
-      exclusion: 'Exclusion',
-    };
-    const label = labels[type] || type;
-    if (subtype && subtypeLabels[subtype]) {
-      return `${label} (${subtypeLabels[subtype]})`;
-    }
-    return label;
-  };
-
-  const getEventTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      participation: 'bg-[var(--pos-soft)] text-[var(--pos)]',
-      bavardage: 'bg-[var(--warn-soft)] text-[var(--warn)]',
-      absence: 'bg-[var(--neg-soft)] text-[var(--neg)]',
-      remarque: 'bg-[var(--indigo-soft)] text-[var(--indigo-ink)]',
-      sortie: 'bg-purple-100 text-purple-700',
-    };
-    return colors[type] || 'bg-[var(--surface-3)] text-[var(--text-muted)]';
-  };
-
   // Compute sparkline history (last 10 sessions) for a student
   const getSparklineHistory = (events: Event[]): (number | null)[] => {
     const sessions: Map<string, { date: string; score: number }> = new Map();
@@ -1659,42 +1560,6 @@ export function Students() {
     const avgFirst = first.reduce((a, b) => a + b, 0) / first.length;
     const avgLast = last.reduce((a, b) => a + b, 0) / last.length;
     return avgLast - avgFirst;
-  };
-
-  // Calculate session-by-session evolution data for chart
-  const getSessionEvolution = (events: Event[]): SessionEvolutionData[] => {
-    const sessions: Map<string, { date: string; participation: number; malus: number }> = new Map();
-
-    // Group events by session
-    events.forEach(event => {
-      const sessionId = event.session_id;
-      const sessionDate = event.session_date;
-
-      if (!sessions.has(sessionId)) {
-        sessions.set(sessionId, { date: sessionDate, participation: 0, malus: 0 });
-      }
-
-      const sessionData = sessions.get(sessionId)!;
-      if (event.type === 'participation') sessionData.participation++;
-      if (event.type === 'bavardage') sessionData.malus++;
-    });
-
-    // Sort by date and take last 12 sessions
-    const sortedSessions = Array.from(sessions.entries())
-      .sort((a, b) => new Date(a[1].date).getTime() - new Date(b[1].date).getTime())
-      .slice(-12);
-
-    return sortedSessions.map(([, data]) => ({
-      sessionDate: data.date,
-      label: new Date(data.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
-      participation: data.participation,
-      malus: data.malus,
-    }));
-  };
-
-  // Get remarks with photos
-  const getRemarks = (events: Event[]) => {
-    return events.filter(e => e.type === 'remarque');
   };
 
   const selectedClassStats = classStats.find(c => c.id === selectedClassId);
@@ -2473,741 +2338,40 @@ export function Students() {
       )}
 
       {/* Student Detail Modal */}
-      {showStudentDetailModal && selectedStudentForDetail && (
-        <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surface)] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="p-6 border-b border-[var(--border)]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <h3 className="text-xl font-semibold text-[var(--text)]">
-                      {selectedStudentForDetail.student.pseudo}
-                    </h3>
-                    <p className="text-sm text-[var(--text-dim)] flex items-center gap-2 flex-wrap">
-                      <select
-                        value={selectedStudentForDetail.student.class_id || ''}
-                        onChange={(e) => changeStudentClass(e.target.value)}
-                        className="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-3)] text-[var(--text)] text-sm cursor-pointer"
-                        title="Changer de classe"
-                      >
-                        {!selectedStudentForDetail.student.class_id && <option value="">Sans classe</option>}
-                        {classes.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                      {selectedStudentForDetail.student.student_code && (
-                        <span className="ml-2 px-2 py-0.5 bg-[var(--surface-3)] rounded text-xs font-mono">
-                          {selectedStudentForDetail.student.student_code}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  {/* Gender toggle button */}
-                  <button
-                    onClick={toggleGender}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]"
-                    title="Cliquer pour changer"
-                  >
-                    {selectedStudentForDetail.student.gender === 'F' ? '♀ Fille' : '♂ Garcon'}
-                  </button>
-                  {/* Witness toggle button */}
-                  <button
-                    onClick={toggleWitness}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      selectedStudentForDetail.student.is_witness
-                        ? 'bg-[var(--warn-soft)] text-[var(--warn)] hover:bg-amber-200'
-                        : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
-                    }`}
-                    title="Élève témoin : voit tous les onglets, exclu des classements et des métriques de connexion. Son code sert de code admin pour prévisualiser l'espace élève."
-                  >
-                    {selectedStudentForDetail.student.is_witness ? '👁️ Témoin' : 'Témoin ?'}
-                  </button>
-                  {/* Dispositifs d'accompagnement : on note seulement si l'élève en a un, jamais le contenu */}
-                  {ACCOMMODATION_DEFS.map(def => {
-                    const active = selectedStudentForDetail.student[def.key];
-                    return (
-                      <button
-                        key={def.key}
-                        onClick={() => toggleAccommodation(def.key)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          active
-                            ? 'bg-[var(--indigo-soft)] text-[var(--indigo)] hover:opacity-80'
-                            : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:bg-[var(--border)]'
-                        }`}
-                        title={`${def.title} — cliquer pour ${active ? 'retirer' : 'indiquer'} (aucun détail n'est enregistré)`}
-                      >
-                        {active ? `✓ ${def.label}` : def.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  onClick={() => setShowStudentDetailModal(false)}
-                  className="p-2 hover:bg-[var(--bg)] rounded-lg text-[var(--text-dim)] hover:text-[var(--text)]"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Current Grade Card */}
-              <div className={`${getGradeBgColor(selectedStudentForDetail.grade)} rounded-xl p-6`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-[var(--text-muted)]">
-                      Trimestre {trimesterSettings.current_trimester}
-                    </p>
-                    <p className={`text-4xl font-bold ${getGradeColor(selectedStudentForDetail.grade)}`} style={{ fontFamily: 'var(--font-display)' }}>
-                      {selectedStudentForDetail.grade.toFixed(2)}/20
-                    </p>
-                    {selectedStudentForDetail.bonus > 0 && (
-                      <p className="text-sm text-[var(--warn)] mt-1">
-                        +{selectedStudentForDetail.bonus.toFixed(1)} points bonus a redistribuer
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right space-y-1">
-                    <p className="text-sm">
-                      <span className="text-[var(--pos)] font-semibold">{selectedStudentForDetail.totalParticipations}</span>
-                      <span className="text-[var(--text-dim)]"> implications totales</span>
-                    </p>
-                    <p className="text-xs text-[var(--text-dim)]">
-                      ({selectedStudentForDetail.participations} seance + {selectedStudentForDetail.manualParticipations} manuelles)
-                    </p>
-                    {selectedStudentForDetail.malus > 0 && (
-                      <p className="text-sm">
-                        <span className="text-[var(--warn)] font-semibold">{selectedStudentForDetail.malus}</span>
-                        <span className="text-[var(--text-dim)]"> malus</span>
-                        {selectedStudentForDetail.malusPenalty && (
-                          <span className="text-[var(--warn)]"> (-{selectedStudentForDetail.malus})</span>
-                        )}
-                      </p>
-                    )}
-                    <p className="text-sm">
-                      <span className="text-[var(--neg)] font-semibold">{selectedStudentForDetail.absences}</span>
-                      <span className="text-[var(--text-dim)]"> absences</span>
-                    </p>
-                    {selectedStudentForDetail.baseGrade === null && (
-                      <p className="text-sm text-[var(--text-dim)]">
-                        Objectif ajuste: {selectedStudentForDetail.adjustedTarget.toFixed(1)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Calculation breakdown */}
-                <div className="mt-4 pt-4 border-t border-black/10 text-sm">
-                  {selectedStudentForDetail.baseGrade !== null ? (
-                    <>
-                      <p className="text-[var(--text-muted)]">
-                        <strong>Mode note de base:</strong> {selectedStudentForDetail.baseGrade}/20
-                      </p>
-                      <p className="text-[var(--text-muted)]">
-                        Note = {selectedStudentForDetail.baseGrade} + {selectedStudentForDetail.totalParticipations} part.
-                        {selectedStudentForDetail.malusPenalty && selectedStudentForDetail.malus > 0 && (
-                          <> - {selectedStudentForDetail.malus} malus</>
-                        )}
-                        {' '}= <strong>{(selectedStudentForDetail.baseGrade + (selectedStudentForDetail.malusPenalty ? selectedStudentForDetail.totalParticipations - selectedStudentForDetail.malus : selectedStudentForDetail.totalParticipations)).toFixed(1)}</strong>
-                        {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
-                        {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[var(--text-muted)]">
-                        <strong>Calcul:</strong> Objectif de base = {selectedStudentForDetail.targetParticipations}
-                        {selectedStudentForDetail.absences > 0 && (
-                          <> - ({selectedStudentForDetail.absences} abs × {(selectedStudentForDetail.targetParticipations / selectedStudentForDetail.totalSessionsExpected).toFixed(2)}) = {selectedStudentForDetail.adjustedTarget.toFixed(1)}</>
-                        )}
-                      </p>
-                      {selectedStudentForDetail.malusPenalty && selectedStudentForDetail.malus > 0 && (
-                        <p className="text-[var(--text-muted)]">
-                          Implications effectives = {selectedStudentForDetail.totalParticipations} - {selectedStudentForDetail.malus} malus = <strong>{selectedStudentForDetail.effectiveParticipations}</strong>
-                        </p>
-                      )}
-                      <p className="text-[var(--text-muted)]">
-                        Note = ({selectedStudentForDetail.effectiveParticipations} / {selectedStudentForDetail.adjustedTarget.toFixed(1)}) × 20 = {((selectedStudentForDetail.effectiveParticipations / selectedStudentForDetail.adjustedTarget) * 20).toFixed(2)}
-                        {selectedStudentForDetail.grade === 20 && <> → plafonne a <strong>20/20</strong></>}
-                        {selectedStudentForDetail.grade === 0 && <> → minimum <strong>0/20</strong></>}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Statistics Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-[var(--pos-soft)] rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-[var(--pos)]">+{selectedStudentForDetail.participations}</div>
-                  <div className="text-xs text-[var(--pos)]">Participations</div>
-                </div>
-                <div className="bg-[var(--warn-soft)] rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-[var(--warn)]">-{selectedStudentForDetail.malus}</div>
-                  <div className="text-xs text-[var(--warn)]">Malus</div>
-                </div>
-                <div className="bg-[var(--neg-soft)] rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-[var(--neg)]">{selectedStudentForDetail.absences}</div>
-                  <div className="text-xs text-[var(--neg)]">Absences</div>
-                </div>
-                <div className={`rounded-xl p-4 text-center ${
-                  (selectedStudentForDetail.participations - selectedStudentForDetail.malus) >= 0
-                    ? 'bg-[var(--pos-soft)]'
-                    : 'bg-[var(--warn-soft)]'
-                }`}>
-                  <div className={`text-2xl font-bold ${
-                    (selectedStudentForDetail.participations - selectedStudentForDetail.malus) >= 0
-                      ? 'text-[var(--pos)]'
-                      : 'text-[var(--warn)]'
-                  }`}>
-                    {selectedStudentForDetail.participations - selectedStudentForDetail.malus >= 0 ? '+' : ''}
-                    {selectedStudentForDetail.participations - selectedStudentForDetail.malus}
-                  </div>
-                  <div className="text-xs text-[var(--text-muted)]">Score global</div>
-                </div>
-              </div>
-
-              {/* Session Evolution Chart */}
-              {selectedStudentForDetail.events.length > 0 && (
-                <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border)]">
-                  <h4 className="font-medium text-[var(--text)] mb-4 flex items-center gap-2">
-                    <span>📈</span> Evolution par seance
-                  </h4>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={getSessionEvolution(selectedStudentForDetail.events)}>
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 11, fill: 'var(--text-dim)' }}
-                        axisLine={{ stroke: 'var(--border)' }}
-                        tickLine={false}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={50}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12, fill: 'var(--text-dim)' }}
-                        axisLine={false}
-                        tickLine={false}
-                        allowDecimals={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--surface)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                        }}
-                        labelFormatter={(label) => `Seance du ${label}`}
-                      />
-                      <Legend
-                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="participation"
-                        name="Participation"
-                        stroke="var(--pos)"
-                        strokeWidth={2}
-                        dot={{ r: 4, fill: 'var(--pos)' }}
-                        activeDot={{ r: 6 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="malus"
-                        name="Malus"
-                        stroke="var(--accent)"
-                        strokeWidth={2}
-                        dot={{ r: 4, fill: 'var(--accent)' }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              {/* Connexions à l'espace élève */}
-              <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border)]">
-                <h4 className="font-medium text-[var(--text)] mb-3 flex items-center gap-2">
-                  <span>📱</span> Connexions à l'espace élève
-                </h4>
-                {selectedStudentForDetail.student.is_witness ? (
-                  <p className="text-sm text-[var(--text-dim)]">Élève témoin : connexions non comptabilisées.</p>
-                ) : (() => {
-                  const conn = connectionStats.get(selectedStudentForDetail.student.id);
-                  const eng = engagementInfo(conn?.last ?? null);
-                  const buckets = weeklyBuckets(studentConnections);
-                  const maxB = Math.max(1, ...buckets);
-                  return (
-                    <>
-                      <div className="flex items-center gap-6 mb-3">
-                        <div>
-                          <div className="text-2xl font-bold text-[var(--text)]">{conn?.count ?? 0}</div>
-                          <div className="text-xs text-[var(--text-dim)]">connexions</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: eng.color }} />
-                          <span className="text-sm text-[var(--text-muted)]">{eng.label}</span>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 48 }}>
-                        {buckets.map((b, i) => (
-                          <div
-                            key={i}
-                            title={`${b} connexion${b > 1 ? 's' : ''}`}
-                            style={{
-                              flex: 1, height: `${(b / maxB) * 100}%`, minHeight: b > 0 ? 4 : 1,
-                              background: b > 0 ? 'var(--indigo)' : 'var(--border)', borderRadius: 3,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div className="text-[10px] text-[var(--text-dim)] mt-1 text-center">10 dernières semaines</div>
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Oral Evaluation Section */}
-              <div className="bg-purple-50 rounded-xl p-4">
-                <h4 className="font-medium text-purple-900 mb-2 flex items-center gap-2">
-                  <span>🎤</span> Evaluation orale
-                </h4>
-                {selectedStudentForDetail.oralEvaluation ? (
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-purple-700">
-                        {selectedStudentForDetail.oralEvaluation.grade}/5
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-purple-700">
-                        {ORAL_GRADE_LABELS[selectedStudentForDetail.oralEvaluation.grade]}
-                      </p>
-                      <p className="text-sm text-purple-600">
-                        Evalue le {formatDate(selectedStudentForDetail.oralEvaluation.evaluated_at)}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-purple-600 text-sm">
-                    Pas encore evalue ce trimestre
-                  </p>
-                )}
-              </div>
-
-              {/* Group Session Grades Section */}
-              <div className="bg-[var(--warn-soft)] rounded-xl p-4">
-                <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
-                  <span>👥</span> Notes de groupe ({groupSessionGrades.length})
-                </h4>
-                {isLoadingGroupGrades ? (
-                  <div className="flex justify-center py-4">
-                    <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : groupSessionGrades.length === 0 ? (
-                  <p className="text-[var(--warn)] text-sm">
-                    Aucune note de groupe pour cet eleve
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {groupSessionGrades.map((grade, idx) => {
-                      const percentage = grade.max_points > 0 ? Math.round((grade.score / grade.max_points) * 100) : 0;
-                      return (
-                        <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <div>
-                              <span className="font-medium text-[var(--text)]">{grade.session_name}</span>
-                              <span className="text-xs text-[var(--text-dim)] ml-2">
-                                ({grade.group_name})
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span className={`font-bold ${percentage >= 70 ? 'text-[var(--pos)]' : percentage >= 50 ? 'text-[var(--warn)]' : 'text-[var(--neg)]'}`}>
-                                {grade.score.toFixed(1)}/{grade.max_points}
-                              </span>
-                              <span className="text-xs text-[var(--text-dim)] ml-1">
-                                ({percentage}%)
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-1.5 bg-[var(--warn-soft)] rounded-full">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, Math.max(0, percentage))}%`,
-                                backgroundColor: percentage >= 70 ? 'var(--pos)' : percentage >= 50 ? 'var(--warn)' : 'var(--neg)',
-                              }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)]">
-                            <span>{grade.class_name}</span>
-                            <span>{formatDate(grade.created_at)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Notes du carnet (toutes, pas seulement les validees) */}
-              <div className="bg-purple-50 rounded-xl p-4">
-                <h4 className="font-medium text-purple-900 mb-3 flex items-center gap-2">
-                  <span>📄</span> Notes ({studentGradeReport?.lines.length ?? 0})
-                </h4>
-                {examGradesLoading ? (
-                  <div className="flex justify-center py-4">
-                    <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : !studentGradeReport || studentGradeReport.lines.length === 0 ? (
-                  <p className="text-purple-600 text-sm">
-                    Aucune évaluation cette année pour cet élève.
-                  </p>
-                ) : (
-                  <>
-                    {/* Moyennes pondérées */}
-                    <div className="grid grid-cols-4 gap-2 mb-3">
-                      {[1, 2, 3].map((p) => (
-                        <div key={p} className="bg-white rounded-lg p-2 text-center border border-purple-100">
-                          <div className="text-xs text-[var(--text-dim)]">T{p}</div>
-                          <div className="font-bold text-[var(--text)]">
-                            {formatGrade(studentGradeReport.averageByPeriod[p])}
-                          </div>
-                        </div>
-                      ))}
-                      <div className="bg-purple-100 rounded-lg p-2 text-center border border-purple-200">
-                        <div className="text-xs text-purple-700">Année</div>
-                        <div className="font-bold text-purple-900">
-                          {formatGrade(studentGradeReport.yearAverage)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {studentGradeReport.lines.map((line) => {
-                        const { assessment: a, grade, classMean, gap, className, fromOtherClass } = line;
-                        const status = grade?.status ?? 'noted';
-                        const hasGrade = status === 'noted' && grade?.grade != null;
-                        const bareme = Number(a.bareme_total ?? 20);
-                        const pct = hasGrade ? (grade!.grade! / 20) * 100 : 0;
-                        return (
-                          <div key={a.id} className="bg-white rounded-lg p-3 border border-purple-100">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="min-w-0">
-                                <span className="font-medium text-[var(--text)]">{a.name}</span>
-                                <span className="text-xs text-[var(--text-dim)] ml-2">
-                                  T{a.period ?? '?'} · coef {Number(a.coefficient)}
-                                  {!a.counts_in_average && ' · hors moyenne'}
-                                </span>
-                                {fromOtherClass && (
-                                  <span
-                                    className="text-xs text-[var(--warn)] bg-[var(--warn-soft)] rounded px-1.5 py-0.5 ml-2 whitespace-nowrap"
-                                    title="Évaluation passée dans une autre classe : l’élève a changé de classe depuis."
-                                  >
-                                    {className}
-                                  </span>
-                                )}
-                              </div>
-                              {hasGrade ? (
-                                <span className={`font-bold whitespace-nowrap ${pct >= 70 ? 'text-[var(--pos)]' : pct >= 50 ? 'text-[var(--warn)]' : 'text-[var(--neg)]'}`}>
-                                  {formatGrade(grade!.grade!)}/20
-                                </span>
-                              ) : (
-                                <span className="text-sm italic text-[var(--text-dim)] whitespace-nowrap">
-                                  {status === 'noted' ? 'non corrigée' : STATUS_LABEL[status]}
-                                </span>
-                              )}
-                            </div>
-
-                            {grade?.comment && (
-                              <p className="text-sm text-[var(--text)] mt-1">{grade.comment}</p>
-                            )}
-
-                            <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-dim)] gap-2">
-                              <span>
-                                {grade?.grade_raw != null && bareme !== 20
-                                  ? `${formatGrade(Number(grade.grade_raw))}/${bareme} brut · `
-                                  : ''}
-                                moyenne classe {formatGrade(classMean)}
-                                {gap !== null && (
-                                  <span className={gap >= 0 ? 'text-[var(--pos)]' : 'text-[var(--neg)]'}>
-                                    {' '}({gap >= 0 ? '+' : '−'}{formatGrade(Math.abs(gap))})
-                                  </span>
-                                )}
-                              </span>
-                              <span className="whitespace-nowrap">
-                                {a.date ? formatDate(a.date) : ''}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Remarks Section */}
-              {(() => {
-                const remarks = getRemarks(selectedStudentForDetail.events);
-                if (remarks.length === 0) return null;
-                return (
-                  <div className="bg-[var(--indigo-soft)] rounded-xl p-4">
-                    <h4 className="font-medium text-[var(--indigo-ink)] mb-3 flex items-center gap-2">
-                      <span>📝</span> Remarques ({remarks.length})
-                    </h4>
-                    <div className="space-y-3">
-                      {remarks.map((remark) => (
-                        <div key={remark.id} className="bg-white rounded-lg p-3 border border-[var(--indigo)]">
-                          <div className="text-xs text-[var(--indigo-ink)] font-medium mb-1">
-                            {formatDate(remark.timestamp)}
-                          </div>
-                          {remark.note && (
-                            <p className="text-sm text-[var(--text)]">{remark.note}</p>
-                          )}
-                          {remark.photo_path && buildPhotoUrl(remark.photo_path, import.meta.env.VITE_SUPABASE_URL) && (
-                            <div className="mt-2">
-                              <img
-                                src={buildPhotoUrl(remark.photo_path, import.meta.env.VITE_SUPABASE_URL)!}
-                                alt="Photo remarque"
-                                className="rounded-lg max-h-40 object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Manual Implications Section */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-[var(--text)]">
-                    Implications manuelles ({selectedStudentForDetail.manualParticipations})
-                  </h4>
-                  <button
-                    onClick={openAddManualModal}
-                    className="px-3 py-1.5 bg-[var(--indigo)] text-white rounded-lg text-sm hover:bg-[var(--indigo)]/90"
-                  >
-                    + Ajouter
-                  </button>
-                </div>
-                {selectedStudentForDetail.manualParticipationsList.length === 0 ? (
-                  <p className="text-[var(--text-dim)] text-sm text-center py-3 bg-[var(--bg)] rounded-lg">
-                    Aucune implication manuelle ce trimestre
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedStudentForDetail.manualParticipationsList.map((mp) => (
-                      <div key={mp.id} className="flex items-center justify-between bg-[var(--bg)] rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <span className="bg-[var(--pos-soft)] text-[var(--pos)] px-2 py-1 rounded text-sm font-medium">
-                            +{mp.count}
-                          </span>
-                          <div>
-                            <span className="text-sm text-[var(--text)]">
-                              {mp.reason || 'Implication manuelle'}
-                            </span>
-                            <span className="text-xs text-[var(--text-dim)] block">
-                              {formatDate(mp.created_at)}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => deleteManualParticipation(mp.id)}
-                          className="text-[var(--neg)] hover:text-[var(--neg)] p-2 hover:bg-[var(--neg-soft)] rounded-lg"
-                          title="Supprimer"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Archived Grades — groupé par année scolaire */}
-              {selectedStudentForDetail.archivedGrades.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-[var(--text)] mb-3">Historique des notes</h4>
-                  <div className="space-y-3">
-                    {Object.entries(
-                      selectedStudentForDetail.archivedGrades.reduce((acc, ag) => {
-                        (acc[ag.school_year] ||= []).push(ag);
-                        return acc;
-                      }, {} as Record<string, ArchivedGrade[]>),
-                    )
-                      .sort((a, b) => b[0].localeCompare(a[0]))
-                      .map(([year, grades]) => {
-                        const sorted = [...grades].sort((a, b) => a.trimester - b.trimester);
-                        const className = sorted.find(g => g.class_name)?.class_name;
-                        const avg = sorted.reduce((s, g) => s + g.grade, 0) / sorted.length;
-                        return (
-                          <div key={year} className="bg-[var(--bg)] rounded-lg p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium text-[var(--text)]">
-                                {year}{className ? ` · ${className}` : ''}
-                              </span>
-                              <span className="text-sm text-[var(--text-muted)]">
-                                moy.{' '}
-                                <span className={`font-bold ${getGradeColor(avg)}`} style={{ fontFamily: 'var(--font-display)' }}>
-                                  {avg.toFixed(1)}
-                                </span>
-                                /20
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {sorted.map((ag, idx) => (
-                                <div key={idx} className="flex items-center gap-1.5 text-sm bg-[var(--surface)] rounded px-2 py-1 border border-[var(--border)]">
-                                  <span className="text-[var(--text-dim)]">T{ag.trimester}</span>
-                                  <span className={`font-semibold ${getGradeColor(ag.grade)}`}>{ag.grade.toFixed(1)}</span>
-                                  {ag.bonus > 0 && <span className="text-xs text-[var(--warn)]">+{ag.bonus.toFixed(1)}</span>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-
-              {/* Stamp Card */}
-              <div>
-                <h4 className="font-medium text-[var(--text)] mb-3">Carte a tampons</h4>
-                {stampDetailLoading ? (
-                  <p className="text-sm text-[var(--text-dim)] py-2">Chargement...</p>
-                ) : !studentStampDetail ? (
-                  <p className="text-sm text-[var(--text-dim)] py-2">Pas de carte active</p>
-                ) : (() => {
-                  const tier = getCardTier(studentStampDetail.card_number);
-                  const isComplete = studentStampDetail.stamp_count >= 10;
-                  return (
-                  <div className="space-y-3">
-                    {/* Card visual */}
-                    <div
-                      className="rounded-2xl p-4 relative overflow-hidden"
-                      style={{
-                        background: tier.gradient,
-                        boxShadow: `0 4px 16px ${tier.borderColor}25`,
-                      }}
-                    >
-                      <div className="absolute inset-0 pointer-events-none" style={{ background: tier.bgPattern }} />
-
-                      <div className="relative flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{tier.emoji}</span>
-                          <div>
-                            <p className="text-sm font-bold text-white drop-shadow-sm">Carte n°{studentStampDetail.card_number}</p>
-                            <p className="text-xs text-white/70">{tier.name}</p>
-                          </div>
-                        </div>
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-white/20 text-white backdrop-blur-sm">
-                          {studentStampDetail.stamp_count}/10
-                        </span>
-                      </div>
-
-                      <div className="relative h-2 bg-black/20 rounded-full overflow-hidden mb-3">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${(studentStampDetail.stamp_count / 10) * 100}%`,
-                            background: isComplete ? tier.progressGradientComplete : tier.progressGradient,
-                          }}
-                        />
-                      </div>
-
-                      <div className="relative grid grid-cols-5 gap-1.5">
-                        {Array.from({ length: 10 }, (_, i) => {
-                          const stamp = studentStampDetail.stamps.find(s => s.slot_number === i + 1);
-                          return (
-                            <div
-                              key={i}
-                              className="aspect-square rounded-lg flex items-center justify-center"
-                              style={{
-                                border: stamp ? `2px solid ${stamp.category_color}90` : '2px dashed rgba(255,255,255,0.3)',
-                                backgroundColor: stamp ? `${stamp.category_color}25` : 'rgba(0,0,0,0.15)',
-                              }}
-                              title={stamp ? `${stamp.category_label} — ${new Date(stamp.awarded_at).toLocaleDateString('fr-FR')}` : `Slot ${i + 1}`}
-                            >
-                              {stamp
-                                ? <CategoryIcon icon={stamp.category_icon} iconRef={stamp.category_icon_ref} size={20} color="#fff" title={stamp.category_label} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.35))' }} />
-                                : <span className="text-lg drop-shadow-sm">{tier.emptyIcon}</span>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Completed cards */}
-                    {studentStampDetail.completed_cards.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {studentStampDetail.completed_cards.length} carte(s) terminée(s)
-                        </p>
-                        {studentStampDetail.completed_cards.map((c, i) => {
-                          const cTier = getCardTier(c.card_number);
-                          return (
-                            <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-[var(--bg)]">
-                              <span className="text-[var(--text)]">{cTier.emoji} Carte n°{c.card_number} ({cTier.name})</span>
-                              <span className="text-[var(--text-muted)]">
-                                {c.bonus_label ? `🎁 ${c.bonus_label} ${c.bonus_used ? '✓' : '⏳'}` : 'Pas de bonus'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })()}
-              </div>
-
-              {/* Recent Events */}
-              <div>
-                <h4 className="font-medium text-[var(--text)] mb-3">
-                  Evenements du trimestre ({selectedStudentForDetail.events.length})
-                </h4>
-                {selectedStudentForDetail.events.length === 0 ? (
-                  <p className="text-[var(--text-dim)] text-center py-4">
-                    Aucun evenement ce trimestre
-                  </p>
-                ) : (
-                  <div className="space-y-1 max-h-60 overflow-y-auto">
-                    {selectedStudentForDetail.events.map((event) => (
-                      <div key={event.id} className="flex items-center gap-3 p-2 hover:bg-[var(--bg)] rounded">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getEventTypeColor(event.type)}`}>
-                          {getEventTypeLabel(event.type, event.subtype)}
-                        </span>
-                        <span className="text-sm text-[var(--text-dim)] flex-1">
-                          {formatDateTime(event.timestamp)}
-                        </span>
-                        {event.note && (
-                          <span className="text-sm text-[var(--text-muted)] italic truncate max-w-[200px]">
-                            "{event.note}"
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+      {showStudentDetailModal && selectedStudentForDetail && (() => {
+        // Précédent / suivant suivent la liste affichée (classe, recherche, filtre, tri)
+        const detailIndex = filteredAndSortedGrades.findIndex(g => g.student.id === selectedStudentForDetail.student.id);
+        const previousStudent = detailIndex > 0 ? filteredAndSortedGrades[detailIndex - 1] : null;
+        const nextStudent = detailIndex >= 0 && detailIndex < filteredAndSortedGrades.length - 1
+          ? filteredAndSortedGrades[detailIndex + 1]
+          : null;
+        return (
+          <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
+            <StudentDetailModal
+              sg={selectedStudentForDetail}
+              classes={classes}
+              trimester={trimesterSettings.current_trimester}
+              onClose={() => setShowStudentDetailModal(false)}
+              onPrev={previousStudent ? () => void openStudentDetail(previousStudent) : null}
+              onNext={nextStudent ? () => void openStudentDetail(nextStudent) : null}
+              onChangeClass={(classId) => void changeStudentClass(classId)}
+              onToggleGender={() => void toggleGender()}
+              onToggleWitness={() => void toggleWitness()}
+              onToggleAccommodation={(key) => void toggleAccommodation(key)}
+              connection={connectionStats.get(selectedStudentForDetail.student.id)}
+              connectionTimestamps={studentConnections}
+              groupGrades={groupSessionGrades}
+              groupGradesLoading={isLoadingGroupGrades}
+              gradeReport={studentGradeReport}
+              gradeReportLoading={examGradesLoading}
+              stampDetail={studentStampDetail}
+              stampDetailLoading={stampDetailLoading}
+              onAddManual={openAddManualModal}
+              onDeleteManual={(id) => void deleteManualParticipation(id)}
+            />
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Add Manual Implication Modal */}
       {showAddManualModal && selectedStudentForDetail && (
