@@ -221,6 +221,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
   // Face écran (PLAN_preparation_semaine.md, étape 2) : pages de tableau blanc de ce cours
   const [screens, setScreens] = useState<string[]>(() => courseScreens(initialDoc));
   const screensRef = useRef<string[]>(courseScreens(initialDoc));
+  // Liens vers un site ou une app (réglés depuis « Mes cours ») : gardés tels quels à l'enregistrement
+  const linksRef = useRef<CourseDoc['links']>(initialDoc.links);
   const [screensOpen, setScreensOpen] = useState<'edit' | 'test' | null>(startInScreens ? 'edit' : null);
   const layerUndo = useRef<LayerItem[][]>([]);
   const layerRedo = useRef<LayerItem[][]>([]);
@@ -272,7 +274,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
     if (!ed) return null;
     const layer = layerRef.current.length ? { layer: { items: layerRef.current } } : {};
     const face = screensRef.current.length ? { screens: screensRef.current } : {};
-    return { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current, ...layer, ...face };
+    const links = linksRef.current?.length ? { links: linksRef.current } : {};
+    return { version: COURSE_DOC_VERSION, content: ed.getJSON(), settings: settingsRef.current, ...layer, ...face, ...links };
   };
 
   /** Toujours la dernière version de `flush` (minuteries, raccourcis, nouvel essai). */
@@ -1034,6 +1037,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
     setLayerItems(items);
     screensRef.current = courseScreens(doc);
     setScreens(screensRef.current);
+    // Une ancienne version sans liens ne les efface pas : ils tiennent à l'activité, pas au texte
+    if (doc.links) linksRef.current = doc.links;
     layerUndo.current = [];
     layerRedo.current = [];
     setLayerSel(null);

@@ -229,3 +229,31 @@
 @media (max-width: 767px) {
   .mc-row--file .mc-row__open { min-height: 44px; }
 }
+
+/* ---- Liens de l'activité : site ou app, à la suite de ses boutons ---- */
+.mc-variant--link {
+  gap: 5px; padding: 0 9px; text-decoration: none;
+  font-size: 12.5px; font-weight: 600; color: var(--indigo-ink); white-space: nowrap;
+}
+.mc-variant--link:hover { background: var(--indigo-soft); border-color: var(--indigo); }
+.mc-variant--link:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
+.mc-links__row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- Aperçu au survol : la première page, en petit ---- */
+.mc-peek {
+  position: fixed; z-index: 60; overflow: hidden; pointer-events: none;
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2, 0 8px 24px rgba(15, 23, 42, 0.16));
+  animation: mc-peek-in 120ms ease-out;
+}
+.mc-peek__note {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 12px; color: var(--text-muted);
+}
+@keyframes mc-peek-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mc-peek { animation: none; } }
+
+@media (max-width: 767px) {
+  .mc-variants--links { order: 5; flex-basis: 100%; min-width: 0; flex-wrap: wrap; padding: 0 0 8px 44px; }
+  .mc-variant--link { min-height: 40px; font-size: 13.5px; }
+}

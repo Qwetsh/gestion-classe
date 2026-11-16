@@ -28,7 +28,7 @@ import {
   type BoardMeta,
   type BoardUsage,
 } from '../lib/boardsQueries';
-import { createCourse, duplicateCourse, emptyCourseDoc } from '../lib/course/courseDoc';
+import { createCourse, duplicateCourse, emptyCourseDoc, saveCourseLinks } from '../lib/course/courseDoc';
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, parseOpenTarget, type OpenMode } from '../lib/courseLibrary';
 import { fetchClassGroupsForUser } from '../lib/classGroupQueries';
@@ -57,6 +57,7 @@ import { ClassCourses } from '../components/courses/ClassCourses';
 import { CloudFileViewer } from '../components/clouds/CloudFileViewer';
 import { CourseLibrary, type SequenceFilesApi } from '../components/courses/CourseLibrary';
 import { PlaceCourseDialog } from '../components/courses/PlaceCourseDialog';
+import { CourseLinksDialog } from '../components/courses/CourseLinksDialog';
 import '../styles/mes-cours.css';
 
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
@@ -85,6 +86,8 @@ export function Courses() {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [viewer, setViewer] = useState<{ opened: OpenedFile; title: string; subtitle: string } | null>(null);
   const [placing, setPlacing] = useState<Board | null>(null);
+  /** Activité dont on règle les liens vers un site ou une app. */
+  const [linking, setLinking] = useState<Board | null>(null);
 
   const target = useMemo(() => parseOpenTarget(params), [params]);
   const targetId = target?.id ?? null;
@@ -443,6 +446,7 @@ export function Courses() {
             onDuplicate={(b) => void duplicate(b)}
             onSaveAsTemplate={(b) => void duplicate(b, true)}
             onDelete={(b) => void remove(b)}
+            onEditLinks={setLinking}
             onRenameSequence={renameSequence}
             files={filesApi}
           />
@@ -485,6 +489,20 @@ export function Courses() {
           isNew={editing === 'new'}
           onSave={save}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {linking && (
+        <CourseLinksDialog
+          board={linking}
+          onClose={() => setLinking(null)}
+          onSave={async (links) => {
+            const saved = await saveCourseLinks(linking.id, links);
+            if (!saved) throw new Error('Le cours vient d’être modifié ailleurs : fermez cette fenêtre et recommencez.');
+            setBoards((prev) => prev.map((b) => (b.id === linking.id ? { ...b, links: links.length ? links : undefined } : b)));
+            setLinking(null);
+            toast(links.length ? 'Liens enregistrés.' : 'Liens retirés.', 'success');
+          }}
         />
       )}
 
