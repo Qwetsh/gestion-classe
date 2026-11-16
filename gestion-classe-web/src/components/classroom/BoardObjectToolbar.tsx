@@ -25,6 +25,8 @@ interface Props {
   onPatchTable: (id: string, fn: (t: TableObject) => TableObject) => void;
   onToggleInteractive: (id: string) => void;
   onEdit: (id: string) => void;
+  /** Ouvre le panneau « Étapes » d'une animation (titres, légendes, ordre, code). */
+  onEditAnimation: (id: string) => void;
   /** Ouvre le panneau des interactions (l'objet devient un bouton qui affiche / masque d'autres objets). */
   onInteractions: (id: string) => void;
 }
@@ -33,7 +35,7 @@ const hold = (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(
 
 export function BoardObjectToolbar({
   objects, tableCell, onDuplicate, onDelete, onToggleLock, onReorder, onCover,
-  onImageBackground, onImageReplace, onPatchTable, onToggleInteractive, onEdit, onInteractions,
+  onImageBackground, onImageReplace, onPatchTable, onToggleInteractive, onEdit, onEditAnimation, onInteractions,
 }: Props) {
   const one = objects.length === 1 ? objects[0] : null;
   const locked = objects.every((o) => o.locked === true);
@@ -66,6 +68,11 @@ export function BoardObjectToolbar({
           <button type="button" className={`wb__btn wb__txt ${one.interactive ? 'is-on' : ''}`} title={one.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site'} onPointerDown={hold} onClick={() => onToggleInteractive(one.id)}>
             {one.interactive ? '✎' : '☞'}
           </button>
+        </div>
+      )}
+      {one?.type === 'animation' && (
+        <div className="wb__group">
+          <button type="button" className="wb__btn wb__txt" style={{ width: 'auto', padding: '0 10px', whiteSpace: 'nowrap' }} title="Étapes : réécrire les titres et les légendes, masquer une étape, changer l'ordre" onPointerDown={hold} onClick={() => onEditAnimation(one.id)}>Étapes</button>
         </div>
       )}
       {one?.type === 'equation' && (

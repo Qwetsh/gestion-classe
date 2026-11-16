@@ -160,6 +160,8 @@ interface Props {
   onToggleInteractive: (id: string) => void;
   /** Fenêtre : ouvrir son éditeur (double-clic sur la carte). */
   onEditWindow?: (id: string) => void;
+  /** Double-clic sur une animation : ouvre le panneau « Étapes ». */
+  onEditAnimation?: (id: string) => void;
   /** Prénoms des élèves présents (groupes aléatoires), en mode classe. */
   students?: string[];
   /** Correcteur orthographique et grammatical (soulignements + propositions) sur les zones de texte. */
@@ -240,7 +242,7 @@ function placeCaret(el: HTMLElement, x: number, y: number) {
 export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardObjectLayer(
   {
     objects, stage, scale, active, selectedIds, editingId, onSelect, onEdit, onChange, onFormatState, onNewPage, onContextMenu,
-    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, onEditWindow, students, links, snapGrid,
+    reveal, onRevealObject, onRevealGap, onTableCell, onEquationCommit, onWidgetConfig, onWidgetPlace, onFoldText, onUnfoldInSession, onConnectFrom, onToggleInteractive, onEditWindow, onEditAnimation, students, links, snapGrid,
     spellCheck = false, onSpellStatus, play, onFire, commands, onExtractWord, pickTarget = null, pickSourceId = null,
   },
   ref
@@ -1089,6 +1091,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             onPointerCancel={(e) => { const p = pressRef.current; clearPress(e); if (p?.moved) emit(objectsRef.current, p.before); }}
             onDoubleClick={(e) => {
               if (o.type === 'window') { if (active && !o.locked) { e.stopPropagation(); onEditWindow?.(o.id); } return; }
+              if (o.type === 'animation') { if (active && !o.locked) { e.stopPropagation(); onEditAnimation?.(o.id); } return; }
               const shapeText = o.type === 'shape' && !isLineKind(o.kind);
               if (!active || (!EDITABLE_TYPES.has(o.type) && !shapeText) || o.locked || isEditing) return;
               // Un post-it replié ne s'édite pas : le dossier gère lui-même son dépliage

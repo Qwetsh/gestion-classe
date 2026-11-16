@@ -61,11 +61,14 @@ export function animationInfo(code: string): AnimationInfo {
   if (data) {
     try {
       const parsed = JSON.parse(data[1]) as { steps?: unknown; title?: unknown; ratio?: unknown };
+      // Une étape masquée n'est pas jouée : elle ne compte pas parmi les étapes pilotables
       const steps = Array.isArray(parsed.steps)
-        ? parsed.steps.map((s) => {
-          const r = (s && typeof s === 'object' ? s : {}) as { title?: unknown; caption?: unknown };
-          return { title: typeof r.title === 'string' ? r.title : '', caption: typeof r.caption === 'string' ? r.caption : '' };
-        })
+        ? parsed.steps
+          .filter((s) => !(s && typeof s === 'object' && (s as { hidden?: unknown }).hidden === true))
+          .map((s) => {
+            const r = (s && typeof s === 'object' ? s : {}) as { title?: unknown; caption?: unknown };
+            return { title: typeof r.title === 'string' ? r.title : '', caption: typeof r.caption === 'string' ? r.caption : '' };
+          })
         : [];
       if (steps.length > 0) {
         info = {
@@ -86,6 +89,74 @@ export function animationInfo(code: string): AnimationInfo {
 
 /** Nombre d'étapes pilotables d'une animation (1 pour un HTML hors contrat). */
 export const animationStepCount = (o: Pick<AnimationObject, 'code'>) => animationInfo(o.code).steps.length;
+
+// ---- Retouche des étapes sans toucher au dessin ----
+
+/** Une étape telle qu'elle est écrite dans le bloc « gc-anim » (les champs inconnus sont gardés). */
+export interface AnimationStepData {
+  /** Identifiant du dessin de l'étape dans la scène ; sans lui, l'ordre des étapes est figé. */
+  id?: string;
+  title: string;
+  caption: string;
+  /** Étape masquée : gardée dans le fichier, pas jouée. */
+  hidden?: boolean;
+  [key: string]: unknown;
+}
+export interface AnimationData { steps: AnimationStepData[]; [key: string]: unknown }
+
+/** Emplacement du contenu du bloc « gc-anim » dans le code, ou null. */
+function dataRange(code: string): { start: number; end: number } | null {
+  const m = DATA_RE.exec(code);
+  if (!m) return null;
+  const start = m.index + m[0].indexOf('>') + 1;
+  return { start, end: start + m[1].length };
+}
+
+/** Bloc « gc-anim » du code, tel qu'écrit (étapes masquées comprises) ; null hors contrat. */
+export function animationData(code: string): AnimationData | null {
+  const range = dataRange(code);
+  if (!range) return null;
+  try {
+    const parsed = JSON.parse(code.slice(range.start, range.end)) as { steps?: unknown };
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.steps) || parsed.steps.length === 0) return null;
+    const steps = parsed.steps.map((s): AnimationStepData => {
+      const r = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
+      return { ...r, title: typeof r.title === 'string' ? r.title : '', caption: typeof r.caption === 'string' ? r.caption : '' } as AnimationStepData;
+    });
+    return { ...(parsed as Record<string, unknown>), steps };
+  } catch {
+    return null;
+  }
+}
+
+/** Le code avec son bloc « gc-anim » réécrit ; inchangé s'il n'a pas de bloc. */
+export function withAnimationData(code: string, data: AnimationData): string {
+  const range = dataRange(code);
+  if (!range) return code;
+  // « </ » et « <!-- » ne doivent ni fermer ni commenter le bloc <script> qui porte les données
+  const json = JSON.stringify(data, null, 1).replace(/<\//g, '<\\/').replace(/<!--/g, '<\\u0021--');
+  return code.slice(0, range.start) + json + code.slice(range.end);
+}
+
+/** L'ordre des étapes peut changer si chacune porte l'identifiant de son dessin. */
+export const canReorderSteps = (data: AnimationData) => data.steps.every((s) => typeof s.id === 'string' && s.id !== '');
+
+/**
+ * Légende saisie dans le panneau « Étapes » → ce que le lecteur d'animation accepte : du texte,
+ * du gras (les mots clés), de l'italique et des retours à la ligne.
+ */
+export function sanitizeCaption(html: string): string {
+  return html
+    .replace(/<\s*(\/?)\s*strong\b[^>]*>/gi, '<$1b>')
+    .replace(/<\s*(\/?)\s*em\b[^>]*>/gi, '<$1i>')
+    .replace(/<\s*\/\s*(?:div|p)\s*>\s*<\s*(?:div|p)\b[^>]*>/gi, '<br>')
+    .replace(/<\s*br\b[^>]*>/gi, '<br>')
+    .replace(/<\s*(\/?)\s*(b|i)\b[^>]*>/gi, (_m, slash: string, tag: string) => `<${slash}${tag.toLowerCase()}>`)
+    .replace(/<(?!\/?(?:b|i|br)>)[^>]*>/g, '')
+    .replace(/<(b|i)>(\s*)<\/\1>/g, '$2')
+    .replace(/^(?:<br>|\s|&nbsp;)+/, '')
+    .replace(/(?:<br>|\s|&nbsp;)+$/, '');
+}
 
 /** Aucun réseau : ni script, ni image, ni police venus d'ailleurs. Tout est dans le document. */
 const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:";

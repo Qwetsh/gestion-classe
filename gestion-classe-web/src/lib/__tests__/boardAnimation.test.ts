@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ANIMATION_MAX_CHARS, animationInfo, animationSrcDoc, animationStepCount, type AnimationObject } from '../boardAnimation';
+import {
+  ANIMATION_MAX_CHARS, animationData, animationInfo, animationSrcDoc, animationStepCount, canReorderSteps, sanitizeCaption, withAnimationData,
+  type AnimationObject,
+} from '../boardAnimation';
 import { emptyReveal, fireInteractions, isRevealEmpty, normalizeReveal, recoverPage } from '../boardReveal';
 import { actionsFor, describeInteraction, objectRect, objectTypeLabel, type Interaction, type TextObject } from '../boardObjects';
 import { checkScreens } from '../course/screensCheck';
@@ -120,5 +123,53 @@ describe('contrôle des écrans', () => {
     expect(checkScreens(page([anim('a', PLAIN)])).warnings.join(' ')).toMatch(/hors contrat/);
     const wrong = { ...next, interactions: [{ action: 'stepNext', targetId: 'n' }] };
     expect(checkScreens(page([anim('a'), wrong])).errors.join(' ')).toMatch(/ne s'adresse qu'à une animation/);
+  });
+});
+
+describe('retouche des étapes', () => {
+  it('lit le bloc tel quel, champs inconnus et étapes masquées compris', () => {
+    const d = animationData(data([{ id: 'a', title: 'Un', caption: 'x', dur: 7, color: '#C00000' }, { id: 'b', title: 'Deux', hidden: true }]));
+    expect(d?.steps).toEqual([{ id: 'a', title: 'Un', caption: 'x', dur: 7, color: '#C00000' }, { id: 'b', title: 'Deux', caption: '', hidden: true }]);
+    expect(d?.ratio).toBe(1.9);
+    expect(animationData(PLAIN)).toBeNull();
+    expect(animationData(data([]))).toBeNull();
+  });
+
+  it('réécrit le bloc sans toucher au reste du code', () => {
+    const d = animationData(THREE)!;
+    const next = withAnimationData(THREE, { ...d, steps: d.steps.map((s, i) => (i === 0 ? { ...s, title: 'Question 7', caption: 'Le <b>virus</b>' } : s)) });
+    expect(animationData(next)?.steps[0]).toEqual({ id: 'a', title: 'Question 7', caption: 'Le <b>virus</b>' });
+    const [before, after] = THREE.split(/<script type="application\/json" id="gc-anim">[\s\S]*?<\/script>/);
+    expect(next.startsWith(before + '<script type="application/json" id="gc-anim">')).toBe(true);
+    expect(next.endsWith('</script>' + after)).toBe(true);
+    expect(withAnimationData(PLAIN, d)).toBe(PLAIN);
+  });
+
+  it('ne laisse pas un texte fermer le bloc de données', () => {
+    const d = animationData(THREE)!;
+    const next = withAnimationData(THREE, { ...d, steps: [{ ...d.steps[0], caption: 'fin </script><!-- piège' }] });
+    expect(next.match(/<\/script>/g)).toHaveLength(THREE.match(/<\/script>/g)!.length);
+    expect(animationData(next)?.steps[0].caption).toBe('fin </script><!-- piège');
+  });
+
+  it('ne compte pas une étape masquée parmi les étapes jouées', () => {
+    const d = animationData(THREE)!;
+    const hidden = withAnimationData(THREE, { ...d, steps: d.steps.map((s, i) => (i === 1 ? { ...s, hidden: true } : s)) });
+    expect(animationInfo(hidden).steps.map((s) => s.title)).toEqual(['Un', 'Trois']);
+    expect(animationStepCount(anim('a', hidden))).toBe(2);
+    expect(animationData(hidden)?.steps).toHaveLength(3);
+  });
+
+  it('ne permet de réordonner que si chaque étape nomme son dessin', () => {
+    expect(canReorderSteps(animationData(THREE)!)).toBe(true);
+    expect(canReorderSteps(animationData(data([{ id: 'a', title: 'Un' }, { title: 'Deux' }]))!)).toBe(false);
+  });
+
+  it('réduit une légende saisie à du texte, du gras, des italiques et des retours', () => {
+    expect(sanitizeCaption('Le <strong>virus</strong> entre')).toBe('Le <b>virus</b> entre');
+    expect(sanitizeCaption('<div>Un</div><div>Deux</div>')).toBe('Un<br>Deux');
+    expect(sanitizeCaption('<span style="color:red">a</span><B>b</B><script>x()</script>')).toBe('a<b>b</b>x()');
+    expect(sanitizeCaption('<b></b>texte<br><br>')).toBe('texte');
+    expect(sanitizeCaption('a &lt; b')).toBe('a &lt; b');
   });
 });
