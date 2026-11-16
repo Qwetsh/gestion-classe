@@ -73,7 +73,8 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
   };
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
 
-  // ---- Aperçu de la première page au survol (souris seulement : au doigt, un appui ouvre) ----
+  // ---- Aperçu de la première page au survol des boutons Fiche / Documents / Correction (souris
+  // seulement : au doigt, un appui ouvre). Pas sur le nom de l'activité : il gênait en parcourant la liste ----
   const [peek, setPeek] = useState<PeekTarget | null>(null);
   const peekOpen = useRef(false);
   const peekTimer = useRef<number | undefined>(undefined);
@@ -286,7 +287,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                         const b = members[0].board;
                         return (
                           <li key={groupKey} className={`mc-row${evalClass}`}>
-                            <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours' : 'Ouvrir le tableau blanc'} {...peekProps(b)}>
+                            <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours' : 'Ouvrir le tableau blanc'}>
                               {evaluation ? evalIcon : kindIcon(b)}
                               {rowTitle(b.title, evaluation)}
                             </button>
@@ -305,7 +306,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                       const first = members[0];
                       return (
                         <li key={groupKey} className={`mc-row mc-row--activity${evalClass}`}>
-                          <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`} {...peekProps(first.board)}>
+                          <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`}>
                             {evaluation ? evalIcon : kindIcon(first.board)}
                             {rowTitle(title, evaluation)}
                           </button>
