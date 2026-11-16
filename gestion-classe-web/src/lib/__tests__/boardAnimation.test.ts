@@ -3,7 +3,8 @@ import {
   ANIMATION_MAX_CHARS, animationData, animationInfo, animationSrcDoc, animationStepCount, canReorderSteps, sanitizeCaption, withAnimationData,
   type AnimationObject,
 } from '../boardAnimation';
-import { emptyReveal, fireInteractions, isRevealEmpty, normalizeReveal, recoverPage } from '../boardReveal';
+import { emptyReveal, fireInteractions, isRevealEmpty, normalizeReveal, recoverPage, stepPageAnimation } from '../boardReveal';
+import { objectAssetPaths, remapObjectAssets } from '../boardFile';
 import { actionsFor, describeInteraction, objectRect, objectTypeLabel, type Interaction, type TextObject } from '../boardObjects';
 import { checkScreens } from '../course/screensCheck';
 
@@ -108,7 +109,7 @@ describe('contrôle des écrans', () => {
   const next = { id: 'n', type: 'shape', kind: 'rounded-rect', x: 790, y: 518, w: 190, h: 38, stroke: '#000', strokeWidth: 2, fill: null, interactions: [{ action: 'stepNext', targetId: 'a' }] };
 
   it('accepte une animation et ses boutons', () => {
-    const r = checkScreens(page([anim('a'), next]));
+    const r = checkScreens(page([{ ...anim('a'), imagePath: 'u/import/affiche.png' }, next]));
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
   });
@@ -171,5 +172,46 @@ describe('retouche des étapes', () => {
     expect(sanitizeCaption('<span style="color:red">a</span><B>b</B><script>x()</script>')).toBe('a<b>b</b>x()');
     expect(sanitizeCaption('<b></b>texte<br><br>')).toBe('texte');
     expect(sanitizeCaption('a &lt; b')).toBe('a &lt; b');
+  });
+});
+
+describe('télécommande : Suivant / Précédent', () => {
+  it('fait avancer l’animation de la page, puis rend la main à la page', () => {
+    const a = anim('a');
+    const objects = [button('t', []), a];
+    let state = emptyReveal();
+    state = stepPageAnimation(state, objects, 1)!;
+    state = stepPageAnimation(state, objects, 1)!;
+    expect(state.steps.a).toBe(2);
+    expect(stepPageAnimation(state, objects, 1)).toBeNull();          // dernière étape : page suivante
+    state = stepPageAnimation(state, objects, -1)!;
+    state = stepPageAnimation(state, objects, -1)!;
+    expect(state.steps.a).toBeUndefined();
+    expect(stepPageAnimation(state, objects, -1)).toBeNull();         // première étape : page précédente
+  });
+
+  it('ignore une animation cachée, hors contrat, ou une page sans animation', () => {
+    expect(stepPageAnimation(emptyReveal(), [button('t', [])], 1)).toBeNull();
+    expect(stepPageAnimation(emptyReveal(), [anim('p', PLAIN)], 1)).toBeNull();
+    expect(stepPageAnimation(emptyReveal(), [{ ...anim('h'), hidden: true }], 1)).toBeNull();
+    // Deux animations : la première qui peut encore bouger
+    const state = { ...emptyReveal(), steps: { a: 2 } };
+    expect(stepPageAnimation(state, [anim('a'), anim('b')], 1)?.steps).toEqual({ a: 2, b: 1 });
+  });
+});
+
+describe('image de l’animation', () => {
+  it('compte parmi les fichiers de l’objet et suit un changement de chemin', () => {
+    const a = { ...anim('a'), imagePath: 'u/import/affiche.png' };
+    expect(objectAssetPaths(a)).toEqual(['u/import/affiche.png']);
+    expect(objectAssetPaths(anim('b'))).toEqual([]);
+    expect(remapObjectAssets(a, (p) => `copie/${p}`)).toMatchObject({ imagePath: 'copie/u/import/affiche.png', code: THREE });
+  });
+
+  it('est signalée quand elle manque ou qu’elle est donnée par une adresse', () => {
+    const page = (objects: unknown[]) => [{ id: 'e-01', background: 'blank', strokes: [], objects }];
+    expect(checkScreens(page([anim('a')])).warnings.join(' ')).toMatch(/pas d'image/);
+    expect(checkScreens(page([{ ...anim('a'), imagePath: 'u/import/affiche.png' }])).warnings).toEqual([]);
+    expect(checkScreens(page([{ ...anim('a'), imagePath: 'https://exemple.fr/a.png' }])).errors.join(' ')).toMatch(/chemin de stockage/);
   });
 });

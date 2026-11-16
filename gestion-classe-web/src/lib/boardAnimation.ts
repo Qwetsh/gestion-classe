@@ -24,6 +24,11 @@ export interface AnimationObject extends BoardObjectBase {
   /** Document HTML autonome (scène et lecteur). */
   code: string;
   title?: string;
+  /**
+   * Image de l'animation dans le bucket (une étape figée) : c'est elle que montrent les vignettes
+   * et l'export PDF, où le cadre isolé ne peut pas être dessiné. Sans elle, une carte.
+   */
+  imagePath?: string;
   /** Vrai : le pointeur passe à l'animation en classe (HTML qui porte ses propres boutons). */
   interactive?: boolean;
 }

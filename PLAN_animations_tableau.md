@@ -48,7 +48,7 @@ Côté fabrication (skill `cours-gestion-classe`) : `gc_animation.py` assemble l
 |---|---|---|
 | 1 | Objet « Animation » : lecture, pilotage par les boutons, insertion d'un fichier HTML (Insertion › Médias), contrôle `screens:check`, générateur ; animation des anticorps reprise sur le lecteur | en ligne depuis le 16/11/2026 (PR #110) |
 | 2 | Retoucher sans code : panneau « Étapes » (titre, légende avec mots clés en gras, masquer, ordre, aperçu de l'étape) ouvert par un double-clic, le bouton « Étapes » de la barre ou le clic droit ; onglet « Code » (fichier entier, remplacement par un autre fichier) | fait le 16/11/2026 |
-| 3 | `/classe` et téléphone (l'étape suit sur l'afficheur), image de l'animation dans les vignettes et l'export PDF (aujourd'hui : une carte « ▶ Animation ») | à faire |
+| 3 | Téléphone : « Suivant » / « Précédent » font avancer l'animation étape par étape, puis changent d'écran (aucun changement dans l'application mobile) ; image de l'animation (`imagePath`) dans les vignettes, l'aperçu et l'export PDF, produite par `gc_animation.affiche` | fait le 16/11/2026 |
 | 4 | Banques de dessins par thème (géologie, cellule, digestion…), règle « un mécanisme = une animation » dans le procédé « tableau de séance » | banque « immunité » faite, le reste au fil des tableaux |
 
 ## 3. Vérifié
@@ -67,10 +67,17 @@ montée d'un rang, étape masquée, « Enregistrer » ; le bloc de données relu
 quatre retouches ; Ctrl+Z revient à l'état d'avant en un seul pas ; onglet « Code ». La barre d'un
 objet qui occupe l'écran ne passe plus derrière le ruban.
 
+Lot 3 : l'écran `/classe` est le tableau lui-même (le TBI y touche les boutons), et l'étape en cours
+est gardée avec l'état de séance : rien à ajouter de ce côté. Vérifié dans l'application : la
+vignette de l'export PDF montre l'image de l'animation. **Pas vérifié** : la télécommande du
+téléphone, qui demande une vraie séance (logique couverte par les tests).
+
 ## 4. À faire par Thomas, à savoir
 
 - Essayer sur le TBI : lisibilité des étiquettes de la scène (le cadre fait 960 sur 1000 de large),
-  rythme des étapes.
+  rythme des étapes ; et, en séance, le « Suivant » du téléphone sur un écran qui porte une animation.
+- Une animation insérée à la main (Insertion › Médias) n'a pas d'image : ses vignettes restent une
+  carte « ▶ Animation ». L'image vient du générateur ; elle ne suit pas une retouche des textes.
 - L'animation est posée sur l'original de la correction « Mme Eve Amalle » (écran de la question 7)
   depuis le 16/11/2026.
 - Une retouche faite dans une copie posée sur un cours ne remonte pas dans l'original, et

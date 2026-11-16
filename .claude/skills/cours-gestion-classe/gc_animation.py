@@ -14,13 +14,15 @@ Les textes (titre et légende de chaque étape) sont à part, dans `etapes` : il
 toucher au dessin, par Claude ou par Thomas dans l'application.
 
     code = assembler('Comment les anticorps nous défendent-ils ?', ETAPES, scene_js, banques=['immunite'])
-    apercu(code, 'anticorps', etape=4, instant=5)      # PNG de contrôle, Chrome sans fenêtre
-    e.animation(code)                                   # gc_ecrans : pose l'objet et ses boutons
+    apercu('anticorps.html', 'e4.png', etape=4, instant=5)   # image de contrôle, Chrome sans fenêtre
+    image = gc_envoi.envoyer_image(affiche(code, 'affiche.png'))  # ce que montrent vignettes et PDF
+    e.animation(code, affiche=image)                    # gc_ecrans : pose l'objet et ses boutons
 """
 import json
 import os
 import re
 import subprocess
+import tempfile
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 DOSSIER = os.path.join(ICI, 'animation')
@@ -107,3 +109,12 @@ def apercu(chemin_html, sortie_png, etape=1, instant=0.0, largeur=960, hauteur=5
                     '--screenshot=' + os.path.abspath(sortie_png), url],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)
     return sortie_png
+
+
+def affiche(code, sortie_png, etape=1, instant=3.5, largeur=960, hauteur=506):
+    """L'image de l'animation : une étape figée, pour les vignettes et l'export PDF du tableau (où
+    l'animation ne peut pas être jouée). À envoyer avec `gc_envoi.envoyer_image`, puis à passer à
+    `animation(..., affiche=<chemin de stockage>)`. Choisir un instant où l'étape est lisible."""
+    dossier = tempfile.mkdtemp(prefix='gc-anim-')
+    html = ecrire(code, os.path.join(dossier, 'animation.html'))
+    return apercu(html, sortie_png, etape=etape, instant=instant, largeur=largeur, hauteur=hauteur)

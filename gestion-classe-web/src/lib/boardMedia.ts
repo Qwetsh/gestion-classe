@@ -368,7 +368,17 @@ export function renderMediaObject(ctx: CanvasRenderingContext2D, o: MediaObject,
       labelBox(ctx, o, o.h, scale, '#1F2937', `🔊  ${o.label ?? 'Son'}`);
       break;
     case 'animation': {
-      // Vignettes et export : une carte (le cadre isolé ne se dessine pas sur un canvas)
+      // Vignettes et export : l'image de l'animation si elle en a une (le cadre isolé ne se
+      // dessine pas sur un canvas), sinon une carte
+      const poster = o.imagePath ? getLoadedImage(o.imagePath) : null;
+      if (poster && poster.naturalWidth > 0 && poster.naturalHeight > 0) {
+        const k = Math.min(o.w / poster.naturalWidth, o.h / poster.naturalHeight);
+        const w = poster.naturalWidth * k, h = poster.naturalHeight * k;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(o.x * scale, o.y * scale, o.w * scale, o.h * scale);
+        ctx.drawImage(poster, (o.x + (o.w - w) / 2) * scale, (o.y + (o.h - h) / 2) * scale, w * scale, h * scale);
+        break;
+      }
       const info = animationInfo(o.code);
       const count = info.steps.length;
       labelBox(ctx, o, o.h, scale, '#EEF2FF', `▶  ${o.title ?? info.title ?? 'Animation'}`, count > 1 ? `Animation · ${count} étapes` : 'Animation', '#312E81');
