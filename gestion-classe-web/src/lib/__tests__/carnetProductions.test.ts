@@ -18,6 +18,19 @@ describe('productionColumns', () => {
     ]);
   });
 
+  it('une activité dont l’éval a été supprimée ne revient pas en colonne « en attente »', () => {
+    const cols = productionColumns(
+      [act('a', 'Retirée'), act('b', 'Remise au carnet'), act('c', 'Jamais liée')],
+      [work('a', 's1', 'validated'), work('b', 's1', 'validated'), work('c', 's1', 'submitted')],
+      { b: 'eval-b2' },
+      new Set(['a', 'b']),
+    );
+    expect(cols.map((c) => [c.activity.id, c.assessmentId])).toEqual([
+      ['c', null],
+      ['b', 'eval-b2'],
+    ]);
+  });
+
   it('garde la production la plus récente d’un élève', () => {
     const [col] = productionColumns([act('a', 'A')], [work('a', 's1', 'corrected', '2026-10-01'), work('a', 's1', 'submitted', '2026-11-02')], {});
     expect(col.works.get('s1')?.status).toBe('submitted');
