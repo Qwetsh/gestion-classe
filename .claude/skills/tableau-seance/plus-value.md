@@ -18,7 +18,7 @@ de données, simulation à curseur, glisser-déposer élève, vote.
 | Ouverture, problématique | Découvrir la question ensemble ; susciter une hypothèse | `titre` + `ecran().rideau()`, `vrai_faux` sur les représentations initiales | Vote par cartes (phase 4) |
 | Situation de départ | Une image forte en grand, une citation, l'actualité | `document(image=…)`, `loupe` sur un détail, `video` | — |
 | Consigne | Étapes numérotées, temps visible | `consigne(…, minuteur=600)`, `coup_de_pouce` | — |
-| **Processus dans le temps** (mitose, subduction, digestion, éruption, germination, dérive) | Voir les étapes s'enchaîner, revenir en arrière | **Une animation** (`gc_animation` + `e.animation(code)`) : c'est ce que Thomas attend (16/11/2026). `etapes` pour une simple suite de textes ; jamais des images qui glissent à la place d'une animation | Retouche des textes sans code (lot 2) |
+| **Processus dans le temps** (mitose, subduction, digestion, éruption, germination, dérive) | Voir les étapes s'enchaîner, revenir en arrière | **Une animation** (`gc_animation` + `e.animation(code)`) : c'est ce que Thomas attend (16/11/2026). `etapes` pour une simple suite de textes ; jamais des images qui glissent à la place d'une animation | — (Thomas réécrit titres et légendes lui-même : double-clic sur l'animation, panneau « Étapes ») |
 | **Structure** (cellule, cœur, cerveau, fleur, globe, œil) | La légender devant la classe, désigner une partie | `schema` (étiquettes une à une), `schema(mode='toucher')`, `loupe` | Visualiseur 3D manipulable (lot B puis 3c) |
 | **Données** (séismes, CO₂, températures, croissance) | La courbe qui se trace, lire une valeur | Image du graphique + `loupe` + révélation des lectures (`question`) | Module graphique animé (lot B) |
 | Expérience, modèle | Montrer le montage, faire varier un facteur | `dessin` (verrerie), étapes du protocole, résultats sous rideau | Simulation à curseur (lot B) |
@@ -40,7 +40,7 @@ avant l'animation native (C). Lui faire trancher avant de commencer B.
   accès à l'app), commandée par les boutons du tableau (« étape suivante »). **Commencé le
   16/11/2026 par l'objet « Animation »** (`PLAN_animations_tableau.md`, lot 1 : lecture et
   pilotage ; le code vit dans l'écran, sans fichier ni changement de `depot-cours`). Restent :
-  retouche des textes sans code (lot 2), `/classe` et vignette (lot 3), banques de dessins par
+  `/classe` et vignette (lot 3), banques de dessins par
   thème (lot 4) ; puis la 3D (three.js, à embarquer : le cadre n'a pas accès au réseau), les
   graphiques animés et les simulations, au format déjà validé par Thomas (« Voir sous nos
   pieds », globe de « Terre en mouvement »).

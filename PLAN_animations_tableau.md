@@ -46,12 +46,14 @@ Côté fabrication (skill `cours-gestion-classe`) : `gc_animation.py` assemble l
 
 | Lot | Contenu | État |
 |---|---|---|
-| 1 | Objet « Animation » : lecture, pilotage par les boutons, insertion d'un fichier HTML (Insertion › Médias), contrôle `screens:check`, générateur ; animation des anticorps reprise sur le lecteur | fait le 16/11/2026, à essayer par Thomas |
-| 2 | Retoucher sans code : panneau « Étapes » (titre, légende, masquer, ordre) sur l'animation sélectionnée ; bouton « Code » | à faire |
+| 1 | Objet « Animation » : lecture, pilotage par les boutons, insertion d'un fichier HTML (Insertion › Médias), contrôle `screens:check`, générateur ; animation des anticorps reprise sur le lecteur | en ligne depuis le 16/11/2026 (PR #110) |
+| 2 | Retoucher sans code : panneau « Étapes » (titre, légende avec mots clés en gras, masquer, ordre, aperçu de l'étape) ouvert par un double-clic, le bouton « Étapes » de la barre ou le clic droit ; onglet « Code » (fichier entier, remplacement par un autre fichier) | fait le 16/11/2026 |
 | 3 | `/classe` et téléphone (l'étape suit sur l'afficheur), image de l'animation dans les vignettes et l'export PDF (aujourd'hui : une carte « ▶ Animation ») | à faire |
 | 4 | Banques de dessins par thème (géologie, cellule, digestion…), règle « un mécanisme = une animation » dans le procédé « tableau de séance » | banque « immunité » faite, le reste au fil des tableaux |
 
-## 3. Vérifié au lot 1
+## 3. Vérifié
+
+Lot 1 :
 
 - `npx tsc -b`, tests (modèle, état de séance, contrôle des écrans, générateur).
 - Dans l'application (cours d'essai, mode « En classe ») : « Suivant » × 3 amène à l'étape 4 / 10,
@@ -60,11 +62,18 @@ Côté fabrication (skill `cours-gestion-classe`) : `gc_animation.py` assemble l
 - Hors de l'application : les dix étapes photographiées (`gc_animation.apercu`), et l'animation
   jouée dans un cadre isolé identique (sandbox + politique de contenu).
 
+Lot 2, dans l'application (cours d'essai, mode Tableau) : titre réécrit, légende complétée, étape
+montée d'un rang, étape masquée, « Enregistrer » ; le bloc de données relu dans l'écran porte les
+quatre retouches ; Ctrl+Z revient à l'état d'avant en un seul pas ; onglet « Code ». La barre d'un
+objet qui occupe l'écran ne passe plus derrière le ruban.
+
 ## 4. À faire par Thomas, à savoir
 
 - Essayer sur le TBI : lisibilité des étiquettes de la scène (le cadre fait 960 sur 1000 de large),
   rythme des étapes.
-- L'animation n'est pas encore posée sur la correction « Mme Eve Amalle » : à faire après la mise
-  en ligne (avant, le site ne connaît pas ce type d'objet).
+- L'animation est posée sur l'original de la correction « Mme Eve Amalle » (écran de la question 7)
+  depuis le 16/11/2026.
+- Une retouche faite dans une copie posée sur un cours ne remonte pas dans l'original, et
+  inversement : chaque écran porte son propre code.
 - Le cours « Essai — animation des anticorps (à supprimer) » (niveau Autre, chapitre Essais) est
   dans « Mes cours » : à supprimer après l'essai.

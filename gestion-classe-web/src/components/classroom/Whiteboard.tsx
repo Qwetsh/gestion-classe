@@ -36,6 +36,7 @@ import { BoardShapeToolbar, type ShapeStyle } from './BoardShapeToolbar';
 import { BoardColorPicker } from './BoardColorPicker';
 import { defaultShapeBox, isLineKind, renderShape, type ShapeKind, type ShapeObject, pointsInsideShape, contourToPolygon, type ZoneEntry } from '../../lib/boardShapes';
 import { BoardWindowDialog } from './BoardWindowDialog';
+import { BoardAnimationDialog } from './BoardAnimationDialog';
 import { WINDOW_CARD, type WindowObject } from '../../lib/boardMedia';
 import { ANIMATION_MAX_CHARS, animationInfo, type AnimationObject } from '../../lib/boardAnimation';
 import { recognizeShape, type RecognizedShape } from '../../lib/boardRecognize';
@@ -473,6 +474,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   /** Fenêtre ouverte en classe par un bouton, et fenêtre en cours d'édition. */
   const [openWindow, setOpenWindow] = useState<string | null>(null);
   const [windowEdit, setWindowEdit] = useState<string | null>(null);
+  /** Animation dont le panneau « Étapes » est ouvert. */
+  const [animationEdit, setAnimationEdit] = useState<string | null>(null);
   const windowImageInputRef = useRef<HTMLInputElement>(null);
   /** Déplacer vers : on attend un tap sur la page pour fixer la destination. */
   const [pickingPoint, setPickingPoint] = useState(false);
@@ -2468,6 +2471,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         : []),
       ...(target.type === 'equation' && !many && !locked ? [{ label: "Modifier l'équation", shortcut: 'Double-clic', onSelect: () => setEditingId(id) }] : []),
       ...(target.type === 'web' && !many ? [{ label: target.interactive ? 'Annoter par-dessus le site' : 'Interagir avec le site', onSelect: () => onToggleInteractive(target.id) }] : []),
+      ...(target.type === 'animation' && !many && !locked ? [{ label: 'Modifier les étapes…', shortcut: 'Double-clic', onSelect: () => setAnimationEdit(id) }] : []),
       ...(target.type === 'image' && !many ? [{ label: 'Image', children: [
         { label: "Remplacer l'image…", onSelect: () => replaceImageInputRef.current?.click() },
         { label: 'Mettre en fond de page', onSelect: sendImageToBackground },
@@ -3722,6 +3726,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           play={displayMode || !!inClass || !OBJECT_TOOLS.includes(tool)}
           onFire={fireObject}
           onEditWindow={(id) => setWindowEdit(id)}
+          onEditAnimation={(id) => setAnimationEdit(id)}
           commands={commands}
           onExtractWord={extractWord}
           pickTarget={picking && interactionsFor ? onTargetPicked : null}
@@ -4095,6 +4100,16 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === openWindow);
         return w ? <BoardWindowDialog window={w} mode="view" onClose={() => setOpenWindow(null)} /> : null;
       })()}
+      {!displayMode && animationEdit && (() => {
+        const a = pageObjects.find((o): o is AnimationObject => o.type === 'animation' && o.id === animationEdit);
+        return a ? (
+          <BoardAnimationDialog
+            animation={a}
+            onClose={() => setAnimationEdit(null)}
+            onSave={(code) => { patchObject(a.id, (o) => (o.type === 'animation' ? { ...o, code } : o)); setAnimationEdit(null); }}
+          />
+        ) : null;
+      })()}
       {!displayMode && windowEdit && (() => {
         const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === windowEdit);
         return w ? (
@@ -4181,6 +4196,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             onPatchTable={patchTable}
             onToggleInteractive={onToggleInteractive}
             onEdit={(id) => setEditingId(id)}
+            onEditAnimation={(id) => setAnimationEdit(id)}
             onInteractions={startLinking}
           />
         </BoardFloatingToolbar>

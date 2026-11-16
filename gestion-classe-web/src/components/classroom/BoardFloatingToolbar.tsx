@@ -81,10 +81,17 @@ export function BoardFloatingToolbar({ objectId, label, docked = false, children
         const cx = a.left + a.width / 2;
         left = Math.max(MARGIN, Math.min(cx - w / 2, window.innerWidth - w - MARGIN));
         const above = a.top - GAP - h;
+        // Sous le ruban (habillage ordinateur) : la barre ne se glisse jamais derrière lui
+        const ribbon = document.querySelector('.wbrib')?.getBoundingClientRect();
+        const limit = Math.max(MARGIN, (ribbon ? ribbon.bottom : 0) + MARGIN);
         // Au-dessus si la place existe, sinon en dessous ; la flèche ne se dessine qu'au-dessus.
-        if (above >= MARGIN) {
+        if (above >= limit) {
           top = above;
           arrow = Math.max(18, Math.min(cx - left, w - 18));
+        } else if (a.height > (window.innerHeight - limit) * 0.6) {
+          // Objet qui occupe presque tout l'écran (une animation pleine page) : posée sur son bord
+          // haut, plutôt que sur ce qui se trouve dessous (ses boutons)
+          top = limit;
         } else {
           top = Math.min(a.bottom + GAP, window.innerHeight - h - MARGIN);
         }
