@@ -46,11 +46,15 @@ export const isSent = (w: Pick<ClassWorkLite, 'status'>): boolean => w.status !=
 /**
  * Colonnes de productions d'une classe. Seules comptent les activités dont au moins un élève de la
  * classe a envoyé une production. `links` : activité → éval liée (non supprimée) de cette classe.
+ * `removed` : activités dont le prof a supprimé l'éval liée. Elles ne reviennent pas en colonne
+ * « en attente » (sinon un clic dessus recréait l'éval) ; « + Évaluation → Production numérique »
+ * les remet au carnet.
  */
 export function productionColumns<A extends ProductionActivityLite>(
   activities: readonly A[],
   works: readonly ClassWorkLite[],
   links: Readonly<Record<string, string>>,
+  removed: ReadonlySet<string> = new Set(),
 ): ProductionColumn<A>[] {
   const byActivity = new Map<string, Map<string, ClassWorkLite>>();
   for (const w of works) {
@@ -63,6 +67,7 @@ export function productionColumns<A extends ProductionActivityLite>(
   }
   const out: ProductionColumn<A>[] = [];
   for (const activity of activities) {
+    if (!links[activity.id] && removed.has(activity.id)) continue;
     const m = byActivity.get(activity.id);
     if (!m || m.size === 0) continue;
     let toCorrect = 0;

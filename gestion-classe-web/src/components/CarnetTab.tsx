@@ -400,7 +400,7 @@ export function CarnetTab({ userId, account, onError }: {
 
   const prodColumns = useMemo(
     () => (productions && productions.classId === classId
-      ? productionColumns(productions.activities, productions.works, productions.links)
+      ? productionColumns(productions.activities, productions.works, productions.links, productions.removed)
       : []),
     [productions, classId],
   );

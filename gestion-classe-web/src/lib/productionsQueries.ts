@@ -149,18 +149,28 @@ export async function fetchActivityForAssessment(assessmentId: string): Promise<
   return (data as ActivityRow | null) ?? null;
 }
 
-/** Activités déjà liées à une éval (non supprimée) de cette classe : activité → éval. */
-export async function fetchClassActivityLinks(classId: string): Promise<Record<string, string>> {
+/**
+ * Liens activité → éval de cette classe. `links` : évals non supprimées. `removed` : activités dont
+ * l'éval liée a été supprimée (le lien reste en base et sert de marque « retirée du carnet »).
+ */
+async function fetchClassActivityLinkStates(classId: string): Promise<{ links: Record<string, string>; removed: Set<string> }> {
   const { data, error } = await supabase
     .from('activity_assessments')
     .select('activity_id, assessment_id, written_assessments(is_deleted)')
     .eq('class_id', classId);
   if (error) throw error;
-  const out: Record<string, string> = {};
+  const links: Record<string, string> = {};
+  const removed = new Set<string>();
   for (const l of (data ?? []) as unknown as { activity_id: string; assessment_id: string; written_assessments: { is_deleted: boolean } | null }[]) {
-    if (l.written_assessments && !l.written_assessments.is_deleted) out[l.activity_id] = l.assessment_id;
+    if (l.written_assessments && !l.written_assessments.is_deleted) links[l.activity_id] = l.assessment_id;
+    else removed.add(l.activity_id);
   }
-  return out;
+  return { links, removed };
+}
+
+/** Activités déjà liées à une éval (non supprimée) de cette classe : activité → éval. */
+export async function fetchClassActivityLinks(classId: string): Promise<Record<string, string>> {
+  return (await fetchClassActivityLinkStates(classId)).links;
 }
 
 /**
@@ -171,6 +181,7 @@ export async function fetchClassProductions(classId: string): Promise<{
   activities: ActivityRow[];
   works: ClassWorkLite[];
   links: Record<string, string>;
+  removed: Set<string>;
 }> {
   const { data, error } = await supabase
     .from('student_works')
@@ -181,13 +192,13 @@ export async function fetchClassProductions(classId: string): Promise<{
   if (error) throw error;
   const works = (data ?? []) as ClassWorkLite[];
   const ids = [...new Set(works.map((w) => w.activity_id))];
-  if (ids.length === 0) return { activities: [], works: [], links: {} };
-  const [acts, links] = await Promise.all([
+  if (ids.length === 0) return { activities: [], works: [], links: {}, removed: new Set() };
+  const [acts, states] = await Promise.all([
     supabase.from('activities').select('*').in('id', ids).eq('is_deleted', false),
-    fetchClassActivityLinks(classId),
+    fetchClassActivityLinkStates(classId),
   ]);
   if (acts.error) throw acts.error;
-  return { activities: (acts.data ?? []) as ActivityRow[], works, links };
+  return { activities: (acts.data ?? []) as ActivityRow[], works, ...states };
 }
 
 /** Production d'un élève pour une activité (la plus récente), ou null. */
