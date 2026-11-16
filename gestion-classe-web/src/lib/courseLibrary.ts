@@ -55,11 +55,88 @@ export function groupLibrary(boards: Board[], extraSequences: { level: string | 
     .sort((a, b) => rank(a[0]) - rank(b[0]) || naturalCompare(a[0] ?? '', b[0] ?? ''))
     .map(([level, sequences]) => ({
       level,
-      count: [...sequences.values()].reduce((n, list) => n + list.length, 0),
+      // Lignes affichées : une activité et sa correction comptent pour une
+      count: [...sequences.values()].reduce((n, list) => n + groupActivities(list).length, 0),
       sequences: [...sequences.entries()]
         .sort((a, b) => (a[0] === '' ? 1 : b[0] === '' ? -1 : naturalCompare(a[0], b[0])))
         .map(([chapter, list]) => ({ chapter, boards: [...list].sort((x, y) => naturalCompare(x.title, y.title)) })),
     }));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Activité › correction › documents : rattachés par le titre, sans colonne en base
+// ---------------------------------------------------------------------------------------------
+
+/** Rôle d'un original dans son activité, lu à la fin de son titre. */
+export type CourseVariant = 'fiche' | 'correction' | 'documents';
+
+/** Ordre de la séance : la fiche, ses documents, puis la correction (toujours en dernier). */
+export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'documents', 'correction'];
+
+export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', correction: 'Correction', documents: 'Documents' };
+
+/** Intitulé du bouton d'un original : pour une évaluation, la fiche est le « Sujet ». */
+export const variantLabel = (variant: CourseVariant, evaluation = false): string =>
+  (evaluation && variant === 'fiche' ? 'Sujet' : VARIANT_LABEL[variant]);
+
+/** « Évaluation — La Terre… », « Evaluation : … », « Évaluations … » (accent et casse indifférents). */
+const EVALUATION_PREFIX = /^\s*[ée]valuations?(?![\p{L}\p{N}])\s*[—–:-]?\s*/iu;
+
+export const isEvaluationTitle = (title: string): boolean => EVALUATION_PREFIX.test(title.normalize('NFC'));
+
+/** Titre d'une évaluation sans son préfixe, quand une pastille « Évaluation » le précède. */
+export function withoutEvaluationPrefix(title: string): string {
+  const rest = title.normalize('NFC').replace(EVALUATION_PREFIX, '').trim();
+  return rest || title;
+}
+
+/** « Activité 3 — Wegener (correction) » → correction de « Activité 3 — Wegener ». */
+const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?)\)\s*$/i;
+
+export function splitVariant(title: string): { base: string; variant: CourseVariant } {
+  const m = VARIANT_SUFFIX.exec(title);
+  if (!m) return { base: title.trim(), variant: 'fiche' };
+  const word = m[1].toLowerCase();
+  return { base: title.slice(0, m.index).trim(), variant: word.startsWith('doc') ? 'documents' : 'correction' };
+}
+
+export interface ActivityGroup {
+  /** Identifiant stable pour React : celui du premier original du groupe. */
+  key: string;
+  /** Titre de l'activité, sans « (correction) ». */
+  title: string;
+  /** Dans l'ordre fiche, documents, correction ; au plus un original par rôle. */
+  members: { variant: CourseVariant; board: Board }[];
+  /** Évaluation de la séquence (titre « Évaluation — … ») plutôt qu'activité. */
+  evaluation: boolean;
+}
+
+/**
+ * Rassemble, dans une séquence, la fiche d'une activité avec sa correction et ses documents
+ * (même titre, suivi de « (correction) » ou « (documents) »). L'ordre des activités suit
+ * celui de la liste reçue ; les évaluations viennent ensuite, dans leur ordre. Un original seul
+ * (correction orpheline comprise) forme un groupe d'un membre ; un doublon de titre reste à part,
+ * au lieu d'en cacher un.
+ */
+export function groupActivities(boards: Board[]): ActivityGroup[] {
+  const groups: ActivityGroup[] = [];
+  const byBase = new Map<string, ActivityGroup>();
+  for (const board of boards) {
+    const { base, variant } = splitVariant(board.title);
+    // Même activité malgré une apostrophe typographique ou une espace en trop dans un des titres
+    const key = base.normalize('NFC').replace(/[’ʼ]/g, "'").replace(/\s+/g, ' ').toLocaleLowerCase('fr');
+    const found = byBase.get(key);
+    if (found && !found.members.some((m) => m.variant === variant)) {
+      found.members.push({ variant, board });
+      found.members.sort((a, b) => VARIANT_ORDER.indexOf(a.variant) - VARIANT_ORDER.indexOf(b.variant));
+      continue;
+    }
+    const title = base || board.title;
+    const group: ActivityGroup = { key: board.id, title, members: [{ variant, board }], evaluation: isEvaluationTitle(title) };
+    groups.push(group);
+    if (!found) byBase.set(key, group);
+  }
+  return [...groups.filter((g) => !g.evaluation), ...groups.filter((g) => g.evaluation)];
 }
 
 /** Les cours modifiés le plus récemment (module « Repris récemment » de l'accueil). */
