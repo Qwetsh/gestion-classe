@@ -12,6 +12,7 @@ import { supabase } from './supabase';
 import { fetchBoardPages, upsertBoardPages } from './boardQueries';
 import { importFilesToPages, type ImportProgress } from './boardImport';
 import type { BoardPage } from './boardRender';
+import { courseLinks, type CourseLink } from './course/courseLinks';
 
 /** Identifiant du brouillon local (tableau libre gardé dans le navigateur). */
 export const FREE_BOARD_ID = 'tableau-libre';
@@ -26,6 +27,8 @@ export interface Board {
   updated_at: string;
   /** Cours rédigé (éditeur Texte, boards.doc — migration 071) ; absent = inconnu / tableau blanc. */
   is_course?: boolean;
+  /** Sites ou applications du cours (boards.doc.links) ; lus par la bibliothèque seulement. */
+  links?: CourseLink[];
 }
 
 export interface BoardMeta {
@@ -78,7 +81,7 @@ export async function listBoards(userId: string): Promise<Board[]> {
     .order('updated_at', { ascending: false });
   const [first, lessonLinks] = await Promise.all([
     // Avec le type (cours rédigé ou tableau blanc) et la marque « modèle » (migration 072)
-    query(`${COLUMNS}, doc_version:doc->version, is_template`),
+    query(`${COLUMNS}, doc_version:doc->version, doc_links:doc->links, is_template`),
     // Table absente ou erreur : rien à écarter
     supabase.from('lesson_boards').select('board_id').eq('user_id', userId),
   ]);
@@ -87,7 +90,7 @@ export async function listBoards(userId: string): Promise<Board[]> {
   // Colonnes récentes absentes (migrations 072 puis 071 non appliquées) : même liste, sans elles
   // (à tester avant isMissingTable, dont le message « boards.doc does not exist » ferait croire la table absente)
   const columnMissing = (e: Res['error'], col: RegExp) => !!e && e.code !== '42P01' && (e.code === '42703' || col.test(e.message ?? ''));
-  if (columnMissing(error, /is_template/i)) ({ data, error } = (await query(`${COLUMNS}, doc_version:doc->version`)) as Res);
+  if (columnMissing(error, /is_template/i)) ({ data, error } = (await query(`${COLUMNS}, doc_version:doc->version, doc_links:doc->links`)) as Res);
   if (columnMissing(error, /\bdoc\b/i)) ({ data, error } = (await query(COLUMNS)) as Res);
   if (isMissingTable(error)) {
     tableMissing = true;
@@ -97,9 +100,13 @@ export async function listBoards(userId: string): Promise<Board[]> {
   if (error) throw error;
   const lessonBoardIds = new Set(((lessonLinks.error ? [] : lessonLinks.data) ?? []).map((r: { board_id: string }) => r.board_id));
   // Les modèles de cours (migration 072) se choisissent à la création d'un cours, pas ici
-  return ((data || []) as (Board & { doc_version?: unknown; is_template?: boolean })[])
+  return ((data || []) as (Board & { doc_version?: unknown; doc_links?: unknown; is_template?: boolean })[])
     .filter((b) => !lessonBoardIds.has(b.id) && !b.is_template)
-    .map(({ doc_version, ...b }) => { delete b.is_template; return { ...b, is_course: doc_version != null }; });
+    .map(({ doc_version, doc_links, ...b }) => {
+      delete b.is_template;
+      const links = courseLinks(doc_links);
+      return { ...b, is_course: doc_version != null, ...(links.length ? { links } : {}) };
+    });
 }
 
 export async function createBoard(userId: string, meta: BoardMeta, classId: string | null = null): Promise<Board> {

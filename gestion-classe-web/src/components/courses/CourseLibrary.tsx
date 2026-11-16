@@ -3,10 +3,11 @@
  * Une ligne ne montre que ce qui sert à choisir (type, titre, essai en classe) ; le reste est
  * dans son menu « ⋯ ». Lot C1 de PLAN_mes_cours.md.
  * Une activité et sa correction (et ses documents) tiennent sur une seule ligne : le titre de
- * l'activité, puis un bouton par original, avec ses classes et son essai en classe.
+ * l'activité, puis un bouton par original, avec ses classes et son essai en classe, puis les
+ * sites ou applications de l'activité. Au survol d'un bouton, la première page de l'original.
  */
-import { useRef, useState } from 'react';
-import { ChevronDown, ClipboardCheck, FileText, Play, Presentation } from 'lucide-react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { ChevronDown, ClipboardCheck, ExternalLink, FileText, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
 import { classTone } from '../../lib/classColors';
 import { ACCEPTED_FILES, filesOfSequence, sequenceKey, type CourseFile } from '../../lib/courseFiles';
@@ -16,6 +17,7 @@ import {
 import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu, type MoreMenuItem } from '../MoreMenu';
 import { SequenceFiles } from './SequenceFiles';
+import { CoursePeek, prefetchPreview, type PeekTarget } from './CoursePeek';
 
 const COLLAPSED_KEY = 'mes-cours-collapsed';
 
@@ -39,6 +41,8 @@ interface Props {
   onDuplicate: (board: Board) => void;
   onSaveAsTemplate: (board: Board) => void;
   onDelete: (board: Board) => void;
+  /** Sites ou applications de l'activité (cours rédigé seulement). */
+  onEditLinks: (board: Board) => void;
   onRenameSequence: (level: string | null, from: string, to: string) => Promise<void>;
   /** Fichiers des séquences (lot F1) ; null : le stockage des fichiers n'est pas disponible. */
   files: SequenceFilesApi | null;
@@ -56,7 +60,7 @@ export interface SequenceFilesApi {
 }
 
 
-export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onRenameSequence, files }: Props) {
+export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onRenameSequence, files }: Props) {
   /** Sélecteur de fichiers unique : la séquence visée est notée au moment du clic. */
   const fileInput = useRef<HTMLInputElement>(null);
   const fileTarget = useRef<{ level: string | null; chapter: string } | null>(null);
@@ -68,6 +72,51 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
     fileInput.current?.click();
   };
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
+
+  // ---- Aperçu de la première page au survol (souris seulement : au doigt, un appui ouvre) ----
+  const [peek, setPeek] = useState<PeekTarget | null>(null);
+  const peekOpen = useRef(false);
+  const peekTimer = useRef<number | undefined>(undefined);
+  peekOpen.current = peek !== null;
+  useEffect(() => {
+    if (!peek) return undefined;
+    // Le bouton a bougé : l'aperçu ne le suit pas, il s'efface
+    const hide = () => { window.clearTimeout(peekTimer.current); setPeek(null); };
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => { window.removeEventListener('scroll', hide, true); window.removeEventListener('resize', hide); };
+  }, [peek]);
+  useEffect(() => () => window.clearTimeout(peekTimer.current), []);
+  const peekProps = (b: Board) => ({
+    onPointerEnter: (e: ReactPointerEvent<HTMLElement>) => {
+      if (e.pointerType !== 'mouse') return;
+      const anchor = e.currentTarget.getBoundingClientRect();
+      prefetchPreview(b);
+      window.clearTimeout(peekTimer.current);
+      // Un aperçu déjà ouvert passe aussitôt au bouton voisin ; sinon, un temps d'arrêt
+      peekTimer.current = window.setTimeout(() => setPeek({ board: b, anchor }), peekOpen.current ? 60 : 450);
+    },
+    onPointerLeave: () => {
+      window.clearTimeout(peekTimer.current);
+      peekTimer.current = window.setTimeout(() => setPeek(null), 100);
+    },
+    onPointerDown: () => { window.clearTimeout(peekTimer.current); setPeek(null); },
+  });
+
+  /** Sites ou applications de l'activité, après ses boutons. */
+  const renderLinks = (b: Board) => (b.links ?? []).map((link) => (
+    <a
+      key={link.url}
+      className="mc-variant mc-variant--link"
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Ouvrir ${link.url} dans un nouvel onglet`}
+    >
+      <ExternalLink size={13} aria-hidden />
+      {link.label}
+    </a>
+  ));
   /** Séquence en cours de renommage : son niveau, son nom d'origine, la saisie. */
   const [renaming, setRenaming] = useState<{ level: string | null; from: string; value: string; busy: boolean } | null>(null);
 
@@ -116,7 +165,13 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
   };
 
   /** Actions d'un original ; dans une activité, rangées sous l'intitulé de son rôle. */
-  const menuItems = (b: Board, group?: string): MoreMenuItem[] => [
+  const menuItems = (b: Board, group?: string, withLinks = true): MoreMenuItem[] => [
+    ...(withLinks && b.is_course ? [{
+      label: b.links?.length ? 'Liens vers un site ou une app…' : 'Ajouter un lien vers un site ou une app…',
+      onClick: () => onEditLinks(b),
+      title: 'App maison, site de données… : un bouton sur la ligne de l’activité',
+      group,
+    }] : []),
     { label: 'Placer sur un cours…', onClick: () => onPlace(b), title: 'Poser une copie sur des cours à venir', group },
     { label: 'Dupliquer', onClick: () => onDuplicate(b), group },
     ...(b.is_course ? [{ label: 'Enregistrer comme modèle', onClick: () => onSaveAsTemplate(b), title: 'Proposé ensuite à la création d\'un cours', group }] : []),
@@ -231,11 +286,12 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                         const b = members[0].board;
                         return (
                           <li key={groupKey} className={`mc-row${evalClass}`}>
-                            <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours' : 'Ouvrir le tableau blanc'}>
+                            <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours' : 'Ouvrir le tableau blanc'} {...peekProps(b)}>
                               {evaluation ? evalIcon : kindIcon(b)}
                               {rowTitle(b.title, evaluation)}
                             </button>
                             {renderChips(b)}
+                            {b.links?.length ? <span className="mc-variants mc-variants--links">{renderLinks(b)}</span> : null}
                             {b.is_course && (
                               <button type="button" className="mc-row__play" onClick={() => onPresent(b)} title="Essayer en classe (rien n'est gardé en quittant)" aria-label={`Essayer ${b.title} en classe`}>
                                 <Play size={15} aria-hidden />
@@ -249,14 +305,14 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                       const first = members[0];
                       return (
                         <li key={groupKey} className={`mc-row mc-row--activity${evalClass}`}>
-                          <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`}>
+                          <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`} {...peekProps(first.board)}>
                             {evaluation ? evalIcon : kindIcon(first.board)}
                             {rowTitle(title, evaluation)}
                           </button>
                           <span className="mc-variants">
                             {members.map(({ variant, board: b }) => (
                               <span key={b.id} className={`mc-variant mc-variant--${variant}`}>
-                                <button type="button" className="mc-variant__open" onClick={() => onOpen(b)} title={`Ouvrir ${b.title}`}>
+                                <button type="button" className="mc-variant__open" onClick={() => onOpen(b)} title={`Ouvrir ${b.title}`} {...peekProps(b)}>
                                   {variantLabel(variant, evaluation)}
                                 </button>
                                 {renderChips(b, variant)}
@@ -267,11 +323,13 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                                 )}
                               </span>
                             ))}
+                            {/* Les liens de l'activité sont rangés sur sa fiche (son premier original) */}
+                            {renderLinks(first.board)}
                           </span>
                           <MoreMenu
                             compact
                             title={`Actions de ${title}`}
-                            items={members.flatMap(({ variant, board: b }) => menuItems(b, variantLabel(variant, evaluation)))}
+                            items={members.flatMap(({ variant, board: b }, i) => menuItems(b, variantLabel(variant, evaluation), i === 0))}
                           />
                         </li>
                       );
@@ -293,6 +351,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
           </section>
         );
       })}
+      {peek && <CoursePeek target={peek} />}
     </div>
   );
 }

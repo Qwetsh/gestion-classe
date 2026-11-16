@@ -389,6 +389,8 @@ Deno.serve(async (req: Request) => {
         if (versionError) return json({ error: "version_failed" }, 500);
         // La face écran n'est pas dans l'envoi d'un document : on garde celle du cours
         if (clean.screens === undefined && old.screens !== undefined) clean.screens = old.screens;
+        // Les liens vers un site ou une app se règlent dans « Mes cours » : gardés de même
+        if (clean.links === undefined && old.links !== undefined) clean.links = old.links;
         clean.rev = newRev();
         const { error } = await sb.from("boards").update({ doc: clean, updated_at: new Date().toISOString() }).eq("id", boardId).eq("user_id", t.user_id);
         if (error) return json({ error: "write_failed" }, 500);

@@ -7,6 +7,7 @@
  */
 import type { JSONContent } from '@tiptap/core';
 import type { CourseLayer } from './courseLayer';
+import type { CourseLink } from './courseLinks';
 import { supabase } from '../supabase';
 import { createBoard, deleteBoard, type Board, type BoardMeta } from '../boardsQueries';
 import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
@@ -72,6 +73,8 @@ export interface CourseDoc {
    * feuille. Une page du cours absente de cette liste est une page d'encart.
    */
   screens?: string[];
+  /** Sites ou applications de l'activité (app maison, site de données), ouverts depuis « Mes cours ». */
+  links?: CourseLink[];
   /**
    * Numéro d'enregistrement, changé à chaque écriture de l'éditeur (lot T6) : un enregistrement
    * ne passe que si le cours n'a pas été réécrit entre-temps par un autre onglet ou appareil.
@@ -187,6 +190,28 @@ export async function saveCourseDocGuarded(boardId: string, doc: CourseDoc, expe
   if (isMissingColumn(error)) { columnMissing = true; throw new Error('Les cours rédigés demandent la migration 071'); }
   if (error) throw error;
   return (data ?? []).length > 0 ? { ok: true, rev } : { ok: false };
+}
+
+/**
+ * Remplace les liens d'un cours sans toucher au reste du document ni à sa date de modification
+ * (rien n'a été retravaillé). Le numéro d'enregistrement change : un éditeur ouvert ailleurs sur ce
+ * cours le voit et recharge, au lieu d'effacer les liens à son prochain enregistrement.
+ * Renvoie false si le cours a été réécrit pendant l'opération (rien n'est écrit).
+ */
+export async function saveCourseLinks(boardId: string, links: CourseLink[]): Promise<boolean> {
+  if (columnMissing) throw new Error('Les cours rédigés demandent la migration 071');
+  const { data, error } = await supabase.from('boards').select('doc').eq('id', boardId).single();
+  if (error) throw error;
+  const doc = (data as { doc: unknown }).doc;
+  if (!isCourseDoc(doc)) throw new Error('Ce tableau n’est pas un cours rédigé');
+  const next: CourseDoc = { ...doc, rev: newRev() };
+  if (links.length) next.links = links;
+  else delete next.links;
+  let q = supabase.from('boards').update({ doc: next }).eq('id', boardId);
+  q = doc.rev == null ? q.is('doc->rev', null) : q.eq('doc->>rev', doc.rev);
+  const res = await q.select('id');
+  if (res.error) throw res.error;
+  return (res.data ?? []).length > 0;
 }
 
 /** Nouveau cours rédigé (un tableau avec un document). Le tableau est supprimé si l'écriture échoue. */
