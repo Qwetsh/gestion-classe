@@ -14,6 +14,7 @@
  * La hauteur d'un texte dépend de la police et du rendu : elle est ici **estimée**. Seul un rendu
  * dans l'application la donne vraiment ; ces avertissements disent où regarder, pas ce qui est faux.
  */
+import { ANIMATION_MAX_CHARS, animationInfo } from '../boardAnimation';
 
 /** Page logique du tableau blanc : 1000 × 562,5 (16:9). */
 export const PAGE_W = 1000;
@@ -35,14 +36,16 @@ const ALLOWED_TAG = /^<\/?(div|p|li|ul|ol|h1|h2|h3|blockquote|b|strong|i|em|u|s|
 const UNSAFE_ATTR = /\son[a-z]+\s*=|javascript:|expression\s*\(|url\s*\(|\ssrc\s*=|\shref\s*=/i;
 
 // Ce que le tableau blanc sait afficher (lib/boardObjects.ts et voisins)
-const OBJECT_TYPES = ['text', 'shape', 'image', 'library', 'connector', 'table', 'video', 'web', 'audio', 'link', 'widget', 'equation', 'window'];
+const OBJECT_TYPES = ['text', 'shape', 'image', 'library', 'connector', 'table', 'video', 'web', 'audio', 'link', 'widget', 'equation', 'window', 'animation'];
 /** Types dont la hauteur est une donnée (`h`) ; celle d'un texte découle de son contenu. */
-const SIZED_TYPES = ['shape', 'image', 'library', 'table', 'video', 'web', 'audio', 'link', 'widget', 'equation', 'window'];
+const SIZED_TYPES = ['shape', 'image', 'library', 'table', 'video', 'web', 'audio', 'link', 'widget', 'equation', 'window', 'animation'];
 const SHAPE_KINDS = ['line', 'arrow', 'double-arrow', 'rect', 'rounded-rect', 'ellipse', 'triangle', 'right-triangle', 'diamond', 'parallelogram', 'trapezoid', 'pentagon', 'hexagon', 'star', 'polygon'];
 const WIDGET_KINDS = ['timer', 'dice', 'wheel', 'noise', 'calc', 'meter', 'groups', 'clock', 'traffic', 'qr'];
 const FONTS = ['sans', 'arial', 'verdana', 'georgia', 'times', 'courier', 'comic'];
 const COVER_KINDS = ['curtain', 'scratch'];
-const ACTIONS = ['show', 'hide', 'toggle', 'reveal', 'cover', 'unfold', 'fold', 'goto', 'next', 'prev', 'play', 'pause', 'playToggle', 'start', 'stop', 'startToggle', 'roll', 'reset', 'window', 'zoomTo', 'moveTo', 'moveBy', 'moveBack'];
+const ACTIONS = ['show', 'hide', 'toggle', 'reveal', 'cover', 'unfold', 'fold', 'goto', 'next', 'prev', 'play', 'pause', 'playToggle', 'start', 'stop', 'startToggle', 'roll', 'reset', 'window', 'zoomTo', 'moveTo', 'moveBy', 'moveBack', 'stepNext', 'stepPrev', 'replay'];
+/** Actions qui ne visent qu'une animation. */
+const ANIMATION_ACTIONS = ['stepNext', 'stepPrev', 'replay'];
 const TARGETLESS_ACTIONS = ['goto', 'next', 'prev', 'reset'];
 
 /** Interligne du tableau blanc (lib/boardText.ts) et largeur moyenne d'un caractère, en tailles de police. */
@@ -133,7 +136,8 @@ export function checkScreens(input: unknown): ScreensReport {
     const pageH = isNum(page.height) && page.height > PAGE_H ? page.height : PAGE_H;
 
     const ids = new Set<string>();
-    for (const o of page.objects) if (isRec(o) && typeof o.id === 'string') ids.add(o.id);
+    const animations = new Set<string>();
+    for (const o of page.objects) if (isRec(o) && typeof o.id === 'string') { ids.add(o.id); if (o.type === 'animation') animations.add(o.id); }
     const boxes: Box[] = [];
 
     page.objects.forEach((object, k) => {
@@ -179,6 +183,15 @@ export function checkScreens(input: unknown): ScreensReport {
         if (typeof o.path !== 'string' || o.path === '') errors.push(`${at} : chemin de l'image absent (l'envoyer d'abord avec gc_envoi.py image).`);
         else if (/^https?:/i.test(o.path)) errors.push(`${at} : une image se cite par son chemin de stockage, pas par une adresse.`);
         if (!isNum(o.naturalWidth) || !isNum(o.naturalHeight)) warnings.push(`${at} : dimensions d'origine de l'image absentes.`);
+      } else if (o.type === 'animation') {
+        if (typeof o.code !== 'string' || o.code.trim() === '') errors.push(`${at} : code de l'animation absent.`);
+        else {
+          if (o.code.length > ANIMATION_MAX_CHARS) errors.push(`${at} : animation trop lourde (${o.code.length} caractères, ${ANIMATION_MAX_CHARS} au plus).`);
+          if (/(?:src|href)\s*=\s*["']?\s*(?:https?:)?\/\//i.test(o.code)) errors.push(`${at} : l'animation charge un fichier du réseau ; le tableau le bloque, tout doit être dans le code.`);
+          const info = animationInfo(o.code);
+          if (!info.contract) warnings.push(`${at} : animation hors contrat « gc-anim » ; les boutons du tableau ne pourront pas la faire avancer.`);
+          else if (info.steps.some((s) => s.title.trim() === '')) warnings.push(`${at} : une étape de l'animation n'a pas de titre.`);
+        }
       } else if (o.type === 'widget') {
         if (typeof o.widget !== 'string' || !WIDGET_KINDS.includes(o.widget)) errors.push(`${at} : outil « ${String(o.widget)} » inconnu.`);
       } else if (o.type === 'table' && Array.isArray(o.cells)) {
@@ -199,6 +212,7 @@ export function checkScreens(input: unknown): ScreensReport {
             if (typeof target !== 'string' || !pageIds.has(target)) errors.push(`${at} : le bouton va à une page absente de ces écrans.`);
           } else if (!TARGETLESS_ACTIONS.includes(it.action)) {
             if (typeof it.targetId !== 'string' || !ids.has(it.targetId)) errors.push(`${at} : le bouton vise un objet absent de la page (« ${String(it.targetId)} »).`);
+            else if (ANIMATION_ACTIONS.includes(it.action) && !animations.has(it.targetId)) errors.push(`${at} : « ${it.action} » ne s'adresse qu'à une animation (« ${it.targetId} » n'en est pas une).`);
           }
         }
       }

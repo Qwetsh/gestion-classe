@@ -304,6 +304,32 @@ Actions : `Afficher`, `Masquer`, `Basculer`, `Decouvrir`, `Recouvrir`, `Deplacer
 `Decaler(o, dx, dy)`, `Replacer`, `Zoomer`, `Ouvrir(fenetre)`, `AllerA(écran)`, `PageSuivante`,
 `Lancer`/`Arreter` (minuteur), `Tirer` (dé, roue), `Reinitialiser`, `UneFois(action)`.
 
+**Les animations** (16/11/2026 ; exemple complet : `exemples/anticorps_animation.py` et
+`anticorps_scene.js`). Pour montrer un **mécanisme** (une réaction, un cycle, un trajet, une
+multiplication), on n'assemble pas des images que des boutons font glisser — Thomas l'a refusé le
+16/11/2026 — : on écrit une **scène animée**, posée sur l'écran comme une image qui bouge.
+
+- `gc_animation.assembler(titre, etapes, scene, banques=[…])` rend le code HTML de l'animation.
+  `etapes` : liste d'`etape(identifiant, titre, légende, bilan=False)` — les **textes**, séparés du
+  dessin, que Thomas pourra réécrire. `scene` : du JavaScript, `GC.play({ identifiant: { dur,
+  draw(t) { … return svg; } } })` ; `draw` rend le SVG de l'instant `t` (secondes), la scène fait
+  1600 × 760. `animation/outils.js` donne `seg`, `lerp`, `keys` (images-clés), `rng`, `txt`,
+  `fleche`, `ok`, `ko` ; `animation/banque/<thème>.js` les dessins réutilisables (immunité : virus,
+  antigène, anticorps, lymphocyte B, phagocyte, cellule, fonds). Un nouveau thème = un nouveau
+  fichier de banque, dessiné avec le même soin.
+- `e.animation(code)` : un écran entier (960 × 506) avec « ◀ Précédent », « ↺ Rejouer »,
+  « Suivant ▶ ». L'animation affiche elle-même le titre et la légende de l'étape : pas de titre
+  d'écran. `p.animation(x, y, w, h, code)` la pose où l'on veut ; actions `EtapeSuivante(o)`,
+  `EtapePrecedente(o)`, `Rejouer(o)`.
+- Contrôle avant l'envoi : `gc_animation.apercu(fichier.html, image.png, etape=n, instant=s)` fige
+  une étape et la photographie (Chrome sans fenêtre) ; regarder **chaque étape, vers sa fin**
+  (étiquettes qui se chevauchent, texte qui sort de la scène). Le fichier s'ouvre aussi seul dans
+  un navigateur, avec ses boutons et les flèches du clavier.
+- Règles : le code ne charge **rien du réseau** (le tableau le bloque) ; 300 000 caractères au
+  plus ; légende de deux lignes au plus (environ 150 caractères), mots clés en `<b>` ; étiquettes
+  de la scène en taille 24 au moins (hors vignettes d'un récapitulatif) ; une étape de bilan avec `bilan=True` (rouge) ; 5 à 11
+  secondes par étape, la scène reste sur sa dernière image.
+
 Pièges vérifiés dans l'application :
 
 - une flèche accrochée à un objet ne suit pas un objet **déplacé par un bouton** ;

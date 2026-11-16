@@ -7,8 +7,9 @@ moment d'une séance de SVT, ce qui apporte vraiment quelque chose, et comment l
 État de l'app au 15/11/2026 (lot A livré) : boutons et zones cliquables, enchaînement
 « Suivant », objets cachés au départ, déplacements animés (0,4 s, en ligne droite), zoom sur une
 zone, rideaux, tickets à gratter, textes à trous, fenêtres, flèches accrochées, dessins de la
-bibliothèque, minuteur, dé, roue, vidéo, page web. Pas encore : 3D, graphique de données,
-animation le long d'une trajectoire, lecture automatique, glisser-déposer élève, vote.
+bibliothèque, minuteur, dé, roue, vidéo, page web. Depuis le 16/11/2026 : **animations** (scène
+HTML dessinée et animée, étapes pilotées par les boutons du tableau). Pas encore : 3D, graphique
+de données, simulation à curseur, glisser-déposer élève, vote.
 
 ## Le moment de la séance → ce qui marche
 
@@ -17,7 +18,7 @@ animation le long d'une trajectoire, lecture automatique, glisser-déposer élè
 | Ouverture, problématique | Découvrir la question ensemble ; susciter une hypothèse | `titre` + `ecran().rideau()`, `vrai_faux` sur les représentations initiales | Vote par cartes (phase 4) |
 | Situation de départ | Une image forte en grand, une citation, l'actualité | `document(image=…)`, `loupe` sur un détail, `video` | — |
 | Consigne | Étapes numérotées, temps visible | `consigne(…, minuteur=600)`, `coup_de_pouce` | — |
-| **Processus dans le temps** (mitose, subduction, digestion, éruption, germination, dérive) | Voir les étapes s'enchaîner, revenir en arrière | `etapes` ; objets qui glissent avec `suivant` + `DeplacerVers` / `Afficher` | Animation par étapes native (phase 2) ; module HTML animé (lot B) |
+| **Processus dans le temps** (mitose, subduction, digestion, éruption, germination, dérive) | Voir les étapes s'enchaîner, revenir en arrière | **Une animation** (`gc_animation` + `e.animation(code)`) : c'est ce que Thomas attend (16/11/2026). `etapes` pour une simple suite de textes ; jamais des images qui glissent à la place d'une animation | Retouche des textes sans code (lot 2) |
 | **Structure** (cellule, cœur, cerveau, fleur, globe, œil) | La légender devant la classe, désigner une partie | `schema` (étiquettes une à une), `schema(mode='toucher')`, `loupe` | Visualiseur 3D manipulable (lot B puis 3c) |
 | **Données** (séismes, CO₂, températures, croissance) | La courbe qui se trace, lire une valeur | Image du graphique + `loupe` + révélation des lectures (`question`) | Module graphique animé (lot B) |
 | Expérience, modèle | Montrer le montage, faire varier un facteur | `dessin` (verrerie), étapes du protocole, résultats sous rideau | Simulation à curseur (lot B) |
@@ -36,10 +37,13 @@ Thomas** : il avait décidé le même jour « l'animation d'abord » parmi les p
 avant l'animation native (C). Lui faire trancher avant de commencer B.
 
 - **B. Objet « module »** : une page HTML écrite par Claude, enfermée (iframe sandbox, sans
-  accès à l'app), commandée par les boutons du tableau (« étape suivante »). Ouvre d'un coup la
-  3D (three.js), les graphiques animés et les simulations, au format déjà validé par Thomas
-  (« Voir sous nos pieds », globe de « Terre en mouvement »). Il faut aussi que `depot-cours`
-  accepte le HTML (aujourd'hui : images seulement), et un essai au TBI.
+  accès à l'app), commandée par les boutons du tableau (« étape suivante »). **Commencé le
+  16/11/2026 par l'objet « Animation »** (`PLAN_animations_tableau.md`, lot 1 : lecture et
+  pilotage ; le code vit dans l'écran, sans fichier ni changement de `depot-cours`). Restent :
+  retouche des textes sans code (lot 2), `/classe` et vignette (lot 3), banques de dessins par
+  thème (lot 4) ; puis la 3D (three.js, à embarquer : le cadre n'a pas accès au réseau), les
+  graphiques animés et les simulations, au format déjà validé par Thomas (« Voir sous nos
+  pieds », globe de « Terre en mouvement »).
 - **C. Animation par étapes native** (phase 2 de `PLAN_vision_suite.md`) : les objets du tableau
   ont une position par étape, « Suivant » les fait glisser ; Thomas peut retoucher sans Claude.
 - **D. Glisser-déposer avec zones de réponse** (lot D de `IDEES_actions_tableau.md`).

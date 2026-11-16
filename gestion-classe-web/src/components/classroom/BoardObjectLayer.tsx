@@ -47,6 +47,7 @@ import { loadPageImage, objectBounds } from '../../lib/boardRender';
 import { BoardScratchCover } from './BoardScratchCover';
 import { TableView } from './objects/TableView';
 import { EmbedView } from './objects/EmbedView';
+import { AnimationView } from './objects/AnimationView';
 import { AudioView } from './objects/AudioView';
 import { LinkView } from './objects/LinkView';
 import { WidgetView } from './objects/WidgetView';
@@ -1124,6 +1125,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
             {(o.type === 'video' || o.type === 'web') && (
               <EmbedView o={o} scale={scale} active={active} onToggleInteractive={() => onToggleInteractive(o.id)} />
             )}
+            {o.type === 'animation' && <AnimationView o={o} scale={scale} play={play} step={reveal.steps?.[o.id] ?? 0} command={commands?.[o.id]} />}
             {o.type === 'audio' && <AudioView o={o} scale={scale} command={commands?.[o.id]} />}
             {o.type === 'link' && <LinkView o={o} scale={scale} active={active} />}
             {o.type === 'window' && (

@@ -73,6 +73,11 @@ plus-value annoncée** (ce que l'écran fait que la fiche papier ne fait pas). E
 `site`) et actions (`Afficher`, `DeplacerVers`, `Decouvrir`, `AllerA`, `Ouvrir`, `Zoomer`…).
 L'exemple complet est `cours-gestion-classe/exemples/interactifs_4e.py`.
 
+- **Un mécanisme se montre par une animation**, pas par des images que des boutons déplacent
+  (refusé par Thomas le 16/11/2026) : scène dessinée et animée avec `gc_animation` (skill
+  `cours-gestion-classe`, § 7 « Les animations »), au niveau de qualité de
+  `_Claude/exemples/anticorps-animation-reference.html`, contrôlée étape par étape avec `apercu`.
+  Une animation par tableau suffit souvent : la garder pour le moment où elle fait comprendre.
 - Images : celles de `_ressources/` d'abord (`gc_envoi.py image`), sinon une image libre
   (Wikimedia Commons, NASA ; voir `svt-cycle4.md` § 4) avec son crédit en légende.
 - Ce que l'app ne sait pas encore faire (3D manipulable, graphique qui se trace, simulation à

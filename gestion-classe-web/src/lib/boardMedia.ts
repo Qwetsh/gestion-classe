@@ -8,6 +8,7 @@
  */
 import { supabase } from './supabase';
 import type { BoardObjectBase } from './boardObjects';
+import { animationInfo, type AnimationObject } from './boardAnimation';
 import { BOARD_BUCKET, getLoadedImage } from './boardRender';
 import { LINE_HEIGHT, fontCss, renderTextBox, textBoxHeight, type TextBox } from './boardText';
 
@@ -107,7 +108,7 @@ export interface WindowObject extends BoardObjectBase {
 /** Taille de la carte d'une fenêtre sur la page, en unités. */
 export const WINDOW_CARD = { w: 220, h: 56 };
 
-export type MediaObject = TableObject | VideoObject | WebObject | AudioObject | LinkObject | WidgetObject | EquationObject | WindowObject;
+export type MediaObject = TableObject | VideoObject | WebObject | AudioObject | LinkObject | WidgetObject | EquationObject | WindowObject | AnimationObject;
 
 export const WIDGET_LABELS: Record<WidgetKind, string> = {
   timer: 'Minuteur',
@@ -366,6 +367,17 @@ export function renderMediaObject(ctx: CanvasRenderingContext2D, o: MediaObject,
     case 'audio':
       labelBox(ctx, o, o.h, scale, '#1F2937', `🔊  ${o.label ?? 'Son'}`);
       break;
+    case 'animation': {
+      // Vignettes et export : une carte (le cadre isolé ne se dessine pas sur un canvas)
+      const info = animationInfo(o.code);
+      const count = info.steps.length;
+      labelBox(ctx, o, o.h, scale, '#EEF2FF', `▶  ${o.title ?? info.title ?? 'Animation'}`, count > 1 ? `Animation · ${count} étapes` : 'Animation', '#312E81');
+      ctx.strokeStyle = '#C7D2FE';
+      ctx.lineWidth = Math.max(1, 1.5 * scale);
+      roundRect(ctx, o.x * scale, o.y * scale, o.w * scale, o.h * scale, 8 * scale);
+      ctx.stroke();
+      break;
+    }
     case 'window':
       // Jamais dessinée : la fenêtre n'existe sur la page qu'en édition (calque DOM)
       break;

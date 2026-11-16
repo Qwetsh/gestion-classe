@@ -13,6 +13,7 @@ import { type TextBox, textBoxRect } from './boardText';
 import type { ShapeObject } from './boardShapes';
 import type { RevealCover } from './boardReveal';
 import { mediaRect, type MediaObject } from './boardMedia';
+import { animationInfo } from './boardAnimation';
 import type { LibraryObject } from './boardLibrary';
 import { remapConnectorEnds, type ConnectorObject } from './boardConnectors';
 
@@ -64,7 +65,8 @@ export type InteractionAction =
   | 'reset'                             // page courante : tout remettre à couvert, arrêter les widgets
   | 'window'                            // ouvre la fenêtre cible en modale
   | 'zoomTo'                            // la vue cadre la cible (animé) ; tap hors = retour
-  | 'moveTo' | 'moveBy' | 'moveBack';   // la cible se déplace (état de séance, animé)
+  | 'moveTo' | 'moveBy' | 'moveBack'    // la cible se déplace (état de séance, animé)
+  | 'stepNext' | 'stepPrev' | 'replay'; // animation cible : étape suivante / précédente, rejouer l'étape
 
 export interface Interaction {
   action: InteractionAction;
@@ -103,10 +105,13 @@ export const INTERACTION_LABELS: Record<InteractionAction, string> = {
   moveTo: 'Déplacer vers',
   moveBy: 'Décaler de',
   moveBack: 'Remettre en place',
+  stepNext: 'Étape suivante',
+  stepPrev: 'Étape précédente',
+  replay: 'Rejouer l\'étape',
 };
 
 /** Familles d'actions, telles que la bulle les présente (une ligne d'icônes, puis les actions). */
-export type InteractionFamily = 'visibility' | 'cover' | 'note' | 'content' | 'view' | 'motion' | 'page' | 'media' | 'tool';
+export type InteractionFamily = 'visibility' | 'cover' | 'note' | 'content' | 'view' | 'motion' | 'page' | 'media' | 'tool' | 'animation';
 export const INTERACTION_FAMILIES: Record<InteractionFamily, { label: string; icon: string; actions: readonly InteractionAction[] }> = {
   visibility: { label: 'Visibilité', icon: '👁', actions: ['show', 'hide', 'toggle'] },
   cover: { label: 'Cache', icon: '🎭', actions: ['reveal', 'cover'] },
@@ -117,6 +122,7 @@ export const INTERACTION_FAMILIES: Record<InteractionFamily, { label: string; ic
   page: { label: 'Page', icon: '📄', actions: ['next', 'prev', 'goto', 'reset'] },
   media: { label: 'Son', icon: '🔊', actions: ['play', 'pause', 'playToggle'] },
   tool: { label: 'Outil', icon: '⏱', actions: ['start', 'stop', 'startToggle', 'roll'] },
+  animation: { label: 'Animation', icon: '🎞', actions: ['stepNext', 'stepPrev', 'replay'] },
 };
 export function interactionFamily(action: InteractionAction): InteractionFamily {
   for (const [family, def] of Object.entries(INTERACTION_FAMILIES) as [InteractionFamily, { actions: readonly InteractionAction[] }][]) {
@@ -143,6 +149,11 @@ export function actionsFor(target: BoardObject | null): InteractionAction[] {
   if (target.type !== 'connector') out.push('zoomTo', 'moveTo', 'moveBy', 'moveBack');
   if (target.type === 'text' && target.background) out.push('unfold', 'fold');
   if (target.type === 'audio') out.push('play', 'pause', 'playToggle');
+  // Une animation qui suit le contrat se pilote étape par étape ; tout HTML peut être rejoué
+  if (target.type === 'animation') {
+    if (animationInfo(target.code).contract) out.push('stepNext', 'stepPrev');
+    out.push('replay');
+  }
   if (target.type === 'widget') {
     if (target.widget === 'timer' || target.widget === 'meter') out.push('start', 'stop', 'startToggle');
     if (target.widget === 'dice' || target.widget === 'wheel' || target.widget === 'groups') out.push('roll');
@@ -315,6 +326,7 @@ export function objectTypeLabel(objects: BoardObject[]): string {
     case 'link': return 'Lien';
     case 'window': return 'Fenêtre';
     case 'widget': return 'Widget';
+    case 'animation': return 'Animation';
     case 'equation': return 'Équation';
     case 'connector': return 'Flèche';
     default: return 'Objet';

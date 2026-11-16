@@ -131,5 +131,57 @@ class Typographie(unittest.TestCase):
         self.assertNotIn(self.N, x.objets[1]['html'])                     # les objets en mémoire restent tels quels
 
 
+class Animation(unittest.TestCase):
+    """Objet « animation » du tableau : code assemblé par gc_animation, piloté par trois boutons."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(ICI, 'exemples'))
+        import anticorps_animation
+        import gc_animation
+        cls.ga = gc_animation
+        cls.exemple = anticorps_animation
+        cls.code = anticorps_animation.code()
+
+    def test_le_code_est_autonome_et_annonce_ses_etapes(self):
+        etapes = self.ga.etapes_de(self.code)
+        self.assertEqual([e['id'] for e in etapes], [e['id'] for e in self.exemple.ETAPES])
+        self.assertEqual(len(etapes), 10)
+        self.assertLess(len(self.code), self.ga.CODE_MAX)
+        self.assertNotRegex(self.code, r'__[A-Z]+__')                      # plus aucun repère du gabarit
+        self.assertNotRegex(self.code, r'(?:src|href)\s*=\s*["\']?\s*(?:https?:)?//')
+        self.assertEqual(etapes[-1]['color'], '#C00000')                   # un bilan s'écrit en rouge
+
+    def test_refuse_une_etape_que_la_scene_ne_dessine_pas(self):
+        with self.assertRaises(self.ga.AnimationRefusee):
+            self.ga.assembler('T', [self.ga.etape('absente', 'Titre', 'Légende')], 'GC.play({ autre: { dur: 3, draw(t) { return ""; } } });')
+        with self.assertRaises(self.ga.AnimationRefusee):
+            self.ga.assembler('T', [], 'GC.play({});')
+        with self.assertRaises(self.ga.AnimationRefusee):
+            self.ga.assembler('T', [self.ga.etape('a', 'T', 'L'), self.ga.etape('a', 'T', 'L')], 'GC.play({ a: { dur: 1, draw() { return ""; } } });')
+
+    def test_un_ecran_entier_avec_ses_trois_boutons(self):
+        e = g.Ecrans('ani', 'Activité 2 · Mme Eve Amalle')
+        x = e.animation(self.code, titre='Les anticorps')
+        anim = x.objets[0]
+        self.assertEqual((anim['type'], anim['x'], anim['y'], anim['w'], anim['h']), ('animation', 20, 8, 960, 506))
+        self.assertEqual([o['type'] for o in x.objets], ['animation', 'shape', 'shape', 'shape'])   # ni en-tête ni titre
+        actions = [o['interactions'][0] for o in x.objets[1:]]
+        self.assertEqual([a['action'] for a in actions], ['stepPrev', 'replay', 'stepNext'])
+        self.assertTrue(all(a['targetId'] == anim['id'] for a in actions))
+        self.assertLessEqual(max(o['y'] + o['h'] for o in x.objets), g.PAGE_H)
+        self.assertEqual(e.alertes, [])
+
+    def test_ecrire_ne_touche_pas_au_code(self):
+        import json
+        import tempfile
+        e = g.Ecrans('ani')
+        e.animation(self.code)
+        chemin = os.path.join(tempfile.mkdtemp(), 'e.json')
+        e.ecrire(chemin)
+        with open(chemin, encoding='utf8') as f:
+            self.assertEqual(json.load(f)[0]['objects'][0]['code'], self.code)
+
+
 if __name__ == '__main__':
     unittest.main()
