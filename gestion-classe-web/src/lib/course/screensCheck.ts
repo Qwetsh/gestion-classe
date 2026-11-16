@@ -192,6 +192,8 @@ export function checkScreens(input: unknown): ScreensReport {
           if (!info.contract) warnings.push(`${at} : animation hors contrat « gc-anim » ; les boutons du tableau ne pourront pas la faire avancer.`);
           else if (info.steps.some((s) => s.title.trim() === '')) warnings.push(`${at} : une étape de l'animation n'a pas de titre.`);
         }
+        if (o.imagePath === undefined) warnings.push(`${at} : pas d'image pour les vignettes et l'export (gc_animation.affiche, puis gc_envoi.py image).`);
+        else if (typeof o.imagePath !== 'string' || o.imagePath === '' || /^https?:/i.test(o.imagePath)) errors.push(`${at} : l'image de l'animation se cite par son chemin de stockage, pas par une adresse.`);
       } else if (o.type === 'widget') {
         if (typeof o.widget !== 'string' || !WIDGET_KINDS.includes(o.widget)) errors.push(`${at} : outil « ${String(o.widget)} » inconnu.`);
       } else if (o.type === 'table' && Array.isArray(o.cells)) {

@@ -559,17 +559,21 @@ class Ecran:
         self.objets.append(o)
         return o
 
-    def animation(self, x, y, w, h, code, titre=None, boutons=True):
+    def animation(self, x, y, w, h, code, titre=None, boutons=True, affiche=None):
         """
         Animation : une scène dessinée et animée, écrite avec `gc_animation.assembler()`, jouée dans
         l'écran comme une image qui bouge. Elle porte le titre et la légende de chaque étape.
         `boutons` : pose dessous « ◀ Précédent », « ↺ Rejouer » et « Suivant ▶ » (42 de haut en tout).
+        `affiche` : chemin de stockage de l'image de l'animation (`gc_animation.affiche`, envoyée par
+        `gc_envoi.py image`) ; sans elle, les vignettes et le PDF montrent une simple carte.
         Pour un simple déplacement d'objet, `DeplacerVers` suffit ; pour un mécanisme (un cycle, une
         réaction, un trajet), c'est une animation qu'il faut.
         """
         o = {'id': self._id(), 'type': 'animation', 'x': x, 'y': y, 'w': w, 'h': h, 'code': code}
         if titre:
             o['title'] = titre
+        if affiche:
+            o['imagePath'] = affiche
         self.objets.append(o)
         if boutons:
             yb = y + h + 4
@@ -951,7 +955,7 @@ class Ecrans:
             e.texte(MARGE, 515, LARGEUR, 20, legende, GRIS)
         return e
 
-    def animation(self, code, titre=None):
+    def animation(self, code, titre=None, affiche=None):
         """
         Un écran entier pour une animation (`gc_animation.assembler()`), avec ses trois boutons. Pas
         de titre d'écran : l'animation affiche elle-même le titre et la légende de l'étape en cours.
@@ -961,7 +965,7 @@ class Ecrans:
         del e.objets[:]            # ni en-tête ni titre : toute la page à l'animation
         e.n = 0
         self.pages.append(e.page)
-        e.animation(20, 8, 960, 506, code, titre=titre)
+        e.animation(20, 8, 960, 506, code, titre=titre, affiche=affiche)
         return e
 
     def sommaire(self, titre, entrees, position=None):

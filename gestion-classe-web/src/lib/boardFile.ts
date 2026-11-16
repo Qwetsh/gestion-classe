@@ -31,11 +31,11 @@ interface BoardJson {
 
 export const isGcboardFile = (f: File) => f.name.toLowerCase().endsWith(GCBOARD_EXTENSION);
 
-/** Chemins d'images (bucket) qu'un objet référence : image, couverture, équation, fenêtre. */
+/** Chemins d'images (bucket) qu'un objet référence : image, couverture, équation, fenêtre, animation. */
 export function objectAssetPaths(o: BoardObject): string[] {
   const paths: string[] = [];
   if (o.type === 'image') paths.push(o.path);
-  if ((o.type === 'equation' || o.type === 'window') && o.imagePath) paths.push(o.imagePath);
+  if ((o.type === 'equation' || o.type === 'window' || o.type === 'animation') && o.imagePath) paths.push(o.imagePath);
   if (o.cover?.imagePath) paths.push(o.cover.imagePath);
   return paths;
 }
@@ -43,7 +43,7 @@ export function objectAssetPaths(o: BoardObject): string[] {
 /** Objet avec ses chemins d'images remplacés selon `m`. */
 export function remapObjectAssets(o: BoardObject, m: (p: string) => string): BoardObject {
   let next: BoardObject = o.type === 'image' ? { ...o, path: m(o.path) }
-    : (o.type === 'equation' || o.type === 'window') && o.imagePath ? { ...o, imagePath: m(o.imagePath) }
+    : (o.type === 'equation' || o.type === 'window' || o.type === 'animation') && o.imagePath ? { ...o, imagePath: m(o.imagePath) }
     : { ...o };
   if (next.cover?.imagePath) next = { ...next, cover: { ...next.cover, imagePath: m(next.cover.imagePath) } };
   return next;

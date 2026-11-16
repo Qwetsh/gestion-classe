@@ -10,7 +10,7 @@
  */
 import type { BoardPage } from './boardRender';
 import type { BoardObject, Interaction } from './boardObjects';
-import { animationStepCount } from './boardAnimation';
+import { animationInfo, animationStepCount } from './boardAnimation';
 
 export interface RevealCover {
   kind: 'curtain' | 'scratch';
@@ -223,6 +223,23 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
     if (it.once) fired[key] = true;
   });
   return { state: { ...state, shown, objects: covers, unfolded, fired, moved, steps }, effects };
+}
+/**
+ * « Suivant » / « Précédent » de la télécommande (téléphone) : la première animation visible de la
+ * page qui peut encore avancer (ou reculer) change d'étape. Rend le nouvel état de séance, ou null
+ * si aucune animation ne bouge : c'est alors la page qui change.
+ */
+export function stepPageAnimation(state: RevealState, objects: readonly BoardObject[], delta: -1 | 1): RevealState | null {
+  for (const o of objects) {
+    if (o.type !== 'animation' || !isObjectVisible(state, o) || !animationInfo(o.code).contract) continue;
+    const current = state.steps[o.id] ?? 0;
+    const next = current + delta;
+    if (next < 0 || next > animationStepCount(o) - 1) continue;
+    const steps = { ...state.steps };
+    if (next === 0) delete steps[o.id]; else steps[o.id] = next;
+    return { ...state, steps };
+  }
+  return null;
 }
 export const pageRevealedFraction = (state: RevealState, pageId: string) => state.pages[pageId] ?? 0;
 export const revealedGaps = (state: RevealState, objectId: string): ReadonlySet<string> => new Set(state.gaps[objectId] ?? []);

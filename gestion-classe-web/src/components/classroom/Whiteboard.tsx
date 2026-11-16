@@ -50,6 +50,7 @@ import {
   revealSavedAt,
   pageRevealedFraction,
   recoverPage,
+  stepPageAnimation,
   saveRevealState,
   emptyReveal,
   type CurtainSlide,
@@ -2393,9 +2394,17 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         setCameraOffer(cmd.sdp);
       } else if (cmd.kind === 'camera' && cmd.action === 'stop') {
         setCameraOffer(null);
+      } else if (cmd.kind === 'nav' && cmd.action !== 'overview') {
+        // « Suivant » / « Précédent » : l'animation de la page d'abord, étape par étape ; la page
+        // ne change qu'une fois l'animation arrivée au bout (ou revenue au début)
+        const delta = cmd.action === 'next' ? 1 : -1;
+        const p = pagesRef.current[pageIndexRef.current];
+        const stepped = p ? stepPageAnimation(revealRef.current, p.objects ?? [], delta) : null;
+        if (stepped) { revealRef.current = stepped; setReveal(stepped); }
+        else goToPage(pageIndexRef.current + delta);
       }
     });
-  }, [classroom?.bus, insertImage]);
+  }, [classroom?.bus, insertImage, goToPage]);
 
   const onPicked = useCallback((ids: string[]) => {
     setPickedIds((prev) => new Set([...prev, ...ids]));

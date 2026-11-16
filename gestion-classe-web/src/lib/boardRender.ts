@@ -427,7 +427,7 @@ export async function renderPageToCanvas(page: BoardPage, width: number, reveal:
   // Les images des objets doivent être en mémoire avant le rendu (synchrone)
   await Promise.all(
     (page.objects ?? [])
-      .map((o) => (o.type === 'image' ? o.path : o.type === 'equation' ? o.imagePath : null))
+      .map((o) => (o.type === 'image' ? o.path : o.type === 'equation' || o.type === 'animation' ? o.imagePath : null))
       .filter((p): p is string => !!p)
       .map((path) => loadPageImage(path).catch((err) => console.warn('[boardRender] image :', err)))
   );

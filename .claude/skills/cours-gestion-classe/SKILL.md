@@ -321,6 +321,12 @@ multiplication), on n'assemble pas des images que des boutons font glisser — T
   « Suivant ▶ ». L'animation affiche elle-même le titre et la légende de l'étape : pas de titre
   d'écran. `p.animation(x, y, w, h, code)` la pose où l'on veut ; actions `EtapeSuivante(o)`,
   `EtapePrecedente(o)`, `Rejouer(o)`.
+- **L'image de l'animation** : `gc_animation.affiche(code, 'affiche.png')` photographie une étape,
+  `gc_envoi.envoyer_image` l'envoie, et son chemin se passe à `e.animation(code, affiche=…)`. C'est
+  elle que montrent les vignettes, l'aperçu de « Mes cours » et l'export PDF ; sans elle, une carte
+  « ▶ Animation » (et `screens:check` le signale).
+- En classe, le « Suivant » du téléphone fait avancer l'animation étape par étape, puis passe à
+  l'écran suivant : inutile de prévoir autre chose.
 - Contrôle avant l'envoi : `gc_animation.apercu(fichier.html, image.png, etape=n, instant=s)` fige
   une étape et la photographie (Chrome sans fenêtre) ; regarder **chaque étape, vers sa fin**
   (étiquettes qui se chevauchent, texte qui sort de la scène). Le fichier s'ouvre aussi seul dans

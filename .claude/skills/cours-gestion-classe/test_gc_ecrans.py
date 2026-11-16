@@ -171,6 +171,9 @@ class Animation(unittest.TestCase):
         self.assertTrue(all(a['targetId'] == anim['id'] for a in actions))
         self.assertLessEqual(max(o['y'] + o['h'] for o in x.objets), g.PAGE_H)
         self.assertEqual(e.alertes, [])
+        self.assertNotIn('imagePath', anim)
+        y = e.animation(self.code, affiche='u/import/affiche.png')
+        self.assertEqual(y.objets[0]['imagePath'], 'u/import/affiche.png')
 
     def test_ecrire_ne_touche_pas_au_code(self):
         import json

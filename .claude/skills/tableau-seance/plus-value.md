@@ -40,8 +40,7 @@ avant l'animation native (C). Lui faire trancher avant de commencer B.
   accès à l'app), commandée par les boutons du tableau (« étape suivante »). **Commencé le
   16/11/2026 par l'objet « Animation »** (`PLAN_animations_tableau.md`, lot 1 : lecture et
   pilotage ; le code vit dans l'écran, sans fichier ni changement de `depot-cours`). Restent :
-  `/classe` et vignette (lot 3), banques de dessins par
-  thème (lot 4) ; puis la 3D (three.js, à embarquer : le cadre n'a pas accès au réseau), les
+  banques de dessins par thème (lot 4) ; puis la 3D (three.js, à embarquer : le cadre n'a pas accès au réseau), les
   graphiques animés et les simulations, au format déjà validé par Thomas (« Voir sous nos
   pieds », globe de « Terre en mouvement »).
 - **C. Animation par étapes native** (phase 2 de `PLAN_vision_suite.md`) : les objets du tableau

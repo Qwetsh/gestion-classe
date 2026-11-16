@@ -277,7 +277,8 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
   useEffect(() => {
     for (const o of objects) {
-      for (const path of [o.cover?.imagePath, o.type === 'image' ? o.path : undefined]) {
+      // (l'image d'une animation n'est pas affichée ici : elle sert aux vignettes, qui la lisent en mémoire)
+      for (const path of [o.cover?.imagePath, o.type === 'image' ? o.path : o.type === 'animation' ? o.imagePath : undefined]) {
         if (!path || coverUrls[path]) continue;
         loadPageImage(path).then((img) => setCoverUrls((prev) => (prev[path] ? prev : { ...prev, [path]: img.src }))).catch(() => undefined);
       }
