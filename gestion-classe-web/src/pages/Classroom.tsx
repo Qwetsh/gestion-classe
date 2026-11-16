@@ -28,19 +28,10 @@ import { CourseSessionView } from '../components/course/CourseSessionView';
 import { courseScreens, fetchCourseDoc } from '../lib/course/courseDoc';
 import { sessionTab } from '../lib/boardTabs';
 import { createClassroomBus, type ClassroomBus } from '../lib/classroomBus';
+import { MAX_ACTIVE_SESSION_MS, fetchActiveSession, type ActiveSession } from '../lib/activeSession';
 import {
   fetchLessonBoardByBoardId, findLessonBoardForSession, type LessonBoard,
 } from '../lib/timetable/lessonBoardsQueries';
-
-interface ActiveSession {
-  id: string;
-  class_id: string;
-  room_id: string;
-  group_id?: string | null;
-  topic: string | null;
-  started_at: string;
-  ended_at: string | null;
-}
 
 interface Flash {
   type: string;
@@ -52,7 +43,6 @@ const FLASH_MS = 2600;
 const POLL_MS = 15000;
 const TIMER_DONE_MS = 8000;
 /** Au-delà, une séance non terminée est considérée comme oubliée (pas comme « en cours »). */
-const MAX_ACTIVE_SESSION_MS = 6 * 60 * 60 * 1000;
 
 const EVENT_STYLE: Record<string, { color: string; label: string }> = {
   participation: { color: '#34D399', label: '+1' },
@@ -137,19 +127,13 @@ export function Classroom() {
   // sans cette borne, l'écran afficherait une séance d'il y a trois semaines au lieu d'attendre.
   const findActiveSession = useCallback(async () => {
     if (!userId) return;
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('id, class_id, room_id, group_id, topic, started_at, ended_at')
-      .eq('user_id', userId)
-      .is('ended_at', null)
-      .gte('started_at', new Date(Date.now() - MAX_ACTIVE_SESSION_MS).toISOString())
-      .order('started_at', { ascending: false })
-      .limit(1);
-    if (error) {
+    let next: ActiveSession | null;
+    try {
+      next = await fetchActiveSession(userId);
+    } catch (error) {
       console.error('[Classroom] findActiveSession:', error);
       return;
     }
-    const next = (data?.[0] as ActiveSession | undefined) ?? null;
     setSession((prev) => (prev?.id === next?.id ? prev : next));
   }, [userId]);
 
