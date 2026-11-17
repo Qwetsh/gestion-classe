@@ -6,6 +6,8 @@
  *  - Le bandeau : les élèves sans fiche sur la période, les absents notés dans la séance, et ceux qui sont
  *    sortis sans être revenus (motif et heure).
  *  - Les cartes : une par groupe et par patient, tous les patients de la classe ensemble.
+ *  - La période « Ce cours » : les groupes actifs depuis le début de l'heure de cours (horaires du collège), et
+ *    seulement ceux du demi-groupe quand la séance en a un.
  */
 import type { LiveWork } from './liveQueries';
 import { resolveSessionRoster } from './sessionRoster';
@@ -138,6 +140,72 @@ export function patientsEnCours(works: LiveWork[]): Patient[] {
   return [...m.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
 }
 
+/**
+ * Les heures de cours du collège, en heure locale : les mêmes que l'hôpital (src/classe/horaires.ts de
+ * hopital-virtuel, SEANCES).
+ */
+export const CRENEAUX: readonly (readonly [string, string])[] = [
+  ['08:13', '09:10'],
+  ['09:10', '10:05'],
+  ['10:17', '11:15'],
+  ['11:15', '12:10'],
+  ['13:37', '14:35'],
+  ['14:35', '15:30'],
+  ['15:40', '16:35'],
+];
+
+/** Marge après la sonnerie : les fiches de l'heure d'avant s'enregistrent encore une minute ou deux. */
+export const MARGE_DEBUT_COURS_MS = 2 * 60_000;
+
+/**
+ * Début (ms) de l'heure de cours en cours à `maintenant`, en heure locale. Pile à la sonnerie, c'est l'heure qui
+ * commence. Hors d'une heure (récréation, midi, soir) : la dernière heure commencée ce jour-là. Avant la première
+ * heure du jour : null (la page reprend alors les 2 dernières heures).
+ */
+export function debutDuCours(maintenant: number): number | null {
+  const jour = new Date(maintenant);
+  jour.setHours(0, 0, 0, 0);
+  let debut: number | null = null;
+  for (const [hm] of CRENEAUX) {
+    const [h, m] = hm.split(':').map(Number);
+    const t = new Date(jour);
+    t.setHours(h, m, 0, 0);
+    if (t.getTime() <= maintenant) debut = t.getTime();
+  }
+  return debut;
+}
+
+/** Dernier signe de vie d'une fiche (ms) : sa dernière sauvegarde ou le dernier résumé en direct. */
+export const derniereActivite = (w: Pick<LiveWork, 'updated_at' | 'direct'>) => Math.max(Date.parse(w.updated_at), w.direct?.t ?? 0);
+
+const cleDuGroupe = (w: Pick<LiveWork, 'activity_id' | 'group_key' | 'id'>) => `${w.activity_id}:${w.group_key ?? w.id}`;
+
+/**
+ * Les fiches à afficher, groupe par groupe (un groupe = même patient et même group_key) : on garde toutes les fiches
+ * d'un groupe ou aucune.
+ *  - `depuis` (ms) : le groupe a eu une activité depuis (le plus récent signe de vie de ses fiches, comme `maj`).
+ *  - `membres` : au moins un élève du groupe en fait partie (le demi-groupe de la séance). null : pas de filtre.
+ */
+export function fichesAffichees<W extends Pick<LiveWork, 'id' | 'activity_id' | 'group_key' | 'student_id' | 'updated_at' | 'direct'>>(
+  works: W[],
+  filtres: { depuis?: number | null; membres?: ReadonlySet<string> | null },
+): W[] {
+  const { depuis, membres } = filtres;
+  if (depuis == null && !membres) return works;
+  const groupes = new Map<string, { maj: number; membre: boolean }>();
+  for (const w of works) {
+    const cle = cleDuGroupe(w);
+    const g = groupes.get(cle) ?? { maj: 0, membre: false };
+    g.maj = Math.max(g.maj, derniereActivite(w));
+    g.membre ||= !!membres?.has(w.student_id);
+    groupes.set(cle, g);
+  }
+  return works.filter((w) => {
+    const g = groupes.get(cleDuGroupe(w))!;
+    return (depuis == null || g.maj >= depuis) && (!membres || g.membre);
+  });
+}
+
 /** Une carte : un groupe (binôme, trio) sur un patient. */
 export interface Groupe {
   cle: string;
@@ -167,8 +235,8 @@ export function regrouperFiches(works: LiveWork[], filtres: { classeId?: string;
   for (const w of works) {
     if (filtres.classeId && w.class_id !== filtres.classeId) continue;
     if (filtres.patient && w.activity_id !== filtres.patient) continue;
-    const cle = `${w.activity_id}:${w.group_key ?? w.id}`;
-    const t = Math.max(Date.parse(w.updated_at), w.direct?.t ?? 0);
+    const cle = cleDuGroupe(w);
+    const t = derniereActivite(w);
     const g = m.get(cle);
     const eleves = [...new Set([...(g?.eleves ?? []), w.student_id])];
     if (!g || t > g.maj) {
