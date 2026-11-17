@@ -64,6 +64,21 @@ export function groupLibrary(boards: Board[], extraSequences: { level: string | 
 }
 
 // ---------------------------------------------------------------------------------------------
+// Rayons : bibliothèque des activités, fiches méthode (boards.category, migration 082)
+// ---------------------------------------------------------------------------------------------
+
+/** Fiche méthode : rangée dans l'onglet « Fiches méthode », pas dans la bibliothèque des activités. */
+export const isMethodSheet = (b: Pick<Board, 'category'>): boolean => b.category === 'methode';
+
+/** Les cours de la bibliothèque des activités d'un côté, les fiches méthode de l'autre (ordre gardé). */
+export function splitShelves(boards: Board[]): { activities: Board[]; methods: Board[] } {
+  const activities: Board[] = [];
+  const methods: Board[] = [];
+  for (const b of boards) (isMethodSheet(b) ? methods : activities).push(b);
+  return { activities, methods };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Activité › correction › documents : rattachés par le titre, sans colonne en base
 // ---------------------------------------------------------------------------------------------
 

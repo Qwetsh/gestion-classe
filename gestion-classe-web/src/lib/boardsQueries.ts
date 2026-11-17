@@ -29,12 +29,19 @@ export interface Board {
   is_course?: boolean;
   /** Sites ou applications du cours (boards.doc.links) ; lus par la bibliothèque seulement. */
   links?: CourseLink[];
+  /** Rayon de « Mes cours » (migration 082) : null = bibliothèque des activités. */
+  category?: BoardCategory | null;
 }
+
+/** Rayons de « Mes cours » autres que la bibliothèque des activités (boards.category, migration 082). */
+export type BoardCategory = 'methode';
 
 export interface BoardMeta {
   title: string;
   level: string | null;
   chapter: string | null;
+  /** Rayon : absent = inchangé (null à la création) ; null = bibliothèque des activités. */
+  category?: BoardCategory | null;
 }
 
 /** Niveaux du collège, dans l'ordre d'affichage ; « Autre » pour le reste (AP, club, remédiation…). */
@@ -80,16 +87,17 @@ export async function listBoards(userId: string): Promise<Board[]> {
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   const [first, lessonLinks] = await Promise.all([
-    // Avec le type (cours rédigé ou tableau blanc) et la marque « modèle » (migration 072)
-    query(`${COLUMNS}, doc_version:doc->version, doc_links:doc->links, is_template`),
+    // Avec le type (cours rédigé ou tableau blanc), la marque « modèle » (migration 072) et le rayon (082)
+    query(`${COLUMNS}, doc_version:doc->version, doc_links:doc->links, is_template, category`),
     // Table absente ou erreur : rien à écarter
     supabase.from('lesson_boards').select('board_id').eq('user_id', userId),
   ]);
   type Res = { data: unknown[] | null; error: { message?: string; code?: string } | null };
   let { data, error } = first as Res;
-  // Colonnes récentes absentes (migrations 072 puis 071 non appliquées) : même liste, sans elles
+  // Colonnes récentes absentes (migrations 082, 072 puis 071 non appliquées) : même liste, sans elles
   // (à tester avant isMissingTable, dont le message « boards.doc does not exist » ferait croire la table absente)
   const columnMissing = (e: Res['error'], col: RegExp) => !!e && e.code !== '42P01' && (e.code === '42703' || col.test(e.message ?? ''));
+  if (columnMissing(error, /category/i)) ({ data, error } = (await query(`${COLUMNS}, doc_version:doc->version, doc_links:doc->links, is_template`)) as Res);
   if (columnMissing(error, /is_template/i)) ({ data, error } = (await query(`${COLUMNS}, doc_version:doc->version, doc_links:doc->links`)) as Res);
   if (columnMissing(error, /\bdoc\b/i)) ({ data, error } = (await query(COLUMNS)) as Res);
   if (isMissingTable(error)) {
@@ -105,28 +113,34 @@ export async function listBoards(userId: string): Promise<Board[]> {
     .map(({ doc_version, doc_links, ...b }) => {
       delete b.is_template;
       const links = courseLinks(doc_links);
-      return { ...b, is_course: doc_version != null, ...(links.length ? { links } : {}) };
+      return { ...b, category: b.category ?? null, is_course: doc_version != null, ...(links.length ? { links } : {}) };
     });
 }
 
 export async function createBoard(userId: string, meta: BoardMeta, classId: string | null = null): Promise<Board> {
+  const row: Record<string, unknown> = { user_id: userId, title: meta.title.trim(), level: clean(meta.level), chapter: clean(meta.chapter), class_id: classId };
+  // Le rayon n'est écrit que s'il en faut un : sans la migration 082, un cours ordinaire se crée quand même
+  if (meta.category) row.category = meta.category;
   const { data, error } = await supabase
     .from('boards')
-    .insert({ user_id: userId, title: meta.title.trim(), level: clean(meta.level), chapter: clean(meta.chapter), class_id: classId })
+    .insert(row)
     .select(COLUMNS)
     .single();
   if (isMissingTable(error)) { tableMissing = true; throw new Error('Les tableaux nommés demandent la migration add_boards.sql'); }
+  if (error && meta.category && (error.code === '42703' || /category/i.test(error.message ?? ''))) throw new Error('Les fiches méthode demandent la migration 082');
   if (error) throw error;
-  return data as Board;
+  return { ...(data as Board), category: meta.category ?? null };
 }
 
-/** Titre, niveau et chapitre d'un tableau. */
+/** Titre, niveau, chapitre et rayon d'un tableau. */
 export async function updateBoard(id: string, meta: Partial<BoardMeta>): Promise<void> {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (meta.title !== undefined) patch.title = meta.title.trim();
   if (meta.level !== undefined) patch.level = clean(meta.level);
   if (meta.chapter !== undefined) patch.chapter = clean(meta.chapter);
+  if (meta.category !== undefined) patch.category = meta.category;
   const { error } = await supabase.from('boards').update(patch).eq('id', id);
+  if (error && meta.category !== undefined && (error.code === '42703' || /category/i.test(error.message ?? ''))) throw new Error('Les fiches méthode demandent la migration 082');
   if (error) throw error;
 }
 

@@ -2,7 +2,8 @@
  * Mes cours : le foyer des cours préparés (PLAN_mes_cours.md, lot C1).
  *
  * La bibliothèque liste les originaux (table `boards`, hors copies placées sur un cours de
- * l'emploi du temps et hors modèles), rangés niveau › séquence › activité.
+ * l'emploi du temps et hors modèles), rangés niveau › séquence › activité. Les fiches méthode
+ * (boards.category = 'methode', migration 082) ont leur onglet, « Fiches méthode » (`?vue=methodes`).
  *
  * Un cours s'ouvre par son adresse, `/cours?ouvrir=<id>&mode=texte|tableau|classe` : l'accueil, le
  * calendrier et les comptes rendus peuvent tous y pointer, et le bouton Précédent du navigateur
@@ -30,7 +31,7 @@ import {
 } from '../lib/boardsQueries';
 import { createCourse, duplicateCourse, emptyCourseDoc, saveCourseLinks } from '../lib/course/courseDoc';
 import { queueCourseImport } from '../lib/course/courseImport';
-import { DRAFT_ID, courseHref, groupLibrary, parseOpenTarget, type OpenMode } from '../lib/courseLibrary';
+import { DRAFT_ID, courseHref, groupLibrary, isMethodSheet, parseOpenTarget, splitShelves, type OpenMode } from '../lib/courseLibrary';
 import { fetchClassGroupsForUser } from '../lib/classGroupQueries';
 import { openLocalFile, type OpenedFile } from '../lib/cloudFiles';
 import { STORAGE_QUOTA_BYTES, formatBytes, refuseCourseFile, renamedFile, sequenceKey, usageLevel, type CourseFile } from '../lib/courseFiles';
@@ -63,6 +64,9 @@ import { tpsByActivity } from '../lib/tpLibrary';
 import '../styles/mes-cours.css';
 
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
+
+/** Onglets de la page : bibliothèque des activités, fiches méthode, cours placés par classe. */
+type View = 'library' | 'methods' | 'classes';
 
 export function Courses() {
   const { user } = useAuth();
@@ -143,15 +147,17 @@ export function Courses() {
   const opened = known ?? (fetched && fetched.id === targetId ? fetched.board : null);
   const notFound = mustFetch && fetched?.id === targetId && fetched.board === null;
 
-  // ---- Vue affichée sous l'éditeur : Bibliothèque ou Par classe (?vue=classes&classe=…&activite=…) ----
+  // ---- Vue affichée sous l'éditeur : Bibliothèque, Fiches méthode (?vue=methodes) ou Par classe (?vue=classes&classe=…&activite=…) ----
 
-  const view: 'library' | 'classes' = params.get('vue') === 'classes' ? 'classes' : 'library';
+  const vue = params.get('vue');
+  const view: View = vue === 'classes' ? 'classes' : vue === 'methodes' ? 'methods' : 'library';
   const classKey = params.get('classe');
   const activity = params.get('activite');
 
   /** Adresse de la page avec ces réglages de vue (sans cours ouvert). */
-  const viewHref = useCallback((next: { view: 'library' | 'classes'; classKey?: string | null; activity?: string | null }) => {
+  const viewHref = useCallback((next: { view: View; classKey?: string | null; activity?: string | null }) => {
     const q = new URLSearchParams();
+    if (next.view === 'methods') q.set('vue', 'methodes');
     if (next.view === 'classes') {
       q.set('vue', 'classes');
       if (next.classKey) q.set('classe', next.classKey);
@@ -203,14 +209,18 @@ export function Courses() {
 
   /** La réponse affichée est celle de la demande en cours (pas d'une frappe précédente). */
   const textSettled = searching && textResult?.key === wordsKey;
+  /** Bibliothèque des activités et fiches méthode : chaque onglet montre et cherche dans son rayon. */
+  const shelves = useMemo(() => splitShelves(boards), [boards]);
+  const methodsView = view === 'methods';
+  const shelf = methodsView ? shelves.methods : shelves.activities;
   const textHits = useMemo(() => {
     if (!textSettled || !textResult) return [];
-    const byId = new Map(boards.map((b) => [b.id, b]));
-    // Seuls les cours de la bibliothèque : les copies placées se retrouvent par le calendrier
+    const byId = new Map(shelf.map((b) => [b.id, b]));
+    // Seuls les cours du rayon : les copies placées se retrouvent par le calendrier
     return textResult.hits.flatMap((hit) => { const b = byId.get(hit.boardId); return b ? [{ board: b, excerpt: hit.excerpt }] : []; });
-  }, [textSettled, textResult, boards]);
+  }, [textSettled, textResult, shelf]);
 
-  const shown = useMemo(() => filterBoards(boards, words), [boards, words]);
+  const shown = useMemo(() => filterBoards(shelf, words), [shelf, words]);
   const chips = useMemo(() => placementChips(placementsOf(documents), classes, new Date()), [documents, classes]);
   /** Séances parties de chaque document (table session_boards, déjà lue pour la bibliothèque). */
   const sessions = useMemo(() => {
@@ -221,11 +231,14 @@ export function Courses() {
   // Hors recherche, une séquence qui n'a plus que des fichiers reste affichée
   const tpsOfActivities = useMemo(() => tpsByActivity(tpRefs, boards), [tpRefs, boards]);
   const levels = useMemo(
-    () => groupLibrary(shown, searching ? [] : files.map((f) => ({ level: f.level, chapter: f.chapter }))),
-    [shown, searching, files],
+    // Les fichiers sont rangés dans les séquences d'activités : pas dans l'onglet des fiches méthode
+    () => groupLibrary(shown, searching || methodsView ? [] : files.map((f) => ({ level: f.level, chapter: f.chapter }))),
+    [shown, searching, methodsView, files],
   );
 
-  const save = async (meta: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
+  const save = async (typed: BoardMeta, kind: 'course' | 'board', template: TemplateChoice) => {
+    // Créé depuis l'onglet « Fiches méthode » : une fiche méthode
+    const meta: BoardMeta = editing === 'new' && methodsView ? { ...typed, category: 'methode' } : typed;
     if (editing === 'new') {
       let created: Board;
       if (kind === 'board') created = await createBoard(userId, meta);
@@ -248,7 +261,7 @@ export function Courses() {
   };
 
   const duplicate = async (b: Board, asTemplate = false) => {
-    const meta: BoardMeta = { title: asTemplate ? b.title : `${b.title} (copie)`, level: b.level, chapter: b.chapter };
+    const meta: BoardMeta = { title: asTemplate ? b.title : `${b.title} (copie)`, level: b.level, chapter: b.chapter, category: b.category ?? null };
     try {
       if (b.is_course) await duplicateCourse(userId, b.id, meta, asTemplate);
       else await duplicateBoard(userId, b.id, meta);
@@ -274,6 +287,18 @@ export function Courses() {
       setBoards((prev) => prev.filter((x) => x.id !== b.id));
     } catch (err) {
       toast(message(err, 'Suppression impossible.'));
+    }
+  };
+
+  /** Bibliothèque des activités ↔ fiches méthode. */
+  const moveShelf = async (b: Board) => {
+    const category = isMethodSheet(b) ? null : 'methode';
+    try {
+      await updateBoard(b.id, { category });
+      setBoards((prev) => prev.map((x) => (x.id === b.id ? { ...x, category } : x)));
+      toast(category ? `« ${b.title} » est rangé dans les fiches méthode.` : `« ${b.title} » est revenu dans la bibliothèque.`, 'success');
+    } catch (err) {
+      toast(message(err, 'Le cours n’a pas pu changer d’onglet.'));
     }
   };
 
@@ -382,7 +407,7 @@ export function Courses() {
             <button type="button" className="btn" onClick={() => open(DRAFT_ID)} title="Ardoise libre, gardée sur cet appareil">
               Brouillon
             </button>
-            <button type="button" className="btn btn--primary" onClick={() => setEditing('new')} disabled={unavailable} title={unavailable ? 'Migration add_boards.sql à appliquer' : undefined}>
+            <button type="button" className="btn btn--primary" onClick={() => setEditing('new')} disabled={unavailable} title={unavailable ? 'Migration add_boards.sql à appliquer' : methodsView ? 'Nouvelle fiche méthode' : undefined}>
               + Nouveau
             </button>
           </div>
@@ -391,6 +416,9 @@ export function Courses() {
         <div className="mc-views" role="tablist" aria-label="Vue">
           <button type="button" role="tab" aria-selected={view === 'library'} className="mc-view" onClick={() => { if (view !== 'library') void navigate(viewHref({ view: 'library' })); }}>
             Bibliothèque
+          </button>
+          <button type="button" role="tab" aria-selected={methodsView} className="mc-view" onClick={() => { if (!methodsView) void navigate(viewHref({ view: 'methods' })); }}>
+            Fiches méthode
           </button>
           <button type="button" role="tab" aria-selected={view === 'classes'} className="mc-view" onClick={() => { if (view !== 'classes') void navigate(viewHref({ view: 'classes' })); }}>
             Par classe
@@ -414,13 +442,19 @@ export function Courses() {
           />
         )}
 
-        {view === 'library' && ready && !error && boards.length === 0 && (
+        {view === 'library' && ready && !error && shelf.length === 0 && (
           <div className="mc-empty">
             Aucun cours pour l’instant. « + Nouveau » crée un cours rédigé ou un tableau blanc ; ils se rangent ici par niveau et par séquence.
           </div>
         )}
 
-        {view === 'library' && boards.length > 0 && (
+        {methodsView && ready && !error && shelf.length === 0 && (
+          <div className="mc-empty">
+            Aucune fiche méthode pour l’instant. « + Nouveau » en crée une depuis cet onglet ; un cours de la bibliothèque s’y range par son menu ⋯.
+          </div>
+        )}
+
+        {view !== 'classes' && shelf.length > 0 && (
           <label className="mc-search">
             <Search size={16} className="mc-search__icon" aria-hidden />
             <input
@@ -429,18 +463,21 @@ export function Courses() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); setQuery(''); } }}
-              placeholder="Chercher un cours, une séquence, un mot du texte"
-              aria-label="Chercher dans mes cours"
+              placeholder={methodsView ? 'Chercher une fiche méthode, un mot du texte' : 'Chercher un cours, une séquence, un mot du texte'}
+              aria-label={methodsView ? 'Chercher dans les fiches méthode' : 'Chercher dans mes cours'}
             />
           </label>
         )}
 
-        {view === 'library' && searching && textSettled && shown.length === 0 && textHits.length === 0 && (
-          <div className="mc-empty">Aucun cours ne correspond à « {query.trim()} ».</div>
+        {view !== 'classes' && searching && textSettled && shown.length === 0 && textHits.length === 0 && (
+          <div className="mc-empty">{methodsView ? 'Aucune fiche méthode' : 'Aucun cours'} ne correspond à « {query.trim()} ».</div>
         )}
 
-        {view === 'library' && levels.length > 0 && (
+        {view !== 'classes' && levels.length > 0 && (
           <CourseLibrary
+            key={view}
+            shelf={methodsView ? 'methodes' : 'activites'}
+            onMoveShelf={(b) => void moveShelf(b)}
             levels={levels}
             expandAll={searching}
             chips={chips}
@@ -454,8 +491,8 @@ export function Courses() {
             onDelete={(b) => void remove(b)}
             onEditLinks={setLinking}
             onRenameSequence={renameSequence}
-            files={filesApi}
-            tps={tpsOfActivities}
+            files={methodsView ? null : filesApi}
+            tps={methodsView ? undefined : tpsOfActivities}
           />
         )}
 
@@ -466,7 +503,7 @@ export function Courses() {
           </div>
         )}
 
-        {view === 'library' && textHits.length > 0 && (
+        {view !== 'classes' && textHits.length > 0 && (
           <section className="mc-level" aria-label="Cours dont le texte contient les mots cherchés">
             <div className="mc-seq__head"><span className="mc-seq__name">Dans le texte</span></div>
             <ul className="mc-rows">

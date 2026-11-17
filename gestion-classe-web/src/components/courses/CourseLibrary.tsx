@@ -5,6 +5,8 @@
  * Une activité et sa correction (et ses documents) tiennent sur une seule ligne : le titre de
  * l'activité, puis un bouton par original, avec ses classes et son essai en classe, puis les
  * sites ou applications de l'activité. Au survol d'un bouton, la première page de l'original.
+ * Le même composant montre l'onglet « Fiches méthode » (`shelf="methodes"`) : chaque fiche y a son
+ * bouton « Fiche », pour l'aperçu au survol, et les fiches sans niveau sont « Tous niveaux ».
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -49,6 +51,10 @@ interface Props {
   files: SequenceFilesApi | null;
   /** TP de « Mes TP » faits dans chaque activité, par identifiant de sa fiche (migration 081). */
   tps?: Map<string, { id: string; name: string }[]>;
+  /** Rayon montré : la bibliothèque des activités (par défaut) ou les fiches méthode. */
+  shelf?: 'activites' | 'methodes';
+  /** Passer un original dans l'autre rayon (bibliothèque ↔ fiches méthode) ; absent : pas d'entrée de menu. */
+  onMoveShelf?: (board: Board) => void;
 }
 
 export interface SequenceFilesApi {
@@ -63,7 +69,8 @@ export interface SequenceFilesApi {
 }
 
 
-export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onRenameSequence, files, tps }: Props) {
+export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onRenameSequence, files, tps, shelf = 'activites', onMoveShelf }: Props) {
+  const methods = shelf === 'methodes';
   /** Sélecteur de fichiers unique : la séquence visée est notée au moment du clic. */
   const fileInput = useRef<HTMLInputElement>(null);
   const fileTarget = useRef<{ level: string | null; chapter: string } | null>(null);
@@ -201,6 +208,9 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
     { label: 'Dupliquer', onClick: () => onDuplicate(b), group },
     ...(b.is_course ? [{ label: 'Enregistrer comme modèle', onClick: () => onSaveAsTemplate(b), title: 'Proposé ensuite à la création d\'un cours', group }] : []),
     { label: 'Renommer, ranger', onClick: () => onEdit(b), title: 'Titre, niveau, séquence', group },
+    ...(onMoveShelf ? [methods
+      ? { label: 'Remettre dans la bibliothèque', onClick: () => onMoveShelf(b), title: 'Ce n’est pas une fiche méthode : retour parmi les activités', group }
+      : { label: 'Ranger dans les fiches méthode', onClick: () => onMoveShelf(b), title: 'Onglet « Fiches méthode » : à part des activités', group }] : []),
     { label: 'Supprimer', onClick: () => onDelete(b), danger: true, group },
   ];
 
@@ -236,14 +246,16 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
         />
       )}
       {levels.map(({ level, count, sequences }) => {
-        const key = level ?? NO_LEVEL;
+        const name = level ?? (methods ? 'Tous niveaux' : NO_LEVEL);
+        // Pliage mémorisé à part pour chaque rayon
+        const key = methods ? `methodes:${name}` : name;
         const open = expandAll || !collapsed[key];
         const named = sequences.some((s) => s.chapter !== '');
         return (
           <section key={key} className="mc-level">
             <button type="button" className="mc-level__head" onClick={() => toggle(key)} aria-expanded={open}>
               <ChevronDown size={16} className="mc-level__chevron" aria-hidden />
-              <span className="mc-level__name">{key}</span>
+              <span className="mc-level__name">{name}</span>
               <span className="mc-level__count">{count}</span>
             </button>
             {open && sequences.map(({ chapter, boards }) => {
@@ -306,7 +318,8 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                       const evalClass = evaluation
                         ? ` mc-row--eval${index > 0 && !groups[index - 1].evaluation ? ' mc-row--eval-first' : ''}`
                         : '';
-                      if (members.length === 1) {
+                      // Fiche méthode : toujours son bouton « Fiche », qui porte l'aperçu au survol
+                      if (members.length === 1 && !methods) {
                         // Original seul (correction orpheline comprise) : son titre complet
                         const b = members[0].board;
                         return (
