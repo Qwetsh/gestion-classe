@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import {
-  chaptersOfLevel, courseHref, groupActivities, groupLibrary, isEvaluationTitle, naturalCompare, parseOpenTarget,
-  recentBoards, splitVariant, variantLabel, withoutEvaluationPrefix,
+  chaptersOfLevel, courseHref, groupActivities, groupLibrary, isEvaluationTitle, isMethodSheet, naturalCompare, parseOpenTarget,
+  recentBoards, splitShelves, splitVariant, variantLabel, withoutEvaluationPrefix,
 } from '../courseLibrary';
 
 const board = (id: string, title: string, level: string | null, chapter: string | null, updated = '2026-11-01T08:00:00Z'): Board => ({
@@ -166,6 +166,25 @@ describe('groupActivities', () => {
       board('c', 'Activité 1 (correction)', '4e', seq),
     ]);
     expect(groups.map((g) => g.members.map((m) => m.board.id))).toEqual([['a', 'c'], ['b']]);
+  });
+});
+
+describe('splitShelves', () => {
+  it('range les fiches méthode à part, sans toucher à l’ordre', () => {
+    const list = [
+      board('a', 'Activité 1 — Wegener', '4e', 'Séquence 2'),
+      { ...board('m2', 'FM2 — Construire un tableau', null, null), category: 'methode' as const },
+      board('b', 'Activité 2 — Les séismes', '4e', 'Séquence 2'),
+      { ...board('m1', 'FM1 — Lire une consigne', null, null), category: 'methode' as const },
+      { ...board('c', 'Activité 3', '4e', 'Séquence 2'), category: null },
+    ];
+    const { activities, methods } = splitShelves(list);
+    expect(activities.map((b) => b.id)).toEqual(['a', 'b', 'c']);
+    expect(methods.map((b) => b.id)).toEqual(['m2', 'm1']);
+  });
+
+  it('un cours sans rayon connu (migration 082 absente) reste une activité', () => {
+    expect(isMethodSheet(board('a', 'Activité 1', '5e', null))).toBe(false);
   });
 });
 

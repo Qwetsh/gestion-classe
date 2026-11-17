@@ -195,6 +195,12 @@ python -I <skill>/gc_envoi.py ecrans <id du cours> <pages.json> # pose les écra
   brouillon envoie le fichier et l'insère. La fonction refuse un document qui cite une image
   qu'elle n'a pas reçue.
 - Dire à Thomas où trouver le cours : Accueil › Mes tableaux, rangé sous son niveau.
+- **Fiche méthode** (« FM10 — … », sans niveau ni chapitre) : elle va dans l'onglet « Fiches
+  méthode » de « Mes cours », pas dans la bibliothèque des activités. Après l'envoi, la ranger avec
+  le connecteur Supabase : `update boards set category = 'methode' where id = '<id du cours>'`
+  (migration 082 ; seule cette requête, sur le cours qu'on vient de créer). Titre « FMn — Titre »,
+  le numéro que les fiches d'activité citent dans leur ligne « Méthodes ». Les FM1 à FM9 (charte
+  verte, Verdana) ont été reprises le 17/11/2026 de `2026-2027/Fiches methodes/generate_fiches_methodes.py`.
 
 **Sans jeton** (pas encore créé, fonction indisponible) : lire `course-drafts/<nom>.sql` et
 l'exécuter tel quel avec l'outil `execute_sql` du connecteur Supabase, projet
