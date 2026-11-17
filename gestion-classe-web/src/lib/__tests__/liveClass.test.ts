@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { APRES_FIN_MS, MAX_LIVE_SESSION_MS, choisirSeance, construireBandeau, nomPatient } from '../liveClass';
+import { APRES_FIN_MS, MAX_LIVE_SESSION_MS, choisirSeance, construireBandeau, elevesAvecFiche, listeDeClasse, nomPatient, patientsEnCours, regrouperFiches } from '../liveClass';
+import type { LiveWork } from '../liveQueries';
 
 const t = (hhmm: string, jour = '2026-11-13') => Date.parse(`${jour}T${hhmm}:00+01:00`);
 const iso = (hhmm: string, jour = '2026-11-13') => new Date(t(hhmm, jour)).toISOString();
@@ -88,9 +89,9 @@ describe('construireBandeau : pas connectés, absents, sortis', () => {
       ev('l', 'retour', '14:48'),
       ev('z', 'sortie', '14:50', 'autre'),
     ]);
-    expect(b.sortis.map((s) => [s.eleve.id, s.motif])).toEqual([
-      ['a', 'infirmerie'],
-      ['z', 'sorti'],
+    expect(b.sortis.map((s) => [s.eleve.id, s.motif, s.depuis])).toEqual([
+      ['a', 'infirmerie', t('14:40')],
+      ['z', 'sorti', t('14:50')],
     ]);
   });
 
@@ -113,5 +114,84 @@ describe('nomPatient', () => {
     expect(nomPatient('Hôpital virtuel — Eve Amalle')).toBe('Eve Amalle');
     expect(nomPatient('TP microscope')).toBe('TP microscope');
     expect(nomPatient(null)).toBe('Activité');
+  });
+});
+
+describe('listeDeClasse', () => {
+  const eleves = [
+    { id: 'a', pseudo: 'Adam', is_deleted: false, is_witness: false },
+    { id: 'b', pseudo: 'Bilal', is_deleted: true, is_witness: false },
+    { id: 'c', pseudo: 'Témoin', is_deleted: false, is_witness: true },
+    { id: 'd', pseudo: 'Dina', is_deleted: null, is_witness: null },
+  ];
+
+  it('écarte les élèves supprimés et les témoins', () => {
+    expect(listeDeClasse(eleves, null, null)).toEqual([{ id: 'a', pseudo: 'Adam' }, { id: 'd', pseudo: 'Dina' }]);
+  });
+
+  it('se limite aux membres du demi-groupe de la séance', () => {
+    expect(listeDeClasse(eleves, 'g1', ['d', 'b']).map((e) => e.id)).toEqual(['d']);
+    expect(listeDeClasse(eleves, 'g1', []).map((e) => e.id)).toEqual([]);
+  });
+});
+
+describe('regrouperFiches : une carte par groupe et par patient', () => {
+  const EVE = { title: 'Hôpital virtuel — Eve Amalle', key: 'hopital-eve-amalle' };
+  const YVES = { title: 'Hôpital virtuel — Yves Apabien', key: 'hopital-yve-apabien' };
+  let n = 0;
+  const fiche = (o: Partial<LiveWork> & { student_id: string; activity_id: string }): LiveWork => ({
+    id: `w${++n}`,
+    class_id: '3C',
+    group_key: null,
+    group_pseudos: null,
+    status: 'draft',
+    updated_at: iso('14:40', '2026-11-12'),
+    classes: { name: '3C' },
+    activities: o.activity_id === 'eve' ? EVE : YVES,
+    students: { pseudo: o.student_id },
+    direct: null,
+    ...o,
+  });
+  const works = [
+    // binôme sur Eve : une fiche par élève, même group_key
+    fiche({ student_id: 'a', activity_id: 'eve', group_key: 'k1', group_pseudos: ['A', 'B'], updated_at: iso('14:41', '2026-11-12') }),
+    fiche({ student_id: 'b', activity_id: 'eve', group_key: 'k1', group_pseudos: ['A', 'B'], updated_at: iso('14:45', '2026-11-12') }),
+    // le même binôme a aussi une fiche sur Yves (même group_key, autre patient)
+    fiche({ student_id: 'a', activity_id: 'yves', group_key: 'k1', group_pseudos: ['A', 'B'], updated_at: iso('14:20', '2026-11-12') }),
+    // un trio sur Yves, qui a besoin du prof (Morel ne le comprend pas) : en tête malgré l'heure
+    fiche({ student_id: 'c', activity_id: 'yves', group_key: 'k2', updated_at: iso('14:30', '2026-11-12') }),
+    fiche({ student_id: 'd', activity_id: 'yves', group_key: 'k2', updated_at: iso('14:31', '2026-11-12'), direct: { v: 1, t: t('14:31', '2026-11-12'), morelIncomprises: 2 } }),
+    fiche({ student_id: 'e', activity_id: 'yves', group_key: 'k2', updated_at: iso('14:29', '2026-11-12') }),
+    // une autre classe
+    fiche({ student_id: 'x', activity_id: 'eve', class_id: '3B', classes: { name: '3B' } }),
+  ];
+
+  it('met tous les patients de la classe sur la même grille, le patient sur chaque carte', () => {
+    const g = regrouperFiches(works, { classeId: '3C' });
+    expect(g.map((x) => [x.patient, [...x.eleves].sort()])).toEqual([
+      ['Yves Apabien', ['c', 'd', 'e']],
+      ['Eve Amalle', ['a', 'b']],
+      ['Yves Apabien', ['a']],
+    ]);
+  });
+
+  it('garde la fiche la plus récente du groupe et les noms du binôme', () => {
+    const eve = regrouperFiches(works, { classeId: '3C', patient: 'eve' });
+    expect(eve).toHaveLength(1);
+    expect(eve[0].w.student_id).toBe('b');
+    expect(eve[0].noms).toEqual(['A', 'B']);
+    expect(eve[0].maj).toBe(t('14:45', '2026-11-12'));
+  });
+
+  it('sans classe choisie, prend toutes les classes', () => {
+    expect(regrouperFiches(works)).toHaveLength(4);
+  });
+
+  it('liste les patients et les élèves qui ont une fiche', () => {
+    expect(patientsEnCours(works).map((p) => [p.id, p.nom, p.key])).toEqual([
+      ['eve', 'Eve Amalle', 'hopital-eve-amalle'],
+      ['yves', 'Yves Apabien', 'hopital-yve-apabien'],
+    ]);
+    expect([...elevesAvecFiche(works)].sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'x']);
   });
 });

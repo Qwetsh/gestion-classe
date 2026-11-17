@@ -4,7 +4,17 @@ import { Layout } from '../components/Layout';
 import { AnimatedCorrectionToggle } from '../components/productions/AnimatedCorrectionToggle';
 import { useAuth } from '../hooks/useAuth';
 import { hasAnimatedCorrection } from '../lib/animatedCorrection';
-import { construireBandeau, nomPatient, type Bandeau, type EvenementLike } from '../lib/liveClass';
+import {
+  aBesoin,
+  construireBandeau,
+  elevesAvecFiche,
+  patientsEnCours,
+  regrouperFiches,
+  type Bandeau,
+  type EvenementLike,
+  type Groupe,
+  type Patient,
+} from '../lib/liveClass';
 import {
   ecrirePoints,
   fetchActivitiesPoints,
@@ -48,25 +58,6 @@ const LIEUX: Record<string, string> = {
 };
 const MODES: Record<string, string> = { direct: 'Accompagné', guide: 'Guidé', autonome: 'Autonome' };
 
-interface Groupe {
-  cle: string;
-  noms: string[];
-  eleves: string[];
-  classId: string | null;
-  classe: string;
-  activityId: string;
-  patient: string;
-  maj: number;
-  statut: string;
-  w: LiveWork;
-}
-
-interface Activite {
-  id: string;
-  key: string;
-  patient: string;
-}
-
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60_000));
 const heure = (t: number) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -76,9 +67,6 @@ function etat(maj: number, maintenant: number) {
   if (d < RECENT) return { couleur: 'var(--warn)', texte: `il y a ${minutes(d)} min` };
   return { couleur: 'var(--text-dim)', texte: `il y a ${minutes(d)} min` };
 }
-
-// un groupe a sans doute besoin du prof : Morel ne l'a pas compris deux fois de suite, ou le labo vient de refuser
-const aBesoin = (g: Groupe) => (g.w.direct?.morelIncomprises ?? 0) >= 2 || !!g.w.direct?.dernierRefus;
 
 /**
  * En développement seulement : `?instant=2026-11-12T14:50` rejoue la page à ce moment-là (séance, fiches),
@@ -107,7 +95,7 @@ export function LiveActivity() {
   const [mesClasses, setMesClasses] = useState<ClassInfo[]>([]);
   const [depuis, setDepuis] = useState(120);
   // à qui écrire : un groupe (sur son patient), ou toute la classe sur les patients affichés (null = panneau fermé)
-  const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null; points?: number; activites: Activite[] } | null>(null);
+  const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null; points?: number; activites: Patient[] } | null>(null);
   const [pointsDonnes, setPointsDonnes] = useState<LiveMessage[]>([]);
   const [envoyes, setEnvoyes] = useState<LiveMessage[]>([]);
   // chargés pour une classe (et un demi-groupe) / une séance donnée : `cle` dit pour laquelle
@@ -174,32 +162,12 @@ export function LiveActivity() {
   const worksClasse = useMemo(() => (classeId ? works.filter((w) => w.class_id === classeId) : works), [works, classeId]);
 
   // les patients en cours dans la classe : filtre, bascules de correction, message à la classe
-  const activites = useMemo(() => {
-    const m = new Map<string, Activite>();
-    for (const w of worksClasse) {
-      if (!m.has(w.activity_id)) m.set(w.activity_id, { id: w.activity_id, key: w.activities?.key ?? '', patient: nomPatient(w.activities?.title) });
-    }
-    return [...m.values()].sort((a, b) => a.patient.localeCompare(b.patient, 'fr'));
-  }, [worksClasse]);
+  const activites = useMemo(() => patientsEnCours(worksClasse), [worksClasse]);
   const filtre = activites.some((a) => a.id === patient) ? patient : '';
   const activitesAffichees = filtre ? activites.filter((a) => a.id === filtre) : activites;
 
-  // une carte par groupe et par patient (binôme, trio : une fiche par élève, même group_key)
-  const groupes = useMemo(() => {
-    const m = new Map<string, Groupe>();
-    for (const w of worksClasse) {
-      if (filtre && w.activity_id !== filtre) continue;
-      const cle = `${w.activity_id}:${w.group_key ?? w.id}`;
-      const t = Math.max(Date.parse(w.updated_at), w.direct?.t ?? 0);
-      const g = m.get(cle);
-      const noms = w.direct?.equipe?.length ? w.direct.equipe : w.group_pseudos?.length ? w.group_pseudos : [w.students?.pseudo ?? '?'];
-      const eleves = [...new Set([...(g?.eleves ?? []), w.student_id])];
-      if (!g || t > g.maj) {
-        m.set(cle, { cle, noms, eleves, classId: w.class_id, classe: w.classes?.name ?? '—', activityId: w.activity_id, patient: nomPatient(w.activities?.title), maj: t, statut: w.status, w });
-      } else g.eleves = eleves;
-    }
-    return [...m.values()].sort((a, b) => Number(aBesoin(b)) - Number(aBesoin(a)) || b.maj - a.maj);
-  }, [worksClasse, filtre]);
+  // une carte par groupe et par patient
+  const groupes = useMemo(() => regrouperFiches(worksClasse, { patient: filtre }), [worksClasse, filtre]);
 
   // les points donnés sur ces patients : le total de chaque groupe, rechargé avec la page
   const idsActivites = useMemo(() => [...new Set(groupes.map((g) => g.activityId))].sort().join(','), [groupes]);
@@ -241,7 +209,7 @@ export function LiveActivity() {
   );
 
   const bandeau = useMemo(
-    () => (roster ? construireBandeau(roster, worksClasse.map((w) => w.student_id), evenements) : null),
+    () => (roster ? construireBandeau(roster, elevesAvecFiche(worksClasse), evenements) : null),
     [roster, worksClasse, evenements],
   );
 
@@ -286,7 +254,7 @@ export function LiveActivity() {
           </select>
           <select value={filtre} onChange={(e) => choisirPatient(e.target.value)} style={champ} aria-label="Patient">
             <option value="">{activites.length === 0 ? 'Aucun patient en cours' : 'Tous les patients'}</option>
-            {activites.map((a) => <option key={a.id} value={a.id}>{a.patient}</option>)}
+            {activites.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
           </select>
           <select value={depuis} onChange={(e) => setDepuis(Number(e.target.value))} style={champ} aria-label="Période">
             <option value={60}>Dernière heure</option>
@@ -306,7 +274,7 @@ export function LiveActivity() {
 
         {correctionsAnimees.map((a) => (
           <div key={a.id} style={{ marginBottom: 6 }}>
-            {correctionsAnimees.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{a.patient}</div>}
+            {correctionsAnimees.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{a.nom}</div>}
             <AnimatedCorrectionToggle activityId={a.id} classId={classeId || null} className={nomClasse || null} compact />
           </div>
         ))}
@@ -335,7 +303,7 @@ export function LiveActivity() {
               g={g}
               maintenant={maintenant}
               points={pointsDe(pointsDonnes.filter((p) => p.activity_id === g.activityId), g.eleves, g.classId)}
-              ecrire={(points) => setCible({ libelle: g.noms.join(', '), eleves: g.eleves, points, activites: [{ id: g.activityId, key: g.w.activities?.key ?? '', patient: g.patient }] })}
+              ecrire={(points) => setCible({ libelle: g.noms.join(', '), eleves: g.eleves, points, activites: [{ id: g.activityId, key: g.w.activities?.key ?? '', nom: g.patient }] })}
             />
           ))}
         </div>
@@ -360,7 +328,7 @@ export function LiveActivity() {
             libelle={cible.libelle}
             pointsInit={cible.points ?? 0}
             pourTous={!cible.eleves}
-            patients={cible.eleves ? [] : cible.activites.map((a) => a.patient)}
+            patients={cible.eleves ? [] : cible.activites.map((a) => a.nom)}
             fermer={() => setCible(null)}
             envoyer={async (texte, style, signe, points) => {
               if (instant) throw new Error("Relecture d'un cours passé : rien n'est envoyé.");
@@ -409,7 +377,7 @@ function BandeauClasse({ b, total }: { b: Bandeau<LiveStudent>; total: number })
         <span><strong style={{ color: 'var(--text-muted)' }}>Absents ({b.absents.length}) :</strong> {prenoms(b.absents)}</span>
       )}
       {b.sortis.length > 0 && (
-        <span><strong style={{ color: 'var(--text-muted)' }}>Sortis :</strong> {b.sortis.map((s) => `${s.eleve.pseudo} (${s.motif})`).join(', ')}</span>
+        <span><strong style={{ color: 'var(--text-muted)' }}>Sortis :</strong> {b.sortis.map((s) => `${s.eleve.pseudo} (${s.motif}, ${heure(s.depuis)})`).join(', ')}</span>
       )}
     </section>
   );

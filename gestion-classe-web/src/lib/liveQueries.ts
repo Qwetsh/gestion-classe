@@ -1,7 +1,6 @@
 import { supabase } from './supabase';
 import { fetchMemberIds } from './classGroupQueries';
-import { MAX_LIVE_SESSION_MS, choisirSeance, type EvenementLike } from './liveClass';
-import { resolveSessionRoster } from './sessionRoster';
+import { MAX_LIVE_SESSION_MS, choisirSeance, listeDeClasse, type EvenementLike } from './liveClass';
 
 /**
  * Suivi en direct d'une activité numérique (Hôpital virtuel) pendant le cours.
@@ -95,10 +94,7 @@ export async function fetchLiveRoster(classId: string, groupId: string | null): 
     groupId ? fetchMemberIds(groupId) : Promise.resolve(null),
   ]);
   if (eleves.error) throw eleves.error;
-  const classe = (eleves.data ?? [])
-    .filter((e) => !e.is_deleted && !e.is_witness)
-    .map((e) => ({ id: e.id as string, pseudo: e.pseudo as string }));
-  return resolveSessionRoster({ classStudents: classe, groupId, memberIds: membres }).students;
+  return listeDeClasse((eleves.data ?? []) as (LiveStudent & { is_deleted: boolean | null; is_witness: boolean | null })[], groupId, membres);
 }
 
 /** Absences, sorties et retours notés dans la séance. */
