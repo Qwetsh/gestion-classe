@@ -14,12 +14,18 @@ export function AnimatedCorrectionToggle({
   classId,
   className,
   compact = false,
+  libelle,
+  sansExplication = false,
 }: {
   activityId: string;
   classId: string | null;
   className: string | null;
   /** En direct : sans cadre, pour tenir dans l'en-tête. */
   compact?: boolean;
+  /** Texte court affiché à la place du libellé complet (« Correction animée d'Eve »), suivi de « : ouverte / fermée ». */
+  libelle?: string;
+  /** En direct, dans l'en-tête : sans la phrase d'explication. */
+  sansExplication?: boolean;
 }) {
   const { user } = useAuth();
   const { toast } = useUIFeedback();
@@ -57,7 +63,7 @@ export function AnimatedCorrectionToggle({
   };
 
   return (
-    <div style={compact ? wrapCompact : wrap}>
+    <div style={sansExplication ? undefined : compact ? wrapCompact : wrap}>
       <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'default' : 'pointer' }}>
         <button
           type="button"
@@ -71,12 +77,14 @@ export function AnimatedCorrectionToggle({
           <span style={{ ...knob, transform: open ? 'translateX(18px)' : 'translateX(0)' }} />
         </button>
         <span style={{ fontSize: 13, fontWeight: 600, color: classId ? 'var(--text)' : 'var(--text-muted)' }}>
-          {animatedCorrectionLabel(open, classId ? className : null)}
+          {libelle && classId ? `${libelle} : ${open ? 'ouverte' : 'fermée'}` : animatedCorrectionLabel(open, classId ? className : null)}
         </span>
       </label>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginLeft: 50 }}>
-        Les élèves de cette classe la verront en cliquant sur Docteur Morel, dans la salle d’attente de l’hôpital.
-      </div>
+      {!sansExplication && (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginLeft: 50 }}>
+          Les élèves de cette classe la verront en cliquant sur Docteur Morel, dans la salle d’attente de l’hôpital.
+        </div>
+      )}
     </div>
   );
 }
