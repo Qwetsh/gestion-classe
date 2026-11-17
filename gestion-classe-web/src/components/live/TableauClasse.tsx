@@ -44,7 +44,7 @@ export function TableauClasse({ groupes, maintenant, actions }: { groupes: Group
                     <div className="ed-lieu">{envoye ? 'Carnet envoyé' : libelleLieu(d?.lieu)}{d?.mode ? ` · ${libelleMode(d.mode)}` : ''}</div>
                   </td>
                   <td>
-                    {a.cases ? <BandeCases cases={a.cases} fixes /> : <span className="ed-lieu">{a.legende}</span>}
+                    {a.cases ? <BandeCases cases={a.cases} fixes /> : <span className="ed-lieu">{d ? a.legende : 'version du jeu sans suivi en direct'}</span>}
                   </td>
                   <td className="ed-nombre">{d?.examens?.length ?? 0}</td>
                   <td className="ed-nombre">{d?.morel?.length ?? 0}</td>

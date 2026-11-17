@@ -41,7 +41,8 @@ export function VueGroupe({ a, retour, maintenant, messages, actions, fermer }: 
     return () => window.removeEventListener('keydown', surEchap);
   }, [fermer]);
 
-  const etapes = d ? etapesDuGroupe(d, questions, heure) : [];
+  // envoyé : comme sur la carte, le statut de la fiche compte aussi (un carnet rendu puis rouvert reste « envoyé »)
+  const etapes = d ? etapesDuGroupe({ ...d, envoye: !!d.envoye || g.statut !== 'draft' }, questions, heure) : [];
   const { faites, sur } = compteCarnet(questions, d);
   const duGroupe = messagesDuGroupe(messages, g);
 
