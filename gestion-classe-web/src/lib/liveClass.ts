@@ -178,3 +178,24 @@ export function regrouperFiches(works: LiveWork[], filtres: { classeId?: string;
   }
   return [...m.values()].sort((a, b) => Number(aBesoin(b)) - Number(aBesoin(a)) || b.maj - a.maj);
 }
+
+/**
+ * Message à la classe AVEC des points : une ligne live_messages par patient, qui vise par leur id les élèves des
+ * groupes affichés sur ce patient (sans class_id). Une ligne « toute la classe » donnerait les points à tout élève
+ * qui ouvre ce patient, même un autre jour (student_live_points, migration 069). Un élève qui a une fiche sur deux
+ * patients dans la vue n'est visé que sur le plus récent : il prend les points une seule fois.
+ */
+export function ciblesPoints(groupes: Pick<Groupe, 'activityId' | 'eleves' | 'maj'>[]): { activityId: string; eleves: string[] }[] {
+  const dernier = new Map<string, { activityId: string; maj: number }>();
+  for (const g of groupes) {
+    for (const e of g.eleves) {
+      const d = dernier.get(e);
+      if (!d || g.maj > d.maj) dernier.set(e, { activityId: g.activityId, maj: g.maj });
+    }
+  }
+  const parPatient = new Map<string, string[]>();
+  for (const [e, d] of dernier) parPatient.set(d.activityId, [...(parPatient.get(d.activityId) ?? []), e]);
+  return [...parPatient.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([activityId, eleves]) => ({ activityId, eleves: eleves.sort() }));
+}

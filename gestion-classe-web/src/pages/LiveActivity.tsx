@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { hasAnimatedCorrection } from '../lib/animatedCorrection';
 import {
   aBesoin,
+  ciblesPoints,
   construireBandeau,
   elevesAvecFiche,
   patientsEnCours,
@@ -329,11 +330,18 @@ export function LiveActivity() {
             pointsInit={cible.points ?? 0}
             pourTous={!cible.eleves}
             patients={cible.eleves ? [] : cible.activites.map((a) => a.nom)}
+            elevesVises={cible.eleves ? cible.eleves.length : ciblesPoints(groupes).reduce((n, c) => n + c.eleves.length, 0)}
             fermer={() => setCible(null)}
             envoyer={async (texte, style, signe, points) => {
               if (instant) throw new Error("Relecture d'un cours passé : rien n'est envoyé.");
-              // un message à la classe part pour chaque patient affiché ; un groupe, sur son propre patient
-              await Promise.all(cible.activites.map((a) => sendLiveMessage({ activity_id: a.id, class_id: cible.eleves ? null : classeId || null, student_ids: cible.eleves, texte, style, signe, points })));
+              // un groupe : sur son propre patient. La classe : un envoi par patient affiché ; avec des points, à ses
+              // seuls élèves des groupes affichés, une fois chacun (ciblesPoints), sinon à toute la classe.
+              const envois = cible.eleves
+                ? [{ activity_id: cible.activites[0].id, class_id: null, student_ids: cible.eleves }]
+                : points
+                  ? ciblesPoints(groupes).map((c) => ({ activity_id: c.activityId, class_id: null, student_ids: c.eleves }))
+                  : cible.activites.map((a) => ({ activity_id: a.id, class_id: classeId || null, student_ids: null }));
+              await Promise.all(envois.map((e) => sendLiveMessage({ ...e, texte, style, signe, points })));
               setCible(null);
               void chargerEnvoyes();
               void chargerPoints();
@@ -480,12 +488,14 @@ const VALEURS = [-2, -1, -0.5, 0, 0.5, 1, 2];
 const MOTIFS_MALUS = ['Bavardage', 'Tu ne travailles pas', 'Téléphone sorti', 'Comportement inadapté dans le service'];
 const MOTIFS_BONUS = ['Excellent travail, docteur !', 'Belle démarche de médecin', 'Belle entraide dans le service'];
 
-function PanneauMessage({ libelle, pointsInit, pourTous, patients, fermer, envoyer }: {
+function PanneauMessage({ libelle, pointsInit, pourTous, patients, elevesVises, fermer, envoyer }: {
   libelle: string;
   pointsInit: number;
   pourTous: boolean;
   /** Message à la classe : les patients pour lesquels il part (un envoi par patient). */
   patients: string[];
+  /** Élèves qui recevraient les points. */
+  elevesVises: number;
   fermer: () => void;
   envoyer: (texte: string, style: LiveMessageStyle, signe: string, points: number) => Promise<void>;
 }) {
@@ -545,7 +555,9 @@ function PanneauMessage({ libelle, pointsInit, pourTous, patients, fermer, envoy
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px' }}>Envoyé aux joueurs de chaque patient : {patients.join(', ')}.</p>
         )}
         {points !== 0 && pourTous && (
-          <p style={{ fontSize: 12, color: 'var(--warn)', margin: '0 0 8px' }}>Attention : ces points iront à chaque élève de {libelle}.</p>
+          <p style={{ fontSize: 12, color: 'var(--warn)', margin: '0 0 8px' }}>
+            Attention : ces points iront à chacun des {elevesVises} élèves des groupes affichés, une seule fois, dans le carnet de son patient.
+          </p>
         )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           {modeles.map((m) => (

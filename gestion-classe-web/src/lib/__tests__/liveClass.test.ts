@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APRES_FIN_MS, MAX_LIVE_SESSION_MS, choisirSeance, construireBandeau, elevesAvecFiche, listeDeClasse, nomPatient, patientsEnCours, regrouperFiches } from '../liveClass';
+import { APRES_FIN_MS, MAX_LIVE_SESSION_MS, choisirSeance, ciblesPoints, construireBandeau, elevesAvecFiche, listeDeClasse, nomPatient, patientsEnCours, regrouperFiches } from '../liveClass';
 import type { LiveWork } from '../liveQueries';
 
 const t = (hhmm: string, jour = '2026-11-13') => Date.parse(`${jour}T${hhmm}:00+01:00`);
@@ -193,5 +193,33 @@ describe('regrouperFiches : une carte par groupe et par patient', () => {
       ['yves', 'Yves Apabien', 'hopital-yve-apabien'],
     ]);
     expect([...elevesAvecFiche(works)].sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'x']);
+  });
+});
+
+describe('ciblesPoints : des points à toute la classe, une fois par élève', () => {
+  it('vise les élèves de chaque patient par leur id', () => {
+    expect(ciblesPoints([
+      { activityId: 'eve', eleves: ['a', 'b'], maj: 2 },
+      { activityId: 'yves', eleves: ['c', 'd', 'e'], maj: 1 },
+      { activityId: 'eve', eleves: ['f'], maj: 3 },
+    ])).toEqual([
+      { activityId: 'eve', eleves: ['a', 'b', 'f'] },
+      { activityId: 'yves', eleves: ['c', 'd', 'e'] },
+    ]);
+  });
+
+  it("ne vise un élève qui a joué deux patients que sur le plus récent", () => {
+    expect(ciblesPoints([
+      { activityId: 'yves', eleves: ['a', 'b'], maj: 1 },
+      { activityId: 'eve', eleves: ['a', 'b'], maj: 5 },
+      { activityId: 'yves', eleves: ['c'], maj: 2 },
+    ])).toEqual([
+      { activityId: 'eve', eleves: ['a', 'b'] },
+      { activityId: 'yves', eleves: ['c'] },
+    ]);
+  });
+
+  it('sans groupe affiché : aucun envoi', () => {
+    expect(ciblesPoints([])).toEqual([]);
   });
 });
