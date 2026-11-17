@@ -1,13 +1,49 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { AnimatedCorrectionToggle } from '../components/productions/AnimatedCorrectionToggle';
+import { useAuth } from '../hooks/useAuth';
 import { hasAnimatedCorrection } from '../lib/animatedCorrection';
-import { ecrirePoints, fetchActivityPoints, fetchLiveWorks, fetchSentMessages, pointsDe, sendLiveMessage, type LiveMessage, type LiveMessageStyle, type LiveMorel, type LiveWork } from '../lib/liveQueries';
+import {
+  aBesoin,
+  ciblesPoints,
+  construireBandeau,
+  elevesAvecFiche,
+  patientsEnCours,
+  regrouperFiches,
+  type Bandeau,
+  type EvenementLike,
+  type Groupe,
+  type Patient,
+} from '../lib/liveClass';
+import {
+  ecrirePoints,
+  fetchActivitiesPoints,
+  fetchLiveRoster,
+  fetchLiveSession,
+  fetchLiveWorks,
+  fetchPresenceEvents,
+  fetchSentMessages,
+  pointsDe,
+  sendLiveMessage,
+  type LiveMessage,
+  type LiveMessageStyle,
+  type LiveMorel,
+  type LiveSession,
+  type LiveStudent,
+  type LiveWork,
+} from '../lib/liveQueries';
+import { fetchClassesForUser, type ClassInfo } from '../lib/liveSessionQueries';
 
 /**
- * En direct : pendant le cours, depuis le téléphone, où en sont les groupes d'une activité numérique
- * (Hôpital virtuel) : qui est en ligne, où il est, l'avancement du carnet, et les questions posées au
- * Docteur Morel (le bot d'aide). Se met à jour toute seule (lib/liveQueries.ts : le résumé `_direct`).
+ * En direct : pendant le cours, depuis le téléphone, où en sont les groupes de la classe sur les activités
+ * numériques (Hôpital virtuel, un patient par activité) : qui est en ligne, où il est, l'avancement du carnet,
+ * et les questions posées au Docteur Morel (le bot d'aide). Se met à jour toute seule (lib/liveQueries.ts :
+ * le résumé `_direct`).
+ *
+ * La classe est choisie d'office d'après la séance lancée sur le téléphone (lib/liveClass.ts), et un bandeau
+ * dit qui n'est pas encore connecté, qui est absent ou sorti. Tous les patients de la classe tiennent sur la
+ * même grille.
  */
 
 const RAFRAICHIR = 15_000;
@@ -23,18 +59,6 @@ const LIEUX: Record<string, string> = {
 };
 const MODES: Record<string, string> = { direct: 'Accompagné', guide: 'Guidé', autonome: 'Autonome' };
 
-interface Groupe {
-  cle: string;
-  noms: string[];
-  eleves: string[];
-  classId: string | null;
-  classe: string;
-  activite: string;
-  maj: number;
-  statut: string;
-  w: LiveWork;
-}
-
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60_000));
 const heure = (t: number) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -45,21 +69,40 @@ function etat(maj: number, maintenant: number) {
   return { couleur: 'var(--text-dim)', texte: `il y a ${minutes(d)} min` };
 }
 
-// un groupe a sans doute besoin du prof : Morel ne l'a pas compris deux fois de suite, ou le labo vient de refuser
-const aBesoin = (g: Groupe) => (g.w.direct?.morelIncomprises ?? 0) >= 2 || !!g.w.direct?.dernierRefus;
+/**
+ * En développement seulement : `?instant=2026-11-12T14:50` rejoue la page à ce moment-là (séance, fiches),
+ * pour vérifier sur un vrai cours passé. Rien ne part alors vers les élèves.
+ */
+function useInstant(): number | null {
+  const [params] = useSearchParams();
+  if (!import.meta.env.DEV) return null;
+  const t = Date.parse(params.get('instant') ?? '');
+  return Number.isNaN(t) ? null : t;
+}
 
 export function LiveActivity() {
+  const { user } = useAuth();
+  const instant = useInstant();
   const [works, setWorks] = useState<LiveWork[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [maj, setMaj] = useState<number>(0);
-  const [maintenant, setMaintenant] = useState(() => Date.now());
-  const [activite, setActivite] = useState<string>('');
-  const [classe, setClasse] = useState<string>('');
+  const [horloge, setHorloge] = useState(() => Date.now());
+  const maintenant = instant ?? horloge;
+  // la séance du téléphone (undefined : pas encore lue)
+  const [seance, setSeance] = useState<LiveSession | null | undefined>(undefined);
+  // les choix faits à la main, valables pour la séance pendant laquelle ils ont été faits : le cours suivant
+  // (une nouvelle séance) reprend la main. classe : '' = toutes les classes ; patient : '' = tous.
+  const [choix, setChoix] = useState<{ seanceId: string | null; classe?: string; patient?: string }>({ seanceId: null });
+  const [mesClasses, setMesClasses] = useState<ClassInfo[]>([]);
   const [depuis, setDepuis] = useState(120);
-  // à qui écrire : un groupe, ou tous les groupes affichés (null = panneau fermé)
-  const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null; points?: number } | null>(null);
-  const [pointsActivite, setPointsActivite] = useState<LiveMessage[]>([]);
+  // à qui écrire : un groupe (sur son patient), ou toute la classe sur les patients affichés (null = panneau fermé)
+  const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null; points?: number; activites: Patient[] } | null>(null);
+  const [pointsDonnes, setPointsDonnes] = useState<LiveMessage[]>([]);
   const [envoyes, setEnvoyes] = useState<LiveMessage[]>([]);
+  // chargés pour une classe (et un demi-groupe) / une séance donnée : `cle` dit pour laquelle
+  const [rosterLu, setRosterLu] = useState<{ cle: string; eleves: LiveStudent[] } | null>(null);
+  const [evenementsLus, setEvenementsLus] = useState<{ cle: string; evenements: EvenementLike[] } | null>(null);
+
   const chargerEnvoyes = useCallback(async () => {
     try {
       setEnvoyes(await fetchSentMessages(60));
@@ -69,74 +112,116 @@ export function LiveActivity() {
   }, []);
   useEffect(() => { void chargerEnvoyes(); }, [chargerEnvoyes]);
 
+  useEffect(() => {
+    if (!user) return;
+    fetchClassesForUser(user.id).then(setMesClasses).catch(() => { /* la liste se contente des classes des fiches */ });
+  }, [user]);
+
   const charger = useCallback(async () => {
+    const t = instant ?? Date.now();
     try {
-      setWorks(await fetchLiveWorks(depuis));
+      const [w, s] = await Promise.all([
+        fetchLiveWorks(depuis, t),
+        // séance illisible (réseau) : on garde la précédente plutôt que de perdre le choix de la classe
+        user ? fetchLiveSession(user.id, t).catch(() => undefined) : Promise.resolve(null),
+      ]);
+      setWorks(w);
+      if (s !== undefined) setSeance(s);
       setErreur(null);
       setMaj(Date.now());
     } catch (e) {
       setErreur((e as Error).message);
     }
-  }, [depuis]);
+  }, [depuis, instant, user]);
 
   useEffect(() => {
     void charger();
     const id = window.setInterval(() => {
       if (!document.hidden) void charger();
-      setMaintenant(Date.now());
+      setHorloge(Date.now());
     }, RAFRAICHIR);
     return () => window.clearInterval(id);
   }, [charger]);
 
-  const activites = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const w of works) m.set(w.activity_id, w.activities?.title ?? 'Activité');
-    return [...m.entries()];
-  }, [works]);
-  const actif = activite || activites[0]?.[0] || '';
-  const cleActive = useMemo(() => works.find((w) => w.activity_id === actif)?.activities?.key ?? '', [works, actif]);
+  const seanceId = seance?.id ?? null;
+  const choixValide = choix.seanceId === seanceId ? choix : { seanceId };
+  const classeId = choixValide.classe ?? seance?.class_id ?? '';
+  const patient = choixValide.patient ?? '';
+  const choisirClasse = (classe: string) => setChoix({ seanceId, classe });
+  const choisirPatient = (p: string) => setChoix({ ...choixValide, patient: p });
+  const seanceDeLaClasse = seance && seance.class_id === classeId ? seance : null;
 
-  // les points donnés dans cette activité : le total de chaque groupe, rechargé avec la page
+  const classes = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of mesClasses) m.set(c.id, c.name);
+    for (const w of works) if (w.class_id) m.set(w.class_id, w.classes?.name ?? m.get(w.class_id) ?? '—');
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr', { numeric: true }));
+  }, [mesClasses, works]);
+  const nomClasse = classes.find(([id]) => id === classeId)?.[1] ?? '';
+
+  // les fiches de la classe choisie, tous patients confondus
+  const worksClasse = useMemo(() => (classeId ? works.filter((w) => w.class_id === classeId) : works), [works, classeId]);
+
+  // les patients en cours dans la classe : filtre, bascules de correction, message à la classe
+  const activites = useMemo(() => patientsEnCours(worksClasse), [worksClasse]);
+  const filtre = activites.some((a) => a.id === patient) ? patient : '';
+  const activitesAffichees = filtre ? activites.filter((a) => a.id === filtre) : activites;
+
+  // une carte par groupe et par patient
+  const groupes = useMemo(() => regrouperFiches(worksClasse, { patient: filtre }), [worksClasse, filtre]);
+
+  // les points donnés sur ces patients : le total de chaque groupe, rechargé avec la page
+  const idsActivites = useMemo(() => [...new Set(groupes.map((g) => g.activityId))].sort().join(','), [groupes]);
   const chargerPoints = useCallback(async () => {
-    if (!actif) return;
     try {
-      setPointsActivite(await fetchActivityPoints(actif));
+      setPointsDonnes(await fetchActivitiesPoints(idsActivites ? idsActivites.split(',') : []));
     } catch {
       /* colonne absente ou réseau */
     }
-  }, [actif]);
+  }, [idsActivites]);
   useEffect(() => { void chargerPoints(); }, [chargerPoints, maj]);
 
-  const classes = useMemo(
-    () => [...new Set(works.filter((w) => w.activity_id === actif).map((w) => w.classes?.name ?? '—'))].sort(),
-    [works, actif],
+  // le bandeau : la liste de la classe (ou du demi-groupe de la séance) et les absences de la séance
+  const groupeSeance = seanceDeLaClasse?.group_id ?? null;
+  const cleRoster = classeId ? `${classeId}:${groupeSeance ?? ''}` : '';
+  useEffect(() => {
+    if (!classeId) return;
+    let annule = false;
+    fetchLiveRoster(classeId, groupeSeance)
+      .then((eleves) => { if (!annule) setRosterLu({ cle: `${classeId}:${groupeSeance ?? ''}`, eleves }); })
+      .catch(() => { /* réseau : pas de bandeau */ });
+    return () => { annule = true; };
+  }, [classeId, groupeSeance]);
+  const roster = cleRoster && rosterLu?.cle === cleRoster ? rosterLu.eleves : null;
+
+  // relus à chaque mise à jour : le prof note les absences pendant le cours
+  const seanceEvenements = seanceDeLaClasse?.id ?? null;
+  useEffect(() => {
+    if (!seanceEvenements) return;
+    let annule = false;
+    fetchPresenceEvents(seanceEvenements)
+      .then((evenements) => { if (!annule) setEvenementsLus({ cle: seanceEvenements, evenements }); })
+      .catch(() => { /* réseau : pas d'absents affichés */ });
+    return () => { annule = true; };
+  }, [seanceEvenements, maj]);
+  const evenements = useMemo(
+    () => (seanceEvenements && evenementsLus?.cle === seanceEvenements ? evenementsLus.evenements : []),
+    [seanceEvenements, evenementsLus],
   );
 
-  // une carte par groupe (binôme, trio : une fiche par élève, même group_key)
-  const groupes = useMemo(() => {
-    const m = new Map<string, Groupe>();
-    for (const w of works) {
-      if (w.activity_id !== actif) continue;
-      const cl = w.classes?.name ?? '—';
-      if (classe && cl !== classe) continue;
-      const cle = w.group_key ?? w.id;
-      const t = Math.max(Date.parse(w.updated_at), w.direct?.t ?? 0);
-      const g = m.get(cle);
-      const noms = w.direct?.equipe?.length ? w.direct.equipe : w.group_pseudos?.length ? w.group_pseudos : [w.students?.pseudo ?? '?'];
-      const eleves = [...new Set([...(g?.eleves ?? []), w.student_id])];
-      if (!g || t > g.maj) m.set(cle, { cle, noms, eleves, classId: w.class_id, classe: cl, activite: w.activities?.title ?? '', maj: t, statut: w.status, w });
-      else g.eleves = eleves;
-    }
-    return [...m.values()].sort((a, b) => Number(aBesoin(b)) - Number(aBesoin(a)) || b.maj - a.maj);
-  }, [works, actif, classe]);
+  const bandeau = useMemo(
+    () => (roster ? construireBandeau(roster, elevesAvecFiche(worksClasse), evenements) : null),
+    [roster, worksClasse, evenements],
+  );
 
   const enLigne = groupes.filter((g) => maintenant - g.maj < EN_LIGNE).length;
-  const classeId = classe ? groupes.find((g) => g.classe === classe)?.classId ?? null : null;
   const carnetsEnvoyes = groupes.filter((g) => g.w.direct?.envoye || g.statut !== 'draft').length;
+  const plusieursPatients = new Set(groupes.map((g) => g.activityId)).size > 1;
   const questions = groupes
-    .flatMap((g) => (g.w.direct?.morel ?? []).map((m) => ({ ...m, noms: g.noms })))
+    .flatMap((g) => (g.w.direct?.morel ?? []).map((m) => ({ ...m, noms: g.noms, patient: g.patient })))
     .sort((a, b) => b.t - a.t);
   const pasComprises = questions.filter((q) => !q.compris).length;
+  const correctionsAnimees = activitesAffichees.filter((a) => hasAnimatedCorrection(a.key));
 
   return (
     <Layout>
@@ -147,21 +232,30 @@ export function LiveActivity() {
             {maj ? `mis à jour à ${heure(maj)}, toutes les 15 s` : 'chargement…'}
           </span>
           <button onClick={() => void charger()} style={bouton}>Actualiser</button>
-          {actif && (
-            <button onClick={() => setCible({ libelle: classe ? `toute la ${classe}` : 'tous les groupes', eleves: null })} style={{ ...bouton, fontWeight: 600 }}>
-              ✉ Message à {classe ? `la ${classe}` : 'tous'}
+          {activitesAffichees.length > 0 && (
+            <button
+              onClick={() => setCible({ libelle: nomClasse ? `toute la ${nomClasse}` : 'tous les groupes', eleves: null, activites: activitesAffichees })}
+              style={{ ...bouton, fontWeight: 600 }}
+            >
+              ✉ Message à {nomClasse ? `la ${nomClasse}` : 'tous'}
             </button>
           )}
         </header>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-          <select value={actif} onChange={(e) => { setActivite(e.target.value); setClasse(''); }} style={champ} aria-label="Activité">
-            {activites.length === 0 && <option value="">Aucune activité en cours</option>}
-            {activites.map(([id, titre]) => <option key={id} value={id}>{titre}</option>)}
-          </select>
-          <select value={classe} onChange={(e) => setClasse(e.target.value)} style={champ} aria-label="Classe">
+        {instant && (
+          <p style={{ ...encart, background: 'var(--warn-soft)', color: 'var(--warn)', margin: '0 0 10px' }}>
+            Relecture au {new Date(instant).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} (développement) : rien n'est envoyé aux élèves.
+          </p>
+        )}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+          <select value={classeId} onChange={(e) => choisirClasse(e.target.value)} style={champ} aria-label="Classe">
             <option value="">Toutes les classes</option>
-            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+            {classes.map(([id, nom]) => <option key={id} value={id}>{nom}</option>)}
+          </select>
+          <select value={filtre} onChange={(e) => choisirPatient(e.target.value)} style={champ} aria-label="Patient">
+            <option value="">{activites.length === 0 ? 'Aucun patient en cours' : 'Tous les patients'}</option>
+            {activites.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
           </select>
           <select value={depuis} onChange={(e) => setDepuis(Number(e.target.value))} style={champ} aria-label="Période">
             <option value={60}>Dernière heure</option>
@@ -169,10 +263,22 @@ export function LiveActivity() {
             <option value={480}>Aujourd'hui</option>
           </select>
         </div>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px' }}>
+          {seance
+            ? seanceDeLaClasse
+              ? `Classe de la séance démarrée à ${heure(Date.parse(seance.started_at))} sur le téléphone${seance.group_id ? ' (demi-groupe)' : ''}.`
+              : `Séance en cours sur le téléphone : ${classes.find(([id]) => id === seance.class_id)?.[1] ?? 'une autre classe'}, démarrée à ${heure(Date.parse(seance.started_at))}.`
+            : seance === null
+              ? 'Pas de séance en cours sur le téléphone : choisis la classe.'
+              : ''}
+        </p>
 
-        {actif && hasAnimatedCorrection(cleActive) && (
-          <AnimatedCorrectionToggle activityId={actif} classId={classeId} className={classe || null} compact />
-        )}
+        {correctionsAnimees.map((a) => (
+          <div key={a.id} style={{ marginBottom: 6 }}>
+            {correctionsAnimees.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{a.nom}</div>}
+            <AnimatedCorrectionToggle activityId={a.id} classId={classeId || null} className={nomClasse || null} compact />
+          </div>
+        ))}
 
         {erreur && <p style={{ color: 'var(--neg)' }}>{erreur}</p>}
 
@@ -182,6 +288,8 @@ export function LiveActivity() {
           <Chiffre valeur={String(questions.length)} libelle="questions à Morel" />
           <Chiffre valeur={String(pasComprises)} libelle="pas comprises" alerte={pasComprises > 0} />
         </div>
+
+        {bandeau && <BandeauClasse b={bandeau} total={roster?.length ?? 0} />}
 
         {groupes.length === 0 && !erreur && (
           <p style={{ color: 'var(--text-muted)' }}>
@@ -195,8 +303,8 @@ export function LiveActivity() {
               key={g.cle}
               g={g}
               maintenant={maintenant}
-              points={pointsDe(pointsActivite, g.eleves, g.classId)}
-              ecrire={(points) => setCible({ libelle: g.noms.join(', '), eleves: g.eleves, points })}
+              points={pointsDe(pointsDonnes.filter((p) => p.activity_id === g.activityId), g.eleves, g.classId)}
+              ecrire={(points) => setCible({ libelle: g.noms.join(', '), eleves: g.eleves, points, activites: [{ id: g.activityId, key: g.w.activities?.key ?? '', nom: g.patient }] })}
             />
           ))}
         </div>
@@ -216,14 +324,24 @@ export function LiveActivity() {
           </section>
         )}
 
-        {cible && actif && (
+        {cible && (
           <PanneauMessage
             libelle={cible.libelle}
             pointsInit={cible.points ?? 0}
             pourTous={!cible.eleves}
+            patients={cible.eleves ? [] : cible.activites.map((a) => a.nom)}
+            elevesVises={cible.eleves ? cible.eleves.length : ciblesPoints(groupes).reduce((n, c) => n + c.eleves.length, 0)}
             fermer={() => setCible(null)}
             envoyer={async (texte, style, signe, points) => {
-              await sendLiveMessage({ activity_id: actif, class_id: cible.eleves ? null : classeId, student_ids: cible.eleves, texte, style, signe, points });
+              if (instant) throw new Error("Relecture d'un cours passé : rien n'est envoyé.");
+              // un groupe : sur son propre patient. La classe : un envoi par patient affiché ; avec des points, à ses
+              // seuls élèves des groupes affichés, une fois chacun (ciblesPoints), sinon à toute la classe.
+              const envois = cible.eleves
+                ? [{ activity_id: cible.activites[0].id, class_id: null, student_ids: cible.eleves }]
+                : points
+                  ? ciblesPoints(groupes).map((c) => ({ activity_id: c.activityId, class_id: null, student_ids: c.eleves }))
+                  : cible.activites.map((a) => ({ activity_id: a.id, class_id: classeId || null, student_ids: null }));
+              await Promise.all(envois.map((e) => sendLiveMessage({ ...e, texte, style, signe, points })));
               setCible(null);
               void chargerEnvoyes();
               void chargerPoints();
@@ -239,7 +357,8 @@ export function LiveActivity() {
                 <li key={i} style={{ ...ligne, background: q.compris ? 'var(--surface)' : 'var(--neg-soft)' }}>
                   <span style={{ color: 'var(--text-dim)', fontSize: 12, minWidth: 40 }}>{heure(q.t)}</span>
                   <span style={{ flex: 1 }}>
-                    <strong style={{ fontSize: 13 }}>{q.noms.join(', ')}</strong> — {q.q}
+                    <strong style={{ fontSize: 13 }}>{q.noms.join(', ')}</strong>
+                    {plusieursPatients && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> ({q.patient})</span>} — {q.q}
                   </span>
                   <Etiquette m={q} />
                 </li>
@@ -251,6 +370,27 @@ export function LiveActivity() {
     </Layout>
   );
 }
+
+const prenoms = (eleves: { pseudo: string }[]) => eleves.map((e) => e.pseudo).join(', ');
+
+function BandeauClasse({ b, total }: { b: Bandeau<LiveStudent>; total: number }) {
+  const rien = b.pasConnectes.length === 0 && b.absents.length === 0 && b.sortis.length === 0;
+  return (
+    <section aria-label="Élèves de la classe" style={{ ...carte, display: 'grid', gap: 4, marginBottom: 12, fontSize: 14, borderColor: b.pasConnectes.length ? 'var(--warn)' : 'var(--border)' }}>
+      {rien && <span style={{ color: 'var(--pos)' }}>Les {total} élèves sont connectés.</span>}
+      {b.pasConnectes.length > 0 && (
+        <span><strong style={{ color: 'var(--warn)' }}>Pas encore connectés ({b.pasConnectes.length}) :</strong> {prenoms(b.pasConnectes)}</span>
+      )}
+      {b.absents.length > 0 && (
+        <span><strong style={{ color: 'var(--text-muted)' }}>Absents ({b.absents.length}) :</strong> {prenoms(b.absents)}</span>
+      )}
+      {b.sortis.length > 0 && (
+        <span><strong style={{ color: 'var(--text-muted)' }}>Sortis :</strong> {b.sortis.map((s) => `${s.eleve.pseudo} (${s.motif}, ${heure(s.depuis)})`).join(', ')}</span>
+      )}
+    </section>
+  );
+}
+
 
 function CarteGroupe({ g, maintenant, points, ecrire }: { g: Groupe; maintenant: number; points: number; ecrire: (points?: number) => void }) {
   const d = g.w.direct;
@@ -274,7 +414,7 @@ function CarteGroupe({ g, maintenant, points, ecrire }: { g: Groupe; maintenant:
       {d ? (
         <>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', margin: '6px 0' }}>
-            {d.patient} · <strong style={{ color: 'var(--text)' }}>{LIEUX[d.lieu ?? ''] ?? d.lieu ?? '—'}</strong>
+            <strong style={{ color: 'var(--indigo-ink)' }}>{g.patient}</strong> · <strong style={{ color: 'var(--text)' }}>{LIEUX[d.lieu ?? ''] ?? d.lieu ?? '—'}</strong>
             {d.mode ? ` · ${MODES[d.mode] ?? d.mode}` : ''}
           </div>
           {avance !== null && (
@@ -313,7 +453,7 @@ function CarteGroupe({ g, maintenant, points, ecrire }: { g: Groupe; maintenant:
         </>
       ) : (
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-          Fiche {g.statut === 'draft' ? 'en cours' : 'envoyée'} (version du jeu sans suivi en direct).
+          <strong style={{ color: 'var(--indigo-ink)' }}>{g.patient}</strong> · Fiche {g.statut === 'draft' ? 'en cours' : 'envoyée'} (version du jeu sans suivi en direct).
         </div>
       )}
     </article>
@@ -348,10 +488,14 @@ const VALEURS = [-2, -1, -0.5, 0, 0.5, 1, 2];
 const MOTIFS_MALUS = ['Bavardage', 'Tu ne travailles pas', 'Téléphone sorti', 'Comportement inadapté dans le service'];
 const MOTIFS_BONUS = ['Excellent travail, docteur !', 'Belle démarche de médecin', 'Belle entraide dans le service'];
 
-function PanneauMessage({ libelle, pointsInit, pourTous, fermer, envoyer }: {
+function PanneauMessage({ libelle, pointsInit, pourTous, patients, elevesVises, fermer, envoyer }: {
   libelle: string;
   pointsInit: number;
   pourTous: boolean;
+  /** Message à la classe : les patients pour lesquels il part (un envoi par patient). */
+  patients: string[];
+  /** Élèves qui recevraient les points. */
+  elevesVises: number;
   fermer: () => void;
   envoyer: (texte: string, style: LiveMessageStyle, signe: string, points: number) => Promise<void>;
 }) {
@@ -407,8 +551,13 @@ function PanneauMessage({ libelle, pointsInit, pourTous, fermer, envoyer }: {
             </button>
           ))}
         </div>
+        {pourTous && patients.length > 1 && (
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px' }}>Envoyé aux joueurs de chaque patient : {patients.join(', ')}.</p>
+        )}
         {points !== 0 && pourTous && (
-          <p style={{ fontSize: 12, color: 'var(--warn)', margin: '0 0 8px' }}>Attention : ces points iront à chaque élève de {libelle}.</p>
+          <p style={{ fontSize: 12, color: 'var(--warn)', margin: '0 0 8px' }}>
+            Attention : ces points iront à chacun des {elevesVises} élèves des groupes affichés, une seule fois, dans le carnet de son patient.
+          </p>
         )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           {modeles.map((m) => (

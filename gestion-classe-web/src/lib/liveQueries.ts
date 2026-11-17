@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { fetchMemberIds } from './classGroupQueries';
+import { MAX_LIVE_SESSION_MS, choisirSeance, listeDeClasse, type EvenementLike } from './liveClass';
 
 /**
  * Suivi en direct d'une activité numérique (Hôpital virtuel) pendant le cours.
@@ -43,18 +45,67 @@ export interface LiveWork {
   direct: LiveSummary | null;
 }
 
-/** Les fiches modifiées depuis `depuisMinutes`, avec leur résumé en direct. */
-export async function fetchLiveWorks(depuisMinutes: number): Promise<LiveWork[]> {
-  const depuis = new Date(Date.now() - depuisMinutes * 60_000).toISOString();
+/** Les fiches modifiées dans les `depuisMinutes` qui précèdent `maintenant`, avec leur résumé en direct. */
+export async function fetchLiveWorks(depuisMinutes: number, maintenant = Date.now()): Promise<LiveWork[]> {
+  const depuis = new Date(maintenant - depuisMinutes * 60_000).toISOString();
   const { data, error } = await supabase
     .from('student_works')
     .select('id,activity_id,student_id,class_id,group_key,group_pseudos,status,updated_at,classes(name),activities(title,key),students(pseudo),direct:content->_direct')
     .eq('is_deleted', false)
     .gte('updated_at', depuis)
+    .lte('updated_at', new Date(maintenant).toISOString())
     .order('updated_at', { ascending: false })
     .limit(300);
   if (error) throw error;
   return (data ?? []) as unknown as LiveWork[];
+}
+
+/** La séance du téléphone qui correspond au cours en cours (voir choisirSeance), ou null. */
+export interface LiveSession {
+  id: string;
+  class_id: string;
+  group_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+}
+
+export async function fetchLiveSession(userId: string, maintenant = Date.now()): Promise<LiveSession | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('id,class_id,group_id,started_at,ended_at')
+    .eq('user_id', userId)
+    .lte('started_at', new Date(maintenant).toISOString())
+    .gte('started_at', new Date(maintenant - MAX_LIVE_SESSION_MS).toISOString())
+    .order('started_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return choisirSeance((data ?? []) as LiveSession[], maintenant);
+}
+
+export interface LiveStudent {
+  id: string;
+  pseudo: string;
+}
+
+/** Les élèves de la classe (sans les élèves supprimés ni les témoins), ou du seul demi-groupe de la séance. */
+export async function fetchLiveRoster(classId: string, groupId: string | null): Promise<LiveStudent[]> {
+  const [eleves, membres] = await Promise.all([
+    supabase.from('students').select('id,pseudo,is_deleted,is_witness').eq('class_id', classId).order('pseudo'),
+    groupId ? fetchMemberIds(groupId) : Promise.resolve(null),
+  ]);
+  if (eleves.error) throw eleves.error;
+  return listeDeClasse((eleves.data ?? []) as (LiveStudent & { is_deleted: boolean | null; is_witness: boolean | null })[], groupId, membres);
+}
+
+/** Absences, sorties et retours notés dans la séance. */
+export async function fetchPresenceEvents(sessionId: string): Promise<EvenementLike[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('student_id,type,subtype,timestamp')
+    .eq('session_id', sessionId)
+    .in('type', ['absence', 'sortie', 'retour']);
+  if (error) throw error;
+  return (data ?? []) as EvenementLike[];
 }
 
 /**
@@ -101,12 +152,13 @@ export async function fetchSentMessages(depuisMinutes = 60): Promise<LiveMessage
   return (data ?? []) as LiveMessage[];
 }
 
-/** Tous les points donnés pour une activité (sans limite de durée) : le total de chaque groupe. */
-export async function fetchActivityPoints(activityId: string): Promise<LiveMessage[]> {
+/** Tous les points donnés pour ces activités (sans limite de durée) : le total de chaque groupe. */
+export async function fetchActivitiesPoints(activityIds: string[]): Promise<LiveMessage[]> {
+  if (activityIds.length === 0) return [];
   const { data, error } = await supabase
     .from('live_messages')
     .select('id,activity_id,class_id,student_ids,texte,style,signe,points,created_at')
-    .eq('activity_id', activityId)
+    .in('activity_id', activityIds)
     .not('points', 'is', null)
     .order('created_at', { ascending: true });
   if (error) throw error;
