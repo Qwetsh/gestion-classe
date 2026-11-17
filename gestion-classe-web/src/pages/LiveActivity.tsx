@@ -23,7 +23,10 @@ import {
 import {
   ciblesPoints,
   construireBandeau,
+  debutDuCours,
   elevesAvecFiche,
+  fichesAffichees,
+  MARGE_DEBUT_COURS_MS,
   patientsEnCours,
   regrouperFiches,
   type Bandeau,
@@ -87,6 +90,18 @@ function useEcranLarge(): boolean {
 
 const prenom = (patient: string) => patient.split(' ')[0] || patient;
 
+/**
+ * Début de la période affichée (ms). « Ce cours » : la sonnerie de l'heure en cours + 2 min, ou les 2 dernières heures
+ * avant la première heure du jour. Sinon, les n dernières minutes.
+ */
+function seuilDeLaPeriode(periode: 'cours' | number, maintenant: number): number {
+  if (periode === 'cours') {
+    const debut = debutDuCours(maintenant);
+    return debut != null ? debut + MARGE_DEBUT_COURS_MS : maintenant - 120 * 60_000;
+  }
+  return maintenant - periode * 60_000;
+}
+
 export function LiveActivity() {
   const { user } = useAuth();
   const instant = useInstant();
@@ -104,7 +119,8 @@ export function LiveActivity() {
   const [choix, setChoix] = useState<{ seanceId: string | null; classe?: string; patient?: string }>({ seanceId: null });
   const [changer, setChanger] = useState(false);
   const [mesClasses, setMesClasses] = useState<ClassInfo[]>([]);
-  const [depuis, setDepuis] = useState(120);
+  // 'cours' : depuis le début de l'heure de cours (+ 2 min) ; sinon un nombre de minutes
+  const [periode, setPeriode] = useState<'cours' | number>('cours');
   // à qui écrire : un groupe (sur son patient), ou toute la classe sur les patients affichés (null = panneau fermé)
   const [cible, setCible] = useState<{ libelle: string; eleves: string[] | null; points?: number; activites: Patient[] } | null>(null);
   const [pointsDonnes, setPointsDonnes] = useState<LiveMessage[]>([]);
@@ -131,9 +147,10 @@ export function LiveActivity() {
 
   const charger = useCallback(async () => {
     const t = instant ?? Date.now();
+    const seuil = seuilDeLaPeriode(periode, t);
     try {
       const [w, s] = await Promise.all([
-        fetchLiveWorks(depuis, t),
+        fetchLiveWorks(Math.max(0, Math.ceil((t - seuil) / 60_000)), t),
         // séance illisible (réseau) : on garde la précédente plutôt que de perdre le choix de la classe
         user ? fetchLiveSession(user.id, t).catch(() => undefined) : Promise.resolve(null),
       ]);
@@ -144,7 +161,7 @@ export function LiveActivity() {
     } catch (e) {
       setErreur((e as Error).message);
     }
-  }, [depuis, instant, user]);
+  }, [periode, instant, user]);
 
   useEffect(() => {
     void charger();
@@ -171,8 +188,27 @@ export function LiveActivity() {
   }, [mesClasses, works]);
   const nomClasse = classes.find(([id]) => id === classeId)?.[1] ?? '';
 
-  // les fiches de la classe choisie, tous patients confondus
-  const worksClasse = useMemo(() => (classeId ? works.filter((w) => w.class_id === classeId) : works), [works, classeId]);
+  // la liste de la classe, ou du demi-groupe de la séance : le bandeau, et le filtre des cartes par membres
+  const groupeSeance = seanceDeLaClasse?.group_id ?? null;
+  const cleRoster = classeId ? `${classeId}:${groupeSeance ?? ''}` : '';
+  useEffect(() => {
+    if (!classeId) return;
+    let annule = false;
+    fetchLiveRoster(classeId, groupeSeance)
+      .then((eleves) => { if (!annule) setRosterLu({ cle: `${classeId}:${groupeSeance ?? ''}`, eleves }); })
+      .catch(() => { /* réseau : pas de bandeau */ });
+    return () => { annule = true; };
+  }, [classeId, groupeSeance]);
+  const roster = cleRoster && rosterLu?.cle === cleRoster ? rosterLu.eleves : null;
+
+  // les fiches de la classe choisie, tous patients confondus, de la période (« Ce cours » : depuis la sonnerie + 2 min).
+  // Séance d'un demi-groupe : seulement les groupes où il y a au moins un de ses membres (liste pas encore lue : tous).
+  const seuil = seuilDeLaPeriode(periode, maintenant);
+  const membres = useMemo(() => (groupeSeance && roster ? new Set(roster.map((e) => e.id)) : null), [groupeSeance, roster]);
+  const worksClasse = useMemo(
+    () => fichesAffichees(classeId ? works.filter((w) => w.class_id === classeId) : works, { depuis: seuil, membres }),
+    [works, classeId, seuil, membres],
+  );
 
   // les patients en cours dans la classe : filtre, bascules de correction, message à la classe
   const activites = useMemo(() => patientsEnCours(worksClasse), [worksClasse]);
@@ -224,18 +260,6 @@ export function LiveActivity() {
   const aVoir = affiches.filter((a) => a.raison);
   const autres = affiches.filter((a) => !a.raison);
 
-  // le bandeau : la liste de la classe (ou du demi-groupe de la séance) et les absences de la séance
-  const groupeSeance = seanceDeLaClasse?.group_id ?? null;
-  const cleRoster = classeId ? `${classeId}:${groupeSeance ?? ''}` : '';
-  useEffect(() => {
-    if (!classeId) return;
-    let annule = false;
-    fetchLiveRoster(classeId, groupeSeance)
-      .then((eleves) => { if (!annule) setRosterLu({ cle: `${classeId}:${groupeSeance ?? ''}`, eleves }); })
-      .catch(() => { /* réseau : pas de bandeau */ });
-    return () => { annule = true; };
-  }, [classeId, groupeSeance]);
-  const roster = cleRoster && rosterLu?.cle === cleRoster ? rosterLu.eleves : null;
 
   // relus à chaque mise à jour : le prof note les absences pendant le cours
   const seanceEvenements = seanceDeLaClasse?.id ?? null;
@@ -323,13 +347,15 @@ export function LiveActivity() {
     </div>
   );
 
+  const debutCours = debutDuCours(maintenant);
   const reglages = changer && (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
       <select className="ed-champ" value={classeId} onChange={(e) => choisirClasse(e.target.value)} aria-label="Classe">
         <option value="">Toutes les classes</option>
         {classes.map(([id, nom]) => <option key={id} value={id}>{nom}</option>)}
       </select>
-      <select className="ed-champ" value={depuis} onChange={(e) => setDepuis(Number(e.target.value))} aria-label="Période">
+      <select className="ed-champ" value={String(periode)} onChange={(e) => setPeriode(e.target.value === 'cours' ? 'cours' : Number(e.target.value))} aria-label="Période">
+        <option value="cours">{debutCours ? `Ce cours (depuis ${heure(debutCours).replace(':', ' h ')})` : 'Ce cours (2 dernières heures)'}</option>
         <option value={60}>Dernière heure</option>
         <option value={120}>2 dernières heures</option>
         <option value={480}>Aujourd'hui</option>
