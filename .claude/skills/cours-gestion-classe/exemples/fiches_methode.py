@@ -33,10 +33,26 @@ def riche(texte, **k):
     return out
 
 
+# Interlignes de la charte (1,35 dans les listes, 1,25 dans les tableaux, 1,4 pour le chapô) :
+# ceux de l'éditeur les plus proches. L'interligne par défaut de l'éditeur (1,45) fait déborder
+# les fiches longues sur une deuxième page.
+LISTE, TABLEAU = '1.38', '1.2'
+
+
+def liste(type_, lignes):
+    item = 'taskItem' if type_ == 'taskList' else 'listItem'
+    def li(l):
+        n = {'type': item, 'content': [P(*riche(l), interligne=TABLEAU, apres=0)]}
+        if item == 'taskItem':
+            n['attrs'] = {'checked': False}
+        return n
+    return {'type': type_, 'content': [li(l) for l in lignes]}
+
+
 class Fiche:
     def __init__(self):
         self.blocs = []
-        self.numero = self.titre = None
+        self.numero = self.titre = self.pied = None
 
 
 # ---- fausse charte : mêmes noms que _outils/charte.py ----
@@ -52,25 +68,25 @@ def titre_document(d, surtitre, titre, numero=None):
     d.numero, d.titre = numero, titre
     larg = largeurs(2.2, 15.2)
     d.blocs.append(Tableau(Ligne(
-        Cellule([P(T(numero, gras=True, couleur=BLANC, taille=22), align='center', apres=0)], [larg[0]], fond=VERT, milieu=True),
-        Cellule([P(T(surtitre.upper(), gras=True, couleur=SURTITRE, taille=8), apres=0),
-                 P(T(titre, gras=True, couleur=BLANC, taille=17), apres=0)], [larg[1]], fond=VERT, milieu=True),
+        Cellule([P(T(numero, gras=True, couleur=BLANC, taille=22), align='center', interligne=TABLEAU, apres=0)], [larg[0]], fond=VERT, milieu=True),
+        Cellule([P(T(surtitre.upper(), gras=True, couleur=SURTITRE, taille=8), interligne=TABLEAU, apres=2),
+                 P(T(titre, gras=True, couleur=BLANC, taille=17), interligne=TABLEAU, apres=0)], [larg[1]], fond=VERT, milieu=True),
     ), style='none'))
 
 
 def chapo(d, texte):
-    d.blocs.append(P(*riche(texte, couleur=GRIS_TXT), interligne='1.38', avant=6, apres=8))
+    d.blocs.append(P(*riche(texte, couleur=GRIS_TXT), interligne=TABLEAU, avant=0, apres=2))
 
 
 def rubrique(d, texte):
-    d.blocs.append(Encadre(P(T(texte.upper(), gras=True, couleur=VERT, taille=9), apres=0),
+    d.blocs.append(Encadre(P(T(texte.upper(), gras=True, couleur=VERT, taille=9), interligne=TABLEAU, apres=0),
                            type_='libre', titre='', couleur=VERT, bordure='bar'))
 
 
 def etapes(d, liste):
     larg = largeurs(1.0, 16.4)
-    lignes = [Ligne(Cellule([P(T(str(i), gras=True, couleur=VERT), align='center', apres=0)], [larg[0]], fond=VERT_CLAIR, milieu=True),
-                    Cellule([P(*riche(e), apres=0)], [larg[1]], milieu=True))
+    lignes = [Ligne(Cellule([P(T(str(i), gras=True, couleur=VERT), align='center', interligne=TABLEAU, apres=0)], [larg[0]], fond=VERT_CLAIR, milieu=True),
+                    Cellule([P(*riche(e), interligne=TABLEAU, apres=0)], [larg[1]], milieu=True))
               for i, e in enumerate(liste, start=1)]
     d.blocs.append(Tableau(*lignes, style='none'))
 
@@ -80,15 +96,15 @@ def tableau(d, entetes, lignes, cm):
     rows = [Ligne(*[Cellule([P(T(h, gras=True, couleur=VERT, taille=9.5), apres=0)], [larg[j]], fond=VERT_CLAIR, entete=True)
                     for j, h in enumerate(entetes)])]
     for l in lignes:
-        rows.append(Ligne(*[Cellule([P(*riche(v, taille=9.5), apres=0)], [larg[j]]) for j, v in enumerate(l)]))
+        rows.append(Ligne(*[Cellule([P(*riche(v, taille=9.5), interligne=TABLEAU, apres=0)], [larg[j]]) for j, v in enumerate(l)]))
     d.blocs.append(Tableau(*rows, style='grid'))
 
 
 def liste_puces(d, lignes, puce='—', fond=None):
     if puce is None:
-        contenu = [P(*riche(l), apres=4) for l in lignes]
+        contenu = [P(*riche(l), interligne=LISTE, apres=4) for l in lignes]
     else:
-        contenu = [Puces(*[riche(l) for l in lignes], serre=True)]
+        contenu = [liste('bulletList', lignes)]
     if fond:
         d.blocs.append(Encadre(*contenu, type_='libre', titre='', couleur=VERT, bordure='plain'))
     else:
@@ -96,7 +112,7 @@ def liste_puces(d, lignes, puce='—', fond=None):
 
 
 def cases(d, lignes):
-    d.blocs.append(Cases(*[riche(l) for l in lignes]))
+    d.blocs.append(liste('taskList', lignes))
 
 
 def para(d, texte, size=None, color=None, after=None):
@@ -105,8 +121,8 @@ def para(d, texte, size=None, color=None, after=None):
 
 
 def pied(d, texte):
-    d.blocs.append(Trait())
-    d.blocs.append(P(T(texte, couleur=GRIS_MOYEN, taille=8), apres=0))
+    # Pied de page de l'éditeur, pas un paragraphe : il ne prend pas de place dans la fiche
+    d.pied = texte
 
 
 def espace(d, pt=6):
@@ -130,6 +146,9 @@ spec.loader.exec_module(src)
 for i, fm in enumerate((src.fm1, src.fm2, src.fm3, src.fm4, src.fm5, src.fm6, src.fm7, src.fm8, src.fm9), start=1):
     d, fichier = fm()
     c = Cours(f'FM{i} — {d.titre}', niveau=None, chapitre=None, police='Verdana', taille=10,
-              theme='sobre', premiere_page_vide=True)
+              theme='sobre', premiere_page_vide=False, pied={'left': d.pied})
     c.ajouter(*d.blocs)
+    # Dernier paragraphe, vide et bas : sans lui, l'éditeur en ajoute un à l'interligne normal après
+    # la liste finale, qui passerait seul sur une deuxième page
+    c.ajouter(P(interligne='1.2', apres=0))
     c.ecrire(f'{OUT}/fm{i}.json')
