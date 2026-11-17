@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { fetchMemberIds } from './classGroupQueries';
+import { questionsDuCarnet, type QuestionCarnet } from './liveCarnet';
 import { MAX_LIVE_SESSION_MS, choisirSeance, listeDeClasse, type EvenementLike } from './liveClass';
 
 /**
@@ -28,6 +29,11 @@ export interface LiveSummary {
   dernierRefus?: string | null;
   morel?: LiveMorel[];
   morelIncomprises?: number;
+  /** Ajoutés le 17/11 (absents des fiches plus anciennes) : les questions répondues, par identifiant
+   *  (celui de definition.questions) ; l'heure où la fiche du patient a été lue ; les live_messages fermés. */
+  faites?: string[];
+  ficheLue?: number | null;
+  messagesLus?: string[];
 }
 
 export interface LiveWork {
@@ -174,3 +180,32 @@ export function pointsDe(points: LiveMessage[], eleves: string[], classId: strin
 }
 
 export const ecrirePoints = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${String(Math.abs(n)).replace('.', ',')} pt${Math.abs(n) > 1 ? 's' : ''}`;
+
+/** Les questions du carnet de ces activités (definition.questions), par activité. */
+export async function fetchQuestionsCarnet(activityIds: string[]): Promise<Record<string, QuestionCarnet[]>> {
+  if (activityIds.length === 0) return {};
+  const { data, error } = await supabase.from('activities').select('id,questions:definition->questions').in('id', activityIds);
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((a) => [a.id as string, questionsDuCarnet(a.questions)]));
+}
+
+/**
+ * Les réponses du carnet d'une fiche, question par question, et l'ordonnance : seulement ces clés du contenu,
+ * jamais `journal` ni `_hopital`, qui sont lourds. Une réponse est un texte (les cases cochées arrivent en texte).
+ */
+export async function fetchReponsesCarnet(workId: string, questions: QuestionCarnet[]): Promise<{ reponses: Record<string, string>; ordonnance: string }> {
+  const champs = questions.map((q, i) => `q${i}:content->>"${q.id.replace(/"/g, '')}"`);
+  const { data, error } = await supabase
+    .from('student_works')
+    .select(['ordonnance:content->>ordonnance', ...champs].join(','))
+    .eq('id', workId)
+    .maybeSingle();
+  if (error) throw error;
+  const ligne = (data ?? {}) as unknown as Record<string, string | null>;
+  const reponses: Record<string, string> = {};
+  questions.forEach((q, i) => {
+    const r = ligne[`q${i}`];
+    if (typeof r === 'string' && r.trim()) reponses[q.id] = r.trim();
+  });
+  return { reponses, ordonnance: (ligne.ordonnance ?? '').trim() };
+}

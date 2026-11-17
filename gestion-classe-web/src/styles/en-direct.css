@@ -1,0 +1,270 @@
+/* ============================================================
+   Activité en direct (pages/LiveActivity.tsx, components/live/)
+   Téléphone : la classe en cartes, la vue d'un groupe en plein écran.
+   Ordinateur (≥ 1024 px) : le tableau de la classe, la vue d'un groupe en panneau latéral.
+   Couleurs : les variables de index.css.
+   ============================================================ */
+
+.ed { background: var(--bg-alt); min-height: 100%; color: var(--text); }
+.ed button { font-family: inherit; }
+.ed-largeur { max-width: 1440px; margin: 0 auto; box-sizing: border-box; }
+
+/* --- en-tête --- */
+.ed-entete { background: var(--surface); border-bottom: 1px solid var(--border); }
+.ed-entete .ed-largeur { padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 12px; }
+.ed-titre { display: flex; align-items: center; gap: 12px; }
+.ed-titre > div { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ed-titre h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.ed-maj { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+
+.ed-point { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--text-dim); }
+.ed-point--petit { width: 8px; height: 8px; }
+.ed-point--en-ligne { background: var(--pos); }
+.ed-point--recent { background: var(--warn); }
+.ed-point--erreur { background: var(--neg); }
+
+.ed-bouton {
+  height: 44px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none;
+}
+.ed-bouton:hover { background: var(--surface-2); }
+.ed-bouton:disabled { opacity: 0.55; cursor: default; }
+.ed-bouton--carre { width: 44px; padding: 0; color: var(--text-muted); }
+.ed-bouton--point { width: 48px; padding: 0; font-size: 14px; font-weight: 700; }
+.ed-bouton--moins { color: var(--neg); }
+.ed-bouton--plus { color: var(--pos); }
+.ed-bouton--fort { background: var(--accent-strong); border-color: var(--accent-strong); color: #FFFFFF; font-size: 14px; font-weight: 700; }
+.ed-bouton--fort:hover { background: var(--accent-ink); }
+.ed-lien {
+  height: 44px; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600;
+  color: var(--indigo-ink); background: none; border: none; padding: 0 4px; cursor: pointer; text-decoration: none;
+}
+
+/* la séance du téléphone */
+.ed-seance { display: flex; align-items: center; gap: 10px; background: var(--accent-soft); border-radius: var(--radius); padding: 10px 12px; color: var(--accent-ink); }
+.ed-seance > div { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ed-seance strong { font-size: 15px; font-weight: 700; }
+.ed-seance span { font-size: 12px; }
+.ed-seance--aucune { background: var(--surface-3); color: var(--text-muted); }
+.ed-seance .ed-bouton { color: var(--accent-ink); border-color: var(--accent); }
+.ed-seance select { height: 44px; }
+
+.ed-champ {
+  height: 36px; padding: 0 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text); font-size: 14px; max-width: 100%;
+}
+
+/* filtre patient segmenté */
+.ed-segments { display: flex; gap: 4px; background: var(--bg-alt); border-radius: var(--radius); padding: 4px; }
+.ed-segments button {
+  flex: 1 1 0; min-width: 0; height: 36px; border: none; border-radius: var(--radius-sm); background: transparent;
+  font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; padding: 0 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ed-segments button[aria-pressed='true'] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+
+.ed-releve { font-size: 12px; color: var(--warn); background: var(--warn-soft); border-radius: var(--radius-sm); padding: 6px 10px; }
+
+/* --- corps --- */
+.ed-corps { padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+.ed-chiffres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ed-chiffre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.ed-chiffre b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ed-chiffre span { font-size: 12px; color: var(--text-muted); }
+.ed-chiffre--alerte { border-color: var(--neg); }
+.ed-chiffre--alerte b { color: var(--neg); }
+
+/* le bandeau des élèves hors du jeu */
+.ed-bandeau { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.ed-bandeau > div { display: flex; gap: 10px; align-items: baseline; }
+.ed-bandeau dt { flex: none; min-width: 112px; font-size: 12px; font-weight: 600; }
+.ed-bandeau dd { margin: 0; }
+.ed-bandeau small { color: var(--text-dim); font-size: 12px; }
+.ed-bandeau--ok { color: var(--pos); }
+.ed-hors--connexion { color: var(--warn); }
+.ed-hors--absent { color: var(--neg); }
+.ed-hors--sortie { color: var(--color-sortie); }
+
+.ed-section { display: flex; flex-direction: column; gap: 10px; }
+.ed-section-titre { display: flex; align-items: baseline; gap: 8px; }
+.ed-section-titre h2 { margin: 0; flex: 1; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.ed-section-titre span { font-size: 12px; color: var(--text-dim); }
+.ed-section--alerte h2 { color: var(--neg); }
+.ed-vide { color: var(--text-muted); font-size: 14px; margin: 0; }
+
+/* --- carte d'un groupe --- */
+.ed-carte { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ed-carte--alerte { border-color: var(--neg); }
+.ed-carte-tete { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ed-noms {
+  flex: 1; min-width: 0; font-size: 15px; font-weight: 600; color: var(--text); background: none; border: none; padding: 0;
+  text-align: left; cursor: pointer; text-decoration: none;
+}
+.ed-noms:hover { color: var(--indigo-ink); text-decoration: underline; }
+.ed-vu { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.ed-vu--recent { color: var(--warn); }
+.ed-vu--ancien { color: var(--text-dim); }
+.ed-alerte { background: var(--neg-soft); color: var(--neg); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; font-weight: 500; }
+
+.ed-pastilles { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; align-items: center; }
+.ed-pastille { border-radius: 999px; padding: 3px 9px; font-weight: 600; background: var(--bg-alt); color: var(--text); white-space: nowrap; }
+.ed-pastille--patient { background: var(--indigo-soft); color: var(--indigo-ink); }
+.ed-pastille--envoye, .ed-pastille--plus { background: var(--pos-soft); color: var(--pos); }
+.ed-pastille--moins { background: var(--neg-soft); color: var(--neg); }
+.ed-pastille--points { padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.ed-mode { color: var(--text-muted); }
+
+/* la bande de cases : une par question */
+.ed-cases { display: flex; gap: 3px; }
+.ed-case {
+  flex: 1 1 0; min-width: 0; height: 22px; border-radius: var(--radius-xs); box-sizing: border-box;
+  font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-alt); color: var(--text-dim); border: 1px solid var(--border);
+}
+.ed-case--faite { background: var(--indigo); color: #FFFFFF; border-color: var(--indigo); }
+.ed-case--bonus { background: var(--surface); border-style: dashed; border-color: var(--text-dim); }
+.ed-case--bonus.ed-case--faite { background: var(--indigo); border-color: var(--indigo); }
+.ed-cases--fixes .ed-case { flex: none; width: 24px; height: 24px; }
+.ed-legende-carnet { font-size: 12px; color: var(--text-muted); }
+.ed-barre { height: 6px; border-radius: 3px; background: var(--bg-alt); overflow: hidden; }
+.ed-barre > span { display: block; height: 100%; background: var(--indigo); }
+
+.ed-morel { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.ed-morel > small { flex: none; font-size: 11px; color: var(--text-dim); }
+.ed-morel > span:nth-child(2) { flex: 1; min-width: 0; }
+.ed-tag { flex: none; border-radius: 10px; padding: 1px 7px; font-size: 11px; background: var(--indigo-soft); color: var(--indigo-ink); white-space: nowrap; }
+.ed-tag--neg { background: var(--neg-soft); color: var(--neg); }
+
+.ed-actions { display: flex; gap: 8px; align-items: center; }
+.ed-actions .ed-lien { margin-left: auto; }
+
+.ed-legende { display: flex; flex-wrap: wrap; gap: 10px 14px; font-size: 11px; color: var(--text-muted); align-items: center; }
+.ed-legende > span { display: flex; align-items: center; gap: 5px; }
+.ed-legende .ed-case { flex: none; width: 14px; height: 14px; border-radius: 3px; }
+
+.ed-reglages { display: flex; flex-direction: column; gap: 8px; }
+
+/* barre fixe en bas (téléphone, tablette) : au-dessus de la barre d'onglets de l'app (57 px, < 768 px).
+   `fixed` et non `sticky` : le body de l'app défile lui-même (overflow: auto), sticky n'y colle pas. */
+.ed-bas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--surface); border-top: 1px solid var(--border);
+  padding: 10px 16px 12px; display: flex; gap: 8px;
+}
+.ed-bas .ed-bouton--fort { flex: 1; height: 48px; }
+.ed-bas .ed-bouton { height: 48px; }
+.ed-corps--avec-bas { padding-bottom: 96px; }
+@media (max-width: 767px) {
+  .ed-bas { bottom: calc(57px + env(safe-area-inset-bottom)); }
+}
+/* tablette : la barre latérale de l'app est là, la barre vient sous l'en-tête, sans être fixe */
+@media (min-width: 768px) {
+  .ed:not(.ed-ordi) { display: flex; flex-direction: column; }
+  .ed-bas { position: static; order: 1; border: none; background: transparent; padding: 14px 16px 0; }
+  .ed-corps { order: 2; }
+  .ed-corps--avec-bas { padding-bottom: 24px; }
+}
+
+/* listes : Morel, messages envoyés */
+.ed-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ed-boite { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ed-boite h2 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; }
+.ed-question { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: var(--radius-sm); }
+.ed-question--neg { background: var(--neg-soft); }
+.ed-question > div { display: flex; gap: 8px; align-items: baseline; font-size: 12px; }
+.ed-question > div strong { flex: 1; font-weight: 600; min-width: 0; }
+.ed-question > span { font-size: 14px; }
+.ed-heure { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.ed-envoi { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.ed-envoi > span:nth-child(2) { flex: 1; min-width: 0; }
+.ed-envoi em { color: var(--text-muted); font-style: normal; }
+.ed-lu { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.ed-lu--oui { color: var(--pos); font-weight: 600; }
+
+/* --- ordinateur : le tableau de la classe --- */
+.ed-ordi .ed-entete .ed-largeur { padding: 16px 32px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.ed-ordi .ed-titre { flex: none; }
+.ed-ordi .ed-titre h1 { font-size: 22px; }
+.ed-ordi .ed-seance { padding: 8px 8px 8px 14px; }
+.ed-ordi .ed-seance > div { flex-direction: row; align-items: baseline; gap: 10px; }
+.ed-ordi .ed-seance .ed-bouton { height: 36px; }
+.ed-ordi .ed-segments button { flex: none; padding: 0 14px; }
+.ed-ordi .ed-outils { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ed-ordi .ed-corps { padding: 20px 32px 40px; }
+.ed-haut { display: flex; flex-wrap: wrap; gap: 10px; }
+.ed-haut .ed-chiffre { flex: 1 1 150px; padding: 10px 14px; }
+.ed-haut .ed-chiffre b { font-size: 24px; }
+.ed-haut .ed-bandeau { flex: 3 1 420px; justify-content: center; gap: 6px; font-size: 13px; }
+.ed-haut .ed-bandeau dt { min-width: 0; }
+.ed-colonnes { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.ed-tableau-boite { flex: 999 1 760px; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; }
+.ed-tableau-boite > header { padding: 14px 16px 10px; display: flex; align-items: baseline; gap: 12px; }
+.ed-tableau-boite > header h2 { margin: 0; flex: 1; font-size: 15px; font-weight: 700; }
+.ed-tableau-boite > header span { font-size: 12px; color: var(--text-muted); }
+.ed-defile { overflow-x: auto; }
+.ed-tableau { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+.ed-tableau th { text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; padding: 8px; border-bottom: 1px solid var(--border); }
+.ed-tableau td { padding: 10px 8px; border-bottom: 1px solid var(--surface-3); vertical-align: top; }
+.ed-tableau th:first-child, .ed-tableau td:first-child { padding-left: 16px; }
+.ed-tableau th:last-child, .ed-tableau td:last-child { padding-right: 16px; }
+.ed-tableau .ed-nombre { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ed-tableau tbody tr { cursor: pointer; }
+.ed-tableau tbody tr:hover { background: var(--surface-2); }
+.ed-tableau tr.ed-ligne--alerte { background: var(--neg-soft); }
+.ed-tableau .ed-noms { font-size: 13px; }
+.ed-tableau .ed-alerte-ligne { margin: 6px 0 0 17px; color: var(--neg); font-size: 12px; font-weight: 500; }
+.ed-tableau .ed-patient { font-weight: 600; color: var(--indigo-ink); white-space: nowrap; }
+.ed-tableau .ed-lieu { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.ed-tableau-boite > footer { padding: 12px 16px; }
+.ed-cote { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+/* --- vue d'un groupe : plein écran sur téléphone, panneau latéral sur ordinateur --- */
+.ed-groupe-fond { position: fixed; inset: 0; z-index: 900; background: rgba(24, 24, 27, 0.4); }
+.ed-groupe {
+  position: fixed; inset: 0; z-index: 901; background: var(--bg-alt); overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column;
+}
+.ed-ordi .ed-groupe { left: auto; width: min(520px, 100vw); box-shadow: var(--shadow-lg); border-left: 1px solid var(--border); }
+.ed-groupe > header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ed-groupe > header h1 { margin: 0; flex: 1; min-width: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.ed-groupe > header .ed-actions .ed-bouton:first-child { flex: 1; }
+.ed-groupe main { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.ed-groupe section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ed-groupe h2 { margin: 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); flex: 1; }
+.ed-retour { align-self: flex-start; }
+
+.ed-etapes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ed-etapes li { display: flex; gap: 12px; min-height: 46px; }
+.ed-etapes .ed-rail { display: flex; flex-direction: column; align-items: center; width: 22px; flex: none; }
+.ed-rond {
+  width: 22px; height: 22px; border-radius: 50%; box-sizing: border-box; flex: none; display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 2px solid var(--border-strong); color: var(--text-dim);
+}
+.ed-trait { width: 2px; flex: 1; background: var(--border); }
+.ed-etapes li:last-child .ed-trait { background: transparent; }
+.ed-etapes .ed-texte { display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; }
+.ed-etapes .ed-texte b { font-size: 14px; font-weight: 500; color: var(--text-muted); }
+.ed-etapes .ed-texte span { font-size: 12px; color: var(--text-muted); }
+.ed-etape--fait .ed-rond { background: var(--pos); border-color: var(--pos); color: #FFFFFF; }
+.ed-etape--fait .ed-trait { background: var(--pos); }
+.ed-etape--fait .ed-texte b { font-weight: 600; color: var(--text); }
+.ed-etape--ici .ed-rond { border: 3px solid var(--accent-strong); }
+.ed-etape--ici .ed-texte b { font-weight: 700; color: var(--accent-strong); }
+
+.ed-reponse { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--surface-3); }
+.ed-reponse > .ed-case { flex: none; width: 26px; height: 26px; font-size: 12px; border-radius: var(--radius-sm); }
+.ed-reponse > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ed-reponse small { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.ed-reponse p { margin: 0; font-size: 14px; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
+.ed-reponse .ed-pas-encore { font-size: 13px; color: var(--text-dim); font-style: italic; }
+.ed-ordonnance { flex: none; width: 26px; height: 26px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent-ink); }
+.ed-examens { display: flex; flex-wrap: wrap; gap: 6px; }
+.ed-examens span { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+.ed-message { display: flex; flex-direction: column; gap: 4px; }
+.ed-message > div { display: flex; gap: 8px; align-items: baseline; font-size: 14px; border-radius: var(--radius-sm); padding: 8px 10px; background: var(--bg-alt); }
+.ed-message--alerte > div { background: var(--neg-soft); }
+.ed-message--info > div { background: var(--indigo-soft); }
+.ed-message--bravo > div { background: var(--pos-soft); }
+.ed-message > div > span:nth-child(2) { flex: 1; min-width: 0; }
+.ed-message .ed-lu { padding-left: 10px; font-size: 12px; }
