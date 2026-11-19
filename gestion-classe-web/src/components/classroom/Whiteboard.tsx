@@ -4015,6 +4015,14 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             }}
           />
         )}
+        {/* En classe : de gros boutons pour changer de page, à portée de main (les flèches de la barre du bas sont trop petites au TBI) */}
+        {inClass && ribbon && !singlePage && !displayMode && pages.length > 1 && (
+          <div className="wb__pager" onPointerDown={(e) => e.stopPropagation()}>
+            <button type="button" disabled={pageIndex === 0} onClick={() => goToPage(pageIndex - 1)} aria-label="Page précédente" title="Page précédente">‹</button>
+            <span aria-live="polite">{pageIndex + 1} / {pages.length}</span>
+            <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => goToPage(pageIndex + 1)} aria-label="Page suivante" title="Page suivante">›</button>
+          </div>
+        )}
         {view.zoom > 1 && (
           <div className="wb__zoom" onPointerDown={(e) => e.stopPropagation()}>
             <span>{Math.round(view.zoom * 100)} %</span>
@@ -4490,6 +4498,13 @@ const CSS = `
 .wb__verso-dot { width: 8px; height: 8px; border-radius: 50%; background: #4F46E5; }
 .wb-verso { position: fixed; inset: 0; z-index: 1400; }
 .wb-verso .wb { z-index: 1; }
+/* Gros boutons de page en classe : en bas à droite, la main du prof les trouve sans viser */
+.wb__pager { position: absolute; right: 14px; bottom: 14px; z-index: 5; display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid #E5E7EB; border-radius: 16px; background: rgba(255,255,255,0.94); box-shadow: 0 2px 10px rgba(15,23,42,0.12); }
+.wb__pager button { width: 72px; height: 60px; border: 0; border-radius: 12px; background: #EEF2FF; color: #3730A3; font: 600 40px/1 Inter, system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.wb__pager button:hover:not(:disabled) { background: #E0E7FF; }
+.wb__pager button:active:not(:disabled) { background: #C7D2FE; }
+.wb__pager button:disabled { background: #F8FAFC; color: #CBD5E1; cursor: default; }
+.wb__pager span { min-width: 64px; text-align: center; font: 600 16px/1 Inter, system-ui, sans-serif; color: #334155; font-variant-numeric: tabular-nums; }
 .wb__zoom { position: absolute; left: 14px; top: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 10px; background: rgba(17,24,39,0.9); color: #F9FAFB; font: 600 13px/1 Inter, system-ui, sans-serif; }
 .wb__zoom button { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: #4F46E5; color: #FFFFFF; font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wb__bar--left, .wb__bar--right { left: 10px; right: auto; top: 10px; bottom: 10px; transform: none; flex-direction: column; max-width: none; max-height: calc(100vh - 20px); overflow-x: hidden; overflow-y: auto; }

@@ -140,6 +140,16 @@ describe('checkScreens', () => {
     expect(r.warnings).toEqual([]);
   });
 
+  it('prévient d’un texte posé dans le bas de l’écran, pas d’un bouton', () => {
+    const bouton = { id: 'suite', type: 'shape', kind: 'rounded-rect', x: 820, y: 490, w: 150, h: 50, stroke: '#000', strokeWidth: 1, fill: '#EEF2FF', text: { html: '<div>Suite</div>', size: 22, font: 'sans', color: '#000' }, interactions: [{ action: 'next' }] };
+    const r = check(page('e-01', [text('bas', { y: 470 }), bouton]));
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]).toMatch(/« bas » : descend jusqu'à \d+, dans le bas de l'écran/);
+    // Une page allongée se lit en défilant : pas d'alerte
+    expect(check(page('e-02', [text('bas', { y: 470 })], { height: 900 })).warnings).toEqual([]);
+  });
+
   it('prévient d’un texte trop long pour son cadre', () => {
     const r = check(page('e-01', [{ id: 'cadre', type: 'shape', kind: 'rect', x: 60, y: 120, w: 200, h: 40, stroke: '#000', strokeWidth: 1, fill: null, text: { html: `<div>${'mot '.repeat(30)}</div>`, size: 20, font: 'sans', color: '#000' } }]));
     expect(r.warnings.join('\n')).toMatch(/le cadre en fait 40/);
