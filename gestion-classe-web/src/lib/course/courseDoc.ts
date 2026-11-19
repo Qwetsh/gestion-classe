@@ -310,6 +310,26 @@ export function loadLocalCourse(boardId: string): { savedAt: number; doc: Course
   } catch { return null; }
 }
 
+/** Écriture stable d'une valeur JSON : clés triées, valeurs `undefined` ignorées (comme en base). */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o).filter((k) => o[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'null';
+}
+
+/**
+ * Deux documents ont-ils le même contenu ? Le numéro d'enregistrement (`rev`) et l'ordre des clés
+ * (la base les range à sa façon) ne comptent pas.
+ */
+export function sameCourseContent(a: CourseDoc | null | undefined, b: CourseDoc | null | undefined): boolean {
+  if (!a || !b) return false;
+  const strip = (d: CourseDoc) => { const c: Partial<CourseDoc> = { ...d }; delete c.rev; return c; };
+  return canonical(strip(a)) === canonical(strip(b));
+}
+
 export function clearLocalCourse(boardId: string): void {
   try { localStorage.removeItem(LOCAL_PREFIX + boardId); } catch { /* rien */ }
 }

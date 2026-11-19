@@ -19,7 +19,7 @@ import { relayoutNow } from './coursePagination';
 import { CourseRibbon } from './CourseRibbon';
 import { Icon } from './courseIcons';
 import {
-  COURSE_DOC_VERSION, courseScreens, duplicateCourse, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDocGuarded, saveLocalCourse,
+  COURSE_DOC_VERSION, courseScreens, duplicateCourse, emptyCourseDoc, fetchCourse, loadLocalCourse, saveCourseDocGuarded, saveLocalCourse, sameCourseContent,
   templatesUnavailable, type CourseDoc, type CourseSettings,
 } from '../../lib/course/courseDoc';
 import { countWords, createVersion, fetchVersionDoc, lastVersionAt, versionsUnavailable, type CourseVersion } from '../../lib/course/courseVersions';
@@ -259,6 +259,14 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
   const brokenRef = useRef(false);
   /** Numéro d'enregistrement attendu en base (contrôle des écritures concurrentes). */
   const revRef = useRef<string | null>(loaded.rev);
+  /**
+   * Contenu tel qu'en base (dernier enregistrement réussi) : un document identique n'est pas
+   * renvoyé. Sans cela, ouvrir un cours le réécrivait à l'identique (l'éditeur signale des
+   * changements en le mettant en forme), avec une nouvelle date et une version à chaque ouverture.
+   */
+  const serverDocRef = useRef<CourseDoc | null>(loaded.serverDoc);
+  /** Enregistrement en cours : le suivant attend qu'il finisse (sinon il partirait avec l'ancien numéro). */
+  const inFlightRef = useRef<Promise<boolean> | null>(null);
   /** Un autre onglet ou appareil a enregistré le cours : plus d'écriture avant le choix. */
   const [conflict, setConflict] = useState(false);
   const conflictRef = useRef(false);
@@ -291,12 +299,18 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
   /** Toujours la dernière version de `flush` (minuteries, raccourcis, nouvel essai). */
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
 
-  const flush = useCallback(async (): Promise<boolean> => {
+  const flushOnce = useCallback(async (): Promise<boolean> => {
     window.clearTimeout(saveTimer.current);
     if (!pendingRef.current) return true;
     if (brokenRef.current) return false;
     const doc = currentDoc();
     if (!doc) return true;
+    // Rien de changé par rapport à la base : pas d'écriture (ni copie locale, qui passerait pour plus récente)
+    if (!conflictRef.current && sameCourseContent(doc, serverDocRef.current)) {
+      pendingRef.current = false;
+      setSave('saved');
+      return true;
+    }
     saveLocalCourse(boardId, doc);
     if (conflictRef.current) return false;
     pendingRef.current = false;
@@ -312,6 +326,7 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
         return false;
       }
       revRef.current = res.rev;
+      serverDocRef.current = doc;
       if (!pendingRef.current) setSave('saved');
       // Une version toutes les 10 minutes de travail
       if (Date.now() - lastSnapshotRef.current >= SNAPSHOT_EVERY_MS) {
@@ -329,6 +344,17 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
       return false;
     }
   }, [boardId, userId]);
+
+  /**
+   * Un enregistrement à la fois : deux envois qui se chevauchent partiraient avec le même numéro
+   * attendu, et le second croirait le cours modifié ailleurs (bandeau « modifié ailleurs » à tort).
+   */
+  const flush = useCallback(async (): Promise<boolean> => {
+    while (inFlightRef.current) await inFlightRef.current.catch(() => false);
+    const run = flushOnce();
+    inFlightRef.current = run;
+    try { return await run; } finally { if (inFlightRef.current === run) inFlightRef.current = null; }
+  }, [flushOnce]);
 
   useEffect(() => { flushRef.current = flush; }, [flush]);
 
@@ -369,6 +395,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
     const onUnload = (e: BeforeUnloadEvent) => {
       if (!pendingRef.current) return;
       const doc = currentDoc();
+      // Mise en forme sans vrai changement : rien à garder, pas d'alerte en quittant
+      if (doc && sameCourseContent(doc, serverDocRef.current)) return;
       if (doc) saveLocalCourse(boardId, doc);
       e.preventDefault();
     };
