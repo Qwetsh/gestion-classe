@@ -471,11 +471,11 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
 }
 
 /** Barre d'état du tableau blanc (habillage ordinateur) : pages et zoom. */
-export function BoardStatusBar({ act, pageIndex, pageCount, zoom, single }: { act: Record<string, RibbonAction | undefined>; pageIndex: number; pageCount: number; zoom: number; single: boolean }) {
+export function BoardStatusBar({ act, pageIndex, pageCount, zoom, single, singleLabel }: { act: Record<string, RibbonAction | undefined>; pageIndex: number; pageCount: number; zoom: number; single: boolean; singleLabel?: string }) {
   return (
     <footer className="ce-chrome ce-status wbrib__status" onPointerDown={(e) => e.stopPropagation()}>
       {single ? (
-        <span>Encart 16:9 — un écran en classe</span>
+        <span>{singleLabel ?? 'Encart 16:9 — un écran en classe'}</span>
       ) : (
         <>
           <div className="ce-zoom">

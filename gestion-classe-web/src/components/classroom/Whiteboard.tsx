@@ -91,7 +91,9 @@ import type { LibraryItem, LibraryObject } from '../../lib/boardLibrary';
 import { recognizeHandwriting } from '../../lib/boardHandwriting';
 import { pullKeys, setKeysOwner } from '../../lib/userKeys';
 import { newInstrument, snapToInstruments, type Instrument, type InstrumentKind } from '../../lib/boardInstruments';
-import { fetchBoardPages, fetchSessionReveal, saveSessionReveal, upsertBoardPages } from '../../lib/boardQueries';
+import { fetchBoardPages, fetchSessionReveal, saveSessionReveal, upsertBoardPages, versoPageId } from '../../lib/boardQueries';
+import { VERSO_CSS, VersoBackThumb } from './BoardVerso';
+import { createPortal } from 'react-dom';
 import { fullWidthPageHeight, importFilesToPages, isImportableFile, isImageFile, uploadBoardImage, uploadCoverImage, type ImportLayout, type ImportProgress } from '../../lib/boardImport';
 import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName, GCBOARD_EXTENSION } from '../../lib/boardFile';
 import { renderPageToCanvas } from '../../lib/boardRender';
@@ -215,6 +217,13 @@ export interface WhiteboardProps {
    * peut repasser à l'habillage tactile ; son choix est mémorisé sur l'appareil.
    */
   chrome?: 'tbi' | 'ribbon';
+  /**
+   * Verso d'une page (« Tableau blanc » en classe) : la page préparée qu'il double. Sa vignette
+   * reste dans un coin et ramène à la page d'un toucher.
+   */
+  backTo?: BoardPage;
+  /** Chaque nouvelle valeur ferme le tableau comme « Retour » (le téléphone passe à la page suivante). */
+  closeRequest?: number;
   /** Fermeture (« Retour »), après l'envoi des dernières modifications ; reçoit les pages telles quelles. */
   onClose: (pages: BoardPage[]) => void;
 }
@@ -413,7 +422,7 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, inClass, chrome = 'tbi', onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, inClass, chrome = 'tbi', backTo, closeRequest, onClose }: WhiteboardProps) {
   /** Clé du stockage local ; `null` = aucun stockage local. */
   const storeKey = localKey === undefined ? sessionId : localKey;
   const activeRef = useRef(active);
@@ -424,6 +433,21 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const remoteRef = boardId ? { boardId } : sessionId;
   /** Encart de cours : une seule page, toujours au format 16:9. */
   const singlePage = !!onlyPageId;
+  /**
+   * Verso ouvert (« Tableau blanc ») : identifiant de la page qu'il double. Il s'affiche par-dessus,
+   * en plein écran ; ce tableau-ci laisse alors le clavier et le collage au verso.
+   */
+  const [versoOf, setVersoOf] = useState<string | null>(null);
+  const versoOfRef = useRef(versoOf);
+  useEffect(() => { versoOfRef.current = versoOf; }, [versoOf]);
+  /** Demande de fermeture du verso (commande « suivant » / « précédent » du téléphone). */
+  const [versoCloseSeq, setVersoCloseSeq] = useState(0);
+  /** Pages dont le verso est écrit : le bouton le signale. */
+  const [versoInk, setVersoInk] = useState<ReadonlySet<string>>(() => new Set());
+  /** Essai (rien n'est gardé) : les versos vivent en mémoire le temps de l'essai. */
+  const versoMem = useRef(new Map<string, Page>());
+  /** Ce tableau reçoit le clavier et le collage (onglet actif, pas de verso par-dessus). */
+  const live = active && versoOf === null;
   const [pages, setPages] = useState<Page[]>(() => {
     const given = initialPages && initialPages.length > 0 ? normalizePages(JSON.parse(JSON.stringify(initialPages)) as Page[]) : null;
     const local = storeKey === null ? given ?? [newPage()] : loadLocal(storeKey).pages;
@@ -569,13 +593,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   });
   // Les couches portalées (menus, panneaux, barres flottantes) suivent le thème clair du ruban
   useEffect(() => {
-    if (!ribbon || !active) return;
+    if (!ribbon || !live) return;
     document.body.classList.add('wb-ribbon-on');
     // Haut du volet des pages (position fixe) = bas du ruban
     const rib = rootRef.current?.querySelector('.wbrib');
     if (rib) document.body.style.setProperty('--wb-ribbon-top', `${Math.round(rib.getBoundingClientRect().bottom)}px`);
     return () => { document.body.classList.remove('wb-ribbon-on'); document.body.style.removeProperty('--wb-ribbon-top'); };
-  }, [ribbon, active, topOffset, displayMode, ribbonMin]);
+  }, [ribbon, live, topOffset, displayMode, ribbonMin]);
   const [pickOpen, setPickOpen] = useState(false);
   /** Élèves déjà tirés dans la séance (sans remise), mémorisés sur l'appareil. */
   const [pickedIds, setPickedIds] = useState<ReadonlySet<string>>(() => {
@@ -917,8 +941,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     (async () => {
       const local = storeKey === null ? { savedAt: 0, pages: [] as Page[] } : loadLocal(storeKey);
       try {
-        const remote = await fetchBoardPages(remoteRef);
+        // Un encart ou un verso lit sa propre page ; le tableau, lui, ne voit jamais les versos
+        const remote = await fetchBoardPages(remoteRef, { versos: !!onlyPageId });
         if (cancelled) return;
+        if (!onlyPageId) setVersoInk(new Set(remote.versoOf));
         if (onlyPageId) {
           // Encart : seule sa page compte ; absente du serveur = encart encore vierge
           const own = remote.pages.find((p) => p.id === onlyPageId);
@@ -2394,6 +2420,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         setCameraOffer(cmd.sdp);
       } else if (cmd.kind === 'camera' && cmd.action === 'stop') {
         setCameraOffer(null);
+      } else if (cmd.kind === 'nav' && versoOfRef.current) {
+        // Verso ouvert : « suivant » ou « précédent » ramène d'abord à la page
+        setVersoCloseSeq((n) => n + 1);
       } else if (cmd.kind === 'nav' && cmd.action !== 'overview') {
         // « Suivant » / « Précédent » : l'animation de la page d'abord, étape par étape ; la page
         // ne change qu'une fois l'animation arrivée au bout (ou revenue au début)
@@ -3185,10 +3214,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         else if (k === 'pagedown') goToPage(pageIndexRef.current + 1);
       }
     };
-    if (!active) return; // onglet masqué : le clavier va à l'onglet actif
+    if (!live) return; // onglet masqué ou verso ouvert : le clavier va au tableau visible
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, goToPage, returnFromZoom, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
+  }, [live, goToPage, returnFromZoom, applyUndo, applyRedo, addPage, selectAll, copySelected, cutSelected, pasteFromClipboard, duplicateSelected, toggleLockSelected, reorderSelected, deleteSelected, deleteSelectedStrokes, nudgeSelected, zoomAt, pageOverflow, scrollBy, groupSelected, ungroupSelected]);
 
   // -- Gestes TBI : deux doigts = pincer-zoomer, c'est tout. Les outils sont dans la pastille. --
   const onStagePointerDown = useCallback((e: React.PointerEvent) => {
@@ -3378,10 +3407,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       setSelectedIds(new Set([box.id]));
       if (!OBJECT_TOOLS.includes(toolRef.current)) setTool('select');
     };
-    if (!active) return; // onglet masqué : le collage va à l'onglet actif
+    if (!live) return; // onglet masqué ou verso ouvert : le collage va au tableau visible
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [active, importFiles, pasteFromClipboard, handleObjectsChange, textSize, textFont, color, insertFromUrl, insertTable]);
+  }, [live, importFiles, pasteFromClipboard, handleObjectsChange, textSize, textFont, color, insertFromUrl, insertTable]);
 
   // Le tableau occupe tout l'ecran : on fige le defilement de la page dessous.
   useEffect(() => {
@@ -3551,6 +3580,32 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     'chrome-tbi': { onSelect: () => chooseChrome('tbi') },
   } : {};
   const closeBoard = () => { void flushRemote().finally(() => onClose(pagesRef.current)); };
+  // Fermeture demandée de l'extérieur (verso : le téléphone passe à la page suivante)
+  const closeRequestSeen = useRef(closeRequest);
+  useEffect(() => {
+    if (closeRequest === undefined || closeRequest === closeRequestSeen.current) return;
+    closeRequestSeen.current = closeRequest;
+    closeBoard();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeRequest]);
+
+  /**
+   * Verso (« Tableau blanc ») : seulement pour un tableau montré à la classe dont on sait où ranger
+   * la page blanche — la séance, ou la mémoire d'un essai. Ni encart, ni brouillon, ni tableau nommé.
+   */
+  const versoEnabled = !!inClass && !singlePage && (isSessionBoard || (storeKey === null && !remote));
+  const closeVerso = (pageId: string, verso: BoardPage[]) => {
+    const v = verso[0];
+    const ink = !!v && (v.strokes.length > 0 || (v.objects ?? []).length > 0 || !!v.image);
+    if (!isSessionBoard && v) versoMem.current.set(pageId, v as Page);
+    setVersoInk((prev) => {
+      if (prev.has(pageId) === ink) return prev;
+      const next = new Set(prev);
+      if (ink) next.add(pageId); else next.delete(pageId);
+      return next;
+    });
+    setVersoOf(null);
+  };
 
   // Mise en forme du texte : mêmes commandes pour la barre flottante (habillage tactile) et pour
   // l'onglet « Texte » du ruban.
@@ -3600,7 +3655,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); void importFiles(e.dataTransfer.files, toUnit(e)); }}
     >
-      <style>{CSS}</style>
+      <style>{CSS + VERSO_CSS}</style>
       {ribbon && !displayMode && (
         <BoardRibbon
           title={title}
@@ -3620,7 +3675,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           inserts={insertEntries().map((e) => ({ id: e.id, label: e.label, run: e.run, active: e.id === 'record' && recording }))}
           single={singlePage}
           onClose={closeBoard}
-          closeLabel={singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : inClass && isSessionBoard ? 'Plan de classe' : 'Fermer'}
+          closeLabel={backTo ? 'Revenir à la page' : singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : inClass && isSessionBoard ? 'Plan de classe' : 'Fermer'}
           collapsed={ribbonMin}
           onToggleCollapsed={toggleRibbonMin}
           text={showTextToolbar && !displayMode ? { key: selectedBox?.id ?? null, panel: <BoardRibbonText {...textToolbarProps} /> } : null}
@@ -3924,6 +3979,22 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             flat={ribbon}
           />
         )}
+        {versoEnabled && !displayMode && page && (
+          <button
+            type="button"
+            className={`wb__verso ${versoInk.has(page.id) ? 'has-ink' : ''}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => setVersoOf(page.id)}
+            title={isSessionBoard
+              ? 'Tableau blanc de cette page : une page blanche pour écrire en direct, gardée avec la séance'
+              : 'Tableau blanc de cette page (essai : rien n’est gardé en quittant)'}
+          >
+            <Icon name={TOOL_ICON_NAMES.pen} size={20} />
+            <span>Tableau blanc</span>
+            {versoInk.has(page.id) && <i className="wb__verso-dot" aria-label="déjà écrit" />}
+          </button>
+        )}
+        {backTo && <VersoBackThumb page={backTo} onBack={closeBoard} />}
         {view.zoom > 1 && (
           <div className="wb__zoom" onPointerDown={(e) => e.stopPropagation()}>
             <span>{Math.round(view.zoom * 100)} %</span>
@@ -4003,6 +4074,26 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         </button>
       )}
       {probeOpen && <BoardInputProbe onClose={() => setProbeOpen(false)} />}
+      {versoOf && createPortal(
+        <div className="wb-verso">
+          <Whiteboard
+            key={versoOf}
+            sessionId={isSessionBoard ? sessionId : 'verso-essai'}
+            userId={userId}
+            remote={isSessionBoard}
+            localKey={isSessionBoard ? `verso:${sessionId}:${versoOf}` : null}
+            onlyPageId={versoPageId(versoOf)}
+            initialPage={versoMem.current.get(versoOf)}
+            title={`${title} — tableau blanc`}
+            chrome={chrome}
+            inClass
+            backTo={pages.find((p) => p.id === versoOf)}
+            closeRequest={versoCloseSeq}
+            onClose={(verso) => closeVerso(versoOf, verso)}
+          />
+        </div>,
+        document.body,
+      )}
       {spotlight && <BoardSpotlight onClose={() => setSpotlight(false)} />}
       {keyboardOpen && <BoardKeyboard onClose={() => setKeyboardOpen(false)} />}
       {pickOpen && classroom && (
@@ -4352,13 +4443,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             )}
           </>
           {/* Les dernières modifications partent au serveur avant de fermer (sinon elles attendraient le minuteur) */}
-          <button className="wb__btn wb__close" onClick={closeBoard} title={singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : 'Retour au plan de classe'}>
+          <button className="wb__btn wb__close" onClick={closeBoard} title={backTo ? 'Revenir à la page' : singlePage ? 'Revenir au cours' : initialPages ? 'Quitter l’essai' : 'Retour au plan de classe'}>
             <svg viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4" /></svg>
           </button>
         </div>
       </div>
       {ribbon && !displayMode && (
-        <BoardStatusBar act={ribbonActions} pageIndex={pageIndex} pageCount={pageCount} zoom={view.zoom} single={singlePage} />
+        <BoardStatusBar act={ribbonActions} pageIndex={pageIndex} pageCount={pageCount} zoom={view.zoom} single={singlePage} singleLabel={backTo ? (remote ? 'Tableau blanc de la page — gardé avec la séance, retrouvé en revenant sur la page' : 'Tableau blanc de la page — essai : gardé jusqu’à la fin de l’essai') : undefined} />
       )}
     </div>
   );
@@ -4371,6 +4462,13 @@ const CSS = `
 .wb { position: fixed; inset: 0; z-index: 100; background: #FFFFFF; display: flex; flex-direction: column; user-select: none; }
 .wb__stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #1F2937; touch-action: none; }
 .wb__view { position: absolute; inset: 0; transform-origin: 0 0; }
+/* Verso (« Tableau blanc ») : bouton en bas à gauche de la page, et le verso par-dessus tout */
+.wb__verso { position: absolute; left: 14px; bottom: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; border: 1px solid #E5E7EB; border-radius: 12px; background: rgba(255,255,255,0.94); color: #1F2937; font: 600 14px/1 Inter, system-ui, sans-serif; box-shadow: 0 2px 10px rgba(15,23,42,0.12); cursor: pointer; }
+.wb__verso:hover { border-color: #A5B4FC; color: #4338CA; }
+.wb__verso.has-ink { border-color: #A5B4FC; }
+.wb__verso-dot { width: 8px; height: 8px; border-radius: 50%; background: #4F46E5; }
+.wb-verso { position: fixed; inset: 0; z-index: 1400; }
+.wb-verso .wb { z-index: 1; }
 .wb__zoom { position: absolute; left: 14px; top: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 10px; background: rgba(17,24,39,0.9); color: #F9FAFB; font: 600 13px/1 Inter, system-ui, sans-serif; }
 .wb__zoom button { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: #4F46E5; color: #FFFFFF; font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .wb__bar--left, .wb__bar--right { left: 10px; right: auto; top: 10px; bottom: 10px; transform: none; flex-direction: column; max-width: none; max-height: calc(100vh - 20px); overflow-x: hidden; overflow-y: auto; }

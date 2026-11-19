@@ -215,6 +215,8 @@ export function clonePages(pages: BoardPage[]): BoardPage[] {
   return pages.map((p) => {
     const copy = JSON.parse(JSON.stringify(p)) as BoardPage;
     copy.id = ids.get(p.id) ?? newId();
+    // La copie retient sa page source : la page jouée en classe reste reliée à la page préparée
+    copy.origin = p.id;
     for (const o of copy.objects ?? []) {
       for (const it of o.interactions ?? []) {
         const target = it.params?.pageId;
