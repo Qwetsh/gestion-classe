@@ -19,6 +19,11 @@ import { ANIMATION_MAX_CHARS, animationInfo } from '../boardAnimation';
 /** Page logique du tableau blanc : 1000 × 562,5 (16:9). */
 export const PAGE_W = 1000;
 export const PAGE_H = 562.5;
+/**
+ * Bas de l'écran (Thomas, 19/11/2026) : sous cette ligne, le bureau du prof cache le tableau et le
+ * fond de la classe lit mal. Rien à lire en dessous ; des boutons pour le prof, oui.
+ */
+export const LOW_LINE = 450;
 
 /** Un écran de 1 280 px affiche 1,28 px par unité : un texte de taille 22 y fait 28 px. */
 const READABLE_SIZE = 22;
@@ -226,6 +231,12 @@ export function checkScreens(input: unknown): ScreensReport {
           const bottom = Math.round(o.y + height);
           if (o.type === 'text') warnings.push(`${at} : le texte descendrait jusqu'à ${bottom}, sous le bas de l'écran (${pageH}) — estimation.`);
           else errors.push(`${at} : descend jusqu'à ${bottom}, sous le bas de l'écran (${pageH}).`);
+        }
+        const label = o.type === 'shape' && isRec(o.text) && typeof o.text.html === 'string' && htmlLines(o.text.html).join('').trim() !== '';
+        const readable = o.type === 'text' || o.type === 'table' || o.type === 'equation' || label;
+        const button = Array.isArray(o.interactions) && o.interactions.length > 0;
+        if (pageH === PAGE_H && readable && !button && o.y + height > LOW_LINE + 0.5 && o.y + height <= pageH + 0.5) {
+          warnings.push(`${at} : descend jusqu'à ${Math.round(o.y + height)}, dans le bas de l'écran (sous ${LOW_LINE}) : caché par le bureau, mal lu du fond de la classe — le remonter.`);
         }
         boxes.push({ id: String(o.id), x: o.x, y: o.y, w: o.w, h: height, text: o.type === 'text' });
       }
