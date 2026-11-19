@@ -96,6 +96,25 @@ export function parsePageMeta(raw: unknown): Pick<BoardPage, 'color' | 'curtain'
   }) ?? {};
 }
 
+/** Ligne de `board_pages` → page du tableau blanc (colonnes absentes : valeurs par défaut). */
+export function rowToBoardPage(r: Pick<BoardPageRow, 'page_id' | 'background' | 'strokes' | 'image' | 'texts' | 'objects' | 'meta'>): BoardPage {
+  return {
+    id: r.page_id,
+    background: (['blank', 'grid', 'lines', 'seyes', 'graph', 'axes', 'dots'].includes(r.background) ? r.background : 'blank') as Background,
+    strokes: Array.isArray(r.strokes) ? (r.strokes as Stroke[]) : [],
+    image: parseImage(r.image),
+    objects: migrateLegacyTexts(
+      Array.isArray(r.objects) ? (r.objects as BoardObject[]) : [],
+      Array.isArray(r.texts) ? (r.texts as TextBox[]) : []
+    ),
+    ...parsePageMeta(r.meta),
+  };
+}
+
+/** Une page porte-t-elle quelque chose (trait, objet, image) ? */
+export const pageHasContent = (p: Pick<BoardPage, 'strokes' | 'objects' | 'image'>) =>
+  p.strokes.length > 0 || (p.objects ?? []).length > 0 || !!p.image;
+
 /** `versos` : garder aussi les versos parmi les pages (le tableau blanc d'une page les lit). */
 export async function fetchBoardPages(ref: BoardRef, opts: { versos?: boolean } = {}): Promise<RemoteBoard> {
   const columns = () => `page_id, position, background, strokes, image, updated_at${objectsColumnMissing ? '' : ', objects'}${metaColumnMissing ? '' : ', meta'}`;
@@ -123,17 +142,7 @@ export async function fetchBoardPages(ref: BoardRef, opts: { versos?: boolean } 
   const versoOf = versoRows
     .filter((r) => (Array.isArray(r.strokes) && r.strokes.length > 0) || (Array.isArray(r.objects) && r.objects.length > 0) || !!r.image)
     .map((r) => r.page_id.slice(VERSO_PREFIX.length));
-  const pages: BoardPage[] = rows.map((r) => ({
-    id: r.page_id,
-    background: (['blank', 'grid', 'lines', 'seyes', 'graph', 'axes', 'dots'].includes(r.background) ? r.background : 'blank') as Background,
-    strokes: Array.isArray(r.strokes) ? (r.strokes as Stroke[]) : [],
-    image: parseImage(r.image),
-    objects: migrateLegacyTexts(
-      Array.isArray(r.objects) ? (r.objects as BoardObject[]) : [],
-      Array.isArray(r.texts) ? (r.texts as TextBox[]) : []
-    ),
-    ...parsePageMeta(r.meta),
-  }));
+  const pages: BoardPage[] = rows.map(rowToBoardPage);
   // Un verso écrit après les pages ne doit pas faire passer les pages du serveur avant celles du poste
   const updatedAt = rows.filter((r) => opts.versos || !isVersoPageId(r.page_id)).reduce((max, r) => Math.max(max, new Date(r.updated_at).getTime()), 0);
   return { pages, updatedAt, versoOf };

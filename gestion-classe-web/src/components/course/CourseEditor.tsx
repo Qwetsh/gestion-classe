@@ -49,6 +49,8 @@ import type { PasteMode } from './coursePaste';
 import { CourseLinkDialog } from './CourseLinkDialog';
 import { CourseQrDialog } from './CourseQrDialog';
 import { CourseImageSearch } from './CourseImageSearch';
+import { CourseClassWritings } from './CourseClassWritings';
+import { fetchCourseVersos, type ClassVerso } from '../../lib/boardVersos';
 import { MM } from '../../lib/course/coursePage';
 import './course.css';
 // Polices ajoutées au lot T16a (OFL) : OpenDyslexic et l'écriture attachée de l'école française
@@ -205,6 +207,14 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
   const [qrOpen, setQrOpen] = useState(false);
   /** Fenêtre « Banque d'images » (lot T16b). */
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  /** Tableaux blancs écrits en classe sur ce cours (séances parties de lui ou de ses copies). */
+  const [written, setWritten] = useState<ClassVerso[]>([]);
+  const [writtenOpen, setWrittenOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCourseVersos(boardId, { withPages: true }).then((r) => { if (!cancelled) setWritten(r.entries); });
+    return () => { cancelled = true; };
+  }, [boardId]);
   /** Fenêtre « Lien » (Ctrl+K) : état de départ, ou null si fermée. */
   const [linkDialog, setLinkDialog] = useState<{ href: string; text: string; askText: boolean; inLink: boolean } | null>(null);
   const deskRef = useRef<HTMLDivElement>(null);
@@ -1387,6 +1397,11 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
           </button>
         )}
         <span className="ce-spacer-flex" />
+        {written.length > 0 && (
+          <button type="button" className="ce-written-btn" onClick={() => setWrittenOpen(true)} title="Les tableaux blancs écrits en classe sur ce cours, séance par séance">
+            ✎ Écrit en classe ({new Set(written.map((w) => w.sessionId)).size})
+          </button>
+        )}
         {/* Le stylet n'est pas un mode : un outil de la feuille, pour annoter l'imprimable */}
         <button type="button" className={`ce-stylus ${mode === 'stylet' ? 'is-on' : ''}`} aria-pressed={mode === 'stylet'} title="Stylet : écrire par-dessus la feuille (flèches, entourages, annotations), pour projeter l’imprimable tel quel" onClick={() => switchMode(mode === 'stylet' ? 'texte' : 'stylet')}>✎ Stylet</button>
         {/* Trois temps : la feuille à imprimer, le tableau qu'on prépare, la classe où on le présente */}
@@ -1448,6 +1463,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
           onClose={() => setNameDialog(null)}
         />
       )}
+
+      {writtenOpen && <CourseClassWritings entries={written} onClose={() => setWrittenOpen(false)} />}
 
       {imageSearchOpen && (
         <CourseImageSearch

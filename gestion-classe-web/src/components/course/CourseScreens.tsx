@@ -97,6 +97,7 @@ export function ScreensTest({ boardId, userId, title, screens, onClose }: TestPr
       remote={false}
       localKey={null}
       initialPages={pages}
+      sourceBoardId={boardId}
       chrome="ribbon"
       inClass
       onClose={onClose}
