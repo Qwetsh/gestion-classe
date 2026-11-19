@@ -91,8 +91,8 @@ import type { LibraryItem, LibraryObject } from '../../lib/boardLibrary';
 import { recognizeHandwriting } from '../../lib/boardHandwriting';
 import { pullKeys, setKeysOwner } from '../../lib/userKeys';
 import { newInstrument, snapToInstruments, type Instrument, type InstrumentKind } from '../../lib/boardInstruments';
-import { fetchBoardPages, fetchSessionReveal, saveSessionReveal, upsertBoardPages, versoPageId } from '../../lib/boardQueries';
-import { VERSO_CSS, VersoBackThumb } from './BoardVerso';
+import { fetchBoardPages, fetchSessionReveal, pageHasContent, saveSessionReveal, upsertBoardPages, versoPageId } from '../../lib/boardQueries';
+import { VERSO_CSS, VersoBackThumb, VersoHistory, type VersoContext } from './BoardVerso';
 import { createPortal } from 'react-dom';
 import { fullWidthPageHeight, importFilesToPages, isImportableFile, isImageFile, uploadBoardImage, uploadCoverImage, type ImportLayout, type ImportProgress } from '../../lib/boardImport';
 import { downloadBlob, exportGcboard, importGcboard, isGcboardFile, safeFileName, GCBOARD_EXTENSION } from '../../lib/boardFile';
@@ -224,6 +224,13 @@ export interface WhiteboardProps {
   backTo?: BoardPage;
   /** Chaque nouvelle valeur ferme le tableau comme « Retour » (le téléphone passe à la page suivante). */
   closeRequest?: number;
+  /** Verso : de quoi retrouver les tableaux blancs des séances précédentes sur la même page. */
+  versoContext?: VersoContext;
+  /**
+   * Cours joué (tableau préparé) quand le tableau n'est pas celui d'une séance (essai des écrans) :
+   * ses versos des séances précédentes restent consultables.
+   */
+  sourceBoardId?: string;
   /** Fermeture (« Retour »), après l'envoi des dernières modifications ; reçoit les pages telles quelles. */
   onClose: (pages: BoardPage[]) => void;
 }
@@ -422,7 +429,7 @@ const hasInk = (pages: Page[]) => pages.some((p) => p.strokes.length > 0 || (p.o
 
 // ---- Composant ----
 
-export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, inClass, chrome = 'tbi', backTo, closeRequest, onClose }: WhiteboardProps) {
+export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, title = 'Tableau', classroom, className, active = true, topOffset = 0, onOpenInTab, onOpenDraftTab, seedBoard, onlyPageId, localKey, initialPage, pageIds, onPageIdsChange, initialPages, inClass, chrome = 'tbi', backTo, closeRequest, versoContext, sourceBoardId, onClose }: WhiteboardProps) {
   /** Clé du stockage local ; `null` = aucun stockage local. */
   const storeKey = localKey === undefined ? sessionId : localKey;
   const activeRef = useRef(active);
@@ -3995,6 +4002,19 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           </button>
         )}
         {backTo && <VersoBackThumb page={backTo} onBack={closeBoard} />}
+        {backTo && versoContext && (
+          <VersoHistory
+            context={versoContext}
+            canTake={!!page && !pageHasContent(page)}
+            onTake={(v) => {
+              const p = pagesRef.current[0];
+              if (!p) return;
+              const before = p;
+              updatePage(p.id, (pg) => ({ ...pg, background: v.background, color: v.color ?? null, image: v.image ?? null, strokes: JSON.parse(JSON.stringify(v.strokes)) as Stroke[], objects: JSON.parse(JSON.stringify(v.objects ?? [])) as BoardObject[] }));
+              offerUndo('Ancien tableau blanc repris ici.', () => updatePage(before.id, () => before));
+            }}
+          />
+        )}
         {view.zoom > 1 && (
           <div className="wb__zoom" onPointerDown={(e) => e.stopPropagation()}>
             <span>{Math.round(view.zoom * 100)} %</span>
@@ -4088,6 +4108,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
             chrome={chrome}
             inClass
             backTo={pages.find((p) => p.id === versoOf)}
+            versoContext={{ boardId: sourceBoardId, sessionId, origin: pages.find((p) => p.id === versoOf)?.origin }}
             closeRequest={versoCloseSeq}
             onClose={(verso) => closeVerso(versoOf, verso)}
           />
