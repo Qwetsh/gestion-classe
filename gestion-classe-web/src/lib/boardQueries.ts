@@ -22,6 +22,15 @@ function parseImage(raw: unknown): PageImage | null {
   return { path: r.path, width: r.width, height: r.height };
 }
 
+/**
+ * Verso d'une page jouée en classe (« Tableau blanc ») : une page blanche à part, rangée dans la
+ * séance à côté des pages, sous l'identifiant `verso:<id de la page>`. Les lectures ordinaires
+ * l'écartent : elle n'apparaît ni dans le rail des pages, ni dans les galeries.
+ */
+export const VERSO_PREFIX = 'verso:';
+export const versoPageId = (pageId: string) => VERSO_PREFIX + pageId;
+export const isVersoPageId = (pageId: string) => pageId.startsWith(VERSO_PREFIX);
+
 /** Propriétaire des pages : une séance (mode « en classe ») ou un tableau nommé. */
 export type BoardRef = string | { boardId: string };
 
@@ -30,8 +39,10 @@ const ownerId = (ref: BoardRef) => (typeof ref === 'string' ? ref : ref.boardId)
 
 export interface RemoteBoard {
   pages: BoardPage[];
-  /** Dernière mise à jour connue côté serveur (ms), 0 si aucune page. */
+  /** Dernière mise à jour connue côté serveur (ms), 0 si aucune page (versos non comptés). */
   updatedAt: number;
+  /** Pages qui ont un verso écrit (identifiants des pages, pas des versos). */
+  versoOf: string[];
 }
 
 /**
@@ -64,26 +75,29 @@ function isMissingMetaColumn(error: { message?: string; code?: string } | null):
 export const pageMetaUnavailable = () => metaColumnMissing;
 
 /** Réglages d'une page à ranger dans `meta` ; null quand tout est à la valeur par défaut. */
-export function pageMeta(page: Pick<BoardPage, 'color' | 'curtain' | 'height'>): { color?: string; curtain?: true; height?: number } | null {
-  const meta: { color?: string; curtain?: true; height?: number } = {};
+export function pageMeta(page: Pick<BoardPage, 'color' | 'curtain' | 'height' | 'origin'>): { color?: string; curtain?: true; height?: number; origin?: string } | null {
+  const meta: { color?: string; curtain?: true; height?: number; origin?: string } = {};
   if (typeof page.color === 'string' && page.color) meta.color = page.color;
+  if (typeof page.origin === 'string' && page.origin) meta.origin = page.origin;
   if (page.curtain === true) meta.curtain = true;
   if (typeof page.height === 'number' && Number.isFinite(page.height) && page.height > BOARD_PAGE_H) meta.height = page.height;
   return Object.keys(meta).length > 0 ? meta : null;
 }
 
 /** Lecture de `meta` : seules les valeurs valides sont reprises. */
-export function parsePageMeta(raw: unknown): Pick<BoardPage, 'color' | 'curtain' | 'height'> {
+export function parsePageMeta(raw: unknown): Pick<BoardPage, 'color' | 'curtain' | 'height' | 'origin'> {
   if (!raw || typeof raw !== 'object') return {};
   const r = raw as Record<string, unknown>;
   return pageMeta({
     color: typeof r.color === 'string' && /^#[0-9a-f]{6}$/i.test(r.color) ? r.color : undefined,
     curtain: r.curtain === true ? true : undefined,
     height: typeof r.height === 'number' ? r.height : undefined,
+    origin: typeof r.origin === 'string' ? r.origin : undefined,
   }) ?? {};
 }
 
-export async function fetchBoardPages(ref: BoardRef): Promise<RemoteBoard> {
+/** `versos` : garder aussi les versos parmi les pages (le tableau blanc d'une page les lit). */
+export async function fetchBoardPages(ref: BoardRef, opts: { versos?: boolean } = {}): Promise<RemoteBoard> {
   const columns = () => `page_id, position, background, strokes, image, updated_at${objectsColumnMissing ? '' : ', objects'}${metaColumnMissing ? '' : ', meta'}`;
   const read = () => supabase
     .from('board_pages')
@@ -103,7 +117,12 @@ export async function fetchBoardPages(ref: BoardRef): Promise<RemoteBoard> {
     ({ data, error } = await read());
   }
   if (error) throw error;
-  const rows = (data || []) as unknown as BoardPageRow[];
+  const all = (data || []) as unknown as BoardPageRow[];
+  const versoRows = all.filter((r) => isVersoPageId(r.page_id));
+  const rows = opts.versos ? all : all.filter((r) => !isVersoPageId(r.page_id));
+  const versoOf = versoRows
+    .filter((r) => (Array.isArray(r.strokes) && r.strokes.length > 0) || (Array.isArray(r.objects) && r.objects.length > 0) || !!r.image)
+    .map((r) => r.page_id.slice(VERSO_PREFIX.length));
   const pages: BoardPage[] = rows.map((r) => ({
     id: r.page_id,
     background: (['blank', 'grid', 'lines', 'seyes', 'graph', 'axes', 'dots'].includes(r.background) ? r.background : 'blank') as Background,
@@ -115,8 +134,9 @@ export async function fetchBoardPages(ref: BoardRef): Promise<RemoteBoard> {
     ),
     ...parsePageMeta(r.meta),
   }));
-  const updatedAt = rows.reduce((max, r) => Math.max(max, new Date(r.updated_at).getTime()), 0);
-  return { pages, updatedAt };
+  // Un verso écrit après les pages ne doit pas faire passer les pages du serveur avant celles du poste
+  const updatedAt = rows.filter((r) => opts.versos || !isVersoPageId(r.page_id)).reduce((max, r) => Math.max(max, new Date(r.updated_at).getTime()), 0);
+  return { pages, updatedAt, versoOf };
 }
 
 export async function upsertBoardPages(

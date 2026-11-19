@@ -98,6 +98,11 @@ export interface BoardPage {
   objects: BoardObject[];
   /** Ancien champ (v1) : migré dans `objects` au chargement, jamais écrit. */
   texts?: TextBox[];
+  /**
+   * Page dont celle-ci est la copie (tableau préparé versé dans une séance ou un essai) : relie la
+   * page jouée en classe à sa page préparée, et son verso (tableau blanc) à la page du cours.
+   */
+  origin?: string;
 }
 
 /**
