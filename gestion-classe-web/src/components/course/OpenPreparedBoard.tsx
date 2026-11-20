@@ -22,7 +22,7 @@ interface Props {
   present?: boolean;
   /** Cours rédigé : ouvrir l'éditeur sur ses pages projetées (mode Tableau). */
   screens?: boolean;
-  /** Tableau blanc : l'interface de classe (barre flottante, pastille, menu radial), pas le ruban de préparation. */
+  /** Tableau blanc : le mode classe (ruban réduit, rien de préparé effacé), comme l'écran /classe. */
   inClass?: boolean;
   onClose: () => void;
 }
@@ -41,7 +41,7 @@ export function OpenPreparedBoard({ board, userId, kind: knownKind, present, scr
 
   if (kind === 'course' && present) return <PresentCourse board={board} userId={userId} onClose={onClose} />;
   if (kind === 'course') return <CourseEditor boardId={board.id} title={board.title} userId={userId} startInScreens={screens} onClose={onClose} />;
-  if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome={inClass ? 'tbi' : 'ribbon'} inClass={inClass} onClose={onClose} />;
+  if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome="ribbon" inClass={inClass} onClose={onClose} />;
   return null;
 }
 
