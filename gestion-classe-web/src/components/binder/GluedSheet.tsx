@@ -5,11 +5,16 @@
  * format A5 (148 / 210) : c'est exactement l'impression A5 d'une page A4. Une fenêtre de la taille
  * d'une page montre la page voulue : la première (le recto), ou la suivante quand on retourne la
  * fiche (un cours de deux pages est une fiche recto verso).
+ * Lot 2 : la page de garde et la feuille de bilans sont montrées remplies par l'élève
+ * (lib/binderInk.ts) ; un bouton rend la fiche vierge.
  * À monter avec `key` = l'identifiant du cours : l'état (fiche lue, face montrée) lui est propre.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
+import type { JSONContent } from '@tiptap/core';
 import type { Board } from '../../lib/boardsQueries';
+import type { SheetRole } from '../../lib/binder';
+import { fillSummaries, tickCover } from '../../lib/binderInk';
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { courseExtensions } from '../course/courseExtensions';
@@ -21,6 +26,10 @@ import '../course/course.css';
 
 interface Props {
   board: Board;
+  /** Rôle de la fiche dans le classeur : page de garde et feuille de bilans sont remplies par l'élève. */
+  role?: SheetRole;
+  /** Feuille de bilans : sa version corrigée, d'où les bilans sont recopiés. */
+  companion?: Board;
   /** Position de la fiche sur la feuille du classeur, en px de la feuille A4. */
   left: number;
   top: number;
@@ -28,10 +37,33 @@ interface Props {
   onOpen?: () => void;
 }
 
-export function GluedSheet({ board, left, top, onOpen }: Props) {
+export function GluedSheet({ board, role, companion, left, top, onOpen }: Props) {
   const [doc, setDoc] = useState<CourseDoc | null | undefined>(undefined);
+  const [corrected, setCorrected] = useState<CourseDoc | null>(null);
   const [failed, setFailed] = useState(false);
   const [face, setFace] = useState(0);
+  /** Fiche montrée telle que l'élève l'a remplie (sinon : la fiche vierge, telle qu'imprimée). */
+  const [filled, setFilled] = useState(true);
+
+  // Feuille corrigée : un plus ; sans elle, la feuille de bilans reste vierge
+  useEffect(() => {
+    if (!companion) return;
+    let cancelled = false;
+    loadSheetDoc(companion).then((d) => { if (!cancelled) setCorrected(d); }, () => { /* reste vierge */ });
+    return () => { cancelled = true; };
+  }, [companion]);
+
+  /** Ce que l'élève a écrit sur la fiche, ou null si le classeur n'y écrit rien. */
+  const inked = useMemo<JSONContent | null>(() => {
+    if (!doc) return null;
+    if (role === 'cover') return tickCover(doc.content);
+    if (role === 'summaries' && corrected) {
+      const next = fillSummaries(doc.content, corrected.content);
+      return next === doc.content ? null : next;
+    }
+    return null;
+  }, [doc, role, corrected]);
+  const shownDoc = useMemo(() => (doc && inked && filled ? { ...doc, content: inked } : doc), [doc, inked, filled]);
 
   // Une autre fiche = un autre composant (la page du classeur porte la clé de la fiche)
   useEffect(() => {
@@ -52,7 +84,19 @@ export function GluedSheet({ board, left, top, onOpen }: Props) {
       onDoubleClick={onOpen}
       title={onOpen ? `${board.title} — double-clic pour l’ouvrir dans Mes cours` : board.title}
     >
-      {doc && <CourseFaces board={board} doc={doc} face={face} onFace={setFace} />}
+      {shownDoc && <CourseFaces board={board} doc={shownDoc} face={face} onFace={setFace} />}
+      {inked && (
+        <button
+          type="button"
+          className="bd-glued__ink"
+          aria-pressed={filled}
+          onClick={(e) => { e.stopPropagation(); setFilled((f) => !f); }}
+          onDoubleClick={(e) => e.stopPropagation()}
+          title={filled ? 'Voir la fiche vierge, telle qu’elle est distribuée' : 'Voir la fiche remplie par l’élève'}
+        >
+          {filled ? 'Voir la fiche vierge' : 'Voir la fiche remplie'}
+        </button>
+      )}
       {doc === null && <span className="bd-glued__note">Tableau blanc : pas de feuille à imprimer</span>}
       {doc === undefined && <span className="bd-glued__note">{failed ? 'Fiche illisible' : 'Chargement…'}</span>}
       <span className="bd-glued__glue" aria-hidden />

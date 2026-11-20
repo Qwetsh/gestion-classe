@@ -82,6 +82,17 @@ describe('buildBinder', () => {
     expect(wegener[0].kind === 'sheet' && wegener[0].board.id).toBe('wegener-recent');
   });
 
+  it('donne à chaque fiche son rôle, son titre manuscrit et la feuille de bilans corrigée', () => {
+    const sheets = pages.flatMap((p) => (p.kind === 'sheet' ? [p] : []));
+    expect(sheets.find((p) => p.label === 'Activité 2')).toMatchObject({ role: 'activity', heading: 'Activité 2 — Séisme' });
+    const documents = sheets.find((p) => p.label === 'Activité 2 — documents');
+    expect(documents?.role).toBe('documents');
+    expect(documents?.heading).toBeUndefined();
+    expect(sheets.find((p) => p.role === 'summaries')?.companion?.title).toBe('Feuille de bilans — Séquence 1 (correction)');
+    expect(sheets.map((p) => p.role).filter((r, i, all) => all.indexOf(r) === i))
+      .toEqual(['guide', 'cover', 'activity', 'documents', 'method', 'summaries', 'memo']);
+  });
+
   it('ne mélange pas les niveaux', () => {
     expect(buildBinder(library, '3e').filter((p) => p.kind === 'sheet').map((p) => p.kind === 'sheet' && p.label))
       .toEqual(['Mode d’emploi', 'Page de garde', 'FM1', 'FM2', 'FM10']);

@@ -162,3 +162,28 @@
 .bd-tab--sequences { background: #F6C945; }
 .bd-tab--methodes { background: #7CC6A4; }
 .bd-tab--revise { background: #F28B82; }
+
+/* ---------- Lot 2 : l'écriture de l'élève ---------- */
+/* Titre de l'activité, écrit à la main sur la ligne au-dessus de la fiche et souligné en rouge */
+.bd-heading {
+  position: absolute; z-index: 1; top: 22mm; height: 16mm; display: flex; align-items: flex-end;
+  padding-bottom: 2.2mm; overflow: hidden; pointer-events: none;
+}
+.bd-heading span {
+  font: 400 21px/1.2 "Playwrite FR Moderne", cursive; color: #1F3A93; white-space: nowrap;
+  text-decoration: underline; text-decoration-color: #C8102E; text-decoration-thickness: 1.6px; text-underline-offset: 7px;
+}
+/* Bilans recopiés : l'écriture attachée posée sur des lignes, comme la zone qu'elle remplace */
+.bd-glued .ce-doc p:has(> span[style*="Playwrite"]) {
+  line-height: 8mm; font-size: 9.5pt; margin: 0; padding: 0 1mm;
+  background: repeating-linear-gradient(to bottom, transparent 0 calc(8mm - 1px), #9CA3AF calc(8mm - 1px) 8mm);
+}
+/* Bascule fiche remplie / fiche vierge */
+.bd-glued__ink {
+  position: absolute; right: 0; top: 0; z-index: 2; padding: 8px 16px; border: 0; border-radius: 0 0 0 16px;
+  background: rgba(238,240,244,.92); color: #374151; font: 600 20px Inter, system-ui, sans-serif; cursor: pointer;
+  opacity: 0; transition: opacity .12s;
+}
+.bd-glued:hover .bd-glued__ink, .bd-glued__ink:focus-visible { opacity: 1; }
+.bd-glued__ink:hover { background: #E0E7FF; color: #312E81; }
+@media (hover: none) { .bd-glued__ink { opacity: 1; } }
