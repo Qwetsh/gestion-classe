@@ -17,6 +17,7 @@ import {
   type BinderSection,
 } from '../lib/binder';
 import { turnDirection } from '../lib/binderFlaps';
+import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
 import { MM, PAGE_H, PAGE_W } from '../lib/course/coursePage';
 import { BinderLeaf } from '../components/binder/BinderLeaf';
 import { HOLES_MM, loadSheetDoc } from '../components/binder/binderSheet';
@@ -68,7 +69,32 @@ export function Binder() {
 
   const levels = useMemo(() => (boards ? binderLevels(boards) : []), [boards]);
   const level = params.get('niveau') && levels.includes(params.get('niveau')!) ? params.get('niveau')! : levels[0] ?? null;
-  const pages = useMemo(() => (boards && level ? buildBinder(boards, level) : []), [boards, level]);
+  const basePages = useMemo(() => (boards && level ? buildBinder(boards, level) : []), [boards, level]);
+
+  // Les bilans de « L'essentiel » (feuilles de bilans corrigées) et la police d'écriture : lus avant
+  // d'ouvrir le classeur, pour que les pages ne changent plus de numéro ensuite
+  const [inkReady, setInkReady] = useState<{ texts: Map<string, SummaryRuns>; measure: (text: string) => number } | null>(null);
+  useEffect(() => {
+    if (basePages.length === 0) return;
+    let cancelled = false;
+    const sources = basePages.flatMap((p) => (p.kind === 'sheet' && p.role === 'summaries' && p.chapter && p.companion ? [{ chapter: p.chapter, board: p.companion }] : []));
+    const font = `${INK_PX}px "Playwrite FR Moderne"`;
+    Promise.all([
+      Promise.all(sources.map(({ chapter, board }) => loadSheetDoc(board).then((d) => [chapter, d ? summaryRuns(d.content) : new Map()] as const, () => [chapter, new Map()] as const))),
+      document.fonts.load(font).catch(() => []),
+    ]).then(([lists]) => {
+      if (cancelled) return;
+      const ctx = document.createElement('canvas').getContext('2d');
+      if (ctx) ctx.font = font;
+      setInkReady({ texts: new Map(lists), measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
+    });
+    return () => { cancelled = true; };
+  }, [basePages]);
+  const pages = useMemo(() => {
+    if (!inkReady) return basePages;
+    const width = INK_WIDTH_MM * MM * 0.97;
+    return withSummaries(basePages, inkReady.texts, (paragraphs) => wrapInk(paragraphs, width, inkReady.measure, SUMMARY_LEAD));
+  }, [basePages, inkReady]);
   const count = pages.length;
   const index = Math.max(0, Math.min(count - 1, (Number(params.get('page')) || 1) - 1));
 
@@ -203,14 +229,14 @@ export function Binder() {
           }}
         >
           {error && <p className="bd-message" role="alert">{error}</p>}
-          {!error && !boards && <p className="bd-message">Ouverture du classeur…</p>}
+          {!error && (!boards || (basePages.length > 0 && !inkReady)) && <p className="bd-message">Ouverture du classeur…</p>}
           {!error && boards && !level && (
             <p className="bd-message">
               Pas encore de classeur : il se construit à partir des pages de garde des séquences (« Page de garde — Séquence 1 »
               dans « Mes cours », rangée sous son niveau et sa séquence).
             </p>
           )}
-          {count > 0 && (
+          {count > 0 && inkReady && (
             <>
               <button type="button" className="bd-arrow bd-arrow--prev" onClick={() => go(turn(index, count, double, -1))} disabled={firstShown === 0} aria-label="Page précédente">
                 <ChevronLeft size={28} aria-hidden />

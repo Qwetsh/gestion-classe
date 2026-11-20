@@ -166,12 +166,12 @@
 /* ---------- Lot 2 : l'écriture de l'élève ---------- */
 /* Titre de l'activité, écrit à la main sur la ligne au-dessus de la fiche et souligné en rouge */
 .bd-heading {
-  position: absolute; z-index: 1; top: 22mm; height: 16mm; display: flex; align-items: flex-end;
-  padding-bottom: 2.2mm; overflow: hidden; pointer-events: none;
+  position: absolute; z-index: 1; top: 20mm; height: 10mm; display: flex; align-items: flex-end;
+  padding-bottom: 1mm; overflow: hidden; pointer-events: none;
 }
 .bd-heading span {
   font: 400 21px/1.2 "Playwrite FR Moderne", cursive; color: #1F3A93; white-space: nowrap;
-  text-decoration: underline; text-decoration-color: #C8102E; text-decoration-thickness: 1.6px; text-underline-offset: 7px;
+  text-decoration: underline; text-decoration-color: #C8102E; text-decoration-thickness: 1.6px; text-underline-offset: 5px;
 }
 /* Zone d'écriture remplie : l'écriture attachée posée sur des lignes, comme la zone qu'elle remplace.
    Repérée par sa taille (RULED_SIZE de binderInk.ts) : l'écriture glissée dans une phrase ou dans
@@ -193,6 +193,15 @@
 @media (hover: none) { .bd-glued__ink { opacity: 1; } }
 /* Sur la fiche collée, pas d'étiquette d'éditeur sous les zones d'écriture (c'est du papier) */
 .bd-glued .ce-doc .ce-zone::before { content: none; }
+
+/* Bilans : l'écriture rouge posée sur les lignes du papier, une ligne d'écriture par ligne du quadrillage.
+   Chaque ligne est coupée à la main (lib/binderSummary.ts) : le navigateur ne la recoupe pas. */
+.bd-ink { position: absolute; z-index: 1; width: 172mm; pointer-events: none; }
+.bd-ink__line {
+  display: flex; align-items: flex-end; padding-bottom: 1.6mm; box-sizing: border-box; overflow: visible;
+  font: 400 17px/1 "Playwrite FR Moderne", cursive; color: #C00000; white-space: pre;
+}
+.bd-ink__line u { text-decoration-thickness: 1.2px; text-underline-offset: 4px; }
 
 /* ---------- Lot 3 : les gestes du papier ---------- */
 /* La fiche collée se soulève un peu sous le doigt : seule l'ombre change (pas de transformation,

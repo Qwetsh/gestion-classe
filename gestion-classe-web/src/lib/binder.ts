@@ -19,6 +19,7 @@
  */
 import type { Board } from './boardsQueries';
 import { groupActivities, isEvaluationTitle, isMethodSheet, naturalCompare, splitVariant } from './courseLibrary';
+import type { InkLine } from './binderSummary';
 
 export type BinderSection = 'sequences' | 'methodes' | 'revise';
 
@@ -52,6 +53,21 @@ export type BinderPage =
      * pour une fiche d'activité, sa « (copie modèle) » (les réponses).
      */
     companion?: Board;
+    /** Le bilan de l'activité, écrit à la main en rouge sur les lignes sous la fiche. */
+    summary?: InkLine[];
+    /** La fin du bilan de l'activité précédente, écrite au-dessus de la fiche (feuille de documents). */
+    above?: InkLine[];
+  }
+  | {
+    /** Feuille de lignes sans fiche : la suite d'un bilan, ou le bilan d'une activité sans fiche. */
+    kind: 'ruled';
+    key: string;
+    section: BinderSection | null;
+    chapter: string | null;
+    label: string;
+    /** Titre écrit à la main en haut de la feuille. */
+    heading?: string;
+    lines: InkLine[];
   };
 
 export type SheetRole = 'guide' | 'cover' | 'activity' | 'documents' | 'evaluation' | 'correction' | 'method' | 'summaries' | 'memo';
