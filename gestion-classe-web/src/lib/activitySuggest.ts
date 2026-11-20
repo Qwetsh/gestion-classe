@@ -112,3 +112,17 @@ export function searchActivities(sequences: PickableSequence[], query: string): 
     }))
     .filter((s) => s.groups.length > 0);
 }
+
+/**
+ * L'activité d'un tableau, d'après son titre (celui de l'activité) et sa séquence. Sans séquence
+ * connue, le titre seul décide. Null si le tableau n'a pas été créé depuis une activité.
+ */
+export function findActivityGroup(sequences: PickableSequence[], title: string, chapter: string | null): { group: ActivityGroup; chapter: string } | null {
+  const key = activityTitleKey(title);
+  for (const s of sequences) {
+    if (chapter && s.chapter !== chapter) continue;
+    const group = s.groups.find((g) => activityTitleKey(g.title) === key);
+    if (group) return { group, chapter: s.chapter };
+  }
+  return null;
+}

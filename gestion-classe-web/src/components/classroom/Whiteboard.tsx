@@ -71,6 +71,7 @@ import { SWATCHES, openColorWheel, pickSwatchColor, swatchLabel, useSwatches } f
 import { BoardInstruments } from './BoardInstruments';
 import { BoardSpotlight } from './BoardSpotlight';
 import { BoardSearchPanel } from './BoardSearchPanel';
+import { BoardActivityPanel } from './BoardActivityPanel';
 import { BoardKeyboard } from './BoardKeyboard';
 import { BoardLibraryPanel, type LibraryTab } from './BoardLibraryPanel';
 import { pullEvents, saveEvent, setEventsOwner, type EventInsert, type EventPending } from '../../lib/boardEvents';
@@ -572,6 +573,8 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const instrumentsRef = useRef<Instrument[]>([]);
   const [spotlight, setSpotlight] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  /** Panneau « Activité » : fiche, documents et correction de l'activité, à prélever sur le tableau. */
+  const [activityOpen, setActivityOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   /** Panneau Ressources ouvert, sur cet onglet (faux = fermé). */
   const [libraryOpen, setLibraryOpen] = useState<false | LibraryTab>(false);
@@ -3519,6 +3522,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       items: [
         { id: 'ses-library', label: 'Ressources', icon: '▤', onSelect: () => setLibraryOpen('library') },
         { id: 'ses-events', label: 'Événements (boutons prêts à poser)', icon: '⚡', onSelect: () => setLibraryOpen('events') },
+        { id: 'ses-activity', label: 'Activité (fiche, documents, correction)', icon: '📄', onSelect: () => setActivityOpen(true) },
         { id: 'ses-search', label: 'Rechercher (Ctrl+K)', icon: '🔎', onSelect: () => setSearchOpen(true) },
         ...(classroom ? [{ id: 'ses-pick', label: 'Tirage au sort', icon: '🎯', onSelect: () => setPickOpen(true) }] : []),
         { id: 'ses-display', label: 'Mode affichage', icon: '🖥', onSelect: enterDisplayMode },
@@ -4170,6 +4174,26 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           onInsertImageBlob={async (blob) => { const img = await uploadBoardImage(blob, userId, sessionId); insertImage(img); }}
         />
       )}
+      {!activityOpen && !displayMode && inClass && (boardId ?? sessionId) && (
+        <button type="button" className="wb__activity" onClick={() => setActivityOpen(true)} title="Fiche, documents et correction de l'activité, à prélever sur le tableau">📄 Activité</button>
+      )}
+      {activityOpen && (
+        <BoardActivityPanel
+          userId={userId}
+          anchorKey={boardId ?? sessionId ?? 'libre'}
+          boardId={boardId}
+          level={levelFromClassName(className)}
+          onClose={() => setActivityOpen(false)}
+          onInsertText={(html) => { const obj: TextObject = { id: uid(), type: 'text', ...centered(520, 120), w: 520, size: 22, font: textFont, color, html }; addObject(obj); }}
+          onInsertTable={(cells, header) => {
+            const rows = cells.length, cols = Math.max(1, ...cells.map((r) => r.length));
+            const w = Math.min(720, 120 * cols + 120);
+            const obj: TableObject = { id: uid(), type: 'table', ...centered(w, 40 * rows), w, rows, cols, cells, header, size: 24, font: textFont, color };
+            addObject(obj);
+          }}
+          onInsertImageBlob={async (blob) => { const img = await uploadBoardImage(blob, userId, sessionId); insertImage(img); }}
+        />
+      )}
       {searchOpen && (
         <BoardSearchPanel
           onClose={() => setSearchOpen(false)}
@@ -4491,6 +4515,9 @@ const CSS = `
 .wb { position: fixed; inset: 0; z-index: 100; background: #FFFFFF; display: flex; flex-direction: column; user-select: none; }
 .wb__stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #1F2937; touch-action: none; }
 .wb__view { position: absolute; inset: 0; transform-origin: 0 0; }
+/* Pastille « Activité » : sur le bord droit, ouvre le panneau fiche / documents / correction */
+.wb__activity { position: fixed; right: 0; top: 42%; z-index: 24; writing-mode: vertical-rl; padding: 14px 8px; border: 0; border-radius: 12px 0 0 12px; background: #4F46E5; color: #FFFFFF; font: 600 14px/1 Inter, system-ui, sans-serif; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+.wb__activity:hover { background: #4338CA; }
 /* Verso (« Tableau blanc ») : bouton en bas à gauche de la page, et le verso par-dessus tout */
 .wb__verso { position: absolute; left: 14px; bottom: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; border: 1px solid #E5E7EB; border-radius: 12px; background: rgba(255,255,255,0.94); color: #1F2937; font: 600 14px/1 Inter, system-ui, sans-serif; box-shadow: 0 2px 10px rgba(15,23,42,0.12); cursor: pointer; }
 .wb__verso:hover { border-color: #A5B4FC; color: #4338CA; }

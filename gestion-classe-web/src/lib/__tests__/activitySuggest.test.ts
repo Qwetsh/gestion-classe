@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
-import { activityTitleKey, pickableActivities, searchActivities, suggestActivities } from '../activitySuggest';
+import { activityTitleKey, findActivityGroup, pickableActivities, searchActivities, suggestActivities } from '../activitySuggest';
 
 let n = 0;
 const board = (title: string, chapter: string | null, extra: Partial<Board> = {}): Board => ({
@@ -101,3 +101,22 @@ describe('searchActivities', () => {
     expect(searchActivities(sequences, '  ')).toBe(sequences);
   });
 });
+
+describe('findActivityGroup', () => {
+  it('retrouve l’activité d’un tableau par son titre et sa séquence', () => {
+    const found = findActivityGroup(sequences, 'Activité 2 — Séisme', S1);
+    expect(found?.group.title).toBe('Activité 2 — Séisme');
+    expect(found?.chapter).toBe(S1);
+  });
+
+  it('même titre dans une autre séquence : la séquence départage', () => {
+    expect(findActivityGroup(sequences, 'Activité 1 — Frontières', S1)).toBeNull();
+    expect(findActivityGroup(sequences, 'Activité 1 — Frontières', S2)?.chapter).toBe(S2);
+  });
+
+  it('sans séquence connue, le titre suffit ; titre inconnu : rien', () => {
+    expect(findActivityGroup(sequences, 'Activité 1 — Frontières (correction)', null)?.chapter).toBe(S2);
+    expect(findActivityGroup(sequences, '4C · lun. 16 nov.', null)).toBeNull();
+  });
+});
+
