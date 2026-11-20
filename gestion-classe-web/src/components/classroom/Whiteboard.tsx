@@ -686,6 +686,13 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   const bgRef = useRef<HTMLCanvasElement>(null);
   const mainRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
+  /**
+   * Copie du tracé en cours, au-dessus des objets : l'encre se pose par-dessus une image (le calque
+   * qui reçoit le stylet reste sous les objets pour que leurs poignées restent touchables).
+   */
+  const topRef = useRef<HTMLCanvasElement>(null);
+  const mirrorUntil = useRef(0);
+  const mirrorRaf = useRef<number | null>(null);
 
   const scaleRef = useRef(1);
   const pagesRef = useRef(pages);
@@ -866,7 +873,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
     const h = Math.floor((w * pageH) / UNIT);
     const left = Math.floor((rect.width - w) / 2);
     const top = h <= rect.height ? Math.floor((rect.height - h) / 2) : 0;
-    for (const ref of [bgRef, mainRef, liveRef]) {
+    for (const ref of [bgRef, mainRef, liveRef, topRef]) {
       const c = ref.current;
       if (!c) continue;
       c.width = Math.round(w * dpr);
@@ -2767,6 +2774,21 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
   }, []);
 
 
+  /** Recopie le calque du stylet au-dessus des objets, pendant un tracé et un instant après. */
+  const bumpMirror = useCallback(() => {
+    mirrorUntil.current = performance.now() + 1500;
+    if (mirrorRaf.current !== null) return;
+    const tick = () => {
+      const live = liveRef.current, top = topRef.current, ctx = top?.getContext('2d');
+      if (!live || !top || !ctx) { mirrorRaf.current = null; return; }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, top.width, top.height);
+      if (toolRef.current === 'pen' || toolRef.current === 'highlighter') ctx.drawImage(live, 0, 0);
+      mirrorRaf.current = performance.now() < mirrorUntil.current ? requestAnimationFrame(tick) : null;
+    };
+    mirrorRaf.current = requestAnimationFrame(tick);
+  }, []);
+
   const clearLive = useCallback(() => {
     const live = liveRef.current;
     const ctx = live?.getContext('2d');
@@ -3754,14 +3776,15 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         onPointerDownCapture={coachOpen ? dismissCoach : undefined}
       >
         <canvas ref={bgRef} className="wb__layer" />
-        <canvas ref={mainRef} className="wb__layer" />
         <canvas
           ref={liveRef}
           className={`wb__layer wb__input wb__input--${tool}`}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={finishPointer}
-          onPointerCancel={finishPointer}
+          // Stylo et surligneur : le tracé s'affiche par-dessus les objets (copie), pas sous eux
+          style={tool === 'pen' || tool === 'highlighter' ? { opacity: 0 } : undefined}
+          onPointerDown={(e) => { bumpMirror(); onPointerDown(e); }}
+          onPointerMove={(e) => { bumpMirror(); onPointerMove(e); }}
+          onPointerUp={(e) => { bumpMirror(); finishPointer(e); }}
+          onPointerCancel={(e) => { bumpMirror(); finishPointer(e); }}
           onPointerLeave={() => { if (activePointer.current === null && toolRef.current === 'eraser') clearLive(); }}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -3809,6 +3832,9 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           links={ghostLinks}
           snapGrid={page.background === 'grid' || page.background === 'dots' || page.background === 'graph' ? 25 : undefined}
         />
+        {/* L'encre au-dessus des objets (images, schémas) : calque des traits posés + copie du tracé en cours */}
+        <canvas ref={mainRef} className="wb__layer wb__layer--ink" />
+        <canvas ref={topRef} className="wb__layer wb__layer--ink" />
         {!displayMode && !singlePage && !ribbon && (
           <button
             type="button"
@@ -4541,6 +4567,8 @@ const CSS = `
 .wb__bar--bottom.wb__bar--hand-right { left: auto; right: 10px; transform: none; }
 .wbi__item.is-on { background: #312E81; }
 .wb__layer { position: absolute; left: 0; top: 0; display: block; }
+/* Encre au-dessus des objets, sans intercepter le toucher (les poignées des objets restent atteignables) */
+.wb__layer--ink { z-index: 3; pointer-events: none; }
 .wb.is-dragover .wb__stage { outline: 4px dashed #6366F1; outline-offset: -4px; }
 .wb__import { position: fixed; inset: 0; z-index: 15; background: rgba(17,24,39,0.55); display: flex; align-items: center; justify-content: center; }
 .wb__import-box { background: #111827; color: #F9FAFB; border-radius: 16px; padding: 22px 28px; min-width: 320px; font-family: Inter, system-ui, sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
