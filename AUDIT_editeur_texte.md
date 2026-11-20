@@ -1469,3 +1469,33 @@ ligne d'en-tête répétée) et T15c (paragraphes, si le besoin se confirme).
 **Non vérifié** : impression papier d'un tableau coupé (en-tête répété imprimé) ; une ligne plus
 haute qu'une page déborde toujours (T15c ne la coupe pas non plus). Reste T15c (paragraphes, si
 le besoin se confirme).
+
+### T15c — fait le 20/11/2026 (branche `feat/texte-t15c`, pas de migration)
+
+- **Un long paragraphe se coupe entre deux pages** au début d'une ligne, au lieu de partir entier
+  à la page suivante (grand blanc) ou de déborder. Jamais moins de **deux lignes de chaque côté**
+  (veuves et orphelines) : s'il n'en tient qu'une en bas de page, le paragraphe passe entier. Un
+  paragraphe de plusieurs pages se coupe autant de fois qu'il le faut.
+- **L'intercalaire est une boîte en ligne** (`inline-block`, pleine largeur) posée dans le texte, au
+  début de la ligne : la ligne d'avant n'est pas la dernière d'un bloc et reste **justifiée**.
+- **Où l'on coupe** : seulement au début d'un mot (pas sur un mot coupé par la césure automatique) ;
+  paragraphes de premier niveau, de liste et de citation ; **pas dans un encadré** (la bande de
+  bureau n'y est pas dessinée) **ni dans une cellule de tableau**.
+- **Mesure** : débuts de ligne lus caractère par caractère (`measureLines`), ramenés à la mise en
+  page « naturelle » (intercalaires en ligne retirés, le calcul ne dépend pas de la mise en page
+  précédente) ; gardés **par nœud** (`WeakMap`, clé = largeur, police, interligne, césure, polices
+  chargées) : à la frappe, seul le paragraphe modifié est relu (≈ 5 µs par caractère sinon : 70 ms
+  pour 14 000 caractères de longs paragraphes).
+- Tests vitest : 7 cas ajoutés à `coursePagination.test.ts` (coupure à la dernière ligne qui tient,
+  veuves, orphelines, mot coupé, paragraphe de plusieurs pages, paragraphe qui tient, bloc suivant).
+- Vérifié dans le navigateur (page d'essai locale, retirée) : paragraphe de 15 lignes coupé 6 / 9,
+  la suite commence à 96 px du haut de la feuille (= marge de 2,5 cm), ligne d'avant justifiée ;
+  une seule ligne possible en bas de page : paragraphe entier à la suivante ; paragraphe de 110
+  phrases : 3 coupures sur 4 feuilles, chaque suite en haut de page ; aucune oscillation.
+
+**Non vérifié** : impression papier d'un paragraphe coupé ; frappe dans un paragraphe coupé
+(curseur autour de l'intercalaire) ; un dessin du calque ancré à un paragraphe coupé (il reste
+ancré au haut du paragraphe, comme pour les listes) ; paragraphes avec images en ligne ou tailles
+de police très mêlées (la détection de ligne suppose un interligne à peu près régulier). Une ligne
+de tableau plus haute qu'une page déborde toujours.
+

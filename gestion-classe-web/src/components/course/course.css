@@ -158,6 +158,8 @@ body.ce-open { overflow: hidden; }
    hauteur : blanc (bas de la feuille), bureau (entre les feuilles), blanc (haut de la suivante).
    Débord à gauche large : l'intercalaire peut être dans une liste, en retrait dans l'encadré. */
 .ce-spacer--cut { position: relative; }
+/* Coupure à l'intérieur d'un paragraphe (T15c) : boîte pleine largeur au début d'une ligne, la ligne d'avant reste justifiée */
+.ce-spacer.ce-spacer--inline { display: inline-block; width: 100%; vertical-align: top; }
 .ce-spacer--cut::before { content: ''; position: absolute; top: 0; bottom: 0; left: -64px; right: -24px; background: linear-gradient(to bottom, #fff 0 var(--cut-a), var(--ce-desk, #E7E9EE) var(--cut-a) var(--cut-b), #fff var(--cut-b)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 /* Encadré « À retenir » (cadre complet) : on referme le cadre au bas de la page et on le rouvre en haut de la suivante */
 .ce-doc .ce-callout[data-callout="retenir"] > .ce-spacer--cut::before { left: -16px; right: -16px; border-top: 2px solid var(--ce-ret-line, #F59E0B); border-bottom: 2px solid var(--ce-ret-line, #F59E0B); }

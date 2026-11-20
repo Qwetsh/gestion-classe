@@ -109,3 +109,72 @@ describe('répartition en pages', () => {
     expect(withHead.spacers[1].pos).toBe(without.spacers[1].pos - 20);
   });
 });
+
+describe('paragraphe qui se coupe (T15c)', () => {
+  const LH = 20;
+  /** Un paragraphe de `n` lignes de 20 px dont le haut est à `top`, précédé d'un bloc qui le descend jusque-là. */
+  function withPara(top: number, n: number, ok: (j: number) => boolean = () => true): { units: Unit[]; para: Unit } {
+    const filler: Unit = { pos: 0, top: 0, h: top, mt: 0, mb: 0, type: 'paragraph' };
+    const para: Unit = {
+      pos: 100, top, h: n * LH, mt: 0, mb: 0, type: 'paragraph',
+      lines: Array.from({ length: n }, (_, j) => ({ pos: 101 + j * 30, top: top + j * LH, ok: j > 0 && ok(j) })),
+    };
+    return { units: [filler, para], para };
+  }
+
+  it('coupe au début de la dernière ligne qui tient, le reste arrive en haut de la page suivante', () => {
+    const { units, para } = withPara(CONTENT_H - 5 * LH, 12);
+    const l = paginate(units, SHEET_GAP);
+    expect(l.spacers).toHaveLength(1);
+    const s = l.spacers[0];
+    expect(s.inline).toBe(true);
+    expect(s.pos).toBe(para.lines![5].pos); // 5 lignes en bas de la page 1
+    expect(s.pos).not.toBe(para.pos);
+    expect(s.h).toBeCloseTo(STRIDE - CONTENT_H, 5);
+    expect(l.pages).toBe(2);
+  });
+
+  it('jamais moins de deux lignes de chaque côté (veuves)', () => {
+    // 6 lignes, dont 5 tiennent : on coupe à la ligne 4 pour garder deux lignes en haut de la page suivante
+    const { units, para } = withPara(CONTENT_H - 5 * LH, 6);
+    const l = paginate(units, SHEET_GAP);
+    expect(l.spacers[0].pos).toBe(para.lines![4].pos);
+  });
+
+  it('une seule ligne tiendrait en bas de page : le paragraphe passe entier à la suivante (orphelines)', () => {
+    const { units, para } = withPara(CONTENT_H - LH, 12);
+    const l = paginate(units, SHEET_GAP);
+    expect(l.spacers).toHaveLength(1);
+    expect(l.spacers[0].inline).toBeUndefined();
+    expect(l.spacers[0].pos).toBe(para.pos);
+  });
+
+  it('ne coupe pas au milieu d’un mot', () => {
+    // la ligne 5 est un mot coupé par la césure : on coupe avant, à la ligne 4
+    const { units, para } = withPara(CONTENT_H - 5 * LH, 12, (j) => j !== 5);
+    const l = paginate(units, SHEET_GAP);
+    expect(l.spacers[0].pos).toBe(para.lines![4].pos);
+  });
+
+  it('un paragraphe de plus d’une page se coupe autant de fois qu’il le faut', () => {
+    const { units } = withPara(0, 120); // 2 400 px : plus de deux pages
+    const l = paginate(units, SHEET_GAP);
+    expect(l.spacers.length).toBeGreaterThanOrEqual(2);
+    expect(l.spacers.every((s) => s.inline)).toBe(true);
+    expect(l.pages).toBeGreaterThanOrEqual(3);
+  });
+
+  it('un paragraphe qui tient n’est pas touché', () => {
+    const { units } = withPara(100, 12);
+    expect(paginate(units, SHEET_GAP).spacers).toEqual([]);
+  });
+
+  it('le bloc suivant se range après la dernière coupure', () => {
+    const { units, para } = withPara(CONTENT_H - 5 * LH, 12);
+    const after: Unit = { pos: 500, top: para.top + para.h, h: 30, mt: 0, mb: 0, type: 'paragraph' };
+    const l = paginate([...units, after], SHEET_GAP);
+    // 7 lignes restantes en haut de la page 2, puis le bloc : aucun autre intercalaire
+    expect(l.spacers).toHaveLength(1);
+  });
+});
+
