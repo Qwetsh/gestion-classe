@@ -91,11 +91,16 @@ const cellsOf = (table: JSONContent): JSONContent[] =>
 /** Cellule « Bilan : » d'un tableau d'activité : son premier paragraphe porte l'intitulé. */
 const isSummaryCell = (cell: JSONContent): boolean => /^\s*bilan\s*:?\s*$/i.test(plainText(cell.content?.[0] ?? {}));
 
-/** Repère d'un tableau d'activité : « activité 2 », lu dans sa première cellule. */
+/** Repère d'une activité lu au début d'un texte : « activite 2 ». */
+export function activityKeyOf(text: string): string | null {
+  const m = /^\s*(activit[ée]s?\s+[^\s—–:-]+)/iu.exec(text.normalize('NFC'));
+  return m ? m[1].toLocaleLowerCase('fr').replace(/\s+/g, ' ').replace('é', 'e') : null;
+}
+
+/** Repère d'un tableau d'activité : « activite 2 », lu dans sa première cellule. */
 function activityKey(table: JSONContent): string | null {
   const first = cellsOf(table)[0];
-  const m = first ? /^\s*(activit[ée]s?\s+[^\s—–:-]+)/iu.exec(plainText(first).normalize('NFC')) : null;
-  return m ? m[1].toLocaleLowerCase('fr').replace(/\s+/g, ' ').replace('é', 'e') : null;
+  return first ? activityKeyOf(plainText(first)) : null;
 }
 
 /**
@@ -103,13 +108,29 @@ function activityKey(table: JSONContent): string | null {
  * dans le tableau de chaque activité. Un tableau sans repère d'activité est rangé par son rang.
  */
 export function summaryTexts(corrected: JSONContent): Map<string, JSONContent[]> {
-  const out = new Map<string, JSONContent[]>();
+  return new Map(summaryTables(corrected).map((t) => [t.key, t.paragraphs]));
+}
+
+/** Un bilan de la feuille corrigée : son repère, l'intitulé de l'activité et ses paragraphes. */
+export interface SummaryTable {
+  key: string;
+  /** « Activité 2 — L'importance d'un séisme » */
+  title: string;
+  paragraphs: JSONContent[];
+}
+
+/** Bilans d'une feuille corrigée, dans l'ordre : un par tableau d'activité qui a son « Bilan : ». */
+export function summaryTables(corrected: JSONContent): SummaryTable[] {
+  const out: SummaryTable[] = [];
   let rank = 0;
   for (const table of (corrected.content ?? []).filter((n) => n.type === 'table')) {
     const cell = cellsOf(table).find(isSummaryCell);
     if (!cell) continue;
     const paragraphs = (cell.content ?? []).slice(1).filter((p) => p.type === 'paragraph' && plainText(p).trim() !== '');
-    if (paragraphs.length > 0) out.set(activityKey(table) ?? `#${rank}`, paragraphs);
+    if (paragraphs.length > 0) {
+      const head = plainText(cellsOf(table)[0] ?? {}).split(/\s*[—–]\s*/).slice(0, 2).join(' — ').trim();
+      out.push({ key: activityKey(table) ?? `#${rank}`, title: head, paragraphs });
+    }
     rank++;
   }
   return out;
