@@ -20,6 +20,12 @@
  * du nœud). On ne coupe jamais à l'intérieur d'une cellule fusionnée sur plusieurs lignes, ni
  * entre la ligne d'en-tête et la première ligne de données.
  *
+ * Lot T15c : un long paragraphe se coupe au début d'une ligne, jamais en laissant moins de deux
+ * lignes de chaque côté (veuves et orphelines). L'intercalaire est une boîte en ligne, pleine
+ * largeur (`inline-block`), posée au début de la ligne : la ligne d'avant n'est donc pas la
+ * dernière d'un bloc et reste justifiée. On ne coupe pas au milieu d'un mot (césure automatique),
+ * ni un paragraphe dans un encadré (la bande de bureau n'y est pas dessinée).
+ *
  * La mise en page part des positions « naturelles » des unités (intercalaires déjà posés retirés) :
  * elle ne dépend pas de la mise en page précédente, donc pas d'oscillation. Une unité plus haute
  * qu'une page (grand tableau, très long paragraphe) déborde simplement.
@@ -47,6 +53,18 @@ export interface Spacer {
   inBox?: boolean;
   /** Intercalaire entre deux lignes d'un tableau (lot T15b). */
   row?: RowBreak;
+  /** Intercalaire au début d'une ligne d'un paragraphe (lot T15c) : `pos` est dans le texte. */
+  inline?: boolean;
+}
+
+/** Début d'une ligne d'un paragraphe (lot T15c). */
+export interface LineStart {
+  /** Position ProseMirror du premier caractère de la ligne. */
+  pos: number;
+  /** Haut de la ligne, en px du haut du flux, intercalaires déjà posés retirés. */
+  top: number;
+  /** On peut couper ici : la ligne commence un mot (pas au milieu d'un mot coupé par la césure). */
+  ok: boolean;
 }
 
 /** Coupure entre deux lignes de tableau : nombre de colonnes, ligne d'en-tête à répéter. */
@@ -78,6 +96,8 @@ export interface Unit {
   inBox?: boolean;
   /** Ligne de tableau (sauf la première) : l'intercalaire posé devant est une ligne fantôme. */
   row?: RowBreak;
+  /** Paragraphe d'au moins quatre lignes : ses débuts de ligne, où on peut le couper (lot T15c). */
+  lines?: LineStart[];
 }
 
 interface PaginationState { deco: DecorationSet; layout: PageLayout }
@@ -115,6 +135,16 @@ function setCut(el: HTMLElement, cut: Spacer['cut']) {
 
 function spacerWidgets(s: Spacer): Decoration[] {
   const key = `sp-${s.pos}-${Math.round(s.h * 10)}-${s.cut ? Math.round(s.cut.a * 10) : ''}`;
+  if (s.inline) {
+    return [Decoration.widget(s.pos, () => {
+      const el = document.createElement('span');
+      el.className = 'ce-spacer ce-spacer--inline';
+      el.style.height = `${s.h}px`;
+      el.contentEditable = 'false';
+      el.setAttribute('aria-hidden', 'true');
+      return el;
+    }, { side: -1, key: `${key}-i`, ignoreSelection: true })];
+  }
   if (!s.row) {
     return [Decoration.widget(s.pos, () => {
       const el = document.createElement('div');
@@ -166,19 +196,100 @@ function collapsesThrough(cs: CSSStyleDeclaration, side: 'Top' | 'Bottom'): bool
     && !parseFloat(cs[`padding${side}`]) && !parseFloat(cs[`border${side}Width`]);
 }
 
-interface Measured { pos: number; anchor: HTMLElement; top: number; bottom: number; mt: number; mb: number; type: string; inBox: boolean; row?: RowBreak }
+interface Measured {
+  pos: number; anchor: HTMLElement; top: number; bottom: number; mt: number; mb: number; type: string; inBox: boolean; row?: RowBreak;
+  /** Paragraphe long : débuts de ligne (hauts en px d'écran, déjà sans les intercalaires en ligne). */
+  lines?: LineStart[];
+  /** Hauteur (px d'écran) des intercalaires en ligne posés dans ce paragraphe. */
+  inner?: number;
+}
+
+/** Mesure des lignes d'un paragraphe, valable tant que le nœud, la largeur et la police ne changent pas. */
+interface LineCache {
+  key: string;
+  /** Position relative au paragraphe, haut de ligne relatif à la première ligne (px de mise en page). */
+  lines: { rel: number; dy: number; ok: boolean }[] | null;
+}
+const lineCache = new WeakMap<PMNode, LineCache>();
+/** Change quand les polices finissent d'arriver : les mesures en cache ne sont plus bonnes. */
+let fontsEpoch = 0;
+if (typeof document !== 'undefined') void document.fonts?.ready.then(() => { fontsEpoch++; });
+
+/**
+ * Débuts de ligne d'un paragraphe (lot T15c), lus caractère par caractère : un caractère dont le
+ * centre descend de plus de 0,6 interligne sous celui de la ligne courante ouvre une ligne. Les
+ * hauts sont ramenés à la mise en page « naturelle » (intercalaires en ligne retirés). Rend null
+ * si le paragraphe a moins de quatre lignes (rien à couper en gardant deux lignes de chaque côté).
+ * Le résultat est gardé par nœud : seul un paragraphe modifié est relu à la frappe.
+ */
+function measureLines(view: EditorView, node: PMNode, pos: number, el: HTMLElement, scale: number): { lines: LineStart[]; inner: number } | null {
+  const cs = getComputedStyle(el);
+  const fontSize = parseFloat(cs.fontSize) || 16;
+  const lh = parseFloat(cs.lineHeight) || fontSize * 1.2;
+  const box = el.getBoundingClientRect();
+  const spacers = Array.from(el.children)
+    .filter((c): c is HTMLElement => c instanceof HTMLElement && c.classList.contains('ce-spacer--inline'))
+    .map((c) => c.getBoundingClientRect());
+  const inner = spacers.reduce((sum, r) => sum + r.height, 0);
+  if (box.height - inner < lh * 3.6) return null;
+  const padTop = parseFloat(cs.paddingTop) || 0;
+  const key = [el.clientWidth, cs.font, cs.lineHeight, cs.hyphens, cs.letterSpacing, cs.wordSpacing, cs.textIndent, cs.paddingLeft, fontsEpoch].join('|');
+  const cached = lineCache.get(node);
+  const fromCache = (c: LineCache) => (c.lines && c.lines.length >= 4
+    ? { lines: c.lines.map((l) => ({ pos: pos + l.rel, top: box.top + padTop + l.dy * scale, ok: l.ok })), inner }
+    : null);
+  if (cached && cached.key === key) return fromCache(cached);
+
+  const natural = (center: number) => spacers.reduce((sum, r) => (center > r.top ? sum + r.height : sum), 0);
+  const range = document.createRange();
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const lines: { rel: number; dy: number; ok: boolean }[] = [];
+  let firstCenter = 0;
+  let lineCenter = 0;
+  let prev = '';
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const stop = n.parentElement?.closest('[contenteditable="false"]');
+    if (stop && el.contains(stop)) continue;
+    const text = n.textContent ?? '';
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (/\s/.test(ch)) { prev = ch; continue; }
+      range.setStart(n, i);
+      range.setEnd(n, i + 1);
+      const rect = range.getClientRects()[0];
+      if (!rect) { prev = ch; continue; }
+      const center = (rect.top + rect.bottom) / 2;
+      if (lines.length === 0) {
+        firstCenter = center;
+        lineCenter = center;
+        lines.push({ rel: view.posAtDOM(n, i) - pos, dy: 0, ok: false });
+      } else if (center - lineCenter > lh * 0.6) {
+        lineCenter = center;
+        lines.push({ rel: view.posAtDOM(n, i) - pos, dy: (center - firstCenter - natural(center)) / scale, ok: /\s/.test(prev) });
+      }
+      prev = ch;
+    }
+  }
+  const entry: LineCache = { key, lines };
+  lineCache.set(node, entry);
+  return fromCache(entry);
+}
 
 /**
  * Unités d'un nœud : lui-même, ou (conteneur sécable) celles de ses enfants, la première prenant
  * le haut du conteneur et la dernière son bas.
  */
-function measureNode(view: EditorView, node: PMNode, pos: number, el: HTMLElement, depth: number, inBox: boolean): Measured[] {
+function measureNode(view: EditorView, node: PMNode, pos: number, el: HTMLElement, depth: number, inBox: boolean, scale: number): Measured[] {
   const cs = getComputedStyle(el);
   const r = el.getBoundingClientRect();
   const self: Measured = {
     pos, anchor: el, top: r.top, bottom: r.bottom,
     mt: parseFloat(cs.marginTop) || 0, mb: parseFloat(cs.marginBottom) || 0, type: node.type.name, inBox,
   };
+  if (node.type.name === 'paragraph' && !inBox) {
+    const found = measureLines(view, node, pos, el, scale);
+    if (found) { self.lines = found.lines; self.inner = found.inner; }
+  }
   if (node.type.name === 'table') return measureTable(view, node, pos, el, self);
   if (!SPLITTABLE.has(node.type.name) || depth >= MAX_DEPTH) return [self];
   const childInBox = inBox || node.type.name === 'callout';
@@ -186,7 +297,7 @@ function measureNode(view: EditorView, node: PMNode, pos: number, el: HTMLElemen
   node.forEach((child, offset) => {
     const childPos = pos + 1 + offset;
     const childEl = view.nodeDOM(childPos);
-    if (childEl instanceof HTMLElement) units.push(...measureNode(view, child, childPos, childEl, depth + 1, childInBox));
+    if (childEl instanceof HTMLElement) units.push(...measureNode(view, child, childPos, childEl, depth + 1, childInBox, scale));
   });
   if (units.length === 0) return [self];
   // Couper avant le premier enfant, c'est couper avant le conteneur (titre de l'encadré compris)
@@ -253,7 +364,7 @@ export function measureUnits(view: EditorView): Unit[] {
   const measured: Measured[] = [];
   view.state.doc.forEach((node, offset) => {
     const el = view.nodeDOM(offset);
-    if (el instanceof HTMLElement) measured.push(...measureNode(view, node, offset, el, 0, false));
+    if (el instanceof HTMLElement) measured.push(...measureNode(view, node, offset, el, 0, false, scale));
   });
   const units: Unit[] = [];
   let removed = 0; // décalage dû aux intercalaires actuels, au-dessus de l'unité courante
@@ -267,16 +378,19 @@ export function measureUnits(view: EditorView): Unit[] {
     }
     if (before?.classList.contains('ce-spacer--row')) removed += before.getBoundingClientRect().height / scale;
     else if (before?.classList.contains('ce-spacer')) removed += (parseFloat(before.style.height) || 0) + Math.min(lastMb, m.mt);
+    const inner = (m.inner ?? 0) / scale;
     units.push({
       pos: m.pos,
       top: (m.top - domTop) / scale - removed,
-      h: (m.bottom - m.top) / scale,
+      h: (m.bottom - m.top) / scale - inner,
       mt: m.mt,
       mb: m.mb,
       type: m.type,
       ...(m.inBox ? { inBox: true } : {}),
       ...(m.row ? { row: m.row } : {}),
+      ...(m.lines ? { lines: m.lines.map((l) => ({ ...l, top: (l.top - domTop) / scale - removed })) } : {}),
     });
+    removed += inner; // les unités suivantes sont décalées des intercalaires posés dans ce paragraphe
     lastMb = m.mb;
   }
   return units;
@@ -296,7 +410,40 @@ export function paginate(units: Unit[], gap: number): PageLayout {
   units.forEach((u, i) => {
     const { pos, h, mt, mb } = u;
     let top = u.top + shift;
-    if (prevBottom !== null) {
+
+    /**
+     * Coupe le paragraphe au début d'une ligne (lot T15c) tant que le reste déborde : la dernière
+     * ligne qui tient sur la page, avec au moins deux lignes de chaque côté. Vrai si on a coupé.
+     */
+    const cutLines = (): boolean => {
+      const lines = u.lines;
+      if (!lines) return false;
+      const n = lines.length;
+      let from = 0;
+      let cut = false;
+      for (;;) {
+        const room = pageTop + CONTENT_H + 0.5;
+        if (u.top + h + shift <= room) break;
+        let k = -1;
+        for (let j = n - 2; j >= from + 2; j--) {
+          if (lines[j].ok && lines[j].top + shift <= room) { k = j; break; }
+        }
+        if (k < 0) break;
+        const start = lines[k].top + shift;
+        const nextTop = pageTop + stride;
+        if (nextTop - start <= 0) break;
+        spacers.push({ pos: lines[k].pos, h: nextTop - start, inline: true });
+        shift += nextTop - start;
+        pageTop = nextTop;
+        from = k;
+        cut = true;
+      }
+      return cut;
+    };
+
+    let placed = false;
+    if (u.lines && !forceBreak && top + h > pageTop + CONTENT_H + 0.5) placed = cutLines();
+    if (!placed && prevBottom !== null) {
       const notFirstOnPage = top - mt > pageTop + 0.5;
       // Titre « solidaire du suivant » (comme dans Word) : il emmène au moins le début du bloc suivant
       const next = units[i + 1];
@@ -324,6 +471,9 @@ export function paginate(units: Unit[], gap: number): PageLayout {
         }
       }
     }
+    // Renvoyé en haut de page mais encore trop haut pour elle : un long paragraphe se coupe
+    if (!placed && u.lines && top + h > pageTop + CONTENT_H + 0.5) cutLines();
+    top = u.top + shift;
     // Une unité qui a débordé seule (plus haute qu'une page) : la page suivante commence après elle
     while (top >= pageTop + stride) pageTop += stride;
 
@@ -346,7 +496,7 @@ function sameLayout(a: PageLayout, b: PageLayout): boolean {
   if (a.pages !== b.pages || a.gap !== b.gap || a.spacers.length !== b.spacers.length) return false;
   return a.spacers.every((s, i) => {
     const o = b.spacers[i];
-    if (s.pos !== o.pos || Math.abs(s.h - o.h) >= 0.5 || !s.row !== !o.row) return false;
+    if (s.pos !== o.pos || Math.abs(s.h - o.h) >= 0.5 || !s.row !== !o.row || !s.inline !== !o.inline) return false;
     if (s.row && o.row && (s.row.cols !== o.row.cols || s.row.headPos !== o.row.headPos || Math.abs(s.row.headH - o.row.headH) >= 0.5)) return false;
     if (!s.cut || !o.cut) return !s.cut && !o.cut;
     return Math.abs(s.cut.a - o.cut.a) < 0.5 && Math.abs(s.cut.b - o.cut.b) < 0.5;
