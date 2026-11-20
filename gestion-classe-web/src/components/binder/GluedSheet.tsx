@@ -14,7 +14,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import type { JSONContent } from '@tiptap/core';
 import type { Board } from '../../lib/boardsQueries';
 import type { SheetRole } from '../../lib/binder';
-import { fillSummaries, tickCover } from '../../lib/binderInk';
+import { fillSheet, fillSummaries, modelAnswers, tickCover } from '../../lib/binderInk';
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { courseExtensions } from '../course/courseExtensions';
@@ -28,7 +28,7 @@ interface Props {
   board: Board;
   /** Rôle de la fiche dans le classeur : page de garde et feuille de bilans sont remplies par l'élève. */
   role?: SheetRole;
-  /** Feuille de bilans : sa version corrigée, d'où les bilans sont recopiés. */
+  /** Feuille de bilans : sa version corrigée ; fiche d'activité : sa copie modèle (les réponses). */
   companion?: Board;
   /** Position de la fiche sur la feuille du classeur, en px de la feuille A4. */
   left: number;
@@ -45,7 +45,7 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
   /** Fiche montrée telle que l'élève l'a remplie (sinon : la fiche vierge, telle qu'imprimée). */
   const [filled, setFilled] = useState(true);
 
-  // Feuille corrigée : un plus ; sans elle, la feuille de bilans reste vierge
+  // Feuille corrigée ou copie modèle : un plus ; sans elle, la fiche reste vierge
   useEffect(() => {
     if (!companion) return;
     let cancelled = false;
@@ -59,6 +59,10 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
     if (role === 'cover') return tickCover(doc.content);
     if (role === 'summaries' && corrected) {
       const next = fillSummaries(doc.content, corrected.content);
+      return next === doc.content ? null : next;
+    }
+    if (role === 'activity' && corrected) {
+      const next = fillSheet(doc.content, modelAnswers(corrected.content));
       return next === doc.content ? null : next;
     }
     return null;

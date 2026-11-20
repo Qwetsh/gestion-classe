@@ -12,8 +12,8 @@
  * Une page du classeur porte un seul document, imprimé en A5 et collé par le bord gauche : un
  * document de deux pages est une fiche A5 recto verso. Les documents du classeur sont reconnus par
  * leur titre (« Page de garde — … », « Feuille de bilans — … ») : il n'y a pas de rayon pour eux en
- * base. Les évaluations et les corrections n'y entrent pas (la correction viendra en écriture
- * d'élève au lot 2).
+ * base. Les évaluations et les corrections n'y entrent pas ; la « (copie modèle) » d'une activité
+ * n'est pas une page non plus : ses réponses sont écrites à la main dans la fiche (lib/binderInk.ts).
  */
 import type { Board } from './boardsQueries';
 import { groupActivities, isEvaluationTitle, isMethodSheet, naturalCompare, splitVariant } from './courseLibrary';
@@ -45,7 +45,10 @@ export type BinderPage =
     role: SheetRole;
     /** Titre que l'élève écrit à la main en haut de la page (fiches d'activité). */
     heading?: string;
-    /** Feuille de bilans : sa version « (correction) », d'où les bilans sont recopiés. */
+    /**
+     * Ce que l'élève recopie sur la fiche : pour la feuille de bilans, sa version « (correction) » ;
+     * pour une fiche d'activité, sa « (copie modèle) » (les réponses).
+     */
     companion?: Board;
   };
 
@@ -141,11 +144,13 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
       .sort((a, b) => naturalCompare(a.title, b.title));
     for (const group of groupActivities(activities)) {
       const short = shortActivityLabel(group.title);
+      // La copie modèle n'est pas une page : ses réponses sont écrites dans la fiche
+      const copy = group.members.find((m) => m.variant === 'copie')?.board;
       for (const { variant, board } of group.members) {
-        if (variant === 'correction') continue;
+        if (variant === 'correction' || variant === 'copie') continue;
         pages.push(variant === 'documents'
           ? { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `${short} — documents`, board, role: 'documents' }
-          : { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: short, board, role: 'activity', heading: group.title });
+          : { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: short, board, role: 'activity', heading: group.title, companion: copy });
       }
     }
   }

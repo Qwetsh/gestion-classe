@@ -173,9 +173,11 @@
   font: 400 21px/1.2 "Playwrite FR Moderne", cursive; color: #1F3A93; white-space: nowrap;
   text-decoration: underline; text-decoration-color: #C8102E; text-decoration-thickness: 1.6px; text-underline-offset: 7px;
 }
-/* Bilans recopiés : l'écriture attachée posée sur des lignes, comme la zone qu'elle remplace */
-.bd-glued .ce-doc p:has(> span[style*="Playwrite"]) {
-  line-height: 8mm; font-size: 9.5pt; margin: 0; padding: 0 1mm;
+/* Zone d'écriture remplie : l'écriture attachée posée sur des lignes, comme la zone qu'elle remplace.
+   Repérée par sa taille (RULED_SIZE de binderInk.ts) : l'écriture glissée dans une phrase ou dans
+   une cellule n'en porte pas et reste sans lignes. */
+.bd-glued .ce-doc p:has(> span[style*="Playwrite"][style*="font-size"]) {
+  line-height: 8mm; margin: 0; padding: 0 1mm;
   background: repeating-linear-gradient(to bottom, transparent 0 calc(8mm - 1px), #9CA3AF calc(8mm - 1px) 8mm);
 }
 /* Bascule fiche remplie / fiche vierge */

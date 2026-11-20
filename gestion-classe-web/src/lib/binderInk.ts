@@ -6,9 +6,13 @@
  * - Feuille de bilans : chaque zone de lignes reçoit le bilan de son activité, lu dans la feuille
  *   « (correction) », recopié en rouge (règle de Thomas : les bilans s'écrivent en rouge).
  *
+ * - Fiche d'activité : les réponses de sa « (copie modèle) » sont écrites à la main, dans l'ordre,
+ *   dans ses zones à remplir (zones de lignes, pointillés, cellules vides), et les cases de
+ *   « J'ai réussi » sont cochées. La correction ne sert pas : c'est un corrigé pour le professeur
+ *   (barème et tolérances mêlés aux réponses).
+ *
  * L'écriture est une marque ordinaire des cours (police « Écriture attachée », couleur) : le rendu
- * reste celui de l'éditeur. Les fiches d'activité ne sont pas transformées : leurs corrections sont
- * des corrigés pour le professeur (barème, tolérances), pas des copies d'élève.
+ * reste celui de l'éditeur.
  */
 import type { JSONContent } from '@tiptap/core';
 
@@ -21,13 +25,22 @@ export const INK_RED = '#C00000';
 
 type Mark = NonNullable<JSONContent['marks']>[number];
 
-/** Marques d'un texte écrit à la main : la police et l'encre, plus le soulignement s'il y était. */
-function inkMarks(color: string, kept: Mark[] = []): Mark[] {
+/** Taille de l'écriture posée sur des lignes ; sa présence dit au rendu de tracer les lignes. */
+export const RULED_SIZE = '9.5pt';
+
+/**
+ * Marques d'un texte écrit à la main : la police et l'encre, plus le soulignement s'il y était.
+ * `ruled` : l'écriture occupe toute la ligne, sur des lignes tracées (zone d'écriture remplie).
+ */
+function inkMarks(color: string, kept: Mark[] = [], ruled = false): Mark[] {
   return [
     ...kept.filter((m) => m.type === 'underline'),
-    { type: 'textStyle', attrs: { color, fontFamily: HAND_FONT } },
+    { type: 'textStyle', attrs: { color, fontFamily: HAND_FONT, ...(ruled ? { fontSize: RULED_SIZE } : {}) } },
   ];
 }
+
+const isInk = (n: JSONContent): boolean =>
+  n.type === 'text' && !!n.marks?.some((m) => m.type === 'textStyle' && m.attrs?.fontFamily === HAND_FONT);
 
 /** Texte brut d'un nœud (paragraphe, cellule…). */
 export function plainText(node: JSONContent): string {
@@ -101,7 +114,7 @@ export function summaryTexts(corrected: JSONContent): Map<string, JSONContent[]>
 function handwritten(paragraph: JSONContent, color: string): JSONContent {
   return {
     type: 'paragraph',
-    content: (paragraph.content ?? []).map((n) => (n.type === 'text' ? { ...n, marks: inkMarks(color, n.marks) } : n)),
+    content: (paragraph.content ?? []).map((n) => (n.type === 'text' ? { ...n, marks: inkMarks(color, n.marks, true) } : n)),
   };
 }
 
@@ -129,4 +142,77 @@ export function fillSummaries(blank: JSONContent, corrected: JSONContent): JSONC
       });
     }),
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fiche d'activité : les réponses de la copie modèle, écrites dans les zones à remplir
+// ---------------------------------------------------------------------------------------------
+
+/** Une réponse : le texte écrit par l'élève, ou null pour laisser la zone vide. */
+export type ModelAnswer = JSONContent[] | null;
+
+/**
+ * Réponses d'une copie modèle, dans l'ordre des zones à remplir de la fiche. Chaque paragraphe
+ * de premier niveau qui porte de l'écriture est une réponse (son texte imprimé, un repère comme
+ * « Question 2 », est ignoré) ; un tiret seul laisse la zone vide. Les paragraphes sans écriture
+ * sont des notes.
+ */
+export function modelAnswers(copy: JSONContent): ModelAnswer[] {
+  const out: ModelAnswer[] = [];
+  for (const block of copy.content ?? []) {
+    if (block.type !== 'paragraph') continue;
+    const ink = (block.content ?? []).filter(isInk);
+    if (ink.length === 0) continue;
+    const written = ink.map((n) => n.text ?? '').join('').trim();
+    out.push(written === '' || written === '—' || written === '-' ? null : ink);
+  }
+  return out;
+}
+
+const isBlankCell = (n: JSONContent): boolean =>
+  (n.type === 'tableCell' || n.type === 'tableHeader')
+  && (n.content ?? []).length === 1 && n.content![0].type === 'paragraph' && (n.content![0].content ?? []).length === 0;
+
+/** Champs de la ligne d'identité d'une fiche. */
+const IDENTITY = /(^|[^\p{L}])(nom|pr[ée]nom|classe|date)\s*:/iu;
+
+/** Lettres écrites par ligne d'une zone de lignes (pleine largeur) : sert à garder les lignes restantes. */
+const CHARS_PER_LINE = 78;
+
+/**
+ * La fiche, avec les réponses écrites à la main dans ses zones à remplir, prises dans l'ordre du
+ * document : zone d'écriture (le texte est posé sur des lignes, les lignes en trop restent),
+ * pointillés dans une phrase (sauf ceux de la ligne d'identité : nom, prénom, classe, date),
+ * cellule vide d'un tableau. Sans réponse pour une zone, elle reste vide. Les cases de la liste « J'ai réussi » sont cochées.
+ */
+export function fillSheet(sheet: JSONContent, answers: ModelAnswer[]): JSONContent {
+  if (!answers.some((a) => a)) return sheet;
+  let next = 0;
+  const take = (): ModelAnswer | undefined => answers[next++];
+  const colored = (ink: JSONContent[], ruled: boolean): JSONContent[] =>
+    ink.map((n) => ({ ...n, marks: inkMarks(INK_BLUE, n.marks, ruled) }));
+
+  const visit = (node: JSONContent): JSONContent[] => {
+    if (node.type === 'writingZone') {
+      const answer = take();
+      if (!answer) return [node];
+      const lines = Number(node.attrs?.lines) || 0;
+      const used = Math.ceil(answer.reduce((n, t) => n + (t.text ?? '').length, 0) / CHARS_PER_LINE);
+      const written: JSONContent = { type: 'paragraph', content: colored(answer, true) };
+      return lines - used > 0 ? [written, { ...node, attrs: { ...node.attrs, lines: lines - used } }] : [written];
+    }
+    if (isBlankCell(node)) {
+      const answer = take();
+      return answer ? [{ ...node, content: [{ ...node.content![0], content: colored(answer, false) }] }] : [node];
+    }
+    if (node.type === 'dots') {
+      const answer = take();
+      return answer ? colored(answer, false) : [node];
+    }
+    // Ligne d'identité (« Nom : …… Prénom : …… Classe : …… ») : ses pointillés ne sont pas des réponses
+    if (node.type === 'paragraph' && IDENTITY.test(plainText(node))) return [node];
+    if (node.type === 'taskItem') return [{ ...node, attrs: { ...node.attrs, checked: true }, content: (node.content ?? []).flatMap(visit) }];
+    return [node.content ? { ...node, content: node.content.flatMap(visit) } : node];
+  };
+  return visit(sheet)[0];
 }
