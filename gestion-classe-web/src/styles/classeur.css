@@ -209,27 +209,39 @@
 .bd-glued { transition: box-shadow .18s ease; }
 .bd-glued:hover { box-shadow: 0 2px 2px rgba(0,0,0,.16), 6px 10px 22px rgba(0,0,0,.26); }
 
-/* Page qui se tourne : une feuille vierge pivote autour des anneaux, par-dessus les pages */
-.bd-turn {
-  position: absolute; top: 0; z-index: 6; pointer-events: none; transform-origin: left center;
-  background-color: #FDFDFB;
+/* Page qui se tourne : une feuille à deux faces pivote autour des anneaux. Son recto est la page qu'on
+   quitte, son verso la page qu'on découvre ; ce sont des copies figées (components/binder/PageFlip.tsx).
+   Dessous, la nouvelle page est déjà en place. */
+.bd-ghost { position: absolute; inset: 0; }
+.bd-flip-under { z-index: 5; }
+.bd-flip {
+  position: absolute; top: 0; z-index: 6; pointer-events: none; transform-style: preserve-3d;
+  animation: .8s cubic-bezier(.5,.05,.25,1) forwards;
+}
+.bd-flip--next-double { transform-origin: left center; animation-name: bd-flip-next; }
+.bd-flip--prev-double { transform-origin: right center; animation-name: bd-flip-prev; }
+.bd-flip--next-single { transform-origin: left center; animation-name: bd-flip-away; animation-duration: .45s; }
+.bd-flip--prev-single { transform-origin: left center; animation-name: bd-flip-back; animation-duration: .45s; }
+.bd-flip__face {
+  position: absolute; inset: 0; overflow: hidden; background: #FDFDFB;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.bd-flip__face--back { transform: rotateY(180deg); }
+.bd-flip__blank {
+  position: absolute; inset: 0; background-color: #FDFDFB;
   background-image:
-    linear-gradient(to right, rgba(0,0,0,.14), rgba(0,0,0,0) 26mm),
-    repeating-linear-gradient(to bottom, #C9D3F2 0 1.5px, transparent 1.5px 8mm);
-  box-shadow: 8px 6px 26px rgba(0,0,0,.4);
-  animation: bd-turn-next .52s cubic-bezier(.45,.05,.3,1) forwards;
+    repeating-linear-gradient(to bottom, #9DAEE6 0 1.5px, transparent 1.5px 8mm),
+    repeating-linear-gradient(to right, #D5DCF5 0 1px, transparent 1px 8mm);
+  background-position: 0 22mm; background-repeat: no-repeat; background-size: 100% 265mm;
 }
-.bd-turn--prev { animation-name: bd-turn-prev; }
-@keyframes bd-turn-next {
-  from { transform: perspective(2600px) rotateY(0deg); opacity: 1; }
-  82% { opacity: 1; }
-  to { transform: perspective(2600px) rotateY(-178deg); opacity: 0; }
-}
-@keyframes bd-turn-prev {
-  from { transform: perspective(2600px) rotateY(-178deg); opacity: 1; }
-  82% { opacity: 1; }
-  to { transform: perspective(2600px) rotateY(0deg); opacity: 0; }
-}
+/* L'ombre passe sur la feuille quand elle se lève, plus forte à la verticale */
+.bd-flip__shade { position: absolute; inset: 0; background: #000; opacity: 0; animation: bd-flip-shade .8s ease-in-out forwards; }
+.bd-flip--next-single .bd-flip__shade, .bd-flip--prev-single .bd-flip__shade { animation-duration: .45s; }
+@keyframes bd-flip-next { from { transform: perspective(2400px) rotateY(0deg); } to { transform: perspective(2400px) rotateY(-180deg); } }
+@keyframes bd-flip-prev { from { transform: perspective(2400px) rotateY(0deg); } to { transform: perspective(2400px) rotateY(180deg); } }
+@keyframes bd-flip-away { from { transform: perspective(2400px) rotateY(0deg); } to { transform: perspective(2400px) rotateY(-90deg); } }
+@keyframes bd-flip-back { from { transform: perspective(2400px) rotateY(-90deg); } to { transform: perspective(2400px) rotateY(0deg); } }
+@keyframes bd-flip-shade { 0%, 100% { opacity: 0; } 50% { opacity: .32; } }
 
 /* Fiche de mémorisation : le volet rabattu couvre la réponse ; soulevé, il retourne à droite */
 .bd-flap {

@@ -17,9 +17,11 @@ import {
   type BinderSection,
 } from '../lib/binder';
 import { turnDirection } from '../lib/binderFlaps';
+import { planFlip } from '../lib/binderFlip';
 import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
 import { MM, PAGE_H, PAGE_W } from '../lib/course/coursePage';
 import { BinderLeaf } from '../components/binder/BinderLeaf';
+import { PageFlip, type FlipView } from '../components/binder/PageFlip';
 import { HOLES_MM, loadSheetDoc } from '../components/binder/binderSheet';
 // Polices des cours (chargées d'habitude avec l'éditeur) : une fiche peut s'en servir
 import '@fontsource/opendyslexic/400.css';
@@ -53,8 +55,9 @@ export function Binder() {
   const [tocOpen, setTocOpen] = useState(() => window.innerWidth >= 1280);
   /** Choix de l'utilisateur ; null = selon la largeur de l'écran. */
   const [doubleChoice, setDoubleChoice] = useState<boolean | null>(null);
-  /** Page en train de se tourner : une feuille passe d'un côté à l'autre (lot 3). */
-  const [turning, setTurning] = useState<{ dir: 1 | -1; id: number } | null>(null);
+  /** Feuille en train de se tourner, avec le contenu de ses deux faces. */
+  const [flip, setFlip] = useState<FlipView | null>(null);
+  const spreadRef = useRef<HTMLDivElement>(null);
   /** Début d'un glissement du doigt (tourner les pages sur téléphone). */
   const swipeX = useRef<number | null>(null);
 
@@ -102,23 +105,46 @@ export function Binder() {
   const double = doubleChoice ?? viewport.w - tocW >= DOUBLE_MIN_W;
   const [leftIdx, rightIdx] = spreadOf(index, count, double);
 
-  const go = useCallback((next: number) => {
+  /** Copie figée d'une page affichée ou voisine (déjà mise en page), avant qu'elle ne change de place. */
+  const ghost = useCallback((i: number | null): HTMLElement | null => {
+    const key = i === null ? undefined : pages[i]?.key;
+    const el = key === undefined ? null : spreadRef.current?.querySelector<HTMLElement>(`[data-leaf-key="${CSS.escape(key)}"]`);
+    if (!el) return null;
+    const copy = el.cloneNode(true) as HTMLElement;
+    copy.removeAttribute('data-leaf-key');
+    return copy;
+  }, [pages]);
+
+  /** `turnPage` : tourner la feuille (flèches, clavier, doigt) ; sinon, simple changement de vue (sommaire, onglet). */
+  const go = useCallback((next: number, turnPage = false) => {
     const q = new URLSearchParams(params);
     if (level) q.set('niveau', level);
     const target = Math.max(0, Math.min(count - 1, next));
     q.set('page', String(target + 1));
-    setParams(q, { replace: true });
     const dir = turnDirection(index, target);
-    if (dir !== 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) setTurning({ dir, id: Date.now() });
-  }, [params, setParams, level, count, index]);
+    const plan = turnPage && dir !== 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? planFlip(spreadOf(index, count, double), spreadOf(target, count, double), dir, double, index, target)
+      : null;
+    // Les copies sont prises avant le changement de vue : après, les pages ont changé de place
+    if (plan) {
+      setFlip({
+        id: Date.now(),
+        kind: plan.kind,
+        front: ghost(plan.front),
+        back: plan.back === null ? null : ghost(plan.back),
+        under: plan.under && { side: plan.under.side, node: ghost(plan.under.page) },
+      });
+    } else setFlip(null);
+    setParams(q, { replace: true });
+  }, [params, setParams, level, count, index, double, ghost]);
 
   // Clavier : flèches, Page précédente / suivante, Début / Fin
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.isContentEditable)) return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(turn(index, count, double, 1)); }
-      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(turn(index, count, double, -1)); }
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(turn(index, count, double, 1), true); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(turn(index, count, double, -1), true); }
       else if (e.key === 'Home') { e.preventDefault(); go(0); }
       else if (e.key === 'End') { e.preventDefault(); go(count - 1); }
     };
@@ -158,6 +184,25 @@ export function Binder() {
     return { section, rank, at, side };
   }).filter((t) => t.at >= 0);
   const current = sectionAt(pages, rightShown);
+
+  /** Abscisse d'une page dans la vue, en px de feuille. */
+  const slotX = (side: 'left' | 'right') => TAB_W + (double && side === 'right' ? PAGE_W : 0);
+  /** Côté d'une page : en double page, les pages impaires sont à gauche (la première est seule, à droite). */
+  const sideOf = (i: number): 'left' | 'right' => (double && i % 2 === 1 ? 'left' : 'right');
+
+  // Les pages voisines sont montées un instant après la vue (cachées) : mises en page d'avance, elles
+  // servent de verso à la feuille qu'on tourne et apparaissent sans attendre quand on arrive
+  const spreadKey = `${leftIdx}:${rightIdx}:${double}`;
+  const [warmFor, setWarmFor] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWarmFor(spreadKey), 450);
+    return () => window.clearTimeout(timer);
+  }, [spreadKey]);
+  const shown = [leftIdx, rightIdx].filter((i): i is number => i !== null);
+  const reach = warmFor === spreadKey ? (double ? 2 : 1) : 0;
+  const aliveFrom = shown.length ? Math.max(0, Math.min(...shown) - reach) : 0;
+  const aliveTo = shown.length ? Math.min(count - 1, Math.max(...shown) + reach) : -1;
+  const alive = Array.from({ length: aliveTo - aliveFrom + 1 }, (_, k) => aliveFrom + k);
 
   const toc = useMemo(() => binderToc(pages), [pages]);
   const visible = new Set([leftIdx, rightIdx].filter((i): i is number => i !== null));
@@ -225,7 +270,7 @@ export function Binder() {
             swipeX.current = null;
             if (start === null || count === 0) return;
             const dx = e.changedTouches[0].clientX - start;
-            if (Math.abs(dx) > 60) go(turn(index, count, double, dx < 0 ? 1 : -1));
+            if (Math.abs(dx) > 60) go(turn(index, count, double, dx < 0 ? 1 : -1), true);
           }}
         >
           {error && <p className="bd-message" role="alert">{error}</p>}
@@ -238,11 +283,12 @@ export function Binder() {
           )}
           {count > 0 && inkReady && (
             <>
-              <button type="button" className="bd-arrow bd-arrow--prev" onClick={() => go(turn(index, count, double, -1))} disabled={firstShown === 0} aria-label="Page précédente">
+              <button type="button" className="bd-arrow bd-arrow--prev" onClick={() => go(turn(index, count, double, -1), true)} disabled={firstShown === 0} aria-label="Page précédente">
                 <ChevronLeft size={28} aria-hidden />
               </button>
               <div className="bd-spread-outer" style={{ width: spreadW * scale, height: PAGE_H * scale }}>
                 <div
+                  ref={spreadRef}
                   className={`bd-spread ${double ? 'bd-spread--double' : ''}`}
                   style={{ width: spreadW, height: PAGE_H, transform: `scale(${scale})` }}
                 >
@@ -261,36 +307,31 @@ export function Binder() {
                       <span>{SECTION_LABEL[t.section]}</span>
                     </button>
                   ))}
-                  {double && (
-                    <div className="bd-slot bd-slot--left" style={{ left: TAB_W, width: PAGE_W, height: PAGE_H }}>
-                      {leftIdx !== null
-                        ? <BinderLeaf key={pages[leftIdx].key} page={pages[leftIdx]} side="left" onOpen={openCourse} />
-                        : <div className="bd-cover-inside" />}
-                    </div>
-                  )}
-                  <div className="bd-slot bd-slot--right" style={{ left: TAB_W + (double ? PAGE_W : 0), width: PAGE_W, height: PAGE_H }}>
-                    {rightIdx !== null
-                      ? <BinderLeaf key={pages[rightIdx].key} page={pages[rightIdx]} side="right" onOpen={openCourse} />
-                      : <div className="bd-cover-inside" />}
-                  </div>
+                  {/* Intérieur de la couverture, là où il n'y a pas de page */}
+                  {double && leftIdx === null && <div className="bd-slot bd-slot--left" style={{ left: slotX('left'), width: PAGE_W, height: PAGE_H }}><div className="bd-cover-inside" /></div>}
+                  {rightIdx === null && <div className="bd-slot bd-slot--right" style={{ left: slotX('right'), width: PAGE_W, height: PAGE_H }}><div className="bd-cover-inside" /></div>}
+                  {/* Les pages visibles, et leurs voisines déjà montées (cachées) : elles sont mises en page avant d'être tournées */}
+                  {alive.map((i) => {
+                    const side = sideOf(i);
+                    return (
+                      <div
+                        key={pages[i].key}
+                        className={`bd-slot bd-slot--${side}`}
+                        style={{ left: slotX(side), width: PAGE_W, height: PAGE_H, visibility: i === leftIdx || i === rightIdx ? 'visible' : 'hidden' }}
+                      >
+                        <BinderLeaf page={pages[i]} side={side} onOpen={openCourse} />
+                      </div>
+                    );
+                  })}
                   {double && (
                     <div className="bd-rings" style={{ left: TAB_W + PAGE_W }} aria-hidden>
                       {HOLES_MM.map((y) => <span key={y} className="bd-ring" style={{ top: y * MM }} />)}
                     </div>
                   )}
-                  {turning && (
-                    // Une feuille vierge passe par-dessus : les vraies pages ne bougent pas (leur mise en page se mesure à l'écran)
-                    <div
-                      key={turning.id}
-                      className={`bd-turn bd-turn--${turning.dir > 0 ? 'next' : 'prev'}`}
-                      style={{ left: TAB_W + (double ? PAGE_W : 0), width: PAGE_W, height: PAGE_H }}
-                      onAnimationEnd={() => setTurning(null)}
-                      aria-hidden
-                    />
-                  )}
+                  {flip && <PageFlip key={flip.id} flip={flip} slotX={slotX} onDone={() => setFlip(null)} />}
                 </div>
               </div>
-              <button type="button" className="bd-arrow bd-arrow--next" onClick={() => go(turn(index, count, double, 1))} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
+              <button type="button" className="bd-arrow bd-arrow--next" onClick={() => go(turn(index, count, double, 1), true)} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
                 <ChevronRight size={28} aria-hidden />
               </button>
             </>
