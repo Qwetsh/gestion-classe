@@ -22,10 +22,12 @@ interface Props {
   present?: boolean;
   /** Cours rédigé : ouvrir l'éditeur sur ses pages projetées (mode Tableau). */
   screens?: boolean;
+  /** Tableau blanc : l'interface de classe (barre flottante, pastille, menu radial), pas le ruban de préparation. */
+  inClass?: boolean;
   onClose: () => void;
 }
 
-export function OpenPreparedBoard({ board, userId, kind: knownKind, present, screens, onClose }: Props) {
+export function OpenPreparedBoard({ board, userId, kind: knownKind, present, screens, inClass, onClose }: Props) {
   const [fetched, setFetched] = useState<{ id: string; kind: 'course' | 'board' } | null>(null);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function OpenPreparedBoard({ board, userId, kind: knownKind, present, scr
 
   if (kind === 'course' && present) return <PresentCourse board={board} userId={userId} onClose={onClose} />;
   if (kind === 'course') return <CourseEditor boardId={board.id} title={board.title} userId={userId} startInScreens={screens} onClose={onClose} />;
-  if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome="ribbon" onClose={onClose} />;
+  if (kind === 'board') return <BoardWorkspace initial={boardTab(board)} userId={userId} chrome={inClass ? 'tbi' : 'ribbon'} inClass={inClass} onClose={onClose} />;
   return null;
 }
 
