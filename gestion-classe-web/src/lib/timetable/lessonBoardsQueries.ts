@@ -162,10 +162,10 @@ async function originOf(sourceBoardId: string): Promise<string | null> {
  * défaut (« 5e B · mar. 10 nov. ») : une activité placée depuis la bibliothèque garde son nom.
  * Si le cours a déjà un tableau (autre onglet, double clic), le tableau créé est supprimé.
  */
-export async function createLessonBoard(userId: string, lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board', title?: string): Promise<LessonBoard> {
+export async function createLessonBoard(userId: string, lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board', title?: string, chapter?: string | null): Promise<LessonBoard> {
   if (tableMissing) throw new Error('Les tableaux de cours demandent la migration 065');
   const level = levelFromClassName(lesson.className);
-  const board = await createBoard(userId, { title: title?.trim() || lessonBoardTitle(lesson), level, chapter: null }, lesson.classId ?? null);
+  const board = await createBoard(userId, { title: title?.trim() || lessonBoardTitle(lesson), level, chapter: chapter ?? null }, lesson.classId ?? null);
   try {
     if (sourceBoardId) {
       // Cours rédigé : ses encarts pointent vers les pages par leur identifiant → on le garde

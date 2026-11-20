@@ -144,7 +144,7 @@ export interface HomeData {
   /** Tableaux de cours de la semaine affichée et des trois semaines autour (pour « reprendre celui de… ») */
   nearbyLessonBoards: LessonBoard[];
   /** Crée le tableau d'un cours (vide ou copie d'un autre tableau) */
-  createBoardForLesson: (lesson: LessonRef, sourceBoardId?: string, kind?: 'course' | 'board') => Promise<LessonBoard>;
+  createBoardForLesson: (lesson: LessonRef, sourceBoardId?: string, kind?: 'course' | 'board', title?: string, chapter?: string | null) => Promise<LessonBoard>;
   /** Copie un tableau de cours vers d'autres cours ; renvoie les cours en échec */
   duplicateBoardToLessons: (source: LessonBoard, targets: LessonRef[]) => Promise<{ created: LessonBoard[]; failed: string[] }>;
   /** Supprime le tableau d'un cours */
@@ -157,8 +157,10 @@ export interface HomeData {
   /**
    * Ouvre l'ardoise libre, ou un tableau préparé (le tableau blanc vit dans la page, pas dans un
    * module). `present` : un cours rédigé s'ouvre directement « En classe », en mode test (lot 4d).
+   * `inClass` : un tableau blanc s'ouvre avec l'interface de classe (barre flottante, pastille et
+   * menu radial) plutôt que le ruban de préparation.
    */
-  openBoard: (board?: { id: string; title: string; present?: boolean }) => void;
+  openBoard: (board?: { id: string; title: string; present?: boolean; inClass?: boolean }) => void;
 }
 
 // ---- Pronote helpers ----
@@ -217,7 +219,7 @@ export function useHomeData(): HomeData {
 
 export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
   children: ReactNode;
-  onOpenBoard: (board?: { id: string; title: string; present?: boolean }) => void;
+  onOpenBoard: (board?: { id: string; title: string; present?: boolean; inClass?: boolean }) => void;
   /** Augmente à chaque fermeture du tableau blanc : les tableaux de cours sont relus (titre, date de modification) */
   boardVersion?: number;
 }) {
@@ -340,9 +342,9 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
     return () => { cancelled = true; };
   }, [user, weekOffset, boardVersion]);
 
-  const createBoardForLesson = useCallback(async (lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board') => {
+  const createBoardForLesson = useCallback(async (lesson: LessonRef, sourceBoardId?: string, kind: 'course' | 'board' = 'board', title?: string, chapter?: string | null) => {
     if (!user) throw new Error('Non connecté');
-    const lb = await createLessonBoard(user.id, lesson, sourceBoardId, kind);
+    const lb = await createLessonBoard(user.id, lesson, sourceBoardId, kind, title, chapter);
     setNearbyLessonBoards(prev => [...prev, lb]);
     return lb;
   }, [user]);

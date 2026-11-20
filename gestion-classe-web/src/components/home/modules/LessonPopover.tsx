@@ -9,6 +9,8 @@ import { noteForLesson, lessonNoteKey } from '../../../lib/timetable/lessonNotes
 import { boardForLesson, lessonDisplayName, type LessonBoard } from '../../../lib/timetable/lessonBoardsQueries';
 import { levelFromClassName } from '../../../lib/boardsQueries';
 import { useUIFeedback } from '../../../contexts/UIFeedbackContext';
+import { useAuth } from '../../../hooks/useAuth';
+import { ActivityPicker, type PickedActivity } from './ActivityPicker';
 
 const POPOVER_WIDTH = 300;
 const MARGIN = 8;
@@ -35,6 +37,7 @@ export function LessonPopover({
     week, lessonBoards, nearbyLessonBoards, createBoardForLesson, duplicateBoardToLessons, removeBoardForLesson,
   } = useHomeData();
   const { toast, confirm } = useUIFeedback();
+  const { user } = useAuth();
   const ref = useRef<HTMLDivElement>(null);
 
   // Note pour ce cours (indépendante de la séance : rien n'est créé dans sessions)
@@ -100,12 +103,16 @@ export function LessonPopover({
       .slice(0, 3);
   }, [nearbyLessonBoards, level, lessonBoard, lesson.start, lesson.label]);
 
-  const createBoard = async (source?: LessonBoard, kind: 'course' | 'board' = 'board') => {
+  /** « Tableau blanc » en classe : on choisit l'activité (ou un tableau vide) avant d'ouvrir. */
+  const [picking, setPicking] = useState(false);
+
+  const createBoard = async (source?: LessonBoard, kind: 'course' | 'board' = 'board', activity?: PickedActivity) => {
     setBoardBusy(true);
     try {
-      const lb = await createBoardForLesson(lesson, source?.boardId, kind);
+      const lb = await createBoardForLesson(lesson, source?.boardId, kind, activity?.title, activity?.chapter);
       onClose();
-      openBoard({ id: lb.boardId, title: lb.title });
+      // Un tableau neuf s'ouvre avec l'interface de classe (menu radial, pastille) ; la copie d'un tableau préparé reste en préparation
+      openBoard({ id: lb.boardId, title: lb.title, inClass: kind === 'board' && !source });
     } catch (err) {
       console.error(err);
       toast(err instanceof Error ? err.message : 'Impossible de créer le tableau.');
@@ -389,10 +396,21 @@ export function LessonPopover({
                 <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard(undefined, 'course')} disabled={boardBusy} title="Rédigé comme dans Word, imprimable en A4">
                   {boardBusy ? 'Création…' : '📄 Rédiger un cours'}
                 </button>
-                <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard(undefined, 'board')} disabled={boardBusy} title="Pages 16:9 à dessiner, comme avant">
+                <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => setPicking(true)} disabled={boardBusy || picking} title="Pages 16:9 pour écrire en direct : on choisit d'abord l'activité">
                   📋 Tableau blanc
                 </button>
               </div>
+              {picking && user && (
+                <ActivityPicker
+                  userId={user.id}
+                  level={level}
+                  last={lastBoard ? { title: lastBoard.title } : null}
+                  busy={boardBusy}
+                  onPick={(activity) => createBoard(undefined, 'board', activity)}
+                  onEmpty={() => createBoard(undefined, 'board')}
+                  onCancel={() => setPicking(false)}
+                />
+              )}
               {reuseSources.length > 0 && (
                 <>
                   <span className="wtt-pop__muted">ou partir d’une copie du tableau de :</span>
