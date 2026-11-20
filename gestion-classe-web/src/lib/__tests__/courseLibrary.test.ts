@@ -66,8 +66,23 @@ describe('splitVariant', () => {
     expect(splitVariant('Activité 3 — Wegener (Documents)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'documents' });
     expect(splitVariant('Activité 3 — Wegener (corrigé) ')).toEqual({ base: 'Activité 3 — Wegener', variant: 'correction' });
     expect(splitVariant('Activité 3 — Wegener (copie modèle)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'copie' });
+    expect(splitVariant('Activité 3 — Wegener (extraits)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'extraits' });
+    expect(splitVariant('Activité 3 — Wegener (Extrait)').variant).toBe('extraits');
     expect(splitVariant('Activité 3 — Wegener')).toEqual({ base: 'Activité 3 — Wegener', variant: 'fiche' });
     expect(splitVariant('La correction (bilan)').variant).toBe('fiche');
+  });
+});
+
+describe('variante extraits', () => {
+  const seq = 'Séquence 2 — Terre en mouvement';
+  const b = (id: string, title: string) => ({ id, title, level: '4e', chapter: seq, class_id: null, created_at: '2026-11-01T08:00:00Z', updated_at: '2026-11-01T08:00:00Z' });
+  it('se range avec son activité, entre les documents et la correction', () => {
+    const groups = groupActivities([
+      b('c', 'Activité 3 — Wegener (correction)'), b('e', 'Activité 3 — Wegener (extraits)'),
+      b('f', 'Activité 3 — Wegener'), b('d', 'Activité 3 — Wegener (documents)'),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].members.map((m) => m.variant)).toEqual(['fiche', 'documents', 'extraits', 'correction']);
   });
 });
 
