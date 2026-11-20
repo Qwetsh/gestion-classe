@@ -19,6 +19,7 @@ const library: Board[] = [
   board('Activité 2 — Séisme (documents)', '4e', S1),
   board('Activité 2 — Séisme (correction)', '4e', S1),
   board('Activité 2 — Séisme (copie modèle)', '4e', S1),
+  board('Activité 2 — Séisme (extraits)', '4e', S1),
   board('Activité 10 — Bilan', '4e', S1),
   board('Activité 1 — Volcans', '4e', S1),
   board('Activité bonus — Modéliser', '4e', S1),
@@ -90,6 +91,8 @@ describe('buildBinder', () => {
     expect(documents?.heading).toBeUndefined();
     // La copie modèle n'est pas une page : elle accompagne sa fiche
     expect(sheets.some((p) => /copie modèle/.test(p.board.title))).toBe(false);
+    // Les extraits (documents découpés pour le tableau) ne sont pas non plus une page du classeur
+    expect(sheets.some((p) => /extraits/.test(p.board.title))).toBe(false);
     expect(sheets.find((p) => p.label === 'Activité 2')?.companion?.title).toBe('Activité 2 — Séisme (copie modèle)');
     expect(sheets.find((p) => p.label === 'Activité 1')?.companion).toBeUndefined();
     expect(sheets.find((p) => p.role === 'summaries')?.companion?.title).toBe('Feuille de bilans — Séquence 1 (correction)');
