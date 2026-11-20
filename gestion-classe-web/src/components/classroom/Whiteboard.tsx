@@ -2783,8 +2783,10 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       if (!live || !top || !ctx) { mirrorRaf.current = null; return; }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, top.width, top.height);
-      if (toolRef.current === 'pen' || toolRef.current === 'highlighter') ctx.drawImage(live, 0, 0);
-      mirrorRaf.current = performance.now() < mirrorUntil.current ? requestAnimationFrame(tick) : null;
+      // Le laser passe aussi devant les images : sa copie suit tant qu'un trait s'efface encore
+      const laserEncore = laserStrokes.current.length > 0;
+      if (toolRef.current === 'pen' || toolRef.current === 'highlighter' || toolRef.current === 'laser' || laserEncore) ctx.drawImage(live, 0, 0);
+      mirrorRaf.current = performance.now() < mirrorUntil.current || laserEncore ? requestAnimationFrame(tick) : null;
     };
     mirrorRaf.current = requestAnimationFrame(tick);
   }, []);
@@ -3780,7 +3782,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           ref={liveRef}
           className={`wb__layer wb__input wb__input--${tool}`}
           // Stylo et surligneur : le tracé s'affiche par-dessus les objets (copie), pas sous eux
-          style={tool === 'pen' || tool === 'highlighter' ? { opacity: 0 } : undefined}
+          style={tool === 'pen' || tool === 'highlighter' || tool === 'laser' ? { opacity: 0 } : undefined}
           onPointerDown={(e) => { bumpMirror(); onPointerDown(e); }}
           onPointerMove={(e) => { bumpMirror(); onPointerMove(e); }}
           onPointerUp={(e) => { bumpMirror(); finishPointer(e); }}
