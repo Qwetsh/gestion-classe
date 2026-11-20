@@ -16,6 +16,7 @@ import {
   SECTION_LABEL, SECTION_ORDER, binderLevels, binderToc, buildBinder, dividerIndex, sectionAt, spreadOf, turn,
   type BinderSection,
 } from '../lib/binder';
+import { turnDirection } from '../lib/binderFlaps';
 import { MM, PAGE_H, PAGE_W } from '../lib/course/coursePage';
 import { BinderLeaf } from '../components/binder/BinderLeaf';
 import { HOLES_MM, loadSheetDoc } from '../components/binder/binderSheet';
@@ -51,6 +52,8 @@ export function Binder() {
   const [tocOpen, setTocOpen] = useState(() => window.innerWidth >= 1280);
   /** Choix de l'utilisateur ; null = selon la largeur de l'écran. */
   const [doubleChoice, setDoubleChoice] = useState<boolean | null>(null);
+  /** Page en train de se tourner : une feuille passe d'un côté à l'autre (lot 3). */
+  const [turning, setTurning] = useState<{ dir: 1 | -1; id: number } | null>(null);
   /** Début d'un glissement du doigt (tourner les pages sur téléphone). */
   const swipeX = useRef<number | null>(null);
 
@@ -76,9 +79,12 @@ export function Binder() {
   const go = useCallback((next: number) => {
     const q = new URLSearchParams(params);
     if (level) q.set('niveau', level);
-    q.set('page', String(Math.max(0, Math.min(count - 1, next)) + 1));
+    const target = Math.max(0, Math.min(count - 1, next));
+    q.set('page', String(target + 1));
     setParams(q, { replace: true });
-  }, [params, setParams, level, count]);
+    const dir = turnDirection(index, target);
+    if (dir !== 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) setTurning({ dir, id: Date.now() });
+  }, [params, setParams, level, count, index]);
 
   // Clavier : flèches, Page précédente / suivante, Début / Fin
   useEffect(() => {
@@ -245,6 +251,16 @@ export function Binder() {
                     <div className="bd-rings" style={{ left: TAB_W + PAGE_W }} aria-hidden>
                       {HOLES_MM.map((y) => <span key={y} className="bd-ring" style={{ top: y * MM }} />)}
                     </div>
+                  )}
+                  {turning && (
+                    // Une feuille vierge passe par-dessus : les vraies pages ne bougent pas (leur mise en page se mesure à l'écran)
+                    <div
+                      key={turning.id}
+                      className={`bd-turn bd-turn--${turning.dir > 0 ? 'next' : 'prev'}`}
+                      style={{ left: TAB_W + (double ? PAGE_W : 0), width: PAGE_W, height: PAGE_H }}
+                      onAnimationEnd={() => setTurning(null)}
+                      aria-hidden
+                    />
                   )}
                 </div>
               </div>
