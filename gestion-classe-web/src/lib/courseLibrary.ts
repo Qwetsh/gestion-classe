@@ -83,12 +83,15 @@ export function splitShelves(boards: Board[]): { activities: Board[]; methods: B
 // ---------------------------------------------------------------------------------------------
 
 /** Rôle d'un original dans son activité, lu à la fin de son titre. */
-export type CourseVariant = 'fiche' | 'correction' | 'documents';
+export type CourseVariant = 'fiche' | 'correction' | 'documents' | 'copie';
 
-/** Ordre de la séance : la fiche, ses documents, puis la correction (toujours en dernier). */
-export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'documents', 'correction'];
+/**
+ * Ordre de la séance : la fiche, ses documents, la copie modèle (les réponses d'un élève, écrites
+ * dans la fiche par le classeur virtuel), puis la correction (toujours en dernier).
+ */
+export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'documents', 'copie', 'correction'];
 
-export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', correction: 'Correction', documents: 'Documents' };
+export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', correction: 'Correction', documents: 'Documents', copie: 'Copie modèle' };
 
 /** Intitulé du bouton d'un original : pour une évaluation, la fiche est le « Sujet ». */
 export const variantLabel = (variant: CourseVariant, evaluation = false): string =>
@@ -106,13 +109,13 @@ export function withoutEvaluationPrefix(title: string): string {
 }
 
 /** « Activité 3 — Wegener (correction) » → correction de « Activité 3 — Wegener ». */
-const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?)\)\s*$/i;
+const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?|copie mod[èe]le)\)\s*$/i;
 
 export function splitVariant(title: string): { base: string; variant: CourseVariant } {
   const m = VARIANT_SUFFIX.exec(title);
   if (!m) return { base: title.trim(), variant: 'fiche' };
   const word = m[1].toLowerCase();
-  return { base: title.slice(0, m.index).trim(), variant: word.startsWith('doc') ? 'documents' : 'correction' };
+  return { base: title.slice(0, m.index).trim(), variant: word.startsWith('doc') ? 'documents' : word.startsWith('copie') ? 'copie' : 'correction' };
 }
 
 export interface ActivityGroup {

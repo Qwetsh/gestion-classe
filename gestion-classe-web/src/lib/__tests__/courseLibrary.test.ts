@@ -65,6 +65,7 @@ describe('splitVariant', () => {
     expect(splitVariant('Activité 3 — Wegener (correction)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'correction' });
     expect(splitVariant('Activité 3 — Wegener (Documents)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'documents' });
     expect(splitVariant('Activité 3 — Wegener (corrigé) ')).toEqual({ base: 'Activité 3 — Wegener', variant: 'correction' });
+    expect(splitVariant('Activité 3 — Wegener (copie modèle)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'copie' });
     expect(splitVariant('Activité 3 — Wegener')).toEqual({ base: 'Activité 3 — Wegener', variant: 'fiche' });
     expect(splitVariant('La correction (bilan)').variant).toBe('fiche');
   });

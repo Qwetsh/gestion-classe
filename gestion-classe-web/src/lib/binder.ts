@@ -12,8 +12,8 @@
  * Une page du classeur porte un seul document, imprimé en A5 et collé par le bord gauche : un
  * document de deux pages est une fiche A5 recto verso. Les documents du classeur sont reconnus par
  * leur titre (« Page de garde — … », « Feuille de bilans — … ») : il n'y a pas de rayon pour eux en
- * base. Les évaluations et les corrections n'y entrent pas (la correction viendra en écriture
- * d'élève au lot 2).
+ * base. Les évaluations et les corrections n'y entrent pas ; la « (copie modèle) » d'une activité
+ * n'est pas une page non plus : ses réponses sont écrites à la main dans la fiche (lib/binderInk.ts).
  */
 import type { Board } from './boardsQueries';
 import { groupActivities, isEvaluationTitle, isMethodSheet, naturalCompare, splitVariant } from './courseLibrary';
@@ -41,7 +41,18 @@ export type BinderPage =
     /** Intitulé court du sommaire (« Activité 2 — documents », « Page de garde »). */
     label: string;
     board: Board;
+    /** Ce que la fiche est dans le classeur : décide de ce que l'élève y écrit (lot 2). */
+    role: SheetRole;
+    /** Titre que l'élève écrit à la main en haut de la page (fiches d'activité). */
+    heading?: string;
+    /**
+     * Ce que l'élève recopie sur la fiche : pour la feuille de bilans, sa version « (correction) » ;
+     * pour une fiche d'activité, sa « (copie modèle) » (les réponses).
+     */
+    companion?: Board;
   };
+
+export type SheetRole = 'guide' | 'cover' | 'activity' | 'documents' | 'method' | 'summaries' | 'memo';
 
 // ---------------------------------------------------------------------------------------------
 // Les documents propres au classeur, reconnus par leur titre
@@ -111,7 +122,7 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
   // Page 1 : le mode d'emploi (celui du niveau s'il existe, sinon le commun)
   const guides = all.filter((b) => binderDocKind(b.title) === 'guide' && !isMethodSheet(b));
   const guide = guides.find((b) => b.level === level) ?? guides.find((b) => !b.level);
-  if (guide) pages.push({ kind: 'sheet', key: guide.id, section: null, chapter: null, label: 'Mode d’emploi', board: guide });
+  if (guide) pages.push({ kind: 'sheet', key: guide.id, section: null, chapter: null, label: 'Mode d’emploi', board: guide, role: 'guide' });
 
   // Séquences du niveau qui ont une page de garde
   const ofLevel = all.filter((b) => b.level === level && b.chapter && !isMethodSheet(b));
@@ -127,18 +138,19 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
   pages.push({ kind: 'divider', key: 'divider:sequences', section: 'sequences' });
   for (const chapter of chapters) {
     const cover = docOf(chapter, 'cover');
-    if (cover) pages.push({ kind: 'sheet', key: cover.id, section: 'sequences', chapter, label: 'Page de garde', board: cover });
+    if (cover) pages.push({ kind: 'sheet', key: cover.id, section: 'sequences', chapter, label: 'Page de garde', board: cover, role: 'cover' });
     const activities = byChapter.get(chapter)!
       .filter((b) => isActivityTitle(b.title) && !isEvaluationTitle(b.title))
       .sort((a, b) => naturalCompare(a.title, b.title));
     for (const group of groupActivities(activities)) {
       const short = shortActivityLabel(group.title);
+      // La copie modèle n'est pas une page : ses réponses sont écrites dans la fiche
+      const copy = group.members.find((m) => m.variant === 'copie')?.board;
       for (const { variant, board } of group.members) {
-        if (variant === 'correction') continue;
-        pages.push({
-          kind: 'sheet', key: board.id, section: 'sequences', chapter,
-          label: variant === 'documents' ? `${short} — documents` : short, board,
-        });
+        if (variant === 'correction' || variant === 'copie') continue;
+        pages.push(variant === 'documents'
+          ? { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `${short} — documents`, board, role: 'documents' }
+          : { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: short, board, role: 'activity', heading: group.title, companion: copy });
       }
     }
   }
@@ -147,15 +159,20 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
   const methods = all.filter(isMethodSheet).sort((a, b) => naturalCompare(a.title, b.title));
   for (const b of methods) {
     const code = /^\s*(FM\s*\d+)/i.exec(b.title)?.[1].replace(/\s+/g, '') ?? b.title;
-    pages.push({ kind: 'sheet', key: b.id, section: 'methodes', chapter: null, label: code, board: b });
+    pages.push({ kind: 'sheet', key: b.id, section: 'methodes', chapter: null, label: code, board: b, role: 'method' });
   }
 
   pages.push({ kind: 'divider', key: 'divider:revise', section: 'revise' });
   for (const chapter of chapters) {
     const summaries = docOf(chapter, 'summaries');
-    if (summaries) pages.push({ kind: 'sheet', key: summaries.id, section: 'revise', chapter, label: 'Feuille de bilans', board: summaries });
+    if (summaries) {
+      const companion = byChapter.get(chapter)!
+        .filter((b) => binderDocKind(b.title) === 'summaries' && splitVariant(b.title).variant === 'correction')
+        .sort((a, b) => naturalCompare(a.title, b.title))[0];
+      pages.push({ kind: 'sheet', key: summaries.id, section: 'revise', chapter, label: 'Feuille de bilans', board: summaries, role: 'summaries', companion });
+    }
     const memo = docOf(chapter, 'memo');
-    if (memo) pages.push({ kind: 'sheet', key: memo.id, section: 'revise', chapter, label: 'Fiche de mémorisation', board: memo });
+    if (memo) pages.push({ kind: 'sheet', key: memo.id, section: 'revise', chapter, label: 'Fiche de mémorisation', board: memo, role: 'memo' });
   }
   return pages;
 }

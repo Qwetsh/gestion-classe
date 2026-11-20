@@ -10,9 +10,9 @@ import { MM, PAGE_H, PAGE_W } from '../../lib/course/coursePage';
 import { GluedSheet } from './GluedSheet';
 import { A5_SCALE, HOLES_MM } from './binderSheet';
 
-/** Fiche A5 : à 34 mm du bord perforé, 30 mm du haut (la place du titre écrit à la main, lot 2). */
+/** Fiche A5 : à 34 mm du bord perforé, 38 mm du haut (au-dessus, le titre écrit à la main). */
 const GLUE_FROM_HOLES = 34 * MM;
-const GLUE_TOP = 30 * MM;
+const GLUE_TOP = 38 * MM;
 
 interface Props {
   page: BinderPage;
@@ -42,7 +42,12 @@ export function BinderLeaf({ page, side, onOpen }: Props) {
     <div className={`bd-leaf bd-paper bd-paper--${side}`} style={{ width: PAGE_W, height: PAGE_H }}>
       <div className="bd-paper__ruling" aria-hidden />
       {holes}
-      <GluedSheet key={page.board.id} board={page.board} left={left} top={GLUE_TOP} onOpen={onOpen ? () => onOpen(page.board.id) : undefined} />
+      {page.heading && (
+        <div className="bd-heading" style={{ left: side === 'right' ? 31 * MM : 12 * MM, right: side === 'right' ? 8 * MM : 31 * MM }}>
+          <span>{page.heading}</span>
+        </div>
+      )}
+      <GluedSheet key={page.board.id} board={page.board} role={page.role} companion={page.companion} left={left} top={GLUE_TOP} onOpen={onOpen ? () => onOpen(page.board.id) : undefined} />
     </div>
   );
 }
