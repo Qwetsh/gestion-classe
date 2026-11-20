@@ -24,6 +24,7 @@ import { Academy } from './pages/Academy';
 import { Brevets } from './pages/Brevets';
 import { Clouds } from './pages/Clouds';
 import { Courses } from './pages/Courses';
+import { Binder } from './pages/Binder';
 import { Evaluations } from './pages/Evaluations';
 import { AssessmentSheet } from './pages/AssessmentSheet';
 import { Productions } from './pages/Productions';
@@ -66,6 +67,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Courses />
+            </ProtectedRoute>
+          }
+        />
+        {/* Classeur virtuel : le classeur d'un élève assemblé depuis la bibliothèque (PLAN_classeur_virtuel.md) */}
+        <Route
+          path="/classeur"
+          element={
+            <ProtectedRoute>
+              <Binder />
             </ProtectedRoute>
           }
         />

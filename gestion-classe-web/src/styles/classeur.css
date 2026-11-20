@@ -1,0 +1,164 @@
+/* Classeur virtuel (page /classeur) : PLAN_classeur_virtuel.md, lot 1.
+   Les pages du classeur sont dessinées à leur taille réelle (A4 à 96 dpi : 1 mm CSS = 1 mm de
+   papier), puis la vue entière est réduite pour tenir dans l'écran. */
+
+.bd-root {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  background: #3B3F47; color: #F3F4F6; font-family: Inter, system-ui, sans-serif;
+}
+
+/* ---------- Barre du haut ---------- */
+.bd-bar {
+  display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 12px; flex-shrink: 0;
+  background: #2A2D33; border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.bd-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: transparent;
+  color: inherit; font: inherit; font-size: 14px; cursor: pointer;
+}
+.bd-btn:hover { background: rgba(255,255,255,.08); }
+.bd-btn[aria-pressed='true'] { background: rgba(255,255,255,.14); }
+.bd-title { display: inline-flex; align-items: center; gap: 8px; margin: 0 4px 0 6px; font-size: 16px; font-weight: 600; white-space: nowrap; }
+.bd-level { font-size: 14px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.bd-select { height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: #2A2D33; color: inherit; font: inherit; }
+.bd-spacer { flex: 1; }
+.bd-count { font-size: 13px; color: #C9CDD4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 640px) { .bd-hide-sm, .bd-count { display: none; } }
+
+/* ---------- Corps : sommaire + bureau ---------- */
+.bd-body { position: relative; flex: 1; display: flex; min-height: 0; }
+.bd-toc {
+  flex-shrink: 0; overflow-y: auto; padding: 10px 6px 24px;
+  background: #2F3238; border-right: 1px solid rgba(255,255,255,.08);
+}
+.bd-toc--over { position: absolute; z-index: 5; top: 0; bottom: 0; left: 0; width: min(300px, 85vw); box-shadow: 8px 0 24px rgba(0,0,0,.35); }
+.bd-toc ul { list-style: none; margin: 0; padding: 0; }
+.bd-toc__item {
+  display: block; width: 100%; padding: 5px 10px; border: 0; border-radius: 6px; background: none;
+  color: #D1D5DB; font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bd-toc__item:hover { background: rgba(255,255,255,.08); color: #fff; }
+.bd-toc__item--d0 { margin-top: 10px; font-weight: 700; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
+.bd-toc__item--d1 { padding-left: 18px; font-weight: 600; color: #E5E7EB; white-space: normal; }
+.bd-toc__item--d2 { padding-left: 30px; }
+.bd-toc__item[aria-current='page'] { background: rgba(129,140,248,.25); color: #fff; }
+
+.bd-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding: 16px 0; }
+.bd-message { max-width: 520px; padding: 0 24px; text-align: center; color: #D1D5DB; line-height: 1.5; }
+.bd-arrow {
+  flex-shrink: 0; display: grid; place-items: center; width: 44px; height: 88px; border: 0; border-radius: 10px;
+  background: rgba(255,255,255,.06); color: #fff; cursor: pointer;
+}
+.bd-arrow:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+.bd-arrow:disabled { opacity: .25; cursor: default; }
+@media (max-width: 639px) {
+  .bd-arrow { position: absolute; z-index: 6; bottom: 14px; width: 52px; height: 52px; border-radius: 50%; background: rgba(20,22,26,.6); }
+  .bd-arrow--prev { left: 14px; }
+  .bd-arrow--next { right: 14px; }
+}
+
+/* ---------- La vue (une page ou deux), à l'échelle ---------- */
+.bd-spread-outer { position: relative; flex-shrink: 0; }
+.bd-spread { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.bd-slot { position: absolute; top: 0; }
+/* Épaisseur des pages restantes sous la page de droite, des pages tournées sous celle de gauche */
+.bd-slot--right { box-shadow: 2px 2px 0 #E9E7E1, 4px 4px 0 #DEDBD3, 6px 6px 0 #D2CEC4, 10px 14px 28px rgba(0,0,0,.45); }
+.bd-slot--left { box-shadow: -2px 2px 0 #E9E7E1, -4px 4px 0 #DEDBD3, -6px 6px 0 #D2CEC4, -10px 14px 28px rgba(0,0,0,.45); }
+.bd-cover-inside { width: 100%; height: 100%; background: #2B4C7E linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.12)); }
+
+/* Anneaux au pli, entre les deux pages (vus de dessus : une barre de métal par paire de trous) */
+.bd-rings { position: absolute; top: 0; bottom: 0; width: 0; z-index: 3; pointer-events: none; }
+.bd-ring {
+  position: absolute; left: -15mm; width: 30mm; height: 4.2mm; margin-top: -2.1mm; border-radius: 3mm;
+  background: linear-gradient(to bottom, #F4F5F7, #B9BEC7 45%, #8A909B 55%, #D9DCE1);
+  box-shadow: 0 2px 4px rgba(0,0,0,.45);
+}
+
+/* ---------- Feuille du classeur ---------- */
+.bd-leaf { position: relative; overflow: hidden; }
+.bd-paper { background: #FDFDFB; }
+.bd-paper::after {
+  /* Léger ombrage vers le pli */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+}
+.bd-paper--right::after { background: linear-gradient(to right, rgba(0,0,0,.10), rgba(0,0,0,0) 22mm); }
+.bd-paper--left::after { background: linear-gradient(to left, rgba(0,0,0,.10), rgba(0,0,0,0) 22mm); }
+
+/* Grands carreaux Seyès : interligne 8 mm, lignes fines tous les 2 mm, verticales tous les 8 mm */
+.bd-paper__ruling {
+  position: absolute; left: 0; right: 0; top: 22mm; bottom: 10mm;
+  background-image:
+    repeating-linear-gradient(to bottom, #9DAEE6 0 1.5px, transparent 1.5px 8mm),
+    repeating-linear-gradient(to bottom, #E0E6F8 0 1px, transparent 1px 2mm),
+    repeating-linear-gradient(to right, #D5DCF5 0 1px, transparent 1px 8mm);
+}
+/* Marge rouge, côté perforé */
+.bd-paper__ruling::before { content: ''; position: absolute; top: -22mm; bottom: -10mm; width: 2px; background: #E06A6A; }
+.bd-paper--right .bd-paper__ruling::before { left: 27mm; }
+.bd-paper--left .bd-paper__ruling::before { right: 27mm; }
+
+/* Trous de perforation (4 trous) */
+.bd-holes { position: absolute; top: 0; bottom: 0; width: 0; z-index: 2; }
+.bd-holes--left { left: 12mm; }
+.bd-holes--right { right: 12mm; }
+.bd-hole {
+  position: absolute; left: -3mm; width: 6mm; height: 6mm; margin-top: -3mm; border-radius: 50%;
+  background: #3B3F47; box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
+}
+.bd-holes--right .bd-hole { left: auto; right: -3mm; }
+
+/* ---------- Fiche A5 collée ---------- */
+.bd-glued {
+  position: absolute; z-index: 1; transform-origin: 0 50%; background: #fff;
+  box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 3px 8px rgba(0,0,0,.14);
+}
+.bd-glued__window { position: absolute; inset: 0; overflow: hidden; }
+.bd-glued__sheets { cursor: default; }
+.bd-glued__sheets .ce-doc { cursor: default; }
+/* Bande de colle sur le bord gauche (la charnière) */
+.bd-glued__glue {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 9mm; pointer-events: none;
+  background: linear-gradient(to right, rgba(235,228,190,.38), rgba(235,228,190,.12) 70%, transparent);
+  border-right: 1px dashed rgba(180,170,120,.25);
+}
+.bd-glued__note { position: absolute; inset: 0; display: grid; place-items: center; color: #6B7280; font-size: 22px; }
+.bd-glued__turn {
+  position: absolute; right: 0; bottom: 0; z-index: 2; padding: 10px 16px 10px 26px; border: 0;
+  border-radius: 28px 0 0 0; background: linear-gradient(135deg, #EEF0F4 0 50%, #DADDE3 50%);
+  color: #374151; font: 600 22px Inter, system-ui, sans-serif; cursor: pointer;
+  box-shadow: -2px -2px 6px rgba(0,0,0,.12);
+}
+.bd-glued__turn:hover { background: linear-gradient(135deg, #E0E7FF 0 50%, #C7D2FE 50%); color: #312E81; }
+
+/* ---------- Intercalaires (carton de couleur) ---------- */
+.bd-divider { display: flex; align-items: flex-start; justify-content: center; }
+.bd-divider::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(0,0,0,.05) 1px, transparent 1.2px); background-size: 6px 6px;
+}
+.bd-divider__title {
+  position: relative; margin-top: 110mm; padding: 10mm 18mm; border: 3px solid rgba(0,0,0,.18); border-radius: 6mm;
+  background: rgba(255,255,255,.55); font: 700 64px/1 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: rgba(0,0,0,.72);
+}
+.bd-divider--sequences { background: #F6C945; }
+.bd-divider--methodes { background: #7CC6A4; }
+.bd-divider--revise { background: #F28B82; }
+
+/* Onglets qui dépassent du classeur */
+.bd-tab {
+  position: absolute; z-index: 0; display: flex; align-items: center; justify-content: center;
+  width: 76px; height: 210px; padding: 0; border: 0; cursor: pointer;
+  font: 700 26px Inter, system-ui, sans-serif; color: rgba(0,0,0,.75);
+  box-shadow: 0 3px 8px rgba(0,0,0,.35); filter: saturate(.85) brightness(.95);
+}
+.bd-tab span { display: inline-block; white-space: nowrap; transform: rotate(90deg); }
+.bd-tab--right { border-radius: 0 14px 14px 0; }
+.bd-tab--left { border-radius: 14px 0 0 14px; }
+.bd-tab--left span { transform: rotate(-90deg); }
+.bd-tab:hover, .bd-tab.is-current { filter: none; }
+.bd-tab.is-current { z-index: 4; }
+.bd-tab--sequences { background: #F6C945; }
+.bd-tab--methodes { background: #7CC6A4; }
+.bd-tab--revise { background: #F28B82; }
