@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, Search } from 'lucide-react';
+import { BookOpen, FileText, Search } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -32,6 +32,7 @@ import {
 import { createCourse, duplicateCourse, emptyCourseDoc, saveCourseLinks } from '../lib/course/courseDoc';
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, isMethodSheet, parseOpenTarget, splitShelves, type OpenMode } from '../lib/courseLibrary';
+import { binderLevels } from '../lib/binder';
 import { fetchClassGroupsForUser } from '../lib/classGroupQueries';
 import { openLocalFile, type OpenedFile } from '../lib/cloudFiles';
 import { STORAGE_QUOTA_BYTES, formatBytes, refuseCourseFile, renamedFile, sequenceKey, usageLevel, type CourseFile } from '../lib/courseFiles';
@@ -397,6 +398,8 @@ export function Courses() {
   };
 
   const unavailable = boardsUnavailable();
+  /** Classeur virtuel : le premier niveau dont une séquence a sa page de garde. */
+  const binderLevel = binderLevels(boards)[0] ?? null;
 
   return (
     <Layout>
@@ -404,6 +407,11 @@ export function Courses() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="page-title">Mes cours</h1>
           <div className="flex gap-2">
+            {binderLevel && (
+              <button type="button" className="btn" onClick={() => void navigate(`/classeur?niveau=${encodeURIComponent(binderLevel)}`)} title="Le classeur d’un élève, assemblé à partir de la bibliothèque">
+                <BookOpen size={16} aria-hidden /> Classeur
+              </button>
+            )}
             <button type="button" className="btn" onClick={() => open(DRAFT_ID)} title="Ardoise libre, gardée sur cet appareil">
               Brouillon
             </button>
