@@ -5,11 +5,12 @@
  * format A5 (148 / 210) : c'est exactement l'impression A5 d'une page A4. Une fenêtre de la taille
  * d'une page montre la page voulue : la première (le recto), ou la suivante quand on retourne la
  * fiche (un cours de deux pages est une fiche recto verso).
+ * Lot 3 : la fiche de mémorisation porte ses volets (MemoFlaps), rabattus sur les réponses.
  * Lot 2 : la page de garde et la feuille de bilans sont montrées remplies par l'élève
  * (lib/binderInk.ts) ; un bouton rend la fiche vierge.
  * À monter avec `key` = l'identifiant du cours : l'état (fiche lue, face montrée) lui est propre.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { JSONContent } from '@tiptap/core';
 import type { Board } from '../../lib/boardsQueries';
@@ -22,6 +23,7 @@ import { CourseSheetChrome } from '../course/CourseSheetChrome';
 import { CourseLayer } from '../course/CourseLayer';
 import { flowStyle } from '../course/courseThemes';
 import { A5_SCALE, loadSheetDoc } from './binderSheet';
+import { MemoFlaps } from './MemoFlaps';
 import '../course/course.css';
 
 interface Props {
@@ -88,7 +90,7 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
       onDoubleClick={onOpen}
       title={onOpen ? `${board.title} — double-clic pour l’ouvrir dans Mes cours` : board.title}
     >
-      {shownDoc && <CourseFaces board={board} doc={shownDoc} face={face} onFace={setFace} />}
+      {shownDoc && <CourseFaces board={board} doc={shownDoc} face={face} onFace={setFace} flaps={role === 'memo'} />}
       {inked && (
         <button
           type="button"
@@ -108,8 +110,9 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
   );
 }
 
-function CourseFaces({ board, doc, face, onFace }: { board: Board; doc: CourseDoc; face: number; onFace: (f: number) => void }) {
+function CourseFaces({ board, doc, face, onFace, flaps }: { board: Board; doc: CourseDoc; face: number; onFace: (f: number) => void; flaps: boolean }) {
   const [pages, setPages] = useState(1);
+  const sheetsRef = useRef<HTMLDivElement>(null);
   const extensions = useMemo(() => courseExtensions(
     (layout) => setPages(layout.pages),
     { boardId: board.id, onEdit: () => { /* lecture seule */ } },
@@ -127,6 +130,7 @@ function CourseFaces({ board, doc, face, onFace }: { board: Board; doc: CourseDo
     <>
       <div className="bd-glued__window">
         <div
+          ref={sheetsRef}
           className="ce-sheets bd-glued__sheets"
           style={{ width: PAGE_W, height: sheetsH, transform: `scale(${A5_SCALE}) translateY(${-shown * (PAGE_H + SHEET_GAP)}px)` }}
         >
@@ -148,6 +152,7 @@ function CourseFaces({ board, doc, face, onFace }: { board: Board; doc: CourseDo
             <CourseLayer editor={editor} items={doc.layer?.items ?? []} height={sheetsH} active={false} readOnly
               style={{ tool: 'select', color: '#000', size: 'M' }} selected={null} onSelect={() => {}} onChange={() => {}} />
           )}
+          {editor && flaps && <MemoFlaps sheets={sheetsRef} layoutKey={pages} />}
         </div>
       </div>
       {pages > 1 && (
