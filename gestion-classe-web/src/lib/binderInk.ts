@@ -20,6 +20,8 @@ import type { JSONContent } from '@tiptap/core';
 export const HAND_FONT = '"Playwrite FR Moderne", cursive';
 /** Encre du stylo de l'élève. */
 export const INK_BLUE = '#1F3A93';
+/** Stylo vert : la correction que l'élève écrit sur son évaluation. */
+export const INK_GREEN = '#1B7F3B';
 /** Rouge des bilans (le même que dans les cours). */
 export const INK_RED = '#C00000';
 
@@ -189,14 +191,15 @@ const CHARS_PER_LINE = 78;
  * La fiche, avec les réponses écrites à la main dans ses zones à remplir, prises dans l'ordre du
  * document : zone d'écriture (le texte est posé sur des lignes, les lignes en trop restent),
  * pointillés dans une phrase (sauf ceux de la ligne d'identité : nom, prénom, classe, date),
- * cellule vide d'un tableau. Sans réponse pour une zone, elle reste vide. Les cases de la liste « J'ai réussi » sont cochées.
+ * cellule vide d'un tableau. Sans réponse pour une zone, elle reste vide. Les cases de l'encadré « J'ai réussi » sont cochées.
+ * `color` : l'encre (bleu ; vert pour la correction écrite sur une évaluation).
  */
-export function fillSheet(sheet: JSONContent, answers: ModelAnswer[]): JSONContent {
+export function fillSheet(sheet: JSONContent, answers: ModelAnswer[], color: string = INK_BLUE): JSONContent {
   if (!answers.some((a) => a)) return sheet;
   let next = 0;
   const take = (): ModelAnswer | undefined => answers[next++];
   const colored = (ink: JSONContent[], size?: string): JSONContent[] =>
-    ink.map((n) => ({ ...n, marks: inkMarks(INK_BLUE, n.marks, size) }));
+    ink.map((n) => ({ ...n, marks: inkMarks(color, n.marks, size) }));
 
   const visit = (node: JSONContent, success = false): JSONContent[] => {
     if (node.type === 'writingZone') {

@@ -15,7 +15,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import type { JSONContent } from '@tiptap/core';
 import type { Board } from '../../lib/boardsQueries';
 import type { SheetRole } from '../../lib/binder';
-import { fillSheet, fillSummaries, modelAnswers, tickCover } from '../../lib/binderInk';
+import { INK_BLUE, INK_GREEN, fillSheet, fillSummaries, modelAnswers, tickCover } from '../../lib/binderInk';
 import type { CourseDoc } from '../../lib/course/courseDoc';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { courseExtensions } from '../course/courseExtensions';
@@ -63,8 +63,9 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
       const next = fillSummaries(doc.content, corrected.content);
       return next === doc.content ? null : next;
     }
-    if (role === 'activity' && corrected) {
-      const next = fillSheet(doc.content, modelAnswers(corrected.content));
+    if ((role === 'activity' || role === 'evaluation') && corrected) {
+      // Sur une évaluation, ce que l'élève écrit après coup est la correction : au stylo vert
+      const next = fillSheet(doc.content, modelAnswers(corrected.content), role === 'evaluation' ? INK_GREEN : INK_BLUE);
       return next === doc.content ? null : next;
     }
     return null;

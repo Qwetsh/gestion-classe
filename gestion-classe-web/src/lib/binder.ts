@@ -12,8 +12,10 @@
  * Une page du classeur porte un seul document, imprimé en A5 et collé par le bord gauche : un
  * document de deux pages est une fiche A5 recto verso. Les documents du classeur sont reconnus par
  * leur titre (« Page de garde — … », « Feuille de bilans — … ») : il n'y a pas de rayon pour eux en
- * base. Les évaluations et les corrections n'y entrent pas ; la « (copie modèle) » d'une activité
- * n'est pas une page non plus : ses réponses sont écrites à la main dans la fiche (lib/binderInk.ts).
+ * base. La correction d'une activité n'y entre pas, et sa « (copie modèle) » n'est pas une page : ses
+ * réponses sont écrites à la main dans la fiche (lib/binderInk.ts). L'évaluation d'une séquence suit
+ * ses activités : son sujet porte la correction, écrite en vert, si elle a une copie modèle ; sinon
+ * sa « (correction) » est collée à la suite.
  */
 import type { Board } from './boardsQueries';
 import { groupActivities, isEvaluationTitle, isMethodSheet, naturalCompare, splitVariant } from './courseLibrary';
@@ -52,7 +54,7 @@ export type BinderPage =
     companion?: Board;
   };
 
-export type SheetRole = 'guide' | 'cover' | 'activity' | 'documents' | 'method' | 'summaries' | 'memo';
+export type SheetRole = 'guide' | 'cover' | 'activity' | 'documents' | 'evaluation' | 'correction' | 'method' | 'summaries' | 'memo';
 
 // ---------------------------------------------------------------------------------------------
 // Les documents propres au classeur, reconnus par leur titre
@@ -151,6 +153,17 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
         pages.push(variant === 'documents'
           ? { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `${short} — documents`, board, role: 'documents' }
           : { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: short, board, role: 'activity', heading: group.title, companion: copy });
+      }
+    }
+    // L'évaluation de la séquence, à la suite de ses activités : le sujet (la correction y est écrite
+    // en vert si une copie modèle existe), ses documents, sinon la correction telle quelle
+    const evaluations = byChapter.get(chapter)!.filter((b) => isEvaluationTitle(b.title)).sort((a, b) => naturalCompare(a.title, b.title));
+    for (const group of groupActivities(evaluations)) {
+      const copy = group.members.find((m) => m.variant === 'copie')?.board;
+      for (const { variant, board } of group.members) {
+        if (variant === 'copie' || (variant === 'correction' && copy)) continue;
+        if (variant === 'fiche') pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: 'Évaluation', board, role: 'evaluation', heading: group.title, companion: copy });
+        else pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: variant === 'documents' ? 'Évaluation — documents' : 'Évaluation — correction', board, role: variant === 'documents' ? 'documents' : 'correction' });
       }
     }
   }
