@@ -157,8 +157,8 @@ export interface HomeData {
   /**
    * Ouvre l'ardoise libre, ou un tableau préparé (le tableau blanc vit dans la page, pas dans un
    * module). `present` : un cours rédigé s'ouvre directement « En classe », en mode test (lot 4d).
-   * `inClass` : un tableau blanc s'ouvre avec l'interface de classe (barre flottante, pastille et
-   * menu radial) plutôt que le ruban de préparation.
+   * `inClass` : un tableau blanc s'ouvre en mode classe (le même habillage que l'écran /classe :
+   * ruban réduit, traits préparés protégés) plutôt qu'en préparation.
    */
   openBoard: (board?: { id: string; title: string; present?: boolean; inClass?: boolean }) => void;
 }
