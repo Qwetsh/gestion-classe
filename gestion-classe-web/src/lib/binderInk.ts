@@ -27,15 +27,18 @@ type Mark = NonNullable<JSONContent['marks']>[number];
 
 /** Taille de l'écriture posée sur des lignes ; sa présence dit au rendu de tracer les lignes. */
 export const RULED_SIZE = '9.5pt';
+/** Taille de l'écriture dans une cellule de tableau : petite, les colonnes sont étroites. */
+export const CELL_SIZE = '8pt';
 
 /**
  * Marques d'un texte écrit à la main : la police et l'encre, plus le soulignement s'il y était.
- * `ruled` : l'écriture occupe toute la ligne, sur des lignes tracées (zone d'écriture remplie).
+ * `size` : RULED_SIZE pour une zone d'écriture remplie, CELL_SIZE dans une cellule de tableau ;
+ * sans taille, l'écriture prend celle de la phrase où elle se glisse.
  */
-function inkMarks(color: string, kept: Mark[] = [], ruled = false): Mark[] {
+function inkMarks(color: string, kept: Mark[] = [], size?: string): Mark[] {
   return [
     ...kept.filter((m) => m.type === 'underline'),
-    { type: 'textStyle', attrs: { color, fontFamily: HAND_FONT, ...(ruled ? { fontSize: RULED_SIZE } : {}) } },
+    { type: 'textStyle', attrs: { color, fontFamily: HAND_FONT, ...(size ? { fontSize: size } : {}) } },
   ];
 }
 
@@ -114,7 +117,7 @@ export function summaryTexts(corrected: JSONContent): Map<string, JSONContent[]>
 function handwritten(paragraph: JSONContent, color: string): JSONContent {
   return {
     type: 'paragraph',
-    content: (paragraph.content ?? []).map((n) => (n.type === 'text' ? { ...n, marks: inkMarks(color, n.marks, true) } : n)),
+    content: (paragraph.content ?? []).map((n) => (n.type === 'text' ? { ...n, marks: inkMarks(color, n.marks, RULED_SIZE) } : n)),
   };
 }
 
@@ -173,6 +176,9 @@ const isBlankCell = (n: JSONContent): boolean =>
   (n.type === 'tableCell' || n.type === 'tableHeader')
   && (n.content ?? []).length === 1 && n.content![0].type === 'paragraph' && (n.content![0].content ?? []).length === 0;
 
+/** Encadré « J'ai réussi l'activité si je peux : ». */
+const SUCCESS = /j['’]ai r[ée]ussi/i;
+
 /** Champs de la ligne d'identité d'une fiche. */
 const IDENTITY = /(^|[^\p{L}])(nom|pr[ée]nom|classe|date)\s*:/iu;
 
@@ -189,30 +195,32 @@ export function fillSheet(sheet: JSONContent, answers: ModelAnswer[]): JSONConte
   if (!answers.some((a) => a)) return sheet;
   let next = 0;
   const take = (): ModelAnswer | undefined => answers[next++];
-  const colored = (ink: JSONContent[], ruled: boolean): JSONContent[] =>
-    ink.map((n) => ({ ...n, marks: inkMarks(INK_BLUE, n.marks, ruled) }));
+  const colored = (ink: JSONContent[], size?: string): JSONContent[] =>
+    ink.map((n) => ({ ...n, marks: inkMarks(INK_BLUE, n.marks, size) }));
 
-  const visit = (node: JSONContent): JSONContent[] => {
+  const visit = (node: JSONContent, success = false): JSONContent[] => {
     if (node.type === 'writingZone') {
       const answer = take();
       if (!answer) return [node];
       const lines = Number(node.attrs?.lines) || 0;
       const used = Math.ceil(answer.reduce((n, t) => n + (t.text ?? '').length, 0) / CHARS_PER_LINE);
-      const written: JSONContent = { type: 'paragraph', content: colored(answer, true) };
+      const written: JSONContent = { type: 'paragraph', content: colored(answer, RULED_SIZE) };
       return lines - used > 0 ? [written, { ...node, attrs: { ...node.attrs, lines: lines - used } }] : [written];
     }
     if (isBlankCell(node)) {
       const answer = take();
-      return answer ? [{ ...node, content: [{ ...node.content![0], content: colored(answer, false) }] }] : [node];
+      return answer ? [{ ...node, content: [{ ...node.content![0], content: colored(answer, CELL_SIZE) }] }] : [node];
     }
     if (node.type === 'dots') {
       const answer = take();
-      return answer ? colored(answer, false) : [node];
+      return answer ? colored(answer) : [node];
     }
     // Ligne d'identité (« Nom : …… Prénom : …… Classe : …… ») : ses pointillés ne sont pas des réponses
     if (node.type === 'paragraph' && IDENTITY.test(plainText(node))) return [node];
-    if (node.type === 'taskItem') return [{ ...node, attrs: { ...node.attrs, checked: true }, content: (node.content ?? []).flatMap(visit) }];
-    return [node.content ? { ...node, content: node.content.flatMap(visit) } : node];
+    // Les cases de l'encadré « J'ai réussi » sont cochées ; les autres cases (un choix à faire) restent
+    const inSuccess = success || (node.type === 'callout' && SUCCESS.test(String(node.attrs?.title ?? '')));
+    if (node.type === 'taskItem' && inSuccess) return [{ ...node, attrs: { ...node.attrs, checked: true }, content: (node.content ?? []).flatMap((c) => visit(c, true)) }];
+    return [node.content ? { ...node, content: node.content.flatMap((c) => visit(c, inSuccess)) } : node];
   };
   return visit(sheet)[0];
 }

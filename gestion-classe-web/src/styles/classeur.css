@@ -176,7 +176,9 @@
 /* Zone d'écriture remplie : l'écriture attachée posée sur des lignes, comme la zone qu'elle remplace.
    Repérée par sa taille (RULED_SIZE de binderInk.ts) : l'écriture glissée dans une phrase ou dans
    une cellule n'en porte pas et reste sans lignes. */
-.bd-glued .ce-doc p:has(> span[style*="Playwrite"][style*="font-size"]) {
+/* Dans une cellule de tableau, un mot écrit à la main ne se coupe pas */
+.bd-glued .ce-doc td p:has(> span[style*="Playwrite"]) { overflow-wrap: normal; word-break: normal; hyphens: none; line-height: 1.5; }
+.bd-glued .ce-doc p:has(> span[style*="Playwrite"][style*="9.5pt"]) {
   line-height: 8mm; margin: 0; padding: 0 1mm;
   background: repeating-linear-gradient(to bottom, transparent 0 calc(8mm - 1px), #9CA3AF calc(8mm - 1px) 8mm);
 }
@@ -189,3 +191,5 @@
 .bd-glued:hover .bd-glued__ink, .bd-glued__ink:focus-visible { opacity: 1; }
 .bd-glued__ink:hover { background: #E0E7FF; color: #312E81; }
 @media (hover: none) { .bd-glued__ink { opacity: 1; } }
+/* Sur la fiche collée, pas d'étiquette d'éditeur sous les zones d'écriture (c'est du papier) */
+.bd-glued .ce-doc .ce-zone::before { content: none; }

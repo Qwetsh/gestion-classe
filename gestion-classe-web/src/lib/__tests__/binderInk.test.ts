@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JSONContent } from '@tiptap/core';
-import { HAND_FONT, INK_BLUE, INK_RED, RULED_SIZE, fillSheet, fillSummaries, hasInk, modelAnswers, plainText, summaryTexts, tickCover } from '../binderInk';
+import { CELL_SIZE, HAND_FONT, INK_BLUE, INK_RED, RULED_SIZE, fillSheet, fillSummaries, hasInk, modelAnswers, plainText, summaryTexts, tickCover } from '../binderInk';
 
 const text = (t: string, marks?: JSONContent['marks']): JSONContent => ({ type: 'text', text: t, ...(marks ? { marks } : {}) });
 const p = (...content: JSONContent[]): JSONContent => ({ type: 'paragraph', content });
@@ -80,7 +80,10 @@ describe('copie modèle', () => {
     table(cell(p(text('Critère'))), blank, blank, blank),
     p(text('J’observe '), dots),
     { type: 'writingZone', attrs: { style: 'lignes', lines: 4 } },
-    { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [p(text('comparer deux séismes'))] }] },
+    { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [p(text('Islande'))] }] },
+    { type: 'callout', attrs: { kind: 'libre', title: '✅ J’ai réussi l’activité si je peux :' }, content: [
+      { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [p(text('comparer deux séismes'))] }] },
+    ] },
   );
   const cellsText = (tbl: JSONContent): string[] => (tbl.content ?? []).flatMap((row) => row.content ?? []).map(plainText);
 
@@ -92,14 +95,18 @@ describe('copie modèle', () => {
 
   it('écrit chaque réponse dans sa zone : cellules vides, pointillés, zone de lignes', () => {
     const filled = fillSheet(sheet, modelAnswers(copy));
-    const [tbl, sentence, written, rest, tasks] = filled.content!;
+    const [tbl, sentence, written, rest, choice, success] = filled.content!;
     expect(cellsText(tbl)).toEqual(['Critère', '10 août 2026', '', '7,4']);
     expect(plainText(sentence)).toBe('J’observe que la magnitude est forte.');
     expect(sentence.content![2].marks).toEqual([{ type: 'underline' }, { type: 'textStyle', attrs: { color: INK_BLUE, fontFamily: HAND_FONT } }]);
     // La zone de 4 lignes : le texte sur des lignes, puis les 3 lignes restantes
     expect(written.content![0].marks).toEqual([{ type: 'textStyle', attrs: { color: INK_BLUE, fontFamily: HAND_FONT, fontSize: RULED_SIZE } }]);
     expect(rest).toEqual({ type: 'writingZone', attrs: { style: 'lignes', lines: 3 } });
-    expect(tasks.content![0].attrs).toEqual({ checked: true });
+    // Dans une cellule, l'écriture est petite
+    expect(tbl.content![1].content![0].content![0].content![0].marks).toEqual([{ type: 'textStyle', attrs: { color: INK_BLUE, fontFamily: HAND_FONT, fontSize: CELL_SIZE } }]);
+    // Seules les cases de « J'ai réussi » sont cochées, pas une case de choix
+    expect(choice.content![0].attrs).toEqual({ checked: false });
+    expect(success.content![0].content![0].attrs).toEqual({ checked: true });
     expect(JSON.stringify(sheet)).toContain('"checked":false'); // la fiche d'origine n'est pas modifiée
   });
 
