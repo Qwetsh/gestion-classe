@@ -49,7 +49,7 @@ export function BinderLeaf({ page, side, onOpen }: Props) {
 
   if (page.kind === 'divider') {
     return (
-      <div className={`bd-leaf bd-divider bd-divider--${page.section}`} style={{ width: PAGE_W, height: PAGE_H }}>
+      <div data-leaf-key={page.key} className={`bd-leaf bd-divider bd-divider--${page.section}`} style={{ width: PAGE_W, height: PAGE_H }}>
         {holes}
         <div className="bd-divider__title">{SECTION_LABEL[page.section]}</div>
       </div>
@@ -58,7 +58,7 @@ export function BinderLeaf({ page, side, onOpen }: Props) {
 
   if (page.kind === 'ruled') {
     return (
-      <div className={`bd-leaf bd-paper bd-paper--${side}`} style={{ width: PAGE_W, height: PAGE_H }}>
+      <div data-leaf-key={page.key} className={`bd-leaf bd-paper bd-paper--${side}`} style={{ width: PAGE_W, height: PAGE_H }}>
         <div className="bd-paper__ruling" aria-hidden />
         {holes}
         {page.heading && (
@@ -74,7 +74,7 @@ export function BinderLeaf({ page, side, onOpen }: Props) {
   const sheetW = PAGE_W * A5_SCALE;
   const left = side === 'right' ? GLUE_FROM_HOLES : PAGE_W - GLUE_FROM_HOLES - sheetW;
   return (
-    <div className={`bd-leaf bd-paper bd-paper--${side}`} style={{ width: PAGE_W, height: PAGE_H }}>
+    <div data-leaf-key={page.key} className={`bd-leaf bd-paper bd-paper--${side}`} style={{ width: PAGE_W, height: PAGE_H }}>
       <div className="bd-paper__ruling" aria-hidden />
       {holes}
       {page.heading && (
