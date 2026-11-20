@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JSONContent } from '@tiptap/core';
-import { CELL_SIZE, HAND_FONT, INK_BLUE, INK_RED, RULED_SIZE, fillSheet, fillSummaries, hasInk, modelAnswers, plainText, summaryTexts, tickCover } from '../binderInk';
+import { CELL_SIZE, HAND_FONT, INK_BLUE, INK_GREEN, INK_RED, RULED_SIZE, fillSheet, fillSummaries, hasInk, modelAnswers, plainText, summaryTexts, tickCover } from '../binderInk';
 
 const text = (t: string, marks?: JSONContent['marks']): JSONContent => ({ type: 'text', text: t, ...(marks ? { marks } : {}) });
 const p = (...content: JSONContent[]): JSONContent => ({ type: 'paragraph', content });
@@ -115,6 +115,12 @@ describe('copie modèle', () => {
     const filled = fillSheet(withName, modelAnswers(copy));
     expect(filled.content![0]).toEqual(withName.content![0]);
     expect(cellsText(filled.content![1])).toEqual(['Critère', '10 août 2026', '', '7,4']);
+  });
+
+  it('écrit en vert la correction d’une évaluation', () => {
+    const filled = fillSheet(sheet, modelAnswers(copy), INK_GREEN);
+    const mark = filled.content![0].content![1].content![0].content![0].content![0].marks![0];
+    expect(mark.attrs).toMatchObject({ color: INK_GREEN, fontFamily: HAND_FONT });
   });
 
   it('laisse la fiche telle quelle sans réponse, et les zones en trop vides', () => {

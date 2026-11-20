@@ -62,17 +62,16 @@ describe('buildBinder', () => {
     expect(labels).toEqual([
       'Mode d’emploi',
       '[sequences]',
-      'Page de garde', 'Activité 1', 'Activité 2', 'Activité 2 — documents', 'Activité 10', 'Activité bonus',
+      'Page de garde', 'Activité 1', 'Activité 2', 'Activité 2 — documents', 'Activité 10', 'Activité bonus', 'Évaluation',
       'Page de garde', 'Activité 3',
       '[methodes]', 'FM1', 'FM2', 'FM10',
       '[revise]', 'Feuille de bilans', 'Fiche de mémorisation',
     ]);
   });
 
-  it('écarte corrections, évaluations, cours hors classeur et séquences sans page de garde', () => {
+  it('écarte les corrections d’activité, les cours hors classeur et les séquences sans page de garde', () => {
     const titles = pages.flatMap((p) => (p.kind === 'sheet' ? [p.board.title] : []));
     expect(titles.some((t) => /correction/.test(t))).toBe(false);
-    expect(titles).not.toContain('Évaluation — La Terre');
     expect(titles).not.toContain('Test Bilan');
     expect(titles).not.toContain('Activité 1 — Plaques');
   });
@@ -95,7 +94,23 @@ describe('buildBinder', () => {
     expect(sheets.find((p) => p.label === 'Activité 1')?.companion).toBeUndefined();
     expect(sheets.find((p) => p.role === 'summaries')?.companion?.title).toBe('Feuille de bilans — Séquence 1 (correction)');
     expect(sheets.map((p) => p.role).filter((r, i, all) => all.indexOf(r) === i))
-      .toEqual(['guide', 'cover', 'activity', 'documents', 'method', 'summaries', 'memo']);
+      .toEqual(['guide', 'cover', 'activity', 'documents', 'evaluation', 'method', 'summaries', 'memo']);
+  });
+
+  it('met l’évaluation après les activités : sa copie modèle l’accompagne, sinon sa correction suit', () => {
+    const withCopy = buildBinder([
+      ...library,
+      board('Évaluation — La Terre (documents)', '4e', S1),
+      board('Évaluation — La Terre (correction)', '4e', S1),
+      board('Évaluation — La Terre (copie modèle)', '4e', S1),
+    ], '4e').flatMap((p) => (p.kind === 'sheet' && /^Évaluation/.test(p.label) ? [p] : []));
+    expect(withCopy.map((p) => [p.label, p.role])).toEqual([['Évaluation', 'evaluation'], ['Évaluation — documents', 'documents']]);
+    expect(withCopy[0].companion?.title).toBe('Évaluation — La Terre (copie modèle)');
+    expect(withCopy[0].heading).toBe('Évaluation — La Terre');
+
+    const withoutCopy = buildBinder([...library, board('Évaluation — La Terre (correction)', '4e', S1)], '4e')
+      .flatMap((p) => (p.kind === 'sheet' && /^Évaluation/.test(p.label) ? [p] : []));
+    expect(withoutCopy.map((p) => [p.label, p.role])).toEqual([['Évaluation', 'evaluation'], ['Évaluation — correction', 'correction']]);
   });
 
   it('ne mélange pas les niveaux', () => {
@@ -132,7 +147,7 @@ describe('repères', () => {
     expect(sectionAt(pages, 0)).toBeNull();
     expect(sectionAt(pages, 3)).toBe('sequences');
     expect(sectionAt(pages, dividerIndex(pages, 'methodes') + 1)).toBe('methodes');
-    expect(dividerIndex(pages, 'revise')).toBe(14);
+    expect(dividerIndex(pages, 'revise')).toBe(15);
   });
 
   it('sommaire : parties, séquences, pages', () => {
