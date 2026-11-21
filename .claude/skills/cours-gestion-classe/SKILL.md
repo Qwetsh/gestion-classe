@@ -342,6 +342,29 @@ multiplication), on n'assemble pas des images que des boutons font glisser — T
   de la scène en taille 24 au moins (hors vignettes d'un récapitulatif) ; une étape de bilan avec `bilan=True` (rouge) ; 5 à 11
   secondes par étape, la scène reste sur sa dernière image.
 
+**Les scènes riches** (21/11/2026 : 3D, photos, graphiques ; démonstration : patiente de l'hôpital
+virtuel en 3D, symptômes zoomés, frottis animé). Une animation peut aussi :
+
+- **demander une bibliothèque** : `assembler(..., bibliotheques=['three'])` (three.js : 3D, modèles
+  GLB, rotation au doigt) ou `['chart']` (Chart.js). Le tableau l'injecte à l'ouverture : le code
+  reste petit (la démonstration fait 24 000 caractères) et rien ne vient du réseau ;
+- **recevoir des fichiers lourds** (modèle 3D GLB, photo de lame, son ; 8 Mo au plus chacun) :
+  `gc_envoi.py fichier <chemin>` les envoie, `e.animation(code, fichiers={'patient.glb': chemin_stockage})`
+  les joint, la scène les lit par `await gcAsset('patient.glb')` → `{ buffer, blob, url }` (l'`url`
+  sert directement dans `<image href>` du SVG) ;
+- **se manipuler en classe** : `interactif=True` (faire tourner le modèle au doigt ; on n'écrit plus
+  par-dessus au stylet).
+
+La banque `scene3d` (`banques=['scene3d']`, avec `bibliotheques=['three']`) pose la 3D sous les
+étiquettes SVG : `S3D.create()`, `load(nom)` (GLB compressé meshopt, comme ceux de l'hôpital),
+`fit(objet)` → boîte, `box.at(fx, fy, fz)` (un point du modèle en fractions : tête ≈ `.5, .93, .5`),
+`view(t, [{t, pos, target}…])` (caméra en images-clés ; libre après la dernière), `pose(modèle, clip, t)`,
+`toStage(point)` (point 3D → coordonnées SVG : une étiquette qui suit le modèle), `glow`, `spot`.
+Une étape 3D a `update(t)` (caméra, pose), `draw(t)` (étiquettes) et `live: true` (redessinée à chaque
+image). Tout dépend de `t` : l'étape se rejoue et se photographie à l'identique.
+Aperçu : `apercu(html, png, etape=n, instant=s, fichiers={'patient.glb': chemin_local}, attente=25000)`
+(3D rendue sans carte graphique, lente : laisser `attente`). Bibliothèques locales : `npm run scene-libs`.
+
 Pièges vérifiés dans l'application :
 
 - une flèche accrochée à un objet ne suit pas un objet **déplacé par un bouton** ;

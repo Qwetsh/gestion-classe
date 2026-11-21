@@ -14,7 +14,7 @@
  * La hauteur d'un texte dépend de la police et du rendu : elle est ici **estimée**. Seul un rendu
  * dans l'application la donne vraiment ; ces avertissements disent où regarder, pas ce qui est faux.
  */
-import { ANIMATION_MAX_CHARS, animationInfo } from '../boardAnimation';
+import { ANIMATION_MAX_CHARS, SCENE_LIBS, animationInfo, animationLibs, isSceneLib } from '../boardAnimation';
 
 /** Page logique du tableau blanc : 1000 × 562,5 (16:9). */
 export const PAGE_W = 1000;
@@ -196,7 +196,28 @@ export function checkScreens(input: unknown): ScreensReport {
           const info = animationInfo(o.code);
           if (!info.contract) warnings.push(`${at} : animation hors contrat « gc-anim » ; les boutons du tableau ne pourront pas la faire avancer.`);
           else if (info.steps.some((s) => s.title.trim() === '')) warnings.push(`${at} : une étape de l'animation n'a pas de titre.`);
+          for (const lib of animationLibs(o.code)) {
+            if (!isSceneLib(lib)) errors.push(`${at} : bibliothèque « ${lib} » inconnue (${SCENE_LIBS.join(', ')}).`);
+          }
+          // Fichiers demandés par la scène (gcAsset('…')) mais pas joints : la scène attendrait toujours
+          const joined = new Set(Array.isArray(o.assets) ? o.assets.filter(isRec).map((a) => a.name) : []);
+          for (const m of o.code.matchAll(/gcAsset\(\s*["'`]([^"'`]+)["'`]\s*\)/g)) {
+            if (!joined.has(m[1])) errors.push(`${at} : la scène lit le fichier « ${m[1]} », qui n'est pas joint (assets).`);
+          }
         }
+        if (o.assets !== undefined) {
+          if (!Array.isArray(o.assets)) errors.push(`${at} : « assets » doit être une liste de { name, path }.`);
+          else {
+            const names = new Set<string>();
+            for (const a of o.assets) {
+              if (!isRec(a) || typeof a.name !== 'string' || a.name === '' || typeof a.path !== 'string' || a.path === '') { errors.push(`${at} : fichier joint sans nom ou sans chemin.`); continue; }
+              if (/^https?:/i.test(a.path)) errors.push(`${at} : le fichier joint « ${a.name} » se cite par son chemin de stockage, pas par une adresse (gc_envoi.py fichier).`);
+              if (names.has(a.name)) errors.push(`${at} : deux fichiers joints s'appellent « ${a.name} ».`);
+              names.add(a.name);
+            }
+          }
+        }
+        if (o.interactive !== undefined && typeof o.interactive !== 'boolean') errors.push(`${at} : « interactive » vaut true ou false.`);
         if (o.imagePath === undefined) warnings.push(`${at} : pas d'image pour les vignettes et l'export (gc_animation.affiche, puis gc_envoi.py image).`);
         else if (typeof o.imagePath !== 'string' || o.imagePath === '' || /^https?:/i.test(o.imagePath)) errors.push(`${at} : l'image de l'animation se cite par son chemin de stockage, pas par une adresse.`);
       } else if (o.type === 'widget') {

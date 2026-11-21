@@ -28,3 +28,6 @@ scripts/.pdf_cache/
 
 # Brouillons de cours écrits par Claude (npm run course:check)
 course-drafts/
+
+# Bibliothèques des scènes du tableau, fabriquées par scripts/build-scene-libs.mjs
+public/scene-libs/

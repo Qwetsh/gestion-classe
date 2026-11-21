@@ -1,6 +1,9 @@
 /* Lecteur « gc-anim » v1 : joue une scène étape par étape, seul ou piloté par le tableau de Gestion Classe.
    - Les textes des étapes (titre, légende) viennent du bloc JSON #gc-anim : on les réécrit sans toucher au dessin.
    - Le dessin vient de GC.play({ identifiant: { dur, draw(t) } }) : draw rend le SVG de l'instant t (secondes).
+     Scène 3D (banque scene3d) : une étape peut aussi avoir enter() (à l'entrée dans l'étape), update(t) (avant
+     draw, pour placer la caméra ou une pose) et live: true (redessinée à chaque image : étiquettes qui suivent
+     la caméra quand on fait tourner le modèle). draw est alors facultatif.
    - Dans le tableau (cadre), pas de boutons : le tableau envoie { gc:'anim', cmd:'init'|'goto'|'replay'|'play'|'pause'|'toggle', step }.
    - Ouvert seul : boutons et clavier (← → espace R). Adresse #4,2.5 : fige l'étape 4 à 2,5 s (contrôle du rendu). */
 const GC = (() => {
@@ -29,12 +32,14 @@ const GC = (() => {
   function go(i, force) {
     i = Math.max(0, Math.min(steps.length - 1, i | 0));
     if (i === step && !force) return;
-    step = i; t = 0; playing = true; frozen = false; show(); render();
+    step = i; t = 0; playing = true; frozen = false; drawnStep = -1; show(); render();
   }
   // Dessin immédiat, sans attendre l'image suivante : une page en arrière-plan n'en reçoit pas
   function render() {
     const s = steps[step];
-    scene.innerHTML = s.draw(t);
+    if (drawnStep !== step && s.enter) s.enter();
+    if (s.update) s.update(t);
+    scene.innerHTML = s.draw ? s.draw(t) : '';
     bar.style.width = (100 * t / s.dur) + '%';
     drawnStep = step; drawnT = t;
   }
@@ -43,7 +48,7 @@ const GC = (() => {
     last = now;
     const s = steps[step];
     if (playing && !frozen) t = Math.min(s.dur, t + dt);
-    if (step !== drawnStep || t !== drawnT) render();
+    if (step !== drawnStep || t !== drawnT || s.live) render();
     requestAnimationFrame(frame);
   }
 
@@ -52,12 +57,14 @@ const GC = (() => {
       const sc = (d.id && scenes[d.id]) || (Array.isArray(scenes) ? scenes[i] : null);
       if (!sc || d.hidden) return null;
       const draw = typeof sc === 'function' ? sc : sc.draw;
-      return { title: d.title || '', caption: d.caption || '', color: d.color, captionColor: d.captionColor, dur: Math.max(0.1, d.dur || sc.dur || 6), draw };
+      return { title: d.title || '', caption: d.caption || '', color: d.color, captionColor: d.captionColor, dur: Math.max(0.1, d.dur || sc.dur || 6),
+        draw, enter: sc.enter, update: sc.update, live: !!sc.live };
     }).filter(Boolean);
     if (steps.length === 0) return;
     const seek = /^#(\d+)(?:,([\d.]+))?/.exec(location.hash || '');
     if (embedded || seek) document.documentElement.classList.add('gc-embedded');
     if (seek) { step = Math.max(0, Math.min(steps.length - 1, seek[1] - 1)); t = Math.min(steps[step].dur, parseFloat(seek[2] || '0')); frozen = true; }
+    drawnStep = -1;
     show();
     render();
     requestAnimationFrame(frame);

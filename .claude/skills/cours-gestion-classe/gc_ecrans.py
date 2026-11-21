@@ -559,7 +559,7 @@ class Ecran:
         self.objets.append(o)
         return o
 
-    def animation(self, x, y, w, h, code, titre=None, boutons=True, affiche=None):
+    def animation(self, x, y, w, h, code, titre=None, boutons=True, affiche=None, fichiers=None, interactif=False):
         """
         Animation : une scène dessinée et animée, écrite avec `gc_animation.assembler()`, jouée dans
         l'écran comme une image qui bouge. Elle porte le titre et la légende de chaque étape.
@@ -568,8 +568,16 @@ class Ecran:
         `gc_envoi.py image`) ; sans elle, les vignettes et le PDF montrent une simple carte.
         Pour un simple déplacement d'objet, `DeplacerVers` suffit ; pour un mécanisme (un cycle, une
         réaction, un trajet), c'est une animation qu'il faut.
+        `fichiers` : { nom : chemin de stockage } (envoyés par `gc_envoi.py fichier`), lus par la scène
+        avec `gcAsset(nom)` — modèle 3D, photo de lame, son.
+        `interactif` : en classe, le pointeur passe à la scène (faire tourner un modèle 3D, toucher
+        ses boutons) ; on ne peut plus alors écrire par-dessus au stylet.
         """
         o = {'id': self._id(), 'type': 'animation', 'x': x, 'y': y, 'w': w, 'h': h, 'code': code}
+        if fichiers:
+            o['assets'] = [{'name': n, 'path': p} for n, p in fichiers.items()]
+        if interactif:
+            o['interactive'] = True
         if titre:
             o['title'] = titre
         if affiche:
@@ -955,7 +963,7 @@ class Ecrans:
             e.texte(MARGE, 515, LARGEUR, 20, legende, GRIS)
         return e
 
-    def animation(self, code, titre=None, affiche=None):
+    def animation(self, code, titre=None, affiche=None, fichiers=None, interactif=False):
         """
         Un écran entier pour une animation (`gc_animation.assembler()`), avec ses trois boutons. Pas
         de titre d'écran : l'animation affiche elle-même le titre et la légende de l'étape en cours.
@@ -965,7 +973,7 @@ class Ecrans:
         del e.objets[:]            # ni en-tête ni titre : toute la page à l'animation
         e.n = 0
         self.pages.append(e.page)
-        e.animation(20, 8, 960, 506, code, titre=titre, affiche=affiche)
+        e.animation(20, 8, 960, 506, code, titre=titre, affiche=affiche, fichiers=fichiers, interactif=interactif)
         return e
 
     def sommaire(self, titre, entrees, position=None):

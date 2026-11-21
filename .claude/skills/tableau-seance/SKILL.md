@@ -80,8 +80,11 @@ L'exemple complet est `cours-gestion-classe/exemples/interactifs_4e.py`.
   Une animation par tableau suffit souvent : la garder pour le moment où elle fait comprendre.
 - Images : celles de `_ressources/` d'abord (`gc_envoi.py image`), sinon une image libre
   (Wikimedia Commons, NASA ; voir `svt-cycle4.md` § 4) avec son crédit en légende.
-- Ce que l'app ne sait pas encore faire (3D manipulable, graphique qui se trace, simulation à
-  curseur, glisser-déposer élève) : **le dire dans le scénario**, proposer l'équivalent faisable
+- La 3D (modèle à faire tourner, zoom sur une partie), les photos animées (lame zoomée, cellules
+  entourées une à une), les graphiques qui se tracent et les simulations se font maintenant en
+  **scène riche** (`cours-gestion-classe`, « Les scènes riches ») : les proposer dès qu'ils font
+  comprendre mieux qu'une image.
+- Ce que l'app ne sait pas encore faire (glisser-déposer élève, vote) : **le dire dans le scénario**, proposer l'équivalent faisable
   (étapes, déplacements, schéma cliquable), et noter le manque dans le compte rendu. Ces manques
   sont la liste des fonctions à ajouter (lots B à D de `plus-value.md`).
 

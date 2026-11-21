@@ -8,8 +8,10 @@ moment d'une séance de SVT, ce qui apporte vraiment quelque chose, et comment l
 « Suivant », objets cachés au départ, déplacements animés (0,4 s, en ligne droite), zoom sur une
 zone, rideaux, tickets à gratter, textes à trous, fenêtres, flèches accrochées, dessins de la
 bibliothèque, minuteur, dé, roue, vidéo, page web. Depuis le 16/11/2026 : **animations** (scène
-HTML dessinée et animée, étapes pilotées par les boutons du tableau). Pas encore : 3D, graphique
-de données, simulation à curseur, glisser-déposer élève, vote.
+HTML dessinée et animée, étapes pilotées par les boutons du tableau). Depuis le 21/11/2026 :
+**scènes riches** (3D three.js avec modèles GLB qu'on fait tourner au doigt, photos et fichiers
+joints, graphiques Chart.js ; voir `cours-gestion-classe`, « Les scènes riches »). Pas encore :
+glisser-déposer élève, vote.
 
 ## Le moment de la séance → ce qui marche
 

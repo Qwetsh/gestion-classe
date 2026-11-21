@@ -8,6 +8,8 @@ Il n'apparaît jamais dans une conversation, un script ou un commit.
 En ligne de commande (python -I gc_envoi.py ...) :
     verifier                               le jeton est-il valable ?
     image <fichier>                        envoie une image, affiche son chemin
+    fichier <fichier>                      envoie un fichier joint de scène (image, modèle 3D GLB,
+                                           son MP3/OGG/WAV, vidéo MP4/WebM), affiche son chemin
     cours <brouillon.json>                 crée un cours (brouillon vérifié par course:check)
     cours <brouillon.json> --remplacer <id>   remplace le document d'un cours, après version
     ecrans <id du cours> <pages.json>      pose les écrans d'un cours
@@ -15,7 +17,7 @@ En ligne de commande (python -I gc_envoi.py ...) :
 
 Placer sur l'emploi du temps : voir gc_semaine.py (agenda, bibliothèque, placer, retirer).
 
-Depuis un script : envoyer_image(chemin), envoyer_cours(brouillon), envoyer_ecrans(id, pages),
+Depuis un script : envoyer_image(chemin), envoyer_fichier(chemin), envoyer_cours(brouillon), envoyer_ecrans(id, pages),
 lire_agenda(depuis, jours), placer(id original, cours), retirer(id copie).
 """
 import base64
@@ -38,6 +40,7 @@ MESSAGES = {
     'invalid_token': "Jeton refusé : il est révoqué, expiré ou mal copié. En créer un dans Réglages > Jeton d'import.",
     'too_large': 'Envoi trop lourd (image : 8 Mo au plus).',
     'bad_image': "Ce fichier n'est pas une image PNG, JPEG, WebP ou GIF.",
+    'bad_file': "Fichier joint refusé : seulement image, modèle 3D GLB, son (MP3, OGG, WAV) ou vidéo (MP4, WebM).",
     'bad_doc': "Ce n'est pas un document de cours (version 1, contenu de type doc).",
     'missing_image': "Le document cite une image qui n'a pas été envoyée avec ce jeton.",
     'replace_required': 'Ce cours existe : ajouter --remplacer pour le remplacer (une version est gardée).',
@@ -147,6 +150,25 @@ def envoyer_image(chemin):
     return reponse['path']
 
 
+def envoyer_fichier(chemin):
+    """Envoie un fichier joint de scène (image, GLB, son, vidéo ; type lu dans les octets par la
+    fonction) et rend son chemin dans le stockage. Un fichier déjà envoyé n'est pas renvoyé."""
+    with open(chemin, 'rb') as f:
+        octets = f.read()
+    if len(octets) > IMAGE_MAX:
+        raise EnvoiRefuse('Fichier trop lourd (8 Mo au plus) : ' + chemin)
+    empreinte = 'fichier:' + hashlib.sha256(octets).hexdigest()
+    deja = _images_envoyees()
+    if empreinte in deja:
+        return deja[empreinte]
+    reponse = _appel({'action': 'file', 'file': base64.b64encode(octets).decode('ascii')})
+    deja[empreinte] = reponse['path']
+    os.makedirs(DOSSIER, exist_ok=True)
+    with open(FICHIER_IMAGES, 'w', encoding='utf-8') as f:
+        json.dump(deja, f, indent=1)
+    return reponse['path']
+
+
 def envoyer_cours(brouillon, remplacer=None):
     """Crée un cours à partir d'un brouillon { title, level, chapter, doc } ; rend son identifiant.
     remplacer=<id> : remplace le document de ce cours (une version est gardée, les écrans restent)."""
@@ -209,6 +231,8 @@ def _principal(args):
             print('Jeton valable (%s), jusqu\'au %s.' % (r.get('label') or 'sans nom', str(r.get('expires_at'))[:10]))
         elif commande == 'image' and len(args) == 2:
             print(envoyer_image(args[1]))
+        elif commande == 'fichier' and len(args) == 2:
+            print(envoyer_fichier(args[1]))
         elif commande == 'cours' and len(args) in (2, 4):
             remplacer = args[3] if len(args) == 4 and args[2] == '--remplacer' else None
             if len(args) == 4 and not remplacer:
