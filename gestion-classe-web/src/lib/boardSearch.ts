@@ -56,13 +56,14 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
 // ---- Wikipédia (sans clé) ----
 
 interface WikiSearchResponse {
-  query?: { pages?: Record<string, { pageid: number; title: string; extract?: string; thumbnail?: { source: string }; fullurl?: string }> };
+  query?: { pages?: Record<string, { pageid: number; index?: number; title: string; extract?: string; thumbnail?: { source: string }; fullurl?: string }> };
 }
 
 export async function searchWikipedia(q: string): Promise<SearchResult[]> {
   const url = `https://fr.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=8&prop=extracts|pageimages|info&exintro=1&explaintext=1&exsentences=2&exlimit=8&pithumbsize=240&inprop=url&format=json&origin=*`;
   const data = await getJson<WikiSearchResponse>(url);
-  return Object.values(data.query?.pages ?? {}).map((p) => ({
+  // Les pages arrivent indexées par identifiant : `index` donne l'ordre de pertinence
+  return Object.values(data.query?.pages ?? {}).sort((a, b) => (a.index ?? 0) - (b.index ?? 0)).map((p) => ({
     id: `wp-${p.pageid}`,
     kind: 'web' as const,
     title: p.title,
