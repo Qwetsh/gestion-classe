@@ -147,16 +147,39 @@ def document_local(code, fichiers=None):
                  'var blob=new Blob([b],{type:f.type});'
                  'return Promise.resolve({name:n,type:f.type,buffer:b.buffer,blob:blob,url:URL.createObjectURL(blob)});};})();</script>'
                  % json.dumps(donnees))
+    # Témoin de démarrage (aperçu seulement) : un carré magenta en haut à gauche, masqué dès que le
+    # lecteur a lancé la scène (classe gc-embedded posée par GC.play). Encore visible sur l'image :
+    # la scène n'avait pas démarré quand Chrome a pris la photo.
+    temoin = ('<style>html:not(.gc-embedded) body::after{content:"";position:fixed;left:0;top:0;'
+              'width:%dpx;height:%dpx;background:%s;z-index:2147483647}</style>' % (TEMOIN_PX, TEMOIN_PX, TEMOIN_COULEUR))
     tete = re.search(r'<head\b[^>]*>', code, re.I)
     at = tete.end() if tete else 0
-    return code[:at] + reception + code[at:]
+    return code[:at] + reception + temoin + code[at:]
+
+
+TEMOIN_PX = 12
+TEMOIN_COULEUR = '#ff00ff'
+
+
+def _scene_absente(png):
+    """Vrai si l'image montre encore le témoin magenta (la scène n'a pas démarré). Sans Pillow, on se
+    rabat sur la taille : une page vide pèse quelques dizaines de kilo-octets."""
+    try:
+        from PIL import Image as _Image
+    except ImportError:
+        return os.path.getsize(png) < 30_000
+    with _Image.open(png) as im:
+        r, g, b = im.convert('RGB').getpixel((4, 4))
+    return r > 230 and g < 40 and b > 230
 
 
 def apercu(chemin_html, sortie_png, etape=1, instant=0.0, largeur=960, hauteur=506, fichiers=None, attente=None):
     """Image de contrôle d'une étape figée à `instant` secondes (Chrome sans fenêtre).
     La taille par défaut est celle du cadre posé par `gc_ecrans` sur un écran de 1000 x 562,5.
     Scène riche : `fichiers` ({ nom: chemin local }) remplace les fichiers joints ; la 3D est rendue
-    sans carte graphique (SwiftShader) et on lui laisse plus de temps (`attente`, en millisecondes)."""
+    sans carte graphique (SwiftShader) et on lui laisse plus de temps (`attente`, en millisecondes).
+    Une image où la scène n'a pas encore démarré est refaite (trois essais, de plus en plus longs) ;
+    après trois échecs, AnimationRefusee dit quoi regarder."""
     with open(chemin_html, encoding='utf-8') as f:
         code = f.read()
     riche = bool(fichiers) or 'data-gc-lib' in code
@@ -166,11 +189,18 @@ def apercu(chemin_html, sortie_png, etape=1, instant=0.0, largeur=960, hauteur=5
     url = 'file:///' + os.path.abspath(chemin_html).replace('\\', '/') + '#%d,%s' % (etape, instant)
     gpu = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] if riche else ['--disable-gpu']
     budget = attente or (8000 if riche else 1500)
-    subprocess.run([CHROME, '--headless=new', *gpu, '--hide-scrollbars', '--force-device-scale-factor=2',
-                    '--window-size=%d,%d' % (largeur, hauteur), '--virtual-time-budget=%d' % budget,
-                    '--screenshot=' + os.path.abspath(sortie_png), url],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
-    return sortie_png
+    # Scène riche : au premier lancement de Chrome, le modèle n'a parfois pas fini de charger quand la
+    # photo est prise (image vide) ; on recommence, avec plus de temps, trois fois au plus
+    for essai in range(3 if riche else 1):
+        subprocess.run([CHROME, '--headless=new', *gpu, '--hide-scrollbars', '--force-device-scale-factor=2',
+                        '--window-size=%d,%d' % (largeur, hauteur), '--virtual-time-budget=%d' % int(budget * (1 + essai * 0.5)),
+                        '--screenshot=' + os.path.abspath(sortie_png), url],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=180)
+        if not riche or not _scene_absente(sortie_png):
+            return sortie_png
+    raise AnimationRefusee('Aperçu vide après trois essais : la scène ne démarre pas (fichier joint manquant '
+                           'dans `fichiers`, erreur dans le script de la scène, ou GC.play jamais appelé). '
+                           'Ouvrir %s dans Chrome et regarder la console.' % chemin_html)
 
 
 def affiche(code, sortie_png, etape=1, instant=3.5, largeur=960, hauteur=506, fichiers=None):
