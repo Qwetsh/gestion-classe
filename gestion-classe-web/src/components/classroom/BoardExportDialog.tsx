@@ -1,10 +1,13 @@
 /**
- * Export PDF : choix des pages, version élève (caches et trous masqués) ou corrigée,
- * avec ou sans l'encre, une ou deux pages par feuille.
+ * Export : PDF (choix des pages, version élève — caches et trous masqués — ou corrigée, avec ou
+ * sans l'encre, une ou deux pages par feuille) ou page web pour les élèves (corrigé, animations
+ * jouables, bouton « Imprimer » qui les fige ; voir lib/boardHandout).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { pageRatio, renderPageToCanvas, type BoardPage } from '../../lib/boardRender';
 import { exportBoardPdf } from '../../lib/boardExport';
+import { handoutPage } from '../../lib/boardHandout';
+import { exportBoardHandout } from '../../lib/boardHandoutExport';
 
 interface Props {
   pages: BoardPage[];
@@ -28,7 +31,11 @@ export function BoardExportDialog({ pages, name, currentIndex, onClose }: Props)
   const [mode, setMode] = useState<'covered' | 'revealed'>('revealed');
   const [hideInk, setHideInk] = useState(false);
   const [twoPerSheet, setTwoPerSheet] = useState(false);
+  const [format, setFormat] = useState<'pdf' | 'web'>('pdf');
   const [busy, setBusy] = useState(false);
+  // Page web : chaque page dans son état final (boutons appuyés, sans les boutons)
+  const handoutPages = useMemo(() => pages.map((p) => handoutPage(p).page), [pages]);
+  const web = format === 'web';
 
   const hasReveal = pages.some((p) => (p.objects ?? []).some((o) => o.cover || (o.type === 'text' && o.html.includes('data-gap'))));
 
@@ -37,7 +44,9 @@ export function BoardExportDialog({ pages, name, currentIndex, onClose }: Props)
   const run = async () => {
     setBusy(true);
     try {
-      await exportBoardPdf(pages, name, { mode, hideInk, twoPerSheet, pageIndexes: [...selected].sort((a, b) => a - b) });
+      const pageIndexes = [...selected].sort((a, b) => a - b);
+      if (web) await exportBoardHandout(pages, name, { hideInk, pageIndexes });
+      else await exportBoardPdf(pages, name, { mode, hideInk, twoPerSheet, pageIndexes });
       onClose();
     } catch (err) {
       window.alert(`Export impossible : ${err instanceof Error ? err.message : 'erreur inconnue'}`);
@@ -50,11 +59,23 @@ export function BoardExportDialog({ pages, name, currentIndex, onClose }: Props)
     <div className="wbx" onPointerDown={(e) => e.stopPropagation()} onClick={onClose}>
       <div className="wbx__box" onClick={(e) => e.stopPropagation()}>
         <div className="wbx__head">
-          <h2>Exporter en PDF</h2>
+          <h2>Exporter</h2>
           <button type="button" className="wbx__close" onClick={onClose} title="Fermer">✕</button>
         </div>
 
         <div className="wbx__options">
+          <label className={`wbx__opt ${!web ? 'is-on' : ''}`}>
+            <input type="radio" name="format" checked={!web} onChange={() => setFormat('pdf')} />
+            <span><b>PDF</b><small>à imprimer ou à projeter</small></span>
+          </label>
+          <label className={`wbx__opt ${web ? 'is-on' : ''}`}>
+            <input type="radio" name="format" checked={web} onChange={() => setFormat('web')} />
+            <span><b>Page web pour les élèves</b><small>corrigé, animations jouables, bouton Imprimer</small></span>
+          </label>
+        </div>
+
+        <div className="wbx__options">
+          {!web && <>
           <label className={`wbx__opt ${mode === 'revealed' ? 'is-on' : ''}`}>
             <input type="radio" name="mode" checked={mode === 'revealed'} onChange={() => setMode('revealed')} />
             <span><b>Corrigé</b><small>tout visible</small></span>
@@ -63,14 +84,15 @@ export function BoardExportDialog({ pages, name, currentIndex, onClose }: Props)
             <input type="radio" name="mode" checked={mode === 'covered'} onChange={() => setMode('covered')} />
             <span><b>Version élève</b><small>{hasReveal ? 'rideaux, tickets et trous masqués' : 'aucun cache ni trou dans ce tableau'}</small></span>
           </label>
+          </>}
           <label className={`wbx__opt ${hideInk ? 'is-on' : ''}`}>
             <input type="checkbox" checked={hideInk} onChange={(e) => setHideInk(e.target.checked)} />
             <span><b>Sans l'encre</b><small>garder textes, formes et fonds</small></span>
           </label>
-          <label className={`wbx__opt ${twoPerSheet ? 'is-on' : ''}`}>
+          {!web && <label className={`wbx__opt ${twoPerSheet ? 'is-on' : ''}`}>
             <input type="checkbox" checked={twoPerSheet} onChange={(e) => setTwoPerSheet(e.target.checked)} />
             <span><b>2 pages par feuille</b><small>économise le papier</small></span>
-          </label>
+          </label>}
         </div>
 
         <div className="wbx__pages-head">
@@ -83,7 +105,7 @@ export function BoardExportDialog({ pages, name, currentIndex, onClose }: Props)
           {pages.map((p, i) => (
             <label key={p.id} className={`wbx__page ${selected.has(i) ? 'is-on' : ''}`}>
               <input type="checkbox" checked={selected.has(i)} onChange={() => toggle(i)} />
-              <Thumb page={p} mode={mode} />
+              <Thumb page={web ? handoutPages[i] : p} mode={web ? 'revealed' : mode} />
               <span>{i + 1}</span>
             </label>
           ))}

@@ -255,7 +255,7 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
                 {big("file-save", "save", "Fichier .gcboard", "Enregistrer un fichier ré-ouvrable (images comprises)")}
               </Group>
               <Group label="Exporter">
-                {big("file-pdf", "pdf", "PDF", "Exporter en PDF (version élève ou corrigé)")}
+                {big("file-pdf", "pdf", "PDF / page web", "Exporter en PDF (version élève ou corrigé), ou en page web pour les élèves : animations jouables et bouton Imprimer")}
                 {big("file-png", "png", "Image de la page", "Image PNG de la page courante")}
               </Group>
             </>
