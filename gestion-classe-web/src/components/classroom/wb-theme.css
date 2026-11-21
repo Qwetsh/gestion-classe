@@ -374,7 +374,7 @@
 .wbx.wbx .wbx__page { border-width: 3px; border-color: transparent; }
 .wbx.wbx .wbx__page.is-on { border-color: var(--wb-select); }
 .wbx.wbx .wbx__page span { font: 600 14px/1.3 var(--wb-font-num); }
-.wbx.wbx .wbx__btn { height: 76px; padding: 0 32px; border-radius: 20px; background: var(--wb-chrome-sunk); font: 700 22px/1 var(--wb-font-ui); }
+.wbx.wbx .wbx__btn { height: 76px; padding: 0 32px; border-radius: 20px; background: var(--wb-chrome-sunk); color: var(--wb-on-chrome); font: 700 22px/1 var(--wb-font-ui); }
 .wbx.wbx .wbx__btn--primary { background: var(--wb-accent); color: #140A02; font-weight: 700; }
 .wbx.wbx .wbx__foot { border-top-color: var(--wb-chrome-line); }
 
