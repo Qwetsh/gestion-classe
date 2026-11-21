@@ -32,6 +32,15 @@ jobs:
         working-directory: gestion-classe-web
         run: npm ci
 
+      - name: Test
+        working-directory: gestion-classe-web
+        run: npm test
+        env:
+          # Valeurs factices : src/lib/supabase.ts refuse de se charger sans elles,
+          # mais aucun test n'appelle la base.
+          VITE_SUPABASE_URL: http://localhost:54321
+          VITE_SUPABASE_ANON_KEY: test-anon-key
+
       - name: Build
         working-directory: gestion-classe-web
         run: npm run build
