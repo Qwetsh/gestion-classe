@@ -2676,7 +2676,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
         { label: 'Ouvrir un tableau, un PDF, une image…', onSelect: () => fileInputRef.current?.click() },
         { label: `Enregistrer le tableau (${GCBOARD_EXTENSION})`, onSelect: () => void saveGcboard() },
         { separator: true, label: '' },
-        { label: 'Exporter en PDF…', onSelect: () => setExportOpen(true) },
+        { label: 'Exporter (PDF ou page web)…', onSelect: () => setExportOpen(true) },
         { label: 'Exporter la page en image (PNG)', onSelect: () => void exportPageImage() },
       ] },
     ];
@@ -3543,7 +3543,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           { id: 'file-library-save', label: 'Enregistrer dans Mes cours…', icon: '🗂', disabled: !!importing, onSelect: () => setLibraryDialog('save') },
         ] : []),
         { id: 'file-save', label: `Enregistrer un fichier ${GCBOARD_EXTENSION}`, icon: '💾', disabled: !!importing, onSelect: () => void saveGcboard() },
-        { id: 'file-pdf', label: 'Exporter en PDF', icon: '⤓', onSelect: () => setExportOpen(true) },
+        { id: 'file-pdf', label: 'Exporter (PDF ou page web)', icon: '⤓', onSelect: () => setExportOpen(true) },
       ],
     },
     {
@@ -4306,7 +4306,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
           />
         );
       })()}
-      {exportOpen && <BoardExportDialog pages={pages} name="Tableau" currentIndex={pageIndex} onClose={() => setExportOpen(false)} />}
+      {exportOpen && <BoardExportDialog pages={pages} name={title?.replace(/\s+—\s+(?:tableau|essai)$/, '').trim() || 'Tableau'} currentIndex={pageIndex} onClose={() => setExportOpen(false)} />}
       {openWindow && (() => {
         const w = pageObjects.find((o): o is WindowObject => o.type === 'window' && o.id === openWindow);
         return w ? <BoardWindowDialog window={w} mode="view" onClose={() => setOpenWindow(null)} /> : null;
