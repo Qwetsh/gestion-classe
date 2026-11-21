@@ -14,6 +14,9 @@ import { decodeBase64, encodeBase64Url } from "jsr:@std/encoding@1";
  *  - "whoami"  (jeton)        { token }             → { user_id, label, expires_at }
  *  - "image"   (jeton)        { token, image (base64) }  → { path, bytes, type }
  *      PNG, JPEG, WebP ou GIF, 8 Mo au plus ; rangée dans board-assets/<user_id>/import/
+ *  - "file"    (jeton)        { token, file (base64) }  → { path, bytes, type }
+ *      fichier joint d'une scène du tableau : une image, un modèle 3D GLB, un son (MP3, OGG, WAV)
+ *      ou une vidéo (MP4, WebM), 8 Mo au plus, même rangement ; type lu dans les octets
  *  - "course"  (jeton)        { token, title, level?, chapter?, doc }  → { id }   nouveau cours
  *      avec { board_id, replace: true } : remplace le document d'un cours existant, après en
  *      avoir gardé une version ; les écrans et le titre du cours sont conservés
@@ -99,6 +102,21 @@ function imageType(b: Uint8Array): { ext: string; mime: string } | null {
   if (b.length > 11 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) {
     return { ext: "webp", mime: "image/webp" };
   }
+  return null;
+}
+
+const ascii = (b: Uint8Array, at: number, text: string) => b.length >= at + text.length && [...text].every((c, i) => b[at + i] === c.charCodeAt(0));
+
+/** Type d'un fichier joint de scène, reconnu à ses premiers octets : image, GLB, son ou vidéo. */
+function sceneFileType(b: Uint8Array): { ext: string; mime: string } | null {
+  const img = imageType(b);
+  if (img) return img;
+  if (ascii(b, 0, "glTF")) return { ext: "glb", mime: "model/gltf-binary" };
+  if (ascii(b, 0, "ID3") || (b.length > 2 && b[0] === 0xff && (b[1] & 0xe0) === 0xe0)) return { ext: "mp3", mime: "audio/mpeg" };
+  if (ascii(b, 0, "OggS")) return { ext: "ogg", mime: "audio/ogg" };
+  if (ascii(b, 0, "RIFF") && ascii(b, 8, "WAVE")) return { ext: "wav", mime: "audio/wav" };
+  if (ascii(b, 4, "ftyp")) return { ext: "mp4", mime: "video/mp4" };
+  if (b.length > 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return { ext: "webm", mime: "video/webm" };
   return null;
 }
 
@@ -338,19 +356,21 @@ Deno.serve(async (req: Request) => {
       return json({ user_id: t.user_id, label: t.label, expires_at: t.expires_at });
     }
 
-    case "image": {
+    case "image":
+    case "file": {
       const t = await liveToken(sb, body.token);
       if (!t) return json({ error: "invalid_token" }, 401);
-      if (typeof body.image !== "string") return json({ error: "bad_request" }, 400);
+      const raw = body.action === "file" ? body.file : body.image;
+      if (typeof raw !== "string") return json({ error: "bad_request" }, 400);
       let bytes: Uint8Array;
       try {
-        bytes = decodeBase64(body.image);
+        bytes = decodeBase64(raw);
       } catch {
         return json({ error: "bad_image" }, 400);
       }
       if (bytes.length > MAX_IMAGE_BYTES) return json({ error: "too_large" }, 413);
-      const type = imageType(bytes);
-      if (!type) return json({ error: "bad_image" }, 400);
+      const type = body.action === "file" ? sceneFileType(bytes) : imageType(bytes);
+      if (!type) return json({ error: body.action === "file" ? "bad_file" : "bad_image" }, 400);
       const path = `${t.user_id}/import/${crypto.randomUUID()}.${type.ext}`;
       const { error } = await sb.storage.from(BUCKET).upload(path, bytes, { contentType: type.mime, upsert: false });
       if (error) return json({ error: "upload_failed" }, 500);

@@ -15,6 +15,14 @@
  *   `{ cmd: 'play' | 'pause' | 'toggle' }` ;
  * - il annonce `{ gc: 'anim', ev: 'ready', steps }` au chargement.
  * Un HTML quelconque est joué tel quel, en une seule « étape », avec ses propres boutons.
+ *
+ * Scènes riches (3D, graphiques, modèles, photos) :
+ * - bibliothèques : `<script data-gc-lib="three"></script>` (ou `chart`) est remplacé à cet endroit
+ *   par la bibliothèque, servie par l'application (public/scene-libs, voir scripts/build-scene-libs.mjs) ;
+ *   le code écrit pour une séance reste petit, et rien ne vient du réseau ;
+ * - fichiers joints (`assets`) : modèles GLB, images, sons rangés dans le stockage du tableau,
+ *   transmis au cadre par message à son chargement ; la scène les lit par
+ *   `await gcAsset('patient.glb')` → `{ name, type, buffer, blob, url }` (adresse blob: locale).
  */
 import type { BoardObjectBase } from './boardObjects';
 
@@ -29,8 +37,27 @@ export interface AnimationObject extends BoardObjectBase {
    * et l'export PDF, où le cadre isolé ne peut pas être dessiné. Sans elle, une carte.
    */
   imagePath?: string;
-  /** Vrai : le pointeur passe à l'animation en classe (HTML qui porte ses propres boutons). */
+  /** Vrai : le pointeur passe à l'animation en classe (HTML qui porte ses propres boutons, 3D à tourner). */
   interactive?: boolean;
+  /** Fichiers joints (modèles 3D, images, sons), lus par la scène avec `gcAsset(name)`. */
+  assets?: AnimationAsset[];
+}
+
+/** Un fichier joint à une scène : son nom pour la scène, son chemin dans le stockage du tableau. */
+export interface AnimationAsset { name: string; path: string }
+
+/** Bibliothèques qu'une scène peut demander (`<script data-gc-lib="…"></script>`). */
+export const SCENE_LIBS = ['three', 'chart'] as const;
+export type SceneLib = typeof SCENE_LIBS[number];
+export const isSceneLib = (name: string): name is SceneLib => (SCENE_LIBS as readonly string[]).includes(name);
+
+const LIB_RE = /<script\b[^>]*\bdata-gc-lib\s*=\s*["']([\w-]+)["'][^>]*>\s*<\/script\s*>/gi;
+
+/** Bibliothèques demandées par le code, dans l'ordre, sans doublon (connues ou non). */
+export function animationLibs(code: string): string[] {
+  const names: string[] = [];
+  for (const m of code.matchAll(LIB_RE)) if (!names.includes(m[1])) names.push(m[1]);
+  return names;
 }
 
 export interface AnimationStep { title: string; caption: string }
@@ -163,12 +190,35 @@ export function sanitizeCaption(html: string): string {
     .replace(/(?:<br>|\s|&nbsp;)+$/, '');
 }
 
-/** Aucun réseau : ni script, ni image, ni police venus d'ailleurs. Tout est dans le document. */
-const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:";
+/**
+ * Aucun réseau : ni script, ni image, ni police venus d'ailleurs. Tout est dans le document ou dans
+ * des adresses blob: que la scène fabrique elle-même avec ses fichiers joints. WebAssembly est
+ * permis (décodeur des modèles 3D compressés), sans `eval` du JavaScript.
+ */
+const CSP = "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src data: blob:; worker-src blob:";
 
-/** Document à donner au cadre isolé : le code, précédé de sa politique de contenu. */
-export function animationSrcDoc(code: string): string {
-  const meta = `<meta http-equiv="Content-Security-Policy" content="${CSP}">`;
+/**
+ * Réception des fichiers joints, injectée avant tout autre script : `gcAsset(name)` attend le
+ * fichier envoyé par le tableau (`{ gc: 'anim', cmd: 'assets', files, missing }`).
+ */
+const ASSET_RUNTIME = `<script>(function(){var p={},ok={},ko={};function w(n){return p[n]||(p[n]=new Promise(function(a,b){ok[n]=a;ko[n]=b;}));}
+window.addEventListener('message',function(e){var m=e.data;if(e.source!==window.parent||!m||m.gc!=='anim'||m.cmd!=='assets')return;
+(m.files||[]).forEach(function(f){w(f.name);var b=new Blob([f.buffer],{type:f.type||''});ok[f.name]({name:f.name,type:f.type||'',buffer:f.buffer,blob:b,url:URL.createObjectURL(b)});});
+(m.missing||[]).forEach(function(n){w(n);ko[n](new Error('Fichier joint illisible : '+n));});});
+window.gcAsset=function(n){return w(String(n));};
+if(window.parent!==window)document.addEventListener('DOMContentLoaded',function(){window.parent.postMessage({gc:'anim',ev:'assets'},'*');});})();</script>`;
+
+/** « </script » dans une bibliothèque fermerait la balise qui la porte. */
+const inlineScript = (source: string) => `<script>${source.replace(/<\/(script)/gi, '<\\/$1')}</script>`;
+
+/**
+ * Document à donner au cadre isolé : le code, précédé de sa politique de contenu et de la réception
+ * des fichiers joints, avec ses bibliothèques en place (`libs` : nom → source ; une bibliothèque
+ * absente laisse un commentaire).
+ */
+export function animationSrcDoc(code: string, libs: Record<string, string> = {}): string {
+  code = code.replace(LIB_RE, (_m, name: string) => (libs[name] !== undefined ? inlineScript(libs[name]) : `<!-- bibliothèque « ${name.replace(/-/g, '')} » indisponible -->`));
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${CSP}">${ASSET_RUNTIME}`;
   const head = /<head\b[^>]*>/i.exec(code);
   if (head) {
     const at = head.index + head[0].length;

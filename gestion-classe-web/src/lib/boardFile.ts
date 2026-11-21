@@ -36,6 +36,7 @@ export function objectAssetPaths(o: BoardObject): string[] {
   const paths: string[] = [];
   if (o.type === 'image') paths.push(o.path);
   if ((o.type === 'equation' || o.type === 'window' || o.type === 'animation') && o.imagePath) paths.push(o.imagePath);
+  if (o.type === 'animation') for (const a of o.assets ?? []) paths.push(a.path);
   if (o.cover?.imagePath) paths.push(o.cover.imagePath);
   return paths;
 }
@@ -45,9 +46,25 @@ export function remapObjectAssets(o: BoardObject, m: (p: string) => string): Boa
   let next: BoardObject = o.type === 'image' ? { ...o, path: m(o.path) }
     : (o.type === 'equation' || o.type === 'window' || o.type === 'animation') && o.imagePath ? { ...o, imagePath: m(o.imagePath) }
     : { ...o };
+  if (next.type === 'animation' && next.assets) next = { ...next, assets: next.assets.map((a) => ({ ...a, path: m(a.path) })) };
   if (next.cover?.imagePath) next = { ...next, cover: { ...next.cover, imagePath: m(next.cover.imagePath) } };
   return next;
 }
+
+/** Types des fichiers d'un tableau, par extension (images, et fichiers joints des scènes). */
+const FILE_TYPES: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  glb: 'model/gltf-binary', mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm',
+};
+
+/** Extension d'un fichier du tableau : celle de son chemin si elle est connue, sinon d'après son type. */
+export function fileExtension(path: string, type: string): string {
+  const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1]?.toLowerCase();
+  if (ext && FILE_TYPES[ext]) return ext;
+  return type === 'image/png' ? 'png' : 'jpg';
+}
+
+export const fileContentType = (ext: string) => FILE_TYPES[ext.toLowerCase()] ?? 'application/octet-stream';
 
 /** Tous les chemins d'images référencés par une page. */
 function imagePaths(page: BoardPage): string[] {
@@ -80,7 +97,7 @@ export async function exportGcboard(pages: BoardPage[], title: string): Promise<
         console.warn('[boardFile] image absente à l\'export :', path, error);
         continue;
       }
-      const ext = data.type === 'image/png' ? 'png' : 'jpg';
+      const ext = fileExtension(path, data.type);
       const name = `assets/${String(++n).padStart(3, '0')}.${ext}`;
       assets?.file(name.slice('assets/'.length), data);
       map.set(path, name);
@@ -115,9 +132,9 @@ export async function importGcboard(file: File, userId: string, sessionId: strin
     const name = entries[i];
     onProgress?.(`Image ${i + 1} / ${entries.length}`);
     const blob = await zip.files[name].async('blob');
-    const ext = name.toLowerCase().endsWith('.png') ? 'png' : 'jpg';
+    const ext = fileExtension(name, '');
     const path = `${userId}/${sessionId}/${objectId()}.${ext}`;
-    const { error } = await supabase.storage.from(BOARD_BUCKET).upload(path, blob, { contentType: ext === 'png' ? 'image/png' : 'image/jpeg', upsert: true });
+    const { error } = await supabase.storage.from(BOARD_BUCKET).upload(path, blob, { contentType: fileContentType(ext), upsert: true });
     if (error) throw error;
     map.set(name, path);
   }

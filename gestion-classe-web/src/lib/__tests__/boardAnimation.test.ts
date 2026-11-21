@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ANIMATION_MAX_CHARS, animationData, animationInfo, animationSrcDoc, animationStepCount, canReorderSteps, sanitizeCaption, withAnimationData,
+  ANIMATION_MAX_CHARS, animationData, animationInfo, animationLibs, animationSrcDoc, animationStepCount, canReorderSteps, sanitizeCaption, withAnimationData,
   type AnimationObject,
 } from '../boardAnimation';
 import { emptyReveal, fireInteractions, isRevealEmpty, normalizeReveal, recoverPage, stepPageAnimation } from '../boardReveal';
-import { objectAssetPaths, remapObjectAssets } from '../boardFile';
+import { fileContentType, fileExtension, objectAssetPaths, remapObjectAssets } from '../boardFile';
 import { actionsFor, describeInteraction, objectRect, objectTypeLabel, type Interaction, type TextObject } from '../boardObjects';
 import { checkScreens } from '../course/screensCheck';
 
@@ -45,12 +45,59 @@ describe('animationSrcDoc', () => {
     expect(doc.indexOf('Content-Security-Policy')).toBeGreaterThan(doc.indexOf('<head>'));
     expect(doc.indexOf('Content-Security-Policy')).toBeLessThan(doc.indexOf('<meta charset'));
     expect(doc).toContain("default-src 'none'");
-    expect(doc.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '')).toBe(THREE);
+    expect(doc.replace(/<meta http-equiv="Content-Security-Policy"[^>]*><script>[\s\S]*?<\/script>/, '')).toBe(THREE);
   });
 
   it('ajoute un en-tête à un document qui n\'en a pas', () => {
-    expect(animationSrcDoc(PLAIN)).toMatch(/^<html><head><meta http-equiv="Content-Security-Policy"[^>]*><\/head><body>/);
-    expect(animationSrcDoc('<svg></svg>')).toMatch(/^<head><meta [^>]*><\/head><svg>/);
+    expect(animationSrcDoc(PLAIN)).toMatch(/^<html><head><meta http-equiv="Content-Security-Policy"[^>]*><script>[\s\S]*?<\/script><\/head><body>/);
+    expect(animationSrcDoc('<svg></svg>')).toMatch(/^<head><meta [^>]*><script>[\s\S]*?<\/script><\/head><svg>/);
+  });
+
+  it('ne laisse rien venir du réseau, mais permet le décodeur WebAssembly et les adresses blob: locales', () => {
+    const csp = /content="([^"]*)"/.exec(animationSrcDoc(PLAIN))?.[1] ?? '';
+    expect(csp).toContain("script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:;");
+    expect(csp).toContain('connect-src data: blob:;');
+    expect(csp).not.toMatch(/https?:|\*/);
+  });
+
+  it('reçoit les fichiers joints avant tout autre script (gcAsset)', () => {
+    const doc = animationSrcDoc(THREE);
+    expect(doc).toContain('window.gcAsset=');
+    expect(doc.indexOf('window.gcAsset=')).toBeLessThan(doc.indexOf('id="gc-anim"'));
+    expect(doc).toContain('e.source!==window.parent');
+  });
+});
+
+describe('bibliothèques des scènes', () => {
+  const scene = data([{ id: 'a', title: 'Un' }], '<script data-gc-lib="three"></script><script data-gc-lib=\'chart\'></script><script data-gc-lib="three"></script>');
+
+  it('liste les bibliothèques demandées, sans doublon', () => {
+    expect(animationLibs(scene)).toEqual(['three', 'chart']);
+    expect(animationLibs(THREE)).toEqual([]);
+  });
+
+  it('met chaque bibliothèque à sa place, et neutralise « </script » dans sa source', () => {
+    const doc = animationSrcDoc(scene, { three: 'var THREE={a:"</script>"};', chart: 'var Chart=1;' });
+    expect(doc).not.toContain('data-gc-lib');
+    expect(doc.match(/var THREE=/g)).toHaveLength(2);
+    expect(doc).toContain('var THREE={a:"<\\/script>"};');
+    expect(doc).toContain('<script>var Chart=1;</script>');
+  });
+
+  it('laisse un commentaire à la place d\'une bibliothèque indisponible', () => {
+    expect(animationSrcDoc(scene, {})).toContain('<!-- bibliothèque « three » indisponible -->');
+  });
+
+  it('est contrôlée par screens:check, avec les fichiers joints', () => {
+    const page = (objects: unknown[]) => [{ id: 'e-01', background: 'blank', strokes: [], objects }];
+    const code = data([{ id: 'a', title: 'Un' }], '<script data-gc-lib="three"></script><script>gcAsset("patient.glb")</script>');
+    const base = { ...anim('a', code), imagePath: 'u/import/a.png' };
+    const joint = [{ name: 'patient.glb', path: 'u/import/p.glb' }];
+    expect(checkScreens(page([{ ...base, assets: joint, interactive: true }])).errors).toEqual([]);
+    expect(checkScreens(page([base])).errors.join(' ')).toMatch(/« patient\.glb », qui n'est pas joint/);
+    expect(checkScreens(page([{ ...base, code: code.replace('"three"', '"babylon"'), assets: joint }])).errors.join(' ')).toMatch(/bibliothèque « babylon » inconnue/);
+    expect(checkScreens(page([{ ...base, assets: [{ name: 'patient.glb', path: 'https://x.fr/p.glb' }] }])).errors.join(' ')).toMatch(/chemin de stockage/);
+    expect(checkScreens(page([{ ...base, assets: [{ name: 'patient.glb', path: 'a' }, { name: 'patient.glb', path: 'b' }] }])).errors.join(' ')).toMatch(/deux fichiers joints/);
   });
 });
 
@@ -206,6 +253,17 @@ describe('image de l’animation', () => {
     expect(objectAssetPaths(a)).toEqual(['u/import/affiche.png']);
     expect(objectAssetPaths(anim('b'))).toEqual([]);
     expect(remapObjectAssets(a, (p) => `copie/${p}`)).toMatchObject({ imagePath: 'copie/u/import/affiche.png', code: THREE });
+  });
+
+  it('emporte aussi les fichiers joints de la scène, avec leur type', () => {
+    const a: AnimationObject = { ...anim('a'), assets: [{ name: 'patient.glb', path: 'u/import/p.glb' }, { name: 'cri.mp3', path: 'u/import/c.mp3' }] };
+    expect(objectAssetPaths(a)).toEqual(['u/import/p.glb', 'u/import/c.mp3']);
+    expect(remapObjectAssets(a, (p) => `copie/${p}`)).toMatchObject({ assets: [{ name: 'patient.glb', path: 'copie/u/import/p.glb' }, { name: 'cri.mp3', path: 'copie/u/import/c.mp3' }] });
+    expect(fileExtension('u/import/p.glb', 'application/octet-stream')).toBe('glb');
+    expect(fileExtension('assets/003.png', '')).toBe('png');
+    expect(fileExtension('u/x', 'image/png')).toBe('png');
+    expect(fileExtension('u/x', 'image/jpeg')).toBe('jpg');
+    expect(fileContentType('glb')).toBe('model/gltf-binary');
   });
 
   it('est signalée quand elle manque ou qu’elle est donnée par une adresse', () => {
