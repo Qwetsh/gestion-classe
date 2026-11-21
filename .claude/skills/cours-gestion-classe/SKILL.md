@@ -380,7 +380,9 @@ La banque `scene3d` (`banques=['scene3d']`, avec `bibliotheques=['three']`) pose
 Une étape 3D a `update(t)` (caméra, pose), `draw(t)` (étiquettes) et `live: true` (redessinée à chaque
 image). Tout dépend de `t` : l'étape se rejoue et se photographie à l'identique.
 Aperçu : `apercu(html, png, etape=n, instant=s, fichiers={'patient.glb': chemin_local}, attente=25000)`
-(3D rendue sans carte graphique, lente : laisser `attente`). Bibliothèques locales : `npm run scene-libs`.
+(3D rendue sans carte graphique, lente : laisser `attente`). Une image prise avant le démarrage
+de la scène est refaite toute seule (trois essais) ; après trois échecs, `AnimationRefusee` : la scène
+ne démarre pas (fichier joint absent de `fichiers`, erreur de script). Bibliothèques locales : `npm run scene-libs`.
 
 Pièges vérifiés dans l'application :
 
