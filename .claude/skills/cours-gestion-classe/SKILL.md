@@ -323,6 +323,9 @@ animation, avec les boutons du tableau (`EtapeSuivante(site)`) et le « Suivant 
 `etapes` est facultatif (le site l'annonce à son chargement), mais le donner permet aux boutons de
 marcher avant le chargement. Fiches de l'hôpital : `C:/dev/hopital-virtuel/content/patients/`.
 
+**Une animation ou une scène riche ne se code qu'avec l'accord explicite de Thomas**, donnée à
+cette animation-là, après un storyboard (règle du 21/11/2026, skill `tableau-seance` § 2-3).
+
 **Les animations** (16/11/2026 ; exemple complet : `exemples/anticorps_animation.py` et
 `anticorps_scene.js`). Pour montrer un **mécanisme** (une réaction, un cycle, un trajet, une
 multiplication), on n'assemble pas des images que des boutons font glisser — Thomas l'a refusé le
@@ -355,8 +358,9 @@ multiplication), on n'assemble pas des images que des boutons font glisser — T
   de la scène en taille 24 au moins (hors vignettes d'un récapitulatif) ; une étape de bilan avec `bilan=True` (rouge) ; 5 à 11
   secondes par étape, la scène reste sur sa dernière image.
 
-**Les scènes riches** (21/11/2026 : 3D, photos, graphiques ; démonstration : patiente de l'hôpital
-virtuel en 3D, symptômes zoomés, frottis animé). Une animation peut aussi :
+**Les scènes riches** (21/11/2026 : 3D, photos, graphiques ; exemple complet :
+`exemples/patient3d_scene.py`, la patiente de l'hôpital virtuel en 3D, symptômes zoomés, frottis
+animé). Une animation peut aussi :
 
 - **demander une bibliothèque** : `assembler(..., bibliotheques=['three'])` (three.js : 3D, modèles
   GLB, rotation au doigt) ou `['chart']` (Chart.js). Le tableau l'injecte à l'ouverture : le code
