@@ -12,6 +12,24 @@ import type { BoardPage } from './boardRender';
 import type { BoardObject, Interaction } from './boardObjects';
 import { animationInfo, animationStepCount } from './boardAnimation';
 
+/** Nombre d'étapes annoncé par chaque site pilotable à son chargement (identifiant d'objet → nombre). */
+const siteSteps = new Map<string, number>();
+
+/** Le site d'un objet « web » a annoncé ses étapes (message « ready » du contrat gc-anim). */
+export function learnSiteSteps(objectId: string, steps: number) {
+  if (Number.isInteger(steps) && steps > 0 && steps <= 500) siteSteps.set(objectId, steps);
+}
+
+/**
+ * Nombre d'étapes pilotables d'un objet : une animation (1 hors contrat), un site pilotable
+ * (déclaré à la pose, ou annoncé à son chargement) ; 0 pour tout autre objet.
+ */
+export function objectStepCount(o: BoardObject): number {
+  if (o.type === 'animation') return animationStepCount(o);
+  if (o.type === 'web') return o.steps ?? siteSteps.get(o.id) ?? 0;
+  return 0;
+}
+
 export interface RevealCover {
   kind: 'curtain' | 'scratch';
   /** Couleur du cache (ou du fond derrière l'image). */
@@ -210,9 +228,11 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
         delete moved[target.id];
         break;
       case 'stepNext': case 'stepPrev': {
-        if (!target || target.type !== 'animation') return;
+        if (!target || (target.type !== 'animation' && target.type !== 'web')) return;
+        const count = objectStepCount(target);
+        if (count < 1) return;
         const current = steps[target.id] ?? 0;
-        const next = Math.max(0, Math.min(animationStepCount(target) - 1, current + (it.action === 'stepNext' ? 1 : -1)));
+        const next = Math.max(0, Math.min(count - 1, current + (it.action === 'stepNext' ? 1 : -1)));
         if (next === 0) delete steps[target.id]; else steps[target.id] = next;
         break;
       }
@@ -225,16 +245,18 @@ export function fireInteractions(state: RevealState, trigger: BoardObject, objec
   return { state: { ...state, shown, objects: covers, unfolded, fired, moved, steps }, effects };
 }
 /**
- * « Suivant » / « Précédent » de la télécommande (téléphone) : la première animation visible de la
- * page qui peut encore avancer (ou reculer) change d'étape. Rend le nouvel état de séance, ou null
- * si aucune animation ne bouge : c'est alors la page qui change.
+ * « Suivant » / « Précédent » de la télécommande (téléphone) : la première animation (ou le premier
+ * site pilotable) visible de la page qui peut encore avancer (ou reculer) change d'étape. Rend le
+ * nouvel état de séance, ou null si rien ne bouge : c'est alors la page qui change.
  */
 export function stepPageAnimation(state: RevealState, objects: readonly BoardObject[], delta: -1 | 1): RevealState | null {
   for (const o of objects) {
-    if (o.type !== 'animation' || !isObjectVisible(state, o) || !animationInfo(o.code).contract) continue;
+    if (!isObjectVisible(state, o)) continue;
+    if (o.type === 'animation' ? !animationInfo(o.code).contract : o.type !== 'web') continue;
+    const count = objectStepCount(o);
     const current = state.steps[o.id] ?? 0;
     const next = current + delta;
-    if (next < 0 || next > animationStepCount(o) - 1) continue;
+    if (count < 2 || next < 0 || next > count - 1) continue;
     const steps = { ...state.steps };
     if (next === 0) delete steps[o.id]; else steps[o.id] = next;
     return { ...state, steps };

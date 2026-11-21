@@ -1127,7 +1127,7 @@ export const BoardObjectLayer = forwardRef<BoardTextApi, Props>(function BoardOb
               />
             )}
             {(o.type === 'video' || o.type === 'web') && (
-              <EmbedView o={o} scale={scale} active={active} onToggleInteractive={() => onToggleInteractive(o.id)} />
+              <EmbedView o={o} scale={scale} active={active} onToggleInteractive={() => onToggleInteractive(o.id)} step={reveal.steps?.[o.id] ?? 0} command={commands?.[o.id]} />
             )}
             {o.type === 'animation' && <AnimationView o={o} scale={scale} play={play} step={reveal.steps?.[o.id] ?? 0} command={commands?.[o.id]} />}
             {o.type === 'audio' && <AudioView o={o} scale={scale} command={commands?.[o.id]} />}

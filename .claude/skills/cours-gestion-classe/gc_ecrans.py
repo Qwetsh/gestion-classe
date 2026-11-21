@@ -241,6 +241,12 @@ def Replacer(o):
     return {'action': 'moveBack', 'targetId': _cible(o)}
 
 
+# Hôpital virtuel (C:/dev/hopital-virtuel) : pages pilotables depuis le tableau.
+#   HOPITAL + '?presentation=<patient>' : le patient en 3D, ses symptômes zoomés, ses examens (sans les réponses) ;
+#   HOPITAL + '?correction=<id>'        : la correction animée de Docteur Morel (content/corrections/<id>.json).
+HOPITAL = 'https://hopital-virtuel.vercel.app/'
+
+
 def EtapeSuivante(animation):
     """Fait passer une animation (`animation()`) à l'étape suivante."""
     return {'action': 'stepNext', 'targetId': _cible(animation)}
@@ -550,13 +556,22 @@ class Ecran:
         self.objets.append(o)
         return o
 
-    def site(self, x, y, w, h, url, titre=None, interactif=True):
+    def site(self, x, y, w, h, url, titre=None, interactif=True, etapes=None, boutons=False):
         """Page web en direct dans l'écran (une animation hébergée, un simulateur). Elle doit accepter
-        d'être affichée dans un cadre ; à vérifier dans l'application."""
+        d'être affichée dans un cadre ; à vérifier dans l'application.
+        Site pilotable (contrat « gc-anim » : l'hôpital virtuel, voir `HOPITAL`) : `etapes` = son nombre
+        d'étapes ; les boutons du tableau (`EtapeSuivante(site)`) et le « Suivant » du téléphone le font
+        avancer. `boutons` : pose dessous « ◀ Précédent » et « Suivant ▶ » (42 de haut en tout)."""
         o = {'id': self._id(), 'type': 'web', 'x': x, 'y': y, 'w': w, 'h': h, 'url': url, 'interactive': interactif}
         if titre:
             o['title'] = titre
+        if etapes:
+            o['steps'] = int(etapes)
         self.objets.append(o)
+        if boutons:
+            yb = y + h + 4
+            self.bouton(x, yb, 170, 38, '◀ Précédent', [EtapePrecedente(o)], couleur=FOND_BLEU, taille=19, texte_couleur=BLEU)
+            self.bouton(x + w - 190, yb, 190, 38, 'Suivant ▶', [EtapeSuivante(o)], couleur=BLEU2, taille=19)
         return o
 
     def animation(self, x, y, w, h, code, titre=None, boutons=True, affiche=None, fichiers=None, interactif=False):

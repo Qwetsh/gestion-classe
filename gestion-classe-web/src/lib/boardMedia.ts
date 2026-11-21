@@ -44,6 +44,12 @@ export interface WebObject extends BoardObjectBase {
   /** Vrai : la souris passe au site ; faux : on annote par-dessus. */
   interactive?: boolean;
   title?: string;
+  /**
+   * Site pilotable (contrat « gc-anim », comme une animation : il annonce ses étapes et suit
+   * `{ gc: 'anim', cmd: 'goto', step }`) : son nombre d'étapes, s'il est connu à la pose. Sans lui,
+   * le tableau retient celui que le site annonce à son chargement.
+   */
+  steps?: number;
 }
 
 export interface AudioObject extends BoardObjectBase {
