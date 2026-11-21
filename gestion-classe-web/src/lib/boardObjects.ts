@@ -154,6 +154,8 @@ export function actionsFor(target: BoardObject | null): InteractionAction[] {
     if (animationInfo(target.code).contract) out.push('stepNext', 'stepPrev');
     out.push('replay');
   }
+  // Un site pilotable (hôpital virtuel, page qui suit le contrat gc-anim) avance de même
+  if (target.type === 'web') out.push('stepNext', 'stepPrev');
   if (target.type === 'widget') {
     if (target.widget === 'timer' || target.widget === 'meter') out.push('start', 'stop', 'startToggle');
     if (target.widget === 'dice' || target.widget === 'wheel' || target.widget === 'groups') out.push('roll');

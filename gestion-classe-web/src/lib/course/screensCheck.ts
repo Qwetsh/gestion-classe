@@ -142,7 +142,7 @@ export function checkScreens(input: unknown): ScreensReport {
 
     const ids = new Set<string>();
     const animations = new Set<string>();
-    for (const o of page.objects) if (isRec(o) && typeof o.id === 'string') { ids.add(o.id); if (o.type === 'animation') animations.add(o.id); }
+    for (const o of page.objects) if (isRec(o) && typeof o.id === 'string') { ids.add(o.id); if (o.type === 'animation' || o.type === 'web') animations.add(o.id); }
     const boxes: Box[] = [];
 
     page.objects.forEach((object, k) => {
@@ -222,6 +222,9 @@ export function checkScreens(input: unknown): ScreensReport {
         else if (typeof o.imagePath !== 'string' || o.imagePath === '' || /^https?:/i.test(o.imagePath)) errors.push(`${at} : l'image de l'animation se cite par son chemin de stockage, pas par une adresse.`);
       } else if (o.type === 'widget') {
         if (typeof o.widget !== 'string' || !WIDGET_KINDS.includes(o.widget)) errors.push(`${at} : outil « ${String(o.widget)} » inconnu.`);
+      } else if (o.type === 'web') {
+        if (typeof o.url !== 'string' || !/^https:\/\//i.test(o.url)) errors.push(`${at} : un site se cite par son adresse complète en https://.`);
+        if (o.steps !== undefined && !(typeof o.steps === 'number' && Number.isInteger(o.steps) && o.steps >= 1)) errors.push(`${at} : « steps » d'un site pilotable est un nombre entier d'étapes.`);
       } else if (o.type === 'table' && Array.isArray(o.cells)) {
         for (const row of o.cells) for (const cell of Array.isArray(row) ? row : []) { const problem = htmlProblem(cell); if (problem) errors.push(`${at} : ${problem}.`); }
       } else if (o.type === 'window' && 'html' in o) {
@@ -240,7 +243,7 @@ export function checkScreens(input: unknown): ScreensReport {
             if (typeof target !== 'string' || !pageIds.has(target)) errors.push(`${at} : le bouton va à une page absente de ces écrans.`);
           } else if (!TARGETLESS_ACTIONS.includes(it.action)) {
             if (typeof it.targetId !== 'string' || !ids.has(it.targetId)) errors.push(`${at} : le bouton vise un objet absent de la page (« ${String(it.targetId)} »).`);
-            else if (ANIMATION_ACTIONS.includes(it.action) && !animations.has(it.targetId)) errors.push(`${at} : « ${it.action} » ne s'adresse qu'à une animation (« ${it.targetId} » n'en est pas une).`);
+            else if (ANIMATION_ACTIONS.includes(it.action) && !animations.has(it.targetId)) errors.push(`${at} : « ${it.action} » ne s'adresse qu'à une animation ou à un site pilotable (« ${it.targetId} » n'en est pas un).`);
           }
         }
       }

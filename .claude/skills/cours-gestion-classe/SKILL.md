@@ -310,6 +310,19 @@ Actions : `Afficher`, `Masquer`, `Basculer`, `Decouvrir`, `Recouvrir`, `Deplacer
 `Decaler(o, dx, dy)`, `Replacer`, `Zoomer`, `Ouvrir(fenetre)`, `AllerA(écran)`, `PageSuivante`,
 `Lancer`/`Arreter` (minuteur), `Tirer` (dé, roue), `Reinitialiser`, `UneFois(action)`.
 
+**Les sites pilotables** (21/11/2026). Un site qui suit le contrat « gc-anim » avance comme une
+animation, avec les boutons du tableau (`EtapeSuivante(site)`) et le « Suivant » du téléphone :
+`p.site(x, y, w, h, url, etapes=n, boutons=True)`. L'hôpital virtuel de Thomas (`HOPITAL` dans
+`gc_ecrans`) en offre deux :
+- `HOPITAL + '?presentation=<fiche>'` : le patient en 3D, sa température, les photos du corps avec
+  un gros plan, la lame, les analyses, **sans les réponses** (pour l'activité). Pour Mme Amalle
+  (`eve-amalle`), 12 étapes ;
+- `HOPITAL + '?correction=<id>'` : la correction animée de Docteur Morel, avec les voix
+  (`content/corrections/<id>.json` de l'hôpital ; `eve` : 46 répliques). Hors du tableau, elle reste
+  fermée tant que Thomas ne l'ouvre pas.
+`etapes` est facultatif (le site l'annonce à son chargement), mais le donner permet aux boutons de
+marcher avant le chargement. Fiches de l'hôpital : `C:/dev/hopital-virtuel/content/patients/`.
+
 **Les animations** (16/11/2026 ; exemple complet : `exemples/anticorps_animation.py` et
 `anticorps_scene.js`). Pour montrer un **mécanisme** (une réaction, un cycle, un trajet, une
 multiplication), on n'assemble pas des images que des boutons font glisser — Thomas l'a refusé le
