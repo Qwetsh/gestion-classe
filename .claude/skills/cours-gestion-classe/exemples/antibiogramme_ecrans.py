@@ -154,7 +154,7 @@ def activite(affiches):
               '<div>• bien égoutter chaque pastille</div><div>• ne jamais mélanger la ligne bleue et la ligne '
               'rouge</div>', NOIR, fond='#FFF4D6')
     mat.texte(560, 330, 400, 20, '<b>Une erreur ?</b> Des pastilles ou une boîte en plus, mais ça coûte des points : '
-              '3 pastilles = 1 point, 1 boîte = 1 point.', GRIS)
+              '1 pastille = 0,25 point, 1 boîte = 2 points.', GRIS)
 
     proto = avec_bas(LISIBLE, e.consigne, 'Partie 1 — Le protocole', [
         ('Écris', 'A, B ou C sur chaque pastille.'),

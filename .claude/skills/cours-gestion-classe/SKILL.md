@@ -242,8 +242,9 @@ Pour une **évaluation** (règle de Thomas, 22/11/2026) :
 Tout s'assemble dans le **classeur virtuel**. Une séquence comporte :
 
 1. une **feuille de séquence**, comme celles qui existent (« Page de garde — Séquence n ») ;
-2. les **fiches d'activités**, avec ce qui les accompagne : documents (« … (documents) »),
-   applications et sites, corrections ;
+2. les **fiches d'activités**, avec ce qui les accompagne : fiche protocole d'une manipulation
+   (« … (protocole) », voir ci-dessous), documents (« … (documents) »), applications et sites,
+   corrections ;
 3. des **écrans pour chaque activité, terminés par un écran Bilan** (en rouge) : c'est là, et
    seulement là, que vit le bilan de l'activité ;
 4. une **évaluation de séquence** (sujet et feuille de documents, voir ci-dessus) ;
@@ -253,6 +254,33 @@ Tout s'assemble dans le **classeur virtuel**. Une séquence comporte :
 **Plus de feuille de bilans** : ni `.docx`, ni cours « Feuille de bilans — … », ni générateur
 `feuille_bilans.py`. Une ancienne feuille de bilans de OneDrive ne sert plus que de source pour
 le texte d'un bilan.
+
+### La fiche protocole (manipulations, décision de Thomas, 22/11/2026)
+
+Le **matériel et le protocole** d'une manipulation ne sont plus sur la fiche d'activité : ils vont
+sur une **fiche protocole** à part, imprimée en couleur, plastifiée, laissée sur la paillasse et
+réutilisée par tous les groupes et toutes les classes. L'élève la relit chez lui dans le classeur
+virtuel.
+
+- Un cours à part, même titre suivi de « (protocole) », même niveau et même séquence. L'app le range
+  avec la fiche (bouton « Protocole » de la bibliothèque) et le met dans le classeur après la fiche,
+  comme une feuille de documents.
+- La page se dessine avec `gc_protocole.page_protocole(...)` : bandeau, matériel en pictogrammes
+  (4 à 8), étapes numérotées illustrées (3 à 6), « Bien penser à » (sécurité, rangement) et, s'il y en
+  a, la règle « Une erreur ? ». Les dessins sont des SVG faits pour l'expérience, dans un même style
+  (exemple complet : `exemples/antibiogramme_paillasse_dessins.py` et `antibiogramme_protocole.py`).
+  La page est posée en **une image** dans le cours (15,2 cm de large, pour tenir sur une feuille) :
+  pour la changer, on change le script et on la renvoie.
+- Étapes : un verbe à l'impératif en gras en tête, une action par étape, texte des étapes à 12 pt.
+  Aucune conclusion de l'activité sur la fiche protocole (« plus la zone est grande… ») : c'est aux
+  élèves de la trouver.
+- Sur la **fiche d'activité**, la partie de manipulation se réduit à : « Suis la fiche protocole
+  posée sur ta paillasse », ce qu'on fait pendant l'attente, et une phrase à écrire par l'élève
+  sur ce qu'il teste (zone de 2 lignes). « Fiche protocole » s'ajoute au matériel du cartouche.
+- **Deux exceptions** : quand l'élève doit **concevoir** le protocole (il l'écrit sur sa fiche), et
+  quand le protocole tient en deux ou trois lignes (il reste sur la fiche).
+- Une fiche protocole existe déjà sur Canva pour certaines manipulations (Thomas, « Fiche
+  protocole — … ») : en partir pour le contenu, pas pour la mise en page.
 
 ### La version adaptée (élèves à PAP, décision de Thomas, 22/11/2026)
 

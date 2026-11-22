@@ -220,8 +220,9 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
       for (const { variant, board } of group.members) {
         // La version adaptée (PAP) n'entre pas dans le classeur de la classe
         if (variant === 'correction' || variant === 'copie' || variant === 'extraits' || variant === 'adaptee') continue;
-        pages.push(variant === 'documents'
-          ? { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `${short} — documents`, board, role: 'documents' }
+        // La fiche protocole se lit comme une feuille de documents : l'élève la retrouve chez lui
+        pages.push(variant === 'documents' || variant === 'protocole'
+          ? { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `${short} — ${variant}`, board, role: 'documents' }
           : { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: short, board, role: 'activity', heading: group.title, companion: copy });
       }
     }
@@ -233,7 +234,7 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
       for (const { variant, board } of group.members) {
         if (variant === 'copie' || variant === 'extraits' || variant === 'adaptee' || (variant === 'correction' && copy)) continue;
         if (variant === 'fiche') pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: 'Évaluation', board, role: 'evaluation', heading: group.title, companion: copy });
-        else pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: variant === 'documents' ? 'Évaluation — documents' : 'Évaluation — correction', board, role: variant === 'documents' ? 'documents' : 'correction' });
+        else pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `Évaluation — ${variant}`, board, role: variant === 'correction' ? 'correction' : 'documents' });
       }
     }
   }
