@@ -13,12 +13,13 @@ import { useAuth } from '../hooks/useAuth';
 import { listBoards, type Board } from '../lib/boardsQueries';
 import { courseHref } from '../lib/courseLibrary';
 import {
-  SECTION_LABEL, SECTION_ORDER, binderLevels, binderSummarySources, binderToc, buildBinder, dividerIndex, sectionAt, spreadOf, turn,
+  SECTION_LABEL, SECTION_ORDER, binderLevels, binderScreenSources, binderSummarySources, binderToc, buildBinder, dividerIndex, sectionAt, spreadOf, turn,
   type BinderSection,
 } from '../lib/binder';
 import { turnDirection } from '../lib/binderFlaps';
 import { planFlip } from '../lib/binderFlip';
-import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
+import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, mergeSummaries, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
+import { loadScreenSummaries } from '../lib/binderScreens';
 import { MM, PAGE_H, PAGE_W } from '../lib/course/coursePage';
 import { BinderLeaf } from '../components/binder/BinderLeaf';
 import { PageFlip, type FlipView } from '../components/binder/PageFlip';
@@ -74,23 +75,30 @@ export function Binder() {
   const level = params.get('niveau') && levels.includes(params.get('niveau')!) ? params.get('niveau')! : levels[0] ?? null;
   const basePages = useMemo(() => (boards && level ? buildBinder(boards, level) : []), [boards, level]);
 
-  // Les bilans de « L'essentiel » (feuilles de bilans corrigées) et la police d'écriture : lus avant
-  // d'ouvrir le classeur, pour que les pages ne changent plus de numéro ensuite
+  // Les bilans (écran « Bilan » de chaque activité, à défaut feuille de bilans corrigée) et la police
+  // d'écriture : lus avant d'ouvrir le classeur, pour que les pages ne changent plus de numéro ensuite
   const [inkReady, setInkReady] = useState<{ texts: Map<string, SummaryRuns>; measure: (text: string) => number } | null>(null);
   useEffect(() => {
     if (basePages.length === 0) return;
     let cancelled = false;
-    // Les feuilles de bilans corrigées ne sont plus des pages : on les lit à part, comme source
+    // L'écran Bilan prime ; la feuille de bilans corrigée (plus une page) sert aux activités sans écran
     const sources = boards && level ? binderSummarySources(boards, level) : [];
+    const screenSources = boards && level ? binderScreenSources(boards, level) : [];
     const font = `${INK_PX}px "Playwrite FR Moderne"`;
     Promise.all([
       Promise.all(sources.map(({ chapter, board }) => loadSheetDoc(board).then((d) => [chapter, d ? summaryRuns(d.content) : new Map()] as const, () => [chapter, new Map()] as const))),
+      loadScreenSummaries(screenSources).catch(() => new Map<string, SummaryRuns>()),
       document.fonts.load(font).catch(() => []),
-    ]).then(([lists]) => {
+    ]).then(([lists, screens]) => {
       if (cancelled) return;
+      const sheets = new Map<string, SummaryRuns>(lists);
+      const texts = new Map<string, SummaryRuns>();
+      for (const chapter of new Set([...sheets.keys(), ...screens.keys()])) {
+        texts.set(chapter, mergeSummaries(screens.get(chapter) ?? new Map(), sheets.get(chapter)));
+      }
       const ctx = document.createElement('canvas').getContext('2d');
       if (ctx) ctx.font = font;
-      setInkReady({ texts: new Map(lists), measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
+      setInkReady({ texts, measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
     });
     return () => { cancelled = true; };
   }, [basePages, boards, level]);

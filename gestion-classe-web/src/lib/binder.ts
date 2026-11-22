@@ -8,8 +8,8 @@
  *    puis la feuille de documents) ;
  * 2. Fiches méthodes : FM1 à FM9 ;
  * 3. Je révise : pour chaque séquence, la fiche de mémorisation. La feuille de bilans n'y est plus
- *    (Thomas, 22/11/2026) : sa version corrigée reste lue, sans être montrée, comme source des bilans
- *    écrits sous les fiches (binderSummarySources), en attendant de les lire dans l'écran Bilan.
+ *    (Thomas, 22/11/2026) : le bilan écrit sous chaque fiche vient de l'écran « Bilan » de l'activité
+ *    (binderScreenSources), et à défaut de la feuille de bilans corrigée (binderSummarySources).
  *
  * Une page du classeur porte un seul document, imprimé en A5 et collé par le bord gauche : un
  * document de deux pages est une fiche A5 recto verso. Les documents du classeur sont reconnus par
@@ -22,6 +22,7 @@
 import type { Board } from './boardsQueries';
 import { groupActivities, isEvaluationTitle, isMethodSheet, naturalCompare, splitVariant } from './courseLibrary';
 import type { InkLine } from './binderSummary';
+import { activityKeyOf } from './binderInk';
 
 export type BinderSection = 'sequences' | 'methodes' | 'revise';
 
@@ -148,7 +149,8 @@ function levelChapters(all: Board[], level: string) {
 
 /**
  * Feuilles de bilans corrigées d'un niveau, par séquence : elles ne sont plus des pages du classeur,
- * mais restent la source des bilans écrits en rouge sous chaque fiche d'activité (Binder.tsx).
+ * mais donnent encore le bilan des activités qui n'ont pas d'écran « Bilan » (Binder.tsx), tant
+ * qu'elles existent.
  */
 export function binderSummarySources(boards: Board[], level: string): { chapter: string; board: Board }[] {
   const { byChapter, chapters } = levelChapters(uniqueByTitle(boards), level);
@@ -157,6 +159,35 @@ export function binderSummarySources(boards: Board[], level: string): { chapter:
       .filter((b) => binderDocKind(b.title) === 'summaries' && splitVariant(b.title).variant === 'correction')
       .sort((a, b) => naturalCompare(a.title, b.title))[0];
     return corrected ? [{ chapter, board: corrected }] : [];
+  });
+}
+
+/** Activité dont les écrans peuvent porter le bilan : sa correction d'abord, puis sa fiche. */
+export interface BinderScreenSource {
+  chapter: string;
+  /** Repère de l'activité (« activite 2 »), celui des pages du classeur. */
+  key: string;
+  /** « Activité 2 — L'importance d'un séisme » */
+  title: string;
+  boards: Board[];
+}
+
+/**
+ * Activités d'un niveau dont l'écran « Bilan » donne le bilan écrit sous la fiche (Thomas,
+ * 22/11/2026 : plus de feuille de bilans, le bilan vit sur l'écran qui termine l'activité). Les
+ * écrans sont lus d'abord dans la correction, où le bilan est complet, puis dans la fiche.
+ */
+export function binderScreenSources(boards: Board[], level: string): BinderScreenSource[] {
+  const { byChapter, chapters } = levelChapters(uniqueByTitle(boards), level);
+  return chapters.flatMap((chapter) => {
+    const activities = byChapter.get(chapter)!
+      .filter((b) => isActivityTitle(b.title) && !isEvaluationTitle(b.title))
+      .sort((a, b) => naturalCompare(a.title, b.title));
+    return groupActivities(activities).flatMap((group) => {
+      const key = activityKeyOf(group.title);
+      const sources = (['correction', 'fiche'] as const).flatMap((v) => group.members.filter((m) => m.variant === v).map((m) => m.board));
+      return key && sources.length > 0 ? [{ chapter, key, title: group.title, boards: sources }] : [];
+    });
   });
 }
 
@@ -216,7 +247,7 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
 
   pages.push({ kind: 'divider', key: 'divider:revise', section: 'revise' });
   for (const chapter of chapters) {
-    // Plus de feuille de bilans dans le classeur (Thomas, 22/11/2026) : voir binderSummarySources
+    // Plus de feuille de bilans dans le classeur (Thomas, 22/11/2026) : voir binderScreenSources
     const memo = docOf(chapter, 'memo');
     if (memo) pages.push({ kind: 'sheet', key: memo.id, section: 'revise', chapter, label: 'Fiche de mémorisation', board: memo, role: 'memo' });
   }

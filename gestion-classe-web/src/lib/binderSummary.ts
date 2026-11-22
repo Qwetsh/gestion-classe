@@ -2,8 +2,9 @@
  * Classeur virtuel : le bilan de chaque activité, écrit à la main sur les lignes de la feuille du
  * classeur (demande de Thomas, 20/11/2026). Fonctions pures.
  *
- * Le texte vient de « L'essentiel » : la feuille de bilans corrigée de la séquence (« Feuille de
- * bilans — Séquence n (correction) »), où chaque activité a son bilan, mots clés soulignés.
+ * Le texte vient de l'écran « Bilan » qui termine les écrans de l'activité (screenSummary, Thomas,
+ * 22/11/2026), mots à trouver soulignés ; à défaut, de la feuille de bilans corrigée de la séquence
+ * (« Feuille de bilans — Séquence n (correction) », summaryRuns), tant qu'elle existe.
  * L'élève l'écrit en rouge sous la fiche collée (six lignes libres), et finit en haut de la page
  * suivante : au-dessus de la feuille de documents de l'activité si la fin y tient, sinon sur une
  * page à part.
@@ -69,6 +70,115 @@ export function summaryRuns(corrected: JSONContent): SummaryRuns {
     const runs = paragraphs.map(runsOf).filter((r) => r.length > 0);
     if (runs.length > 0) out.set(key, { heading: title, paragraphs: runs });
   }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// L'écran « Bilan » d'une activité (gabarit bilan de gc_ecrans.py) : titre « Bilan » en rouge,
+// puis le texte en rouge, mots à trouver en <span data-gap>. Il prime sur la feuille de bilans.
+// ---------------------------------------------------------------------------------------------
+
+/** Rouge des bilans (règle de Thomas). */
+const SUMMARY_RED = '#c00000';
+
+/** Ce qu'il faut d'un objet d'écran pour y lire un bilan. */
+interface ScreenText {
+  type?: unknown;
+  color?: unknown;
+  html?: unknown;
+  x?: unknown;
+  y?: unknown;
+}
+const num = (v: unknown) => (typeof v === 'number' ? v : Number(v) || 0);
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', laquo: '«', raquo: '»', hellip: '…', ndash: '–', mdash: '—' };
+const decode = (text: string) => text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (all, code: string) => {
+  if (code[0] === '#') {
+    const n = code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+    return Number.isFinite(n) ? String.fromCodePoint(n) : all;
+  }
+  return ENTITIES[code.toLowerCase()] ?? all;
+});
+
+/** Balises qui commencent un nouveau paragraphe. */
+const BLOCK = /^(div|p|li|h[1-6]|br)$/;
+
+/**
+ * Paragraphes d'un texte d'écran (HTML du tableau blanc) : un par bloc (`<div>`, `<p>`, `<br>`).
+ * Les mots à trouver (`data-gap`) sont écrits en clair et soulignés, comme les mots clés de la
+ * feuille de bilans ; ce qui est déjà souligné (`<u>`) le reste.
+ */
+export function htmlParagraphs(html: string): InkRun[][] {
+  const paragraphs: InkRun[][] = [];
+  let runs: InkRun[] = [];
+  const stack: { name: string; underline: boolean }[] = [];
+  const close = () => {
+    const text = runs.map((r) => r.text).join('');
+    if (text.trim() !== '') {
+      // Espaces de bord retirées : le paragraphe commence et finit sur un mot
+      runs[0] = { ...runs[0], text: runs[0].text.replace(/^\s+/, '') };
+      const last = runs.length - 1;
+      runs[last] = { ...runs[last], text: runs[last].text.replace(/\s+$/, '') };
+      paragraphs.push(runs.filter((r) => r.text !== ''));
+    }
+    runs = [];
+  };
+  for (const [token] of html.matchAll(/<[^>]*>|[^<]+/g)) {
+    const tag = /^<\s*(\/)?\s*([a-z0-9]+)([^>]*)>$/i.exec(token);
+    if (!tag) {
+      const text = decode(token);
+      const underline = stack.some((s) => s.underline);
+      const last = runs[runs.length - 1];
+      if (last && !!last.underline === underline) last.text += text;
+      else runs.push(underline ? { text, underline } : { text });
+      continue;
+    }
+    const [, closing, rawName, attrs] = tag;
+    const name = rawName.toLowerCase();
+    if (BLOCK.test(name)) close();
+    if (name === 'br' || name === 'img' || /\/\s*$/.test(attrs)) continue;
+    if (closing) {
+      const at = stack.map((s) => s.name).lastIndexOf(name);
+      if (at >= 0) stack.splice(at);
+    } else {
+      stack.push({ name, underline: name === 'u' || /\bdata-gap\b/i.test(attrs) || /text-decoration[^;"']*underline/i.test(attrs) });
+    }
+  }
+  close();
+  return paragraphs;
+}
+
+const plain = (html: string) => htmlParagraphs(html).map((p) => p.map((r) => r.text).join('')).join(' ').trim();
+const isRedText = (o: ScreenText) => o.type === 'text' && typeof o.html === 'string' && typeof o.color === 'string' && o.color.toLowerCase() === SUMMARY_RED;
+
+/**
+ * Bilan lu dans les écrans d'une activité, dans leur ordre : sur chaque écran dont le titre rouge
+ * commence par « Bilan », les textes rouges posés sous ce titre (de haut en bas). Plusieurs écrans
+ * Bilan sont mis bout à bout. Rien : l'activité n'a pas d'écran Bilan.
+ */
+export function screenSummary(screens: { objects?: unknown }[]): InkRun[][] {
+  const out: InkRun[][] = [];
+  for (const screen of screens) {
+    const texts = (Array.isArray(screen.objects) ? screen.objects : []).filter((o): o is ScreenText => !!o && typeof o === 'object').filter(isRedText);
+    const title = texts
+      .filter((o) => /^bilan\b/i.test(plain(o.html as string)))
+      .sort((a, b) => num(a.y) - num(b.y))[0];
+    if (!title) continue;
+    const body = texts
+      .filter((o) => o !== title && num(o.y) > num(title.y))
+      .sort((a, b) => num(a.y) - num(b.y) || num(a.x) - num(b.x));
+    for (const o of body) out.push(...htmlParagraphs(o.html as string));
+  }
+  return out;
+}
+
+/**
+ * Bilans d'une séquence : celui de l'écran Bilan prime, activité par activité ; la feuille de
+ * bilans corrigée ne sert qu'aux activités sans écran Bilan.
+ */
+export function mergeSummaries(screens: SummaryRuns, sheet: SummaryRuns | undefined): SummaryRuns {
+  const out: SummaryRuns = new Map(screens);
+  for (const [key, summary] of sheet ?? []) if (!out.has(key)) out.set(key, summary);
   return out;
 }
 
