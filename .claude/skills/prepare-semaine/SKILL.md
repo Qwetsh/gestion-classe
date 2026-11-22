@@ -105,7 +105,9 @@ Le tableau que `placer` affiche, tel quel : Classe | Cours | Document | État. A
 - ce qui reste à faire à la main (une image à insérer, un écran à retoucher) ;
 - ce qui n'a pas pu être vérifié : le nombre de pages réel de la fiche, qui ne se voit qu'à
   l'affichage ; les avertissements de `screens:check` ;
-- où le retrouver : le calendrier de l'accueil, et Mes cours › Par classe.
+- où le retrouver : le calendrier de l'accueil, et Mes cours › Par classe ;
+- **les entrées de cahier de texte** des séances posées (une par cours et par classe), écrites
+  comme le dit `cours-gestion-classe` § 3 (« Le cahier de texte »), avec le dossier où elles sont.
 
 ## Habitudes apprises
 
