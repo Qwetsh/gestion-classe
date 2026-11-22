@@ -42,6 +42,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { path: '/classes', label: 'Classes et plans', icon: 'classes' },
     { path: '/students', label: 'Suivi élèves', icon: 'students' },
     { path: '/sessions', label: 'Séances', icon: 'sessions' },
+    { path: '/cahier-de-texte', label: 'Cahier de texte', icon: 'journal' },
     { path: '/analytics', label: 'Analyses', icon: 'analytics' },
   ] },
   { id: 'evaluations', label: 'Évaluations', short: 'Évals', icon: 'evaluations', pages: [

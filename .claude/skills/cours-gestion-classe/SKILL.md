@@ -276,15 +276,28 @@ Pronote :
   reformulée.
 - **Écrite avant la séance** : c'est un prévisionnel, rédigé au passé comme la skill le demande.
   Le dire à Thomas dans le compte rendu : il l'ajuste si la séance a dévié.
-- **Où, en attendant la fonction dans Gestion Classe** (pas encore créée au 22/11/2026) : un
-  fichier par séance dans
-  `C:\Users\Utilisateur\OneDrive\Documents\Ecole\2026-2027\_Cahier de texte\`, nommé
-  `AAAA-MM-JJ HHhMM <classe> — <titre court>.txt`, qui commence par trois lignes `Date :`,
-  `Classe :`, `Cours :` puis l'entrée. Ce nommage permettra de les reverser dans l'app à la bonne
-  date. Ne jamais écraser un fichier existant (Thomas a pu le retoucher) : en écrire un nouveau
-  suffixé « (2) » et le signaler.
-- Quand la fonction existera dans l'app, l'entrée s'y enregistrera à la place du fichier, sur le
-  cours concerné.
+- **Où : dans Gestion Classe**, sur le cours de l'emploi du temps (table `lesson_journal`,
+  migration 084, depuis le 22/11/2026). Plus de fichier dans OneDrive.
+  1. Écrire l'entrée dans `gestion-classe-web/course-drafts/cahier/` (dossier ignoré par git : le
+     dépôt est public), un fichier par séance nommé `AAAA-MM-JJ HHhMM <classe> — <titre court>.txt`
+     (heure de début du cours, heure de Paris ; classe telle que l'agenda la donne, « 4B »). Il
+     commence par trois lignes `Date :`, `Classe :`, `Cours :`, puis l'entrée.
+  2. L'envoyer par le jeton d'import (§ 5) :
+     `python -I <skill>/gc_envoi.py cahier "<dossier ou fichier>"`. Le compte rendu dit, fichier
+     par fichier : « enregistrée », « déjà là, identique », ou un refus. Depuis un script :
+     `envoyer_cahier([{ 'starts_at', 'label', 'content' }])` avec le cours tel que le rend
+     `lire_agenda`.
+  3. **Une entrée différente existe déjà** pour ce cours (« une autre entrée existe ») : Thomas a
+     pu la retoucher. Ne pas l'écraser : le signaler, et n'ajouter `--remplacer` que s'il le
+     demande. « Aucun cours » : le cours n'est pas dans l'emploi du temps à cette heure, ou pas
+     relié à une de ses classes (le signaler, ne pas deviner).
+- **Où Thomas la retrouve** : sur l'accueil, popover du cours › « Cahier de texte » (Copier pour
+  Pronote, ouvrir, retoucher) ; page « Cahier de texte » (Classes › Cahier de texte), avec le
+  filtre « À recopier ». « Copier pour Pronote » marque l'entrée recopiée.
+- **Fichiers écrits avant la fonction** (dossier
+  `C:\Users\Utilisateur\OneDrive\Documents\Ecole\2026-2027\_Cahier de texte\`, même nommage) :
+  les reverser avec `gc_envoi.py cahier "<ce dossier>" --reprise` (provenance « reprise ») ; les
+  fichiers restent dans OneDrive. Absent le 22/11/2026 : rien n'était encore à reprendre.
 
 ## 4. Vérifier
 
@@ -317,6 +330,7 @@ python -I <skill>/gc_envoi.py verifier                      # le jeton est-il va
 python -I <skill>/gc_envoi.py cours course-drafts/<nom>.json    # crée le cours, affiche son id
 npm run screens:check                                       # contrôle course-drafts/ecrans/*.json
 python -I <skill>/gc_envoi.py ecrans <id du cours> <pages.json> # pose les écrans d'un cours
+python -I <skill>/gc_envoi.py cahier <dossier | fichier.txt>   # entrées de cahier de texte (§ 3)
 ```
 
 - L'envoi **crée un nouveau cours** et affiche son `id`.

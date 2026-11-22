@@ -7,6 +7,7 @@ import { sameDay, type PlacedLesson } from '../../../lib/timetable/weekView';
 import type { WeekSession } from '../../../lib/timetable/enrichmentQueries';
 import { noteForLesson, lessonNoteKey } from '../../../lib/timetable/lessonNotesQueries';
 import { boardForLesson, lessonDisplayName, type LessonBoard } from '../../../lib/timetable/lessonBoardsQueries';
+import { journalForLesson, journalHeadline } from '../../../lib/timetable/lessonJournalQueries';
 import { levelFromClassName } from '../../../lib/boardsQueries';
 import { useUIFeedback } from '../../../contexts/UIFeedbackContext';
 import { useAuth } from '../../../hooks/useAuth';
@@ -35,6 +36,7 @@ export function LessonPopover({
   const {
     lastBoardByClass, alertsByClass, openBoard, lessonNotes, saveNote, setNoteDone,
     week, lessonBoards, nearbyLessonBoards, createBoardForLesson, duplicateBoardToLessons, removeBoardForLesson,
+    lessonJournal, openJournal, copyJournal,
   } = useHomeData();
   const { toast, confirm } = useUIFeedback();
   const { user } = useAuth();
@@ -56,6 +58,23 @@ export function LessonPopover({
       toast('Impossible d’enregistrer la note.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ---- Cahier de texte de ce cours (migration 084) ----
+  const journal = journalForLesson(lessonJournal, lesson);
+  const [copying, setCopying] = useState(false);
+  const copyEntry = async () => {
+    if (!journal) return;
+    setCopying(true);
+    try {
+      await copyJournal(journal);
+      toast('Entrée copiée : à coller dans Pronote.', 'success');
+    } catch (err) {
+      console.error(err);
+      toast('Impossible de copier l’entrée.');
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -312,6 +331,42 @@ export function LessonPopover({
                   )}
                 </>
               ) : null}
+            </div>
+          )}
+
+          {/* Cahier de texte : préparé par Claude avec la séance ou écrit après le cours, recopié dans Pronote */}
+          {!canceled && (journal || lesson.start <= now) && (
+            <div className="wtt-pop__section">
+              <div className="wtt-pop__label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Cahier de texte</span>
+                {journal && (
+                  <span className={`journal-chip ${journal.copiedAt ? 'journal-chip--done' : ''}`} style={{ cursor: 'default' }}>
+                    {journal.copiedAt ? '✓ Copiée' : 'À recopier'}
+                  </span>
+                )}
+              </div>
+              {journal ? (
+                <>
+                  <button
+                    type="button"
+                    className="wtt-pop__board"
+                    onClick={() => { openJournal({ ...lesson, title }); onClose(); }}
+                    title="Lire et retoucher l’entrée"
+                  >
+                    <span className="wtt-pop__board-title journal-headline">{journalHeadline(journal.content, 90)}</span>
+                  </button>
+                  <div className="wtt-pop__links">
+                    <button type="button" className="wtt__link" onClick={copyEntry} disabled={copying} title="Copie le texte pour le coller dans Pronote">
+                      {copying ? 'Copie…' : 'Copier pour Pronote'}
+                    </button>
+                    <Link to={`/cahier-de-texte?class=${lesson.classId}`} className="wtt__link wtt__link--muted">Tout le cahier</Link>
+                  </div>
+                </>
+              ) : (
+                <button type="button" className="wtt__link" style={{ alignSelf: 'flex-start' }} onClick={() => { openJournal({ ...lesson, title }); onClose(); }}>
+                  Écrire l’entrée
+                </button>
+              )}
             </div>
           )}
 

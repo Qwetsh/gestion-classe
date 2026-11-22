@@ -30,6 +30,10 @@ import {
   createLessonBoard, duplicateLessonBoard, fetchLessonBoards, indexLessonBoards, removeLessonBoard,
   type LessonBoard, type LessonRef,
 } from '../../lib/timetable/lessonBoardsQueries';
+import {
+  copyJournalEntry, fetchJournalEntries, indexJournal, journalKey, type JournalEntry, type JournalLesson,
+} from '../../lib/timetable/lessonJournalQueries';
+import { JournalEntryDialog } from '../journal/JournalEntryDialog';
 
 // ---- Types ----
 
@@ -138,6 +142,13 @@ export interface HomeData {
   saveNote: (lesson: Pick<TimetableLesson, 'start' | 'end' | 'label' | 'classId' | 'groupId'>, content: string) => Promise<void>;
   /** Marque une note « vue » (ou la remet en avant) */
   setNoteDone: (note: LessonNote, done: boolean) => Promise<void>;
+
+  /** Entrées de cahier de texte des cours de la semaine affichée (migration 084), indexées comme les notes */
+  lessonJournal: Map<string, JournalEntry>;
+  /** Ouvre la fenêtre de l'entrée d'un cours (lire, retoucher, copier) ; `title` = classe du cours */
+  openJournal: (lesson: JournalLesson & { title: string }) => void;
+  /** Copie l'entrée pour Pronote et la marque recopiée */
+  copyJournal: (entry: JournalEntry) => Promise<void>;
 
   /** Tableaux préparés pour les cours de la semaine affichée (migration 065), indexés comme les notes */
   lessonBoards: Map<string, LessonBoard>;
@@ -300,8 +311,25 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
       .catch(err => console.error('Séances de la semaine illisibles:', err));
     fetchLessonNotes(user.id, monday, nextMonday)
       .then(rows => { if (!cancelled) setLessonNotes(indexLessonNotes(rows)); });
+    fetchJournalEntries(user.id, { from: monday, to: nextMonday })
+      .then(rows => { if (!cancelled) setLessonJournal(indexJournal(rows)); });
     return () => { cancelled = true; };
   }, [user, weekOffset]);
+
+  // Cahier de texte (migration 084) : une entrée par cours, fenêtre ouverte depuis le popover
+  const [lessonJournal, setLessonJournal] = useState<Map<string, JournalEntry>>(new Map());
+  const [journalLesson, setJournalLesson] = useState<(JournalLesson & { title: string }) | null>(null);
+  const putJournal = useCallback((lesson: Pick<JournalLesson, 'start' | 'label'>, entry: JournalEntry | null) => {
+    setLessonJournal(prev => {
+      const next = new Map(prev);
+      const key = journalKey(lesson.start, lesson.label);
+      if (entry) next.set(key, entry); else next.delete(key);
+      return next;
+    });
+  }, []);
+  const copyJournal = useCallback(async (entry: JournalEntry) => {
+    putJournal({ start: entry.startsAt, label: entry.label }, await copyJournalEntry(entry));
+  }, [putJournal]);
 
   // Notes sur les cours (migration 044) : une par cours, indépendantes des séances
   const [lessonNotes, setLessonNotes] = useState<Map<string, LessonNote>>(new Map());
@@ -795,6 +823,9 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
     lessonNotes,
     saveNote,
     setNoteDone,
+    lessonJournal,
+    openJournal: setJournalLesson,
+    copyJournal,
     lessonBoards: indexLessonBoards(nearbyLessonBoards),
     nearbyLessonBoards,
     createBoardForLesson,
@@ -805,5 +836,20 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
     openBoard: onOpenBoard,
   };
 
-  return <HomeDataContext.Provider value={value}>{children}</HomeDataContext.Provider>;
+  return (
+    <HomeDataContext.Provider value={value}>
+      {children}
+      {journalLesson && user && (
+        <JournalEntryDialog
+          key={journalKey(journalLesson.start, journalLesson.label)}
+          userId={user.id}
+          lesson={journalLesson}
+          title={journalLesson.title}
+          entry={lessonJournal.get(journalKey(journalLesson.start, journalLesson.label)) ?? null}
+          onChange={entry => putJournal(journalLesson, entry)}
+          onClose={() => setJournalLesson(null)}
+        />
+      )}
+    </HomeDataContext.Provider>
+  );
 }

@@ -14,16 +14,22 @@ En ligne de commande (python -I gc_envoi.py ...) :
     cours <brouillon.json> --remplacer <id>   remplace le document d'un cours, après version
     ecrans <id du cours> <pages.json>      pose les écrans d'un cours
     ecrans <id du cours> <pages.json> --remplacer   remplace les écrans existants
+    cahier <fichier.txt | dossier>         entrées de cahier de texte (une par fichier, voir
+                                           lire_entree_cahier) ; --remplacer pour écraser une
+                                           entrée différente (sur demande de Thomas),
+                                           --reprise pour des fichiers anciens (source « import »)
 
 Placer sur l'emploi du temps : voir gc_semaine.py (agenda, bibliothèque, placer, retirer).
 
 Depuis un script : envoyer_image(chemin), envoyer_fichier(chemin), envoyer_cours(brouillon), envoyer_ecrans(id, pages),
-lire_agenda(depuis, jours), placer(id original, cours), retirer(id copie).
+lire_agenda(depuis, jours), placer(id original, cours), retirer(id copie),
+lire_entree_cahier(chemin), envoyer_cahier(entrees, remplacer, source).
 """
 import base64
 import hashlib
 import json
 import os
+import re
 import struct
 import sys
 import urllib.error
@@ -55,6 +61,21 @@ MESSAGES = {
     'edited': 'Cette copie a été ouverte ou retouchée depuis sa pose : la retirer seulement si Thomas le demande (--forcer).',
     'bad_request': 'Demande mal formée.',
 }
+
+# Résultat d'une entrée de cahier de texte (action "journal")
+ETATS_CAHIER = {
+    'saved': 'enregistrée',
+    'same': 'déjà là, identique',
+    'exists': "une autre entrée existe pour ce cours : pas écrasée (--remplacer, sur demande de Thomas)",
+    'replaced': 'remplacée',
+    'not_found': "aucun cours de cette classe à cette heure dans l'emploi du temps",
+    'ambiguous': 'plusieurs cours de cette classe à cette heure : préciser starts_at + label',
+    'bad_lesson': 'cours mal désigné (date, heure ou classe manquante)',
+    'bad_content': 'texte vide ou trop long (20 000 caractères au plus)',
+    'read_failed': "lecture de l'emploi du temps impossible",
+    'write_failed': 'écriture impossible',
+}
+LOT_CAHIER = 60
 
 
 class EnvoiRefuse(Exception):
@@ -216,6 +237,71 @@ def retirer(copie, forcer=False):
     return _appel(corps)
 
 
+# ---- Cahier de texte (action "journal", migration 084) ----
+
+# « 2026-11-23 11h15 4B — Activité 2 Wegener.txt »
+NOM_CAHIER = re.compile(r'^(\d{4}-\d{2}-\d{2})\s+(\d{1,2})h(\d{2})\s+(.+?)(?:\s+[—–-]\s+.*)?$')
+ENTETE_CAHIER = re.compile(r'^\s*(date|classe|cours)\s*:\s*(.*)$', re.IGNORECASE)
+DATE_FR = re.compile(r'(\d{1,2})/(\d{1,2})/(\d{4})')
+DATE_ISO = re.compile(r'(\d{4})-(\d{2})-(\d{2})')
+HEURE = re.compile(r'(\d{1,2})\s*[h:]\s*(\d{2})')
+
+
+def lire_entree_cahier(chemin):
+    """Lit un fichier d'entrée : nommé « AAAA-MM-JJ HHhMM <classe> — <titre>.txt », il commence
+    par les lignes « Date : », « Classe : », « Cours : », puis le texte brut de l'entrée.
+    Date, heure et classe sont lues dans le nom du fichier, sinon dans ces lignes.
+    Rend { date, time, class_name, content } (le texte sans les lignes d'en-tête)."""
+    with open(chemin, encoding='utf-8-sig') as f:
+        lignes = f.read().replace('\r\n', '\n').replace('\r', '\n').split('\n')
+    entete = {}
+    while lignes and (not lignes[0].strip() or ENTETE_CAHIER.match(lignes[0])):
+        m = ENTETE_CAHIER.match(lignes.pop(0))
+        if m:
+            entete[m.group(1).lower()] = m.group(2).strip()
+    texte = '\n'.join(l.rstrip() for l in lignes).strip('\n')
+    date = heure = classe = None
+    m = NOM_CAHIER.match(os.path.splitext(os.path.basename(chemin))[0])
+    if m:
+        date, heure, classe = m.group(1), '%02d:%s' % (int(m.group(2)), m.group(3)), m.group(4).strip()
+    else:
+        valeur = entete.get('date', '')
+        d, h = DATE_ISO.search(valeur), HEURE.search(valeur)
+        if d:
+            date = d.group(0)
+        elif DATE_FR.search(valeur):
+            j, mo, a = DATE_FR.search(valeur).groups()
+            date = '%s-%02d-%02d' % (a, int(mo), int(j))
+        if h:
+            heure = '%02d:%s' % (int(h.group(1)), h.group(2))
+        classe = entete.get('classe') or None
+    if not (date and heure and classe):
+        raise EnvoiRefuse('Date, heure ou classe introuvable : ' + os.path.basename(chemin))
+    if not texte:
+        raise EnvoiRefuse('Entrée vide : ' + os.path.basename(chemin))
+    return {'date': date, 'time': heure, 'class_name': classe, 'content': texte}
+
+
+def envoyer_cahier(entrees, remplacer=False, source='claude'):
+    """Envoie des entrées de cahier de texte. Chaque entrée : { content } et le cours, désigné par
+    { starts_at, label } (voir lire_agenda) ou { date: 'AAAA-MM-JJ', time: 'HH:MM', class_name }
+    (heure de Paris). Rend la liste des résultats (status : saved, same, exists, not_found…).
+    Une entrée différente déjà là n'est jamais écrasée sans remplacer=True."""
+    resultats = []
+    for i in range(0, len(entrees), LOT_CAHIER):
+        corps = {'action': 'journal', 'entries': entrees[i:i + LOT_CAHIER], 'source': source}
+        if remplacer:
+            corps['replace'] = True
+        resultats.extend(_appel(corps)['results'])
+    return resultats
+
+
+def _fichiers_cahier(cible):
+    if os.path.isdir(cible):
+        return sorted(os.path.join(cible, n) for n in os.listdir(cible) if n.lower().endswith('.txt'))
+    return [cible]
+
+
 def _principal(args):
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -245,6 +331,29 @@ def _principal(args):
                 print(__doc__)
                 return 2
             print('%d écrans posés.' % envoyer_ecrans(args[1], args[2], remplacer))
+        elif commande == 'cahier' and len(args) >= 2 and set(args[2:]) <= {'--remplacer', '--reprise'}:
+            fichiers, entrees, illisibles = _fichiers_cahier(args[1]), [], 0
+            for chemin in fichiers:
+                try:
+                    entrees.append((os.path.basename(chemin), lire_entree_cahier(chemin)))
+                except (EnvoiRefuse, OSError, UnicodeDecodeError) as e:
+                    illisibles += 1
+                    print('✗ %s : illisible (%s)' % (os.path.basename(chemin), e))
+            if not entrees:
+                print('Aucune entrée à envoyer.')
+                return 1
+            resultats = envoyer_cahier([e for _, e in entrees], '--remplacer' in args,
+                                       'import' if '--reprise' in args else 'claude')
+            bilan = {}
+            for (nom, _), r in zip(entrees, resultats):
+                etat = r.get('status')
+                bilan[etat] = bilan.get(etat, 0) + 1
+                ok = etat in ('saved', 'same', 'replaced')
+                print('%s %s : %s' % ('✓' if ok else '✗', nom, ETATS_CAHIER.get(etat, etat)))
+            print('Bilan : ' + ', '.join('%d %s' % (n, ETATS_CAHIER.get(e, e).split(' :')[0]) for e, n in bilan.items())
+                  + (', %d illisibles' % illisibles if illisibles else '') + '.')
+            if any(r.get('status') not in ('saved', 'same', 'replaced') for r in resultats) or illisibles:
+                return 1
         else:
             print(__doc__)
             return 2

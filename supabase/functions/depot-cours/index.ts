@@ -32,9 +32,17 @@ import { decodeBase64, encodeBase64Url } from "jsr:@std/encoding@1";
  *  - "unplace" (jeton)        { token, board_id, force? }  → { ok }
  *      retire la copie d'un cours ; refusé si une séance l'a utilisée, et si elle a été ouverte ou
  *      modifiée depuis sa pose (sauf { force: true }, sur demande du professeur)
+ *  - "journal" (jeton)        { token, entries: [{ content, starts_at + label | date + time + class_name }],
+ *                               source?, replace? }
+ *      → { results: [{ starts_at, label, class_name?, status }] }
+ *      entrée de cahier de texte d'un cours (migration 084), une par cours. Le cours est désigné
+ *      comme pour "place", ou par sa date, son heure de début (heure de Paris) et sa classe.
+ *      status : "saved", "same" (texte identique), "exists" (une autre entrée : jamais écrasée
+ *      sans { replace: true }, sur demande du professeur), "replaced", "not_found", "ambiguous"
  *
  * Le jeton n'écrit que dans l'espace de son propriétaire. Il ne lit que l'emploi du temps et les
- * titres de la bibliothèque (action "agenda") : rien sur les élèves, aucun contenu de cours.
+ * titres de la bibliothèque (action "agenda") : rien sur les élèves, aucun contenu de cours. Il ne
+ * relit pas les entrées du cahier de texte (il dit seulement si elles existent).
  * Ce que la fonction vérifie : la forme des données, la taille, l'appartenance des images citées
  * et le HTML des objets du tableau blanc (balises de mise en forme seulement). La validation
  * fine d'un document de cours reste celle de `npm run course:check`, avant l'envoi.
@@ -289,6 +297,55 @@ async function lessonsBetween(sb: SupabaseClient, userId: string, from: Date, to
     });
   }
   return out;
+}
+
+// ---- Cahier de texte (action "journal", migration 084) ----
+
+const MAX_JOURNAL_ENTRIES = 60;
+const MAX_JOURNAL_CHARS = 20_000;
+const JOURNAL_SOURCES = ["claude", "import"];
+const PARIS = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+
+/** « 2026-11-23 » et « 11:15 » d'un instant, à l'heure de Paris. */
+function parisDateTime(d: Date): { date: string; time: string } {
+  const p = Object.fromEntries(PARIS.formatToParts(d).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+}
+
+/** Texte brut d'une entrée : fins de ligne Unix, sans espaces de fin de ligne ni lignes vides autour. */
+function journalText(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const text = raw.replace(/\r\n?/g, "\n").split("\n").map((l) => l.replace(/\s+$/, "")).join("\n").replace(/^\n+|\n+$/g, "");
+  return text && text.length <= MAX_JOURNAL_CHARS ? text : null;
+}
+
+/**
+ * Cours désigné par une entrée : { starts_at, label } (comme "place"), ou { date, time, class_name }
+ * (heure de début à Paris, nom de la classe ou libellé Pronote). Rend le cours ou un statut d'échec.
+ */
+async function journalLesson(sb: SupabaseClient, userId: string, item: Record<string, unknown>): Promise<Lesson | string> {
+  if (typeof item.starts_at === "string" && typeof item.label === "string" && item.label) {
+    const start = new Date(item.starts_at);
+    if (Number.isNaN(start.getTime())) return "bad_lesson";
+    const key = minuteIso(start);
+    const found = (await lessonsBetween(sb, userId, new Date(key), new Date(new Date(key).getTime() + 60_000))).find((l) => l.label === item.label);
+    return found ?? "not_found";
+  }
+  const date = typeof item.date === "string" ? item.date : "";
+  const time = typeof item.time === "string" ? item.time.replace(/h/i, ":").padStart(5, "0") : "";
+  const cls = typeof item.class_name === "string" ? norm(item.class_name) : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time) || !cls) return "bad_lesson";
+  const noon = new Date(`${date}T12:00:00Z`);
+  if (Number.isNaN(noon.getTime())) return "bad_lesson";
+  const day = await lessonsBetween(sb, userId, new Date(noon.getTime() - 15 * 3_600_000), new Date(noon.getTime() + 15 * 3_600_000));
+  const found = day.filter((l) => {
+    const at = parisDateTime(new Date(l.starts_at));
+    return at.date === date && at.time === time && (norm(l.class_name) === cls || norm(l.label) === cls);
+  });
+  if (found.length === 0) return "not_found";
+  return found.length === 1 ? found[0] : "ambiguous";
 }
 
 /** Original d'un cours : l'original de la copie s'il est placé, sinon le cours lui-même. */
@@ -643,6 +700,80 @@ Deno.serve(async (req: Request) => {
       const { error } = await sb.from("boards").delete().eq("id", boardId).eq("user_id", t.user_id);
       if (error) return json({ error: "write_failed" }, 500);
       return json({ ok: true, starts_at: link.starts_at, label: link.label });
+    }
+
+    case "journal": {
+      const t = await liveToken(sb, body.token);
+      if (!t) return json({ error: "invalid_token" }, 401);
+      const wanted = body.entries;
+      if (!Array.isArray(wanted) || wanted.length === 0 || wanted.length > MAX_JOURNAL_ENTRIES) return json({ error: "bad_request" }, 400);
+      const source = body.source == null ? "claude" : String(body.source);
+      if (!JOURNAL_SOURCES.includes(source)) return json({ error: "bad_request" }, 400);
+      const results: Record<string, unknown>[] = [];
+      for (const w of wanted) {
+        const item = (w ?? {}) as Record<string, unknown>;
+        const asked = {
+          starts_at: item.starts_at ?? null, label: item.label ?? null,
+          date: item.date ?? null, time: item.time ?? null, class_name: item.class_name ?? null,
+        };
+        const content = journalText(item.content);
+        if (!content) {
+          results.push({ ...asked, status: "bad_content" });
+          continue;
+        }
+        let lesson: Lesson | string;
+        try {
+          lesson = await journalLesson(sb, t.user_id, item);
+        } catch {
+          lesson = "read_failed";
+        }
+        if (typeof lesson === "string") {
+          results.push({ ...asked, status: lesson });
+          continue;
+        }
+        const key = minuteIso(new Date(lesson.starts_at));
+        const base = { starts_at: key, label: lesson.label, class_name: lesson.class_name, group_name: lesson.group_name };
+        const { data: existing, error: readError } = await sb
+          .from("lesson_journal")
+          .select("id, content")
+          .eq("user_id", t.user_id)
+          .eq("starts_at", key)
+          .eq("label", lesson.label)
+          .maybeSingle();
+        if (readError) {
+          results.push({ ...base, status: "read_failed" });
+          continue;
+        }
+        if (existing) {
+          if (existing.content === content) {
+            results.push({ ...base, status: "same" });
+          } else if (body.replace !== true) {
+            results.push({ ...base, status: "exists" });
+          } else {
+            // Remplacée : le nouveau texte est à recopier dans Pronote
+            const { error } = await sb
+              .from("lesson_journal")
+              .update({ content, source, copied_at: null, updated_at: new Date().toISOString() })
+              .eq("id", existing.id)
+              .eq("user_id", t.user_id);
+            results.push({ ...base, status: error ? "write_failed" : "replaced" });
+          }
+          continue;
+        }
+        const { error } = await sb.from("lesson_journal").insert({
+          user_id: t.user_id,
+          starts_at: key,
+          ends_at: lesson.ends_at,
+          label: lesson.label,
+          class_id: lesson.class_id,
+          group_id: lesson.group_id,
+          content,
+          source,
+        });
+        // Écrite entre-temps dans l'application : jamais écrasée
+        results.push({ ...base, status: error ? (error.code === "23505" ? "exists" : "write_failed") : "saved" });
+      }
+      return json({ results });
     }
 
     default:
