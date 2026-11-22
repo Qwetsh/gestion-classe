@@ -7,7 +7,9 @@
  * 1. Séquences : pour chaque séquence, sa page de garde, puis ses activités dans l'ordre (la fiche,
  *    puis la feuille de documents) ;
  * 2. Fiches méthodes : FM1 à FM9 ;
- * 3. Je révise : pour chaque séquence, la feuille de bilans et la fiche de mémorisation.
+ * 3. Je révise : pour chaque séquence, la fiche de mémorisation. La feuille de bilans n'y est plus
+ *    (Thomas, 22/11/2026) : sa version corrigée reste lue, sans être montrée, comme source des bilans
+ *    écrits sous les fiches (binderSummarySources), en attendant de les lire dans l'écran Bilan.
  *
  * Une page du classeur porte un seul document, imprimé en A5 et collé par le bord gauche : un
  * document de deux pages est une fiche A5 recto verso. Les documents du classeur sont reconnus par
@@ -133,6 +135,31 @@ export function shortActivityLabel(title: string): string {
  * Les fiches méthode (sans niveau) et le mode d'emploi (sans niveau de préférence) sont communs à
  * tous les classeurs.
  */
+/** Séquences d'un niveau qui ont une page de garde, avec leurs cours (un seul original par titre). */
+function levelChapters(all: Board[], level: string) {
+  const ofLevel = all.filter((b) => b.level === level && b.chapter && !isMethodSheet(b));
+  const byChapter = new Map<string, Board[]>();
+  for (const b of ofLevel) byChapter.set(b.chapter!, [...(byChapter.get(b.chapter!) ?? []), b]);
+  const chapters = [...byChapter.keys()]
+    .filter((ch) => byChapter.get(ch)!.some((b) => binderDocKind(b.title) === 'cover'))
+    .sort(naturalCompare);
+  return { byChapter, chapters };
+}
+
+/**
+ * Feuilles de bilans corrigées d'un niveau, par séquence : elles ne sont plus des pages du classeur,
+ * mais restent la source des bilans écrits en rouge sous chaque fiche d'activité (Binder.tsx).
+ */
+export function binderSummarySources(boards: Board[], level: string): { chapter: string; board: Board }[] {
+  const { byChapter, chapters } = levelChapters(uniqueByTitle(boards), level);
+  return chapters.flatMap((chapter) => {
+    const corrected = byChapter.get(chapter)!
+      .filter((b) => binderDocKind(b.title) === 'summaries' && splitVariant(b.title).variant === 'correction')
+      .sort((a, b) => naturalCompare(a.title, b.title))[0];
+    return corrected ? [{ chapter, board: corrected }] : [];
+  });
+}
+
 export function buildBinder(boards: Board[], level: string): BinderPage[] {
   const all = uniqueByTitle(boards);
   const pages: BinderPage[] = [];
@@ -143,12 +170,7 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
   if (guide) pages.push({ kind: 'sheet', key: guide.id, section: null, chapter: null, label: 'Mode d’emploi', board: guide, role: 'guide' });
 
   // Séquences du niveau qui ont une page de garde
-  const ofLevel = all.filter((b) => b.level === level && b.chapter && !isMethodSheet(b));
-  const byChapter = new Map<string, Board[]>();
-  for (const b of ofLevel) byChapter.set(b.chapter!, [...(byChapter.get(b.chapter!) ?? []), b]);
-  const chapters = [...byChapter.keys()]
-    .filter((ch) => byChapter.get(ch)!.some((b) => binderDocKind(b.title) === 'cover'))
-    .sort(naturalCompare);
+  const { byChapter, chapters } = levelChapters(all, level);
   const docOf = (chapter: string, kind: BinderDocKind) => byChapter.get(chapter)!
     .filter((b) => binderDocKind(b.title) === kind && splitVariant(b.title).variant === 'fiche')
     .sort((a, b) => naturalCompare(a.title, b.title))[0];
@@ -194,13 +216,7 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
 
   pages.push({ kind: 'divider', key: 'divider:revise', section: 'revise' });
   for (const chapter of chapters) {
-    const summaries = docOf(chapter, 'summaries');
-    if (summaries) {
-      const companion = byChapter.get(chapter)!
-        .filter((b) => binderDocKind(b.title) === 'summaries' && splitVariant(b.title).variant === 'correction')
-        .sort((a, b) => naturalCompare(a.title, b.title))[0];
-      pages.push({ kind: 'sheet', key: summaries.id, section: 'revise', chapter, label: 'Feuille de bilans', board: summaries, role: 'summaries', companion });
-    }
+    // Plus de feuille de bilans dans le classeur (Thomas, 22/11/2026) : voir binderSummarySources
     const memo = docOf(chapter, 'memo');
     if (memo) pages.push({ kind: 'sheet', key: memo.id, section: 'revise', chapter, label: 'Fiche de mémorisation', board: memo, role: 'memo' });
   }

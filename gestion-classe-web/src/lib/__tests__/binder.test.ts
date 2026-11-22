@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import {
-  binderDocKind, binderLevels, binderToc, buildBinder, dividerIndex, glueAngle, sectionAt, shortActivityLabel, spreadOf, turn,
+  binderDocKind, binderLevels, binderSummarySources, binderToc, buildBinder, dividerIndex, glueAngle, sectionAt, shortActivityLabel, spreadOf, turn,
 } from '../binder';
 
 let n = 0;
@@ -67,7 +67,7 @@ describe('buildBinder', () => {
       'Page de garde', 'Activité 1', 'Activité 2', 'Activité 2 — documents', 'Activité 10', 'Activité bonus', 'Évaluation',
       'Page de garde', 'Activité 3',
       '[methodes]', 'FM1', 'FM2', 'FM10',
-      '[revise]', 'Feuille de bilans', 'Fiche de mémorisation',
+      '[revise]', 'Fiche de mémorisation',
     ]);
   });
 
@@ -86,7 +86,7 @@ describe('buildBinder', () => {
     expect(wegener[0].kind === 'sheet' && wegener[0].board.id).toBe('wegener-recent');
   });
 
-  it('donne à chaque fiche son rôle, son titre manuscrit et la feuille de bilans corrigée', () => {
+  it('donne à chaque fiche son rôle et son titre manuscrit ; plus de feuille de bilans', () => {
     const sheets = pages.flatMap((p) => (p.kind === 'sheet' ? [p] : []));
     expect(sheets.find((p) => p.label === 'Activité 2')).toMatchObject({ role: 'activity', heading: 'Activité 2 — Séisme' });
     const documents = sheets.find((p) => p.label === 'Activité 2 — documents');
@@ -98,9 +98,15 @@ describe('buildBinder', () => {
     expect(sheets.some((p) => /extraits/.test(p.board.title))).toBe(false);
     expect(sheets.find((p) => p.label === 'Activité 2')?.companion?.title).toBe('Activité 2 — Séisme (copie modèle)');
     expect(sheets.find((p) => p.label === 'Activité 1')?.companion).toBeUndefined();
-    expect(sheets.find((p) => p.role === 'summaries')?.companion?.title).toBe('Feuille de bilans — Séquence 1 (correction)');
+    expect(sheets.some((p) => /feuille de bilans/i.test(p.board.title))).toBe(false);
     expect(sheets.map((p) => p.role).filter((r, i, all) => all.indexOf(r) === i))
-      .toEqual(['guide', 'cover', 'activity', 'documents', 'evaluation', 'method', 'summaries', 'memo']);
+      .toEqual(['guide', 'cover', 'activity', 'documents', 'evaluation', 'method', 'memo']);
+  });
+
+  it('garde la feuille de bilans corrigée comme source des bilans, sans en faire une page', () => {
+    expect(binderSummarySources(library, '4e').map((s) => [s.chapter, s.board.title]))
+      .toEqual([[S1, 'Feuille de bilans — Séquence 1 (correction)']]);
+    expect(binderSummarySources(library, '3e')).toEqual([]);
   });
 
   it('met l’évaluation après les activités : sa copie modèle l’accompagne, sinon sa correction suit', () => {
