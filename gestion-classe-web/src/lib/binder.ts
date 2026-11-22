@@ -106,6 +106,14 @@ export function binderDocKind(title: string): BinderDocKind | null {
 /** Fiche d'activité : « Activité 3 — … », « Activité bonus — … ». */
 const isActivityTitle = (title: string): boolean => /^\s*activit[ée]s?(?![\p{L}])/iu.test(title.normalize('NFC'));
 
+/**
+ * Titre qui parle de correction, de copie modèle ou d'évaluation sans porter un suffixe reconnu
+ * (« … (corrigée) v2 », « … - correction », « Activité 6 — Évaluation finale ») : on ne sait pas ce
+ * que c'est. La page reste dans le classeur du professeur, mais ne s'ouvre à aucune classe.
+ */
+const UNSURE_TITLE = /corr(?:ection|ig[ée])|copie\s+mod[èe]le|[ée]valuation/iu;
+export const isUnsureTitle = (title: string): boolean => UNSURE_TITLE.test(splitVariant(title).base);
+
 /** Clé de comparaison d'un titre (apostrophes, espaces, casse). */
 const titleKey = (title: string): string =>
   title.normalize('NFC').replace(/[’ʼ]/g, "'").replace(/\s+/g, ' ').trim().toLocaleLowerCase('fr');
@@ -228,7 +236,8 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
       // La version adaptée (PAP) n'entre pas dans le classeur de la classe
       const shown = group.members.filter(({ variant }) => variant !== 'correction' && variant !== 'copie' && variant !== 'extraits' && variant !== 'adaptee');
       // L'activité s'ouvre d'un bloc à une classe : ses pages sont ancrées sur sa fiche
-      const anchor = (shown.find((m) => m.variant === 'fiche') ?? shown[0])?.board.id;
+      // (aucune ancre si un de ses titres est douteux : rien de l'activité ne s'ouvre)
+      const anchor = shown.some((m) => isUnsureTitle(m.board.title)) ? undefined : (shown.find((m) => m.variant === 'fiche') ?? shown[0])?.board.id;
       for (const { variant, board } of shown) {
         // La fiche protocole se lit comme une feuille de documents : l'élève la retrouve chez lui
         pages.push(variant === 'documents' || variant === 'protocole'

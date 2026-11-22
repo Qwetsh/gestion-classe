@@ -115,10 +115,18 @@ export function binderItems(pages: BinderPage[], texts: Map<string, SummaryRuns>
       if (page.companion) item.copy = page.companion.id;
     }
   }
+  // Le bilan est rangé par séquence et par repère (« activite 2 ») : il ne va qu'à une activité qui a
+  // sa fiche, et à aucune si deux activités de la séquence portent le même repère
+  const keyOf = (item: BinderItem) => (item.role === 'activity' && item.chapter && item.pages.some((p) => p.role === 'activity') ? activityKeyOf(item.heading ?? item.label) : null);
+  const uses = new Map<string, number>();
   for (const item of items.values()) {
-    if (item.role !== 'activity' || !item.chapter) continue;
-    const key = activityKeyOf(item.heading ?? item.label);
-    const summary = key ? texts.get(item.chapter)?.get(key) : undefined;
+    const key = keyOf(item);
+    if (key) uses.set(`${item.chapter}|${key}`, (uses.get(`${item.chapter}|${key}`) ?? 0) + 1);
+  }
+  for (const item of items.values()) {
+    const key = keyOf(item);
+    if (!key || !item.chapter || uses.get(`${item.chapter}|${key}`) !== 1) continue;
+    const summary = texts.get(item.chapter)?.get(key);
     if (summary && summary.paragraphs.length > 0) item.summary = summary;
   }
   return [...items.values()];
@@ -174,7 +182,7 @@ function parseRuns(value: unknown): InkRun[][] {
 export function parseReleased(value: unknown): Released | null {
   if (!isRecord(value) || value.v !== 1) return null;
   const role = value.role as ItemRole;
-  if (!(role in PAGE_ROLES) || typeof value.label !== 'string' || !Array.isArray(value.pages)) return null;
+  if (typeof role !== 'string' || !Object.prototype.hasOwnProperty.call(PAGE_ROLES, role) || typeof value.label !== 'string' || !Array.isArray(value.pages)) return null;
   const pages = value.pages.flatMap((p): ReleasedPage[] => (
     isRecord(p) && typeof p.board === 'string' && typeof p.label === 'string' && SHEET_ROLES.includes(p.role as SheetRole) && PAGE_ROLES[role].includes(p.role as SheetRole)
       ? [{ board: p.board, role: p.role as SheetRole, label: p.label }]

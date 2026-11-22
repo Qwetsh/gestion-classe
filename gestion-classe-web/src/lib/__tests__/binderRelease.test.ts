@@ -170,6 +170,38 @@ describe('releaseBinder — rien ne sort sans avoir été ouvert', () => {
   });
 });
 
+describe('titres tordus — rien ne s’ouvre par erreur', () => {
+  const lib = (extra: Board[]) => [board('g', 'Page de garde — Séquence 1', '4e', S1), ...extra];
+  const anchors = (extra: Board[], t = texts) => binderItems(buildBinder(lib(extra), '4e'), t);
+
+  it('un suffixe non reconnu ou un titre douteux ne devient pas une activité à ouvrir', () => {
+    const nfd = 'Activité 1 — Volcans (copie modèle)'.normalize('NFD');
+    const cases = [nfd, 'Activité 1 — Volcans (adaptée)'.normalize('NFD'), 'Activité 1 — Volcans (corrigée)', 'Activité 1 — Volcans (correction) v2', 'Activité 1 — Volcans - correction', 'Activité 1 — Volcans (correction prof)', 'Activité 6 — Évaluation finale'];
+    for (const title of cases) {
+      const found = anchors([board('x', title, '4e', S1)]);
+      expect(found.filter((i) => i.role === 'activity'), title).toEqual([]);
+      expect(sequenceAnchors(found, S1), title).toEqual(['g']);
+    }
+  });
+
+  it('la copie modèle écrite avec des accents décomposés reste la copie de sa fiche', () => {
+    const found = anchors([board('f', 'Activité 1 — Volcans', '4e', S1), board('c', 'Activité 1 — Volcans (copie modèle)'.normalize('NFD'), '4e', S1)]);
+    expect(found.find((i) => i.anchor === 'f')).toMatchObject({ copy: 'c', pages: [{ board: 'f' }] });
+  });
+
+  it('deux activités de même repère dans une séquence : aucun bilan, plutôt que le mauvais', () => {
+    const found = anchors([board('s', 'Activité 2 — Séisme', '4e', S1), board('v', 'Activité 2 — Volcans', '4e', S1)]);
+    expect(found.filter((i) => i.role === 'activity').map((i) => [i.anchor, i.summary])).toEqual([['s', undefined], ['v', undefined]]);
+  });
+
+  it('des documents sans fiche ne portent pas le bilan de l’activité', () => {
+    const found = anchors([board('d', 'Activité 2 — Séisme (documents)', '4e', S1)]);
+    expect(found.find((i) => i.anchor === 'd')).toMatchObject({ role: 'activity' });
+    expect(found.find((i) => i.anchor === 'd')!.summary).toBeUndefined();
+    expect(hasCorrection(found.find((i) => i.anchor === 'd')!)).toBe(false);
+  });
+});
+
 describe('sequenceAnchors', () => {
   it('la page de garde et les activités, jamais la fiche de mémorisation ni l’évaluation', () => {
     expect(sequenceAnchors(items, S1)).toEqual(['garde1', 'a1', 'a2', 'a3']);
@@ -182,6 +214,8 @@ describe('parseReleased', () => {
     expect(parseReleased(null)).toBeNull();
     expect(parseReleased({ v: 2, role: 'activity', label: 'x', pages: [] })).toBeNull();
     expect(parseReleased({ v: 1, role: 'evaluation', label: 'x', pages: [] })).toBeNull();
+    // Noms hérités de tout objet : ce ne sont pas des rôles
+    for (const role of ['constructor', 'toString', '__proto__']) expect(parseReleased({ v: 1, role, label: 'x', pages: [{ board: 'b', role: 'activity', label: 'x' }] })).toBeNull();
   });
 
   it('écarte les pages d’un rôle que l’élément ne peut pas porter, et la correction d’une page seule', () => {

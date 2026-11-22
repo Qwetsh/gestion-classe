@@ -114,7 +114,10 @@ export function withoutEvaluationPrefix(title: string): string {
 /** « Activité 3 — Wegener (correction) » → correction de « Activité 3 — Wegener ». */
 const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?|extraits?|copie mod[èe]le|adapt[ée]e?|protocoles?)\)\s*$/i;
 
-export function splitVariant(title: string): { base: string; variant: CourseVariant } {
+export function splitVariant(rawTitle: string): { base: string; variant: CourseVariant } {
+  // Un titre collé depuis un autre logiciel peut écrire ses accents en deux caractères : sans cette
+  // mise en forme, « (copie modèle) » ou « (adaptée) » ne seraient pas reconnus
+  const title = rawTitle.normalize('NFC');
   const m = VARIANT_SUFFIX.exec(title);
   if (!m) return { base: title.trim(), variant: 'fiche' };
   const word = m[1].toLowerCase();

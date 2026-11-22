@@ -27,7 +27,7 @@ function isMissingTable(error: { message?: string; code?: string } | null): bool
 
 /** Classes du professeur dont le nom porte ce niveau (« 4A », « 4e B » → 4e), par ordre de nom. */
 export async function fetchBinderClasses(userId: string, level: string): Promise<BinderClass[]> {
-  const { data, error } = await supabase.from('classes').select('id, name').eq('user_id', userId).eq('is_deleted', false).order('name');
+  const { data, error } = await supabase.from('classes').select('id, name').eq('user_id', userId).not('is_deleted', 'is', true).order('name');
   if (error) throw error;
   return ((data ?? []) as BinderClass[])
     .filter((c) => levelFromClassName(c.name) === level)
