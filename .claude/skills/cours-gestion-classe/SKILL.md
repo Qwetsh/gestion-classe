@@ -174,6 +174,12 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 4. `titre2('Questions')`, puis des `question(n, ...)` : « n. » en gras, verbes de consigne en gras,
    documents cités en gras (« **document 1** »).
 5. `PourAllerPlusLoin(...)` : une question bonus.
+
+   **Pas de tableau de coups de pouce** (encadré gris 🆘, indices en écriture miroir ou au
+   décodeur) : les élèves ne s'en servent pas (Thomas, 22/11/2026). Une aide passe, si besoin,
+   par un coup de pouce à l'écran (`p.coup_de_pouce`) ou par la version adaptée. En convertissant
+   une fiche de OneDrive, ne pas reprendre ce tableau ; ne pas toucher sans demande aux fiches
+   déjà en base qui en ont un.
 6. `JaiReussi(...)` : les objectifs, plus « rédiger des phrases complètes… », sous forme de cases.
 
 **Police : la règle d'accessibilité (« dys ») vaut pour toutes les fiches** (décision de Thomas,

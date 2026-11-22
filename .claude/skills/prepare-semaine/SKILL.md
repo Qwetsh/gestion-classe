@@ -51,6 +51,8 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
    - Un `_ADAPTEE` (et son `DOCUMENTS ADAPTEE`) se convertit en **cours à part**, « … (adaptée) »,
      comme le dit `cours-gestion-classe` § 3 (« La version adaptée ») : il porte de vraies aides
      (étapes, amorces) que l'impression « dys » de l'app ne recrée pas.
+   - Ne pas reprendre le tableau de coups de pouce 🆘 (écriture miroir) d'une fiche : on n'en fait
+     plus (`cours-gestion-classe` § 3).
    - Ignorer la fiche de préparation, le cahier de texte, la feuille de bilans (on n'en fait plus : le bilan est l'écran Bilan de
      l'activité, voir `cours-gestion-classe` § 3), et les dossiers `_Archive`, `_backup`,
      `_anciennes_versions`.
