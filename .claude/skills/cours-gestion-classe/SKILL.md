@@ -196,6 +196,23 @@ Pour une **évaluation** (règle de Thomas, 22/11/2026) :
 - Le sujet est photocopié en **noir et blanc** : aucune question ne repose sur une couleur. La
   feuille de documents peut être en couleur (`regles-permanentes.md`).
 
+### Ce que comporte une séquence (décision de Thomas, 22/11/2026)
+
+Tout s'assemble dans le **classeur virtuel**. Une séquence comporte :
+
+1. une **feuille de séquence**, comme celles qui existent (« Page de garde — Séquence n ») ;
+2. les **fiches d'activités**, avec ce qui les accompagne : documents (« … (documents) »),
+   applications et sites, corrections ;
+3. des **écrans pour chaque activité, terminés par un écran Bilan** (en rouge) : c'est là, et
+   seulement là, que vit le bilan de l'activité ;
+4. une **évaluation de séquence** (sujet et feuille de documents, voir ci-dessus) ;
+5. une **fiche de mémorisation** de la séquence ;
+6. parfois des **exercices d'entraînement** (surtout en 3e).
+
+**Plus de feuille de bilans** : ni `.docx`, ni cours « Feuille de bilans — … », ni générateur
+`feuille_bilans.py`. Une ancienne feuille de bilans de OneDrive ne sert plus que de source pour
+le texte d'un bilan.
+
 ## 4. Vérifier
 
 ```bash

@@ -49,7 +49,9 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
      Des documents mêlés aux questions sur la même feuille restent dans la fiche.
    - Les réponses viennent du `_CORRIGE.docx` ou du `corrigé`.
    - Ignorer `_ADAPTEE` (l'impression « dys » de l'app la remplace), la fiche de préparation, le
-     cahier de texte, et les dossiers `_Archive`, `_backup`, `_anciennes_versions`.
+     cahier de texte, la feuille de bilans (on n'en fait plus : le bilan est l'écran Bilan de
+     l'activité, voir `cours-gestion-classe` § 3), et les dossiers `_Archive`, `_backup`,
+     `_anciennes_versions`.
    - Fiche : `gc_cours.py`, puis `npm run course:check`, puis `gc_envoi.py cours`.
    - Écrans : `gc_ecrans.py`, puis `npm run screens:check`, puis `gc_envoi.py ecrans <id>`. Les
      réponses du corrigé vont sous cache.
