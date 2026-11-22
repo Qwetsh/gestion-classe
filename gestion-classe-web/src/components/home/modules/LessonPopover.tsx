@@ -334,8 +334,8 @@ export function LessonPopover({
             </div>
           )}
 
-          {/* Cahier de texte : préparé par Claude avec la séance ou écrit après le cours, recopié dans Pronote */}
-          {!canceled && (journal || lesson.start <= now) && (
+          {/* Cahier de texte : préparé par Claude avec la séance, écrit à l’avance ou après le cours, recopié dans Pronote */}
+          {!canceled && (
             <div className="wtt-pop__section">
               <div className="wtt-pop__label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Cahier de texte</span>
