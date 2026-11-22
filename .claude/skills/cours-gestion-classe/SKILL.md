@@ -84,7 +84,7 @@ c = Cours('Activité 3 — Les antibiotiques', niveau='3e', chapitre='Séquence 
 c.identite()
 c.ajouter(Cartouche('Séquence 1', ['La découverte des micro-organismes', 'Étude de documents'],
                     'Activité 3 : Les antibiotiques', classe='3', note='/20',
-                    infos=[('⏱', 'Durée', '1 séance'), ('👥', 'Modalité', 'Binômes')],
+                    infos=[('Durée', '1 séance'), ('Modalité', 'Binômes')],
                     problematique='Comment les antibiotiques agissent-ils ?',
                     objectifs=['…', '…']))
 c.para(B('Situation de départ : '), '…')
@@ -105,7 +105,7 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - `B()` (gras), `I()` (italique), `C(texte, couleur)` ;
 - `Pointilles(cm)` : pointillés de réponse ;
 - `Bareme(n)`, `TotalBareme()` : barème « / n », calé à droite ;
-- `Icone('Nom')` : voir `icones.md` ; les émojis sont aussi permis dans le texte ;
+- `Icone('Nom')` : voir `icones.md` (icônes Lucide, dessinées) ; **jamais d'émoji** (§ 3) ;
 - `Saut()` : retour à la ligne dans le paragraphe.
 
 **Blocs** :
@@ -132,9 +132,9 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - `LigneIdentite()` ;
 - `Cartouche(...)` ;
 - `Question(n, ..., points)` ;
-- `Rappel(...)` : encadré jaune 💡 ;
-- `PourAllerPlusLoin(...)` : violet ★ ;
-- `JaiReussi(...)` : vert ✅, avec des cases.
+- `Rappel(...)` : encadré jaune « Rappel : » ;
+- `PourAllerPlusLoin(...)` : violet ;
+- `JaiReussi(...)` : vert, avec des cases.
 
 **Conventions** :
 
@@ -146,8 +146,13 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
   sauf dans une évaluation.
 - **Documents** : comme dans les fiches de Thomas, ils sont sur une **feuille de documents à part**,
   citée dans « Matériel ». La fiche n'en contient pas, sauf demande.
-- **Icônes** : `Icone('Nom', couleur, taille)` dans un titre ou à la place d'un émoji, suivie d'une
-  espace. Pas d'icône en tête d'un `Rappel` : le 💡 y est déjà.
+- **Zéro émoji** (règle de Thomas, 22/11/2026 : « ça fait trop IA ») : aucun émoji dans une fiche,
+  une correction, un écran, une animation, un cahier de texte, ni dans ce qu'on écrit à Thomas
+  (propositions, comptes rendus). Restent permis : les flèches de navigation des boutons (◀ ▶ ↺) et
+  les cases ☐. Les exemples Wegener (`wegener_*.py`) datent d'avant la règle et reproduisent ce qui
+  est en base : ne pas imiter leurs ★ et ⚠.
+- **Icônes** : `Icone('Nom', couleur, taille)` (un dessin Lucide, pas un émoji) dans un titre, suivie
+  d'une espace, avec parcimonie. Pas d'icône en tête d'un `Rappel`.
 - **Titres** : le titre du cours (`Cours(...)`, visible dans la liste des tableaux) peut différer
   du titre du cartouche (« Activité n : … »).
 
@@ -166,7 +171,7 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
    - la note sur 20, avec le détail des questions notées ;
    - deux compétences : « Pratiquer des démarches scientifiques » et « Pratiquer des langages scientifiques » ;
      le cartouche ajoute seul leurs domaines du socle (`avec_domaines`) ;
-   - durée, modalité, matériel et méthodes, avec émojis ;
+   - durée, modalité, matériel et méthodes (sans émoji) ;
    - la problématique, sous forme de question ;
    - 2 à 4 objectifs commençant par un verbe à l'infinitif.
 2. `Situation de départ :` en gras, puis deux phrases au plus.
@@ -255,7 +260,7 @@ le texte d'un bilan.
   suivi de « (adaptée) », même niveau et même séquence. L'app la range avec la fiche (bouton
   « Adaptée » de la bibliothèque) et ne la met **jamais** dans le classeur virtuel de la classe.
 - Elle change la **forme**, pas le fond : consigne découpée en étapes numérotées avec pictogrammes
-  (👀, ✍), amorces de phrases (« Je vois que… », « J'en déduis que… »), ce qu'il faut produire
+  (icônes Lucide, jamais d'émoji), amorces de phrases (« Je vois que… », « J'en déduis que… »), ce qu'il faut produire
   (« un texte de 3 à 4 lignes »). Le contenu évalué reste celui de la fiche ;
   **ne jamais réduire les exigences sans que Thomas le demande**, et signaler tout écart (une note
   qui porte sur moins de questions, par exemple).

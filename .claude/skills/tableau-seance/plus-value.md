@@ -1,7 +1,7 @@
 # Quelle plus-value pour quel moment
 
 Le tableau ne recopie pas la fiche : il montre ce que le papier ne sait pas montrer. Pour chaque
-moment d'une séance de SVT, ce qui apporte vraiment quelque chose, et avec quel outil. Les 🟠
+moment d'une séance de SVT, ce qui apporte vraiment quelque chose, et avec quel outil. Les animations
 (animation, scène riche) ne sont jamais fabriqués sans l'accord de Thomas à leur numéro (voir
 `SKILL.md`, § 3) : ils se **proposent** avec un storyboard.
 
@@ -20,10 +20,10 @@ moment d'une séance de SVT, ce qui apporte vraiment quelque chose, et avec quel
 
 ## Le moment de la séance → ce qui marche
 
-| Moment | Plus-value | 🟢 / 🔵 sans code nouveau | 🟠 à proposer (storyboard) |
+| Moment | Plus-value | écran / site sans code nouveau | animation à proposer (storyboard) |
 |---|---|---|---|
 | Ouverture, problématique | Découvrir la question ensemble ; susciter une hypothèse | `titre` + rideau ; `vrai_faux` sur les représentations initiales | — |
-| Situation de départ | Une image forte, une citation, l'actualité ; un cas concret | `document(image=…)`, `loupe`, `video` ; 🔵 hôpital `?presentation=<fiche>` (le patient en 3D, ses symptômes) | Scène 3D : le personnage de la situation, gros plans sur ce qui compte |
+| Situation de départ | Une image forte, une citation, l'actualité ; un cas concret | `document(image=…)`, `loupe`, `video` ; site : hôpital `?presentation=<fiche>` (le patient en 3D, ses symptômes) | Scène 3D : le personnage de la situation, gros plans sur ce qui compte |
 | Consigne | Étapes numérotées, temps visible | `consigne(…, minuteur=600)`, `coup_de_pouce` | — |
 | **Processus dans le temps** (mitose, subduction, digestion, éruption, germination, dérive, réaction immunitaire) | Voir les étapes s'enchaîner, revenir en arrière | `etapes` pour une simple suite de textes | **Animation** (niveau anticorps) : c'est ce que Thomas attend pour un mécanisme |
 | **Structure** (cellule, cœur, cerveau, fleur, globe, œil, squelette) | La légender devant la classe, la tourner, désigner une partie | `schema` (étiquettes une à une, ou au toucher), `loupe` | **Scène 3D** : modèle qu'on fait tourner, étiquettes qui suivent, gros plans par étape |
@@ -32,7 +32,7 @@ moment d'une séance de SVT, ce qui apporte vraiment quelque chose, et avec quel
 | Expérience, modèle | Montrer le montage, faire varier un facteur | `dessin` (verrerie), étapes du protocole, résultats sous rideau | **Simulation** à curseur ; animation du montage |
 | Classer, trier, associer | Les élèves viennent placer les étiquettes | Étiquettes et `fleche` révélées une à une | (glisser-déposer : pas encore dans l'app) |
 | **Idée fausse** (vigilances, `svt-cycle4.md` § 2) | La faire dire, puis la réfuter | `vrai_faux` (verdict + explication), `qcm` | Animation qui montre pourquoi c'est faux |
-| Correction d'une question | La réponse attendue, par morceaux ; les erreurs fréquentes | `question` (réponses sous cache), `tableau`, `calcul` ; 🔵 hôpital `?correction=<id>` (Docteur Morel, avec les voix) | — |
+| Correction d'une question | La réponse attendue, par morceaux ; les erreurs fréquentes | `question` (réponses sous cache), `tableau`, `calcul` ; site : hôpital `?correction=<id>` (Docteur Morel, avec les voix) | — |
 | Correction d'un schéma | Les légendes apparaissent une à une | `schema` avec l'image de la fiche | Scène 3D légendée |
 | Différenciation | Une aide sans arrêter la classe | `coup_de_pouce`, `fenetre` + `bouton` | — |
 | Navigation | Aller directement à la question 3 | `sommaire(…, position=1)` | — |
@@ -68,7 +68,7 @@ app « Le microbiote ». Ressources libres (3D, données) : `svt-cycle4.md` § 4
 
 - **Glisser-déposer avec zones de réponse** (lot D de `IDEES_actions_tableau.md`).
 - **Vote façon Plickers** (phase 4 de `PLAN_vision_suite.md`).
-- Des pages pilotables dans les autres sites de Thomas (Terre en mouvement…) : 🟣, à proposer.
+- Des pages pilotables dans les autres sites de Thomas (Terre en mouvement…) : chantier à proposer.
 
 ## Limites connues (vérifiées dans l'app)
 

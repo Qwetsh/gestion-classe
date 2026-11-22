@@ -70,13 +70,13 @@ Une proposition courte, lisible en deux minutes, **avant toute fabrication**. El
 
    | Type | Ce que c'est | Fabriqué quand |
    |---|---|---|
-   | 🟢 **Écran** | gabarits et interactions de `gc_ecrans` : titre sous rideau, consigne et minuteur, document en grand, réponse sous cache, vrai / faux, QCM, schéma qu'on légende, loupe, tableau à compléter, bilan à trous en rouge | dès que le déroulé est accepté |
-   | 🟠 **Animation** | une scène dessinée et animée sur mesure (`gc_animation`, niveau `exemples/anticorps-animation-reference.html`) | **seulement sur accord explicite à son numéro** |
-   | 🟠 **Scène riche** | 3D qu'on fait tourner (modèle GLB : patients et animaux de l'hôpital…), photo animée (lame qui se rapproche, cellules entourées une à une), graphique qui se trace, simulation à curseur | **seulement sur accord explicite à son numéro** |
-   | 🔵 **Site intégré** | une page qui existe déjà, posée sur l'écran et pilotée par le tableau : hôpital (`?presentation=`, `?correction=`), autre site de Thomas, page web | dès que le déroulé est accepté (aucun code) |
-   | 🟣 **À construire** | ce qui manque à un de ses sites ou à l'app (une page de l'hôpital, une fonction du tableau) | jamais dans la foulée : chantier à part, proposé à Thomas |
+   | **Écran** | gabarits et interactions de `gc_ecrans` : titre sous rideau, consigne et minuteur, document en grand, réponse sous cache, vrai / faux, QCM, schéma qu'on légende, loupe, tableau à compléter, bilan à trous en rouge | dès que le déroulé est accepté |
+   | **Animation** | une scène dessinée et animée sur mesure (`gc_animation`, niveau `exemples/anticorps-animation-reference.html`) | **seulement sur accord explicite à son numéro** |
+   | **Scène riche** | 3D qu'on fait tourner (modèle GLB : patients et animaux de l'hôpital…), photo animée (lame qui se rapproche, cellules entourées une à une), graphique qui se trace, simulation à curseur | **seulement sur accord explicite à son numéro** |
+   | **Site intégré** | une page qui existe déjà, posée sur l'écran et pilotée par le tableau : hôpital (`?presentation=`, `?correction=`), autre site de Thomas, page web | dès que le déroulé est accepté (aucun code) |
+   | **À construire** | ce qui manque à un de ses sites ou à l'app (une page de l'hôpital, une fonction du tableau) | jamais dans la foulée : chantier à part, proposé à Thomas |
 
-3. **Pour chaque 🟠, un storyboard** de 3 à 8 lignes : les étapes (titre, ce qu'on voit bouger,
+3. **Pour chaque animation ou scène riche, un storyboard** de 3 à 8 lignes : les étapes (titre, ce qu'on voit bouger,
    légende de deux lignes au plus), la durée, les fichiers nécessaires (quel modèle 3D, quelle
    photo) et ce qui pourrait décevoir (ex. « le modèle n'a pas d'organes visibles : on montre
    l'extérieur et on zoome »). Si plusieurs idées se valent pour le moment clé, proposer **deux
@@ -84,7 +84,7 @@ Une proposition courte, lisible en deux minutes, **avant toute fabrication**. El
 4. **Ce que Claude ne propose pas, et pourquoi**, en une ligne si c'est utile (« pas d'animation
    pour la consigne : un écran suffit »). Viser le spectacle aux **moments qui font comprendre**
    (situation, mécanisme, correction), pas partout.
-5. **La question** : « Je fabrique les 🟢 et 🔵 ; quelles animations (🟠) veux-tu ? » — en
+5. **La question** : « Je fabrique les écrans et les sites ; quelles animations veux-tu ? » — en
    rappelant leurs numéros.
 
 Puis **s'arrêter et attendre la réponse**.
@@ -92,36 +92,36 @@ Puis **s'arrêter et attendre la réponse**.
 ## 3. La validation : ce qui peut être fabriqué
 
 - **Rien n'est fabriqué avant la réponse de Thomas** à la proposition.
-- Un accord sur le déroulé (« ok », « vas-y », « go ») vaut pour les 🟢 et les 🔵, **pas pour les
-  🟠** : une animation ou une scène riche ne se code que si Thomas l'accepte **nommément** (« ok
+- Un accord sur le déroulé (« ok », « vas-y », « go ») vaut pour les écrans et les sites, **pas pour les
+  animations** : une animation ou une scène riche ne se code que si Thomas l'accepte **nommément** (« ok
   pour la 5 », « les deux animations », « fais la 3D du patient »). Dans le doute, demander.
-- Une 🟠 refusée ou sans réponse : l'écran devient un 🟢 équivalent (ou disparaît, s'il ne sert
+- Une animation refusée ou sans réponse : l'écran devient un écran équivalent (ou disparaît, s'il ne sert
   plus), et l'idée est rappelée dans le compte rendu (« proposée, non faite »).
-- Une 🟠 acceptée **avec des corrections** (« oui mais sans les virus ») : appliquer les
+- Une animation acceptée **avec des corrections** (« oui mais sans les virus ») : appliquer les
   corrections au storyboard ; s'il change beaucoup, le remontrer avant de coder.
 - Les corrections de Thomas qui valent pour la suite vont dans `gouts-tableaux.md`, avec la date.
 - La validation par lot du 15/11/2026 (« enchaîne » pour la mise en bibliothèque) ne couvre pas les
-  🟠 : même dans un lot, une animation se valide une par une.
+  animations : même dans un lot, une animation se valide une par une.
 - Un modèle 3D à **générer** (Meshy) coûte des crédits : jamais sans accord sur le coût. Un
-  🟣 n'est jamais commencé dans la foulée.
+  chantier à construire n'est jamais commencé dans la foulée.
 
 ## 4. Fabriquer ce qui est validé
 
-- **🟢 Écrans** : `gc_ecrans.py` (skill `cours-gestion-classe`, § 7) — gabarits de base, gabarits
+- **Écrans** : `gc_ecrans.py` (skill `cours-gestion-classe`, § 7) — gabarits de base, gabarits
   interactifs (`etapes`, `schema`, `vrai_faux`, `qcm`, `loupe`, `sommaire`), primitives et actions.
   Exemple complet : `cours-gestion-classe/exemples/interactifs_4e.py`.
-- **🟠 Animation** : `gc_animation` (« Les animations ») au niveau de
+- **Animation** : `gc_animation` (« Les animations ») au niveau de
   `_Claude/exemples/anticorps-animation-reference.html` ; réutiliser `banque.md` avant de dessiner.
   Un nouveau thème de dessins = une nouvelle banque (`animation/banque/<thème>.js`), notée dans
   `banque.md`.
-- **🟠 Scène riche** : `gc_animation` (« Les scènes riches ») — `bibliotheques=['three']` et la banque
+- **Scène riche** : `gc_animation` (« Les scènes riches ») — `bibliotheques=['three']` et la banque
   `scene3d` pour la 3D, `['chart']` pour un graphique, fichiers joints envoyés par
   `gc_envoi.py fichier`. Exemple complet : `cours-gestion-classe/exemples/patient3d_scene.py`
   (patiente de l'hôpital en 3D, symptômes zoomés, frottis animé).
-- **Contrôle de chaque 🟠, étape par étape** : `gc_animation.apercu` (3D : `fichiers=…, attente=25000`),
+- **Contrôle de chaque animation, étape par étape** : `gc_animation.apercu` (3D : `fichiers=…, attente=25000`),
   regarder chaque étape vers sa fin, assembler une planche et l'envoyer à Thomas avec le compte
   rendu (`SendUserFile`).
-- **🔵 Site intégré** : `p.site(x, y, w, h, url, etapes=n, boutons=True)` ; pour l'hôpital,
+- **Site intégré** : `p.site(x, y, w, h, url, etapes=n, boutons=True)` ; pour l'hôpital,
   `gc_ecrans.HOPITAL + '?presentation=<fiche>'` (activité, sans réponses) ou `'?correction=<id>'`.
 - Images : celles de `_ressources/` d'abord (`gc_envoi.py image`), sinon une image libre
   (Wikimedia Commons, NASA ; voir `svt-cycle4.md` § 4) avec son crédit en légende.
@@ -148,7 +148,7 @@ Puis **s'arrêter et attendre la réponse**.
 - Le cours visé (classe, date, heure) et le titre du tableau dans l'app.
 - Le déroulé final, écran par écran, en une ligne chacun, avec son type.
 - La planche des animations et scènes riches.
-- Les 🟠 proposées mais non faites, et les 🟣 suggérés (chantiers possibles).
+- Les animations proposées mais non faites, et les chantiers suggérés (chantiers possibles).
 - Ce qui reste à faire à la main, ce qui n'a pas pu être vérifié, les manques de l'app rencontrés.
 - L'entrée de cahier de texte de la séance, écrite comme le dit `cours-gestion-classe` § 3
   (« Le cahier de texte ») et envoyée dans l'app (popover du cours sur l'accueil), avec le
@@ -174,7 +174,7 @@ qui vaut pour la suite. Une remarque qui revient deux fois devient une règle (i
 - **Tout support interactif vit dans le tableau** (écran, animation, scène riche) : jamais de
   fichier HTML autonome ni de widget Genially (Thomas, 22/11/2026). Une page pour les élèves sort
   par l'export « page web pour les élèves » du tableau ; une vraie application (hôpital, Terre en
-  mouvement) est un 🟣, chantier à part, puis un 🔵 posé sur l'écran.
+  mouvement) est un chantier à part, puis un site posé sur l'écran.
 - Jamais de nom d'élève sur un écran ; jamais d'information PAP/PPRE/PAI à l'écran.
 - Ne jamais modifier ni supprimer un original ou une copie placée sans demande explicite.
 - Ne jamais écrire dans `profil.md` ou `gouts-tableaux.md` une préférence que Thomas n'a pas

@@ -139,17 +139,17 @@ def activite(affiches):
     titre(e, 'Activité 3 — Séance 5 : la manipulation')
     sit = e.ecran('M. Apabien revient')
     sit.site(20, 105, 600, 340, HOPITAL + '?presentation=yve-apabien', titre='Hôpital virtuel', boutons=True)
-    sit.texte(645, 110, 330, 26, '<div><b>5 jours plus tard :</b></div><div>🌡 38,9 °C</div>'
-              '<div>🔴 rougeur jusqu’au poignet</div><div>🟣 ganglions gonflés sous le bras</div>', NOIR, fond=FOND_ROSE)
+    sit.texte(645, 110, 330, 26, '<div><b>5 jours plus tard :</b></div><div>38,9 °C de fièvre</div>'
+              '<div>rougeur jusqu’au poignet</div><div>ganglions gonflés sous le bras</div>', NOIR, fond=FOND_ROSE)
     sit.texte(645, 352, 330, 26, B('L’infection n’est plus contenue dans sa main.'), ROUGE)
 
     vrai = vrai_antibiogramme(e, affiches.get('photo'))
 
     proto = avec_bas(LISIBLE, e.consigne, 'Partie 1 — Je réalise un antibiogramme', [
         ('Note', 'sous chaque boîte la place de A, B, C, bien écartées.'),
-        ('Trempe', 'une pastille dans A, égoutte-la, pose-la sur la boîte « plaie ».'),
+        ('Trempe', 'une pastille dans le flacon A de la ligne bleue, pose-la sur la boîte « plaie ».'),
         ('Rince', 'la pince, puis fais de même avec B et C.'),
-        ('Recommence', 'sur la boîte « microbiote ».'),
+        ('Recommence', 'sur la boîte « microbiote », avec la ligne rouge.'),
         ('Attends', '15 minutes sans toucher.'),
     ], minuteur=900)
 
@@ -253,7 +253,7 @@ def correction(affiches):
 
     anim_b = animation(e, aa.resistance(), affiches.get('b'))
 
-    bonus = question(e, '★ Pour aller plus loin', 'A détruit presque toutes les bactéries. Pourquoi n’est-ce pas le '
+    bonus = question(e, 'Pour aller plus loin', 'A détruit presque toutes les bactéries. Pourquoi n’est-ce pas le '
                      'meilleur choix ?', [
                          (None, 'Il détruirait aussi le microbiote : sans lui, plus d’effet barrière.'),
                          (None, 'Une bactérie comme <i>Clostridioides difficile</i> peut alors s’installer (séquence 1). '
@@ -264,7 +264,7 @@ def correction(affiches):
     e.sommaire('Correction — aller à…', [
         ('Q1 — Le tableau', q1), ('Q2 — Le schéma', q2), ('Q3 — Quel antibiotique ?', q3a),
         ('Q4 — Fleming', q4), ('Q5 — Mme Amalle', q5), ('Q6 — Le voisin', q6),
-        ('Les résistances', anim_b), ('★ Pour aller plus loin', bonus), ('Bilan', bl)], position=1)
+        ('Les résistances', anim_b), ('Pour aller plus loin', bonus), ('Bilan', bl)], position=1)
     return e
 
 
