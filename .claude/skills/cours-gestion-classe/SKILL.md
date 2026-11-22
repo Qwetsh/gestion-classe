@@ -123,7 +123,9 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 
 - `Tableau(Ligne(Cellule(blocs, [largeurs px], lignes=rowspan, fond, milieu)), style)` ;
 - `largeurs(*parts)` : des largeurs dont la somme fait la colonne (605 px) ;
-- `TableauSimple(entetes, lignes)`.
+- `TableauSimple(entetes, lignes)` ;
+- `TableauCompetences([(question, points, compétence), …])` : le tableau questions → compétences
+  d'une évaluation (§ 3), domaines du socle et total compris.
 
 **Blocs des fiches de Thomas** :
 
@@ -205,6 +207,16 @@ Pour une **évaluation** (règle de Thomas, 22/11/2026) :
 
 - **Les compétences** se nomment comme partout : intitulé du programme suivi de ses domaines du
   socle, « Pratiquer des langages (D1, D4) » (`avec_domaines`, table `DOMAINES_SOCLE`).
+- **Le tableau questions → compétences** (règle de Thomas, 22/11/2026) : chaque évaluation a, dans
+  son cours « (correction) », un tableau Question | Points | Compétence travaillée (domaines),
+  avec le total : `c.ajouter(TableauCompetences([('1', 2, 'Pratiquer des langages'), …]))`.
+  - Il figure dans le **plan** de l'évaluation soumis à Thomas : il le valide avant la
+    correction. Une évaluation déjà en base sans tableau : le proposer, ne pas l'ajouter seul.
+  - Jamais sur le sujet distribué aux élèves.
+  - Les points du tableau sont ceux du barème du sujet, question par question : le total doit
+    tomber juste.
+  - Le Correcteur ne le lit pas encore (chantier à part) : les compétences par question restent
+    à reporter dans la correction des copies.
 - **Les élèves répondent sur une copie séparée** : le sujet ne contient ni `Zone` ni `Pointilles`
   sous les questions. `Question(..., points=2)`, et `TotalBareme()` dans le cartouche.
 - **Les documents** de la partie « exploitation de documents » sont sur une **feuille à part**,

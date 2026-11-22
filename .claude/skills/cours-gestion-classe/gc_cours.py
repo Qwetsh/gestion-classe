@@ -347,6 +347,32 @@ def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=
     return Tableau(*lignes)
 
 
+def _nombre(x):
+    """2 → « 2 » ; 1.5 → « 1,5 »."""
+    return f'{x:g}'.replace('.', ',')
+
+
+def TableauCompetences(lignes, titre='Questions et compétences évaluées'):
+    """Tableau questions → compétences d'une évaluation, à poser dans son cours « (correction) »
+    (règle de Thomas, 22/11/2026). lignes : [(question, points, compétence ou [compétences]), …],
+    ex. [('1', 2, 'Pratiquer des langages'), ('2 a', 1.5, ['Pratiquer des démarches scientifiques'])].
+    Chaque compétence reçoit ses domaines du socle (avec_domaines) ; une ligne de total suit.
+    Une compétence hors du programme est signalée (à dire à Thomas)."""
+    rows, total = [], 0
+    for question, points, comps in lignes:
+        comps = [comps] if isinstance(comps, str) else list(comps)
+        for c in comps:
+            if avec_domaines(c) == c and '(' not in c:
+                print(f'! Question {question} : « {c} » n’est pas une compétence du programme', file=sys.stderr)
+        total += points
+        rows.append([T(str(question)), T(_nombre(points)), T(' ; '.join(avec_domaines(c) for c in comps))])
+    rows.append([B('Total'), B(_nombre(total)), None])   # None : cellule vide
+    blocs = [TableauSimple(['Question', 'Points', 'Compétence travaillée (domaines du socle)'], rows, parts=(1, 1, 5))]
+    if titre:
+        blocs.insert(0, Titre(2, titre))
+    return blocs
+
+
 def Question(n, *contenu, points=None):
     """« n. » en gras puis l'énoncé (mettre les verbes de consigne en B(...)) ; barème optionnel.
     Interligne 1,5 (règle d'accessibilité des fiches de Thomas, 22/11/2026)."""
