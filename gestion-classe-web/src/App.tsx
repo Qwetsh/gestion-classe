@@ -11,6 +11,7 @@ import { Analytics } from './pages/Analytics';
 import { Classes } from './pages/Classes';
 import { Sessions } from './pages/Sessions';
 import { SessionDetail } from './pages/SessionDetail';
+import { Journal } from './pages/Journal';
 import { GroupSessions } from './pages/GroupSessions';
 import { TpTemplates } from './pages/TpTemplates';
 import { DevPanel } from './pages/DevPanel';
@@ -110,6 +111,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SessionDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cahier-de-texte"
+          element={
+            <ProtectedRoute>
+              <Journal />
             </ProtectedRoute>
           }
         />
