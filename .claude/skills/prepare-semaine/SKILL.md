@@ -77,6 +77,10 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
 
 ## 3. Poser une seule question, si besoin, puis s'arrêter
 
+Poser des copies est un travail mécanique : Claude le fait directement (`cours-gestion-classe`
+§ 0, « Faire tout de suite, ou proposer d'abord »). Une activité **à écrire** (absente de OneDrive
+comme de la bibliothèque) est un contenu nouveau : plan court d'abord.
+
 Poser la question dans ces cas seulement :
 
 - un cours visé porte déjà un document (état « occupé ») ;
