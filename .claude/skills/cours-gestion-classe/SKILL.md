@@ -9,6 +9,8 @@ Thomas n'utilise plus Word : ses fiches sont rédigées dans l'éditeur de cours
 (feuilles A4, TipTap). Claude écrit le cours **directement dans l'app**. Il suit quatre étapes et
 ne saute jamais la vérification.
 
+0. Pour un **contenu nouveau**, soumettre d'abord un plan court et attendre son « ok » (§ 0,
+   « Faire tout de suite, ou proposer d'abord »).
 1. **Rédiger** le contenu, en suivant les habitudes des fiches de Thomas (§ 3).
 2. **Produire le brouillon** JSON avec la bibliothèque `gc_cours.py` de cette skill.
 3. **Vérifier** avec `npm run course:check` (schéma réel de l'éditeur) et corriger jusqu'à zéro erreur.
@@ -42,6 +44,19 @@ programme.
 - Le dépôt est **public** : rien de ce dossier n'y est copié (ni extrait, ni résumé, ni nom
   d'élève). On le cite par son chemin, on ne le recopie pas.
 - Les mises à jour de ces consignes se font dans ce dossier, pas ici.
+
+### Faire tout de suite, ou proposer d'abord (décision de Thomas, 22/11/2026)
+
+| Travail | Ce que fait Claude |
+|---|---|
+| Mécanique : poser, déplacer ou retirer un document, convertir une fiche OneDrive à l'identique, cahier de texte | Il fait directement, puis rend compte |
+| Contenu nouveau : nouvelle activité, évaluation, refonte, séquence | Un plan court d'abord (structure, questions, documents, barème) ; il fabrique après le « ok » de Thomas |
+| Tableau d'une séance | Il propose, puis attend (skill `tableau-seance`) ; animations validées une par une |
+| Demande floue sur un petit travail | Version par défaut, en nommant les autres possibilités |
+| Code de l'app, commit, PR, fusion | Seulement quand Thomas le demande |
+
+Le plan est une proposition qu'il peut refuser, pas une série de questions ; « ok » veut dire
+valider et continuer. Une seule question à la fois, si elle bloque vraiment.
 
 ## 1. Rédiger
 
