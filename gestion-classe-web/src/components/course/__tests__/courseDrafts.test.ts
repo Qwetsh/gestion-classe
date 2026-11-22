@@ -31,7 +31,7 @@ describe.runIf(drafts.length > 0)('brouillons de cours', () => {
     const lines = [
       `Brouillon : ${file}`,
       `Titre : ${draft.title}`,
-      `Longueur : ${words} mots${words > 300 ? ' — une fiche avec cartouche passe sur deux pages au-delà de 300 mots environ' : ''}`,
+      `Longueur : ${words} mots${words > 200 ? ' — une fiche avec cartouche passe sur deux pages au-delà de 200 mots environ (Arial 12, interligne 1,5)' : ''}`,
       errors.length ? `${errors.length} ERREUR(S) :` : 'Aucune erreur.',
       ...errors.map((e) => `  ✗ ${e}`),
       ...(warnings.length ? [`${warnings.length} avertissement(s) :`, ...warnings.map((w) => `  ! ${w}`)] : []),
