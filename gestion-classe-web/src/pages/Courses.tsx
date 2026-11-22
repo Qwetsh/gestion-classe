@@ -33,6 +33,7 @@ import { createCourse, duplicateCourse, emptyCourseDoc, saveCourseLinks } from '
 import { queueCourseImport } from '../lib/course/courseImport';
 import { DRAFT_ID, courseHref, groupLibrary, isMethodSheet, parseOpenTarget, splitShelves, type OpenMode } from '../lib/courseLibrary';
 import { binderLevels } from '../lib/binder';
+import { BinderGrid } from '../components/binder/BinderGrid';
 import { fetchClassGroupsForUser } from '../lib/classGroupQueries';
 import { openLocalFile, type OpenedFile } from '../lib/cloudFiles';
 import { STORAGE_QUOTA_BYTES, formatBytes, refuseCourseFile, renamedFile, sequenceKey, usageLevel, type CourseFile } from '../lib/courseFiles';
@@ -67,7 +68,7 @@ import '../styles/mes-cours.css';
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
 /** Onglets de la page : bibliothèque des activités, fiches méthode, cours placés par classe. */
-type View = 'library' | 'methods' | 'classes';
+type View = 'library' | 'methods' | 'classes' | 'binder';
 
 export function Courses() {
   const { user } = useAuth();
@@ -151,7 +152,9 @@ export function Courses() {
   // ---- Vue affichée sous l'éditeur : Bibliothèque, Fiches méthode (?vue=methodes) ou Par classe (?vue=classes&classe=…&activite=…) ----
 
   const vue = params.get('vue');
-  const view: View = vue === 'classes' ? 'classes' : vue === 'methodes' ? 'methods' : 'library';
+  const view: View = vue === 'classes' ? 'classes' : vue === 'methodes' ? 'methods' : vue === 'classeur' ? 'binder' : 'library';
+  /** Les deux rayons de la bibliothèque (activités, fiches méthode), par opposition aux vues par classe. */
+  const libraryView = view === 'library' || view === 'methods';
   const classKey = params.get('classe');
   const activity = params.get('activite');
 
@@ -159,6 +162,7 @@ export function Courses() {
   const viewHref = useCallback((next: { view: View; classKey?: string | null; activity?: string | null }) => {
     const q = new URLSearchParams();
     if (next.view === 'methods') q.set('vue', 'methodes');
+    if (next.view === 'binder') q.set('vue', 'classeur');
     if (next.view === 'classes') {
       q.set('vue', 'classes');
       if (next.classKey) q.set('classe', next.classKey);
@@ -431,9 +435,16 @@ export function Courses() {
           <button type="button" role="tab" aria-selected={view === 'classes'} className="mc-view" onClick={() => { if (view !== 'classes') void navigate(viewHref({ view: 'classes' })); }}>
             Par classe
           </button>
+          {binderLevel && (
+            <button type="button" role="tab" aria-selected={view === 'binder'} className="mc-view" onClick={() => { if (view !== 'binder') void navigate(viewHref({ view: 'binder' })); }} title="Ce que chaque classe voit du classeur">
+              Classeur des classes
+            </button>
+          )}
         </div>
 
         {error && <p className="mc-error" role="alert">{error}</p>}
+
+        {view === 'binder' && ready && <BinderGrid userId={userId} />}
 
         {view === 'classes' && ready && (
           <ClassCourses
@@ -462,7 +473,7 @@ export function Courses() {
           </div>
         )}
 
-        {view !== 'classes' && shelf.length > 0 && (
+        {libraryView && shelf.length > 0 && (
           <label className="mc-search">
             <Search size={16} className="mc-search__icon" aria-hidden />
             <input
@@ -477,11 +488,11 @@ export function Courses() {
           </label>
         )}
 
-        {view !== 'classes' && searching && textSettled && shown.length === 0 && textHits.length === 0 && (
+        {libraryView && searching && textSettled && shown.length === 0 && textHits.length === 0 && (
           <div className="mc-empty">{methodsView ? 'Aucune fiche méthode' : 'Aucun cours'} ne correspond à « {query.trim()} ».</div>
         )}
 
-        {view !== 'classes' && levels.length > 0 && (
+        {libraryView && levels.length > 0 && (
           <CourseLibrary
             key={view}
             shelf={methodsView ? 'methodes' : 'activites'}
@@ -511,7 +522,7 @@ export function Courses() {
           </div>
         )}
 
-        {view !== 'classes' && textHits.length > 0 && (
+        {libraryView && textHits.length > 0 && (
           <section className="mc-level" aria-label="Cours dont le texte contient les mots cherchés">
             <div className="mc-seq__head"><span className="mc-seq__name">Dans le texte</span></div>
             <ul className="mc-rows">

@@ -14,20 +14,19 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Eye } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { listBoards, type Board } from '../lib/boardsQueries';
 import { courseHref } from '../lib/courseLibrary';
-import { binderLevels, binderScreenSources, binderSummarySources, buildBinder, type BinderPage } from '../lib/binder';
-import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, mergeSummaries, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
-import { loadScreenSummaries } from '../lib/binderScreens';
+import type { BinderPage } from '../lib/binder';
+import { INK_WIDTH_MM, SUMMARY_LEAD, withSummaries, wrapInk } from '../lib/binderSummary';
 import {
-  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, rowEntries, rowFor, sequenceAnchors, staleRows, stateOf,
+  hasCorrection, itemStates, pageAccess, pagesFromReleased, rowEntries, rowFor, sequenceAnchors, staleRows, stateOf,
   type BinderItem, type BinderItemRow, type ItemState,
 } from '../lib/binderRelease';
 import { binderReleaseUnavailable, deleteBinderItems, fetchBinderClasses, fetchBinderItems, saveBinderItems, type BinderClass } from '../lib/binderReleaseQueries';
 import { MM } from '../lib/course/coursePage';
 import { BinderBook } from '../components/binder/BinderBook';
 import { BinderLinkButton } from '../components/binder/BinderLinkButton';
-import { loadSheetDoc } from '../components/binder/binderSheet';
+import { useBinderLibrary } from '../components/binder/useBinderLibrary';
+import { useInkMeasure } from '../components/binder/useInkMeasure';
 
 /** Hauteur du bandeau affiché sous la barre quand une classe est choisie. */
 const NOTICE_H = 44;
@@ -52,52 +51,15 @@ export function Binder() {
   const userId = user?.id ?? '';
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [boards, setBoards] = useState<Board[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    listBoards(userId)
-      .then((list) => { if (!cancelled) setBoards(list); })
-      .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Bibliothèque illisible'); });
-    return () => { cancelled = true; };
-  }, [userId]);
-
-  const levels = useMemo(() => (boards ? binderLevels(boards) : []), [boards]);
-  const level = params.get('niveau') && levels.includes(params.get('niveau')!) ? params.get('niveau')! : levels[0] ?? null;
-  const basePages = useMemo(() => (boards && level ? buildBinder(boards, level) : []), [boards, level]);
-
-  // Les bilans (écran « Bilan » de chaque activité, à défaut feuille de bilans corrigée) et la police
-  // d'écriture : lus avant d'ouvrir le classeur, pour que les pages ne changent plus de numéro ensuite
-  const [inkReady, setInkReady] = useState<{ texts: Map<string, SummaryRuns>; measure: (text: string) => number; failed: boolean } | null>(null);
-  useEffect(() => {
-    if (basePages.length === 0) return;
-    let cancelled = false;
-    // L'écran Bilan prime ; la feuille de bilans corrigée (plus une page) sert aux activités sans écran
-    const sources = boards && level ? binderSummarySources(boards, level) : [];
-    const screenSources = boards && level ? binderScreenSources(boards, level) : [];
-    const font = `${INK_PX}px "Playwrite FR Moderne"`;
-    // Une lecture ratée n'est pas « pas de bilan » : on le retient, pour ne rien proposer de faux
-    let failed = false;
-    const lost = <T,>(fallback: T) => () => { failed = true; return fallback; };
-    Promise.all([
-      Promise.all(sources.map(({ chapter, board }) => loadSheetDoc(board).then((d) => [chapter, d ? summaryRuns(d.content) : new Map()] as const, lost([chapter, new Map()] as const)))),
-      loadScreenSummaries(screenSources).catch(lost(new Map<string, SummaryRuns>())),
-      document.fonts.load(font).catch(() => []),
-    ]).then(([lists, screens]) => {
-      if (cancelled) return;
-      const sheets = new Map<string, SummaryRuns>(lists);
-      const texts = new Map<string, SummaryRuns>();
-      for (const chapter of new Set([...sheets.keys(), ...screens.keys()])) {
-        texts.set(chapter, mergeSummaries(screens.get(chapter) ?? new Map(), sheets.get(chapter)));
-      }
-      const ctx = document.createElement('canvas').getContext('2d');
-      if (ctx) ctx.font = font;
-      setInkReady({ texts, failed, measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
-    });
-    return () => { cancelled = true; };
-  }, [basePages, boards, level]);
+  const library = useBinderLibrary(userId, params.get('niveau'));
+  const { boards, error, levels, level, basePages, items } = library;
+  const measure = useInkMeasure();
+  // Les bilans et la police d'écriture : attendus avant d'ouvrir le classeur, pour que les pages ne
+  // changent plus de numéro ensuite
+  const inkReady = useMemo(
+    () => (library.texts && measure ? { texts: library.texts, measure, failed: library.textsFailed } : null),
+    [library.texts, library.textsFailed, measure],
+  );
 
   // ---- Réglage par classe : ce que chaque classe du niveau voit du classeur ----
   const [classes, setClasses] = useState<BinderClass[]>([]);
@@ -133,7 +95,6 @@ export function Binder() {
   /** Aperçu élève : seulement ce qui est ouvert à la classe. */
   const previewing = !!classId && rows !== null && !unavailable && preview;
 
-  const items = useMemo(() => (inkReady ? binderItems(basePages, inkReady.texts) : []), [basePages, inkReady]);
   const itemByAnchor = useMemo(() => new Map(items.map((i) => [i.anchor, i])), [items]);
   const states = useMemo(() => itemStates(rows ?? []), [rows]);
   /** Les bilans n'ont pas tous pu être lus : les corrections ne se règlent pas, et rien n'est dit périmé. */

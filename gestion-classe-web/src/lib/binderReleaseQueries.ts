@@ -43,6 +43,15 @@ export async function fetchBinderItems(classId: string): Promise<BinderItemRow[]
   return (data ?? []) as BinderItemRow[];
 }
 
+/** Réglages de plusieurs classes d'un coup (grille de « Mes cours »). */
+export async function fetchBinderItemsOfClasses(classIds: string[]): Promise<BinderItemRow[]> {
+  if (tableMissing || classIds.length === 0) return [];
+  const { data, error } = await supabase.from('class_binder_items').select(COLUMNS).in('class_id', classIds);
+  if (isMissingTable(error)) { tableMissing = true; return []; }
+  if (error) throw error;
+  return (data ?? []) as BinderItemRow[];
+}
+
 /** Enregistre des lignes (une par classe et par cours d'ancrage) et rend celles de la base. */
 export async function saveBinderItems(userId: string, rows: BinderItemRow[]): Promise<BinderItemRow[]> {
   if (rows.length === 0) return [];
