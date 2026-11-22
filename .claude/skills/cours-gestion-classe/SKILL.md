@@ -185,10 +185,16 @@ recopient en rouge). Partout où Claude écrit un bilan — cours, fiche, correc
 et son texte sont en `ROUGE` (`#C00000`) : `C('…', ROUGE)` dans un document, `color` de l'objet
 texte sur un écran. Les mots d'un texte à trous suivent la couleur du texte.
 
-Pour une **évaluation** :
+Pour une **évaluation** (règle de Thomas, 22/11/2026) :
 
-- `Question(..., points=2)` et `Zone('lignes', 4)` pour répondre ;
-- `TotalBareme()` dans le cartouche.
+- **Les élèves répondent sur une copie séparée** : le sujet ne contient ni `Zone` ni `Pointilles`
+  sous les questions. `Question(..., points=2)`, et `TotalBareme()` dans le cartouche.
+- **Les documents** de la partie « exploitation de documents » sont sur une **feuille à part**,
+  un cours « Évaluation — thème (documents) », comme pour les activités. Thomas la ramasse
+  parfois, parfois non : elle ne demande jamais d'écrire dessus et se lit seule (documents
+  titrés et numérotés, cités par leur numéro dans le sujet).
+- Le sujet est photocopié en **noir et blanc** : aucune question ne repose sur une couleur. La
+  feuille de documents peut être en couleur (`regles-permanentes.md`).
 
 ## 4. Vérifier
 
