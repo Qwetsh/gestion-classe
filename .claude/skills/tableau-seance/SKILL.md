@@ -30,6 +30,9 @@ La connaissance de Thomas est **hors du dépôt** (le dépôt est public) :
    déroulé, bilan, vigilances, pistes pour le tableau.
 4. `journal-seances.md` : les retours récents, surtout pour la même classe ou la même séquence.
 5. `svt-cycle4.md` : le programme et les idées fausses des élèves sur la notion.
+6. `projet-assistant/` : `LISEZMOI.md`, `consignes-pedagogiques.md`, `regles-permanentes.md`,
+   comme le dit la skill `cours-gestion-classe` § 0 (exigences pédagogiques et scientifiques,
+   ordre de priorité ; une contradiction se signale à Thomas).
 
 Puis `plus-value.md` et `banque.md` (ce dossier-ci).
 

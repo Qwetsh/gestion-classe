@@ -21,6 +21,28 @@ Chemins (dépôt `Gestion classe`, à adapter si la session est dans un worktree
 - brouillons : `gestion-classe-web/course-drafts/` (ignoré par git)
 - projet Supabase de production : `djodkjysovalpufgevrr`
 
+## 0. Relire les consignes pédagogiques (toujours, avant tout travail sur un cours)
+
+Avant d'écrire, de convertir, de corriger ou de retoucher un cours, une fiche, une évaluation ou
+des écrans, relire dans le dossier privé de Thomas, **hors du dépôt** :
+`C:\Users\Utilisateur\OneDrive\Documents\Ecole\_Claude\projet-assistant\`
+
+1. `LISEZMOI.md` : l'index du dossier et l'**ordre de priorité** en cas de contradiction.
+2. `consignes-pedagogiques.md` : posture, fiabilité scientifique, création et correction,
+   adaptation, interdits.
+3. `regles-permanentes.md` : les règles et décisions de Thomas (supports, questions, rigueur,
+   progression, matériel).
+
+Puis, selon le cours visé, la note de `documents/claude/` qui le concerne (l'index du
+`LISEZMOI.md` dit laquelle fait foi), et `references/BOcycle4Version2020.pdf` avant de citer le
+programme.
+
+- Une contradiction entre ces fichiers et cette skill, `profil.md` ou `gouts-tableaux.md` **se
+  signale à Thomas** ; elle ne se tranche pas en silence.
+- Le dépôt est **public** : rien de ce dossier n'y est copié (ni extrait, ni résumé, ni nom
+  d'élève). On le cite par son chemin, on ne le recopie pas.
+- Les mises à jour de ces consignes se font dans ce dossier, pas ici.
+
 ## 1. Rédiger
 
 Avant d'écrire, lire `exemples/microbiote.py` : c'est une fiche réelle de Thomas, reproduite à
