@@ -54,8 +54,9 @@ interface TocResponse {
 /** L'onglet « Classeur » est-il ouvert à cet élève ? (le serveur répond à sa place : rien d'autre n'est lu) */
 export async function studentBinderOpen(key: BinderKey): Promise<boolean> {
   try {
-    await call<TocResponse>({ action: 'toc', ...key });
-    return true;
+    // Question légère : le serveur répond oui ou non, sans erreur ni contenu
+    const res = await call<{ open?: unknown }>({ action: 'open', ...key });
+    return res.open === true;
   } catch {
     return false;
   }

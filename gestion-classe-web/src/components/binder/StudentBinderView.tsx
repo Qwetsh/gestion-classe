@@ -21,12 +21,14 @@ import { BinderBook } from './BinderBook';
 import { BinderSourceContext } from './binderSource';
 import { useInkMeasure } from './useInkMeasure';
 
-const ERRORS: Record<StudentBinderError['kind'], string> = {
-  forbidden: 'Ce classeur n’est plus accessible par ici. Demande à ton professeur.',
-  not_found: 'Ce classeur est introuvable.',
-  network: 'Pas de connexion. Vérifie ta connexion à Internet, puis recharge la page.',
-  server: 'Le classeur ne répond pas pour le moment. Réessaie dans quelques minutes.',
-};
+/** Message d'un refus ou d'une panne, selon l'entrée : le lien de Pronote, ou l'onglet de l'espace élève. */
+function errorMessage(kind: StudentBinderError['kind'], byLink: boolean): string {
+  if (kind === 'forbidden') return byLink ? 'Ce lien ne fonctionne plus. Demande le nouveau lien à ton professeur.' : 'Ce classeur n’est plus accessible par ici. Demande à ton professeur.';
+  if (kind === 'not_found') return 'Ce classeur est introuvable.';
+  // Dans l'espace élève, recharger la page ferait ressaisir le code
+  if (kind === 'network') return byLink ? 'Pas de connexion. Vérifie ta connexion à Internet, puis recharge la page.' : 'Pas de connexion. Vérifie ta connexion à Internet, puis rouvre le classeur.';
+  return 'Le classeur ne répond pas pour le moment. Réessaie dans quelques minutes.';
+}
 
 /** Âge au-delà duquel le classeur est relu au retour sur la page (les adresses d'images vivent 6 h). */
 const STALE_MS = 4 * 60 * 60 * 1000;
@@ -34,7 +36,7 @@ const STALE_MS = 4 * 60 * 60 * 1000;
 interface Props {
   /** Ce qui ouvre le classeur : le jeton du lien, ou le code de l'élève. */
   binderKey: BinderKey;
-  /** Retour à l'écran d'où le classeur a été ouvert (espace élève). */
+  /** Retour à l'écran d'où le classeur a été ouvert (espace élève) : le classeur est alors posé par-dessus lui. */
   onClose?: () => void;
   /** Le nom de la classe est connu (titre de la page). */
   onClassName?: (name: string) => void;
@@ -59,12 +61,21 @@ export function StudentBinderView({ binderKey, onClose, onClassName }: Props) {
     return () => setSeededUrlsOnly(false);
   }, []);
 
+  // Posé par-dessus l'espace élève : la page du dessous ne défile pas pendant qu'on feuillette
+  const embedded = !!onClose;
+  useEffect(() => {
+    if (!embedded) return;
+    const before = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = before; };
+  }, [embedded]);
+
   useEffect(() => {
     let cancelled = false;
     const readAt = Date.now();
     fetchStudentToc(key).then(
       (toc) => { if (!cancelled) { setLoaded({ id, toc }); setFailed(null); onClassName?.(toc.className); } },
-      (err: unknown) => { if (!cancelled) setFailed({ id, message: ERRORS[err instanceof StudentBinderError ? err.kind : 'server'] }); },
+      (err: unknown) => { if (!cancelled) setFailed({ id, message: errorMessage(err instanceof StudentBinderError ? err.kind : 'server', 'token' in key) }); },
     );
     const onVisible = () => { if (document.visibilityState === 'visible' && Date.now() - readAt > STALE_MS) setRound((n) => n + 1); };
     document.addEventListener('visibilitychange', onVisible);
@@ -101,6 +112,7 @@ export function StudentBinderView({ binderKey, onClose, onClassName }: Props) {
         error={error}
         message={message}
         student
+        embedded={embedded}
         barStart={onClose && (
           <button type="button" className="bd-btn" onClick={onClose} title="Revenir à mon espace">
             <ArrowLeft size={18} aria-hidden /> <span className="bd-hide-sm">Retour</span>

@@ -15,6 +15,9 @@
 .bd-stage--read .bd-glued__ink { border-radius: 0 0 16px 16px; }
 .bd-stage--read .bd-glued__turn { border-radius: 28px 28px 0 0; }
 
+/* Classeur ouvert par-dessus l'espace élève : au-dessus de ses en-têtes et de ses onglets */
+.bd-root--over { z-index: 1000; }
+
 /* Lien pour Pronote */
 .bd-link { position: relative; }
 .bd-link__panel {

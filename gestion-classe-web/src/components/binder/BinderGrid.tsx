@@ -119,11 +119,12 @@ export function BinderGrid({ userId }: { userId: string }) {
   useEffect(() => {
     if (!userId || !level) return;
     let cancelled = false;
+    setLoadError(null);
     (async () => {
       const classes = await fetchBinderClasses(userId, level);
       const all = await fetchBinderItemsOfClasses(classes.map((c) => c.id));
       const rows = new Map<string, BinderItemRow[]>(classes.map((c) => [c.id, all.filter((r) => r.class_id === c.id)]));
-      if (!cancelled) { setLoaded({ level, classes, rows }); setLoadError(null); }
+      if (!cancelled) setLoaded({ level, classes, rows });
     })().catch((err: unknown) => { if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Réglages illisibles'); });
     return () => { cancelled = true; };
   }, [userId, level]);
@@ -142,7 +143,8 @@ export function BinderGrid({ userId }: { userId: string }) {
   const apply = useCallback(async (classId: string, changes: { item: BinderItem; state: ItemState }[]) => {
     if (changes.length === 0) return;
     const next = changes.map(({ item, state }) => rowFor(item, classId, state));
-    const patch = (rows: BinderItemRow[]) => setLoaded((cur) => (cur ? { ...cur, rows: new Map(cur.rows).set(classId, mergeRows(cur.rows.get(classId) ?? [], rows)) } : cur));
+    // (seulement si la classe est toujours à l'écran : le niveau a pu changer pendant l'écriture)
+    const patch = (rows: BinderItemRow[]) => setLoaded((cur) => (cur?.rows.has(classId) ? { ...cur, rows: new Map(cur.rows).set(classId, mergeRows(cur.rows.get(classId) ?? [], rows)) } : cur));
     patch(next);
     setPending((n) => n + 1);
     setLoadError(null);
@@ -152,7 +154,7 @@ export function BinderGrid({ userId }: { userId: string }) {
       setLoadError(err instanceof Error ? `Réglage non enregistré : ${err.message}` : 'Réglage non enregistré');
       // L'écran ne doit jamais montrer « ouvert » ce que la base n'a pas : on relit ce qu'elle dit
       const fresh = await fetchBinderItemsOfClasses([classId]).catch(() => null);
-      if (fresh) setLoaded((cur) => (cur ? { ...cur, rows: new Map(cur.rows).set(classId, fresh) } : cur));
+      if (fresh) setLoaded((cur) => (cur?.rows.has(classId) ? { ...cur, rows: new Map(cur.rows).set(classId, fresh) } : cur));
     } finally {
       setPending((n) => n - 1);
     }
@@ -225,6 +227,7 @@ export function BinderGrid({ userId }: { userId: string }) {
                             type="button"
                             className="bg-all"
                             disabled={saving}
+                            aria-label={`Tout ouvrir : ${group.title}, ${c.name}`}
                             title="La page de garde et les activités de la séquence. Ni les corrections, ni la fiche de mémorisation, ni l’évaluation."
                             onClick={() => void apply(c.id, closed.map((item) => ({ item, state: { visible: true, correction: stateOf(states, item.anchor).correction } })))}
                           >
@@ -262,6 +265,7 @@ export function BinderGrid({ userId }: { userId: string }) {
                               type="checkbox"
                               checked={state.visible}
                               disabled={saving}
+                              aria-label={`${rowTitle(item)}, ${c.name} : ${item.role === 'activity' ? 'activité' : 'visible'}`}
                               onChange={(e) => void apply(c.id, [{ item, state: { visible: e.target.checked, correction: e.target.checked && state.correction } }])}
                             />
                             {item.role === 'activity' ? 'Activité' : 'Visible'}
@@ -271,6 +275,7 @@ export function BinderGrid({ userId }: { userId: string }) {
                               <input
                                 type="checkbox"
                                 checked={state.correction}
+                                aria-label={`${rowTitle(item)}, ${c.name} : correction`}
                                 // Une correction déjà ouverte se referme toujours, même si l'activité n'en a plus
                                 disabled={saving || !state.visible || (!state.correction && (noCorrection || textsFailed))}
                                 onChange={(e) => void apply(c.id, [{ item, state: { visible: true, correction: e.target.checked } }])}

@@ -52,14 +52,13 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
   const tab = !!access?.tab_enabled;
   const url = access?.link_token ? binderLinkUrl(access.link_token) : '';
 
-  const save = async (patch: Partial<BinderAccess>) => {
+  const save = async (patch: Partial<Omit<BinderAccess, 'class_id'>>) => {
     setBusy(true);
     setError(null);
     setCopied(false);
     setReplacing(false);
     try {
-      const base: BinderAccess = access ?? { class_id: classId, link_token: null, link_enabled: false, tab_enabled: false };
-      const saved = await saveBinderAccess(userId, { ...base, ...patch, class_id: classId });
+      const saved = await saveBinderAccess(userId, classId, patch);
       setLoaded({ classId, access: saved });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Enregistrement impossible');
@@ -85,7 +84,7 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
         <Link2 size={18} aria-hidden /> <span className="bd-hide-sm">{live && tab ? 'Lien et onglet actifs' : live ? 'Lien actif' : tab ? 'Onglet actif' : 'Accès des élèves'}</span>
       </button>
       {open && (
-        <div className="bd-link__panel" role="dialog" aria-label={`Lien du classeur de la ${className}`}>
+        <div className="bd-link__panel" role="dialog" aria-label={`Accès des élèves au classeur de la ${className}`}>
           <p className="bd-link__title">Lien pour Pronote</p>
           {!ready && !error && <p className="bd-link__text">Lecture…</p>}
           {ready && !live && (

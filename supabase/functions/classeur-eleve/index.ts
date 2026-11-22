@@ -19,6 +19,8 @@ import { boardIds, imagePaths, isUuid, openItems, ownedItems, ownedPaths, public
  *  - { action: "doc", token, boardId }   → le texte d'un cours ouvert et les adresses signées de
  *                                           ses images. Revérifié à chaque appel.
  * À la place de `token` : { code, studentId? } (espace élève).
+ *  - { action: "open", code }            → { open: true | false }, toujours 200 : l'espace élève
+ *                                           demande s'il doit montrer le classeur, sans rien charger.
  */
 
 const corsHeaders = {
@@ -91,14 +93,26 @@ async function classOfCode(supabase: SupabaseClient, code: string, studentId: st
     .not("is_deleted", "is", true)
     .maybeSingle());
   if (!cls || cls.user_id !== student.user_id) return null;
-  if (student.is_witness !== true) {
-    const binder = must(await supabase
-      .from("class_binders")
-      .select("user_id, tab_enabled")
+  const binder = must(await supabase
+    .from("class_binders")
+    .select("user_id, tab_enabled")
+    .eq("class_id", cls.id)
+    .maybeSingle());
+  if (binder && binder.user_id !== cls.user_id) return null;
+  if (student.is_witness === true) {
+    // L'élève témoin sert d'aperçu : il voit le classeur dès que le professeur a commencé à régler
+    // l'accès de la classe ou à lui ouvrir quelque chose, pas avant (sinon, un onglet vide)
+    if (binder) return cls as BinderClass;
+    const started = must(await supabase
+      .from("class_binder_items")
+      .select("id")
       .eq("class_id", cls.id)
-      .maybeSingle());
-    if (!binder || binder.tab_enabled !== true || binder.user_id !== cls.user_id) return null;
+      .eq("user_id", cls.user_id)
+      .eq("visible", true)
+      .limit(1));
+    return (started ?? []).length > 0 ? (cls as BinderClass) : null;
   }
+  if (!binder || binder.tab_enabled !== true) return null;
   return cls as BinderClass;
 }
 
@@ -145,9 +159,10 @@ serve(async (req: Request) => {
   const token = typeof body?.token === "string" ? body.token : null;
   const code = typeof body?.code === "string" ? body.code : null;
   const studentId = isUuid(body?.studentId) ? body.studentId : null;
-  if (action !== "toc" && action !== "doc") return json({ error: "bad_request" }, 400);
+  if (action !== "toc" && action !== "doc" && action !== "open") return json({ error: "bad_request" }, 400);
   // Même réponse pour un accès mal formé, inconnu, coupé ou fermé : rien à apprendre de l'erreur
-  if (token !== null ? !TOKEN.test(token) : code === null || !CODE.test(code)) return json({ error: "forbidden" }, 403);
+  const malformed = token !== null ? !TOKEN.test(token) : code === null || !CODE.test(code);
+  if (malformed) return action === "open" ? json({ open: false }) : json({ error: "forbidden" }, 403);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -163,8 +178,10 @@ serve(async (req: Request) => {
   }
 });
 
-async function answer(supabase: SupabaseClient, action: "toc" | "doc", token: string | null, code: string | null, studentId: string | null, boardId: unknown): Promise<Response> {
+async function answer(supabase: SupabaseClient, action: "toc" | "doc" | "open", token: string | null, code: string | null, studentId: string | null, boardId: unknown): Promise<Response> {
   const cls = token !== null ? await classOfToken(supabase, token) : await classOfCode(supabase, code!, studentId);
+  // « Le classeur est-il ouvert ici ? » : oui ou non, sans erreur ni contenu
+  if (action === "open") return json({ open: cls !== null });
   if (!cls) return json({ error: "forbidden" }, 403);
 
   const { items, boards } = await openFor(supabase, cls);

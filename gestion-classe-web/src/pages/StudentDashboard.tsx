@@ -126,6 +126,20 @@ export function StudentDashboard() {
   const [binderCode, setBinderCode] = useState<string | null>(null);
   const showBinder = binderCode !== null;
   const [binderOpen, setBinderOpen] = useState(false);
+  // Le retour du téléphone referme le classeur au lieu de quitter l'espace (et de faire ressaisir le code)
+  const openBinder = useCallback(() => {
+    window.history.pushState({ ...(window.history.state as object | null), gcBinder: true }, '');
+    setBinderOpen(true);
+  }, []);
+  const closeBinder = useCallback(() => {
+    if ((window.history.state as { gcBinder?: boolean } | null)?.gcBinder) window.history.back();
+    else setBinderOpen(false);
+  }, []);
+  useEffect(() => {
+    const onPop = () => setBinderOpen(false);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
   // Un élève témoin voit tout (preview en conditions réelles).
   const isWitness = !!data?.is_witness;
@@ -143,7 +157,8 @@ export function StudentDashboard() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Academy music — play HP theme when Maison tab is active
-  const isAcademyActive = activeTab === 'academy' && !!academyData?.enabled;
+  // (le classeur ouvert par-dessus coupe la musique)
+  const isAcademyActive = activeTab === 'academy' && !!academyData?.enabled && !binderOpen;
   useEffect(() => {
     if (isAcademyActive && !muted) {
       if (!audioRef.current) {
@@ -518,12 +533,10 @@ export function StudentDashboard() {
             ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
             ...(showAnnales ? [{ key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos }] : []),
             { key: 'ar' as const, icon: '🔍', label: 'RA', activeColor: T.accentSoft, activeText: T.accent },
-            // Le classeur n'est pas un onglet comme les autres : il s'ouvre en plein écran
-            ...(showBinder ? [{ key: 'binder' as const, icon: <BookOpen size={14} aria-hidden style={{ verticalAlign: '-2px' }} />, label: 'Classeur', activeColor: T.indigoSoft, activeText: T.indigo }] : []),
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => { if (tab.key === 'binder') setBinderOpen(true); else setActiveTab(tab.key); }}
+              onClick={() => setActiveTab(tab.key)}
               style={{
                 flex: 1, padding: isAcademyTab ? '8px' : '10px',
                 borderRadius: '10px', border: 'none',
@@ -541,6 +554,21 @@ export function StudentDashboard() {
             </button>
           ))}
         </div>
+
+        {/* Le classeur de la classe : hors de la barre d'onglets (déjà pleine sur un téléphone), il s'ouvre en plein écran */}
+        {showBinder && !isAcademyTab && (
+          <button
+            type="button"
+            onClick={openBinder}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
+              marginBottom: '16px', padding: '12px', borderRadius: '12px', border: 'none',
+              background: T.indigoSoft, color: T.indigo, fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <BookOpen size={18} aria-hidden /> Mon classeur de SVT
+          </button>
+        )}
 
         {activeTab === 'academy' && academyData?.enabled ? (
           academyData.house && academyData.classId ? (
@@ -719,7 +747,7 @@ export function StudentDashboard() {
         </p>
       </div>
       {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
-      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={() => setBinderOpen(false)} />}
+      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} />}
     </div>
   );
 }

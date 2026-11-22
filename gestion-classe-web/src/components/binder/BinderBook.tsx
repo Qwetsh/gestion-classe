@@ -72,6 +72,11 @@ interface Props {
   keepParams?: Record<string, string>;
   /** Vue de l'élève : pas de lien vers l'espace du professeur, page de garde non cochée. */
   student?: boolean;
+  /**
+   * Classeur ouvert par-dessus une autre page (espace élève) : il ne touche pas à l'adresse (la page
+   * affichée reste dans son état à lui) et passe au-dessus de tout.
+   */
+  embedded?: boolean;
   /** Double-clic sur une fiche. */
   onOpen?: (boardId: string) => void;
   /** Réglage d'une classe : la page est fermée pour elle (voilée, grisée au sommaire). */
@@ -82,7 +87,9 @@ interface Props {
   strip?: (page: BinderPage) => ReactNode;
 }
 
-export function BinderBook({ pages, ready, message, error, barStart, barEnd, notice, noticeH = 0, keepParams, student, onOpen, veiled, inkClosed, strip }: Props) {
+export function BinderBook({ pages, ready, message, error, barStart, barEnd, notice, noticeH = 0, keepParams, student, embedded, onOpen, veiled, inkClosed, strip }: Props) {
+  /** Page affichée d'un classeur embarqué (1 = la première). */
+  const [localPage, setLocalPage] = useState(1);
   const { loadDoc } = useContext(BinderSourceContext);
   const [params, setParams] = useSearchParams();
   const viewport = useViewport();
@@ -100,7 +107,7 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   const swipeX = useRef<number | null>(null);
 
   const count = pages.length;
-  const index = Math.max(0, Math.min(count - 1, (Number(params.get('page')) || 1) - 1));
+  const index = Math.max(0, Math.min(count - 1, (embedded ? localPage : Number(params.get('page')) || 1) - 1));
 
   const tocW = tocOpen && viewport.w >= 900 ? 260 : 0;
   const narrow = viewport.w < 640;
@@ -162,8 +169,11 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
         },
       });
     } else setFlip(null);
-    setParams(q, { replace: true });
-  }, [params, setParams, keepParams, count, index, double, read, ghost, pages]);
+    // Embarqué, l'adresse appartient à la page qui porte le classeur (elle peut avoir été nettoyée
+    // d'un code d'élève) : on n'y écrit rien
+    if (embedded) setLocalPage(target + 1);
+    else setParams(q, { replace: true });
+  }, [params, setParams, keepParams, count, index, double, read, ghost, pages, embedded]);
 
   // Clavier : flèches, Page précédente / suivante, Début / Fin
   useEffect(() => {
@@ -240,7 +250,7 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   };
 
   return (
-    <div className="bd-root">
+    <div className={embedded ? 'bd-root bd-root--over' : 'bd-root'}>
       <header className="bd-bar">
         {barStart}
         <button type="button" className="bd-btn" aria-pressed={tocOpen} onClick={() => setTocOpen((o) => !o)} title="Sommaire">

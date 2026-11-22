@@ -118,11 +118,15 @@ export async function fetchBinderAccess(classId: string): Promise<BinderAccess |
   return (data as BinderAccess | null) ?? null;
 }
 
-/** Enregistre l'accès de la classe (une ligne par classe). */
-export async function saveBinderAccess(userId: string, access: BinderAccess): Promise<BinderAccess> {
+/**
+ * Enregistre un réglage de l'accès de la classe (une ligne par classe). Seules les colonnes de
+ * `patch` sont écrites : ouvrir l'onglet depuis un écran resté ouvert ne doit pas remettre en place
+ * un lien coupé ou remplacé ailleurs entre-temps.
+ */
+export async function saveBinderAccess(userId: string, classId: string, patch: Partial<Omit<BinderAccess, 'class_id'>>): Promise<BinderAccess> {
   const { data, error } = await supabase
     .from('class_binders')
-    .upsert({ ...access, user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'class_id' })
+    .upsert({ ...patch, class_id: classId, user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'class_id' })
     .select(ACCESS_COLUMNS)
     .single();
   if (error) throw error;

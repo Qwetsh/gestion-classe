@@ -11,7 +11,9 @@
 .bg-note { margin: 0; font-size: 12px; color: var(--text-muted); }
 
 /* Sur un écran étroit, la grille défile sous sa première colonne */
-.bg-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* (hauteur bornée : c'est dans ce cadre que l'en-tête des classes reste collé en haut) */
+.bg-scroll { max-height: calc(100vh - 230px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+@media (max-width: 640px) { .bg-item { min-width: 130px !important; max-width: 160px !important; white-space: normal; } }
 .bg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .bg-table th, .bg-table td { padding: 6px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
 .bg-table tbody:last-child tr:last-child th, .bg-table tbody:last-child tr:last-child td { border-bottom: 0; }
