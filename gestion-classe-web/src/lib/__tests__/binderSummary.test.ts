@@ -3,7 +3,7 @@ import type { JSONContent } from '@tiptap/core';
 import type { Board } from '../boardsQueries';
 import { buildBinder, type BinderPage } from '../binder';
 import {
-  ABOVE_MAX, RULED_LINES_TITLED, SUMMARY_LEAD, UNDER_LINES, summaryRuns, withSummaries, wrapInk, type InkLine, type SummaryRuns,
+  ABOVE_MAX, RULED_LINES_TITLED, SUMMARY_LEAD, UNDER_LINES, htmlParagraphs, mergeSummaries, screenSummary, summaryRuns, withSummaries, wrapInk, type InkLine, type SummaryRuns,
 } from '../binderSummary';
 
 let n = 0;
@@ -151,5 +151,71 @@ describe('withSummaries', () => {
   it('sans bilan, le classeur est inchangé', () => {
     const base = buildBinder(library, '4e');
     expect(withSummaries(base, new Map(), wrap)).toEqual(base);
+  });
+});
+
+describe('htmlParagraphs', () => {
+  it('écrit les mots à trouver en clair et soulignés, un paragraphe par bloc', () => {
+    const html = '<div>Les éruptions <span data-gap="v1-g1">effusives</span> émettent une <span data-gap="v1-g2">lave fluide</span>.</div>'
+      + '<div>Cette différence s’explique par la <span data-gap="v1-g3">viscosité du magma</span>&nbsp;!</div>';
+    expect(htmlParagraphs(html)).toEqual([
+      [{ text: 'Les éruptions ' }, { text: 'effusives', underline: true }, { text: ' émettent une ' }, { text: 'lave fluide', underline: true }, { text: '.' }],
+      [{ text: 'Cette différence s’explique par la ' }, { text: 'viscosité du magma', underline: true }, { text: ' !' }],
+    ]);
+  });
+
+  it('garde le soulignement déjà posé, oublie le gras, décode les entités et coupe aux <br>', () => {
+    expect(htmlParagraphs('<div><b>Le</b> <u>noyau</u> &amp; la croûte<br>suite</div><div>  </div>')).toEqual([
+      [{ text: 'Le ' }, { text: 'noyau', underline: true }, { text: ' & la croûte' }],
+      [{ text: 'suite' }],
+    ]);
+  });
+
+  it('saute les lignes vides et garde collé un mot à trouver après l’apostrophe', () => {
+    const paragraphs = htmlParagraphs('<div>Ses indices.</div><div><br></div><div>L’<span data-gap="g1">épicentre</span> est au-dessus.</div>');
+    expect(paragraphs).toEqual([
+      [{ text: 'Ses indices.' }],
+      [{ text: 'L’' }, { text: 'épicentre', underline: true }, { text: ' est au-dessus.' }],
+    ]);
+    // À l'écriture, « L’épicentre » reste un seul mot, souligné en partie
+    expect(wrapInk(paragraphs.slice(1), 12, measure)[0]).toEqual([{ text: 'L’' }, { text: 'épicentre', underline: true }]);
+  });
+});
+
+/** Un écran tel que le pose le gabarit bilan de gc_ecrans.py. */
+const RED = '#C00000';
+const text = (y: number, html: string, color = RED) => ({ id: `t${y}`, type: 'text', x: 50, y, w: 900, size: 26, color, html });
+const bilanScreen = (body: string, title = '<div><b>Bilan</b></div>') => ({
+  objects: [text(20, '<div>Correction · Activité 1</div>', '#64748B'), text(48, title), text(112, body)],
+});
+
+describe('screenSummary', () => {
+  it('lit le texte rouge sous le titre « Bilan », et seulement sur l’écran Bilan', () => {
+    const question = { objects: [text(48, '<div><b>Question 1</b></div>', '#1F4E79'), text(200, '<div>Réponse en rouge</div>')] };
+    expect(screenSummary([question, bilanScreen('<div>Le magma <span data-gap="g1">remonte</span>.</div>')])).toEqual([
+      [{ text: 'Le magma ' }, { text: 'remonte', underline: true }, { text: '.' }],
+    ]);
+  });
+
+  it('met bout à bout plusieurs écrans Bilan, et ne rend rien sans écran Bilan', () => {
+    const screens = [bilanScreen('<div>Première partie.</div>'), bilanScreen('<div>Seconde partie.</div>', '<div><b>Bilan (suite)</b></div>')];
+    expect(screenSummary(screens).map((p) => p.map((r) => r.text).join(''))).toEqual(['Première partie.', 'Seconde partie.']);
+    expect(screenSummary([{ objects: [text(48, '<div><b>Document 1</b></div>', '#1F4E79')] }, { objects: 'abîmé' }, {}])).toEqual([]);
+    // Un titre « Bilan » qui n'est pas rouge n'est pas l'écran Bilan
+    expect(screenSummary([{ objects: [text(48, '<div><b>Bilan</b></div>', '#1F4E79'), text(112, '<div>Texte</div>')] }])).toEqual([]);
+  });
+});
+
+describe('mergeSummaries', () => {
+  it('donne la priorité à l’écran Bilan, la feuille de bilans comblant les activités sans écran', () => {
+    const screens: SummaryRuns = new Map([['activite 1', { heading: 'Activité 1 — Volcans', paragraphs: [[{ text: 'Écran.' }]] }]]);
+    const sheet: SummaryRuns = new Map([
+      ['activite 1', { heading: 'Activité 1 — Volcans', paragraphs: [[{ text: 'Feuille.' }]] }],
+      ['activite 2', { heading: 'Activité 2 — Séisme', paragraphs: [[{ text: 'Feuille 2.' }]] }],
+    ]);
+    const merged = mergeSummaries(screens, sheet);
+    expect(merged.get('activite 1')!.paragraphs).toEqual([[{ text: 'Écran.' }]]);
+    expect(merged.get('activite 2')!.paragraphs).toEqual([[{ text: 'Feuille 2.' }]]);
+    expect(mergeSummaries(screens, undefined).size).toBe(1);
   });
 });

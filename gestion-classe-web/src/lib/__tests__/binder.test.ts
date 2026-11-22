@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import {
-  binderDocKind, binderLevels, binderSummarySources, binderToc, buildBinder, dividerIndex, glueAngle, sectionAt, shortActivityLabel, spreadOf, turn,
+  binderDocKind, binderLevels, binderScreenSources, binderSummarySources, binderToc, buildBinder, dividerIndex, glueAngle, sectionAt, shortActivityLabel, spreadOf, turn,
 } from '../binder';
 
 let n = 0;
@@ -107,6 +107,22 @@ describe('buildBinder', () => {
     expect(binderSummarySources(library, '4e').map((s) => [s.chapter, s.board.title]))
       .toEqual([[S1, 'Feuille de bilans — Séquence 1 (correction)']]);
     expect(binderSummarySources(library, '3e')).toEqual([]);
+  });
+
+  it('cherche l’écran Bilan de chaque activité dans sa correction, puis dans sa fiche', () => {
+    const sources = binderScreenSources(library, '4e');
+    expect(sources.map((s) => [s.chapter, s.key, s.boards.map((b) => b.title)])).toEqual([
+      [S1, 'activite 1', ['Activité 1 — Volcans']],
+      [S1, 'activite 2', ['Activité 2 — Séisme (correction)', 'Activité 2 — Séisme']],
+      [S1, 'activite 10', ['Activité 10 — Bilan']],
+      [S1, 'activite bonus', ['Activité bonus — Modéliser']],
+      // Un seul original par titre : le plus récent
+      [S2, 'activite 3', ['Activité 3 — Wegener']],
+    ]);
+    expect(sources.find((s) => s.key === 'activite 3')!.boards[0].id).toBe('wegener-recent');
+    expect(sources[1].title).toBe('Activité 2 — Séisme');
+    // Ni les évaluations, ni les séquences sans page de garde, ni un autre niveau
+    expect(binderScreenSources(library, '3e')).toEqual([]);
   });
 
   it('met l’évaluation après les activités : sa copie modèle l’accompagne, sinon sa correction suit', () => {
