@@ -440,3 +440,11 @@ export function renderMediaObject(ctx: CanvasRenderingContext2D, o: MediaObject,
   }
   ctx.restore();
 }
+
+/**
+ * Adresses déjà signées par le serveur pour un visiteur sans compte (classeur des élèves) : elles
+ * prennent la place de la demande de signature, que seul un compte connecté peut faire.
+ */
+export function seedSignedUrls(urls: Record<string, string>): void {
+  for (const [path, url] of Object.entries(urls)) urlCache.set(path, Promise.resolve(url));
+}

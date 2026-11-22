@@ -19,6 +19,7 @@ import { ToolGrid, ToolView } from './pages/Toolbox';
 import { Students } from './pages/Students';
 import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
+import { StudentBinder } from './pages/StudentBinder';
 import { Classroom } from './pages/Classroom';
 import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
@@ -50,6 +51,8 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/eleve" element={<StudentDashboard />} />
+        {/* Classeur de la classe, par le lien de Pronote (jeton dans le chemin) */}
+        <Route path="/classeur/c/:token" element={<StudentBinder />} />
         {/* Envoi d'une copie depuis le téléphone (QR code de « Ajouter une copie », jeton dans le #) */}
         <Route path="/depot" element={<CopyDepot />} />
 

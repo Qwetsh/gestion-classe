@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import { buildBinder, type BinderPage } from '../binder';
 import {
-  binderItems, hasCorrection, itemStates, pageAccess, parseReleased, releaseBinder, releasedOf, rowFor, sequenceAnchors, staleRows,
+  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowEntries, rowFor, sequenceAnchors, staleRows,
   type BinderItem, type BinderItemRow,
 } from '../binderRelease';
 import { withSummaries, type InkRun, type SummaryRuns } from '../binderSummary';
@@ -56,8 +56,9 @@ const CLASS = 'classe-4a';
 const row = (anchor: string, visible: boolean, correction = false): BinderItemRow => rowFor(item(anchor), CLASS, { visible, correction });
 
 /** Ce que la classe reçoit, mis en page comme à l'écran : identifiants des cours et tout le texte écrit à la main. */
-function seen(rows: BinderItemRow[]) {
-  const released = releaseBinder(pages, rows);
+const byId = new Map(library.map((b) => [b.id, b]));
+function seen(rows: BinderItemRow[], boardOf: (id: string) => Board | undefined = (id) => byId.get(id)) {
+  const released = pagesFromReleased(rowEntries(rows), boardOf);
   const out = withSummaries(released.pages, released.texts, (p) => p.map((r) => r));
   const boards = out.flatMap((p) => (p.kind === 'sheet' ? [p.board.id, ...(p.companion ? [p.companion.id] : [])] : []));
   const ink = JSON.stringify(out.map((p) => (p.kind === 'sheet' ? [p.summary, p.above] : p.kind === 'ruled' ? p.lines : null)));
@@ -89,7 +90,7 @@ describe('binderItems', () => {
   });
 });
 
-describe('releaseBinder — rien ne sort sans avoir été ouvert', () => {
+describe('ce que la classe voit — rien ne sort sans avoir été ouvert', () => {
   it('fermé par défaut : aucune fiche, seulement les intercalaires', () => {
     const { out, ink } = seen([]);
     expect(out.every((p) => p.kind === 'divider')).toBe(true);
@@ -130,9 +131,31 @@ describe('releaseBinder — rien ne sort sans avoir été ouvert', () => {
     for (const r of forged) expect(seen([r]).boards).toEqual([]);
   });
 
-  it('une ligne qui cite la page d’une autre activité ne l’ouvre pas', () => {
-    const forged: BinderItemRow = { ...row('a1', true), released: { ...releasedOf(item('a1'), false), pages: [{ board: 'a1', role: 'activity', label: 'Activité 1' }, { board: 'a3', role: 'activity', label: 'Activité 3' }] } };
+  it('la ligne est suivie par identifiant : un cours renommé depuis reste montré, et signalé', () => {
+    const old = row('a2', true);
+    const renamed = library.map((b) => (b.id === 'a2-docs' ? { ...b, title: 'Activité 2 — Séisme (correction)' } : b));
+    const now = new Map(renamed.map((b) => [b.id, b]));
+    // Ce que le serveur servira : les cours cités par la ligne, quel que soit leur titre du jour
+    expect(seen([old], (id) => now.get(id)).boards).toEqual(['a2', 'a2-proto', 'a2-docs']);
+    expect(staleRows(binderItems(buildBinder(renamed, '4e'), texts), [old]).map((s) => s.reason)).toEqual(['pages']);
+  });
+
+  it('une page d’un rôle que l’activité ne peut pas porter ne sort pas, même citée', () => {
+    const forged: BinderItemRow = { ...row('a1', true), released: { ...releasedOf(item('a1'), false), pages: [{ board: 'a1', role: 'activity', label: 'Activité 1' }, { board: 'a1-corr', role: 'correction', label: 'x' }, { board: 'eval', role: 'evaluation', label: 'x' }] } };
     expect(seen([forged]).boards).toEqual(['a1']);
+  });
+
+  it('un cours cité par deux lignes n’est collé qu’une fois', () => {
+    const twice: BinderItemRow = { ...row('a3', true), released: { ...releasedOf(item('a3'), false), pages: [{ board: 'a3', role: 'activity', label: 'Activité 3' }, { board: 'a2-docs', role: 'documents', label: 'x' }] } };
+    const { boards } = seen([row('a2', true), twice]);
+    expect(boards.filter((b) => b === 'a2-docs')).toHaveLength(1);
+  });
+
+  it('tout ouvert : les pages sont dans l’ordre du classeur du professeur', () => {
+    const all = items.map((i) => rowFor(i, CLASS, { visible: true, correction: true }));
+    const teacher = pages.flatMap((p) => (p.kind === 'divider' ? [p.key] : p.kind === 'sheet' && p.anchor ? [p.key] : []));
+    const student = pagesFromReleased(rowEntries(all.reverse()), (id) => byId.get(id)).pages.map((p) => p.key);
+    expect(student).toEqual(teacher);
   });
 
   it('une ancre absente du classeur (doublon écarté, copie posée sur l’emploi du temps, entraînement noté) n’ouvre rien', () => {
@@ -158,7 +181,7 @@ describe('releaseBinder — rien ne sort sans avoir été ouvert', () => {
     const old = row('a2', true, true);
     const edited = new Map(texts);
     edited.set(S1, new Map([...texts.get(S1)!, ['activite 2', { heading: 'Activité 2 — Séisme', paragraphs: runs('BILAN-RETOUCHE') }]]));
-    // releaseBinder ne relit pas les bilans d'aujourd'hui : seulement la ligne
+    // On ne relit pas les bilans d'aujourd'hui : seulement la ligne
     expect(seen([old]).ink).toContain('BILAN-A2');
     expect(seen([old]).ink).not.toContain('RETOUCHE');
     expect(staleRows(binderItems(pages, edited), [old]).map((s) => s.reason)).toEqual(['correction']);

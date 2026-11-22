@@ -64,3 +64,58 @@ export async function deleteBinderItems(ids: string[]): Promise<void> {
   const { error } = await supabase.from('class_binder_items').delete().in('id', ids);
   if (error) throw error;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Accès de la classe à son classeur (table `class_binders`, migration 086)
+// ---------------------------------------------------------------------------------------------
+
+export interface BinderAccess {
+  class_id: string;
+  link_token: string | null;
+  link_enabled: boolean;
+  tab_enabled: boolean;
+}
+
+const ACCESS_COLUMNS = 'class_id, link_token, link_enabled, tab_enabled';
+
+let accessMissing = false;
+
+/** Migration 086 pas encore appliquée : pas de lien, pas d'onglet. */
+export const binderAccessUnavailable = () => accessMissing;
+
+function isMissingAccess(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return error.code === '42P01' || error.code === 'PGRST205' || (msg.includes('class_binders') && (msg.includes('does not exist') || msg.includes('schema cache')));
+}
+
+/** Jeton d'adresse : 32 caractères tirés au hasard (192 bits), sans caractère à échapper dans une adresse. */
+export function newLinkToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Adresse du classeur de la classe, à poser dans Pronote. */
+export function binderLinkUrl(token: string): string {
+  return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/classeur/c/${token}`;
+}
+
+/** Accès de la classe (null : aucun réglé, ou table absente). */
+export async function fetchBinderAccess(classId: string): Promise<BinderAccess | null> {
+  if (accessMissing) return null;
+  const { data, error } = await supabase.from('class_binders').select(ACCESS_COLUMNS).eq('class_id', classId).maybeSingle();
+  if (isMissingAccess(error)) { accessMissing = true; return null; }
+  if (error) throw error;
+  return (data as BinderAccess | null) ?? null;
+}
+
+/** Enregistre l'accès de la classe (une ligne par classe). */
+export async function saveBinderAccess(userId: string, access: BinderAccess): Promise<BinderAccess> {
+  const { data, error } = await supabase
+    .from('class_binders')
+    .upsert({ ...access, user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'class_id' })
+    .select(ACCESS_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data as BinderAccess;
+}

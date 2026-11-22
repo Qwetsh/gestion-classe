@@ -2,47 +2,33 @@
  * Classeur virtuel (PLAN_classeur_virtuel.md, lot 1) : page `/classeur?niveau=4e&page=3`.
  *
  * Le classeur d'un élève « parfait », assemblé à la volée depuis la bibliothèque de « Mes cours »
- * (lib/binder.ts) : modifier une fiche dans « Mes cours » modifie le classeur. Double page sur un
- * grand écran (comme un classeur ouvert), page seule sur un écran étroit. Flèches du clavier,
- * onglets des intercalaires, sommaire.
+ * (lib/binder.ts) : modifier une fiche dans « Mes cours » modifie le classeur. Le classeur lui-même
+ * (pages, sommaire, feuille qui tourne) est dans components/binder/BinderBook.tsx.
  *
  * Réglage par classe (PLAN_classeur_eleves.md, lot 1) : `&classe=<id>` montre le même classeur avec,
  * sur chaque page, ce que cette classe en voit (fermé par défaut) et de quoi l'ouvrir ; « Aperçu
- * élève » ne garde que ce qui est ouvert. Rien n'est encore servi aux élèves.
+ * élève » ne garde que ce qui est ouvert. Lot 2 : « Lien pour Pronote » donne l'adresse où la classe
+ * retrouve son classeur, sans compte.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Columns2, Eye, List, RectangleVertical } from 'lucide-react';
+import { ArrowLeft, Eye } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { listBoards, type Board } from '../lib/boardsQueries';
 import { courseHref } from '../lib/courseLibrary';
-import {
-  SECTION_LABEL, SECTION_ORDER, binderLevels, binderScreenSources, binderSummarySources, binderToc, buildBinder, dividerIndex, sectionAt, spreadOf, turn,
-  type BinderSection,
-} from '../lib/binder';
-import { turnDirection } from '../lib/binderFlaps';
-import { planFlip } from '../lib/binderFlip';
+import { binderLevels, binderScreenSources, binderSummarySources, buildBinder, type BinderPage } from '../lib/binder';
 import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, mergeSummaries, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
 import { loadScreenSummaries } from '../lib/binderScreens';
 import {
-  binderItems, hasCorrection, itemStates, pageAccess, releaseBinder, rowFor, sequenceAnchors, staleRows, stateOf,
+  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, rowEntries, rowFor, sequenceAnchors, staleRows, stateOf,
   type BinderItem, type BinderItemRow, type ItemState,
 } from '../lib/binderRelease';
 import { binderReleaseUnavailable, deleteBinderItems, fetchBinderClasses, fetchBinderItems, saveBinderItems, type BinderClass } from '../lib/binderReleaseQueries';
-import { MM, PAGE_H, PAGE_W } from '../lib/course/coursePage';
-import { BinderLeaf } from '../components/binder/BinderLeaf';
-import { PageFlip, type FlipView } from '../components/binder/PageFlip';
-import { HOLES_MM, loadSheetDoc } from '../components/binder/binderSheet';
-// Polices des cours (chargées d'habitude avec l'éditeur) : une fiche peut s'en servir
-import '@fontsource/opendyslexic/400.css';
-import '@fontsource/opendyslexic/700.css';
-import '@fontsource/playwrite-fr-moderne/400.css';
-import '../styles/classeur.css';
+import { MM } from '../lib/course/coursePage';
+import { BinderBook } from '../components/binder/BinderBook';
+import { BinderLinkButton } from '../components/binder/BinderLinkButton';
+import { loadSheetDoc } from '../components/binder/binderSheet';
 
-/** Largeur d'écran à partir de laquelle le classeur s'ouvre en double page. */
-const DOUBLE_MIN_W = 1000;
-/** Place des onglets qui dépassent de chaque côté, en px de feuille. */
-const TAB_W = 70;
 /** Hauteur du bandeau affiché sous la barre quand une classe est choisie. */
 const NOTICE_H = 44;
 
@@ -61,16 +47,6 @@ function Switch({ checked, disabled, title, onChange, children }: { checked: boo
   );
 }
 
-function useViewport() {
-  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
-  useEffect(() => {
-    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  return size;
-}
-
 export function Binder() {
   const { user } = useAuth();
   const userId = user?.id ?? '';
@@ -78,15 +54,6 @@ export function Binder() {
   const [params, setParams] = useSearchParams();
   const [boards, setBoards] = useState<Board[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const viewport = useViewport();
-  const [tocOpen, setTocOpen] = useState(() => window.innerWidth >= 1280);
-  /** Choix de l'utilisateur ; null = selon la largeur de l'écran. */
-  const [doubleChoice, setDoubleChoice] = useState<boolean | null>(null);
-  /** Feuille en train de se tourner, avec le contenu de ses deux faces. */
-  const [flip, setFlip] = useState<FlipView | null>(null);
-  const spreadRef = useRef<HTMLDivElement>(null);
-  /** Début d'un glissement du doigt (tourner les pages sur téléphone). */
-  const swipeX = useRef<number | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -103,7 +70,7 @@ export function Binder() {
 
   // Les bilans (écran « Bilan » de chaque activité, à défaut feuille de bilans corrigée) et la police
   // d'écriture : lus avant d'ouvrir le classeur, pour que les pages ne changent plus de numéro ensuite
-  const [inkReady, setInkReady] = useState<{ texts: Map<string, SummaryRuns>; measure: (text: string) => number } | null>(null);
+  const [inkReady, setInkReady] = useState<{ texts: Map<string, SummaryRuns>; measure: (text: string) => number; failed: boolean } | null>(null);
   useEffect(() => {
     if (basePages.length === 0) return;
     let cancelled = false;
@@ -111,9 +78,12 @@ export function Binder() {
     const sources = boards && level ? binderSummarySources(boards, level) : [];
     const screenSources = boards && level ? binderScreenSources(boards, level) : [];
     const font = `${INK_PX}px "Playwrite FR Moderne"`;
+    // Une lecture ratée n'est pas « pas de bilan » : on le retient, pour ne rien proposer de faux
+    let failed = false;
+    const lost = <T,>(fallback: T) => () => { failed = true; return fallback; };
     Promise.all([
-      Promise.all(sources.map(({ chapter, board }) => loadSheetDoc(board).then((d) => [chapter, d ? summaryRuns(d.content) : new Map()] as const, () => [chapter, new Map()] as const))),
-      loadScreenSummaries(screenSources).catch(() => new Map<string, SummaryRuns>()),
+      Promise.all(sources.map(({ chapter, board }) => loadSheetDoc(board).then((d) => [chapter, d ? summaryRuns(d.content) : new Map()] as const, lost([chapter, new Map()] as const)))),
+      loadScreenSummaries(screenSources).catch(lost(new Map<string, SummaryRuns>())),
       document.fonts.load(font).catch(() => []),
     ]).then(([lists, screens]) => {
       if (cancelled) return;
@@ -124,7 +94,7 @@ export function Binder() {
       }
       const ctx = document.createElement('canvas').getContext('2d');
       if (ctx) ctx.font = font;
-      setInkReady({ texts, measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
+      setInkReady({ texts, failed, measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
     });
     return () => { cancelled = true; };
   }, [basePages, boards, level]);
@@ -142,7 +112,9 @@ export function Binder() {
   /** Réglages lus pour une classe ; ils ne valent que pour elle. */
   const [loaded, setLoaded] = useState<{ classId: string; rows: BinderItemRow[] } | null>(null);
   const [releaseError, setReleaseError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  /** Écritures en cours (plusieurs interrupteurs peuvent être touchés à la suite). */
+  const [pending, setPending] = useState(0);
+  const saving = pending > 0;
   const [preview, setPreview] = useState(false);
   useEffect(() => {
     if (!classId) return;
@@ -164,42 +136,47 @@ export function Binder() {
   const items = useMemo(() => (inkReady ? binderItems(basePages, inkReady.texts) : []), [basePages, inkReady]);
   const itemByAnchor = useMemo(() => new Map(items.map((i) => [i.anchor, i])), [items]);
   const states = useMemo(() => itemStates(rows ?? []), [rows]);
-  const stale = useMemo(() => (rows && items.length > 0 ? staleRows(items, rows) : []), [items, rows]);
+  /** Les bilans n'ont pas tous pu être lus : les corrections ne se règlent pas, et rien n'est dit périmé. */
+  const bilansLost = !!inkReady?.failed;
+  const stale = useMemo(() => (rows && items.length > 0 && !bilansLost ? staleRows(items, rows) : []), [items, rows, bilansLost]);
+  const boardById = useMemo(() => new Map((boards ?? []).map((b) => [b.id, b])), [boards]);
 
   const pages = useMemo(() => {
     if (!inkReady) return basePages;
     const width = INK_WIDTH_MM * MM * 0.97;
     const wrap = (paragraphs: Parameters<typeof wrapInk>[0]) => wrapInk(paragraphs, width, inkReady.measure, SUMMARY_LEAD);
     if (previewing && rows) {
-      // Ce que la classe voit : seulement ce que ses lignes ont ouvert, bilans compris
-      const released = releaseBinder(basePages, rows);
+      // Ce que la classe voit : ses lignes ouvertes, suivies par identifiant comme le fera le serveur
+      // (un cours renommé depuis reste montré tant que la ligne n'a pas été mise à jour)
+      const released = pagesFromReleased(rowEntries(rows), (id) => boardById.get(id));
       return withSummaries(released.pages, released.texts, wrap);
     }
     return withSummaries(basePages, inkReady.texts, wrap);
-  }, [basePages, inkReady, previewing, rows]);
+  }, [basePages, inkReady, previewing, rows, boardById]);
 
-  /** Ouvre ou ferme des éléments pour la classe : montré tout de suite, annulé si l'écriture échoue. */
+  /** Ouvre ou ferme des éléments pour la classe : montré tout de suite, relu en base si l'écriture échoue. */
   const applyStates = useCallback(async (changes: { item: BinderItem; state: ItemState }[]) => {
-    if (!classId || !rows || changes.length === 0) return;
+    if (!classId || changes.length === 0) return;
     const next = changes.map(({ item, state }) => rowFor(item, classId, state));
-    const before = rows;
-    setLoaded({ classId, rows: mergeRows(before, next) });
-    setSaving(true);
+    setLoaded((cur) => (cur?.classId === classId ? { classId, rows: mergeRows(cur.rows, next) } : cur));
+    setPending((n) => n + 1);
     setReleaseError(null);
     try {
       const saved = await saveBinderItems(userId, next);
       setLoaded((cur) => (cur?.classId === classId ? { classId, rows: mergeRows(cur.rows, saved) } : cur));
     } catch (err: unknown) {
-      setLoaded((cur) => (cur?.classId === classId ? { classId, rows: before } : cur));
       setReleaseError(err instanceof Error ? `Réglage non enregistré : ${err.message}` : 'Réglage non enregistré');
+      // L'écran ne doit jamais montrer « ouvert » ce que la base n'a pas : on relit ce qu'elle dit
+      const fresh = await fetchBinderItems(classId).catch(() => null);
+      if (fresh) setLoaded((cur) => (cur?.classId === classId ? { classId, rows: fresh } : cur));
     } finally {
-      setSaving(false);
+      setPending((n) => n - 1);
     }
-  }, [classId, rows, userId]);
+  }, [classId, userId]);
 
   /** Récrit les lignes ouvertes qui ne disent plus ce que dit le classeur ; retire celles dont le cours en est sorti. */
   const refreshStale = useCallback(async () => {
-    if (!classId || !rows) return;
+    if (!classId) return;
     await applyStates(stale.flatMap((s) => (s.item ? [{ item: s.item, state: { visible: true, correction: s.row.correction_visible } }] : [])));
     const ids = stale.flatMap((s) => (!s.item && s.row.id ? [s.row.id] : []));
     if (ids.length === 0) return;
@@ -209,140 +186,37 @@ export function Binder() {
     } catch (err: unknown) {
       setReleaseError(err instanceof Error ? err.message : 'Mise à jour impossible');
     }
-  }, [applyStates, classId, rows, stale]);
+  }, [applyStates, classId, stale]);
 
   /** Choisit la classe réglée (null : le classeur complet du professeur). */
   const pickClass = useCallback((id: string | null) => {
     const q = new URLSearchParams(params);
     if (id) q.set('classe', id); else q.delete('classe');
+    // Quitter l'aperçu change les pages : on repart de la première
+    if (preview) q.set('page', '1');
     setPreview(false);
     setParams(q, { replace: true });
-  }, [params, setParams]);
+  }, [params, setParams, preview]);
   /** L'aperçu n'a pas les mêmes pages que le classeur complet : on repart de la première. */
   const togglePreview = useCallback(() => {
     const q = new URLSearchParams(params);
     q.set('page', '1');
-    setFlip(null);
     setPreview((p) => !p);
     setParams(q, { replace: true });
   }, [params, setParams]);
-  const count = pages.length;
-  const index = Math.max(0, Math.min(count - 1, (Number(params.get('page')) || 1) - 1));
-
-  const tocW = tocOpen && viewport.w >= 900 ? 260 : 0;
-  const double = doubleChoice ?? viewport.w - tocW >= DOUBLE_MIN_W;
-  const [leftIdx, rightIdx] = spreadOf(index, count, double);
-
-  /** Copie figée d'une page affichée ou voisine (déjà mise en page), avant qu'elle ne change de place. */
-  const ghost = useCallback((i: number | null): HTMLElement | null => {
-    const key = i === null ? undefined : pages[i]?.key;
-    const el = key === undefined ? null : spreadRef.current?.querySelector<HTMLElement>(`[data-leaf-key="${CSS.escape(key)}"]`);
-    if (!el) return null;
-    const copy = el.cloneNode(true) as HTMLElement;
-    copy.removeAttribute('data-leaf-key');
-    return copy;
-  }, [pages]);
-
-  /** `turnPage` : tourner la feuille (flèches, clavier, doigt) ; sinon, simple changement de vue (sommaire, onglet). */
-  const go = useCallback((next: number, turnPage = false) => {
-    const q = new URLSearchParams(params);
-    if (level) q.set('niveau', level);
-    const target = Math.max(0, Math.min(count - 1, next));
-    q.set('page', String(target + 1));
-    const dir = turnDirection(index, target);
-    const plan = turnPage && dir !== 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? planFlip(spreadOf(index, count, double), spreadOf(target, count, double), dir, double, index, target)
-      : null;
-    // Les copies sont prises avant le changement de vue : après, les pages ont changé de place
-    if (plan) {
-      setFlip({
-        id: Date.now(),
-        kind: plan.kind,
-        front: ghost(plan.front),
-        back: plan.back === null ? null : ghost(plan.back),
-        under: plan.under && { side: plan.under.side, node: ghost(plan.under.page) },
-      });
-    } else setFlip(null);
-    setParams(q, { replace: true });
-  }, [params, setParams, level, count, index, double, ghost]);
-
-  // Clavier : flèches, Page précédente / suivante, Début / Fin
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.isContentEditable)) return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(turn(index, count, double, 1), true); }
-      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(turn(index, count, double, -1), true); }
-      else if (e.key === 'Home') { e.preventDefault(); go(0); }
-      else if (e.key === 'End') { e.preventDefault(); go(count - 1); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [go, index, count, double]);
-
-  // Fiches de la vue suivante et de la précédente lues d'avance : la page se tourne sans attendre
-  useEffect(() => {
-    for (const dir of [1, -1] as const) {
-      const [l, r] = spreadOf(turn(index, count, double, dir), count, double);
-      for (const i of [l, r]) {
-        const p = i === null ? null : pages[i];
-        if (p?.kind === 'sheet') loadSheetDoc(p.board).catch(() => { /* relu à l'affichage */ });
-      }
-    }
-  }, [index, count, double, pages]);
 
   const openCourse = useCallback((id: string) => { void navigate(courseHref(id)); }, [navigate]);
 
-  // Mise à l'échelle : la vue entière tient dans l'écran
-  const BAR_H = 56;
-  // Sur téléphone, les flèches sont posées sur la page (et le doigt tourne les pages)
-  const narrow = viewport.w < 640;
-  const availW = Math.max(200, viewport.w - tocW - (narrow ? 8 : 2 * 56));
-  const availH = Math.max(200, viewport.h - BAR_H - (classId ? NOTICE_H : 0) - 32);
-  const spreadW = PAGE_W * (double ? 2 : 1) + 2 * TAB_W;
-  const scale = Math.min(availW / spreadW, availH / PAGE_H);
-
-  // Onglets des intercalaires : à gauche s'ils sont déjà passés, à droite sinon
-  const firstShown = leftIdx ?? rightIdx ?? 0;
-  const rightShown = rightIdx ?? leftIdx ?? 0;
-  const tabs = SECTION_ORDER.map((section, rank) => {
-    const at = dividerIndex(pages, section);
-    // Déjà tourné : avant la page de droite (ou c'est la page de gauche)
-    const side: 'left' | 'right' = at < (rightIdx ?? firstShown + 1) ? 'left' : 'right';
-    return { section, rank, at, side };
-  }).filter((t) => t.at >= 0);
-  const current = sectionAt(pages, rightShown);
-
-  /** Abscisse d'une page dans la vue, en px de feuille. */
-  const slotX = (side: 'left' | 'right') => TAB_W + (double && side === 'right' ? PAGE_W : 0);
-  /** Côté d'une page : en double page, les pages impaires sont à gauche (la première est seule, à droite). */
-  const sideOf = (i: number): 'left' | 'right' => (double && i % 2 === 1 ? 'left' : 'right');
-
-  // Les pages voisines sont montées un instant après la vue (cachées) : mises en page d'avance, elles
-  // servent de verso à la feuille qu'on tourne et apparaissent sans attendre quand on arrive
-  const spreadKey = `${leftIdx}:${rightIdx}:${double}`;
-  const [warmFor, setWarmFor] = useState('');
-  useEffect(() => {
-    const timer = window.setTimeout(() => setWarmFor(spreadKey), 450);
-    return () => window.clearTimeout(timer);
-  }, [spreadKey]);
-  const shown = [leftIdx, rightIdx].filter((i): i is number => i !== null);
-  const reach = warmFor === spreadKey ? (double ? 2 : 1) : 0;
-  const aliveFrom = shown.length ? Math.max(0, Math.min(...shown) - reach) : 0;
-  const aliveTo = shown.length ? Math.min(count - 1, Math.max(...shown) + reach) : -1;
-  const alive = Array.from({ length: aliveTo - aliveFrom + 1 }, (_, k) => aliveFrom + k);
-
-  const toc = useMemo(() => binderToc(pages), [pages]);
-  const visible = new Set([leftIdx, rightIdx].filter((i): i is number => i !== null));
-
   /** Bandeau de réglage posé en haut d'une page : ce que la classe en voit, et de quoi l'ouvrir. */
-  const strip = (i: number) => {
-    const page = pages[i];
+  const strip = (page: BinderPage): ReactNode => {
     if (!selectedClass || page.kind === 'divider') return null;
     const access = pageAccess(page, states);
     const item = page.anchor ? itemByAnchor.get(page.anchor) : undefined;
     if (access === 'locked' || !item) {
-      return <span className="bd-strip__note">{page.kind === 'ruled' ? 'Bilan sans fiche : ne s’ouvre pas aux classes' : 'Évaluation : ne s’ouvre pas encore aux classes'}</span>;
+      const why = page.kind === 'ruled' ? 'Bilan sans fiche : ne s’ouvre pas aux classes'
+        : page.role === 'evaluation' || page.role === 'correction' || /^Évaluation/.test(page.label) ? 'Évaluation : ne s’ouvre pas encore aux classes'
+        : 'Titre ambigu (correction, copie modèle ou évaluation ?) : ne s’ouvre pas aux classes';
+      return <span className="bd-strip__note">{why}</span>;
     }
     const state = stateOf(states, item.anchor);
     if (page.kind === 'ruled') {
@@ -356,14 +230,15 @@ export function Binder() {
       : [];
     return (
       <>
-        <Switch checked={state.visible} onChange={(visible) => void applyStates([{ item, state: { visible, correction: visible && state.correction } }])}>
+        <Switch checked={state.visible} disabled={saving} onChange={(visible) => void applyStates([{ item, state: { visible, correction: visible && state.correction } }])}>
           Visible pour la {selectedClass.name}
         </Switch>
         {item.role === 'activity' && (
           <Switch
             checked={state.correction}
-            disabled={!state.visible || !hasCorrection(item)}
-            title={!hasCorrection(item) ? 'Ni copie modèle ni bilan pour cette activité' : !state.visible ? 'Ouvrir d’abord l’activité' : 'La copie modèle et le bilan de l’activité'}
+            // Une correction déjà ouverte se referme toujours, même si l'activité n'en a plus
+            disabled={saving || !state.visible || (!state.correction && (!hasCorrection(item) || bilansLost))}
+            title={bilansLost && !state.correction ? 'Les bilans n’ont pas pu être lus : rechargez la page' : !hasCorrection(item) ? 'Ni copie modèle ni bilan pour cette activité' : !state.visible ? 'Ouvrir d’abord l’activité' : 'La copie modèle et le bilan de l’activité'}
             onChange={(correction) => void applyStates([{ item, state: { visible: true, correction } }])}
           >
             Correction
@@ -373,6 +248,7 @@ export function Binder() {
           <button
             type="button"
             className="bd-strip__btn"
+            disabled={saving}
             title="La page de garde et les activités de la séquence. Ni les corrections, ni la fiche de mémorisation, ni l’évaluation."
             onClick={() => void applyStates(closedInSequence.map((it) => ({ item: it, state: { visible: true, correction: stateOf(states, it.anchor).correction } })))}
           >
@@ -383,187 +259,92 @@ export function Binder() {
     );
   };
 
-  const pageNumber = (i: number | null) => (i === null ? '' : String(i + 1));
-  const shownLabel = leftIdx !== null && rightIdx !== null ? `Pages ${pageNumber(leftIdx)}-${pageNumber(rightIdx)}` : `Page ${pageNumber(firstShown)}`;
-
-  return (
-    <div className="bd-root">
-      <header className="bd-bar">
-        <button type="button" className="bd-btn" onClick={() => void navigate('/cours')} title="Retour à Mes cours">
-          <ArrowLeft size={18} aria-hidden /> <span className="bd-hide-sm">Mes cours</span>
-        </button>
-        <button type="button" className="bd-btn" aria-pressed={tocOpen} onClick={() => setTocOpen((o) => !o)} title="Sommaire">
-          <List size={18} aria-hidden />
-        </button>
-        <h1 className="bd-title"><BookOpen size={18} aria-hidden /> Classeur de SVT</h1>
-        {levels.length > 1 ? (
-          <select
-            className="bd-select"
-            value={level ?? ''}
-            aria-label="Niveau"
-            onChange={(e) => { const q = new URLSearchParams(); q.set('niveau', e.target.value); setParams(q, { replace: true }); }}
-          >
-            {levels.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-        ) : level && <span className="bd-level">{level}</span>}
-        {classes.length > 0 && (
-          <select
-            className="bd-select"
-            value={classId ?? ''}
-            aria-label="Classe réglée"
-            title="Choisir une classe pour régler ce qu’elle voit du classeur"
-            onChange={(e) => pickClass(e.target.value || null)}
-          >
-            <option value="">Mon classeur (tout)</option>
-            {classes.map((c) => <option key={c.id} value={c.id}>Réglage : {c.name}</option>)}
-          </select>
-        )}
-        {(tuning || previewing) && (
-          <button type="button" className="bd-btn" aria-pressed={previewing} onClick={togglePreview} title="Ne montrer que ce que la classe voit">
-            <Eye size={18} aria-hidden /> <span className="bd-hide-sm">Aperçu élève</span>
-          </button>
-        )}
-        <span className="bd-spacer" />
-        {count > 0 && <span className="bd-count">{shownLabel} sur {count}</span>}
-        <button
-          type="button"
-          className="bd-btn"
-          onClick={() => setDoubleChoice(!double)}
-          title={double ? 'Afficher une page à la fois' : 'Afficher le classeur ouvert (double page)'}
-        >
-          {double ? <RectangleVertical size={18} aria-hidden /> : <Columns2 size={18} aria-hidden />}
-        </button>
-      </header>
-
-      {selectedClass && (
-        <div className="bd-notice" role="status" style={{ minHeight: NOTICE_H }}>
-          {releaseError ? <span className="bd-notice__error">{releaseError}</span>
-            : rows === null ? <span>Lecture des réglages de la {selectedClass.name}…</span>
-            : unavailable ? <span>Réglage par classe indisponible : la migration 085 n’est pas encore appliquée.</span>
-            : previewing ? <span>Aperçu : ce que voit la {selectedClass.name}. Rien n’est encore accessible aux élèves.</span>
-            : stale.length > 0 ? (
+  const staleLine = (s: (typeof stale)[number]) => `${s.label} : ${s.reason === 'gone' ? 'retiré du classeur' : s.reason === 'correction' ? 'correction modifiée' : 'pages modifiées'}`;
+  const notice = selectedClass && (
+    <div className="bd-notice" role="status" style={{ minHeight: NOTICE_H }}>
+      {releaseError && <span className="bd-notice__error">{releaseError}</span>}
+      {rows === null ? (!releaseError && <span>Lecture des réglages de la {selectedClass.name}…</span>)
+        : unavailable ? <span>Réglage par classe indisponible : la migration 085 n’est pas encore appliquée.</span>
+        : (
+          <>
+            {!releaseError && stale.length === 0 && (
+              <span>{previewing ? `Aperçu : ce que voit la ${selectedClass.name}.` : `Réglage de la ${selectedClass.name} : une page voilée est fermée pour cette classe.`}</span>
+            )}
+            {bilansLost && <span className="bd-notice__error">Les bilans n’ont pas tous pu être lus : les corrections ne se règlent pas pour l’instant. Rechargez la page.</span>}
+            {stale.length > 0 && (
               <>
-                <span>
+                <span title={stale.map(staleLine).join('\n')}>
+                  {previewing ? 'Aperçu. ' : ''}
                   {stale.length === 1 ? '1 élément ouvert ne correspond plus' : `${stale.length} éléments ouverts ne correspondent plus`} au classeur
-                  {' '}({stale.slice(0, 3).map((s) => `${s.label} : ${s.reason === 'gone' ? 'retiré du classeur' : s.reason === 'correction' ? 'correction modifiée' : 'pages modifiées'}`).join(' ; ')}{stale.length > 3 ? '…' : ''}).
+                  {' '}({stale.slice(0, 3).map(staleLine).join(' ; ')}{stale.length > 3 ? '…' : ''}).
+                  {' '}La {selectedClass.name} garde l’ancienne version tant que vous n’avez pas validé.
                 </span>
                 <button type="button" className="bd-strip__btn" disabled={saving} onClick={() => void refreshStale()}>Mettre à jour</button>
               </>
-            ) : <span>Réglage de la {selectedClass.name} : une page voilée est fermée pour cette classe. Rien n’est encore accessible aux élèves.</span>}
-          {saving && <span className="bd-notice__saving">Enregistrement…</span>}
-        </div>
-      )}
-
-      <div className="bd-body">
-        {tocOpen && (
-          <nav className={`bd-toc ${viewport.w < 900 ? 'bd-toc--over' : ''}`} aria-label="Sommaire du classeur" style={viewport.w >= 900 ? { width: tocW } : undefined}>
-            <ul>
-              {toc.map((e) => (
-                <li key={`${e.index}:${e.label}`}>
-                  <button
-                    type="button"
-                    className={`bd-toc__item bd-toc__item--d${e.depth} ${tuning && pages[e.index].kind !== 'divider' && (pages[e.index] as { label?: string }).label === e.label && pageAccess(pages[e.index], states) !== 'open' ? 'is-closed' : ''}`}
-                    aria-current={visible.has(e.index) && e.depth === 2 ? 'page' : undefined}
-                    onClick={() => { go(e.index); if (viewport.w < 900) setTocOpen(false); }}
-                  >
-                    {e.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
+            )}
+          </>
         )}
-
-        <main
-          className="bd-stage"
-          onTouchStart={(e) => { swipeX.current = e.touches.length === 1 ? e.touches[0].clientX : null; }}
-          onTouchEnd={(e) => {
-            const start = swipeX.current;
-            swipeX.current = null;
-            if (start === null || count === 0) return;
-            const dx = e.changedTouches[0].clientX - start;
-            if (Math.abs(dx) > 60) go(turn(index, count, double, dx < 0 ? 1 : -1), true);
-          }}
-        >
-          {error && <p className="bd-message" role="alert">{error}</p>}
-          {!error && (!boards || (basePages.length > 0 && !inkReady)) && <p className="bd-message">Ouverture du classeur…</p>}
-          {!error && boards && !level && (
-            <p className="bd-message">
-              Pas encore de classeur : il se construit à partir des pages de garde des séquences (« Page de garde — Séquence 1 »
-              dans « Mes cours », rangée sous son niveau et sa séquence).
-            </p>
-          )}
-          {count > 0 && inkReady && (
-            <>
-              <button type="button" className="bd-arrow bd-arrow--prev" onClick={() => go(turn(index, count, double, -1), true)} disabled={firstShown === 0} aria-label="Page précédente">
-                <ChevronLeft size={28} aria-hidden />
-              </button>
-              <div className="bd-spread-outer" style={{ width: spreadW * scale, height: PAGE_H * scale }}>
-                <div
-                  ref={spreadRef}
-                  className={`bd-spread ${double ? 'bd-spread--double' : ''}`}
-                  style={{ width: spreadW, height: PAGE_H, transform: `scale(${scale})` }}
-                >
-                  {tabs.map((t) => (
-                    <button
-                      key={t.section}
-                      type="button"
-                      className={`bd-tab bd-tab--${t.section} bd-tab--${t.side} ${current === t.section ? 'is-current' : ''}`}
-                      style={{
-                        top: 90 + t.rank * 230,
-                        ...(t.side === 'left' ? { left: 0 } : { left: TAB_W + PAGE_W * (double ? 2 : 1) - 6 }),
-                      }}
-                      onClick={() => go(t.at)}
-                      title={`Aller à l’intercalaire « ${SECTION_LABEL[t.section as BinderSection]} »`}
-                    >
-                      <span>{SECTION_LABEL[t.section]}</span>
-                    </button>
-                  ))}
-                  {/* Intérieur de la couverture, là où il n'y a pas de page */}
-                  {double && leftIdx === null && <div className="bd-slot bd-slot--left" style={{ left: slotX('left'), width: PAGE_W, height: PAGE_H }}><div className="bd-cover-inside" /></div>}
-                  {rightIdx === null && <div className="bd-slot bd-slot--right" style={{ left: slotX('right'), width: PAGE_W, height: PAGE_H }}><div className="bd-cover-inside" /></div>}
-                  {/* Les pages visibles, et leurs voisines déjà montées (cachées) : elles sont mises en page avant d'être tournées */}
-                  {alive.map((i) => {
-                    const side = sideOf(i);
-                    const page = pages[i];
-                    const veiled = tuning && pageAccess(page, states) !== 'open';
-                    // Le bilan écrit sur une feuille suit la correction : estompé tant qu'elle est fermée
-                    const inkClosed = tuning && page.kind === 'sheet' && !stateOf(states, page.anchor).correction;
-                    return (
-                      <div
-                        key={page.key}
-                        className={`bd-slot bd-slot--${side} ${veiled ? 'bd-slot--veiled' : ''}`}
-                        style={{ left: slotX(side), width: PAGE_W, height: PAGE_H, visibility: i === leftIdx || i === rightIdx ? 'visible' : 'hidden' }}
-                      >
-                        <BinderLeaf page={page} side={side} onOpen={previewing ? undefined : openCourse} inkClosed={inkClosed} student={previewing} />
-                      </div>
-                    );
-                  })}
-                  {double && (
-                    <div className="bd-rings" style={{ left: TAB_W + PAGE_W }} aria-hidden>
-                      {HOLES_MM.map((y) => <span key={y} className="bd-ring" style={{ top: y * MM }} />)}
-                    </div>
-                  )}
-                  {flip && <PageFlip key={flip.id} flip={flip} slotX={slotX} onDone={() => setFlip(null)} />}
-                </div>
-                {/* Bandeaux de réglage : hors de la vue réduite, pour rester lisibles */}
-                {tuning && [leftIdx, rightIdx].map((i) => {
-                  const content = i === null ? null : strip(i);
-                  if (i === null || !content) return null;
-                  return (
-                    <div key={pages[i].key} className="bd-strip" style={{ left: slotX(sideOf(i)) * scale, width: PAGE_W * scale }}>
-                      {content}
-                    </div>
-                  );
-                })}
-              </div>
-              <button type="button" className="bd-arrow bd-arrow--next" onClick={() => go(turn(index, count, double, 1), true)} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
-                <ChevronRight size={28} aria-hidden />
-              </button>
-            </>
-          )}
-        </main>
-      </div>
+      {saving && <span className="bd-notice__saving">Enregistrement…</span>}
     </div>
+  );
+
+  const message = error ? null
+    : !boards || (basePages.length > 0 && !inkReady) ? 'Ouverture du classeur…'
+    : !level ? 'Pas encore de classeur : il se construit à partir des pages de garde des séquences (« Page de garde — Séquence 1 » dans « Mes cours », rangée sous son niveau et sa séquence).'
+    : null;
+
+  return (
+    <BinderBook
+      pages={pages}
+      ready={!!inkReady}
+      error={error}
+      message={message}
+      keepParams={level ? { niveau: level } : undefined}
+      student={previewing}
+      onOpen={previewing ? undefined : openCourse}
+      veiled={tuning ? (page) => pageAccess(page, states) !== 'open' : undefined}
+      // Le bilan écrit sur une feuille suit la correction : estompé tant qu'elle est fermée
+      inkClosed={tuning ? (page) => page.kind === 'sheet' && !stateOf(states, page.anchor).correction : undefined}
+      strip={tuning ? strip : undefined}
+      notice={notice}
+      noticeH={selectedClass ? NOTICE_H : 0}
+      barStart={(
+        <button type="button" className="bd-btn" onClick={() => void navigate('/cours')} title="Retour à Mes cours">
+          <ArrowLeft size={18} aria-hidden /> <span className="bd-hide-sm">Mes cours</span>
+        </button>
+      )}
+      barEnd={(
+        <>
+          {levels.length > 1 ? (
+            <select
+              className="bd-select"
+              value={level ?? ''}
+              aria-label="Niveau"
+              onChange={(e) => { const q = new URLSearchParams(); q.set('niveau', e.target.value); setPreview(false); setParams(q, { replace: true }); }}
+            >
+              {levels.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          ) : level && <span className="bd-level">{level}</span>}
+          {classes.length > 0 && (
+            <select
+              className="bd-select"
+              value={classId ?? ''}
+              aria-label="Classe réglée"
+              title="Choisir une classe pour régler ce qu’elle voit du classeur"
+              onChange={(e) => pickClass(e.target.value || null)}
+            >
+              <option value="">Mon classeur (tout)</option>
+              {classes.map((c) => <option key={c.id} value={c.id}>Réglage : {c.name}</option>)}
+            </select>
+          )}
+          {(tuning || previewing) && (
+            <button type="button" className="bd-btn" aria-pressed={previewing} onClick={togglePreview} title="Ne montrer que ce que la classe voit">
+              <Eye size={18} aria-hidden /> <span className="bd-hide-sm">Aperçu élève</span>
+            </button>
+          )}
+          {(tuning || previewing) && selectedClass && <BinderLinkButton userId={userId} classId={selectedClass.id} className={selectedClass.name} />}
+        </>
+      )}
+    />
   );
 }

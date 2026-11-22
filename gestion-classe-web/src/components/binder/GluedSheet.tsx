@@ -10,7 +10,7 @@
  * (lib/binderInk.ts) ; un bouton rend la fiche vierge.
  * À monter avec `key` = l'identifiant du cours : l'état (fiche lue, face montrée) lui est propre.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { JSONContent } from '@tiptap/core';
 import type { Board } from '../../lib/boardsQueries';
@@ -22,7 +22,8 @@ import { courseExtensions } from '../course/courseExtensions';
 import { CourseSheetChrome } from '../course/CourseSheetChrome';
 import { CourseLayer } from '../course/CourseLayer';
 import { flowStyle } from '../course/courseThemes';
-import { A5_SCALE, loadSheetDoc } from './binderSheet';
+import { A5_SCALE } from './binderSheet';
+import { BinderSourceContext } from './binderSource';
 import { MemoFlaps } from './MemoFlaps';
 import '../course/course.css';
 
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function GluedSheet({ board, role, companion, left, top, onOpen, student }: Props) {
+  const { loadDoc } = useContext(BinderSourceContext);
   const [doc, setDoc] = useState<CourseDoc | null | undefined>(undefined);
   const [corrected, setCorrected] = useState<CourseDoc | null>(null);
   const [failed, setFailed] = useState(false);
@@ -56,11 +58,12 @@ export function GluedSheet({ board, role, companion, left, top, onOpen, student 
 
   // Feuille corrigée ou copie modèle : un plus ; sans elle, la fiche reste vierge
   useEffect(() => {
-    if (!companion) return;
+    // Plus de copie modèle (correction refermée pour la classe) : la fiche redevient vierge
+    if (!companion) { setCorrected(null); return; }
     let cancelled = false;
-    loadSheetDoc(companion).then((d) => { if (!cancelled) setCorrected(d); }, () => { /* reste vierge */ });
+    loadDoc(companion).then((d) => { if (!cancelled) setCorrected(d); }, () => { /* reste vierge */ });
     return () => { cancelled = true; };
-  }, [companion]);
+  }, [companion, loadDoc]);
 
   /** Ce que l'élève a écrit sur la fiche, ou null si le classeur n'y écrit rien. */
   const inked = useMemo<JSONContent | null>(() => {
@@ -82,9 +85,9 @@ export function GluedSheet({ board, role, companion, left, top, onOpen, student 
   // Une autre fiche = un autre composant (la page du classeur porte la clé de la fiche)
   useEffect(() => {
     let cancelled = false;
-    loadSheetDoc(board).then((d) => { if (!cancelled) setDoc(d); }, () => { if (!cancelled) setFailed(true); });
+    loadDoc(board).then((d) => { if (!cancelled) setDoc(d); }, () => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
-  }, [board]);
+  }, [board, loadDoc]);
 
   const width = PAGE_W * A5_SCALE;
   const height = PAGE_H * A5_SCALE;

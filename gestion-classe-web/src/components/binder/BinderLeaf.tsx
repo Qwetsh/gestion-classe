@@ -12,7 +12,7 @@ import { GluedSheet } from './GluedSheet';
 import { A5_SCALE, HOLES_MM } from './binderSheet';
 
 /** Fiche A5 : à 34 mm du bord perforé, 30 mm du haut (au-dessus, le titre écrit à la main, sur la première ligne). */
-const GLUE_FROM_HOLES = 34 * MM;
+export const GLUE_FROM_HOLES = 34 * MM;
 const GLUE_TOP = 30 * MM;
 
 /** Première ligne du papier (haut du quadrillage) et interligne, en mm. */

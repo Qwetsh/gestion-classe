@@ -14,6 +14,8 @@
  * « … (correction) » ne s'ouvre pas tout seul.
  */
 import type { BinderPage, SheetRole } from './binder';
+import type { Board } from './boardsQueries';
+import { naturalCompare } from './courseLibrary';
 import { activityKeyOf } from './binderInk';
 import type { InkRun, Summary, SummaryRuns } from './binderSummary';
 
@@ -216,44 +218,11 @@ export const stateOf = (states: Map<string, ItemState>, anchor: string | undefin
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Le classeur d'une classe : seulement ce que ses lignes ont ouvert. À passer ensuite dans
- * `withSummaries` avec les `texts` rendus ici (les bilans des corrections ouvertes, tels qu'ils ont
- * été copiés à l'ouverture, et aucun autre).
- *
- * Une page ne passe que si une ligne visible la cite par son identifiant, sous la même ancre, avec
- * un rôle de la liste fermée. Les intercalaires restent : ce sont les trois parties du classeur.
+ * Les lignes ouvertes d'une classe, telles que le serveur les suit : seule la ligne compte, jamais
+ * les titres d'aujourd'hui. L'aperçu du professeur part d'elles, pour montrer ce qui sort vraiment.
  */
-export function releaseBinder(pages: BinderPage[], rows: BinderItemRow[]): { pages: BinderPage[]; texts: Map<string, SummaryRuns> } {
-  const open = new Map<string, { released: Released; correction: boolean }>();
-  for (const row of rows) {
-    if (!row.visible) continue;
-    const released = parseReleased(row.released);
-    if (released) open.set(row.anchor_board_id, { released, correction: row.correction_visible });
-  }
-
-  const out: BinderPage[] = [];
-  const texts = new Map<string, SummaryRuns>();
-  for (const page of pages) {
-    if (page.kind === 'divider') { out.push(page); continue; }
-    if (page.kind !== 'sheet' || !page.anchor) continue;
-    const entry = open.get(page.anchor);
-    if (!entry) continue;
-    const { released, correction } = entry;
-    if (!released.pages.some((p) => p.board === page.board.id && p.role === page.role)) continue;
-    const { companion, summary: _summary, above: _above, ...bare } = page;
-    void _summary; void _above;
-    const copy = correction && companion && released.correction?.copy === companion.id ? companion : undefined;
-    out.push(copy ? { ...bare, companion: copy } : bare);
-
-    const summary = correction ? released.correction?.summary : undefined;
-    const key = page.role === 'activity' ? activityKeyOf(page.heading ?? page.board.title) : null;
-    if (summary && key && page.chapter) {
-      const bilans = texts.get(page.chapter) ?? new Map<string, Summary>();
-      bilans.set(key, summary);
-      texts.set(page.chapter, bilans);
-    }
-  }
-  return { pages: out, texts };
+export function rowEntries(rows: BinderItemRow[]): OpenEntry[] {
+  return rows.filter((r) => r.visible).map((r) => ({ anchor: r.anchor_board_id, correction: r.correction_visible, released: r.released }));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -320,4 +289,80 @@ export function staleRows(items: BinderItem[], rows: BinderItemRow[]): StaleRow[
     out.push({ row, item, label: item.label, reason: canon(restA) !== canon(restB) ? 'pages' : canon(a) !== canon(b) ? 'correction' : 'pages' });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Le classeur de l'élève, reconstruit à partir de ce que le serveur rend
+// ---------------------------------------------------------------------------------------------
+
+/** Un élément ouvert, tel que le serveur le rend (supabase/functions/classeur-eleve/release.ts). */
+export interface OpenEntry {
+  anchor: string;
+  correction: boolean;
+  released: unknown;
+}
+
+/**
+ * Pages du classeur d'une classe, à partir de ses seuls éléments ouverts : aucun titre de la
+ * bibliothèque n'est lu ici, l'élève ne la reçoit pas. Même ordre que le classeur du professeur :
+ * mode d'emploi, « Séquences » (par séquence : la page de garde, puis les activités), « Fiches
+ * méthodes », « Je révise ». `boardOf` : le cours d'un identifiant (rendu par le serveur, ou pris
+ * dans la bibliothèque pour l'aperçu du professeur) ; une page dont le cours manque est laissée de
+ * côté. À passer ensuite dans `withSummaries` avec les `texts` rendus ici : les bilans des
+ * corrections ouvertes, tels qu'ils ont été copiés à l'ouverture, et aucun autre.
+ */
+export function pagesFromReleased(entries: OpenEntry[], boardOf: (id: string) => Board | undefined): { pages: BinderPage[]; texts: Map<string, SummaryRuns> } {
+  const taken = new Set<string>();
+  const items = entries.flatMap((e) => {
+    const parsed = parseReleased(e.released);
+    // L'ancre est la page par laquelle l'élément a été ouvert : sans elle, rien
+    if (!parsed || !parsed.pages.some((p) => p.board === e.anchor)) return [];
+    // Un cours n'est collé qu'une fois dans le classeur
+    const pages = parsed.pages.filter((p) => !taken.has(p.board));
+    for (const p of pages) taken.add(p.board);
+    return [{ anchor: e.anchor, correction: e.correction && parsed.role === 'activity', released: { ...parsed, pages } }];
+  });
+  const texts = new Map<string, SummaryRuns>();
+  const sheets = (item: (typeof items)[number], section: 'sequences' | 'methodes' | 'revise' | null): BinderPage[] => {
+    const { released } = item;
+    const copy = item.correction && released.correction?.copy ? boardOf(released.correction.copy) : undefined;
+    return released.pages.flatMap((p): BinderPage[] => {
+      const board = boardOf(p.board);
+      if (!board) return [];
+      const base = { kind: 'sheet' as const, key: board.id, section, chapter: released.chapter, label: p.label, board, role: p.role, anchor: item.anchor };
+      if (p.role !== 'activity') return [base];
+      const heading = released.heading ?? board.title;
+      const summary = item.correction ? released.correction?.summary : undefined;
+      const key = activityKeyOf(heading);
+      if (summary && key && released.chapter) {
+        const bilans = texts.get(released.chapter) ?? new Map<string, Summary>();
+        bilans.set(key, summary);
+        texts.set(released.chapter, bilans);
+      }
+      return [{ ...base, heading, ...(copy ? { companion: copy } : {}) }];
+    });
+  };
+  const of = (role: ItemRole) => items.filter((i) => i.released.role === role);
+  const pages: BinderPage[] = [];
+
+  for (const item of of('guide')) pages.push(...sheets(item, null));
+
+  pages.push({ kind: 'divider', key: 'divider:sequences', section: 'sequences' });
+  const inSequences = [...of('cover'), ...of('activity')].filter((i) => i.released.chapter);
+  const chapters = [...new Set(inSequences.map((i) => i.released.chapter!))].sort(naturalCompare);
+  for (const chapter of chapters) {
+    for (const item of of('cover').filter((i) => i.released.chapter === chapter)) pages.push(...sheets(item, 'sequences'));
+    const activities = of('activity')
+      .filter((i) => i.released.chapter === chapter)
+      .sort((a, b) => naturalCompare(a.released.heading ?? a.released.label, b.released.heading ?? b.released.label));
+    for (const item of activities) pages.push(...sheets(item, 'sequences'));
+  }
+
+  pages.push({ kind: 'divider', key: 'divider:methodes', section: 'methodes' });
+  for (const item of of('method').sort((a, b) => naturalCompare(a.released.label, b.released.label))) pages.push(...sheets(item, 'methodes'));
+
+  pages.push({ kind: 'divider', key: 'divider:revise', section: 'revise' });
+  for (const item of of('memo').sort((a, b) => naturalCompare(a.released.chapter ?? '', b.released.chapter ?? ''))) pages.push(...sheets(item, 'revise'));
+
+  return { pages, texts };
 }
