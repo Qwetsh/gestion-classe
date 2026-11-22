@@ -284,6 +284,32 @@ def LigneIdentite():
              T('   Classe : ', **g), Pointilles(1.2), T('   Date : ', **g), T('……/……/………', **g), apres=4)
 
 
+# Les sept compétences travaillées du programme de SVT de cycle 4 (BO du 30/07/2020) et les
+# domaines du socle que le tableau du BO met en face de chacune. Thomas, 22/11/2026 : on nomme
+# une compétence par son intitulé du programme, suivi de ses domaines (« … (D1, D4) »).
+DOMAINES_SOCLE = {
+    'Pratiquer des démarches scientifiques': (1, 2, 4),
+    'Concevoir, créer, réaliser': (4,),
+    'Utiliser des outils et mobiliser des méthodes pour apprendre': (2,),
+    'Pratiquer des langages': (1, 4),
+    'Utiliser des outils numériques': (2,),
+    'Adopter un comportement éthique et responsable': (3, 4, 5),
+    'Se situer dans l\'espace et dans le temps': (4, 5),
+}
+
+
+def avec_domaines(competence):
+    """« Pratiquer des langages scientifiques » → « Pratiquer des langages scientifiques (D1, D4) ».
+    Laisse tel quel un intitulé qui porte déjà ses domaines ou qui n'est pas une compétence du
+    programme (le signaler à Thomas)."""
+    if '(' in competence:
+        return competence
+    for intitule, domaines in DOMAINES_SOCLE.items():
+        if competence.lower().replace('’', "'").startswith(intitule.lower()):
+            return f"{competence} ({', '.join(f'D{d}' for d in domaines)})"
+    return competence
+
+
 def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=None,
               competences=(('Pratiquer des démarches scientifiques', BLEU), ('Pratiquer des langages scientifiques', ROUGE)),
               infos=(), problematique='', objectifs=()):
@@ -300,7 +326,7 @@ def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=
     comp = []
     for i, (label, couleur) in enumerate(competences[:2]):
         ws = [c] if i == 0 else [d, e]
-        comp.append(Cellule([Serre(I(label, couleur=couleur, taille=8), align='center'),
+        comp.append(Cellule([Serre(I(avec_domaines(label), couleur=couleur, taille=8), align='center'),
                              Serre(T('○  ○  ○  ○', couleur=GRIS_CERCLES, taille=9), align='center')], ws, milieu=True))
     runs = []
     for i, (icone, label, valeur) in enumerate(infos):

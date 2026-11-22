@@ -148,6 +148,7 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
    - le titre « Activité n : … » et la classe ;
    - la note sur 20, avec le détail des questions notées ;
    - deux compétences : « Pratiquer des démarches scientifiques » et « Pratiquer des langages scientifiques » ;
+     le cartouche ajoute seul leurs domaines du socle (`avec_domaines`) ;
    - durée, modalité, matériel et méthodes, avec émojis ;
    - la problématique, sous forme de question ;
    - 2 à 4 objectifs commençant par un verbe à l'infinitif.
@@ -187,6 +188,8 @@ texte sur un écran. Les mots d'un texte à trous suivent la couleur du texte.
 
 Pour une **évaluation** (règle de Thomas, 22/11/2026) :
 
+- **Les compétences** se nomment comme partout : intitulé du programme suivi de ses domaines du
+  socle, « Pratiquer des langages (D1, D4) » (`avec_domaines`, table `DOMAINES_SOCLE`).
 - **Les élèves répondent sur une copie séparée** : le sujet ne contient ni `Zone` ni `Pointilles`
   sous les questions. `Question(..., points=2)`, et `TotalBareme()` dans le cartouche.
 - **Les documents** de la partie « exploitation de documents » sont sur une **feuille à part**,
@@ -224,6 +227,9 @@ Pronote :
 - **Format** : celui de la skill `cahier-de-texte` (texte brut collable dans Pronote, thème et
   séance en tête, « TRAVAIL EFFECTUÉ EN CLASSE », « COMPÉTENCES TRAVAILLÉES » ; rien d'inventé :
   on part de la fiche, de la correction et des écrans).
+- **Compétences travaillées** : l'intitulé du programme suivi de ses domaines, comme sur les
+  fiches (« Pratiquer des démarches scientifiques (D1, D2, D4) »), et non une compétence
+  reformulée.
 - **Écrite avant la séance** : c'est un prévisionnel, rédigé au passé comme la skill le demande.
   Le dire à Thomas dans le compte rendu : il l'ajuste si la séance a dévié.
 - **Où, en attendant la fonction dans Gestion Classe** (pas encore créée au 22/11/2026) : un
