@@ -17,6 +17,7 @@ const library: Board[] = [
   board('Mon classeur de SVT — mode d’emploi', null, null),
   board('Activité 2 — Séisme', '4e', S1),
   board('Activité 2 — Séisme (documents)', '4e', S1),
+  board('Activité 2 — Séisme (protocole)', '4e', S1),
   board('Activité 2 — Séisme (correction)', '4e', S1),
   board('Activité 2 — Séisme (copie modèle)', '4e', S1),
   board('Activité 2 — Séisme (extraits)', '4e', S1),
@@ -64,7 +65,7 @@ describe('buildBinder', () => {
     expect(labels).toEqual([
       'Mode d’emploi',
       '[sequences]',
-      'Page de garde', 'Activité 1', 'Activité 2', 'Activité 2 — documents', 'Activité 10', 'Activité bonus', 'Évaluation',
+      'Page de garde', 'Activité 1', 'Activité 2', 'Activité 2 — protocole', 'Activité 2 — documents', 'Activité 10', 'Activité bonus', 'Évaluation',
       'Page de garde', 'Activité 3',
       '[methodes]', 'FM1', 'FM2', 'FM10',
       '[revise]', 'Fiche de mémorisation',
@@ -92,6 +93,8 @@ describe('buildBinder', () => {
     const documents = sheets.find((p) => p.label === 'Activité 2 — documents');
     expect(documents?.role).toBe('documents');
     expect(documents?.heading).toBeUndefined();
+    // La fiche protocole (laissée sur la paillasse) se relit dans le classeur, comme les documents
+    expect(sheets.find((p) => p.label === 'Activité 2 — protocole')?.role).toBe('documents');
     // La copie modèle n'est pas une page : elle accompagne sa fiche
     expect(sheets.some((p) => /copie modèle/.test(p.board.title))).toBe(false);
     // Les extraits (documents découpés pour le tableau) ne sont pas non plus une page du classeur
@@ -175,7 +178,7 @@ describe('repères', () => {
     expect(sectionAt(pages, 0)).toBeNull();
     expect(sectionAt(pages, 3)).toBe('sequences');
     expect(sectionAt(pages, dividerIndex(pages, 'methodes') + 1)).toBe('methodes');
-    expect(dividerIndex(pages, 'revise')).toBe(15);
+    expect(dividerIndex(pages, 'revise')).toBe(16);
   });
 
   it('sommaire : parties, séquences, pages', () => {

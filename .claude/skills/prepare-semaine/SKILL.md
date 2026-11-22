@@ -48,6 +48,9 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
      à part**, même titre suivi de « (documents) », même niveau et même séquence, sans écrans.
      Des documents mêlés aux questions sur la même feuille restent dans la fiche.
    - Les réponses viennent du `_CORRIGE.docx` ou du `corrigé`.
+   - Une manipulation (matériel et protocole sur la fiche, ou fiche protocole sur Canva) donne une
+     **fiche protocole** à part, « … (protocole) », comme le dit `cours-gestion-classe` § 3
+     (« La fiche protocole ») ; la fiche d'activité n'en garde qu'un renvoi.
    - Un `_ADAPTEE` (et son `DOCUMENTS ADAPTEE`) se convertit en **cours à part**, « … (adaptée) »,
      comme le dit `cours-gestion-classe` § 3 (« La version adaptée ») : il porte de vraies aides
      (étapes, amorces) que l'impression « dys » de l'app ne recrée pas.

@@ -61,6 +61,19 @@ describe('groupLibrary', () => {
 });
 
 describe('splitVariant', () => {
+  it('lit la fiche protocole à la fin du titre', () => {
+    expect(splitVariant("Activité 3 — L'antibiogramme (protocole)")).toEqual({ base: "Activité 3 — L'antibiogramme", variant: 'protocole' });
+    expect(splitVariant('Activité 2 — Digestion (Protocoles)').variant).toBe('protocole');
+  });
+
+  it('range la fiche protocole juste après la fiche, avant les documents', () => {
+    const groups = groupActivities([
+      board('c', 'Activité 3 — Antibiogramme (correction)', '3e', 'S2'), board('d', 'Activité 3 — Antibiogramme (documents)', '3e', 'S2'),
+      board('p', 'Activité 3 — Antibiogramme (protocole)', '3e', 'S2'), board('f', 'Activité 3 — Antibiogramme', '3e', 'S2'),
+    ]);
+    expect(groups[0].members.map((m) => m.variant)).toEqual(['fiche', 'protocole', 'documents', 'correction']);
+  });
+
   it('lit la correction et les documents à la fin du titre', () => {
     expect(splitVariant('Activité 3 — Wegener (correction)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'correction' });
     expect(splitVariant('Activité 3 — Wegener (Documents)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'documents' });
