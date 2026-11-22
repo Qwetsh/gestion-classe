@@ -117,6 +117,12 @@ def _runs(items):
     return out
 
 
+# Règle d'accessibilité des fiches (template v3.3, adoptée par Thomas le 22/11/2026) : corps de
+# l'élève en 12 pt, interligne 1,5 (consignes, questions, réponses) ; encadrés en 11 pt ;
+# cartouche en 8-10 pt.
+INTERLIGNE_ELEVE = '1.8'   # 1,5 dans le menu de l'éditeur
+TAILLE_ENCADRE = 11
+
 # ---------------------------------------------------------------- blocs
 
 def P(*contenu, align=None, interligne=None, avant=None, apres=None, retrait=0):
@@ -316,10 +322,11 @@ def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=
 
 
 def Question(n, *contenu, points=None):
-    """« n. » en gras puis l'énoncé (mettre les verbes de consigne en B(...)) ; barème optionnel."""
+    """« n. » en gras puis l'énoncé (mettre les verbes de consigne en B(...)) ; barème optionnel.
+    Interligne 1,5 (règle d'accessibilité des fiches de Thomas, 22/11/2026)."""
     runs = [B(f'{n}. ')] + list(contenu)
     if points is not None: runs.append(Bareme(points))
-    return P(*runs, interligne='1.38', avant=8, apres=5)
+    return P(*runs, interligne=INTERLIGNE_ELEVE, avant=8, apres=5)
 
 
 def _teinte(run, couleur):
@@ -335,29 +342,49 @@ def _teinte(run, couleur):
     return run
 
 
+def _taille(noeud, pt):
+    """Donne la taille `pt` à tout texte du bloc qui n'en a pas (encadrés des fiches : 11 pt)."""
+    if isinstance(noeud, list):
+        for n in noeud: _taille(n, pt)
+        return noeud
+    if noeud.get('type') == 'text':
+        marks = noeud.setdefault('marks', [])
+        for m in marks:
+            if m.get('type') == 'textStyle':
+                m.setdefault('attrs', {}).setdefault('fontSize', f'{pt}pt')
+                return noeud
+        marks.append({'type': 'textStyle', 'attrs': {'fontSize': f'{pt}pt'}})
+        return noeud
+    _taille(noeud.get('content', []), pt)
+    return noeud
+
+
 def Rappel(*contenu, titre='💡 Rappel : '):
     """Encadré jaune « 💡 Rappel : » des fiches : tout le texte en brun (gras compris, sauf couleur
     donnée). Ne pas y ajouter d'autre pictogramme en tête : le 💡 est déjà là."""
     runs = [B(titre, couleur=JAUNE_TITRE)] + [_teinte(x, JAUNE_TEXTE) for x in contenu]
-    return EncadreFiche('', JAUNE, P(*runs, interligne='1.2'))
+    return EncadreFiche('', JAUNE, _taille(P(*runs, interligne='1.2'), TAILLE_ENCADRE))
 
 
 def PourAllerPlusLoin(*blocs):
-    return EncadreFiche('★ Pour aller plus loin (question expert, bonus)', VIOLET, *blocs)
+    return EncadreFiche('★ Pour aller plus loin (question expert, bonus)', VIOLET,
+                        *[_taille(b, TAILLE_ENCADRE) for b in blocs])
 
 
 def JaiReussi(*criteres):
-    return EncadreFiche('✅ J’ai réussi l’activité si je peux :', VERT, Cases(*criteres))
+    return EncadreFiche('✅ J’ai réussi l’activité si je peux :', VERT,
+                        _taille(Cases(*criteres), TAILLE_ENCADRE))
 
 
 # ---------------------------------------------------------------- le cours
 
 class Cours:
-    """Un brouillon de cours. Réglages : police (nom du menu), taille du texte (10 à 14 pt),
+    """Un brouillon de cours. Réglages : police (nom du menu), taille du texte (10 à 14 pt ; 12 par
+    défaut, règle d'accessibilité des fiches de Thomas du 22/11/2026),
     theme ('classique', 'sobre', 'nature', 'chaleureux', 'ecolier', 'fiche'), numerotation des titres
     ('none', 'roman', 'alpha', 'decimal'), premiere_page_vide (pas d'en-tête ni de pied en page 1)."""
 
-    def __init__(self, titre, niveau=None, chapitre=None, police='Arial', taille=11, theme='fiche',
+    def __init__(self, titre, niveau=None, chapitre=None, police='Arial', taille=12, theme='fiche',
                  numerotation=None, premiere_page_vide=True, en_tete=None, pied=None):
         self.titre, self.niveau, self.chapitre = titre, niveau, chapitre
         self.blocs = []
@@ -378,7 +405,10 @@ class Cours:
         return self
 
     # raccourcis
-    def para(self, *contenu, **k): return self.ajouter(P(*contenu, **k))
+    def para(self, *contenu, **k):
+        """Paragraphe lu par l'élève : interligne 1,5 sauf `interligne` donné."""
+        k.setdefault('interligne', INTERLIGNE_ELEVE)
+        return self.ajouter(P(*contenu, **k))
     def titre1(self, *c): return self.ajouter(Titre(1, *c))
     def titre2(self, *c): return self.ajouter(Titre(2, *c))
     def titre3(self, *c): return self.ajouter(Titre(3, *c))

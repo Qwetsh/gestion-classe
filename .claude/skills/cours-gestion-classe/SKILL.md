@@ -134,7 +134,7 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - **Titres** : le titre du cours (`Cours(...)`, visible dans la liste des tableaux) peut différer
   du titre du cartouche (« Activité n : … »).
 
-**Réglages du cours** : `Cours(titre, niveau, chapitre, police='Arial', taille=11, theme='fiche', numerotation, premiere_page_vide=True, en_tete, pied)`.
+**Réglages du cours** : `Cours(titre, niveau, chapitre, police='Arial', taille=12, theme='fiche', numerotation, premiere_page_vide=True, en_tete, pied)`.
 
 - Niveaux : `6e`, `5e`, `4e`, `3e`, `Autre` ou `None`.
 - Thèmes : `classique`, `sobre`, `nature`, `chaleureux`, `ecolier`, `fiche` (couleurs des fiches Word).
@@ -158,10 +158,21 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 5. `PourAllerPlusLoin(...)` : une question bonus.
 6. `JaiReussi(...)` : les objectifs, plus « rédiger des phrases complètes… », sous forme de cases.
 
-Texte en Arial 11 pt, thème `fiche`, première page sans en-tête ni pied. Les marges sont fixes
-(2,5 cm), donc la colonne fait 16 cm : il faut rester concis. Avec le cartouche, une fiche de plus de
-300 mots environ passe sur deux pages (la fiche Microbiote, 370 mots, en fait deux) : raccourcir
-ou prévenir Thomas.
+**Police : la règle d'accessibilité (« dys ») vaut pour toutes les fiches** (décision de Thomas,
+22/11/2026 ; template v3.3) :
+
+- corps de l'élève (consignes, situation, questions, réponses) en **Arial 12, interligne 1,5** :
+  c'est le défaut de `Cours`, `c.para()` et `Question` (`INTERLIGNE_ELEVE`) ; les zones d'écriture
+  (lignes de 8 mm) le respectent déjà ;
+- encadrés (`Rappel`, `PourAllerPlusLoin`, `JaiReussi`) en **11 pt** (`TAILLE_ENCADRE`) ;
+- cartouche et ligne d'identité en 8-10 pt (lus une fois) ;
+- alignement à gauche, consignes décomposées, verbes d'action en gras ;
+- ne pas réduire la taille ou l'interligne pour faire tenir une fiche : raccourcir le texte.
+
+Thème `fiche`, première page sans en-tête ni pied. Les marges sont fixes (2,5 cm), donc la colonne
+fait 16 cm : il faut rester concis. Avec le cartouche, une fiche de plus de **200 mots environ**
+passe sur deux pages (estimation du 22/11/2026, à recaler sur la première fiche affichée ; en
+Arial 11, la limite était de 300 mots) : raccourcir ou prévenir Thomas.
 
 Pour un **cours** (trace écrite) :
 
@@ -186,7 +197,7 @@ cd <dépôt>/gestion-classe-web && npm run course:check
 ```
 
 - Lire `course-drafts/<nom>.report.txt`. Il donne aussi la **longueur en mots** : au-delà de
-  300 mots environ, une fiche avec cartouche passe sur deux pages.
+  200 mots environ, une fiche avec cartouche passe sur deux pages (§ 3).
 - La commande vérifie **tous** les brouillons du dossier et réécrit leurs rapports. Une ligne
   « 1 skipped » est normale : c'est le test « aucun brouillon », qui ne joue pas quand il y en a.
 - Corriger **toutes** les erreurs (✗) dans le script, régénérer et revérifier.
