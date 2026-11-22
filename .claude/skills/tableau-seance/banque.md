@@ -13,6 +13,7 @@ Fichiers : `.claude/skills/cours-gestion-classe/` (`animation/banque/`, `exemple
 |---|---|---|
 | `immunite.js` | virus (Epstein-Barr : antigènes triangulaires ; grippe : carrés), antigène, anticorps (creux complémentaires), lymphocyte B, phagocyte, cellule, fonds | 3e S2, système immunitaire |
 | `scene3d.js` | la 3D sous les étiquettes SVG : `S3D.create`, `load` (GLB), `fit`, `box.at`, `view` (caméra en images-clés), `pose` (animation du modèle), `toStage` (étiquette qui suit le modèle), `glow`, `spot` | tout modèle 3D (bibliothèque `three`) |
+| `tectonique.js` | contours réels de l'Afrique et de l'Amérique du Sud (Natural Earth, domaine public) et zones à Mesosaurus ; rotation sur la sphère (`R`, `tourne`, `SA_A(w)` : l'Atlantique ouvert de w°, pôle de Bullard), projection de Lambert avec caméra (`camera`), `distance`, `centre` ; Mesosaurus qui nage (`mesosaurus`) ; couleurs de coupe (`COUPE` : croûtes, manteau rigide, asthénosphère, vert de la lithosphère) | 4e S2 (dérive, frontières, profondeur des plaques) |
 
 `animation/outils.js` (toujours inclus) : `seg`, `lerp`, `keys` (images-clés), `rng`, `txt`,
 `fleche`, `ok`, `ko`.
@@ -23,6 +24,9 @@ Fichiers : `.claude/skills/cours-gestion-classe/` (`animation/banque/`, `exemple
 |---|---|---|---|
 | « Comment les anticorps nous défendent-ils ? » — 10 étapes, dessin vectoriel animé | `exemples/anticorps_animation.py` + `anticorps_scene.js` (référence de qualité : `_Claude/exemples/anticorps-animation-reference.html`) | 3e S2 A2, correction Eve Amalle | référence de qualité attendue (16/11/2026) ; posée en base sur l'original, retour de séance *à compléter* |
 | « Une patiente fiévreuse » — 6 étapes : la patiente en 3D, gros plans fièvre et ganglions, frottis qui se rapproche, lymphocytes et phagocytes entourés, bilan | `exemples/patient3d_scene.py` (modèle `fille-fievreuse.glb` et photo `frottis-yve.jpg` de l'hôpital) | démonstration des scènes riches (21/11/2026), réutilisable en 3e S2 | montrée en planche le 21/11/2026, *non jouée en classe* |
+| « Le puzzle se ferme » — 5 étapes : l'Amérique du Sud tourne vers l'Afrique (vrais contours, rotation de Bullard), côtes qui s'emboîtent, petits vides, zones à Mesosaurus face à face, plateau continental qui comble les vides | `exemples/wegener_animations.py` + `wegener_carte.js` + `wegener_puzzle_scene.js` | 4e S2 A3, correction Q1 | acceptée sur storyboard le 21/11/2026 ; posée pour la 4B (23/11), *non jouée* |
+| « Brise-glace ou plaque ? » — 6 étapes en coupe : l'idée de Wegener (brise-glace), le blocage, la plaque cerclée de vert, toute la plaque glisse (GPS), la dorsale, « pas de lave » | `exemples/wegener_coupe_scene.js` | 4e S2 A3, correction Q4 b ; la coupe se reprend pour l'A2 | idem |
+| « L'Atlantique sud s'ouvre » — 5 étapes : de 130 Ma à aujourd'hui, dorsale et fond océanique coloré par âge, compteur à 3 cm/an, calcul, largeurs 3 000 / 6 000 km, limites du modèle | `exemples/wegener_ouverture_scene.js` (même carte que le puzzle) | 4e S2 A3, correction Q5 ; réutilisable en A1 (divergence) | idem |
 
 ## Pages de sites pilotables
 

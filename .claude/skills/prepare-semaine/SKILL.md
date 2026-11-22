@@ -11,7 +11,8 @@ copies et rend compte. Thomas reprend ensuite ce qu'il veut dans l'app. Le plan 
 
 Outils : la skill `cours-gestion-classe` (`.claude/skills/cours-gestion-classe/`). La lire
 d'abord pour tout ce qui est écrit : fiche (`gc_cours.py`), écrans (`gc_ecrans.py`), envoi
-(`gc_envoi.py`). Le placement passe par `gc_semaine.py`, avec le même jeton d'import.
+(`gc_envoi.py`). Avant de convertir ou d'écrire une activité, relire les consignes pédagogiques
+de son § 0 (dossier `_Claude\projet-assistant\`, hors du dépôt). Le placement passe par `gc_semaine.py`, avec le même jeton d'import.
 
 ```bash
 python -I <skill>/gc_semaine.py bibliotheque --niveau 4e            # les originaux
