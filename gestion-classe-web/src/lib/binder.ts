@@ -165,7 +165,8 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
       // La copie modèle n'est pas une page : ses réponses sont écrites dans la fiche
       const copy = group.members.find((m) => m.variant === 'copie')?.board;
       for (const { variant, board } of group.members) {
-        if (variant === 'correction' || variant === 'copie' || variant === 'extraits') continue;
+        // La version adaptée (PAP) n'entre pas dans le classeur de la classe
+        if (variant === 'correction' || variant === 'copie' || variant === 'extraits' || variant === 'adaptee') continue;
         pages.push(variant === 'documents'
           ? { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `${short} — documents`, board, role: 'documents' }
           : { kind: 'sheet', key: board.id, section: 'sequences', chapter, label: short, board, role: 'activity', heading: group.title, companion: copy });
@@ -177,7 +178,7 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
     for (const group of groupActivities(evaluations)) {
       const copy = group.members.find((m) => m.variant === 'copie')?.board;
       for (const { variant, board } of group.members) {
-        if (variant === 'copie' || variant === 'extraits' || (variant === 'correction' && copy)) continue;
+        if (variant === 'copie' || variant === 'extraits' || variant === 'adaptee' || (variant === 'correction' && copy)) continue;
         if (variant === 'fiche') pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: 'Évaluation', board, role: 'evaluation', heading: group.title, companion: copy });
         else pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: variant === 'documents' ? 'Évaluation — documents' : 'Évaluation — correction', board, role: variant === 'documents' ? 'documents' : 'correction' });
       }

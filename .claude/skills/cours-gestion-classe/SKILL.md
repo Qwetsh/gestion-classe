@@ -216,6 +216,23 @@ Tout s'assemble dans le **classeur virtuel**. Une séquence comporte :
 `feuille_bilans.py`. Une ancienne feuille de bilans de OneDrive ne sert plus que de source pour
 le texte d'un bilan.
 
+### La version adaptée (élèves à PAP, décision de Thomas, 22/11/2026)
+
+- Une activité ou une évaluation peut avoir une **version adaptée** : un cours à part, même titre
+  suivi de « (adaptée) », même niveau et même séquence. L'app la range avec la fiche (bouton
+  « Adaptée » de la bibliothèque) et ne la met **jamais** dans le classeur virtuel de la classe.
+- Elle change la **forme**, pas le fond : consigne découpée en étapes numérotées avec pictogrammes
+  (👀, ✍), amorces de phrases (« Je vois que… », « J'en déduis que… »), ce qu'il faut produire
+  (« un texte de 3 à 4 lignes »). Le contenu évalué reste celui de la fiche ;
+  **ne jamais réduire les exigences sans que Thomas le demande**, et signaler tout écart (une note
+  qui porte sur moins de questions, par exemple).
+- Elle n'est pas l'impression « dys » de l'app (Imprimer › Adaptée), qui ne change que la mise en
+  page ; les deux se cumulent.
+- Les documents adaptés, s'il y en a, vont dans le même cours « (adaptée) », après un saut de page.
+- Quand : en convertissant un `_ADAPTEE` de OneDrive (`prepare-semaine` § 1), ou sur demande de
+  Thomas. Pas de version adaptée d'office pour une nouvelle activité.
+- Jamais de nom d'élève ni d'information PAP sur un écran projeté.
+
 ### Le cahier de texte (décision de Thomas, 22/11/2026)
 
 **Chaque séance préparée a son entrée de cahier de texte**, que Thomas recopie lui-même dans

@@ -20,6 +20,7 @@ const library: Board[] = [
   board('Activité 2 — Séisme (correction)', '4e', S1),
   board('Activité 2 — Séisme (copie modèle)', '4e', S1),
   board('Activité 2 — Séisme (extraits)', '4e', S1),
+  board('Activité 2 — Séisme (adaptée)', '4e', S1),
   board('Activité 10 — Bilan', '4e', S1),
   board('Activité 1 — Volcans', '4e', S1),
   board('Activité bonus — Modéliser', '4e', S1),
@@ -73,6 +74,8 @@ describe('buildBinder', () => {
   it('écarte les corrections d’activité, les cours hors classeur et les séquences sans page de garde', () => {
     const titles = pages.flatMap((p) => (p.kind === 'sheet' ? [p.board.title] : []));
     expect(titles.some((t) => /correction/.test(t))).toBe(false);
+    // La version adaptée (PAP) reste hors du classeur de la classe
+    expect(titles.some((t) => /adaptée/.test(t))).toBe(false);
     expect(titles).not.toContain('Test Bilan');
     expect(titles).not.toContain('Activité 1 — Plaques');
   });
