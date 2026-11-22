@@ -213,6 +213,29 @@ Tout s'assemble dans le **classeur virtuel**. Une séquence comporte :
 `feuille_bilans.py`. Une ancienne feuille de bilans de OneDrive ne sert plus que de source pour
 le texte d'un bilan.
 
+### Le cahier de texte (décision de Thomas, 22/11/2026)
+
+**Chaque séance préparée a son entrée de cahier de texte**, que Thomas recopie lui-même dans
+Pronote :
+
+- **Quand** : dès qu'un document est posé sur un cours daté de l'emploi du temps
+  (`prepare-semaine`, `tableau-seance`) : une entrée par séance et par classe, à la date et à
+  l'heure du cours. Une activité sur deux séances = deux entrées.
+- **Format** : celui de la skill `cahier-de-texte` (texte brut collable dans Pronote, thème et
+  séance en tête, « TRAVAIL EFFECTUÉ EN CLASSE », « COMPÉTENCES TRAVAILLÉES » ; rien d'inventé :
+  on part de la fiche, de la correction et des écrans).
+- **Écrite avant la séance** : c'est un prévisionnel, rédigé au passé comme la skill le demande.
+  Le dire à Thomas dans le compte rendu : il l'ajuste si la séance a dévié.
+- **Où, en attendant la fonction dans Gestion Classe** (pas encore créée au 22/11/2026) : un
+  fichier par séance dans
+  `C:\Users\Utilisateur\OneDrive\Documents\Ecole\2026-2027\_Cahier de texte\`, nommé
+  `AAAA-MM-JJ HHhMM <classe> — <titre court>.txt`, qui commence par trois lignes `Date :`,
+  `Classe :`, `Cours :` puis l'entrée. Ce nommage permettra de les reverser dans l'app à la bonne
+  date. Ne jamais écraser un fichier existant (Thomas a pu le retoucher) : en écrire un nouveau
+  suffixé « (2) » et le signaler.
+- Quand la fonction existera dans l'app, l'entrée s'y enregistrera à la place du fichier, sur le
+  cours concerné.
+
 ## 4. Vérifier
 
 ```bash

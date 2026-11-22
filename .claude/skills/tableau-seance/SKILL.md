@@ -150,6 +150,8 @@ Puis **s'arrêter et attendre la réponse**.
 - La planche des animations et scènes riches.
 - Les 🟠 proposées mais non faites, et les 🟣 suggérés (chantiers possibles).
 - Ce qui reste à faire à la main, ce qui n'a pas pu être vérifié, les manques de l'app rencontrés.
+- L'entrée de cahier de texte de la séance, écrite comme le dit `cours-gestion-classe` § 3
+  (« Le cahier de texte »), et où elle est rangée.
 
 ## 7. Après la séance
 
