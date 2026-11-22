@@ -6,11 +6,15 @@
  * professeur.
  *
  * Le classeur est le même composant que celui du professeur (BinderBook) ; seule sa source change.
+ * Rien n'est lu en base ni dans le stockage par ce navigateur : les fiches et les adresses de leurs
+ * images viennent du serveur. Ces adresses ne vivent que quelques heures : un classeur resté ouvert
+ * est relu quand on y revient.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { pagesFromReleased } from '../../lib/binderRelease';
 import { INK_WIDTH_MM, SUMMARY_LEAD, withSummaries, wrapInk } from '../../lib/binderSummary';
+import { setSeededUrlsOnly } from '../../lib/boardMedia';
 import { MM } from '../../lib/course/coursePage';
 import { StudentBinderError, binderKeyId, fetchStudentToc, studentDocLoader, type BinderKey, type StudentToc } from '../../lib/studentBinder';
 import { BinderBook } from './BinderBook';
@@ -23,6 +27,9 @@ const ERRORS: Record<StudentBinderError['kind'], string> = {
   network: 'Pas de connexion. Vérifie ta connexion à Internet, puis recharge la page.',
   server: 'Le classeur ne répond pas pour le moment. Réessaie dans quelques minutes.',
 };
+
+/** Âge au-delà duquel le classeur est relu au retour sur la page (les adresses d'images vivent 6 h). */
+const STALE_MS = 4 * 60 * 60 * 1000;
 
 interface Props {
   /** Ce qui ouvre le classeur : le jeton du lien, ou le code de l'élève. */
@@ -41,21 +48,36 @@ export function StudentBinderView({ binderKey, onClose, onClassName }: Props) {
   /** Sommaire lu pour un accès ; il ne vaut que pour lui. */
   const [loaded, setLoaded] = useState<{ id: string; toc: StudentToc } | null>(null);
   const [failed, setFailed] = useState<{ id: string; message: string } | null>(null);
+  /** Relecture : change quand le classeur a trop vieilli (nouvelles activités, adresses d'images périmées). */
+  const [round, setRound] = useState(0);
   const measure = useInkMeasure();
+
+  // Ici, seules les adresses d'images fournies par le serveur servent : un professeur connecté qui
+  // regarde le classeur de sa classe voit ce que voient ses élèves
+  useEffect(() => {
+    setSeededUrlsOnly(true);
+    return () => setSeededUrlsOnly(false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
+    const readAt = Date.now();
     fetchStudentToc(key).then(
-      (toc) => { if (!cancelled) { setLoaded({ id, toc }); onClassName?.(toc.className); } },
+      (toc) => { if (!cancelled) { setLoaded({ id, toc }); setFailed(null); onClassName?.(toc.className); } },
       (err: unknown) => { if (!cancelled) setFailed({ id, message: ERRORS[err instanceof StudentBinderError ? err.kind : 'server'] }); },
     );
-    return () => { cancelled = true; };
+    const onVisible = () => { if (document.visibilityState === 'visible' && Date.now() - readAt > STALE_MS) setRound((n) => n + 1); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, id]);
+  }, [key, id, round]);
   const toc = loaded?.id === id ? loaded.toc : null;
-  const error = failed?.id === id ? failed.message : null;
+  // Une relecture ratée ne retire pas le classeur déjà affiché
+  const error = failed?.id === id && !toc ? failed.message : null;
 
-  const source = useMemo(() => ({ loadDoc: studentDocLoader(key) }), [key]);
+  // Les fiches sont redemandées à chaque relecture : leurs images reçoivent de nouvelles adresses
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const source = useMemo(() => ({ loadDoc: studentDocLoader(key) }), [key, round]);
 
   const pages = useMemo(() => {
     if (!toc || !measure) return [];

@@ -2,13 +2,22 @@ import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import { buildBinder, type BinderPage } from '../binder';
 import {
-  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowEntries, rowFor, sequenceAnchors, staleRows,
+  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowFor, sequenceAnchors, servedEntries, staleRows,
   type BinderItem, type BinderItemRow,
 } from '../binderRelease';
 import { withSummaries, type InkRun, type SummaryRuns } from '../binderSummary';
 
-const board = (id: string, title: string, level: string | null, chapter: string | null, extra: Partial<Board> = {}): Board => ({
-  id, title, level, chapter, class_id: null, created_at: '2026-11-01T08:00:00Z', updated_at: '2026-11-01T08:00:00Z', ...extra,
+// Les cours ont de vrais identifiants (le serveur n'en accepte pas d'autres) ; les tests les nomment
+const NAMES: string[] = [];
+const ID = (name: string): string => {
+  let i = NAMES.indexOf(name);
+  if (i < 0) i = NAMES.push(name) - 1;
+  return `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`;
+};
+const NAME = (id: string): string => NAMES[Number(id.slice(-12)) - 1] ?? id;
+
+const board = (name: string, title: string, level: string | null, chapter: string | null, extra: Partial<Board> = {}): Board => ({
+  id: ID(name), title, level, chapter, class_id: null, created_at: '2026-11-01T08:00:00Z', updated_at: '2026-11-01T08:00:00Z', ...extra,
 });
 
 const S1 = 'Séquence 1 — La Terre, une planète active';
@@ -37,6 +46,7 @@ const library: Board[] = [
   board('s5a1', 'Activité 1 — La puberté', '4e', S5),
   board('fm1', 'FM1 — Lire une consigne', null, null, { category: 'methode' }),
 ];
+const without = (...names: string[]) => library.filter((b) => !names.includes(NAME(b.id)));
 
 const runs = (text: string): InkRun[][] => [[{ text }]];
 /** Bilans du classeur complet : ceux d'une feuille commune (S1 : trois activités) et un bilan sans fiche. */
@@ -51,36 +61,41 @@ const texts = new Map<string, SummaryRuns>([
 
 const pages = buildBinder(library, '4e');
 const items = binderItems(pages, texts);
-const item = (anchor: string): BinderItem => items.find((i) => i.anchor === anchor)!;
+const find = (list: BinderItem[], name: string): BinderItem => list.find((i) => i.anchor === ID(name))!;
+const item = (name: string): BinderItem => find(items, name);
 const CLASS = 'classe-4a';
-const row = (anchor: string, visible: boolean, correction = false): BinderItemRow => rowFor(item(anchor), CLASS, { visible, correction });
+const row = (name: string, visible: boolean, correction = false): BinderItemRow => rowFor(item(name), CLASS, { visible, correction });
+const page = (name: string, role: string, label = 'x') => ({ board: ID(name), role, label });
 
-/** Ce que la classe reçoit, mis en page comme à l'écran : identifiants des cours et tout le texte écrit à la main. */
-const byId = new Map(library.map((b) => [b.id, b]));
-function seen(rows: BinderItemRow[], boardOf: (id: string) => Board | undefined = (id) => byId.get(id)) {
-  const released = pagesFromReleased(rowEntries(rows), boardOf);
+/**
+ * Ce que la classe reçoit, mis en page comme à l'écran : les cours (par leur nom de test) et tout le
+ * texte écrit à la main. `lib` : la bibliothèque du jour (le serveur relit les titres pour refermer).
+ */
+function seen(rows: BinderItemRow[], lib: Board[] = library) {
+  const byId = new Map(lib.map((b) => [b.id, b]));
+  const released = pagesFromReleased(servedEntries(rows, lib), (id) => byId.get(id));
   const out = withSummaries(released.pages, released.texts, (p) => p.map((r) => r));
-  const boards = out.flatMap((p) => (p.kind === 'sheet' ? [p.board.id, ...(p.companion ? [p.companion.id] : [])] : []));
+  const boards = out.flatMap((p) => (p.kind === 'sheet' ? [p.board.id, ...(p.companion ? [p.companion.id] : [])] : [])).map(NAME);
   const ink = JSON.stringify(out.map((p) => (p.kind === 'sheet' ? [p.summary, p.above] : p.kind === 'ruled' ? p.lines : null)));
   return { out, boards, ink };
 }
 
 describe('binderItems', () => {
   it('range les pages par activité, sur l’ancre de la fiche', () => {
-    expect(item('a2').pages.map((p) => p.board)).toEqual(['a2', 'a2-proto', 'a2-docs']);
-    expect(item('a2')).toMatchObject({ role: 'activity', chapter: S1, label: 'Activité 2', heading: 'Activité 2 — Séisme', copy: 'a2-copie' });
+    expect(item('a2').pages.map((p) => NAME(p.board))).toEqual(['a2', 'a2-proto', 'a2-docs']);
+    expect(item('a2')).toMatchObject({ role: 'activity', chapter: S1, label: 'Activité 2', heading: 'Activité 2 — Séisme', copy: ID('a2-copie') });
     expect(item('a2').summary?.paragraphs).toEqual(runs('BILAN-A2'));
   });
 
   it('une page seule est son propre élément', () => {
-    expect(items.filter((i) => i.role !== 'activity').map((i) => [i.anchor, i.role])).toEqual([
+    expect(items.filter((i) => i.role !== 'activity').map((i) => [NAME(i.anchor), i.role])).toEqual([
       ['guide', 'guide'], ['garde1', 'cover'], ['garde5', 'cover'], ['fm1', 'method'], ['memo1', 'memo'],
     ]);
   });
 
   it('ni évaluation, ni entraînement noté, ni correction, ni version adaptée, ni feuille de bilans', () => {
     const all = JSON.stringify(items);
-    for (const id of ['eval', 'eval-docs', 'eval-corr', 'entr', 'entr-corr', 'a1-corr', 'a2-adapt', 'bilans1']) expect(all).not.toContain(`"${id}"`);
+    for (const name of ['eval', 'eval-docs', 'eval-corr', 'entr', 'entr-corr', 'a1-corr', 'a2-adapt', 'bilans1']) expect(all, name).not.toContain(ID(name));
   });
 
   it('dit si une activité a une correction pour des élèves', () => {
@@ -125,54 +140,75 @@ describe('ce que la classe voit — rien ne sort sans avoir été ouvert', () =>
 
   it('une évaluation ne sort jamais, même avec une ligne écrite à la main', () => {
     const forged: BinderItemRow[] = [
-      { class_id: CLASS, anchor_board_id: 'eval', visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'Évaluation', pages: [{ board: 'eval', role: 'evaluation', label: 'Évaluation' }, { board: 'eval-corr', role: 'correction', label: 'x' }] } },
-      { class_id: CLASS, anchor_board_id: 'eval', visible: true, correction_visible: false, released: { v: 1, role: 'evaluation', chapter: S1, label: 'Évaluation', pages: [{ board: 'eval', role: 'evaluation', label: 'Évaluation' }] } },
+      // Sous son vrai rôle
+      { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: false, released: { v: 1, role: 'evaluation', chapter: S1, label: 'Évaluation', pages: [page('eval', 'evaluation')] } },
+      { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'Évaluation', pages: [page('eval', 'evaluation'), page('eval-corr', 'correction')] } },
+      // Déguisée en activité : son titre du jour la referme
+      { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'x', pages: [page('eval', 'activity'), page('eval-docs', 'documents')] } },
+      { class_id: CLASS, anchor_board_id: ID('a1'), visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'x', pages: [page('a1', 'activity'), page('eval', 'documents'), page('eval-corr', 'activity'), page('a1-corr', 'documents')], correction: { copy: ID('eval-corr') } } },
     ];
-    for (const r of forged) expect(seen([r]).boards).toEqual([]);
+    for (const r of forged) {
+      const { boards } = seen([r]);
+      for (const name of ['eval', 'eval-docs', 'eval-corr', 'a1-corr']) expect(boards).not.toContain(name);
+    }
+    expect(seen([forged[3]]).boards).toEqual(['a1']);
   });
 
-  it('la ligne est suivie par identifiant : un cours renommé depuis reste montré, et signalé', () => {
-    const old = row('a2', true);
-    const renamed = library.map((b) => (b.id === 'a2-docs' ? { ...b, title: 'Activité 2 — Séisme (correction)' } : b));
-    const now = new Map(renamed.map((b) => [b.id, b]));
-    // Ce que le serveur servira : les cours cités par la ligne, quel que soit leur titre du jour
-    expect(seen([old], (id) => now.get(id)).boards).toEqual(['a2', 'a2-proto', 'a2-docs']);
-    expect(staleRows(binderItems(buildBinder(renamed, '4e'), texts), [old]).map((s) => s.reason)).toEqual(['pages']);
+  it('un cours ouvert puis récrit en correction ou en évaluation se referme tout seul', () => {
+    const old = [row('a2', true), row('a1', true, true)];
+    const retitle = (name: string, title: string) => library.map((b) => (b.id === ID(name) ? { ...b, title } : b));
+    // La feuille de documents devient une correction
+    const docs = retitle('a2-docs', 'Activité 2 — Séisme (correction)');
+    expect(seen(old, docs).boards).toEqual(['a1', 'a1-copie', 'a2', 'a2-proto']);
+    expect(staleRows(binderItems(buildBinder(docs, '4e'), texts), [old[0]]).map((s) => s.reason)).toEqual(['pages']);
+    // La fiche elle-même devient la correction, ou une évaluation : toute l'activité se referme
+    expect(seen(old, retitle('a2', 'Activité 2 — Séisme (correction)')).boards).toEqual(['a1', 'a1-copie']);
+    expect(seen(old, retitle('a2', 'Évaluation — Les séismes')).boards).toEqual(['a1', 'a1-copie']);
+    expect(seen(old, retitle('a2', 'Activité 2 — Séisme, corrigé du professeur')).boards).toEqual(['a1', 'a1-copie']);
+    // La copie modèle devient le corrigé du professeur : elle ne s'écrit plus sur la fiche
+    expect(seen(old, retitle('a1-copie', 'Activité 1 — Volcans (correction)')).boards).toEqual(['a1', 'a2', 'a2-proto', 'a2-docs']);
+    // Un simple changement d'intitulé ne referme rien
+    expect(seen(old, retitle('a2-docs', 'Activité 2 — Mesurer un séisme (documents)')).boards).toEqual(['a1', 'a1-copie', 'a2', 'a2-proto', 'a2-docs']);
   });
 
   it('une page d’un rôle que l’activité ne peut pas porter ne sort pas, même citée', () => {
-    const forged: BinderItemRow = { ...row('a1', true), released: { ...releasedOf(item('a1'), false), pages: [{ board: 'a1', role: 'activity', label: 'Activité 1' }, { board: 'a1-corr', role: 'correction', label: 'x' }, { board: 'eval', role: 'evaluation', label: 'x' }] } };
+    const forged: BinderItemRow = { ...row('a1', true), released: { ...releasedOf(item('a1'), false), pages: [page('a1', 'activity'), page('a1-corr', 'correction'), page('eval', 'evaluation')] } };
     expect(seen([forged]).boards).toEqual(['a1']);
   });
 
-  it('un cours cité par deux lignes n’est collé qu’une fois', () => {
-    const twice: BinderItemRow = { ...row('a3', true), released: { ...releasedOf(item('a3'), false), pages: [{ board: 'a3', role: 'activity', label: 'Activité 3' }, { board: 'a2-docs', role: 'documents', label: 'x' }] } };
-    const { boards } = seen([row('a2', true), twice]);
-    expect(boards.filter((b) => b === 'a2-docs')).toHaveLength(1);
+  it('un cours cité par deux lignes n’est collé qu’une fois, toujours au même endroit', () => {
+    const twice: BinderItemRow = { ...row('a3', true), released: { ...releasedOf(item('a3'), false), pages: [page('a3', 'activity'), page('a2-docs', 'documents')] } };
+    const one = seen([row('a2', true), twice]).boards;
+    expect(one.filter((b) => b === 'a2-docs')).toHaveLength(1);
+    expect(seen([twice, row('a2', true)]).boards).toEqual(one);
   });
 
   it('tout ouvert : les pages sont dans l’ordre du classeur du professeur', () => {
     const all = items.map((i) => rowFor(i, CLASS, { visible: true, correction: true }));
+    const byId = new Map(library.map((b) => [b.id, b]));
     const teacher = pages.flatMap((p) => (p.kind === 'divider' ? [p.key] : p.kind === 'sheet' && p.anchor ? [p.key] : []));
-    const student = pagesFromReleased(rowEntries(all.reverse()), (id) => byId.get(id)).pages.map((p) => p.key);
+    const student = pagesFromReleased(servedEntries(all.reverse(), library), (id) => byId.get(id)).pages.map((p) => p.key);
     expect(student).toEqual(teacher);
   });
 
-  it('une ancre absente du classeur (doublon écarté, copie posée sur l’emploi du temps, entraînement noté) n’ouvre rien', () => {
-    for (const anchor of ['copie-emploi-du-temps', 'entr', 'a1-corr', 'bilans1']) {
-      const forged: BinderItemRow = { class_id: CLASS, anchor_board_id: anchor, visible: true, correction_visible: true, released: releasedOf({ ...item('a1'), anchor }, true) };
-      expect(seen([forged]).boards).toEqual([]);
+  it('une ancre qui n’est pas une page de la ligne, ou pas un cours de la bibliothèque, n’ouvre rien', () => {
+    for (const name of ['copie-emploi-du-temps', 'entr', 'a1-corr', 'bilans1']) {
+      const forged: BinderItemRow = { class_id: CLASS, anchor_board_id: ID(name), visible: true, correction_visible: true, released: releasedOf({ ...item('a1'), anchor: ID(name) }, true) };
+      expect(seen([forged]).boards, name).toEqual([]);
     }
+    // Un cours qui n'est plus au professeur (supprimé, ou d'un autre) : rien
+    expect(seen([row('a1', true, true)], without('a1')).boards).toEqual([]);
+    expect(seen([row('a1', true, true)], without('a1-copie')).boards).toEqual(['a1']);
   });
 
   it('des documents ajoutés après l’ouverture restent fermés tant que la ligne n’est pas mise à jour', () => {
-    const before = binderItems(buildBinder(library.filter((b) => b.id !== 'a2-docs'), '4e'), texts).find((i) => i.anchor === 'a2')!;
+    const before = find(binderItems(buildBinder(without('a2-docs'), '4e'), texts), 'a2');
     const old = rowFor(before, CLASS, { visible: true, correction: false });
     expect(seen([old]).boards).toEqual(['a2', 'a2-proto']);
   });
 
   it('une copie modèle créée après l’ouverture de la correction ne s’ajoute pas seule', () => {
-    const before = binderItems(buildBinder(library.filter((b) => b.id !== 'a2-copie'), '4e'), texts).find((i) => i.anchor === 'a2')!;
+    const before = find(binderItems(buildBinder(without('a2-copie'), '4e'), texts), 'a2');
     const old = rowFor(before, CLASS, { visible: true, correction: true });
     expect(seen([old]).boards).not.toContain('a2-copie');
   });
@@ -203,31 +239,31 @@ describe('titres tordus — rien ne s’ouvre par erreur', () => {
     for (const title of cases) {
       const found = anchors([board('x', title, '4e', S1)]);
       expect(found.filter((i) => i.role === 'activity'), title).toEqual([]);
-      expect(sequenceAnchors(found, S1), title).toEqual(['g']);
+      expect(sequenceAnchors(found, S1).map(NAME), title).toEqual(['g']);
     }
   });
 
   it('la copie modèle écrite avec des accents décomposés reste la copie de sa fiche', () => {
     const found = anchors([board('f', 'Activité 1 — Volcans', '4e', S1), board('c', 'Activité 1 — Volcans (copie modèle)'.normalize('NFD'), '4e', S1)]);
-    expect(found.find((i) => i.anchor === 'f')).toMatchObject({ copy: 'c', pages: [{ board: 'f' }] });
+    expect(find(found, 'f')).toMatchObject({ copy: ID('c'), pages: [{ board: ID('f') }] });
   });
 
   it('deux activités de même repère dans une séquence : aucun bilan, plutôt que le mauvais', () => {
     const found = anchors([board('s', 'Activité 2 — Séisme', '4e', S1), board('v', 'Activité 2 — Volcans', '4e', S1)]);
-    expect(found.filter((i) => i.role === 'activity').map((i) => [i.anchor, i.summary])).toEqual([['s', undefined], ['v', undefined]]);
+    expect(found.filter((i) => i.role === 'activity').map((i) => [NAME(i.anchor), i.summary])).toEqual([['s', undefined], ['v', undefined]]);
   });
 
   it('des documents sans fiche ne portent pas le bilan de l’activité', () => {
     const found = anchors([board('d', 'Activité 2 — Séisme (documents)', '4e', S1)]);
-    expect(found.find((i) => i.anchor === 'd')).toMatchObject({ role: 'activity' });
-    expect(found.find((i) => i.anchor === 'd')!.summary).toBeUndefined();
-    expect(hasCorrection(found.find((i) => i.anchor === 'd')!)).toBe(false);
+    expect(find(found, 'd')).toMatchObject({ role: 'activity' });
+    expect(find(found, 'd').summary).toBeUndefined();
+    expect(hasCorrection(find(found, 'd'))).toBe(false);
   });
 });
 
 describe('sequenceAnchors', () => {
   it('la page de garde et les activités, jamais la fiche de mémorisation ni l’évaluation', () => {
-    expect(sequenceAnchors(items, S1)).toEqual(['garde1', 'a1', 'a2', 'a3']);
+    expect(sequenceAnchors(items, S1).map(NAME)).toEqual(['garde1', 'a1', 'a2', 'a3']);
   });
 });
 
@@ -260,20 +296,20 @@ describe('staleRows', () => {
   });
 
   it('signale des documents ajoutés, une correction changée, un cours retiré du classeur', () => {
-    const without = binderItems(buildBinder(library.filter((b) => b.id !== 'a2-docs' && b.id !== 'a1-copie'), '4e'), texts);
+    const before = binderItems(buildBinder(without('a2-docs', 'a1-copie'), '4e'), texts);
     const old = [
-      rowFor(without.find((i) => i.anchor === 'a2')!, CLASS, { visible: true, correction: false }),
-      rowFor(without.find((i) => i.anchor === 'a1')!, CLASS, { visible: true, correction: true }),
-      { class_id: CLASS, anchor_board_id: 'supprime', visible: true, correction_visible: false, released: releasedOf({ ...item('a3'), anchor: 'supprime' }, false) },
+      rowFor(find(before, 'a2'), CLASS, { visible: true, correction: false }),
+      rowFor(find(before, 'a1'), CLASS, { visible: true, correction: true }),
+      { class_id: CLASS, anchor_board_id: ID('supprime'), visible: true, correction_visible: false, released: releasedOf({ ...item('a3'), anchor: ID('supprime') }, false) },
     ];
-    expect(staleRows(items, old).map((s) => [s.row.anchor_board_id, s.reason])).toEqual([['a2', 'pages'], ['a1', 'correction'], ['supprime', 'gone']]);
+    expect(staleRows(items, old).map((s) => [NAME(s.row.anchor_board_id), s.reason])).toEqual([['a2', 'pages'], ['a1', 'correction'], ['supprime', 'gone']]);
   });
 });
 
 describe('pageAccess', () => {
   const states = itemStates([row('a2', true), row('a1', true, true)]);
   const full: BinderPage[] = withSummaries(pages, texts, (p) => p.flatMap((r) => Array.from({ length: 8 }, () => r)));
-  const access = (key: string) => pageAccess(full.find((p) => p.key === key)!, states);
+  const access = (name: string) => pageAccess(full.find((p) => p.key === ID(name))!, states);
 
   it('suit l’état de l’activité pour toutes ses pages', () => {
     expect(access('a2')).toBe('open');
@@ -289,7 +325,7 @@ describe('pageAccess', () => {
   });
 
   it('la suite d’un bilan suit la correction ; un bilan sans fiche reste fermé', () => {
-    const suite = (anchor: string) => full.find((p) => p.kind === 'ruled' && p.anchor === anchor)!;
+    const suite = (name: string) => full.find((p) => p.kind === 'ruled' && p.anchor === ID(name))!;
     expect(pageAccess(suite('a1'), states)).toBe('open');
     expect(pageAccess(suite('a3'), states)).toBe('closed');
     expect(pageAccess(full.find((p) => p.kind === 'ruled' && !p.anchor)!, states)).toBe('locked');

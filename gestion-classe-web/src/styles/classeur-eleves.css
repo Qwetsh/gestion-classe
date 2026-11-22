@@ -6,7 +6,7 @@
 .bd-stage--read .bd-scroller {
   position: absolute; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
-.bd-stage--read .bd-spread-outer { margin: 8px 0 88px; }
+.bd-stage--read .bd-spread-outer { margin: 8px auto 88px; }
 .bd-stage--read .bd-arrow { position: absolute; z-index: 6; bottom: 14px; width: 52px; height: 52px; border-radius: 50%; background: rgba(20,22,26,.72); }
 .bd-stage--read .bd-arrow--prev { left: 14px; }
 .bd-stage--read .bd-arrow--next { right: 14px; }

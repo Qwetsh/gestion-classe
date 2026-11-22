@@ -6,9 +6,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import { buildBinder, type BinderPage } from '../binder';
-import { binderItems, pagesFromReleased, releasedOf, rowEntries, rowFor, type BinderItem, type BinderItemRow } from '../binderRelease';
+import { binderItems, pagesFromReleased, releasedOf, rowFor, servedEntries, type BinderItem, type BinderItemRow } from '../binderRelease';
 import { withSummaries, type InkRun, type SummaryRuns } from '../binderSummary';
-import { boardIds, imagePaths, openItems, ownedItems, ownedPaths, publicDoc, type ItemRow } from '../../../../supabase/functions/classeur-eleve/release';
+import { boardIds, closedByTitle, imagePaths, openItems, ownedItems, ownedPaths, publicDoc, type ItemRow } from '../../../../supabase/functions/classeur-eleve/release';
+import { isUnsureTitle } from '../binder';
+import { splitVariant } from '../courseLibrary';
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const ID = {
@@ -63,7 +65,7 @@ const row = (anchor: string, visible: boolean, correction = false): BinderItemRo
 /** Ce que le serveur rend pour ces lignes : la base range les JSON à sa façon, d'où l'aller-retour. */
 function served(rows: BinderItemRow[], owned: string[] = library.map((b) => b.id)) {
   const fromDb = JSON.parse(JSON.stringify(rows)) as ItemRow[];
-  const kept = ownedItems(openItems(fromDb.filter((r) => r.visible)), new Set(owned));
+  const kept = ownedItems(openItems(fromDb.filter((r) => r.visible)), new Map(owned.map((id) => [id, byId.get(id)?.title ?? ''])));
   return { items: kept, ids: boardIds(kept) };
 }
 
@@ -87,7 +89,7 @@ describe('le classeur de l’élève est celui de l’aperçu du professeur', ()
   };
   for (const [name, rows] of Object.entries(cases)) {
     it(name, () => {
-      const teacher = pagesFromReleased(rowEntries(rows), (id) => byId.get(id));
+      const teacher = pagesFromReleased(servedEntries(rows, library), (id) => byId.get(id));
       const { items: open } = served(rows);
       const student = pagesFromReleased(open, (id) => byId.get(id));
       expect(shape(student.pages, student.texts)).toEqual(shape(teacher.pages, teacher.texts));
@@ -148,20 +150,49 @@ describe('openItems — le serveur ne rend que ce qui est ouvert', () => {
   });
 });
 
+describe('closedByTitle — le titre du jour ne fait que refermer', () => {
+  it('une page ouverte ne peut pas s’appeler correction, copie modèle, version adaptée, extraits ou évaluation', () => {
+    for (const title of ['Activité 2 — Séisme', 'Activité 2 — Séisme (documents)', 'Activité 2 — Séisme (protocole)', 'Page de garde — Séquence 1', 'FM1 — Lire une consigne', 'Fiche de mémorisation — Séquence 1', 'Activité 10 — Bilan de la séquence']) {
+      expect(closedByTitle(title, 'page'), title).toBe(false);
+    }
+    for (const title of ['Activité 2 — Séisme (correction)', 'Activité 2 — Séisme (corrigé)', 'Activité 2 — Séisme (copie modèle)', 'Activité 2 — Séisme (adaptée)', 'Activité 2 — Séisme (extraits)', 'Évaluation — La Terre', 'Évaluation — La Terre (documents)', 'Activité 2 — Séisme - correction', 'Activité 2 — Séisme (correction) v2', 'Activité 6 — Évaluation finale', 'Activité 2 — Séisme (copie modèle)'.normalize('NFD')]) {
+      expect(closedByTitle(title, 'page'), title).toBe(true);
+    }
+  });
+
+  it('une copie modèle doit toujours s’appeler ainsi', () => {
+    expect(closedByTitle('Activité 2 — Séisme (copie modèle)', 'copy')).toBe(false);
+    expect(closedByTitle('Activité 2 — Séisme (copie modèle)'.normalize('NFD'), 'copy')).toBe(false);
+    for (const title of ['Activité 2 — Séisme (correction)', 'Activité 2 — Séisme', 'Évaluation — La Terre (copie modèle)']) expect(closedByTitle(title, 'copy'), title).toBe(true);
+  });
+
+  it('dit la même chose que le classeur du professeur sur tous les titres de la bibliothèque', () => {
+    // Le serveur récrit deux règles du navigateur : elles ne doivent pas diverger
+    for (const { title } of library) {
+      const { variant } = splitVariant(title);
+      const pageHere = (variant === 'fiche' || variant === 'documents' || variant === 'protocole') && !isUnsureTitle(title);
+      expect(closedByTitle(title, 'page'), title).toBe(!pageHere);
+      expect(closedByTitle(title, 'copy'), title).toBe(!(variant === 'copie' && !isUnsureTitle(title)));
+    }
+  });
+});
+
 describe('ownedItems — rien d’un autre professeur', () => {
+  const titles = new Map(library.map((b) => [b.id, b.title]));
+
   it('une page ou une copie modèle qui n’est pas au professeur de la classe est retirée', () => {
     const forged: ItemRow = {
       anchor_board_id: ID.a1, visible: true, correction_visible: true,
       released: { v: 1, role: 'activity', chapter: S1, label: 'Activité 1', pages: [{ board: ID.a1, role: 'activity', label: 'Activité 1' }, { board: ID.autreProf, role: 'documents', label: 'x' }], correction: { copy: ID.autreProf } },
     };
-    const kept = ownedItems(openItems([forged]), new Set(library.map((b) => b.id)));
+    const kept = ownedItems(openItems([forged]), titles);
     expect(boardIds(kept)).toEqual([ID.a1]);
     expect(kept[0].released.correction).toBeUndefined();
   });
 
   it('une ancre qui n’est pas au professeur de la classe ne rend rien', () => {
     const forged: ItemRow = { anchor_board_id: ID.autreProf, visible: true, correction_visible: false, released: { v: 1, role: 'cover', chapter: S1, label: 'x', pages: [{ board: ID.autreProf, role: 'cover', label: 'x' }] } };
-    expect(ownedItems(openItems([forged]), new Set(library.map((b) => b.id)))).toEqual([]);
+    expect(ownedItems(openItems([forged]), titles)).toEqual([]);
   });
 
   it('la copie retirée laisse le bilan, qui est du texte écrit par le professeur', () => {
@@ -184,6 +215,13 @@ describe('publicDoc — d’un cours, seulement le texte et sa mise en page', ()
     expect(publicDoc(null)).toBeNull();
     expect(publicDoc({ content })).toBeNull();
     expect(publicDoc({ version: 1 })).toBeNull();
+  });
+
+  it('un cours trop profond pour être relu en entier ne sort pas (un encart pourrait s’y cacher)', () => {
+    const nest = (depth: number, leaf: unknown): unknown => (depth === 0 ? leaf : { type: 'x', content: [nest(depth - 1, leaf)] });
+    expect(publicDoc({ version: 1, content: nest(40, { type: 'paragraph' }) })).not.toBeNull();
+    expect(publicDoc({ version: 1, content: nest(80, { type: 'encart' }) })).toBeNull();
+    expect(publicDoc({ version: 1, content: nest(80, { type: 'paragraph' }) })).toBeNull();
   });
 
   it('les images ne sont signées que sous le dossier du professeur', () => {

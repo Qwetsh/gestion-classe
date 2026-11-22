@@ -18,18 +18,37 @@ import { courseHref } from '../lib/courseLibrary';
 import type { BinderPage } from '../lib/binder';
 import { INK_WIDTH_MM, SUMMARY_LEAD, withSummaries, wrapInk } from '../lib/binderSummary';
 import {
-  hasCorrection, itemStates, pageAccess, pagesFromReleased, rowEntries, rowFor, sequenceAnchors, staleRows, stateOf,
+  hasCorrection, itemStates, pageAccess, pagesFromReleased, rowFor, servedEntries, sequenceAnchors, staleRows, stateOf,
   type BinderItem, type BinderItemRow, type ItemState,
 } from '../lib/binderRelease';
 import { binderReleaseUnavailable, deleteBinderItems, fetchBinderClasses, fetchBinderItems, saveBinderItems, type BinderClass } from '../lib/binderReleaseQueries';
 import { MM } from '../lib/course/coursePage';
 import { BinderBook } from '../components/binder/BinderBook';
 import { BinderLinkButton } from '../components/binder/BinderLinkButton';
+import { loadSheetDoc } from '../components/binder/binderSheet';
+import { BinderSourceContext, type BinderSource } from '../components/binder/binderSource';
+import type { CourseDoc } from '../lib/course/courseDoc';
+import { publicDoc } from '../../../supabase/functions/classeur-eleve/release';
 import { useBinderLibrary } from '../components/binder/useBinderLibrary';
 import { useInkMeasure } from '../components/binder/useInkMeasure';
 
 /** Hauteur du bandeau affiché sous la barre quand une classe est choisie. */
 const NOTICE_H = 44;
+
+/**
+ * Aperçu élève : une fiche telle que le serveur la rendrait (son texte et sa mise en page, sans les
+ * annotations du professeur ; un cours à encart n'est pas servi).
+ */
+const PREVIEW_SOURCE: BinderSource = {
+  loadDoc: async (board) => {
+    const doc = await loadSheetDoc(board);
+    if (doc === null) return null;
+    const served = publicDoc(doc);
+    if (!served) throw new Error('Cette fiche ne peut pas être servie aux élèves');
+    return served as unknown as CourseDoc;
+  },
+};
+const TEACHER_SOURCE: BinderSource = { loadDoc: loadSheetDoc };
 
 /** Remplace, par cours d'ancrage, les lignes de `rows` par celles de `next`. */
 function mergeRows(rows: BinderItemRow[], next: BinderItemRow[]): BinderItemRow[] {
@@ -109,11 +128,11 @@ export function Binder() {
     if (previewing && rows) {
       // Ce que la classe voit : ses lignes ouvertes, suivies par identifiant comme le fera le serveur
       // (un cours renommé depuis reste montré tant que la ligne n'a pas été mise à jour)
-      const released = pagesFromReleased(rowEntries(rows), (id) => boardById.get(id));
+      const released = pagesFromReleased(servedEntries(rows, boards ?? []), (id) => boardById.get(id));
       return withSummaries(released.pages, released.texts, wrap);
     }
     return withSummaries(basePages, inkReady.texts, wrap);
-  }, [basePages, inkReady, previewing, rows, boardById]);
+  }, [basePages, inkReady, previewing, rows, boards, boardById]);
 
   /** Ouvre ou ferme des éléments pour la classe : montré tout de suite, relu en base si l'écriture échoue. */
   const applyStates = useCallback(async (changes: { item: BinderItem; state: ItemState }[]) => {
@@ -238,7 +257,7 @@ export function Binder() {
                   {previewing ? 'Aperçu. ' : ''}
                   {stale.length === 1 ? '1 élément ouvert ne correspond plus' : `${stale.length} éléments ouverts ne correspondent plus`} au classeur
                   {' '}({stale.slice(0, 3).map(staleLine).join(' ; ')}{stale.length > 3 ? '…' : ''}).
-                  {' '}La {selectedClass.name} garde l’ancienne version tant que vous n’avez pas validé.
+                  {' '}Tant que vous n’avez pas validé, la {selectedClass.name} garde les pages ouvertes à l’origine (dans leur texte d’aujourd’hui).
                 </span>
                 <button type="button" className="bd-strip__btn" disabled={saving} onClick={() => void refreshStale()}>Mettre à jour</button>
               </>
@@ -255,6 +274,7 @@ export function Binder() {
     : null;
 
   return (
+    <BinderSourceContext.Provider value={previewing ? PREVIEW_SOURCE : TEACHER_SOURCE}>
     <BinderBook
       pages={pages}
       ready={!!inkReady}
@@ -303,9 +323,10 @@ export function Binder() {
               <Eye size={18} aria-hidden /> <span className="bd-hide-sm">Aperçu élève</span>
             </button>
           )}
-          {(tuning || previewing) && selectedClass && <BinderLinkButton userId={userId} classId={selectedClass.id} className={selectedClass.name} />}
+          {(tuning || previewing) && selectedClass && <BinderLinkButton key={selectedClass.id} userId={userId} classId={selectedClass.id} className={selectedClass.name} />}
         </>
       )}
     />
+    </BinderSourceContext.Provider>
   );
 }

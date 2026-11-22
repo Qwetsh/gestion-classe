@@ -16,6 +16,7 @@
 import type { BinderPage, SheetRole } from './binder';
 import type { Board } from './boardsQueries';
 import { naturalCompare } from './courseLibrary';
+import { openItems, ownedItems } from '../../../supabase/functions/classeur-eleve/release';
 import { activityKeyOf } from './binderInk';
 import type { InkRun, Summary, SummaryRuns } from './binderSummary';
 
@@ -218,11 +219,13 @@ export const stateOf = (states: Map<string, ItemState>, anchor: string | undefin
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Les lignes ouvertes d'une classe, telles que le serveur les suit : seule la ligne compte, jamais
- * les titres d'aujourd'hui. L'aperçu du professeur part d'elles, pour montrer ce qui sort vraiment.
+ * Ce que le serveur rendrait pour ces lignes, calculé avec son propre code (release.ts) : il suit
+ * les identifiants écrits dans la ligne, resserre aux cours du professeur (`boards` : sa
+ * bibliothèque) et referme un cours devenu correction ou évaluation d'après son titre du jour.
+ * L'aperçu du professeur part de là, pour montrer ce qui sort vraiment.
  */
-export function rowEntries(rows: BinderItemRow[]): OpenEntry[] {
-  return rows.filter((r) => r.visible).map((r) => ({ anchor: r.anchor_board_id, correction: r.correction_visible, released: r.released }));
+export function servedEntries(rows: BinderItemRow[], boards: Pick<Board, 'id' | 'title'>[]): OpenEntry[] {
+  return ownedItems(openItems(rows.filter((r) => r.visible)), new Map(boards.map((b) => [b.id, b.title])));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -313,7 +316,9 @@ export interface OpenEntry {
  */
 export function pagesFromReleased(entries: OpenEntry[], boardOf: (id: string) => Board | undefined): { pages: BinderPage[]; texts: Map<string, SummaryRuns> } {
   const taken = new Set<string>();
-  const items = entries.flatMap((e) => {
+  // Ordre fixe, celui du serveur : un cours cité par deux éléments va toujours au même
+  const sorted = [...entries].sort((a, b) => (a.anchor < b.anchor ? -1 : a.anchor > b.anchor ? 1 : 0));
+  const items = sorted.flatMap((e) => {
     const parsed = parseReleased(e.released);
     // L'ancre est la page par laquelle l'élément a été ouvert : sans elle, rien
     if (!parsed || !parsed.pages.some((p) => p.board === e.anchor)) return [];

@@ -33,6 +33,14 @@ const SIGNED_URL_TTL = 60 * 60 * 6;
 const TOKEN = /^[A-Za-z0-9_-]{32,64}$/;
 const CODE = /^\d{6}$/;
 
+/** Panne de la base ou du stockage : à ne pas confondre avec un refus (l'élève lirait « ce lien ne fonctionne plus »). */
+class ServerError extends Error {}
+/** Résultat d'une requête, ou une erreur de serveur si elle a échoué. */
+function must<T>(res: { data: T; error: unknown }): T {
+  if (res.error) throw new ServerError();
+  return res.data;
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -44,19 +52,19 @@ interface BinderClass { id: string; name: string; user_id: string }
 
 /** La classe désignée par le jeton, si son lien est actif. */
 async function classOfToken(supabase: SupabaseClient, token: string): Promise<BinderClass | null> {
-  const { data: binder } = await supabase
+  const binder = must(await supabase
     .from("class_binders")
     .select("class_id, user_id")
     .eq("link_token", token)
     .eq("link_enabled", true)
-    .maybeSingle();
+    .maybeSingle());
   if (!binder) return null;
-  const { data: cls } = await supabase
+  const cls = must(await supabase
     .from("classes")
     .select("id, name, user_id")
     .eq("id", binder.class_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
+    .not("is_deleted", "is", true)
+    .maybeSingle());
   // L'accès doit avoir été réglé par le professeur de la classe
   if (!cls || cls.user_id !== binder.user_id) return null;
   return cls as BinderClass;
@@ -68,27 +76,27 @@ async function classOfToken(supabase: SupabaseClient, token: string): Promise<Bi
  * fiches, `studentId` choisit). L'élève témoin du professeur voit l'onglet même fermé (aperçu).
  */
 async function classOfCode(supabase: SupabaseClient, code: string, studentId: string | null): Promise<BinderClass | null> {
-  const { data: resolved } = await supabase.rpc("resolve_student_code", { p_code: code, p_student_id: studentId });
+  const resolved = must(await supabase.rpc("resolve_student_code", { p_code: code, p_student_id: studentId }));
   if (!isUuid(resolved)) return null;
-  const { data: student } = await supabase
+  const student = must(await supabase
     .from("students")
     .select("id, class_id, user_id, is_witness, is_deleted")
     .eq("id", resolved)
-    .maybeSingle();
+    .maybeSingle());
   if (!student?.class_id || student.is_deleted === true) return null;
-  const { data: cls } = await supabase
+  const cls = must(await supabase
     .from("classes")
     .select("id, name, user_id")
     .eq("id", student.class_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
+    .not("is_deleted", "is", true)
+    .maybeSingle());
   if (!cls || cls.user_id !== student.user_id) return null;
   if (student.is_witness !== true) {
-    const { data: binder } = await supabase
+    const binder = must(await supabase
       .from("class_binders")
       .select("user_id, tab_enabled")
       .eq("class_id", cls.id)
-      .maybeSingle();
+      .maybeSingle());
     if (!binder || binder.tab_enabled !== true || binder.user_id !== cls.user_id) return null;
   }
   return cls as BinderClass;
@@ -96,24 +104,31 @@ async function classOfCode(supabase: SupabaseClient, code: string, studentId: st
 
 /** Éléments ouverts à la classe, resserrés aux cours de son professeur, avec les cours cités. */
 async function openFor(supabase: SupabaseClient, cls: BinderClass): Promise<{ items: OpenItem[]; boards: { id: string; title: string; updated_at: string }[] }> {
-  const { data: rows } = await supabase
+  const rows = must(await supabase
     .from("class_binder_items")
     .select("anchor_board_id, visible, correction_visible, released")
     .eq("class_id", cls.id)
     .eq("user_id", cls.user_id)
-    .eq("visible", true);
+    .eq("visible", true));
   const items = openItems((rows ?? []) as ItemRow[]);
   const ids = boardIds(items);
   if (ids.length === 0) return { items: [], boards: [] };
-  const { data: boards } = await supabase
-    .from("boards")
-    .select("id, title, updated_at")
-    .in("id", ids)
-    .eq("user_id", cls.user_id);
-  const owned = (boards ?? []) as { id: string; title: string; updated_at: string }[];
-  const kept = ownedItems(items, new Set(owned.map((b) => b.id)));
+  // Par paquets : une liste d'identifiants trop longue ne passerait pas dans une adresse
+  const owned: { id: string; title: string; updated_at: string }[] = [];
+  for (let from = 0; from < ids.length; from += 100) {
+    const part = must(await supabase
+      .from("boards")
+      .select("id, title, updated_at")
+      .in("id", ids.slice(from, from + 100))
+      .eq("user_id", cls.user_id));
+    owned.push(...((part ?? []) as typeof owned));
+  }
+  // Le titre d'aujourd'hui ne sert qu'à refermer un cours devenu correction ou évaluation
+  const kept = ownedItems(items, new Map(owned.map((b) => [b.id, b.title])));
   const cited = new Set(boardIds(kept));
-  return { items: kept, boards: owned.filter((b) => cited.has(b.id)) };
+  // Le titre d'une copie modèle ne sort pas : seul celui d'une page se lit dans le classeur
+  const pages = new Set(kept.flatMap((i) => i.released.pages.map((p) => p.board)));
+  return { items: kept, boards: owned.filter((b) => cited.has(b.id)).map((b) => (pages.has(b.id) ? b : { ...b, title: "" })) };
 }
 
 serve(async (req: Request) => {
@@ -140,6 +155,15 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } },
   );
 
+  try {
+    return await answer(supabase, action, token, code, studentId, body.boardId);
+  } catch (err) {
+    if (err instanceof ServerError) return json({ error: "server" }, 500);
+    throw err;
+  }
+});
+
+async function answer(supabase: SupabaseClient, action: "toc" | "doc", token: string | null, code: string | null, studentId: string | null, boardId: unknown): Promise<Response> {
   const cls = token !== null ? await classOfToken(supabase, token) : await classOfCode(supabase, code!, studentId);
   if (!cls) return json({ error: "forbidden" }, 403);
 
@@ -150,22 +174,21 @@ serve(async (req: Request) => {
   }
 
   // action === "doc" : le cours doit être cité par un élément ouvert, à l'instant
-  const boardId = body.boardId;
   if (!isUuid(boardId) || !boards.some((b) => b.id === boardId)) return json({ error: "forbidden" }, 403);
-  const { data: board } = await supabase
+  const board = must(await supabase
     .from("boards")
     .select("doc")
     .eq("id", boardId)
     .eq("user_id", cls.user_id)
-    .maybeSingle();
+    .maybeSingle());
   const doc = publicDoc(board?.doc);
   if (!doc) return json({ error: "not_found" }, 404);
 
   const paths = ownedPaths(imagePaths(doc.content), cls.user_id);
   const images: Record<string, string> = {};
   if (paths.length > 0) {
-    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL);
+    const signed = must(await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL));
     for (const s of signed ?? []) if (s.path && s.signedUrl) images[s.path] = s.signedUrl;
   }
   return json({ doc, images });
-});
+}

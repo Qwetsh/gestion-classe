@@ -117,7 +117,7 @@ export function GluedSheet({ board, role, companion, left, top, onOpen, student 
         </button>
       )}
       {doc === null && <span className="bd-glued__note">Tableau blanc : pas de feuille à imprimer</span>}
-      {doc === undefined && <span className="bd-glued__note">{failed ? 'Fiche illisible' : 'Chargement…'}</span>}
+      {doc === undefined && <span className="bd-glued__note">{!failed ? 'Chargement…' : student ? 'Cette page n’est plus disponible' : 'Fiche illisible'}</span>}
       <span className="bd-glued__glue" aria-hidden />
     </div>
   );

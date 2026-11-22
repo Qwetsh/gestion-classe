@@ -196,10 +196,15 @@ export function objectForUrl(url: string): { type: 'video'; provider: 'youtube' 
 
 const urlCache = new Map<string, Promise<string>>();
 
+/** Visiteur sans compte (classeur des élèves) : il ne peut rien signer lui-même. */
+let seededOnly = false;
+
 /** URL signée d'un fichier du bucket (6 h, mise en cache). */
 export function signedUrl(path: string): Promise<string> {
   const cached = urlCache.get(path);
   if (cached) return cached;
+  // Pas d'adresse fournie par le serveur : l'image n'est pas servie, inutile de frapper au stockage
+  if (seededOnly) return Promise.reject(new Error('Image non servie'));
   const p = (async () => {
     const { data, error } = await supabase.storage.from(BOARD_BUCKET).createSignedUrl(path, 60 * 60 * 6);
     if (error || !data?.signedUrl) throw error ?? new Error('URL signée indisponible');
@@ -447,4 +452,14 @@ export function renderMediaObject(ctx: CanvasRenderingContext2D, o: MediaObject,
  */
 export function seedSignedUrls(urls: Record<string, string>): void {
   for (const [path, url] of Object.entries(urls)) urlCache.set(path, Promise.resolve(url));
+}
+
+/**
+ * Classeur des élèves ouvert (`true`) : seules les adresses fournies par le serveur servent, même si
+ * un professeur connecté regarde la page (il voit ainsi ce que voient ses élèves). À la fermeture
+ * (`false`), les adresses fournies sont oubliées.
+ */
+export function setSeededUrlsOnly(on: boolean): void {
+  seededOnly = on;
+  if (!on) urlCache.clear();
 }

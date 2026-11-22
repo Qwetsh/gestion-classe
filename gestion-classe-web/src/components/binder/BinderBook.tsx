@@ -9,6 +9,9 @@
  * Lecture (PLAN_classeur_eleves.md, lot 2) : en page seule, la fiche peut être cadrée sur toute la
  * largeur de l'écran, sans ses marges. Sur un téléphone, la page entière est illisible (texte à
  * moins de 5 px) : la lecture y est le mode de départ, et on se déplace sur la page au doigt.
+ * Limite connue : le bilan écrit sous une fiche est plus large que le texte de la fiche ; en
+ * lecture, il faut le faire glisser pour le lire en entier (une feuille de bilan seule, elle, est
+ * cadrée sur ses lignes).
  */
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -16,6 +19,7 @@ import { BookOpen, ChevronLeft, ChevronRight, Columns2, List, RectangleVertical,
 import { SECTION_LABEL, SECTION_ORDER, binderToc, dividerIndex, sectionAt, spreadOf, turn, type BinderPage, type BinderSection } from '../../lib/binder';
 import { turnDirection } from '../../lib/binderFlaps';
 import { planFlip } from '../../lib/binderFlip';
+import { INK_WIDTH_MM } from '../../lib/binderSummary';
 import { COL_W, MARGIN, MM, PAGE_H, PAGE_W } from '../../lib/course/coursePage';
 import { BinderLeaf, GLUE_FROM_HOLES } from './BinderLeaf';
 import { PageFlip, type FlipView } from './PageFlip';
@@ -37,6 +41,8 @@ const BAR_H = 56;
 /** Lecture : marge laissée de chaque côté du texte de la fiche, en px d'écran, et agrandissement maximal. */
 const READ_PAD = 10;
 const READ_MAX = 1.5;
+/** Échelle de la page entière sous laquelle la lecture est le mode de départ (texte d'une fiche sous 7 px). */
+const READ_BELOW = 0.6;
 
 function useViewport() {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -85,7 +91,9 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   const [doubleChoice, setDoubleChoice] = useState<boolean | null>(null);
   const [readChoice, setReadChoice] = useState<boolean | null>(null);
   /** Feuille en train de se tourner, avec le contenu de ses deux faces. */
-  const [flip, setFlip] = useState<FlipView | null>(null);
+  const [flipState, setFlip] = useState<{ view: FlipView; pages: BinderPage[] } | null>(null);
+  /** La feuille tourne pour un classeur donné : si ses pages changent (aperçu, réglage), elle s'efface. */
+  const flip = flipState && flipState.pages === pages ? flipState.view : null;
   const spreadRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   /** Début d'un glissement du doigt (tourner les pages sur téléphone). */
@@ -97,10 +105,27 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   const tocW = tocOpen && viewport.w >= 900 ? 260 : 0;
   const narrow = viewport.w < 640;
   const double = doubleChoice ?? viewport.w - tocW >= DOUBLE_MIN_W;
-  /** Lecture demandée : la fiche cadrée sur la largeur de l'écran (page seule seulement). */
-  const readWanted = !double && (readChoice ?? narrow);
+  // Mise à l'échelle : la vue entière tient dans l'écran ; en lecture, le texte prend la largeur
+  const stageW = viewport.w - tocW;
+  // Sur téléphone, les flèches sont posées sur la page (et le doigt tourne les pages)
+  const availW = Math.max(200, stageW - (narrow ? 8 : 2 * 56));
+  const availH = Math.max(200, viewport.h - BAR_H - noticeH - 32);
+  const spreadW = PAGE_W * (double ? 2 : 1) + 2 * TAB_W;
+  const fitScale = Math.min(availW / spreadW, availH / PAGE_H);
+  /**
+   * Lecture demandée : la fiche cadrée sur la largeur de l'écran (page seule seulement). C'est le
+   * mode de départ quand la page entière serait illisible (téléphone, debout ou couché), sauf en
+   * réglage : les bandeaux se lisent sur la page entière.
+   */
+  const readWanted = !double && (readChoice ?? (fitScale < READ_BELOW && !strip));
+  const shownPage: BinderPage | undefined = pages[index];
   /** Un intercalaire n'a rien à lire : il reste montré en entier. */
-  const read = readWanted && pages[index]?.kind !== 'divider';
+  const read = readWanted && !!shownPage && shownPage.kind !== 'divider';
+  /** Ce qu'on lit sur la page (début et largeur, en px de feuille) : le texte de la fiche collée, ou les lignes d'une feuille de bilan. */
+  const readX = shownPage?.kind === 'ruled' ? 30 * MM : GLUE_FROM_HOLES + MARGIN * A5_SCALE;
+  const readW = shownPage?.kind === 'ruled' ? INK_WIDTH_MM * MM : COL_W * A5_SCALE;
+  const readScale = Math.max(fitScale, Math.min(READ_MAX, (stageW - 2 * READ_PAD) / readW));
+  const scale = read ? readScale : fitScale;
   const [leftIdx, rightIdx] = spreadOf(index, count, double);
 
   /** Copie figée d'une page affichée ou voisine (déjà mise en page), avant qu'elle ne change de place. */
@@ -127,15 +152,18 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
     // Les copies sont prises avant le changement de vue : après, les pages ont changé de place
     if (plan) {
       setFlip({
-        id: Date.now(),
-        kind: plan.kind,
-        front: ghost(plan.front),
-        back: plan.back === null ? null : ghost(plan.back),
-        under: plan.under && { side: plan.under.side, node: ghost(plan.under.page) },
+        pages,
+        view: {
+          id: Date.now(),
+          kind: plan.kind,
+          front: ghost(plan.front),
+          back: plan.back === null ? null : ghost(plan.back),
+          under: plan.under && { side: plan.under.side, node: ghost(plan.under.page) },
+        },
       });
     } else setFlip(null);
     setParams(q, { replace: true });
-  }, [params, setParams, keepParams, count, index, double, read, ghost]);
+  }, [params, setParams, keepParams, count, index, double, read, ghost, pages]);
 
   // Clavier : flèches, Page précédente / suivante, Début / Fin
   useEffect(() => {
@@ -162,23 +190,13 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
     }
   }, [index, count, double, pages, loadDoc]);
 
-  // Mise à l'échelle : la vue entière tient dans l'écran ; en lecture, le texte de la fiche prend la largeur
-  const stageW = viewport.w - tocW;
-  // Sur téléphone, les flèches sont posées sur la page (et le doigt tourne les pages)
-  const availW = Math.max(200, stageW - (narrow ? 8 : 2 * 56));
-  const availH = Math.max(200, viewport.h - BAR_H - noticeH - 32);
-  const spreadW = PAGE_W * (double ? 2 : 1) + 2 * TAB_W;
-  const fitScale = Math.min(availW / spreadW, availH / PAGE_H);
-  const readScale = Math.max(fitScale, Math.min(READ_MAX, (stageW - 2 * READ_PAD) / (COL_W * A5_SCALE)));
-  const scale = read ? readScale : fitScale;
-
-  // Lecture : à chaque page, on repart du haut de la fiche, son texte calé à gauche de l'écran
+  // Lecture : à chaque page, on repart du haut, le texte calé à gauche de l'écran
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el || !read) return;
-    el.scrollLeft = Math.max(0, (TAB_W + GLUE_FROM_HOLES + MARGIN * A5_SCALE) * scale - READ_PAD);
+    el.scrollLeft = Math.max(0, (TAB_W + readX) * scale - READ_PAD);
     el.scrollTop = 0;
-  }, [read, index, scale]);
+  }, [read, index, scale, readX]);
 
   // Onglets des intercalaires : à gauche s'ils sont déjà passés, à droite sinon
   const firstShown = leftIdx ?? rightIdx ?? 0;
@@ -271,7 +289,18 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
           </nav>
         )}
 
-        <main className={`bd-stage ${read ? 'bd-stage--read' : ''}`}>
+        <main
+          className={`bd-stage ${read ? 'bd-stage--read' : ''}`}
+          // Le doigt tourne les pages, partout sur le bureau ; en lecture il déplace la page
+          onTouchStart={(e) => { swipeX.current = !read && e.touches.length === 1 ? e.touches[0].clientX : null; }}
+          onTouchEnd={(e) => {
+            const start = swipeX.current;
+            swipeX.current = null;
+            if (start === null || count === 0) return;
+            const dx = e.changedTouches[0].clientX - start;
+            if (Math.abs(dx) > 60) go(turn(index, count, double, dx < 0 ? 1 : -1), true);
+          }}
+        >
           {error && <p className="bd-message" role="alert">{error}</p>}
           {!error && message && <p className="bd-message">{message}</p>}
           {!error && count > 0 && ready && (
@@ -279,18 +308,7 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
               <button type="button" className="bd-arrow bd-arrow--prev" onClick={() => go(turn(index, count, double, -1), true)} disabled={firstShown === 0} aria-label="Page précédente">
                 <ChevronLeft size={28} aria-hidden />
               </button>
-              <div
-                ref={scrollerRef}
-                className="bd-scroller"
-                onTouchStart={(e) => { swipeX.current = !read && e.touches.length === 1 ? e.touches[0].clientX : null; }}
-                onTouchEnd={(e) => {
-                  const start = swipeX.current;
-                  swipeX.current = null;
-                  if (start === null) return;
-                  const dx = e.changedTouches[0].clientX - start;
-                  if (Math.abs(dx) > 60) go(turn(index, count, double, dx < 0 ? 1 : -1), true);
-                }}
-              >
+              <div ref={scrollerRef} className="bd-scroller">
                 <div className="bd-spread-outer" style={{ width: spreadW * scale, height: PAGE_H * scale }}>
                   <div
                     ref={spreadRef}

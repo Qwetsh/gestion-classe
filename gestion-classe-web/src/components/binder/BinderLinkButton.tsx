@@ -23,6 +23,8 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /** Remplacer le lien tue l'adresse posée dans Pronote : il faut le dire deux fois. */
+  const [replacing, setReplacing] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
     setBusy(true);
     setError(null);
     setCopied(false);
+    setReplacing(false);
     try {
       const base: BinderAccess = access ?? { class_id: classId, link_token: null, link_enabled: false, tab_enabled: false };
       const saved = await saveBinderAccess(userId, { ...base, ...patch, class_id: classId });
@@ -108,10 +111,21 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
                 <button type="button" className="bd-link__ghost" disabled={busy} onClick={() => void save({ link_enabled: false })} title="Le lien ne répond plus ; il pourra être réactivé">
                   Couper le lien
                 </button>
-                <button type="button" className="bd-link__ghost" disabled={busy} onClick={() => void save({ link_token: newLinkToken(), link_enabled: true })} title="L’adresse actuelle ne répondra plus : il faudra reposer la nouvelle dans Pronote">
-                  Remplacer par un nouveau lien
-                </button>
+                {!replacing && (
+                  <button type="button" className="bd-link__ghost" disabled={busy} onClick={() => setReplacing(true)} title="L’adresse actuelle ne répondra plus : il faudra reposer la nouvelle dans Pronote">
+                    Remplacer par un nouveau lien
+                  </button>
+                )}
               </div>
+              {replacing && (
+                <>
+                  <p className="bd-link__text">Le lien actuel cessera de marcher partout où il est posé (Pronote, messages). Il faudra y mettre le nouveau.</p>
+                  <div className="bd-link__row">
+                    <button type="button" className="bd-link__main" disabled={busy} onClick={() => void save({ link_token: newLinkToken(), link_enabled: true })}>Remplacer le lien</button>
+                    <button type="button" className="bd-link__ghost" disabled={busy} onClick={() => setReplacing(false)}>Annuler</button>
+                  </div>
+                </>
+              )}
             </>
           )}
           {ready && (

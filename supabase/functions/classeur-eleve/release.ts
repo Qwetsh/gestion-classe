@@ -2,9 +2,11 @@
  * Classeur ouvert aux classes : ce que le serveur a le droit de rendre. Fonctions pures, sans
  * dépendance (lues aussi par les tests du navigateur : gestion-classe-web/src/lib/__tests__).
  *
- * Le serveur ne lit AUCUN titre. Il part des lignes `class_binder_items` de la classe, écrites par
- * le navigateur du professeur au moment où il a ouvert une activité (`released` : la liste exacte
- * des cours qui sortent, et le texte du bilan). Il ne fait que resserrer :
+ * Le serveur n'ouvre rien d'après un titre. Il part des lignes `class_binder_items` de la classe,
+ * écrites par le navigateur du professeur au moment où il a ouvert une activité (`released` : la
+ * liste exacte des cours qui sortent, et le texte du bilan). Il ne fait que resserrer :
+ *  - un cours cité qui porte aujourd'hui un titre de correction, de copie modèle ou d'évaluation
+ *    (renommé après coup) est refermé : le titre ne sert qu'à fermer, jamais à ouvrir ;
  *  - une ligne non visible ne rend rien ;
  *  - la correction (copie modèle, bilan) ne sort que si `correction_visible` ;
  *  - seuls passent les rôles d'une liste fermée (une évaluation n'en fait pas partie) ;
@@ -78,7 +80,9 @@ function parseSummary(value: unknown): OpenSummary | undefined {
 export function openItems(rows: ItemRow[]): OpenItem[] {
   const out: OpenItem[] = [];
   const seen = new Set<string>();
-  for (const row of rows) {
+  // Ordre fixe : un cours cité par deux lignes va toujours à la même (l'aperçu du professeur fait pareil)
+  const sorted = [...rows].sort((a, b) => (String(a.anchor_board_id) < String(b.anchor_board_id) ? -1 : String(a.anchor_board_id) > String(b.anchor_board_id) ? 1 : 0));
+  for (const row of sorted) {
     if (row.visible !== true || !isUuid(row.anchor_board_id) || seen.has(row.anchor_board_id)) continue;
     const r = row.released;
     if (!isRecord(r) || r.v !== 1 || typeof r.role !== 'string') continue;
@@ -120,18 +124,40 @@ export function boardIds(items: OpenItem[]): string[] {
   return [...ids];
 }
 
+/** Variante lue à la fin d'un titre, comme dans le navigateur (courseLibrary.ts, VARIANT_SUFFIX). */
+const TITLE_SUFFIX = /\s*\((correction|corrig[ée]|documents?|extraits?|copie mod[èe]le|adapt[ée]e?|protocoles?)\)\s*$/i;
+/** Titre qui parle de correction, de copie modèle ou d'évaluation (binder.ts, UNSURE_TITLE). */
+const UNSURE_TITLE = /corr(?:ection|ig[ée])|copie\s+mod[èe]le|[ée]valuation/iu;
+
 /**
- * Ne garde que ce qui appartient au professeur de la classe (`owned` : les cours de la liste dont
- * il est le propriétaire). Une ligne ne prouve que son ancre : les autres identifiants qu'elle cite
- * sont revérifiés ici.
+ * Le titre d'aujourd'hui dit-il que ce cours n'a plus sa place ? Une page ouverte (fiche,
+ * documents, protocole, page seule) ne peut pas s'appeler correction, copie modèle, version adaptée,
+ * extraits ou évaluation ; une copie modèle doit toujours s'appeler ainsi. Le professeur a pu
+ * récrire un cours ouvert pour en faire autre chose : son identifiant est resté dans la ligne.
  */
-export function ownedItems(items: OpenItem[], owned: Set<string>): OpenItem[] {
+export function closedByTitle(rawTitle: string, kind: 'page' | 'copy'): boolean {
+  const title = rawTitle.normalize('NFC');
+  const m = TITLE_SUFFIX.exec(title);
+  const word = m ? m[1].toLowerCase() : '';
+  const base = m ? title.slice(0, m.index) : title;
+  if (kind === 'copy') return !word.startsWith('copie') || UNSURE_TITLE.test(base);
+  if (word !== '' && !word.startsWith('doc') && !word.startsWith('proto')) return true;
+  return UNSURE_TITLE.test(base);
+}
+
+/**
+ * Ne garde que ce qui appartient au professeur de la classe, et que son titre d'aujourd'hui ne
+ * referme pas (`owned` : le titre de chaque cours de la liste dont il est le propriétaire). Une
+ * ligne ne prouve que son ancre : les autres identifiants qu'elle cite sont revérifiés ici.
+ */
+export function ownedItems(items: OpenItem[], owned: Map<string, string>): OpenItem[] {
+  const open = (id: string, kind: 'page' | 'copy') => { const title = owned.get(id); return title !== undefined && !closedByTitle(title, kind); };
   const out: OpenItem[] = [];
   for (const item of items) {
-    if (!owned.has(item.anchor)) continue;
-    const pages = item.released.pages.filter((p) => owned.has(p.board));
+    if (!open(item.anchor, 'page')) continue;
+    const pages = item.released.pages.filter((p) => open(p.board, 'page'));
     const released = { ...item.released, pages };
-    if (released.correction?.copy && !owned.has(released.correction.copy)) {
+    if (released.correction?.copy && !open(released.correction.copy, 'copy')) {
       const { copy: _copy, ...rest } = released.correction;
       void _copy;
       if (rest.summary) released.correction = rest; else delete released.correction;
@@ -145,22 +171,27 @@ export function ownedItems(items: OpenItem[], owned: Set<string>): OpenItem[] {
 // Le document d'un cours, tel qu'il sort
 // ---------------------------------------------------------------------------------------------
 
-function walk(node: unknown, visit: (n: Record<string, unknown>) => void, depth = 0): void {
-  if (!isRecord(node) || depth > 60) return;
+/** Parcourt un document ; rend faux s'il est trop profond pour être lu en entier (on ne sert pas ce qu'on n'a pas vu). */
+function walk(node: unknown, visit: (n: Record<string, unknown>) => void, depth = 0): boolean {
+  if (!isRecord(node)) return true;
+  if (depth > 60) return false;
   visit(node);
-  if (Array.isArray(node.content)) for (const child of node.content) walk(child, visit, depth + 1);
+  let whole = true;
+  if (Array.isArray(node.content)) for (const child of node.content) whole = walk(child, visit, depth + 1) && whole;
+  return whole;
 }
 
 /**
  * Ce qui sort d'un cours : le texte et sa mise en page. Les écrans, les liens, le calque d'annotations
  * et le numéro d'enregistrement restent sur le serveur. Null : pas un cours rédigé, ou un cours qui
- * porte un encart (ses pages de tableau ne sont pas servies : on préfère ne rien montrer).
+ * porte un encart (ses pages de tableau ne sont pas servies : on préfère ne rien montrer), ou trop
+ * profond pour être relu en entier.
  */
 export function publicDoc(doc: unknown): { version: number; content: Record<string, unknown>; settings?: Record<string, unknown> } | null {
   if (!isRecord(doc) || typeof doc.version !== 'number' || !isRecord(doc.content)) return null;
   let encart = false;
-  walk(doc.content, (n) => { if (n.type === 'encart') encart = true; });
-  if (encart) return null;
+  const whole = walk(doc.content, (n) => { if (n.type === 'encart') encart = true; });
+  if (encart || !whole) return null;
   return isRecord(doc.settings)
     ? { version: doc.version, content: doc.content, settings: doc.settings }
     : { version: doc.version, content: doc.content };
