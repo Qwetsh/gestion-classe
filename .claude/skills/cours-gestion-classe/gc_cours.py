@@ -315,7 +315,8 @@ def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=
               infos=(), problematique='', objectifs=()):
     """Cartouche d'activité des fiches SVT (6 lignes, bandeau de séquence bleu nuit à gauche).
     sous_titres : lignes en italique sous « Séquence n » ; classe : '3' donne « 3ᵉ » ;
-    infos : [('⏱', 'Durée', '1 séance'), ('👥', 'Modalité', 'Individuel'), …] ;
+    infos : [('Durée', '1 séance'), ('Modalité', 'Individuel'), …] — sans émoji (règle du 22/11/2026) ;
+    les anciens triplets (pictogramme, libellé, valeur) restent acceptés, le pictogramme est ignoré ;
     objectifs : phrases de « À la fin de cette activité, tu seras capable de : »."""
     a, b, c, d, e = largeurs(17.6, 11, 23.7, 23.7, 24)
     nb = chr(0xA0)
@@ -329,9 +330,10 @@ def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=
         comp.append(Cellule([Serre(I(avec_domaines(label), couleur=couleur, taille=8), align='center'),
                              Serre(T('○  ○  ○  ○', couleur=GRIS_CERCLES, taille=9), align='center')], ws, milieu=True))
     runs = []
-    for i, (icone, label, valeur) in enumerate(infos):
+    for i, info in enumerate(infos):
+        label, valeur = info[-2:]          # (libellé, valeur) ; un pictogramme en tête est ignoré
         last = i == len(infos) - 1
-        runs += [T(icone + nb, taille=9), B(label + nb + ': ', taille=9), T(valeur + ('' if last else '   |   '), taille=9)]
+        runs += [B(label + nb + ': ', taille=9), T(valeur + ('' if last else '   |   '), taille=9)]
     lignes = [
         Ligne(Cellule(bandeau, [a], lignes=6, fond=BLEU_NUIT, milieu=True),
               Cellule([Serre(B(titre, taille=12), align='center')], [b, c, d], milieu=True),
@@ -341,7 +343,7 @@ def Cartouche(sequence, sous_titres, titre, classe='3', note='/20', note_detail=
         Ligne(*comp),
         Ligne(Cellule([Serre(*runs)] if runs else [P()], [b, c, d, e], fond=FOND_GRIS)),
         Ligne(Cellule([Serre(B('Problématique : '), I(problematique))], [b, c, d, e], fond=FOND_ROSE)),
-        Ligne(Cellule([Serre(B('🎯 À la fin de cette activité, tu seras capable de :', couleur=BLEU_FONCE, taille=10)),
+        Ligne(Cellule([Serre(B('À la fin de cette activité, tu seras capable de :', couleur=BLEU_FONCE, taille=10)),
                        Puces(*[T(o, taille=10) for o in objectifs], serre=True)], [b, c, d, e], fond=FOND_BLEU)),
     ]
     return Tableau(*lignes)
@@ -411,20 +413,20 @@ def _taille(noeud, pt):
     return noeud
 
 
-def Rappel(*contenu, titre='💡 Rappel : '):
-    """Encadré jaune « 💡 Rappel : » des fiches : tout le texte en brun (gras compris, sauf couleur
-    donnée). Ne pas y ajouter d'autre pictogramme en tête : le 💡 est déjà là."""
+def Rappel(*contenu, titre='Rappel : '):
+    """Encadré jaune « Rappel : » des fiches : tout le texte en brun (gras compris, sauf couleur
+    donnée). Pas d'émoji (règle de Thomas, 22/11/2026)."""
     runs = [B(titre, couleur=JAUNE_TITRE)] + [_teinte(x, JAUNE_TEXTE) for x in contenu]
     return EncadreFiche('', JAUNE, _taille(P(*runs, interligne='1.2'), TAILLE_ENCADRE))
 
 
 def PourAllerPlusLoin(*blocs):
-    return EncadreFiche('★ Pour aller plus loin (question expert, bonus)', VIOLET,
+    return EncadreFiche('Pour aller plus loin (question expert, bonus)', VIOLET,
                         *[_taille(b, TAILLE_ENCADRE) for b in blocs])
 
 
 def JaiReussi(*criteres):
-    return EncadreFiche('✅ J’ai réussi l’activité si je peux :', VERT,
+    return EncadreFiche('J’ai réussi l’activité si je peux :', VERT,
                         _taille(Cases(*criteres), TAILLE_ENCADRE))
 
 

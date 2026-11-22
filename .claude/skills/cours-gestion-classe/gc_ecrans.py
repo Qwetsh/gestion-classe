@@ -432,7 +432,7 @@ class Ecran:
                        taille=taille, couleur=texte_couleur)
         o['interactions'] = list(actions)
         # Libellé en gras, émojis compris : environ 15 % plus large que le texte courant (mesuré le
-        # 15/11/2026 : « 💡 Coup de pouce » en 18 passait sur deux lignes dans 180 de large)
+        # 15/11/2026 : « Coup de pouce » en 18 passait sur deux lignes dans 180 de large)
         if hauteur_texte(_en_bloc(B(texte)), (w - 24) / 1.15, taille) > taille * INTERLIGNE * max(1, int(h // (taille * INTERLIGNE))):
             self.jeu.alertes.append('%s : le libellé du bouton « %s » ne tient pas — l’élargir ou le raccourcir.' % (self.id, texte[:30]))
         return o
@@ -533,9 +533,9 @@ class Ecran:
         return o
 
     def coup_de_pouce(self, html, titre='Coup de pouce', x=730, y=480, w=230, h=48):
-        """Un bouton « 💡 Coup de pouce » qui ouvre une aide : pour les élèves qui bloquent."""
+        """Un bouton « Coup de pouce » qui ouvre une aide : pour les élèves qui bloquent. Sans émoji (22/11/2026)."""
         f = self.fenetre(titre, html, x=max(0, x - 240), y=y - 4)
-        return self.bouton(x, y, w, h, '💡 ' + titre, [Ouvrir(f)], couleur='#B45309', taille=18)
+        return self.bouton(x, y, w, h, titre, [Ouvrir(f)], couleur='#B45309', taille=18)
 
     def outil(self, kind, x, y, w=320, h=186, **config):
         """Outil de classe : timer (seconds), dice (faces), wheel (entries), groups (groupSize),
@@ -973,7 +973,7 @@ class Ecrans:
             zz = e.zone(x, y, w, h, [])
             zz['interactions'] = [Zoomer(zz)]
             if len(z) > 4:
-                e.texte(x, max(95, y - 26), max(w, 160), 18, B('🔍 ' + z[4]), BLEU2)
+                e.texte(x, max(95, y - 26), max(w, 160), 18, B(z[4]), BLEU2)
         if legende:
             e.texte(MARGE, 515, LARGEUR, 20, legende, GRIS)
         return e

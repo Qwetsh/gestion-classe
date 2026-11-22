@@ -27,7 +27,7 @@ const GC = (() => {
     capEl.innerHTML = safe(s.caption);
     capEl.style.color = s.captionColor || '';
     const play = $('gc-play');
-    if (play) play.textContent = playing ? '⏸ Pause' : '▶ Lecture';
+    if (play) play.textContent = playing ? 'Pause' : '▶ Lecture';
   }
   function go(i, force) {
     i = Math.max(0, Math.min(steps.length - 1, i | 0));
