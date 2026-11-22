@@ -4,11 +4,15 @@
  * Le classeur d'un élève « parfait », assemblé à la volée depuis la bibliothèque de « Mes cours »
  * (lib/binder.ts) : modifier une fiche dans « Mes cours » modifie le classeur. Double page sur un
  * grand écran (comme un classeur ouvert), page seule sur un écran étroit. Flèches du clavier,
- * onglets des intercalaires, sommaire. Pour l'instant, pour le professeur seul.
+ * onglets des intercalaires, sommaire.
+ *
+ * Réglage par classe (PLAN_classeur_eleves.md, lot 1) : `&classe=<id>` montre le même classeur avec,
+ * sur chaque page, ce que cette classe en voit (fermé par défaut) et de quoi l'ouvrir ; « Aperçu
+ * élève » ne garde que ce qui est ouvert. Rien n'est encore servi aux élèves.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Columns2, List, RectangleVertical } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Columns2, Eye, List, RectangleVertical } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { listBoards, type Board } from '../lib/boardsQueries';
 import { courseHref } from '../lib/courseLibrary';
@@ -20,6 +24,11 @@ import { turnDirection } from '../lib/binderFlaps';
 import { planFlip } from '../lib/binderFlip';
 import { INK_PX, INK_WIDTH_MM, SUMMARY_LEAD, mergeSummaries, summaryRuns, withSummaries, wrapInk, type SummaryRuns } from '../lib/binderSummary';
 import { loadScreenSummaries } from '../lib/binderScreens';
+import {
+  binderItems, hasCorrection, itemStates, pageAccess, releaseBinder, rowFor, sequenceAnchors, staleRows, stateOf,
+  type BinderItem, type BinderItemRow, type ItemState,
+} from '../lib/binderRelease';
+import { binderReleaseUnavailable, deleteBinderItems, fetchBinderClasses, fetchBinderItems, saveBinderItems, type BinderClass } from '../lib/binderReleaseQueries';
 import { MM, PAGE_H, PAGE_W } from '../lib/course/coursePage';
 import { BinderLeaf } from '../components/binder/BinderLeaf';
 import { PageFlip, type FlipView } from '../components/binder/PageFlip';
@@ -34,6 +43,23 @@ import '../styles/classeur.css';
 const DOUBLE_MIN_W = 1000;
 /** Place des onglets qui dépassent de chaque côté, en px de feuille. */
 const TAB_W = 70;
+/** Hauteur du bandeau affiché sous la barre quand une classe est choisie. */
+const NOTICE_H = 44;
+
+/** Remplace, par cours d'ancrage, les lignes de `rows` par celles de `next`. */
+function mergeRows(rows: BinderItemRow[], next: BinderItemRow[]): BinderItemRow[] {
+  const anchors = new Set(next.map((r) => r.anchor_board_id));
+  return [...rows.filter((r) => !anchors.has(r.anchor_board_id)), ...next];
+}
+
+function Switch({ checked, disabled, title, onChange, children }: { checked: boolean; disabled?: boolean; title?: string; onChange: (next: boolean) => void; children: ReactNode }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} className="bd-switch" disabled={disabled} title={title} onClick={() => onChange(!checked)}>
+      <span className="bd-switch__track" aria-hidden />
+      <span>{children}</span>
+    </button>
+  );
+}
 
 function useViewport() {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -102,11 +128,104 @@ export function Binder() {
     });
     return () => { cancelled = true; };
   }, [basePages, boards, level]);
+
+  // ---- Réglage par classe : ce que chaque classe du niveau voit du classeur ----
+  const [classes, setClasses] = useState<BinderClass[]>([]);
+  useEffect(() => {
+    if (!userId || !level) return;
+    let cancelled = false;
+    fetchBinderClasses(userId, level).then((list) => { if (!cancelled) setClasses(list); }, () => { if (!cancelled) setClasses([]); });
+    return () => { cancelled = true; };
+  }, [userId, level]);
+  const selectedClass = classes.find((c) => c.id === params.get('classe')) ?? null;
+  const classId = selectedClass?.id ?? null;
+  /** Réglages lus pour une classe ; ils ne valent que pour elle. */
+  const [loaded, setLoaded] = useState<{ classId: string; rows: BinderItemRow[] } | null>(null);
+  const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState(false);
+  useEffect(() => {
+    if (!classId) return;
+    let cancelled = false;
+    fetchBinderItems(classId).then(
+      (list) => { if (!cancelled) { setLoaded({ classId, rows: list }); setReleaseError(null); } },
+      (err: unknown) => { if (!cancelled) setReleaseError(err instanceof Error ? err.message : 'Réglages de la classe illisibles'); },
+    );
+    return () => { cancelled = true; };
+  }, [classId]);
+  const rows = classId && loaded?.classId === classId ? loaded.rows : null;
+  /** Migration 085 pas encore appliquée : le classeur reste celui du professeur seul. */
+  const unavailable = !!classId && rows !== null && binderReleaseUnavailable();
+  /** Vue de réglage : le classeur complet, avec l'état de chaque page pour la classe. */
+  const tuning = !!classId && rows !== null && !unavailable && !preview;
+  /** Aperçu élève : seulement ce qui est ouvert à la classe. */
+  const previewing = !!classId && rows !== null && !unavailable && preview;
+
+  const items = useMemo(() => (inkReady ? binderItems(basePages, inkReady.texts) : []), [basePages, inkReady]);
+  const itemByAnchor = useMemo(() => new Map(items.map((i) => [i.anchor, i])), [items]);
+  const states = useMemo(() => itemStates(rows ?? []), [rows]);
+  const stale = useMemo(() => (rows && items.length > 0 ? staleRows(items, rows) : []), [items, rows]);
+
   const pages = useMemo(() => {
     if (!inkReady) return basePages;
     const width = INK_WIDTH_MM * MM * 0.97;
-    return withSummaries(basePages, inkReady.texts, (paragraphs) => wrapInk(paragraphs, width, inkReady.measure, SUMMARY_LEAD));
-  }, [basePages, inkReady]);
+    const wrap = (paragraphs: Parameters<typeof wrapInk>[0]) => wrapInk(paragraphs, width, inkReady.measure, SUMMARY_LEAD);
+    if (previewing && rows) {
+      // Ce que la classe voit : seulement ce que ses lignes ont ouvert, bilans compris
+      const released = releaseBinder(basePages, rows);
+      return withSummaries(released.pages, released.texts, wrap);
+    }
+    return withSummaries(basePages, inkReady.texts, wrap);
+  }, [basePages, inkReady, previewing, rows]);
+
+  /** Ouvre ou ferme des éléments pour la classe : montré tout de suite, annulé si l'écriture échoue. */
+  const applyStates = useCallback(async (changes: { item: BinderItem; state: ItemState }[]) => {
+    if (!classId || !rows || changes.length === 0) return;
+    const next = changes.map(({ item, state }) => rowFor(item, classId, state));
+    const before = rows;
+    setLoaded({ classId, rows: mergeRows(before, next) });
+    setSaving(true);
+    setReleaseError(null);
+    try {
+      const saved = await saveBinderItems(userId, next);
+      setLoaded((cur) => (cur?.classId === classId ? { classId, rows: mergeRows(cur.rows, saved) } : cur));
+    } catch (err: unknown) {
+      setLoaded((cur) => (cur?.classId === classId ? { classId, rows: before } : cur));
+      setReleaseError(err instanceof Error ? `Réglage non enregistré : ${err.message}` : 'Réglage non enregistré');
+    } finally {
+      setSaving(false);
+    }
+  }, [classId, rows, userId]);
+
+  /** Récrit les lignes ouvertes qui ne disent plus ce que dit le classeur ; retire celles dont le cours en est sorti. */
+  const refreshStale = useCallback(async () => {
+    if (!classId || !rows) return;
+    await applyStates(stale.flatMap((s) => (s.item ? [{ item: s.item, state: { visible: true, correction: s.row.correction_visible } }] : [])));
+    const ids = stale.flatMap((s) => (!s.item && s.row.id ? [s.row.id] : []));
+    if (ids.length === 0) return;
+    try {
+      await deleteBinderItems(ids);
+      setLoaded((cur) => (cur?.classId === classId ? { classId, rows: cur.rows.filter((r) => !r.id || !ids.includes(r.id)) } : cur));
+    } catch (err: unknown) {
+      setReleaseError(err instanceof Error ? err.message : 'Mise à jour impossible');
+    }
+  }, [applyStates, classId, rows, stale]);
+
+  /** Choisit la classe réglée (null : le classeur complet du professeur). */
+  const pickClass = useCallback((id: string | null) => {
+    const q = new URLSearchParams(params);
+    if (id) q.set('classe', id); else q.delete('classe');
+    setPreview(false);
+    setParams(q, { replace: true });
+  }, [params, setParams]);
+  /** L'aperçu n'a pas les mêmes pages que le classeur complet : on repart de la première. */
+  const togglePreview = useCallback(() => {
+    const q = new URLSearchParams(params);
+    q.set('page', '1');
+    setFlip(null);
+    setPreview((p) => !p);
+    setParams(q, { replace: true });
+  }, [params, setParams]);
   const count = pages.length;
   const index = Math.max(0, Math.min(count - 1, (Number(params.get('page')) || 1) - 1));
 
@@ -179,7 +298,7 @@ export function Binder() {
   // Sur téléphone, les flèches sont posées sur la page (et le doigt tourne les pages)
   const narrow = viewport.w < 640;
   const availW = Math.max(200, viewport.w - tocW - (narrow ? 8 : 2 * 56));
-  const availH = Math.max(200, viewport.h - BAR_H - 32);
+  const availH = Math.max(200, viewport.h - BAR_H - (classId ? NOTICE_H : 0) - 32);
   const spreadW = PAGE_W * (double ? 2 : 1) + 2 * TAB_W;
   const scale = Math.min(availW / spreadW, availH / PAGE_H);
 
@@ -216,6 +335,54 @@ export function Binder() {
   const toc = useMemo(() => binderToc(pages), [pages]);
   const visible = new Set([leftIdx, rightIdx].filter((i): i is number => i !== null));
 
+  /** Bandeau de réglage posé en haut d'une page : ce que la classe en voit, et de quoi l'ouvrir. */
+  const strip = (i: number) => {
+    const page = pages[i];
+    if (!selectedClass || page.kind === 'divider') return null;
+    const access = pageAccess(page, states);
+    const item = page.anchor ? itemByAnchor.get(page.anchor) : undefined;
+    if (access === 'locked' || !item) {
+      return <span className="bd-strip__note">{page.kind === 'ruled' ? 'Bilan sans fiche : ne s’ouvre pas aux classes' : 'Évaluation : ne s’ouvre pas encore aux classes'}</span>;
+    }
+    const state = stateOf(states, item.anchor);
+    if (page.kind === 'ruled') {
+      return <span className="bd-strip__note">Suite du bilan de « {item.label} » : {state.correction ? 'ouverte avec la correction' : 'fermée avec la correction'}</span>;
+    }
+    if (page.board.id !== item.anchor) {
+      return <span className="bd-strip__note">Suit « {item.label} » : {state.visible ? `visible pour la ${selectedClass.name}` : 'fermée'}</span>;
+    }
+    const closedInSequence = item.role === 'cover' && item.chapter
+      ? sequenceAnchors(items, item.chapter).filter((a) => !stateOf(states, a).visible).flatMap((a) => itemByAnchor.get(a) ?? [])
+      : [];
+    return (
+      <>
+        <Switch checked={state.visible} onChange={(visible) => void applyStates([{ item, state: { visible, correction: visible && state.correction } }])}>
+          Visible pour la {selectedClass.name}
+        </Switch>
+        {item.role === 'activity' && (
+          <Switch
+            checked={state.correction}
+            disabled={!state.visible || !hasCorrection(item)}
+            title={!hasCorrection(item) ? 'Ni copie modèle ni bilan pour cette activité' : !state.visible ? 'Ouvrir d’abord l’activité' : 'La copie modèle et le bilan de l’activité'}
+            onChange={(correction) => void applyStates([{ item, state: { visible: true, correction } }])}
+          >
+            Correction
+          </Switch>
+        )}
+        {closedInSequence.length > 0 && (
+          <button
+            type="button"
+            className="bd-strip__btn"
+            title="La page de garde et les activités de la séquence. Ni les corrections, ni la fiche de mémorisation, ni l’évaluation."
+            onClick={() => void applyStates(closedInSequence.map((it) => ({ item: it, state: { visible: true, correction: stateOf(states, it.anchor).correction } })))}
+          >
+            Ouvrir toute la séquence
+          </button>
+        )}
+      </>
+    );
+  };
+
   const pageNumber = (i: number | null) => (i === null ? '' : String(i + 1));
   const shownLabel = leftIdx !== null && rightIdx !== null ? `Pages ${pageNumber(leftIdx)}-${pageNumber(rightIdx)}` : `Page ${pageNumber(firstShown)}`;
 
@@ -239,6 +406,23 @@ export function Binder() {
             {levels.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         ) : level && <span className="bd-level">{level}</span>}
+        {classes.length > 0 && (
+          <select
+            className="bd-select"
+            value={classId ?? ''}
+            aria-label="Classe réglée"
+            title="Choisir une classe pour régler ce qu’elle voit du classeur"
+            onChange={(e) => pickClass(e.target.value || null)}
+          >
+            <option value="">Mon classeur (tout)</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>Réglage : {c.name}</option>)}
+          </select>
+        )}
+        {(tuning || previewing) && (
+          <button type="button" className="bd-btn" aria-pressed={previewing} onClick={togglePreview} title="Ne montrer que ce que la classe voit">
+            <Eye size={18} aria-hidden /> <span className="bd-hide-sm">Aperçu élève</span>
+          </button>
+        )}
         <span className="bd-spacer" />
         {count > 0 && <span className="bd-count">{shownLabel} sur {count}</span>}
         <button
@@ -251,6 +435,25 @@ export function Binder() {
         </button>
       </header>
 
+      {selectedClass && (
+        <div className="bd-notice" role="status" style={{ minHeight: NOTICE_H }}>
+          {releaseError ? <span className="bd-notice__error">{releaseError}</span>
+            : rows === null ? <span>Lecture des réglages de la {selectedClass.name}…</span>
+            : unavailable ? <span>Réglage par classe indisponible : la migration 085 n’est pas encore appliquée.</span>
+            : previewing ? <span>Aperçu : ce que voit la {selectedClass.name}. Rien n’est encore accessible aux élèves.</span>
+            : stale.length > 0 ? (
+              <>
+                <span>
+                  {stale.length === 1 ? '1 élément ouvert ne correspond plus' : `${stale.length} éléments ouverts ne correspondent plus`} au classeur
+                  {' '}({stale.slice(0, 3).map((s) => `${s.label} : ${s.reason === 'gone' ? 'retiré du classeur' : s.reason === 'correction' ? 'correction modifiée' : 'pages modifiées'}`).join(' ; ')}{stale.length > 3 ? '…' : ''}).
+                </span>
+                <button type="button" className="bd-strip__btn" disabled={saving} onClick={() => void refreshStale()}>Mettre à jour</button>
+              </>
+            ) : <span>Réglage de la {selectedClass.name} : une page voilée est fermée pour cette classe. Rien n’est encore accessible aux élèves.</span>}
+          {saving && <span className="bd-notice__saving">Enregistrement…</span>}
+        </div>
+      )}
+
       <div className="bd-body">
         {tocOpen && (
           <nav className={`bd-toc ${viewport.w < 900 ? 'bd-toc--over' : ''}`} aria-label="Sommaire du classeur" style={viewport.w >= 900 ? { width: tocW } : undefined}>
@@ -259,7 +462,7 @@ export function Binder() {
                 <li key={`${e.index}:${e.label}`}>
                   <button
                     type="button"
-                    className={`bd-toc__item bd-toc__item--d${e.depth}`}
+                    className={`bd-toc__item bd-toc__item--d${e.depth} ${tuning && pages[e.index].kind !== 'divider' && (pages[e.index] as { label?: string }).label === e.label && pageAccess(pages[e.index], states) !== 'open' ? 'is-closed' : ''}`}
                     aria-current={visible.has(e.index) && e.depth === 2 ? 'page' : undefined}
                     onClick={() => { go(e.index); if (viewport.w < 900) setTocOpen(false); }}
                   >
@@ -322,13 +525,17 @@ export function Binder() {
                   {/* Les pages visibles, et leurs voisines déjà montées (cachées) : elles sont mises en page avant d'être tournées */}
                   {alive.map((i) => {
                     const side = sideOf(i);
+                    const page = pages[i];
+                    const veiled = tuning && pageAccess(page, states) !== 'open';
+                    // Le bilan écrit sur une feuille suit la correction : estompé tant qu'elle est fermée
+                    const inkClosed = tuning && page.kind === 'sheet' && !stateOf(states, page.anchor).correction;
                     return (
                       <div
-                        key={pages[i].key}
-                        className={`bd-slot bd-slot--${side}`}
+                        key={page.key}
+                        className={`bd-slot bd-slot--${side} ${veiled ? 'bd-slot--veiled' : ''}`}
                         style={{ left: slotX(side), width: PAGE_W, height: PAGE_H, visibility: i === leftIdx || i === rightIdx ? 'visible' : 'hidden' }}
                       >
-                        <BinderLeaf page={pages[i]} side={side} onOpen={openCourse} />
+                        <BinderLeaf page={page} side={side} onOpen={previewing ? undefined : openCourse} inkClosed={inkClosed} student={previewing} />
                       </div>
                     );
                   })}
@@ -339,6 +546,16 @@ export function Binder() {
                   )}
                   {flip && <PageFlip key={flip.id} flip={flip} slotX={slotX} onDone={() => setFlip(null)} />}
                 </div>
+                {/* Bandeaux de réglage : hors de la vue réduite, pour rester lisibles */}
+                {tuning && [leftIdx, rightIdx].map((i) => {
+                  const content = i === null ? null : strip(i);
+                  if (i === null || !content) return null;
+                  return (
+                    <div key={pages[i].key} className="bd-strip" style={{ left: slotX(sideOf(i)) * scale, width: PAGE_W * scale }}>
+                      {content}
+                    </div>
+                  );
+                })}
               </div>
               <button type="button" className="bd-arrow bd-arrow--next" onClick={() => go(turn(index, count, double, 1), true)} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
                 <ChevronRight size={28} aria-hidden />

@@ -337,6 +337,7 @@ export function withSummaries(
         chapter: page.chapter,
         label: `${page.label} — suite du bilan`,
         lines: rest.slice(from, from + RULED_LINES),
+        ...(page.anchor ? { anchor: page.anchor } : {}),
       });
     }
   }

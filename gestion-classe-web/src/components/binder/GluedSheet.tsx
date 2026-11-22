@@ -37,15 +37,22 @@ interface Props {
   top: number;
   /** Double-clic : ouvrir le cours dans « Mes cours ». */
   onOpen?: () => void;
+  /** Vue de l'élève : la page de garde reste telle qu'elle est distribuée (cases non cochées). */
+  student?: boolean;
 }
 
-export function GluedSheet({ board, role, companion, left, top, onOpen }: Props) {
+export function GluedSheet({ board, role, companion, left, top, onOpen, student }: Props) {
   const [doc, setDoc] = useState<CourseDoc | null | undefined>(undefined);
   const [corrected, setCorrected] = useState<CourseDoc | null>(null);
   const [failed, setFailed] = useState(false);
   const [face, setFace] = useState(0);
+  /**
+   * Fiche d'activité ou sujet : elle s'ouvre vierge, et « Afficher la correction » y écrit les
+   * réponses de la copie modèle (Thomas, 22/11/2026). La page de garde, elle, est montrée remplie.
+   */
+  const answers = role === 'activity' || role === 'evaluation';
   /** Fiche montrée telle que l'élève l'a remplie (sinon : la fiche vierge, telle qu'imprimée). */
-  const [filled, setFilled] = useState(true);
+  const [filled, setFilled] = useState(!answers);
 
   // Feuille corrigée ou copie modèle : un plus ; sans elle, la fiche reste vierge
   useEffect(() => {
@@ -58,7 +65,7 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
   /** Ce que l'élève a écrit sur la fiche, ou null si le classeur n'y écrit rien. */
   const inked = useMemo<JSONContent | null>(() => {
     if (!doc) return null;
-    if (role === 'cover') return tickCover(doc.content);
+    if (role === 'cover') return student ? null : tickCover(doc.content);
     if (role === 'summaries' && corrected) {
       const next = fillSummaries(doc.content, corrected.content);
       return next === doc.content ? null : next;
@@ -69,7 +76,7 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
       return next === doc.content ? null : next;
     }
     return null;
-  }, [doc, role, corrected]);
+  }, [doc, role, corrected, student]);
   const shownDoc = useMemo(() => (doc && inked && filled ? { ...doc, content: inked } : doc), [doc, inked, filled]);
 
   // Une autre fiche = un autre composant (la page du classeur porte la clé de la fiche)
@@ -95,13 +102,13 @@ export function GluedSheet({ board, role, companion, left, top, onOpen }: Props)
       {inked && (
         <button
           type="button"
-          className="bd-glued__ink"
+          className={answers ? 'bd-glued__ink bd-glued__ink--answers' : 'bd-glued__ink'}
           aria-pressed={filled}
           onClick={(e) => { e.stopPropagation(); setFilled((f) => !f); }}
           onDoubleClick={(e) => e.stopPropagation()}
-          title={filled ? 'Voir la fiche vierge, telle qu’elle est distribuée' : 'Voir la fiche remplie par l’élève'}
+          title={answers ? (filled ? 'Revenir à la fiche vierge' : 'Écrire les réponses sur la fiche') : filled ? 'Voir la fiche vierge, telle qu’elle est distribuée' : 'Voir la fiche remplie par l’élève'}
         >
-          {filled ? 'Voir la fiche vierge' : 'Voir la fiche remplie'}
+          {answers ? (filled ? 'Masquer la correction' : 'Afficher la correction') : filled ? 'Voir la fiche vierge' : 'Voir la fiche remplie'}
         </button>
       )}
       {doc === null && <span className="bd-glued__note">Tableau blanc : pas de feuille à imprimer</span>}

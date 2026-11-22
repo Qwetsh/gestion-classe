@@ -22,9 +22,9 @@ const LINE_MM = 8;
 const UNDER_TOP = 238;
 
 /** Lignes écrites à la main, une par ligne du papier à partir de `topMm` (haut de la première bande). */
-function InkLines({ lines, topMm, side }: { lines: InkLine[]; topMm: number; side: 'left' | 'right' }) {
+function InkLines({ lines, topMm, side, closed }: { lines: InkLine[]; topMm: number; side: 'left' | 'right'; closed?: boolean }) {
   return (
-    <div className="bd-ink" style={{ top: topMm * MM, left: (side === 'right' ? 30 : 8) * MM }}>
+    <div className={closed ? 'bd-ink bd-ink--closed' : 'bd-ink'} style={{ top: topMm * MM, left: (side === 'right' ? 30 : 8) * MM }}>
       {lines.map((line, i) => (
         <div key={i} className="bd-ink__line" style={{ height: LINE_MM * MM }}>
           {line.map((run, j) => (run.underline ? <u key={j}>{run.text}</u> : <span key={j}>{run.text}</span>))}
@@ -38,9 +38,13 @@ interface Props {
   page: BinderPage;
   side: 'left' | 'right';
   onOpen?: (boardId: string) => void;
+  /** Réglage d'une classe : le bilan écrit sur la feuille est estompé (sa correction est fermée). */
+  inkClosed?: boolean;
+  /** Vue de l'élève : la fiche telle qu'il la reçoit (page de garde non cochée). */
+  student?: boolean;
 }
 
-export function BinderLeaf({ page, side, onOpen }: Props) {
+export function BinderLeaf({ page, side, onOpen, inkClosed, student }: Props) {
   const holes = (
     <div className={`bd-holes bd-holes--${side === 'right' ? 'left' : 'right'}`} aria-hidden>
       {HOLES_MM.map((y) => <span key={y} className="bd-hole" style={{ top: y * MM }} />)}
@@ -82,9 +86,9 @@ export function BinderLeaf({ page, side, onOpen }: Props) {
           <span>{page.heading}</span>
         </div>
       )}
-      {page.above && <InkLines lines={page.above} topMm={RULING_TOP} side={side} />}
-      <GluedSheet key={page.board.id} board={page.board} role={page.role} companion={page.companion} left={left} top={page.above ? (RULING_TOP + page.above.length * LINE_MM) * MM : GLUE_TOP} onOpen={onOpen ? () => onOpen(page.board.id) : undefined} />
-      {page.summary && <InkLines lines={page.summary} topMm={UNDER_TOP} side={side} />}
+      {page.above && <InkLines lines={page.above} topMm={RULING_TOP} side={side} closed={inkClosed} />}
+      <GluedSheet key={page.board.id} board={page.board} role={page.role} companion={page.companion} left={left} top={page.above ? (RULING_TOP + page.above.length * LINE_MM) * MM : GLUE_TOP} onOpen={onOpen ? () => onOpen(page.board.id) : undefined} student={student} />
+      {page.summary && <InkLines lines={page.summary} topMm={UNDER_TOP} side={side} closed={inkClosed} />}
     </div>
   );
 }
