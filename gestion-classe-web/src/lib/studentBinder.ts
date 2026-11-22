@@ -9,10 +9,15 @@ import { seedSignedUrls } from './boardMedia';
 import type { OpenEntry } from './binderRelease';
 import type { CourseDoc } from './course/courseDoc';
 
-/** Ce qui ouvre le classeur : le jeton du lien de la classe. */
-export interface BinderKey {
-  token: string;
-}
+/**
+ * Ce qui ouvre le classeur : le jeton du lien de la classe (Pronote), ou le code à 6 chiffres de
+ * l'élève (onglet de l'espace élève ; `studentId` lève le doute quand un code désigne plusieurs
+ * fiches).
+ */
+export type BinderKey = { token: string } | { code: string; studentId?: string };
+
+/** Repère d'un accès : deux clés de même repère ouvrent le même classeur. */
+export const binderKeyId = (key: BinderKey): string => ('token' in key ? `t:${key.token}` : `c:${key.code}:${key.studentId ?? ''}`);
 
 export interface StudentToc {
   className: string;
@@ -21,7 +26,7 @@ export interface StudentToc {
   boards: Map<string, Board>;
 }
 
-/** `forbidden` : lien inconnu, coupé ou remplacé ; `network` : pas de réponse ; `server` : le reste. */
+/** `forbidden` : lien inconnu, coupé ou remplacé, ou onglet fermé pour la classe ; `network` : pas de réponse ; `server` : le reste. */
 export class StudentBinderError extends Error {
   kind: 'forbidden' | 'not_found' | 'network' | 'server';
   constructor(kind: StudentBinderError['kind']) {
@@ -44,6 +49,16 @@ interface TocResponse {
   className?: unknown;
   items?: unknown;
   boards?: unknown;
+}
+
+/** L'onglet « Classeur » est-il ouvert à cet élève ? (le serveur répond à sa place : rien d'autre n'est lu) */
+export async function studentBinderOpen(key: BinderKey): Promise<boolean> {
+  try {
+    await call<TocResponse>({ action: 'toc', ...key });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Sommaire du classeur de la classe : ses éléments ouverts et les cours qu'ils citent. */

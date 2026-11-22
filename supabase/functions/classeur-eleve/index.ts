@@ -7,8 +7,9 @@ import { boardIds, imagePaths, isUuid, openItems, ownedItems, ownedPaths, public
  *
  * Les cours (`boards`) et leurs images (bucket `board-assets`) sont privés : leurs politiques sont
  * écrites pour le professeur. Un élève n'a pas de compte. Il arrive par le lien de sa classe (jeton
- * long et aléatoire, table `class_binders`). Cette fonction tranche avec la clé de service, qui ne
- * quitte jamais le serveur.
+ * long et aléatoire, table `class_binders`), ou par son code à 6 chiffres depuis l'espace élève
+ * (si le professeur a ouvert l'onglet « Classeur » à sa classe ; l'élève témoin le voit toujours).
+ * Cette fonction tranche avec la clé de service, qui ne quitte jamais le serveur.
  *
  * Elle ne décide de rien par elle-même : elle suit les lignes `class_binder_items` de la classe,
  * écrites par le professeur quand il a ouvert une activité (voir release.ts). Fermé par défaut.
@@ -17,6 +18,7 @@ import { boardIds, imagePaths, isUuid, openItems, ownedItems, ownedPaths, public
  *  - { action: "toc", token }            → le nom de la classe et les éléments ouverts ;
  *  - { action: "doc", token, boardId }   → le texte d'un cours ouvert et les adresses signées de
  *                                           ses images. Revérifié à chaque appel.
+ * À la place de `token` : { code, studentId? } (espace élève).
  */
 
 const corsHeaders = {
@@ -29,6 +31,7 @@ const BUCKET = "board-assets";
 /** Durée de vie des adresses d'images : le temps de lire le classeur (comme pour le professeur). */
 const SIGNED_URL_TTL = 60 * 60 * 6;
 const TOKEN = /^[A-Za-z0-9_-]{32,64}$/;
+const CODE = /^\d{6}$/;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -56,6 +59,38 @@ async function classOfToken(supabase: SupabaseClient, token: string): Promise<Bi
     .maybeSingle();
   // L'accès doit avoir été réglé par le professeur de la classe
   if (!cls || cls.user_id !== binder.user_id) return null;
+  return cls as BinderClass;
+}
+
+/**
+ * La classe de l'élève désigné par le code, si l'onglet « Classeur » lui est ouvert. Le code est
+ * résolu comme partout dans l'espace élève (`resolve_student_code` : un code peut désigner plusieurs
+ * fiches, `studentId` choisit). L'élève témoin du professeur voit l'onglet même fermé (aperçu).
+ */
+async function classOfCode(supabase: SupabaseClient, code: string, studentId: string | null): Promise<BinderClass | null> {
+  const { data: resolved } = await supabase.rpc("resolve_student_code", { p_code: code, p_student_id: studentId });
+  if (!isUuid(resolved)) return null;
+  const { data: student } = await supabase
+    .from("students")
+    .select("id, class_id, user_id, is_witness, is_deleted")
+    .eq("id", resolved)
+    .maybeSingle();
+  if (!student?.class_id || student.is_deleted === true) return null;
+  const { data: cls } = await supabase
+    .from("classes")
+    .select("id, name, user_id")
+    .eq("id", student.class_id)
+    .eq("is_deleted", false)
+    .maybeSingle();
+  if (!cls || cls.user_id !== student.user_id) return null;
+  if (student.is_witness !== true) {
+    const { data: binder } = await supabase
+      .from("class_binders")
+      .select("user_id, tab_enabled")
+      .eq("class_id", cls.id)
+      .maybeSingle();
+    if (!binder || binder.tab_enabled !== true || binder.user_id !== cls.user_id) return null;
+  }
   return cls as BinderClass;
 }
 
@@ -92,10 +127,12 @@ serve(async (req: Request) => {
     return json({ error: "bad_request" }, 400);
   }
   const action = body?.action;
-  const token = typeof body?.token === "string" ? body.token : "";
+  const token = typeof body?.token === "string" ? body.token : null;
+  const code = typeof body?.code === "string" ? body.code : null;
+  const studentId = isUuid(body?.studentId) ? body.studentId : null;
   if (action !== "toc" && action !== "doc") return json({ error: "bad_request" }, 400);
-  // Même réponse pour un jeton mal formé, inconnu ou coupé : rien à apprendre de l'erreur
-  if (!TOKEN.test(token)) return json({ error: "forbidden" }, 403);
+  // Même réponse pour un accès mal formé, inconnu, coupé ou fermé : rien à apprendre de l'erreur
+  if (token !== null ? !TOKEN.test(token) : code === null || !CODE.test(code)) return json({ error: "forbidden" }, 403);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -103,7 +140,7 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } },
   );
 
-  const cls = await classOfToken(supabase, token);
+  const cls = token !== null ? await classOfToken(supabase, token) : await classOfCode(supabase, code!, studentId);
   if (!cls) return json({ error: "forbidden" }, 403);
 
   const { items, boards } = await openFor(supabase, cls);

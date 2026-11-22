@@ -23,6 +23,7 @@
   box-shadow: 0 16px 40px rgba(0,0,0,.45); font-size: 14px;
 }
 .bd-link__title { margin: 0 0 8px; font-weight: 600; }
+.bd-link__title--next { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
 .bd-link__text { margin: 0 0 10px; color: #D1D5DB; line-height: 1.45; }
 .bd-link__url {
   width: 100%; box-sizing: border-box; height: 34px; padding: 0 8px; margin-bottom: 10px; border-radius: 8px;

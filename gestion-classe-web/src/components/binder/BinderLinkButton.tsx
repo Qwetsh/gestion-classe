@@ -2,6 +2,7 @@
  * Classeur ouvert aux classes (PLAN_classeur_eleves.md, lot 2) : le lien où une classe retrouve son
  * classeur sans compte, à poser dans Pronote. Qui a le lien voit ce que la classe a d'ouvert, et
  * rien d'autre. Le professeur l'active, le coupe ou le remplace (l'ancienne adresse ne répond plus).
+ * Lot 3 : l'onglet « Classeur » de l'espace élève, ouvert par le code de l'élève.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link2 } from 'lucide-react';
@@ -46,6 +47,7 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
   const ready = loaded?.classId === classId;
   const access = ready ? loaded.access : null;
   const live = !!access?.link_enabled && !!access.link_token;
+  const tab = !!access?.tab_enabled;
   const url = access?.link_token ? binderLinkUrl(access.link_token) : '';
 
   const save = async (patch: Partial<BinderAccess>) => {
@@ -76,12 +78,12 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
 
   return (
     <div className="bd-link" ref={rootRef}>
-      <button type="button" className="bd-btn" aria-expanded={open} aria-pressed={live} onClick={() => setOpen((o) => !o)} title="Le lien où la classe retrouve son classeur, à poser dans Pronote">
-        <Link2 size={18} aria-hidden /> <span className="bd-hide-sm">{live ? 'Lien actif' : 'Lien pour Pronote'}</span>
+      <button type="button" className="bd-btn" aria-expanded={open} aria-pressed={live || tab} onClick={() => setOpen((o) => !o)} title="Par où la classe retrouve son classeur : lien à poser dans Pronote, onglet de l’espace élève">
+        <Link2 size={18} aria-hidden /> <span className="bd-hide-sm">{live && tab ? 'Lien et onglet actifs' : live ? 'Lien actif' : tab ? 'Onglet actif' : 'Accès des élèves'}</span>
       </button>
       {open && (
         <div className="bd-link__panel" role="dialog" aria-label={`Lien du classeur de la ${className}`}>
-          <p className="bd-link__title">Classeur de la {className}</p>
+          <p className="bd-link__title">Lien pour Pronote</p>
           {!ready && !error && <p className="bd-link__text">Lecture…</p>}
           {ready && !live && (
             <>
@@ -110,6 +112,19 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
                   Remplacer par un nouveau lien
                 </button>
               </div>
+            </>
+          )}
+          {ready && (
+            <>
+              <p className="bd-link__title bd-link__title--next">Espace élève</p>
+              <p className="bd-link__text">
+                {tab
+                  ? `Les élèves de la ${className} ont un onglet « Classeur » dans leur espace (code à 6 chiffres).`
+                  : `Ajoute un onglet « Classeur » dans l’espace élève de la ${className} (code à 6 chiffres). L’élève témoin le voit toujours.`}
+              </p>
+              <button type="button" className={tab ? 'bd-link__ghost' : 'bd-link__main'} disabled={busy} onClick={() => void save({ tab_enabled: !tab })}>
+                {tab ? 'Retirer l’onglet' : 'Ouvrir l’onglet'}
+              </button>
             </>
           )}
           {error && <p className="bd-link__error" role="alert">{error}</p>}

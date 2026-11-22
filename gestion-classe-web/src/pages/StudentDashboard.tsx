@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { studentBinderOpen } from '../lib/studentBinder';
+import { StudentBinderView } from '../components/binder/StudentBinderView';
 import { getCardTier } from '../lib/rewardsQueries';
 import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -117,6 +120,12 @@ export function StudentDashboard() {
   // Onglet « Évals » : ouvert par la classe (class_student_tabs.show_grades), resolu
   // par la RPC elle-meme pour ne pas avoir a toucher get_student_dashboard.
   const [showMarks, setShowMarks] = useState(false);
+  // Onglet « Classeur » : ouvert par la classe (class_binders.tab_enabled) ; le serveur du classeur
+  // le dit lui-même. Il ouvre le classeur en plein écran, par-dessus l'espace élève.
+  /** Code de l'élève dont la classe a l'onglet ouvert (null : pas d'onglet). */
+  const [binderCode, setBinderCode] = useState<string | null>(null);
+  const showBinder = binderCode !== null;
+  const [binderOpen, setBinderOpen] = useState(false);
   // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
   // Un élève témoin voit tout (preview en conditions réelles).
   const isWitness = !!data?.is_witness;
@@ -257,6 +266,9 @@ export function StudentDashboard() {
         setShowMarks(false);
       }
 
+      // Classeur : le serveur dit si l'onglet est ouvert à la classe (rien d'autre n'est lu ici).
+      void studentBinderOpen({ code: fullCode }).then((open) => { if (currentCodeRef.current === fullCode) setBinderCode(open ? fullCode : null); });
+
       // Load academy data
       try {
         const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
@@ -315,6 +327,8 @@ export function StudentDashboard() {
     setCode(['', '', '', '', '', '']);
     setError(null);
     setActiveTab('grades');
+    setBinderCode(null);
+    setBinderOpen(false);
     currentCodeRef.current = '';
     setTimeout(() => inputRefs.current[0]?.focus(), 100);
   };
@@ -504,10 +518,12 @@ export function StudentDashboard() {
             ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
             ...(showAnnales ? [{ key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos }] : []),
             { key: 'ar' as const, icon: '🔍', label: 'RA', activeColor: T.accentSoft, activeText: T.accent },
+            // Le classeur n'est pas un onglet comme les autres : il s'ouvre en plein écran
+            ...(showBinder ? [{ key: 'binder' as const, icon: <BookOpen size={14} aria-hidden style={{ verticalAlign: '-2px' }} />, label: 'Classeur', activeColor: T.indigoSoft, activeText: T.indigo }] : []),
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => { if (tab.key === 'binder') setBinderOpen(true); else setActiveTab(tab.key); }}
               style={{
                 flex: 1, padding: isAcademyTab ? '8px' : '10px',
                 borderRadius: '10px', border: 'none',
@@ -702,6 +718,8 @@ export function StudentDashboard() {
           Données mises à jour en temps réel
         </p>
       </div>
+      {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
+      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={() => setBinderOpen(false)} />}
     </div>
   );
 }
