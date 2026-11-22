@@ -13,7 +13,7 @@ import { useAuth } from '../hooks/useAuth';
 import { listBoards, type Board } from '../lib/boardsQueries';
 import { courseHref } from '../lib/courseLibrary';
 import {
-  SECTION_LABEL, SECTION_ORDER, binderLevels, binderToc, buildBinder, dividerIndex, sectionAt, spreadOf, turn,
+  SECTION_LABEL, SECTION_ORDER, binderLevels, binderSummarySources, binderToc, buildBinder, dividerIndex, sectionAt, spreadOf, turn,
   type BinderSection,
 } from '../lib/binder';
 import { turnDirection } from '../lib/binderFlaps';
@@ -80,7 +80,8 @@ export function Binder() {
   useEffect(() => {
     if (basePages.length === 0) return;
     let cancelled = false;
-    const sources = basePages.flatMap((p) => (p.kind === 'sheet' && p.role === 'summaries' && p.chapter && p.companion ? [{ chapter: p.chapter, board: p.companion }] : []));
+    // Les feuilles de bilans corrigées ne sont plus des pages : on les lit à part, comme source
+    const sources = boards && level ? binderSummarySources(boards, level) : [];
     const font = `${INK_PX}px "Playwrite FR Moderne"`;
     Promise.all([
       Promise.all(sources.map(({ chapter, board }) => loadSheetDoc(board).then((d) => [chapter, d ? summaryRuns(d.content) : new Map()] as const, () => [chapter, new Map()] as const))),
@@ -92,7 +93,7 @@ export function Binder() {
       setInkReady({ texts: new Map(lists), measure: (text) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6) });
     });
     return () => { cancelled = true; };
-  }, [basePages]);
+  }, [basePages, boards, level]);
   const pages = useMemo(() => {
     if (!inkReady) return basePages;
     const width = INK_WIDTH_MM * MM * 0.97;
