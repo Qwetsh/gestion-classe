@@ -88,6 +88,7 @@ const START_ERRORS: Record<string, string> = {
   kit_version_unsure: 'Le kit n’indique pas sa version du sujet et cette copie a une version à elle : envoie un kit par version depuis le Correcteur.',
   not_found: 'Évaluation introuvable.',
   unauthorized: 'Session expirée : reconnecte-toi.',
+  not_allowed: 'La correction automatique n’est pas ouverte sur ce compte.',
 };
 
 export function describeStartError(code: string, info?: { versions?: string[]; student_version?: string | null }): string {
