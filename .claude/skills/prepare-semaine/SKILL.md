@@ -113,7 +113,8 @@ Le tableau que `placer` affiche, tel quel : Classe | Cours | Document | État. A
   l'affichage ; les avertissements de `screens:check` ;
 - où le retrouver : le calendrier de l'accueil, et Mes cours › Par classe ;
 - **les entrées de cahier de texte** des séances posées (une par cours et par classe), écrites
-  comme le dit `cours-gestion-classe` § 3 (« Le cahier de texte »), avec le dossier où elles sont.
+  comme le dit `cours-gestion-classe` § 3 (« Le cahier de texte ») et envoyées dans l'app, avec le
+  compte rendu de l'envoi (enregistrées, déjà là, refusées).
 
 ## Habitudes apprises
 

@@ -151,7 +151,8 @@ Puis **s'arrêter et attendre la réponse**.
 - Les 🟠 proposées mais non faites, et les 🟣 suggérés (chantiers possibles).
 - Ce qui reste à faire à la main, ce qui n'a pas pu être vérifié, les manques de l'app rencontrés.
 - L'entrée de cahier de texte de la séance, écrite comme le dit `cours-gestion-classe` § 3
-  (« Le cahier de texte »), et où elle est rangée.
+  (« Le cahier de texte ») et envoyée dans l'app (popover du cours sur l'accueil), avec le
+  résultat de l'envoi.
 
 ## 7. Après la séance
 

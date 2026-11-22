@@ -78,3 +78,12 @@ fichiers restent dans OneDrive (sauvegarde).
 5. Vérification dans le navigateur, skill § 3 mise à jour, PR.
 
 Dépôt public : aucun texte d'entrée ni nom d'élève dans le code, les tests ou les commits.
+
+## État (22/11/2026)
+
+Livré sur la branche `feat/cahier-de-texte` : migration 084 **appliquée en prod**, `depot-cours`
+**redéployée** (version 5, action `journal` essayée par le jeton : écriture, relance « identique »,
+cours introuvable, texte vide), interface web (popover, fenêtre, page), `gc_envoi.py cahier`,
+skills à jour. Le dossier OneDrive `_Cahier de texte` n'existait pas encore : rien à reprendre.
+**Interface non vérifiée dans le navigateur** (connexion nécessaire) : à regarder à la première
+ouverture.
