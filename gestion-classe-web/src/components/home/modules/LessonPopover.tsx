@@ -11,7 +11,7 @@ import { journalForLesson, journalHeadline } from '../../../lib/timetable/lesson
 import { levelFromClassName } from '../../../lib/boardsQueries';
 import { useUIFeedback } from '../../../contexts/UIFeedbackContext';
 import { useAuth } from '../../../hooks/useAuth';
-import { ActivityPicker, type PickedActivity } from './ActivityPicker';
+import { ActivityPicker, type LinkedActivity, type PickedActivity } from './ActivityPicker';
 
 const POPOVER_WIDTH = 300;
 const MARGIN = 8;
@@ -124,6 +124,22 @@ export function LessonPopover({
 
   /** « Tableau blanc » en classe : on choisit l'activité (ou un tableau vide) avant d'ouvrir. */
   const [picking, setPicking] = useState(false);
+  /** « Lier une activité » : le cours reçoit une copie de la fiche ou de la correction de la bibliothèque. */
+  const [linking, setLinking] = useState(false);
+
+  const linkActivity = async (target: LinkedActivity) => {
+    setBoardBusy(true);
+    try {
+      await createBoardForLesson(lesson, target.board.id, 'board', target.board.title, target.chapter);
+      setLinking(false);
+      toast(`${target.variant === 'correction' ? 'Correction liée' : 'Activité liée'} au cours.`, 'success');
+    } catch (err) {
+      console.error(err);
+      toast(err instanceof Error ? err.message : 'Impossible de lier l’activité.');
+    } finally {
+      setBoardBusy(false);
+    }
+  };
 
   const createBoard = async (source?: LessonBoard, kind: 'course' | 'board' = 'board', activity?: PickedActivity) => {
     setBoardBusy(true);
@@ -198,15 +214,20 @@ export function LessonPopover({
       onClose();
     };
     const onMove = () => onClose();
+    // Défiler dans le popover lui-même (liste d'activités, popover plus haut que l'écran) ne le ferme pas
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && ref.current?.contains(e.target)) return;
+      onClose();
+    };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
     window.addEventListener('resize', onMove);
-    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onDown);
       window.removeEventListener('resize', onMove);
-      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [onClose]);
 
@@ -451,10 +472,31 @@ export function LessonPopover({
                 <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => createBoard(undefined, 'course')} disabled={boardBusy} title="Rédigé comme dans Word, imprimable en A4">
                   {boardBusy ? 'Création…' : '📄 Rédiger un cours'}
                 </button>
-                <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => setPicking(true)} disabled={boardBusy || picking} title="Pages 16:9 pour écrire en direct : on choisit d'abord l'activité">
+                <button type="button" className="wtt-pop__btn wtt-pop__btn--block" onClick={() => { setLinking(false); setPicking(true); }} disabled={boardBusy || picking} title="Pages 16:9 pour écrire en direct : on choisit d'abord l'activité">
                   📋 Tableau blanc
                 </button>
               </div>
+              {!linking && (
+                <button
+                  type="button"
+                  className="wtt-pop__btn wtt-pop__btn--block"
+                  onClick={() => { setPicking(false); setLinking(true); }}
+                  disabled={boardBusy}
+                  title="Pose sur ce cours le tableau déjà préparé d'une activité de la bibliothèque (activité ou correction), écrans compris"
+                >
+                  Lier une activité
+                </button>
+              )}
+              {linking && user && (
+                <ActivityPicker
+                  userId={user.id}
+                  level={level}
+                  last={lastBoard ? { title: lastBoard.title } : null}
+                  busy={boardBusy}
+                  onLink={linkActivity}
+                  onCancel={() => setLinking(false)}
+                />
+              )}
               {picking && user && (
                 <ActivityPicker
                   userId={user.id}
@@ -466,7 +508,7 @@ export function LessonPopover({
                   onCancel={() => setPicking(false)}
                 />
               )}
-              {reuseSources.length > 0 && (
+              {reuseSources.length > 0 && !linking && (
                 <>
                   <span className="wtt-pop__muted">ou partir d’une copie du tableau de :</span>
                   {reuseSources.map(b => (
