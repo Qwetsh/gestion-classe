@@ -1,6 +1,6 @@
 """
 Les écrans de « Activité 3 — L'antibiogramme » (3e, séquence 2), refaits le 22/11/2026 avec le procédé
-« tableau de séance » : l’activité (14 écrans, deux séances) et sa correction (12 écrans), chacune avec un
+« tableau de séance » : l’activité (14 écrans, deux séances) et sa correction (15 écrans), chacune avec un
 sommaire. Deux animations acceptées par Thomas (antibiogramme_animations.py) : A. lire un antibiogramme
 (modèle chou rouge + vinaigre à côté d'un vrai), B. la sélection des bactéries résistantes.
 Règle du 19/11/2026 : rien à lire sous y = 450 ; seuls les boutons du professeur y descendent.
@@ -143,17 +143,36 @@ def activite(affiches):
               '<div>rougeur jusqu’au poignet</div><div>ganglions gonflés sous le bras</div>', NOIR, fond=FOND_ROSE)
     sit.texte(645, 352, 330, 26, B('L’infection n’est plus contenue dans sa main.'), ROUGE)
 
-    vrai = vrai_antibiogramme(e, affiches.get('photo'))
+    # Pendant l'activité, on ne dit pas que c'est un modèle : la comparaison avec un vrai antibiogramme
+    # (photo, animation A) est dans la correction (Thomas, 22/11/2026).
+    mat = e.ecran('Partie 1 — Le matériel')
+    mat.texte(MARGE, 108, 470, 24, '<div>• 2 boîtes de Petri : « bactérie de la plaie » et « microbiote »</div>'
+              '<div>• la fiche de placement</div><div>• 6 flacons : A, B, C de la <b>ligne bleue</b> '
+              '(bactérie de la plaie), A, B, C de la <b>ligne rouge</b> (microbiote)</div>'
+              '<div>• 6 pastilles, une pince fine, un gobelet d’eau</div><div>• un feutre, une règle</div>', NOIR)
+    mat.texte(560, 108, 400, 22, '<div><b>Bien penser à</b></div><div>• rincer la pince entre deux pastilles</div>'
+              '<div>• bien égoutter chaque pastille</div><div>• ne jamais mélanger la ligne bleue et la ligne '
+              'rouge</div>', NOIR, fond='#FFF4D6')
+    mat.texte(560, 330, 400, 20, '<b>Une erreur ?</b> Des pastilles ou une boîte en plus, mais ça coûte des points : '
+              '3 pastilles = 1 point, 1 boîte = 1 point.', GRIS)
 
-    proto = avec_bas(LISIBLE, e.consigne, 'Partie 1 — Je réalise un antibiogramme', [
-        ('Note', 'sous chaque boîte la place de A, B, C, bien écartées.'),
-        ('Trempe', 'une pastille dans le flacon A de la ligne bleue, pose-la sur la boîte « plaie ».'),
-        ('Rince', 'la pince, puis fais de même avec B et C.'),
-        ('Recommence', 'sur la boîte « microbiote », avec la ligne rouge.'),
-        ('Attends', '15 minutes sans toucher.'),
-    ], minuteur=900)
+    proto = avec_bas(LISIBLE, e.consigne, 'Partie 1 — Le protocole', [
+        ('Écris', 'A, B ou C sur chaque pastille.'),
+        ('Trempe', 'la pastille A dans le flacon A bleu ; égoutte-la.'),
+        ('Pose-la', 'sur la boîte « bactérie de la plaie ».'),
+        ('Rince', 'la pince ; fais de même avec B et C.'),
+        ('Recommence', 'sur le microbiote, avec la ligne rouge.'),
+        ('Attends', '10 minutes sans toucher.'),
+    ], minuteur=600)
 
-    anim_a = animation(e, aa.lecture(), affiches.get('a'))
+    obs = e.ecran('Ce que tu vas observer')
+    obs.forme('ellipse', 70, 120, 300, 300, trait='#555555', fond='#EEEEEE', epaisseur=4)
+    obs.forme('ellipse', 150, 200, 140, 140, trait='#9C2A5C', fond='#F4B6CF', epaisseur=3)
+    obs.forme('ellipse', 205, 255, 30, 30, trait='#555555', fond='#FFFFFF', epaisseur=2)
+    obs.forme('double-arrow', 150, 352, 140, 1, trait='#1F3864', epaisseur=3, de=(0, 0.5), vers=(1, 0.5))
+    obs.texte(MARGE + 380, 120, 500, 26, '<div>Quand les bactéries sont détruites par l’antibiotique, '
+              '<b>la couleur change</b> autour de la pastille.</div><div><br></div><div>On mesure le '
+              '<b>diamètre</b> de cette zone, <b>pastille comprise</b>, avec la règle.</div>', NOIR)
 
     attente = avec_bas(LISIBLE, e.consigne, 'Pendant l’attente', [
         ('Lis', 'les documents 1 et 2 de la feuille de documents.'),
@@ -200,7 +219,7 @@ def activite(affiches):
     bl = bilan(e)
 
     e.sommaire('Activité — aller à…', [
-        ('Le retour de M. Apabien', sit), ('Un vrai antibiogramme', vrai), ('Le protocole', proto), ('Lire un antibiogramme', anim_a),
+        ('Le retour de M. Apabien', sit), ('Le matériel', mat), ('Le protocole', proto), ('Ce que tu vas observer', obs),
         ('Pendant l’attente', attente), ('Questions 1 et 2', q12), ('Nos mesures', commun),
         ('Question 3', q3), ('Fleming (question 4)', fleming), ('Vrai ou faux', vf),
         ('Les résistances', anim_b), ('Bilan', bl)], position=1)
@@ -234,6 +253,16 @@ def correction(affiches):
         ('Conclusion', 'Le médecin doit prescrire l’<b>antibiotique B</b>.'),
     ])
 
+    # La comparaison avec le réel : à la correction seulement (Thomas, 22/11/2026)
+    reel = vrai_antibiogramme(e, affiches.get('photo'))
+    animation(e, aa.lecture(), affiches.get('a'))
+    question(e, 'Ce que notre modèle ne montre pas', 'Qu’est-ce qui diffère d’un vrai antibiogramme ?', [
+        ('Dans la boîte', 'Pas de bactéries : une couleur, pas une zone claire.'),
+        ('Le temps', '10 minutes, au lieu de 16 à 20 heures.'),
+        ('À révéler ou non', 'Les deux lignes n’avaient pas les mêmes dilutions : elles imitaient des bactéries '
+         'plus ou moins sensibles.'),
+    ])
+
     q4 = question(e, 'Question 4 — Fleming', 'À quoi correspondent la moisissure et la zone sans staphylocoques ?', [
         ('La moisissure', 'Elle joue le rôle de la pastille : elle libère la pénicilline, qui se répand.'),
         ('La zone', 'C’est la zone autour de la pastille, où les bactéries sont détruites.'),
@@ -263,6 +292,7 @@ def correction(affiches):
 
     e.sommaire('Correction — aller à…', [
         ('Q1 — Le tableau', q1), ('Q2 — Le schéma', q2), ('Q3 — Quel antibiotique ?', q3a),
+        ('Notre modèle et le réel', reel),
         ('Q4 — Fleming', q4), ('Q5 — Mme Amalle', q5), ('Q6 — Le voisin', q6),
         ('Les résistances', anim_b), ('Pour aller plus loin', bonus), ('Bilan', bl)], position=1)
     return e
