@@ -194,11 +194,23 @@ export function Binder() {
     const item = page.anchor ? itemByAnchor.get(page.anchor) : undefined;
     if (access === 'locked' || !item) {
       const why = page.kind === 'ruled' ? 'Bilan sans fiche : ne s’ouvre pas aux classes'
-        : page.role === 'evaluation' || page.role === 'correction' || /^Évaluation/.test(page.label) ? 'Évaluation : ne s’ouvre pas encore aux classes'
+        : page.role === 'evaluation' || page.role === 'correction' || /^Évaluation/.test(page.label) ? 'Évaluation sans sujet : ne s’ouvre pas aux classes'
         : 'Titre ambigu (correction, copie modèle ou évaluation ?) : ne s’ouvre pas aux classes';
       return <span className="bd-strip__note">{why}</span>;
     }
     const state = stateOf(states, item.anchor);
+    if (item.role === 'evaluation') {
+      // Une évaluation se règle pour tout le niveau à la fois : ici, on voit seulement où elle en est
+      const where = page.kind === 'sheet' && page.role === 'correction'
+        ? `Corrigé de l’évaluation : ${state.correction ? 'ouvert' : 'fermé'} pour la ${selectedClass.name}.`
+        : `Évaluation : sujet ${state.visible ? 'ouvert' : 'fermé'} pour la ${selectedClass.name}${hasCorrection(item) ? `, correction ${state.correction ? 'ouverte' : 'fermée'}` : ''}.`;
+      return (
+        <>
+          <span className="bd-strip__note">{where} Elle se règle pour tout le niveau.</span>
+          <button type="button" className="bd-strip__btn" onClick={() => void navigate('/cours?vue=classeur')}>Régler dans Mes cours</button>
+        </>
+      );
+    }
     if (page.kind === 'ruled') {
       return <span className="bd-strip__note">Suite du bilan de « {item.label} » : {state.correction ? 'ouverte avec la correction' : 'fermée avec la correction'}</span>;
     }

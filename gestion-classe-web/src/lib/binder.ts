@@ -52,7 +52,8 @@ export type BinderPage =
     /**
      * Élément du classeur qu'on ouvre ou ferme pour une classe (lib/binderRelease.ts) : le cours
      * d'ancrage. Les pages d'une activité (fiche, documents, protocole) portent toutes sa fiche ; une
-     * page seule se porte elle-même. Absent : la page ne s'ouvre à aucune classe (évaluation).
+     * page seule se porte elle-même, les pages d'une évaluation portent son sujet. Absent : la page
+     * ne s'ouvre à aucune classe (titre douteux, évaluation sans sujet).
      */
     anchor?: string;
     /** Titre que l'élève écrit à la main en haut de la page (fiches d'activité). */
@@ -250,10 +251,12 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
     const evaluations = byChapter.get(chapter)!.filter((b) => isEvaluationTitle(b.title)).sort((a, b) => naturalCompare(a.title, b.title));
     for (const group of groupActivities(evaluations)) {
       const copy = group.members.find((m) => m.variant === 'copie')?.board;
+      // L'évaluation s'ouvre d'un bloc, ancrée sur son sujet ; sans sujet, elle ne s'ouvre pas
+      const anchor = group.members.find((m) => m.variant === 'fiche')?.board.id;
       for (const { variant, board } of group.members) {
         if (variant === 'copie' || variant === 'extraits' || variant === 'adaptee' || (variant === 'correction' && copy)) continue;
-        if (variant === 'fiche') pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: 'Évaluation', board, role: 'evaluation', heading: group.title, companion: copy });
-        else pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `Évaluation — ${variant}`, board, role: variant === 'correction' ? 'correction' : 'documents' });
+        if (variant === 'fiche') pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: 'Évaluation', board, role: 'evaluation', heading: group.title, companion: copy, anchor });
+        else pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: `Évaluation — ${variant}`, board, role: variant === 'correction' ? 'correction' : 'documents', anchor });
       }
     }
   }

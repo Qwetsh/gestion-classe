@@ -42,3 +42,9 @@
 }
 .bg-all:hover:not(:disabled) { border-color: var(--border-strong); }
 .bg-all:disabled { opacity: 0.5; cursor: default; }
+.bg-all--go { border-color: var(--accent-strong); background: var(--accent-strong); color: #fff; font-weight: 600; }
+
+/* Évaluation : une seule case pour tout le niveau */
+.bg-eval { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; white-space: normal; }
+.bg-eval__sep { margin-left: 10px; padding-left: 14px; border-left: 1px solid var(--border-strong); }
+.bg-eval__warn { flex: 1; min-width: 260px; color: var(--accent-ink); font-weight: 600; line-height: 1.4; }

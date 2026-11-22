@@ -86,6 +86,8 @@ describe('le classeur de l’élève est celui de l’aperçu du professeur', ()
       row(ID.s2a1, true, true), row(ID.fm2, true), row(ID.memo1, true), row(ID.garde2, true), row(ID.a1, true), row(ID.fm1, true), row(ID.guide, true), row(ID.garde1, true),
     ],
     'lignes fermées mêlées': [row(ID.a1, false), row(ID.a2, true), row(ID.memo1, false)],
+    'une évaluation et son corrigé': [row(ID.evalSujet, true, true), row(ID.a1, true), row(ID.garde1, true)],
+    'une évaluation sans son corrigé': [row(ID.evalSujet, true)],
   };
   for (const [name, rows] of Object.entries(cases)) {
     it(name, () => {
@@ -125,17 +127,29 @@ describe('openItems — le serveur ne rend que ce qui est ouvert', () => {
     const page = { board: ID.evalSujet, role: 'evaluation', label: 'Évaluation' };
     const corr = { board: ID.evalCorr, role: 'correction', label: 'Évaluation — correction' };
     const forged: ItemRow[] = [
-      { anchor_board_id: ID.evalSujet, visible: true, correction_visible: true, released: { v: 1, role: 'evaluation', chapter: S1, label: 'Évaluation', pages: [page, corr] } },
+      { anchor_board_id: ID.evalSujet, visible: true, correction_visible: true, released: { v: 1, role: 'correction', chapter: S1, label: 'Évaluation', pages: [page, corr] } },
       { anchor_board_id: ID.evalSujet, visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'Évaluation', pages: [page, corr] } },
       { anchor_board_id: ID.a1, visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'Activité 1', pages: [{ board: ID.a1, role: 'activity', label: 'Activité 1' }, page, corr] } },
       { anchor_board_id: ID.evalSujet, visible: true, correction_visible: true, released: { v: 1, role: 'constructor', chapter: S1, label: 'x', pages: [page] } },
       { anchor_board_id: ID.evalSujet, visible: true, correction_visible: true, released: { v: 1, role: '__proto__', chapter: S1, label: 'x', pages: [page] } },
     ];
     for (const r of forged) {
-      const ids = boardIds(openItems([r]));
+      // Comme le serveur : lecture de la ligne, puis propriété et titres du jour
+      const ids = boardIds(ownedItems(openItems([r]), new Map(library.map((b) => [b.id, b.title]))));
       expect(ids).not.toContain(ID.evalSujet);
       expect(ids).not.toContain(ID.evalCorr);
     }
+  });
+
+  it('une évaluation sort par sa propre ligne : le sujet, puis le corrigé si la correction est ouverte', () => {
+    const sujet = { board: ID.evalSujet, role: 'evaluation', label: 'Évaluation' };
+    const released = { v: 1, role: 'evaluation', chapter: S1, label: 'Évaluation', pages: [sujet], correction: { page: { board: ID.evalCorr, role: 'correction', label: 'Évaluation — correction' } } };
+    const line = (correction_visible: boolean): BinderItemRow => ({ class_id: 'classe', anchor_board_id: ID.evalSujet, visible: true, correction_visible, released });
+    expect(served([line(false)]).ids).toEqual([ID.evalSujet]);
+    expect(served([line(true)]).ids).toEqual([ID.evalSujet, ID.evalCorr]);
+    // Le corrigé d'une activité ne passe pas pour celui d'une évaluation
+    const wrong = { ...line(true), released: { ...released, correction: { page: { board: ID.a1Corr, role: 'correction', label: 'x' } } } };
+    expect(served([wrong]).ids).toEqual([ID.evalSujet]);
   });
 
   it('une page seule n’a jamais de correction', () => {
@@ -158,6 +172,19 @@ describe('closedByTitle — le titre du jour ne fait que refermer', () => {
     for (const title of ['Activité 2 — Séisme (correction)', 'Activité 2 — Séisme (corrigé)', 'Activité 2 — Séisme (copie modèle)', 'Activité 2 — Séisme (adaptée)', 'Activité 2 — Séisme (extraits)', 'Évaluation — La Terre', 'Évaluation — La Terre (documents)', 'Activité 2 — Séisme - correction', 'Activité 2 — Séisme (correction) v2', 'Activité 6 — Évaluation finale', 'Activité 2 — Séisme (copie modèle)'.normalize('NFD')]) {
       expect(closedByTitle(title, 'page'), title).toBe(true);
     }
+  });
+
+  it('dans une évaluation, tout doit s’appeler « Évaluation … », et le corrigé « (correction) »', () => {
+    expect(closedByTitle('Évaluation — La Terre', 'page', true)).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre (documents)', 'page', true)).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre (correction)', 'correction', true)).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre (copie modèle)', 'copy', true)).toBe(false);
+    for (const [title, kind] of [
+      ['Activité 2 — Séisme', 'page'], ['Évaluation — La Terre (correction)', 'page'], ['Évaluation — La Terre', 'correction'],
+      ['Activité 2 — Séisme (correction)', 'correction'], ['Évaluation — La Terre, corrigé', 'page'], ['Évaluation — La Terre (documents)', 'copy'],
+    ] as const) expect(closedByTitle(title, kind, true), `${title} / ${kind}`).toBe(true);
+    // Et le corrigé d'une évaluation ne sort jamais d'une activité
+    expect(closedByTitle('Évaluation — La Terre (correction)', 'correction', false)).toBe(true);
   });
 
   it('une copie modèle doit toujours s’appeler ainsi', () => {

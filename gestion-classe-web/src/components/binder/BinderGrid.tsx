@@ -3,7 +3,8 @@
  * ligne par activité (et par page seule), une colonne par classe du niveau ; dans chaque case,
  * « Activité » et « Correction ». C'est le second endroit où régler ce que chaque classe voit du
  * classeur : il écrit les mêmes lignes que la page `/classeur` (lib/binderRelease.ts), à partir du
- * même classeur (useBinderLibrary). Fermé par défaut.
+ * même classeur (useBinderLibrary). Fermé par défaut. Les évaluations ne se règlent qu'ici, pour
+ * tout le niveau à la fois (lot 5).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -42,10 +43,62 @@ function groupItems(items: BinderItem[]): Group[] {
 }
 
 const rowTitle = (item: BinderItem): string => (
-  item.role === 'activity' ? item.heading ?? item.label
+  item.role === 'activity' || item.role === 'evaluation' ? item.heading ?? item.label
     : item.role === 'memo' && item.chapter ? `${item.label} — ${item.chapter.split(' — ')[0]}`
     : item.label
 );
+
+/**
+ * Évaluation (lot 5) : elle se règle pour toutes les classes du niveau à la fois, en deux temps (le
+ * sujet, puis la correction), et chaque ouverture se confirme. Par classe, le sujet ouvert à la 4A
+ * serait montré à la 4C avant qu'elle compose.
+ */
+function EvaluationCell({ item, level, classes, stateIn, saving, onApply }: {
+  item: BinderItem;
+  level: string;
+  classes: BinderClass[];
+  stateIn: (classId: string) => ItemState;
+  saving: boolean;
+  onApply: (state: ItemState) => void;
+}) {
+  const [confirming, setConfirming] = useState<'subject' | 'correction' | null>(null);
+  const open = classes.filter((c) => stateIn(c.id).visible);
+  const corrected = classes.filter((c) => stateIn(c.id).correction);
+  const allOpen = open.length === classes.length;
+  const allCorrected = corrected.length === classes.length;
+  const names = (list: BinderClass[]) => list.map((c) => c.name).join(', ');
+  const said = (list: BinderClass[], closed: string, all: string, some: string) => (list.length === 0 ? closed : list.length === classes.length ? all : `${some} ${names(list)} seulement`);
+  const apply = (state: ItemState) => { setConfirming(null); onApply(state); };
+
+  if (confirming) {
+    const correction = confirming === 'correction';
+    return (
+      <div className="bg-eval">
+        <span className="bg-eval__warn">
+          {correction ? 'La correction' : 'Le sujet'} de cette évaluation sera visible par toutes les classes de {level} ({names(classes)}). À faire seulement quand toutes ont composé.
+        </span>
+        <button type="button" className="bg-all bg-all--go" disabled={saving} onClick={() => apply({ visible: true, correction })}>
+          {correction ? 'Ouvrir la correction' : 'Ouvrir le sujet'}
+        </button>
+        <button type="button" className="bg-all" onClick={() => setConfirming(null)}>Annuler</button>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-eval">
+      <span>Sujet : {said(open, 'fermé', `ouvert aux ${level}`, 'ouvert aux')}</span>
+      {!allOpen && <button type="button" className="bg-all" disabled={saving} onClick={() => setConfirming('subject')}>Ouvrir aux {level}</button>}
+      {open.length > 0 && <button type="button" className="bg-all" disabled={saving} onClick={() => apply({ visible: false, correction: false })}>Refermer</button>}
+      {hasCorrection(item) && (
+        <>
+          <span className="bg-eval__sep">Correction : {said(corrected, 'fermée', `ouverte aux ${level}`, 'ouverte aux')}</span>
+          {allOpen && !allCorrected && <button type="button" className="bg-all" disabled={saving} onClick={() => setConfirming('correction')}>Ouvrir aux {level}</button>}
+          {corrected.length > 0 && <button type="button" className="bg-all" disabled={saving} onClick={() => apply({ visible: true, correction: false })}>Refermer</button>}
+        </>
+      )}
+    </div>
+  );
+}
 
 function mergeRows(rows: BinderItemRow[], next: BinderItemRow[]): BinderItemRow[] {
   const anchors = new Set(next.map((r) => r.anchor_board_id));
@@ -182,7 +235,21 @@ export function BinderGrid({ userId }: { userId: string }) {
                     );
                   })}
                 </tr>
-                {group.items.map((item) => (
+                {group.items.map((item) => (item.role === 'evaluation' ? (
+                  <tr key={item.anchor} className="bg-eval-row">
+                    <th scope="row" className="bg-item">{rowTitle(item)}</th>
+                    <td colSpan={classes.length}>
+                      <EvaluationCell
+                        item={item}
+                        level={level}
+                        classes={classes}
+                        stateIn={(classId) => stateOf(statesOf.get(classId)!, item.anchor)}
+                        saving={saving}
+                        onApply={(state) => { for (const c of classes) void apply(c.id, [{ item, state }]); }}
+                      />
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={item.anchor}>
                     <th scope="row" className="bg-item">{rowTitle(item)}</th>
                     {classes.map((c) => {
@@ -215,13 +282,17 @@ export function BinderGrid({ userId }: { userId: string }) {
                       );
                     })}
                   </tr>
-                ))}
+                )))}
               </tbody>
             ))}
           </table>
         </div>
       )}
-      {!unavailable && data && classes.length > 0 && <p className="bg-note">Les évaluations ne s’ouvrent pas encore aux classes.</p>}
+      {!unavailable && data && classes.length > 0 && (
+        <p className="bg-note">
+          Une évaluation s’ouvre pour toutes les classes du niveau à la fois : un élève d’une classe peut montrer le sujet à une autre. Elle ne s’ouvre jamais avec « Tout ouvrir ».
+        </p>
+      )}
     </div>
   );
 }

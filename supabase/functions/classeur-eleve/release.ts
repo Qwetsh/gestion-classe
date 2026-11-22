@@ -9,7 +9,8 @@
  *    (renommé après coup) est refermé : le titre ne sert qu'à fermer, jamais à ouvrir ;
  *  - une ligne non visible ne rend rien ;
  *  - la correction (copie modèle, bilan) ne sort que si `correction_visible` ;
- *  - seuls passent les rôles d'une liste fermée (une évaluation n'en fait pas partie) ;
+ *  - seuls passent les rôles d'une liste fermée ; une évaluation ne sort que par sa propre ligne
+ *    (jamais glissée dans une activité), et ses cours doivent toujours s'appeler « Évaluation … » ;
  *  - d'un cours, seuls le texte et sa mise en page sortent : jamais ses écrans (les corrections
  *    projetées en classe), ses liens, ni les annotations du professeur.
  */
@@ -17,6 +18,8 @@
 /** Ce qui peut s'ouvrir à une classe, et les pages que chaque élément peut porter. */
 export const PAGE_ROLES: Record<string, string[]> = {
   activity: ['activity', 'documents'],
+  // Une évaluation n'est ouverte que par sa propre ligne : son sujet et ses documents, puis son corrigé
+  evaluation: ['evaluation', 'documents'],
   cover: ['cover'],
   memo: ['memo'],
   method: ['method'],
@@ -45,7 +48,7 @@ export interface OpenItem {
     label: string;
     heading?: string;
     pages: OpenPage[];
-    correction?: { copy?: string; summary?: OpenSummary };
+    correction?: { copy?: string; summary?: OpenSummary; page?: OpenPage };
   };
 }
 
@@ -100,13 +103,19 @@ export function openItems(rows: ItemRow[]): OpenItem[] {
     const released: OpenItem['released'] = { v: 1, role: r.role, chapter: short(r.chapter, 300), label, pages };
     const heading = short(r.heading, 300);
     if (heading !== null) released.heading = heading;
-    const correction = row.correction_visible === true && r.role === 'activity';
+    const correction = row.correction_visible === true && (r.role === 'activity' || r.role === 'evaluation');
     if (correction && isRecord(r.correction)) {
-      const c: { copy?: string; summary?: OpenSummary } = {};
+      const c: { copy?: string; summary?: OpenSummary; page?: OpenPage } = {};
       if (isUuid(r.correction.copy)) c.copy = r.correction.copy;
-      const summary = parseSummary(r.correction.summary);
+      const summary = r.role === 'activity' ? parseSummary(r.correction.summary) : undefined;
       if (summary) c.summary = summary;
-      if (c.copy || c.summary) released.correction = c;
+      // Le corrigé d'une évaluation : une page de plus, jamais celle d'une activité
+      const p = r.correction.page;
+      if (r.role === 'evaluation' && isRecord(p) && isUuid(p.board) && !pages.some((q) => q.board === p.board)) {
+        const pageLabel = short(p.label, 300);
+        if (pageLabel !== null) c.page = { board: p.board, role: 'correction', label: pageLabel };
+      }
+      if (c.copy || c.summary || c.page) released.correction = c;
     }
     seen.add(row.anchor_board_id);
     out.push({ anchor: row.anchor_board_id, correction, released });
@@ -120,6 +129,7 @@ export function boardIds(items: OpenItem[]): string[] {
   for (const item of items) {
     for (const p of item.released.pages) ids.add(p.board);
     if (item.released.correction?.copy) ids.add(item.released.correction.copy);
+    if (item.released.correction?.page) ids.add(item.released.correction.page.board);
   }
   return [...ids];
 }
@@ -129,20 +139,31 @@ const TITLE_SUFFIX = /\s*\((correction|corrig[ée]|documents?|extraits?|copie mo
 /** Titre qui parle de correction, de copie modèle ou d'évaluation (binder.ts, UNSURE_TITLE). */
 const UNSURE_TITLE = /corr(?:ection|ig[ée])|copie\s+mod[èe]le|[ée]valuation/iu;
 
+/** « Évaluation — … » (courseLibrary.ts, EVALUATION_PREFIX). */
+const EVALUATION_PREFIX = /^\s*[ée]valuations?(?![\p{L}\p{N}])/iu;
+
 /**
- * Le titre d'aujourd'hui dit-il que ce cours n'a plus sa place ? Une page ouverte (fiche,
- * documents, protocole, page seule) ne peut pas s'appeler correction, copie modèle, version adaptée,
- * extraits ou évaluation ; une copie modèle doit toujours s'appeler ainsi. Le professeur a pu
- * récrire un cours ouvert pour en faire autre chose : son identifiant est resté dans la ligne.
+ * Le titre d'aujourd'hui dit-il que ce cours n'a plus sa place ? Le professeur a pu récrire un
+ * cours ouvert pour en faire autre chose : son identifiant est resté dans la ligne.
+ *  - Dans une activité ou une page seule : une page (fiche, documents, protocole) ne peut pas
+ *    s'appeler correction, copie modèle, version adaptée, extraits ni évaluation ; une copie modèle
+ *    doit toujours s'appeler ainsi.
+ *  - Dans une évaluation (`evaluation`) : tous ses cours doivent s'appeler « Évaluation … » ; son
+ *    corrigé (`correction`) doit se terminer par « (correction) ».
  */
-export function closedByTitle(rawTitle: string, kind: 'page' | 'copy'): boolean {
+export function closedByTitle(rawTitle: string, kind: 'page' | 'copy' | 'correction', evaluation = false): boolean {
   const title = rawTitle.normalize('NFC');
   const m = TITLE_SUFFIX.exec(title);
   const word = m ? m[1].toLowerCase() : '';
   const base = m ? title.slice(0, m.index) : title;
-  if (kind === 'copy') return !word.startsWith('copie') || UNSURE_TITLE.test(base);
-  if (word !== '' && !word.startsWith('doc') && !word.startsWith('proto')) return true;
-  return UNSURE_TITLE.test(base);
+  const named = EVALUATION_PREFIX.test(base);
+  // Une évaluation ne se glisse pas dans une activité, ni une activité dans une évaluation
+  if (named !== evaluation) return true;
+  // Hors de son préfixe, le titre ne doit parler ni de correction, ni de copie modèle, ni d'évaluation
+  if (UNSURE_TITLE.test(named ? base.replace(EVALUATION_PREFIX, '') : base)) return true;
+  if (kind === 'copy') return !word.startsWith('copie');
+  if (kind === 'correction') return !evaluation || !word.startsWith('corr');
+  return word !== '' && !word.startsWith('doc') && !word.startsWith('proto');
 }
 
 /**
@@ -151,16 +172,18 @@ export function closedByTitle(rawTitle: string, kind: 'page' | 'copy'): boolean 
  * ligne ne prouve que son ancre : les autres identifiants qu'elle cite sont revérifiés ici.
  */
 export function ownedItems(items: OpenItem[], owned: Map<string, string>): OpenItem[] {
-  const open = (id: string, kind: 'page' | 'copy') => { const title = owned.get(id); return title !== undefined && !closedByTitle(title, kind); };
   const out: OpenItem[] = [];
   for (const item of items) {
+    const evaluation = item.released.role === 'evaluation';
+    const open = (id: string, kind: 'page' | 'copy' | 'correction') => { const title = owned.get(id); return title !== undefined && !closedByTitle(title, kind, evaluation); };
     if (!open(item.anchor, 'page')) continue;
     const pages = item.released.pages.filter((p) => open(p.board, 'page'));
     const released = { ...item.released, pages };
-    if (released.correction?.copy && !open(released.correction.copy, 'copy')) {
-      const { copy: _copy, ...rest } = released.correction;
-      void _copy;
-      if (rest.summary) released.correction = rest; else delete released.correction;
+    if (released.correction) {
+      const c = { ...released.correction };
+      if (c.copy && !open(c.copy, 'copy')) delete c.copy;
+      if (c.page && !open(c.page.board, 'correction')) delete c.page;
+      if (c.copy || c.summary || c.page) released.correction = c; else delete released.correction;
     }
     out.push({ ...item, released });
   }

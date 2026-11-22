@@ -127,7 +127,7 @@ async function openFor(supabase: SupabaseClient, cls: BinderClass): Promise<{ it
   const kept = ownedItems(items, new Map(owned.map((b) => [b.id, b.title])));
   const cited = new Set(boardIds(kept));
   // Le titre d'une copie modèle ne sort pas : seul celui d'une page se lit dans le classeur
-  const pages = new Set(kept.flatMap((i) => i.released.pages.map((p) => p.board)));
+  const pages = new Set(kept.flatMap((i) => [...i.released.pages.map((p) => p.board), ...(i.released.correction?.page ? [i.released.correction.page.board] : [])]));
   return { items: kept, boards: owned.filter((b) => cited.has(b.id)).map((b) => (pages.has(b.id) ? b : { ...b, title: "" })) };
 }
 

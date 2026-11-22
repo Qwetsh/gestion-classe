@@ -20,12 +20,16 @@ import { openItems, ownedItems } from '../../../supabase/functions/classeur-elev
 import { activityKeyOf } from './binderInk';
 import type { InkRun, Summary, SummaryRuns } from './binderSummary';
 
-/** Ce qui peut s'ouvrir à une classe. Liste fermée : une évaluation n'y est pas. */
-export type ItemRole = 'activity' | 'cover' | 'memo' | 'method' | 'guide';
+/**
+ * Ce qui peut s'ouvrir à une classe. Liste fermée. Une évaluation (lot 5) est un élément à part : son
+ * sujet et ses documents, puis sa correction ; elle ne s'ouvre jamais avec « toute la séquence ».
+ */
+export type ItemRole = 'activity' | 'evaluation' | 'cover' | 'memo' | 'method' | 'guide';
 
 /** Pages qu'un élément peut porter, selon son rôle. Toute autre page reste fermée. */
 const PAGE_ROLES: Record<ItemRole, SheetRole[]> = {
   activity: ['activity', 'documents'],
+  evaluation: ['evaluation', 'documents'],
   cover: ['cover'],
   memo: ['memo'],
   method: ['method'],
@@ -59,6 +63,8 @@ export interface BinderItem {
   copy?: string;
   /** Bilan de l'activité, écrit sous la fiche quand la correction est ouverte. */
   summary?: Summary;
+  /** Évaluation sans copie modèle : son corrigé, collé à la suite quand la correction est ouverte. */
+  correctionPage?: ReleasedPage;
 }
 
 /** Ce qui sort pour une classe, écrit dans la ligne au moment d'ouvrir (`released`, version 1). */
@@ -70,7 +76,7 @@ export interface Released {
   heading?: string;
   pages: ReleasedPage[];
   /** Présent seulement si la correction est ouverte. */
-  correction?: { copy?: string; summary?: Summary };
+  correction?: { copy?: string; summary?: Summary; page?: ReleasedPage };
 }
 
 /** Une ligne de `class_binder_items`. */
@@ -97,23 +103,27 @@ const CLOSED: ItemState = { visible: false, correction: false };
 /**
  * Éléments qu'on peut ouvrir à une classe, dans l'ordre du classeur. `pages` : le classeur complet
  * du professeur, sans ses bilans (buildBinder) ; `texts` : les bilans par séquence puis activité.
- * Une page sans ancre (évaluation) ou d'un rôle hors liste n'entre dans aucun élément.
+ * Une page sans ancre (titre douteux) ou d'un rôle hors liste n'entre dans aucun élément.
  */
 export function binderItems(pages: BinderPage[], texts: Map<string, SummaryRuns> = new Map()): BinderItem[] {
   const items = new Map<string, BinderItem>();
+  // Une évaluation se reconnaît à son sujet : ses documents et son corrigé portent la même ancre
+  const evaluations = new Set(pages.flatMap((p) => (p.kind === 'sheet' && p.role === 'evaluation' && p.anchor === p.board.id ? [p.board.id] : [])));
   for (const page of pages) {
     if (page.kind !== 'sheet' || !page.anchor) continue;
-    const role = ITEM_ROLE[page.role];
+    const role = evaluations.has(page.anchor) ? 'evaluation' : ITEM_ROLE[page.role];
     if (!role) continue;
     let item = items.get(page.anchor);
     if (!item) {
       item = { anchor: page.anchor, role, chapter: page.chapter, label: page.label, pages: [] };
       items.set(page.anchor, item);
     }
-    if (item.role !== role || !PAGE_ROLES[role].includes(page.role)) continue;
+    if (item.role !== role) continue;
+    if (role === 'evaluation' && page.role === 'correction') { item.correctionPage = { board: page.board.id, role: 'correction', label: page.label }; continue; }
+    if (!PAGE_ROLES[role].includes(page.role)) continue;
     item.pages.push({ board: page.board.id, role: page.role, label: page.label });
     if (page.board.id === page.anchor) item.label = page.label;
-    if (page.role === 'activity') {
+    if (page.role === 'activity' || page.role === 'evaluation') {
       if (page.heading) item.heading = page.heading;
       if (page.companion) item.copy = page.companion.id;
     }
@@ -135,8 +145,10 @@ export function binderItems(pages: BinderPage[], texts: Map<string, SummaryRuns>
   return [...items.values()];
 }
 
-/** L'activité a-t-elle une correction à montrer à des élèves (copie modèle ou bilan) ? */
-export const hasCorrection = (item: BinderItem): boolean => item.role === 'activity' && !!(item.copy || item.summary);
+/** L'élément a-t-il une correction à montrer à des élèves ? Activité : copie modèle ou bilan ; évaluation : copie modèle ou corrigé. */
+export const hasCorrection = (item: BinderItem): boolean => (
+  item.role === 'activity' ? !!(item.copy || item.summary) : item.role === 'evaluation' ? !!(item.copy || item.correctionPage) : false
+);
 
 /** Ce qu'on écrit dans la ligne quand on ouvre l'élément ; la correction n'y est que si elle est ouverte. */
 export function releasedOf(item: BinderItem, correction: boolean): Released {
@@ -146,6 +158,7 @@ export function releasedOf(item: BinderItem, correction: boolean): Released {
     out.correction = {};
     if (item.copy) out.correction.copy = item.copy;
     if (item.summary) out.correction.summary = { heading: item.summary.heading, paragraphs: item.summary.paragraphs.map((p) => p.map((r) => ({ ...r }))) };
+    if (item.correctionPage) out.correction.page = { ...item.correctionPage };
   }
   return out;
 }
@@ -193,14 +206,16 @@ export function parseReleased(value: unknown): Released | null {
   ));
   const out: Released = { v: 1, role, chapter: typeof value.chapter === 'string' ? value.chapter : null, label: value.label, pages };
   if (typeof value.heading === 'string') out.heading = value.heading;
-  if (role === 'activity' && isRecord(value.correction)) {
+  if ((role === 'activity' || role === 'evaluation') && isRecord(value.correction)) {
     out.correction = {};
     if (typeof value.correction.copy === 'string') out.correction.copy = value.correction.copy;
     const s = value.correction.summary;
-    if (isRecord(s) && typeof s.heading === 'string') {
+    if (role === 'activity' && isRecord(s) && typeof s.heading === 'string') {
       const paragraphs = parseRuns(s.paragraphs);
       if (paragraphs.length > 0) out.correction.summary = { heading: s.heading, paragraphs };
     }
+    const p = value.correction.page;
+    if (role === 'evaluation' && isRecord(p) && typeof p.board === 'string' && typeof p.label === 'string') out.correction.page = { board: p.board, role: 'correction', label: p.label };
   }
   return out;
 }
@@ -242,7 +257,9 @@ export function pageAccess(page: BinderPage, states: Map<string, ItemState>): Pa
     if (!page.anchor) return 'locked';
     return stateOf(states, page.anchor).correction ? 'open' : 'closed';
   }
-  if (!page.anchor || !ITEM_ROLE[page.role]) return 'locked';
+  if (!page.anchor) return 'locked';
+  // Le corrigé d'une évaluation suit sa correction
+  if (page.role === 'correction') return stateOf(states, page.anchor).correction ? 'open' : 'closed';
   return stateOf(states, page.anchor).visible ? 'open' : 'closed';
 }
 
@@ -325,16 +342,20 @@ export function pagesFromReleased(entries: OpenEntry[], boardOf: (id: string) =>
     // Un cours n'est collé qu'une fois dans le classeur
     const pages = parsed.pages.filter((p) => !taken.has(p.board));
     for (const p of pages) taken.add(p.board);
-    return [{ anchor: e.anchor, correction: e.correction && parsed.role === 'activity', released: { ...parsed, pages } }];
+    return [{ anchor: e.anchor, correction: e.correction && (parsed.role === 'activity' || parsed.role === 'evaluation'), released: { ...parsed, pages } }];
   });
   const texts = new Map<string, SummaryRuns>();
   const sheets = (item: (typeof items)[number], section: 'sequences' | 'methodes' | 'revise' | null): BinderPage[] => {
     const { released } = item;
     const copy = item.correction && released.correction?.copy ? boardOf(released.correction.copy) : undefined;
-    return released.pages.flatMap((p): BinderPage[] => {
+    // Le corrigé d'une évaluation, collé à la suite quand sa correction est ouverte
+    const after = item.correction && released.role === 'evaluation' && released.correction?.page && !taken.has(released.correction.page.board) ? [released.correction.page] : [];
+    for (const p of after) taken.add(p.board);
+    return [...released.pages, ...after].flatMap((p): BinderPage[] => {
       const board = boardOf(p.board);
       if (!board) return [];
       const base = { kind: 'sheet' as const, key: board.id, section, chapter: released.chapter, label: p.label, board, role: p.role, anchor: item.anchor };
+      if (p.role === 'evaluation') return [{ ...base, heading: released.heading ?? board.title, ...(copy ? { companion: copy } : {}) }];
       if (p.role !== 'activity') return [base];
       const heading = released.heading ?? board.title;
       const summary = item.correction ? released.correction?.summary : undefined;
@@ -353,7 +374,7 @@ export function pagesFromReleased(entries: OpenEntry[], boardOf: (id: string) =>
   for (const item of of('guide')) pages.push(...sheets(item, null));
 
   pages.push({ kind: 'divider', key: 'divider:sequences', section: 'sequences' });
-  const inSequences = [...of('cover'), ...of('activity')].filter((i) => i.released.chapter);
+  const inSequences = [...of('cover'), ...of('activity'), ...of('evaluation')].filter((i) => i.released.chapter);
   const chapters = [...new Set(inSequences.map((i) => i.released.chapter!))].sort(naturalCompare);
   for (const chapter of chapters) {
     for (const item of of('cover').filter((i) => i.released.chapter === chapter)) pages.push(...sheets(item, 'sequences'));
@@ -361,6 +382,11 @@ export function pagesFromReleased(entries: OpenEntry[], boardOf: (id: string) =>
       .filter((i) => i.released.chapter === chapter)
       .sort((a, b) => naturalCompare(a.released.heading ?? a.released.label, b.released.heading ?? b.released.label));
     for (const item of activities) pages.push(...sheets(item, 'sequences'));
+    // L'évaluation de la séquence, après ses activités
+    const evaluations = of('evaluation')
+      .filter((i) => i.released.chapter === chapter)
+      .sort((a, b) => naturalCompare(a.released.heading ?? a.released.label, b.released.heading ?? b.released.label));
+    for (const item of evaluations) pages.push(...sheets(item, 'sequences'));
   }
 
   pages.push({ kind: 'divider', key: 'divider:methodes', section: 'methodes' });

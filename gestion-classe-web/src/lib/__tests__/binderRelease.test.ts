@@ -88,14 +88,24 @@ describe('binderItems', () => {
   });
 
   it('une page seule est son propre élément', () => {
-    expect(items.filter((i) => i.role !== 'activity').map((i) => [NAME(i.anchor), i.role])).toEqual([
+    expect(items.filter((i) => i.role !== 'activity' && i.role !== 'evaluation').map((i) => [NAME(i.anchor), i.role])).toEqual([
       ['guide', 'guide'], ['garde1', 'cover'], ['garde5', 'cover'], ['fm1', 'method'], ['memo1', 'memo'],
     ]);
   });
 
-  it('ni évaluation, ni entraînement noté, ni correction, ni version adaptée, ni feuille de bilans', () => {
+  it('ni entraînement noté, ni correction d’activité, ni version adaptée, ni feuille de bilans', () => {
     const all = JSON.stringify(items);
-    for (const name of ['eval', 'eval-docs', 'eval-corr', 'entr', 'entr-corr', 'a1-corr', 'a2-adapt', 'bilans1']) expect(all, name).not.toContain(ID(name));
+    for (const name of ['entr', 'entr-corr', 'a1-corr', 'a2-adapt', 'bilans1']) expect(all, name).not.toContain(ID(name));
+  });
+
+  it('une évaluation est un élément à part : son sujet et ses documents, son corrigé pour la correction', () => {
+    expect(item('eval')).toMatchObject({ role: 'evaluation', chapter: S1, label: 'Évaluation', heading: 'Évaluation — La Terre', correctionPage: { board: ID('eval-corr'), role: 'correction' } });
+    expect(item('eval').pages.map((p) => NAME(p.board))).toEqual(['eval', 'eval-docs']);
+    expect(item('eval').summary).toBeUndefined();
+    expect(hasCorrection(item('eval'))).toBe(true);
+    // Aucune page d'évaluation dans un autre élément
+    const others = JSON.stringify(items.filter((i) => i.role !== 'evaluation'));
+    for (const name of ['eval', 'eval-docs', 'eval-corr']) expect(others, name).not.toContain(ID(name));
   });
 
   it('dit si une activité a une correction pour des élèves', () => {
@@ -138,10 +148,26 @@ describe('ce que la classe voit — rien ne sort sans avoir été ouvert', () =>
     expect(seen([r]).boards).toEqual([]);
   });
 
-  it('une évaluation ne sort jamais, même avec une ligne écrite à la main', () => {
+  it('une évaluation ouverte : son sujet et ses documents ; son corrigé seulement avec la correction', () => {
+    expect(seen([row('eval', true)]).boards).toEqual(['eval', 'eval-docs']);
+    expect(seen([row('eval', true, true)]).boards).toEqual(['eval', 'eval-docs', 'eval-corr']);
+    // Une ligne incohérente (corrigé écrit, correction fermée) ne le sort pas
+    const incoherent: BinderItemRow = { ...row('eval', true), released: releasedOf(item('eval'), true) };
+    expect(seen([incoherent]).boards).toEqual(['eval', 'eval-docs']);
+    // Le sujet récrit en autre chose referme toute l'évaluation
+    const retitled = library.map((b) => (b.id === ID('eval') ? { ...b, title: 'Activité 9 — Révisions' } : b));
+    expect(seen([row('eval', true, true)], retitled).boards).toEqual([]);
+  });
+
+  it('« toute la séquence » n’ouvre jamais une évaluation, même avec toutes les corrections', () => {
+    const all = sequenceAnchors(items, S1).map((a) => rowFor(items.find((i) => i.anchor === a)!, CLASS, { visible: true, correction: true }));
+    const { boards } = seen(all);
+    for (const name of ['eval', 'eval-docs', 'eval-corr', 'memo1']) expect(boards).not.toContain(name);
+  });
+
+  it('une évaluation ne sort que par sa propre ligne, jamais glissée dans une activité', () => {
     const forged: BinderItemRow[] = [
-      // Sous son vrai rôle
-      { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: false, released: { v: 1, role: 'evaluation', chapter: S1, label: 'Évaluation', pages: [page('eval', 'evaluation')] } },
+      { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: true, released: { v: 1, role: 'cover', chapter: S1, label: 'Évaluation', pages: [page('eval', 'cover')] } },
       { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'Évaluation', pages: [page('eval', 'evaluation'), page('eval-corr', 'correction')] } },
       // Déguisée en activité : son titre du jour la referme
       { class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: true, released: { v: 1, role: 'activity', chapter: S1, label: 'x', pages: [page('eval', 'activity'), page('eval-docs', 'documents')] } },
@@ -152,6 +178,12 @@ describe('ce que la classe voit — rien ne sort sans avoir été ouvert', () =>
       for (const name of ['eval', 'eval-docs', 'eval-corr', 'a1-corr']) expect(boards).not.toContain(name);
     }
     expect(seen([forged[3]]).boards).toEqual(['a1']);
+    // Et une activité ne se glisse pas dans une évaluation
+    const reverse: BinderItemRow = {
+      class_id: CLASS, anchor_board_id: ID('eval'), visible: true, correction_visible: true,
+      released: { v: 1, role: 'evaluation', chapter: S1, label: 'Évaluation', pages: [page('eval', 'evaluation'), page('a1', 'documents'), page('a1-corr', 'documents')], correction: { copy: ID('a1-copie'), page: page('a1-corr', 'correction') } },
+    };
+    expect(seen([reverse]).boards).toEqual(['eval']);
   });
 
   it('un cours ouvert puis récrit en correction ou en évaluation se referme tout seul', () => {
@@ -272,7 +304,7 @@ describe('parseReleased', () => {
     expect(parseReleased({})).toBeNull();
     expect(parseReleased(null)).toBeNull();
     expect(parseReleased({ v: 2, role: 'activity', label: 'x', pages: [] })).toBeNull();
-    expect(parseReleased({ v: 1, role: 'evaluation', label: 'x', pages: [] })).toBeNull();
+    expect(parseReleased({ v: 1, role: 'correction', label: 'x', pages: [] })).toBeNull();
     // Noms hérités de tout objet : ce ne sont pas des rôles
     for (const role of ['constructor', 'toString', '__proto__']) expect(parseReleased({ v: 1, role, label: 'x', pages: [{ board: 'b', role: 'activity', label: 'x' }] })).toBeNull();
   });
@@ -318,10 +350,19 @@ describe('pageAccess', () => {
     expect(access('memo1')).toBe('closed');
   });
 
-  it('une évaluation ne peut pas s’ouvrir', () => {
-    expect(access('eval')).toBe('locked');
-    expect(access('eval-docs')).toBe('locked');
-    expect(access('eval-corr')).toBe('locked');
+  it('une évaluation suit sa propre ligne, son corrigé suit sa correction', () => {
+    expect(access('eval')).toBe('closed');
+    expect(access('eval-docs')).toBe('closed');
+    expect(access('eval-corr')).toBe('closed');
+    const opened = itemStates([row('eval', true)]);
+    const at = (name: string) => pageAccess(full.find((p) => p.key === ID(name))!, opened);
+    expect([at('eval'), at('eval-docs'), at('eval-corr')]).toEqual(['open', 'open', 'closed']);
+    expect(pageAccess(full.find((p) => p.key === ID('eval-corr'))!, itemStates([row('eval', true, true)]))).toBe('open');
+  });
+
+  it('une page sans ancre (entraînement noté, titre douteux) ne peut pas s’ouvrir', () => {
+    const odd = buildBinder([...library, board('odd', 'Activité 7 — Volcans (correction) v2', '4e', S1)], '4e');
+    expect(pageAccess(odd.find((p) => p.key === ID('odd'))!, states)).toBe('locked');
   });
 
   it('la suite d’un bilan suit la correction ; un bilan sans fiche reste fermé', () => {
