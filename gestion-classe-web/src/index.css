@@ -1889,6 +1889,8 @@ a.dash__card-link:hover { text-decoration: underline; }
 .wtt-pick__row:hover { background: var(--surface-2); }
 .wtt-pick__title { font-weight: 600; font-size: 13px; }
 .wtt-pick__foot { display: flex; justify-content: space-between; }
+.wtt-pick__chosen { display: flex; flex-direction: column; gap: 1px; }
+.wtt-pick__variants { display: flex; gap: 6px; }
 .wtt__lesson-board { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--indigo-ink); }
 .wtt-pop__student {
   display: flex; align-items: center; gap: 8px; padding: 4px 6px; margin: 0 -6px;
