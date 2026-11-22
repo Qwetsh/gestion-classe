@@ -425,6 +425,10 @@ animation, avec les boutons du tableau (`EtapeSuivante(site)`) et le « Suivant 
 `etapes` est facultatif (le site l'annonce à son chargement), mais le donner permet aux boutons de
 marcher avant le chargement. Fiches de l'hôpital : `C:/dev/hopital-virtuel/content/patients/`.
 
+**Tout support interactif vit dans le tableau** (écrans, animations, scènes riches) : pas de
+fichier HTML autonome ni de widget Genially (Thomas, 22/11/2026). Pour les élèves, l'export
+« page web pour les élèves » du tableau en tient lieu.
+
 **Une animation ou une scène riche ne se code qu'avec l'accord explicite de Thomas**, donnée à
 cette animation-là, après un storyboard (règle du 21/11/2026, skill `tableau-seance` § 2-3).
 
