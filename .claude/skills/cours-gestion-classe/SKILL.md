@@ -282,6 +282,26 @@ virtuel.
 - Une fiche protocole existe déjà sur Canva pour certaines manipulations (Thomas, « Fiche
   protocole — … ») : en partir pour le contenu, pas pour la mise en page.
 
+### Le TP de « Mes TP » : il note la manipulation (décision de Thomas, 22/11/2026)
+
+Une manipulation a aussi son TP dans « Mes TP » (tables `tp_templates`, `tp_template_criteria`),
+dont le barème sert à noter les groupes **pendant** la manipulation, sur le téléphone.
+
+- Le barème note **la manipulation elle-même, jamais les résultats** : les résultats (tableau,
+  schéma, raisonnement J'observe / Je sais / J'en déduis) sont notés à part, sur la fiche.
+- Cinq critères sur 10 : respect du protocole (3), soin des gestes (2), respect des consignes (2),
+  rangement et nettoyage (2), calme et travail du groupe (1). Chaque critère a une consigne
+  (`hint`) propre au TP : ce qu'on regarde concrètement (étapes clés, gestes, sécurité, rangement).
+  Un TP fait seul ou présenté à la classe peut adapter le dernier critère (« Calme et autonomie »,
+  « Présentation et écoute »).
+- Une règle de recharges (« Une erreur ? ») se retire de la note de manipulation : l'écrire dans la
+  consigne de « Respect du protocole ».
+- Le matériel, le protocole et la sécurité du TP reprennent ceux de la fiche protocole.
+- Changer un barème : mettre à jour les critères existants (mêmes `id`), en retirer ou en ajouter
+  seulement ce qu'il faut, et toucher `synced_at` pour que le téléphone les reprenne ; vérifier
+  d'abord qu'aucune note (`group_grades`) n'y renvoie. Les 45 TP ont été remis à ce modèle le
+  22/11/2026.
+
 ### La version adaptée (élèves à PAP, décision de Thomas, 22/11/2026)
 
 - Une activité ou une évaluation peut avoir une **version adaptée** : un cours à part, même titre
