@@ -45,7 +45,8 @@ interface Props {
 export function GluedSheet({ board, role, companion, left, top, onOpen, student }: Props) {
   const { loadDoc } = useContext(BinderSourceContext);
   const [doc, setDoc] = useState<CourseDoc | null | undefined>(undefined);
-  const [corrected, setCorrected] = useState<CourseDoc | null>(null);
+  /** Copie modèle (ou feuille corrigée) lue, avec le cours dont elle vient : elle ne vaut que pour lui. */
+  const [companionDoc, setCompanionDoc] = useState<{ id: string; doc: CourseDoc | null } | null>(null);
   const [failed, setFailed] = useState(false);
   const [face, setFace] = useState(0);
   /**
@@ -58,12 +59,13 @@ export function GluedSheet({ board, role, companion, left, top, onOpen, student 
 
   // Feuille corrigée ou copie modèle : un plus ; sans elle, la fiche reste vierge
   useEffect(() => {
-    // Plus de copie modèle (correction refermée pour la classe) : la fiche redevient vierge
-    if (!companion) { setCorrected(null); return; }
+    if (!companion) return;
     let cancelled = false;
-    loadDoc(companion).then((d) => { if (!cancelled) setCorrected(d); }, () => { /* reste vierge */ });
+    loadDoc(companion).then((d) => { if (!cancelled) setCompanionDoc({ id: companion.id, doc: d }); }, () => { /* reste vierge */ });
     return () => { cancelled = true; };
   }, [companion, loadDoc]);
+  // Plus de copie modèle (correction refermée pour la classe) : la fiche redevient vierge
+  const corrected = companion && companionDoc?.id === companion.id ? companionDoc.doc : null;
 
   /** Ce que l'élève a écrit sur la fiche, ou null si le classeur n'y écrit rien. */
   const inked = useMemo<JSONContent | null>(() => {
