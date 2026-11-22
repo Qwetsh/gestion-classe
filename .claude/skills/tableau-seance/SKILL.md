@@ -51,7 +51,7 @@ Puis `plus-value.md` et `banque.md` (ce dossier-ci).
   2. la fiche élève et le corrigé (`_CORRIGE`) : les questions et les réponses ;
   3. les documents, les images de `_ressources/`, le cahier de texte, l'ancienne feuille de bilans
      corrigée (source du texte du bilan seulement : on n'en fait plus, le bilan est l'écran Bilan).
-  Ignorer `_ADAPTE`, `_archive*`, `_backup`.
+  Ignorer `_ADAPTE` (version adaptée, pas un scénario de tableau), `_archive*`, `_backup`.
 - **Dans l'app** : `gc_semaine.py bibliotheque --niveau <n> --cherche <mot>`. Si l'activité a déjà
   un original (avec ou sans écrans), partir de lui ; ne jamais le modifier sans demande.
 - **Ses sites** : l'activité a-t-elle un pendant dans l'hôpital virtuel (patient de la séquence 2

@@ -68,6 +68,8 @@ describe('splitVariant', () => {
     expect(splitVariant('Activité 3 — Wegener (copie modèle)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'copie' });
     expect(splitVariant('Activité 3 — Wegener (extraits)')).toEqual({ base: 'Activité 3 — Wegener', variant: 'extraits' });
     expect(splitVariant('Activité 3 — Wegener (Extrait)').variant).toBe('extraits');
+    expect(splitVariant('Activité 2 — Microbiote (adaptée)')).toEqual({ base: 'Activité 2 — Microbiote', variant: 'adaptee' });
+    expect(splitVariant('Évaluation — Micro-organismes (Adaptee)').variant).toBe('adaptee');
     expect(splitVariant('Activité 3 — Wegener')).toEqual({ base: 'Activité 3 — Wegener', variant: 'fiche' });
     expect(splitVariant('La correction (bilan)').variant).toBe('fiche');
   });

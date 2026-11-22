@@ -83,16 +83,17 @@ export function splitShelves(boards: Board[]): { activities: Board[]; methods: B
 // ---------------------------------------------------------------------------------------------
 
 /** Rôle d'un original dans son activité, lu à la fin de son titre. */
-export type CourseVariant = 'fiche' | 'correction' | 'documents' | 'extraits' | 'copie';
+export type CourseVariant = 'fiche' | 'adaptee' | 'correction' | 'documents' | 'extraits' | 'copie';
 
 /**
- * Ordre de la séance : la fiche, ses documents, leurs extraits (les mêmes documents découpés en
+ * Ordre de la séance : la fiche, sa version adaptée (élèves à PAP : consignes en étapes, amorces ;
+ * jamais dans le classeur de la classe), ses documents, leurs extraits (les mêmes documents découpés en
  * textes et en images à prélever sur le tableau), la copie modèle (les réponses d'un élève, écrites
  * dans la fiche par le classeur virtuel), puis la correction (toujours en dernier).
  */
-export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'documents', 'extraits', 'copie', 'correction'];
+export const VARIANT_ORDER: CourseVariant[] = ['fiche', 'adaptee', 'documents', 'extraits', 'copie', 'correction'];
 
-export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', correction: 'Correction', documents: 'Documents', extraits: 'Extraits', copie: 'Copie modèle' };
+export const VARIANT_LABEL: Record<CourseVariant, string> = { fiche: 'Fiche', adaptee: 'Adaptée', correction: 'Correction', documents: 'Documents', extraits: 'Extraits', copie: 'Copie modèle' };
 
 /** Intitulé du bouton d'un original : pour une évaluation, la fiche est le « Sujet ». */
 export const variantLabel = (variant: CourseVariant, evaluation = false): string =>
@@ -110,13 +111,13 @@ export function withoutEvaluationPrefix(title: string): string {
 }
 
 /** « Activité 3 — Wegener (correction) » → correction de « Activité 3 — Wegener ». */
-const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?|extraits?|copie mod[èe]le)\)\s*$/i;
+const VARIANT_SUFFIX = /\s*\((correction|corrig[ée]|documents?|extraits?|copie mod[èe]le|adapt[ée]e?)\)\s*$/i;
 
 export function splitVariant(title: string): { base: string; variant: CourseVariant } {
   const m = VARIANT_SUFFIX.exec(title);
   if (!m) return { base: title.trim(), variant: 'fiche' };
   const word = m[1].toLowerCase();
-  return { base: title.slice(0, m.index).trim(), variant: word.startsWith('doc') ? 'documents' : word.startsWith('extr') ? 'extraits' : word.startsWith('copie') ? 'copie' : 'correction' };
+  return { base: title.slice(0, m.index).trim(), variant: word.startsWith('adapt') ? 'adaptee' : word.startsWith('doc') ? 'documents' : word.startsWith('extr') ? 'extraits' : word.startsWith('copie') ? 'copie' : 'correction' };
 }
 
 export interface ActivityGroup {
