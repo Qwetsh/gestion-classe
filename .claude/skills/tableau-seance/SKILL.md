@@ -170,6 +170,10 @@ qui vaut pour la suite. Une remarque qui revient deux fois devient une règle (i
   le fond de la classe le lit mal. Seuls des boutons pour le prof peuvent y aller (19/11/2026).
 - Une animation est une vraie scène animée (jamais des images qui glissent au toucher), intégrée au
   tableau.
+- **Tout support interactif vit dans le tableau** (écran, animation, scène riche) : jamais de
+  fichier HTML autonome ni de widget Genially (Thomas, 22/11/2026). Une page pour les élèves sort
+  par l'export « page web pour les élèves » du tableau ; une vraie application (hôpital, Terre en
+  mouvement) est un 🟣, chantier à part, puis un 🔵 posé sur l'écran.
 - Jamais de nom d'élève sur un écran ; jamais d'information PAP/PPRE/PAI à l'écran.
 - Ne jamais modifier ni supprimer un original ou une copie placée sans demande explicite.
 - Ne jamais écrire dans `profil.md` ou `gouts-tableaux.md` une préférence que Thomas n'a pas
