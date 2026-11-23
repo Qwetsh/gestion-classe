@@ -215,6 +215,37 @@ export function tpsByActivity<T extends ActivityTp & { name: string }, B extends
   return out;
 }
 
+/** Cours de l'activité d'un TP montrés à ses élèves (onglet TP, migration 088). */
+export interface TpStudentBoards {
+  fiche: string | null;
+  protocole: string | null;
+  documents: string | null;
+}
+
+const baseKey = (title: string) =>
+  splitVariant(title).base.normalize('NFC').replace(/[’ʼ]/g, "'").replace(/\s+/g, ' ').trim().toLocaleLowerCase('fr');
+
+/**
+ * Fiche, protocole et documents de l'activité d'un TP : la fiche que `activityOfTp` relie, puis les
+ * cours de même titre dans la même séquence suivis de « (protocole) » ou « (documents) ». Jamais
+ * la correction. Null : le TP n'est relié à aucune activité.
+ */
+export function studentBoardsOfTp<B extends ActivityBoard>(tp: ActivityTp, boards: B[], index: Map<string, B> = activityIndex(boards)): TpStudentBoards | null {
+  const fiche = activityOfTp(tp, index);
+  if (!fiche) return null;
+  const seq = sequenceKey(fiche.level, fiche.chapter);
+  const base = baseKey(fiche.title);
+  const find = (variant: 'protocole' | 'documents') =>
+    boards.find((b) => b.chapter && sequenceKey(b.level, b.chapter) === seq && splitVariant(b.title).variant === variant && baseKey(b.title) === base)?.id ?? null;
+  return { fiche: fiche.id, protocole: find('protocole'), documents: find('documents') };
+}
+
+/** Deux choix de cours identiques (null et « aucun cours » se valent). */
+export function sameStudentBoards(a: Partial<TpStudentBoards> | null | undefined, b: Partial<TpStudentBoards> | null | undefined): boolean {
+  const norm = (x: Partial<TpStudentBoards> | null | undefined) => [x?.fiche ?? null, x?.protocole ?? null, x?.documents ?? null].join('|');
+  return norm(a) === norm(b);
+}
+
 /** Libellé court d'un numéro : « Activité 3 », « Activité bonus ». */
 export const activityLabel = (n: string) => `Activité ${n}`;
 

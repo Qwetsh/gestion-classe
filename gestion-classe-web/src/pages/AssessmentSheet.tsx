@@ -249,10 +249,9 @@ export function AssessmentSheet() {
             </section>
           )}
 
-          {/* TP de groupe (migration 063) : la séance elle-même, ses critères, groupes, matériel et photos. */}
+          {/* TP en groupes (migrations 063, 087) : groupes, photos, commentaires et barème (PLAN_tp_groupes.md, lot 2). */}
           {focus.kind === 'groupe' && focus.group_session_id && (
-            <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }} aria-label="Séance de groupe">
-              <div style={{ padding: '14px 16px 0', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Séance de groupe</div>
+            <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }} aria-label="TP en groupes">
               <GroupSessionDetail
                 sessionId={focus.group_session_id}
                 onChanged={() => { void reload(); }}
