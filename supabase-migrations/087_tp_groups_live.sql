@@ -1,5 +1,5 @@
--- 087 — TP en groupes, lot 1 (mobile) : îlots, points de groupe, photos par groupe,
--- membres absents. Voir PLAN_tp_groupes.md.
+-- 087 — TP en groupes, lot 1 (mobile) : îlots, points de groupe, photos par groupe.
+-- Voir PLAN_tp_groupes.md.
 --
 -- 1. session_groups : position de l'îlot sur le fond libre (0..1, NULL = rangement auto),
 --    commentaire au groupe, ordre d'affichage (donne aussi la couleur de l'îlot).
@@ -7,9 +7,10 @@
 --    l'événement part en direct, parfois avant que le groupe n'atteigne le serveur.
 -- 3. group_session_photos : photo d'un groupe (NULL = toute la classe), auteur (prof / élève),
 --    politique UPDATE manquante (l'upsert du téléphone en a besoin).
--- 4. sync_group_session_assessment : un membre absent de la séance liée reçoit « absent » au
---    carnet, sans note ; il redevient noté si l'absence est levée. Changer un élève de groupe
---    (UPDATE de sa ligne de membre) lui donne la note de son nouveau groupe, comme avant.
+-- 4. sync_group_session_assessment : identique à la 063, plus le commentaire au groupe dans
+--    details.groupe.commentaire. Règle de Thomas (23/11/2026) : un absent au TP GARDE la note
+--    de son groupe (seuls les points d'implication de groupe vont aux présents). Changer un
+--    élève de groupe (UPDATE de sa ligne de membre) lui donne la note de son nouveau groupe.
 
 ALTER TABLE public.session_groups
   ADD COLUMN IF NOT EXISTS position_x real,
@@ -53,7 +54,7 @@ CREATE POLICY gsp_update ON public.group_session_photos
   );
 
 -- ---------------------------------------------------------------------------
--- Carnet : membres absents
+-- Carnet : commentaire au groupe dans le détail (le reste est la fonction de la 063)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.sync_group_session_assessment(p_session_id uuid)
  RETURNS uuid
@@ -76,10 +77,7 @@ DECLARE
   v_points     numeric;
   v_total      numeric;
   v_details    jsonb;
-  v_mdetails   jsonb;
   v_twenty     numeric;
-  v_absent     boolean;
-  v_was_auto_absent boolean;
   ex           public.assessment_grades%ROWTYPE;
 BEGIN
   SELECT * INTO s FROM public.group_sessions WHERE id = p_session_id;
@@ -148,61 +146,26 @@ BEGIN
       'total', v_total, 'bareme', v_bareme, 'seance_id', s.id, 'commentaire', g.comment));
 
     FOR m IN SELECT student_id FROM public.session_group_members WHERE group_id = g.id LOOP
-      v_absent := s.linked_session_id IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.events e
-        WHERE e.session_id = s.linked_session_id AND e.student_id = m.student_id AND e.type = 'absence');
-      v_mdetails := CASE WHEN v_absent
-        THEN jsonb_set(v_details, '{groupe,absent}', 'true'::jsonb)
-        ELSE v_details END;
-
       SELECT * INTO ex FROM public.assessment_grades
       WHERE assessment_id = v_assessment AND student_id = m.student_id;
-
       IF NOT FOUND THEN
-        IF v_absent THEN
-          INSERT INTO public.assessment_grades
-            (user_id, assessment_id, student_id, grade, grade_raw, status, details, is_validated, validated_at)
-          VALUES
-            (s.user_id, v_assessment, m.student_id, NULL, NULL, 'absent', v_mdetails, true, now());
-        ELSE
-          INSERT INTO public.assessment_grades
-            (user_id, assessment_id, student_id, grade, grade_raw, status, details, is_validated, validated_at)
-          VALUES
-            (s.user_id, v_assessment, m.student_id, v_twenty, v_total, 'noted', v_mdetails, true, now());
-        END IF;
-        CONTINUE;
-      END IF;
-
-      -- « absent » posé par cette fonction (et non par le professeur dans le carnet)
-      v_was_auto_absent := ex.status = 'absent' AND (ex.details #>> '{groupe,absent}') = 'true';
-
-      IF v_absent THEN
-        -- Note encore automatique -> absent ; un statut choisi à la main reste tel quel.
-        IF v_was_auto_absent
-           OR (ex.status = 'noted' AND (ex.grade_raw IS NULL OR ex.grade_raw = (ex.details #>> '{groupe,total}')::numeric)) THEN
-          UPDATE public.assessment_grades
-          SET status = 'absent', grade = NULL, grade_raw = NULL, details = v_mdetails
-          WHERE id = ex.id
-            AND (status IS DISTINCT FROM 'absent' OR grade IS NOT NULL OR details IS DISTINCT FROM v_mdetails);
-        ELSE
-          UPDATE public.assessment_grades SET details = v_mdetails
-          WHERE id = ex.id AND details IS DISTINCT FROM v_mdetails;
-        END IF;
-      ELSIF v_was_auto_absent
-            OR (ex.status = 'noted'
-                AND (ex.grade_raw IS NULL OR ex.grade_raw = (ex.details #>> '{groupe,total}')::numeric)) THEN
+        INSERT INTO public.assessment_grades
+          (user_id, assessment_id, student_id, grade, grade_raw, status, details, is_validated, validated_at)
+        VALUES
+          (s.user_id, v_assessment, m.student_id, v_twenty, v_total, 'noted', v_details, true, now());
+      ELSIF ex.status = 'noted'
+            AND (ex.grade_raw IS NULL OR ex.grade_raw = (ex.details #>> '{groupe,total}')::numeric) THEN
         UPDATE public.assessment_grades
-        SET status = 'noted', grade_raw = v_total, grade = v_twenty, details = v_mdetails
+        SET grade_raw = v_total, grade = v_twenty, details = v_details
         WHERE id = ex.id
-          AND (status IS DISTINCT FROM 'noted' OR grade_raw IS DISTINCT FROM v_total
-               OR grade IS DISTINCT FROM v_twenty OR details IS DISTINCT FROM v_mdetails);
+          AND (grade_raw IS DISTINCT FROM v_total OR grade IS DISTINCT FROM v_twenty OR details IS DISTINCT FROM v_details);
       ELSE
         UPDATE public.assessment_grades
-        SET details = v_mdetails,
+        SET details = v_details,
             grade = CASE WHEN ex.status = 'noted' AND ex.grade_raw IS NOT NULL
                          THEN round(ex.grade_raw * 20 / v_bareme, 2) ELSE ex.grade END
         WHERE id = ex.id
-          AND (details IS DISTINCT FROM v_mdetails
+          AND (details IS DISTINCT FROM v_details
                OR (ex.status = 'noted' AND ex.grade_raw IS NOT NULL AND grade IS DISTINCT FROM round(ex.grade_raw * 20 / v_bareme, 2)));
       END IF;
     END LOOP;

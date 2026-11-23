@@ -1,7 +1,8 @@
 # TP en groupes de bout en bout — plan
 
 Validé par Thomas le 23/11/2026 (maquettes mobiles : canevas « TP en groupes — mobile »).
-Maquettes élève et bureau : session à part, en cours.
+Maquettes élève et bureau : canevas « TP en groupes — élève et bureau »
+(https://claude.ai/artifact/4eX7jtfczQPCJHpwHps7fR).
 
 ## Décisions de Thomas
 
@@ -11,7 +12,9 @@ Maquettes élève et bureau : session à part, en cours.
 - Implication / malus de groupe = un événement par membre présent (absents et sortis exclus),
   marqué du groupe. Le malus conduite (qui baisse la note du TP) reste, à côté.
 - Un élève peut changer de groupe : il prend alors les notes de son nouveau groupe.
-- Un absent peut être mis dans un groupe : il voit documents et photos, sans note ni points.
+- Un absent peut être mis dans un groupe : il GARDE la note de son groupe (partie TP et copie
+  de groupe de la partie activité) et voit documents et photos ; il ne reçoit pas les points
+  d'implication de groupe (décidé par Thomas le 23/11/2026).
 - Partie activité de la note : copie par élève ET copie par groupe. Note TP + note activité
   (ex. 10 + 20 = 30) sans mélanger les deux.
 - Élèves : onglet TP (fiche, protocole, documents, Perso) ; photos déposées en classe depuis
@@ -45,8 +48,9 @@ Migration Supabase `087_tp_groups_live.sql` (+ SQLite v19, miroir) :
   = point donné au groupe entier.
 - `group_session_photos` : `group_id` (NULL = toute la classe), `author` ('teacher' |
   'student'), `student_id`.
-- `sync_group_session_assessment` : un membre absent de la séance liée (événement `absence`)
-  reçoit le statut « absent » au carnet, sans note ; il redevient noté si l'absence est levée.
+- `sync_group_session_assessment` : inchangée (063), plus le commentaire au groupe dans
+  `details.groupe.commentaire`. L'absent garde la note de son groupe.
+- Appliquée en production le 23/11/2026.
 
 Synchro mobile :
 
