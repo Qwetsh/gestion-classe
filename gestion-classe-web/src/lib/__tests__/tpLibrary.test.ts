@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activityIndex, activityNumberOf, activityOfTp, filterTps, formatPoints, groupTps, tpsByActivity, templatesForClass, themeShortName, themesOf, totalPoints, tpChaptersOfLevel, tpSearchWords } from '../tpLibrary';
+import { activityIndex, sameStudentBoards, studentBoardsOfTp, activityNumberOf, activityOfTp, filterTps, formatPoints, groupTps, tpsByActivity, templatesForClass, themeShortName, themesOf, totalPoints, tpChaptersOfLevel, tpSearchWords } from '../tpLibrary';
 
 const tp = (name: string, level: string | null, chapter: string | null, extra: Partial<{ theme: string; materials: string[]; problem: string }> = {}) =>
   ({ name, level, chapter, theme: extra.theme ?? null, materials: extra.materials ?? [], problem: extra.problem ?? null });
@@ -117,5 +117,35 @@ describe('lien TP ↔ activité', () => {
       { ...tp('M', '4e', 'S1'), activity: '2' },
     ];
     expect(groupTps(items)[0].sequences[0].items.map((x) => x.name)).toEqual(['M', 'Z', 'A']);
+  });
+});
+
+describe('studentBoardsOfTp', () => {
+  const b = (id: string, title: string, chapter = 'Séquence 2 — Micro-organismes', level: string | null = '3e') => ({ id, title, level, chapter });
+  const boards = [
+    b('f3', 'Activité 3 — Choisir le bon antibiotique'),
+    b('p3', 'Activité 3 — Choisir le bon antibiotique (protocole)'),
+    b('d3', 'Activité 3 – Choisir le bon antibiotique (documents)'.replace('–', '—')),
+    b('c3', 'Activité 3 — Choisir le bon antibiotique (correction)'),
+    b('p3autre', 'Activité 3 — Choisir le bon antibiotique (protocole)', 'Séquence 5 — Autre'),
+    b('f4', 'Activité 4 — Les vaccins'),
+  ];
+
+  it('rend fiche, protocole et documents de l’activité, jamais la correction', () => {
+    expect(studentBoardsOfTp({ level: '3e', chapter: 'Séquence 2 — Micro-organismes', activity: '3' }, boards))
+      .toEqual({ fiche: 'f3', protocole: 'p3', documents: 'd3' });
+  });
+
+  it('laisse vides les cours qui manquent, et null sans activité reliée', () => {
+    expect(studentBoardsOfTp({ level: '3e', chapter: 'Séquence 2 — Micro-organismes', activity: '4' }, boards))
+      .toEqual({ fiche: 'f4', protocole: null, documents: null });
+    expect(studentBoardsOfTp({ level: '3e', chapter: 'Séquence 2 — Micro-organismes', activity: '9' }, boards)).toBeNull();
+    expect(studentBoardsOfTp({ level: '3e', chapter: null, activity: '3' }, boards)).toBeNull();
+  });
+
+  it('compare deux choix sans tenir compte de null ou d’une clé absente', () => {
+    expect(sameStudentBoards(null, { fiche: null, protocole: null, documents: null })).toBe(true);
+    expect(sameStudentBoards({ fiche: 'a' }, { fiche: 'a', protocole: null, documents: null })).toBe(true);
+    expect(sameStudentBoards({ fiche: 'a' }, { fiche: 'b' })).toBe(false);
   });
 });

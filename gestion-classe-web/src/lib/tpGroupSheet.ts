@@ -92,6 +92,16 @@ export function tpGroupColor(displayOrder: number) {
   return TP_GROUP_COLORS[((displayOrder % n) + n) % n];
 }
 
+/**
+ * Rang de couleur d'un groupe : son ordre d'îlot (087). Les TP d'avant la 087 ont tous 0 : le numéro
+ * du nom (« G3 » → 2) le remplace, à défaut le rang dans la liste (même règle que tp_group_order, 088).
+ */
+export function groupOrder(order: number, name: string, index: number): number {
+  if (order !== 0) return order;
+  const m = /^\s*G\s*(\d+)\s*$/i.exec(name);
+  return m ? Math.max(0, Number(m[1]) - 1) : index;
+}
+
 /** Note du groupe : points des critères moins le malus conduite, jamais sous zéro. */
 export function groupTotal(group: TpGroup, criteria: TpCriterion[]): number {
   const sum = criteria.reduce((s, c) => s + (group.grades[c.id] ?? 0), 0);
@@ -165,7 +175,7 @@ export async function loadTpSheet(sessionId: string): Promise<TpSheetData | null
   const groups: TpGroup[] = (groupsData ?? []).map((g, i) => ({
     id: g.id as string,
     name: g.name as string,
-    displayOrder: (g.display_order as number | null) ?? i,
+    displayOrder: groupOrder((g.display_order as number | null) ?? 0, g.name as string, i),
     conductMalus: Number(g.conduct_malus ?? 0),
     comment: (g.comment as string | null) ?? '',
     members: members

@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, FlaskConical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { studentBinderOpen } from '../lib/studentBinder';
 import { StudentBinderView } from '../components/binder/StudentBinderView';
+import { fetchStudentTps } from '../lib/studentTp';
+import { StudentTp } from '../components/StudentTp';
 import { getCardTier } from '../lib/rewardsQueries';
 import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -140,6 +142,27 @@ export function StudentDashboard() {
   }, []);
   useEffect(() => {
     const onPop = () => { closingBinder.current = false; setBinderOpen(false); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // TP en groupes (PLAN_tp_groupes.md, lot 3) : visible dès que l'élève a fait partie d'un groupe,
+  // sans réglage de classe. Plein écran par-dessus l'espace, comme le classeur (même retour du téléphone).
+  /** Code de l'élève qui a au moins un TP (null : pas de bouton). */
+  const [tpCode, setTpCode] = useState<string | null>(null);
+  const [tpCurrent, setTpCurrent] = useState(false);
+  const [tpOpen, setTpOpen] = useState(false);
+  const closingTp = useRef(false);
+  const openTp = useCallback(() => {
+    window.history.pushState({ ...(window.history.state as object | null), gcTp: true }, '');
+    setTpOpen(true);
+  }, []);
+  const closeTp = useCallback(() => {
+    if (closingTp.current) return;
+    if ((window.history.state as { gcTp?: boolean } | null)?.gcTp) { closingTp.current = true; window.history.back(); }
+    else setTpOpen(false);
+  }, []);
+  useEffect(() => {
+    const onPop = () => { closingTp.current = false; setTpOpen(false); };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -287,6 +310,15 @@ export function StudentDashboard() {
       // Classeur : le serveur dit si l'onglet est ouvert à la classe (rien d'autre n'est lu ici).
       void studentBinderOpen({ code: fullCode }).then((open) => { if (currentCodeRef.current === fullCode) setBinderCode(open ? fullCode : null); });
 
+      // TP en groupes : le bouton n'apparaît que si l'élève en a fait au moins un
+      void fetchStudentTps(fullCode)
+        .then((tps) => {
+          if (currentCodeRef.current !== fullCode) return;
+          setTpCode(tps.length > 0 ? fullCode : null);
+          setTpCurrent(tps.some((t) => t.status === 'active'));
+        })
+        .catch(() => { /* sans la migration 088, pas de bouton */ });
+
       // Load academy data
       try {
         const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
@@ -347,6 +379,9 @@ export function StudentDashboard() {
     setActiveTab('grades');
     setBinderCode(null);
     setBinderOpen(false);
+    setTpCode(null);
+    setTpCurrent(false);
+    setTpOpen(false);
     currentCodeRef.current = '';
     setTimeout(() => inputRefs.current[0]?.focus(), 100);
   };
@@ -573,6 +608,21 @@ export function StudentDashboard() {
           </button>
         )}
 
+        {/* TP en groupes : même place que le classeur, en orange (couleur des TP) */}
+        {tpCode && !isAcademyTab && (
+          <button
+            type="button"
+            onClick={openTp}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
+              marginBottom: '16px', padding: '12px', borderRadius: '12px', border: 'none',
+              background: '#FFF1E8', color: '#9A3412', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <FlaskConical size={18} aria-hidden /> Mes TP{tpCurrent ? ' · TP en cours' : ''}
+          </button>
+        )}
+
         {activeTab === 'academy' && academyData?.enabled ? (
           academyData.house && academyData.classId ? (
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
@@ -751,6 +801,8 @@ export function StudentDashboard() {
       </div>
       {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
       {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} />}
+      {/* Les TP en groupes de l'élève, en plein écran */}
+      {tpOpen && tpCode && data && <StudentTp code={tpCode} pseudo={data.pseudo} className={data.class_name} onClose={closeTp} />}
     </div>
   );
 }

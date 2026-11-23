@@ -63,6 +63,7 @@ import { PlaceCourseDialog } from '../components/courses/PlaceCourseDialog';
 import { CourseLinksDialog } from '../components/courses/CourseLinksDialog';
 import { listTpRefs, type TpRef } from '../lib/tpQueries';
 import { tpsByActivity } from '../lib/tpLibrary';
+import { syncTpStudentBoards } from '../lib/tpStudentBoards';
 import '../styles/mes-cours.css';
 
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
@@ -109,6 +110,9 @@ export function Courses() {
       setBoards(list);
       setUsages(used);
       setError(null);
+      // Onglet TP des élèves : fiche, protocole et documents de chaque TP, écrits d'ici (migration 088)
+      void syncTpStudentBoards(userId, list.map(({ id, title, level, chapter }) => ({ id, title, level: level ?? null, chapter: chapter ?? null })))
+        .catch((err: unknown) => console.warn('[Courses] cours des élèves :', err));
       // Les placements sont un plus : leur échec ne vide pas la bibliothèque
       void Promise.all([fetchPlacedDocuments(userId), fetchClasses(userId), fetchClassGroupsForUser(userId)])
         .then(([placed, cls, groups]) => {

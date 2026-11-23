@@ -65,6 +65,30 @@ Synchro mobile :
   `{user}/tp/{séance}/{id}.jpg`, 1600 px JPEG 0,8) puis ligne `group_session_photos`.
 - Modèles de TP : le pull met à jour les modèles déjà synchronisés (barèmes revus sur le web).
 
+## Lot 2 — fiche du TP au bureau (codé le 23/11/2026)
+
+`GroupSessionDetail` réécrit en trois colonnes (maquette B1) ; `lib/tpGroupSheet.ts`. Tout
+s'enregistre au fil des gestes (pas de brouillon en base) ; « Valider » compte 0 aux critères
+vides. Note d'un membre : « Ajuster » (ne suit plus le groupe), « Suivre le groupe » (la remet).
+Pas encore : bandeau du dépôt (lot 4), onglet Partie Activité et /30 (lot 5).
+
+## Lot 3 — onglet TP élève, en lecture (codé le 23/11/2026, PAS en production)
+
+- Migration `088_student_tp_tab.sql` (pas appliquée) : `tp_templates.student_boards`,
+  `get_student_tps`, `get_student_tp`, `student_tp_photo_paths` (service_role seulement),
+  `tp_group_order`. Essayée à blanc (transaction annulée) le 23/11/2026.
+- Fonction Edge `tp-eleve` (pas déployée) : photos signées (student-photos) et cours ouverts
+  (board-assets), après vérification du code. Importe `../classeur-eleve/release.ts`.
+- Comme le classeur : le serveur n'ouvre aucun cours d'après son titre. Fiche, protocole et
+  documents de chaque TP sont écrits dans `student_boards` par le navigateur du prof
+  (`syncTpStudentBoards`, à l'ouverture de Mes TP et de Mes cours).
+- Espace élève : bouton « Mes TP » (orange) sous la barre d'onglets, visible dès que l'élève a
+  fait partie d'un groupe, sans réglage de classe ; plein écran au style « Vivante » (A1, A2,
+  A3b) : liste (en cours, déjà faits), fiche, protocole (cours, à défaut celui de Mes TP),
+  documents, photos du groupe et de toute la classe, bandeau de l'absent, mot du prof une fois
+  l'éval publiée. Jamais la correction ni la note.
+- Ordre de mise en service : migration 088, puis déployer `tp-eleve`, puis le site.
+
 ## Lot 1 — pas couvert
 
 - Proposition du TP d'après l'emploi du temps : liste filtrée par niveau, le dernier TP

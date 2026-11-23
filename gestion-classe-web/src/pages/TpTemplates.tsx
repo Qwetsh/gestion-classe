@@ -15,6 +15,7 @@ import { TpSheet } from '../components/tp/TpSheet';
 import { TpForm } from '../components/tp/TpForm';
 import { activityIndex, activityOfTp, filterTps, groupTps, themesOf, tpSearchWords, type ActivityBoard } from '../lib/tpLibrary';
 import { listBoards } from '../lib/boardsQueries';
+import { syncTpStudentBoards } from '../lib/tpStudentBoards';
 import { deleteTp, listTps, saveTp, type Tp, type TpDraft } from '../lib/tpQueries';
 import { printTp } from '../lib/tpPrint';
 import '../styles/mes-cours.css';
@@ -54,7 +55,13 @@ export function TpTemplates() {
     if (!userId) return;
     let cancelled = false;
     listBoards(userId)
-      .then((list) => { if (!cancelled) setBoards(list.map(({ id, title, level, chapter }) => ({ id, title, level: level ?? null, chapter: chapter ?? null }))); })
+      .then((list) => {
+        if (cancelled) return;
+        const shelf = list.map(({ id, title, level, chapter }) => ({ id, title, level: level ?? null, chapter: chapter ?? null }));
+        setBoards(shelf);
+        // Onglet TP des élèves : les cours de chaque TP, écrits d'ici (le serveur ne choisit rien par le titre)
+        void syncTpStudentBoards(userId, shelf).catch((err: unknown) => console.warn('[Mes TP] cours des élèves :', err));
+      })
       .catch(() => { /* sans les cours, les TP restent lisibles, simplement pas reliés */ });
     return () => { cancelled = true; };
   }, [userId]);
