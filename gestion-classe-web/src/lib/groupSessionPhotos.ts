@@ -9,6 +9,10 @@ export interface GroupSessionPhoto {
   caption: string;
   display_order: number;
   created_at: string;
+  /** Groupe du TP (migration 087) ; null = photo de toute la classe */
+  group_id?: string | null;
+  author?: 'teacher' | 'student';
+  student_id?: string | null;
 }
 
 export async function fetchSessionPhotos(sessionId: string): Promise<GroupSessionPhoto[]> {
@@ -27,6 +31,7 @@ export async function uploadSessionPhoto(
   sessionId: string,
   file: File,
   caption: string = '',
+  groupId: string | null = null,
 ): Promise<GroupSessionPhoto> {
   const photoId = crypto.randomUUID();
   const filePath = `${userId}/tp/${sessionId}/${photoId}.jpg`;
@@ -50,7 +55,7 @@ export async function uploadSessionPhoto(
 
   const { data, error } = await supabase
     .from('group_session_photos')
-    .insert({ session_id: sessionId, file_path: filePath, caption, display_order: nextOrder })
+    .insert({ session_id: sessionId, file_path: filePath, caption, display_order: nextOrder, group_id: groupId, author: 'teacher' })
     .select()
     .single();
   if (error) throw error;
