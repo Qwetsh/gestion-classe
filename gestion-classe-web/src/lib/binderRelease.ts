@@ -294,6 +294,25 @@ export interface StaleRow {
  * Lignes ouvertes dont le contenu écrit ne correspond plus au classeur d'aujourd'hui. Rien n'est
  * corrigé tout seul : le professeur valide la mise à jour (une correction ne s'ajoute jamais seule).
  */
+/**
+ * Ce que « Mettre à jour » fait d'une ligne périmée dans le classeur d'UNE classe :
+ *  - `rewrite` : la récrire avec l'élément d'aujourd'hui, dans le même état ;
+ *  - `close` : la refermer. Son cours a changé de nature (une activité devenue évaluation, ou
+ *    l'inverse) : récrire la ligne ouvrirait autre chose que ce que le professeur avait ouvert ;
+ *  - `remove` : la retirer, son cours n'est plus dans le classeur ;
+ *  - `level` : ne pas y toucher ici. Une évaluation se met à jour pour tout le niveau à la fois,
+ *    depuis la grille de « Mes cours », jamais classe par classe.
+ */
+export type StaleAction = 'rewrite' | 'close' | 'remove' | 'level';
+
+export function staleAction(stale: StaleRow): StaleAction {
+  if (!stale.item) return 'remove';
+  const written = parseReleased(stale.row.released);
+  if (written && written.role !== stale.item.role) return 'close';
+  if (stale.item.role === 'evaluation') return 'level';
+  return 'rewrite';
+}
+
 export function staleRows(items: BinderItem[], rows: BinderItemRow[]): StaleRow[] {
   const byAnchor = new Map(items.map((i) => [i.anchor, i]));
   const out: StaleRow[] = [];

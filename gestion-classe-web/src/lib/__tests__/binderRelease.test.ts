@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import { buildBinder, type BinderPage } from '../binder';
 import {
-  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowFor, sequenceAnchors, servedEntries, staleRows,
+  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowFor, sequenceAnchors, servedEntries, staleAction, staleRows,
   type BinderItem, type BinderItemRow,
 } from '../binderRelease';
 import { withSummaries, type InkRun, type SummaryRuns } from '../binderSummary';
@@ -335,6 +335,38 @@ describe('staleRows', () => {
       { class_id: CLASS, anchor_board_id: ID('supprime'), visible: true, correction_visible: false, released: releasedOf({ ...item('a3'), anchor: ID('supprime') }, false) },
     ];
     expect(staleRows(items, old).map((s) => [NAME(s.row.anchor_board_id), s.reason])).toEqual([['a2', 'pages'], ['a1', 'correction'], ['supprime', 'gone']]);
+  });
+});
+
+describe('staleAction — « Mettre à jour » n’ouvre jamais une évaluation à une seule classe', () => {
+  it('une activité ouverte puis transformée en évaluation est refermée, pas récrite', () => {
+    // « Activité 3 » ouverte à la classe avec sa correction, puis renommée en évaluation avec sa copie
+    const before = [...without('a3'), board('a3', 'Activité 3 — Wegener', '4e', S1), board('a3-copie', 'Activité 3 — Wegener (copie modèle)', '4e', S1)];
+    const old = rowFor(find(binderItems(buildBinder(before, '4e'), texts), 'a3'), CLASS, { visible: true, correction: true });
+    expect(seen([old], before).boards).toEqual(['a3', 'a3-copie']);
+    const after = before.map((b) => (b.id === ID('a3') ? { ...b, title: 'Évaluation — Wegener' } : b.id === ID('a3-copie') ? { ...b, title: 'Évaluation — Wegener (copie modèle)' } : b))
+      .filter((b) => !['eval', 'eval-docs', 'eval-corr'].includes(NAME(b.id)));
+    // Le serveur referme tout de suite la ligne d'activité
+    expect(seen([old], after).boards).toEqual([]);
+    const [stale] = staleRows(binderItems(buildBinder(after, '4e'), texts), [old]);
+    expect(stale.item?.role).toBe('evaluation');
+    expect(staleAction(stale)).toBe('close');
+  });
+
+  it('une évaluation ouverte et périmée se met à jour pour tout le niveau, pas ici', () => {
+    const before = binderItems(buildBinder(without('eval-docs'), '4e'), texts);
+    const old = rowFor(find(before, 'eval'), CLASS, { visible: true, correction: false });
+    const [stale] = staleRows(items, [old]);
+    expect(stale.reason).toBe('pages');
+    expect(staleAction(stale)).toBe('level');
+  });
+
+  it('une activité périmée se récrit ; un cours sorti du classeur est retiré', () => {
+    const before = binderItems(buildBinder(without('a2-docs'), '4e'), texts);
+    const [docs] = staleRows(items, [rowFor(find(before, 'a2'), CLASS, { visible: true, correction: false })]);
+    expect(staleAction(docs)).toBe('rewrite');
+    const [gone] = staleRows(binderItems(buildBinder(without('a2', 'a2-docs', 'a2-proto', 'a2-copie', 'a2-adapt'), '4e'), texts), [row('a2', true)]);
+    expect(staleAction(gone)).toBe('remove');
   });
 });
 

@@ -18,7 +18,7 @@ import { courseHref } from '../lib/courseLibrary';
 import type { BinderPage } from '../lib/binder';
 import { INK_WIDTH_MM, SUMMARY_LEAD, withSummaries, wrapInk } from '../lib/binderSummary';
 import {
-  hasCorrection, itemStates, pageAccess, pagesFromReleased, rowFor, servedEntries, sequenceAnchors, staleRows, stateOf,
+  hasCorrection, itemStates, pageAccess, pagesFromReleased, rowFor, servedEntries, staleAction, sequenceAnchors, staleRows, stateOf,
   type BinderItem, type BinderItemRow, type ItemState,
 } from '../lib/binderRelease';
 import { binderReleaseUnavailable, deleteBinderItems, fetchBinderClasses, fetchBinderItems, saveBinderItems, type BinderClass } from '../lib/binderReleaseQueries';
@@ -157,7 +157,13 @@ export function Binder() {
   /** Récrit les lignes ouvertes qui ne disent plus ce que dit le classeur ; retire celles dont le cours en est sorti. */
   const refreshStale = useCallback(async () => {
     if (!classId) return;
-    await applyStates(stale.flatMap((s) => (s.item ? [{ item: s.item, state: { visible: true, correction: s.row.correction_visible } }] : [])));
+    // Une ligne dont le cours a changé de nature est refermée ; une évaluation ne se met pas à jour
+    // ici, classe par classe, mais pour tout le niveau dans Mes cours (staleAction)
+    await applyStates(stale.flatMap((s) => {
+      const action = staleAction(s);
+      if (!s.item || (action !== 'rewrite' && action !== 'close')) return [];
+      return [{ item: s.item, state: action === 'close' ? { visible: false, correction: false } : { visible: true, correction: s.row.correction_visible } }];
+    }));
     const ids = stale.flatMap((s) => (!s.item && s.row.id ? [s.row.id] : []));
     if (ids.length === 0) return;
     try {
@@ -189,7 +195,8 @@ export function Binder() {
 
   /** Bandeau de réglage posé en haut d'une page : ce que la classe en voit, et de quoi l'ouvrir. */
   const strip = (page: BinderPage): ReactNode => {
-    if (!selectedClass || page.kind === 'divider') return null;
+    // (pas de bandeau tant que les éléments ne sont pas lus : il dirait à tort que rien ne s'ouvre)
+    if (!selectedClass || page.kind === 'divider' || items.length === 0) return null;
     const access = pageAccess(page, states);
     const item = page.anchor ? itemByAnchor.get(page.anchor) : undefined;
     if (access === 'locked' || !item) {
@@ -251,7 +258,13 @@ export function Binder() {
     );
   };
 
-  const staleLine = (s: (typeof stale)[number]) => `${s.label} : ${s.reason === 'gone' ? 'retiré du classeur' : s.reason === 'correction' ? 'correction modifiée' : 'pages modifiées'}`;
+  const staleLine = (s: (typeof stale)[number]) => {
+    const action = staleAction(s);
+    const what = s.reason === 'gone' ? 'retiré du classeur' : s.reason === 'correction' ? 'correction modifiée' : 'pages modifiées';
+    return `${s.label} : ${what}${action === 'close' ? ', sera refermé' : action === 'level' ? ', à mettre à jour dans Mes cours' : ''}`;
+  };
+  /** Lignes que le bouton « Mettre à jour » traite ici (les évaluations se mettent à jour dans Mes cours). */
+  const refreshable = stale.some((s) => staleAction(s) !== 'level');
   const notice = selectedClass && (
     <div className="bd-notice" role="status" style={{ minHeight: NOTICE_H }}>
       {releaseError && <span className="bd-notice__error">{releaseError}</span>}
@@ -271,7 +284,9 @@ export function Binder() {
                   {' '}({stale.slice(0, 3).map(staleLine).join(' ; ')}{stale.length > 3 ? '…' : ''}).
                   {' '}Tant que vous n’avez pas validé, la {selectedClass.name} garde les pages ouvertes à l’origine (dans leur texte d’aujourd’hui).
                 </span>
-                <button type="button" className="bd-strip__btn" disabled={saving} onClick={() => void refreshStale()}>Mettre à jour</button>
+                {refreshable
+                  ? <button type="button" className="bd-strip__btn" disabled={saving} onClick={() => void refreshStale()}>Mettre à jour</button>
+                  : <button type="button" className="bd-strip__btn" onClick={() => void navigate('/cours?vue=classeur')}>Ouvrir Mes cours</button>}
               </>
             )}
           </>

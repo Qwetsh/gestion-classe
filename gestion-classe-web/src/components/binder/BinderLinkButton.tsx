@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link2 } from 'lucide-react';
 import {
-  binderAccessUnavailable, binderLinkUrl, fetchBinderAccess, newLinkToken, saveBinderAccess, type BinderAccess,
+  binderAccessUnavailable, binderLinkUrl, fetchBinderAccess, newLinkToken, saveBinderAccess, updateBinderAccess, type BinderAccess,
 } from '../../lib/binderReleaseQueries';
 
 interface Props {
@@ -58,7 +58,9 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
     setCopied(false);
     setReplacing(false);
     try {
-      const saved = await saveBinderAccess(userId, classId, patch);
+      // La ligne existe déjà : on ne change que ce qui est demandé. « Réactiver » garde ainsi le jeton
+      // qui est en base, même si le lien a été remplacé depuis un autre écran
+      const saved = access ? await updateBinderAccess(classId, patch) : await saveBinderAccess(userId, classId, patch);
       setLoaded({ classId, access: saved });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Enregistrement impossible');
@@ -93,7 +95,7 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
                 Avec ce lien, sans compte ni code, on voit ce que vous avez ouvert à la {className} dans le classeur, et rien d’autre.
                 Il ne montre aucune donnée personnelle.
               </p>
-              <button type="button" className="bd-link__main" disabled={busy} onClick={() => void save({ link_token: access?.link_token ?? newLinkToken(), link_enabled: true })}>
+              <button type="button" className="bd-link__main" disabled={busy} onClick={() => void save(access?.link_token ? { link_enabled: true } : { link_token: newLinkToken(), link_enabled: true })}>
                 {access?.link_token ? 'Réactiver le lien' : 'Créer le lien'}
               </button>
             </>
@@ -133,7 +135,7 @@ export function BinderLinkButton({ userId, classId, className }: Props) {
               <p className="bd-link__text">
                 {tab
                   ? `Les élèves de la ${className} ont un onglet « Classeur » dans leur espace (code à 6 chiffres).`
-                  : `Ajoute un onglet « Classeur » dans l’espace élève de la ${className} (code à 6 chiffres). L’élève témoin le voit toujours.`}
+                  : `Ajoute un onglet « Classeur » dans l’espace élève de la ${className} (code à 6 chiffres). L’élève témoin le voit dès que vous avez ouvert quelque chose à la classe.`}
               </p>
               <button type="button" className={tab ? 'bd-link__ghost' : 'bd-link__main'} disabled={busy} onClick={() => void save({ tab_enabled: !tab })}>
                 {tab ? 'Retirer l’onglet' : 'Ouvrir l’onglet'}

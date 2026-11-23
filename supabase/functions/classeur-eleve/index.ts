@@ -8,7 +8,8 @@ import { boardIds, imagePaths, isUuid, openItems, ownedItems, ownedPaths, public
  * Les cours (`boards`) et leurs images (bucket `board-assets`) sont privés : leurs politiques sont
  * écrites pour le professeur. Un élève n'a pas de compte. Il arrive par le lien de sa classe (jeton
  * long et aléatoire, table `class_binders`), ou par son code à 6 chiffres depuis l'espace élève
- * (si le professeur a ouvert l'onglet « Classeur » à sa classe ; l'élève témoin le voit toujours).
+ * (si le professeur a ouvert l'onglet « Classeur » à sa classe ; l'élève témoin le voit dès que le
+ * réglage de sa classe a commencé).
  * Cette fonction tranche avec la clé de service, qui ne quitte jamais le serveur.
  *
  * Elle ne décide de rien par elle-même : elle suit les lignes `class_binder_items` de la classe,
@@ -19,8 +20,9 @@ import { boardIds, imagePaths, isUuid, openItems, ownedItems, ownedPaths, public
  *  - { action: "doc", token, boardId }   → le texte d'un cours ouvert et les adresses signées de
  *                                           ses images. Revérifié à chaque appel.
  * À la place de `token` : { code, studentId? } (espace élève).
- *  - { action: "open", code }            → { open: true | false }, toujours 200 : l'espace élève
- *                                           demande s'il doit montrer le classeur, sans rien charger.
+ *  - { action: "open", code }            → { open: true | false }, en 200 même pour un refus :
+ *                                           l'espace élève demande s'il doit montrer le classeur, sans
+ *                                           rien charger (500 seulement si la base ne répond pas).
  */
 
 const corsHeaders = {
@@ -75,7 +77,8 @@ async function classOfToken(supabase: SupabaseClient, token: string): Promise<Bi
 /**
  * La classe de l'élève désigné par le code, si l'onglet « Classeur » lui est ouvert. Le code est
  * résolu comme partout dans l'espace élève (`resolve_student_code` : un code peut désigner plusieurs
- * fiches, `studentId` choisit). L'élève témoin du professeur voit l'onglet même fermé (aperçu).
+ * fiches, `studentId` choisit). L'élève témoin du professeur sert d'aperçu : il voit le classeur même
+ * onglet fermé, dès que le réglage de sa classe a commencé.
  */
 async function classOfCode(supabase: SupabaseClient, code: string, studentId: string | null): Promise<BinderClass | null> {
   const resolved = must(await supabase.rpc("resolve_student_code", { p_code: code, p_student_id: studentId }));
@@ -173,8 +176,9 @@ serve(async (req: Request) => {
   try {
     return await answer(supabase, action, token, code, studentId, body.boardId);
   } catch (err) {
-    if (err instanceof ServerError) return json({ error: "server" }, 500);
-    throw err;
+    // Toute panne répond en 500 avec ses en-têtes (sans eux, le navigateur dirait « pas de connexion »)
+    if (!(err instanceof ServerError)) console.error("classeur-eleve", err);
+    return json({ error: "server" }, 500);
   }
 });
 

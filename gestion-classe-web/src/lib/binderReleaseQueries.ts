@@ -118,6 +118,18 @@ export async function fetchBinderAccess(classId: string): Promise<BinderAccess |
   return (data as BinderAccess | null) ?? null;
 }
 
+/** Change un réglage de l'accès d'une classe qui en a déjà un : seules les colonnes de `patch` bougent. */
+export async function updateBinderAccess(classId: string, patch: Partial<Omit<BinderAccess, 'class_id'>>): Promise<BinderAccess> {
+  const { data, error } = await supabase
+    .from('class_binders')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('class_id', classId)
+    .select(ACCESS_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data as BinderAccess;
+}
+
 /**
  * Enregistre un réglage de l'accès de la classe (une ligne par classe). Seules les colonnes de
  * `patch` sont écrites : ouvrir l'onglet depuis un écran resté ouvert ne doit pas remettre en place

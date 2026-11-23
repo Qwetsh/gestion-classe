@@ -9,8 +9,6 @@ import { buildBinder, type BinderPage } from '../binder';
 import { binderItems, pagesFromReleased, releasedOf, rowFor, servedEntries, type BinderItem, type BinderItemRow } from '../binderRelease';
 import { withSummaries, type InkRun, type SummaryRuns } from '../binderSummary';
 import { boardIds, closedByTitle, imagePaths, openItems, ownedItems, ownedPaths, publicDoc, type ItemRow } from '../../../../supabase/functions/classeur-eleve/release';
-import { isUnsureTitle } from '../binder';
-import { splitVariant } from '../courseLibrary';
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const ID = {
@@ -166,7 +164,7 @@ describe('openItems — le serveur ne rend que ce qui est ouvert', () => {
 
 describe('closedByTitle — le titre du jour ne fait que refermer', () => {
   it('une page ouverte ne peut pas s’appeler correction, copie modèle, version adaptée, extraits ou évaluation', () => {
-    for (const title of ['Activité 2 — Séisme', 'Activité 2 — Séisme (documents)', 'Activité 2 — Séisme (protocole)', 'Page de garde — Séquence 1', 'FM1 — Lire une consigne', 'Fiche de mémorisation — Séquence 1', 'Activité 10 — Bilan de la séquence']) {
+    for (const title of ['Activité 2 — Séisme', 'Activité 2 — Séisme (documents)', 'Activité 2 — Séisme (protocole)', 'Activité 10 — Bilan de la séquence', 'Activité bonus — Modéliser']) {
       expect(closedByTitle(title, 'page'), title).toBe(false);
     }
     for (const title of ['Activité 2 — Séisme (correction)', 'Activité 2 — Séisme (corrigé)', 'Activité 2 — Séisme (copie modèle)', 'Activité 2 — Séisme (adaptée)', 'Activité 2 — Séisme (extraits)', 'Évaluation — La Terre', 'Évaluation — La Terre (documents)', 'Activité 2 — Séisme - correction', 'Activité 2 — Séisme (correction) v2', 'Activité 6 — Évaluation finale', 'Activité 2 — Séisme (copie modèle)'.normalize('NFD')]) {
@@ -175,16 +173,16 @@ describe('closedByTitle — le titre du jour ne fait que refermer', () => {
   });
 
   it('dans une évaluation, tout doit s’appeler « Évaluation … », et le corrigé « (correction) »', () => {
-    expect(closedByTitle('Évaluation — La Terre', 'page', true)).toBe(false);
-    expect(closedByTitle('Évaluation — La Terre (documents)', 'page', true)).toBe(false);
-    expect(closedByTitle('Évaluation — La Terre (correction)', 'correction', true)).toBe(false);
-    expect(closedByTitle('Évaluation — La Terre (copie modèle)', 'copy', true)).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre', 'page', 'evaluation')).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre (documents)', 'page', 'evaluation')).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre (correction)', 'correction', 'evaluation')).toBe(false);
+    expect(closedByTitle('Évaluation — La Terre (copie modèle)', 'copy', 'evaluation')).toBe(false);
     for (const [title, kind] of [
       ['Activité 2 — Séisme', 'page'], ['Évaluation — La Terre (correction)', 'page'], ['Évaluation — La Terre', 'correction'],
       ['Activité 2 — Séisme (correction)', 'correction'], ['Évaluation — La Terre, corrigé', 'page'], ['Évaluation — La Terre (documents)', 'copy'],
-    ] as const) expect(closedByTitle(title, kind, true), `${title} / ${kind}`).toBe(true);
+    ] as const) expect(closedByTitle(title, kind, 'evaluation'), `${title} / ${kind}`).toBe(true);
     // Et le corrigé d'une évaluation ne sort jamais d'une activité
-    expect(closedByTitle('Évaluation — La Terre (correction)', 'correction', false)).toBe(true);
+    expect(closedByTitle('Évaluation — La Terre (correction)', 'correction', 'activity')).toBe(true);
   });
 
   it('une copie modèle doit toujours s’appeler ainsi', () => {
@@ -193,13 +191,40 @@ describe('closedByTitle — le titre du jour ne fait que refermer', () => {
     for (const title of ['Activité 2 — Séisme (correction)', 'Activité 2 — Séisme', 'Évaluation — La Terre (copie modèle)']) expect(closedByTitle(title, 'copy'), title).toBe(true);
   });
 
-  it('dit la même chose que le classeur du professeur sur tous les titres de la bibliothèque', () => {
-    // Le serveur récrit deux règles du navigateur : elles ne doivent pas diverger
-    for (const { title } of library) {
-      const { variant } = splitVariant(title);
-      const pageHere = (variant === 'fiche' || variant === 'documents' || variant === 'protocole') && !isUnsureTitle(title);
-      expect(closedByTitle(title, 'page'), title).toBe(!pageHere);
-      expect(closedByTitle(title, 'copy'), title).toBe(!(variant === 'copie' && !isUnsureTitle(title)));
+  it('un cours renommé hors du classeur ne reste pas servi comme activité', () => {
+    for (const title of ['Entraînement noté — Lire un graphique', 'Contrôle — Lire un graphique', 'Éval — Lire un graphique', 'DS n°2', 'Lire un graphique']) {
+      expect(closedByTitle(title, 'page'), title).toBe(true);
+      expect(closedByTitle(`${title} (copie modèle)`, 'copy'), title).toBe(true);
+    }
+  });
+
+  it('une page seule garde son nom ; le reste de son titre est libre', () => {
+    expect(closedByTitle('Page de garde — Séquence 1', 'page', 'cover')).toBe(false);
+    expect(closedByTitle('Fiche de mémorisation — Séquence 1', 'page', 'memo')).toBe(false);
+    expect(closedByTitle('Mon classeur de SVT — mode d’emploi', 'page', 'guide')).toBe(false);
+    // Une fiche méthode peut parler de correction ou d'évaluation
+    for (const title of ['FM1 — Lire une consigne', 'FM5 — Préparer une évaluation', 'FM4 — Corriger sa copie']) expect(closedByTitle(title, 'page', 'method'), title).toBe(false);
+    expect(closedByTitle('Page de garde — Séquence 1 : préparer l’évaluation', 'page', 'cover')).toBe(false);
+    // Renommée, ou citée pour ce qu'elle n'est pas
+    expect(closedByTitle('Activité 1 — Volcans (correction)', 'page', 'cover')).toBe(true);
+    expect(closedByTitle('Page de garde — Séquence 1 (correction)', 'page', 'cover')).toBe(true);
+    expect(closedByTitle('Évaluation — La Terre', 'page', 'memo')).toBe(true);
+    expect(closedByTitle('Page de garde — Séquence 1', 'copy', 'cover')).toBe(true);
+    expect(closedByTitle('FM1 — Lire une consigne', 'copy', 'method')).toBe(true);
+  });
+
+  it('le classeur du professeur ne propose d’ouvrir que ce que le serveur sert, et tout ce qu’il sert', () => {
+    // Une seule règle des titres (release.ts), lue par binder.ts : ce contrôle garde les deux bouts accordés
+    const titleOf = (id: string) => byId.get(id)!.title;
+    const cited = new Set<string>();
+    for (const it of items) {
+      for (const p of it.pages) { cited.add(p.board); expect(closedByTitle(titleOf(p.board), 'page', it.role), titleOf(p.board)).toBe(false); }
+      if (it.copy) { cited.add(it.copy); expect(closedByTitle(titleOf(it.copy), 'copy', it.role), titleOf(it.copy)).toBe(false); }
+      if (it.correctionPage) { cited.add(it.correctionPage.board); expect(closedByTitle(titleOf(it.correctionPage.board), 'correction', it.role)).toBe(false); }
+    }
+    // Ce que le classeur n'ouvre pas (corrigé d'activité, feuille de bilans) ne passe sous aucun rôle de page
+    for (const b of library.filter((x) => !cited.has(x.id))) {
+      for (const role of ['activity', 'evaluation', 'cover', 'memo', 'guide']) expect(closedByTitle(b.title, 'page', role), `${b.title} / ${role}`).toBe(true);
     }
   });
 });

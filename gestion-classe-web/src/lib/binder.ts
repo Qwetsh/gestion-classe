@@ -23,6 +23,8 @@ import type { Board } from './boardsQueries';
 import { groupActivities, isEvaluationTitle, isMethodSheet, naturalCompare, splitVariant } from './courseLibrary';
 import type { InkLine } from './binderSummary';
 import { activityKeyOf } from './binderInk';
+// La règle des titres est celle du serveur : une seule écriture, lue des deux côtés
+import { closedByTitle } from '../../../supabase/functions/classeur-eleve/release';
 
 export type BinderSection = 'sequences' | 'methodes' | 'revise';
 
@@ -106,14 +108,6 @@ export function binderDocKind(title: string): BinderDocKind | null {
 
 /** Fiche d'activité : « Activité 3 — … », « Activité bonus — … ». */
 const isActivityTitle = (title: string): boolean => /^\s*activit[ée]s?(?![\p{L}])/iu.test(title.normalize('NFC'));
-
-/**
- * Titre qui parle de correction, de copie modèle ou d'évaluation sans porter un suffixe reconnu
- * (« … (corrigée) v2 », « … - correction », « Activité 6 — Évaluation finale ») : on ne sait pas ce
- * que c'est. La page reste dans le classeur du professeur, mais ne s'ouvre à aucune classe.
- */
-const UNSURE_TITLE = /corr(?:ection|ig[ée])|copie\s+mod[èe]le|[ée]valuation/iu;
-export const isUnsureTitle = (title: string): boolean => UNSURE_TITLE.test(splitVariant(title).base);
 
 /** Clé de comparaison d'un titre (apostrophes, espaces, casse). */
 const titleKey = (title: string): string =>
@@ -237,8 +231,10 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
       // La version adaptée (PAP) n'entre pas dans le classeur de la classe
       const shown = group.members.filter(({ variant }) => variant !== 'correction' && variant !== 'copie' && variant !== 'extraits' && variant !== 'adaptee');
       // L'activité s'ouvre d'un bloc à une classe : ses pages sont ancrées sur sa fiche
-      // (aucune ancre si un de ses titres est douteux : rien de l'activité ne s'ouvre)
-      const anchor = shown.some((m) => isUnsureTitle(m.board.title)) ? undefined : (shown.find((m) => m.variant === 'fiche') ?? shown[0])?.board.id;
+      // Aucune ancre si le serveur refermerait une de ses pages d'après son titre (« … (corrigée) v2 »,
+      // « … - correction », « Activité 6 — Évaluation finale ») : on ne propose pas d'ouvrir ce qui
+      // ne sortirait pas. La page reste dans le classeur du professeur.
+      const anchor = shown.some((m) => closedByTitle(m.board.title, 'page', 'activity')) ? undefined : (shown.find((m) => m.variant === 'fiche') ?? shown[0])?.board.id;
       for (const { variant, board } of shown) {
         // La fiche protocole se lit comme une feuille de documents : l'élève la retrouve chez lui
         pages.push(variant === 'documents' || variant === 'protocole'
@@ -252,7 +248,9 @@ export function buildBinder(boards: Board[], level: string): BinderPage[] {
     for (const group of groupActivities(evaluations)) {
       const copy = group.members.find((m) => m.variant === 'copie')?.board;
       // L'évaluation s'ouvre d'un bloc, ancrée sur son sujet ; sans sujet, elle ne s'ouvre pas
-      const anchor = group.members.find((m) => m.variant === 'fiche')?.board.id;
+      // (ni si son titre parle de correction après « Évaluation » : le serveur la refermerait)
+      const subject = group.members.find((m) => m.variant === 'fiche')?.board;
+      const anchor = subject && !closedByTitle(subject.title, 'page', 'evaluation') ? subject.id : undefined;
       for (const { variant, board } of group.members) {
         if (variant === 'copie' || variant === 'extraits' || variant === 'adaptee' || (variant === 'correction' && copy)) continue;
         if (variant === 'fiche') pages.push({ kind: 'sheet', key: board.id, section: 'sequences', chapter, label: 'Évaluation', board, role: 'evaluation', heading: group.title, companion: copy, anchor });

@@ -142,23 +142,42 @@ const UNSURE_TITLE = /corr(?:ection|ig[ée])|copie\s+mod[èe]le|[ée]valuation/i
 /** « Évaluation — … » (courseLibrary.ts, EVALUATION_PREFIX). */
 const EVALUATION_PREFIX = /^\s*[ée]valuations?(?![\p{L}\p{N}])/iu;
 
+/** « Activité 3 — … », « Activité bonus — … » (binder.ts, isActivityTitle). */
+const ACTIVITY_PREFIX = /^\s*activit[ée]s?(?![\p{L}])/iu;
+/** Pages seules du classeur, reconnues au début de leur titre (binder.ts, DOC_PREFIX). */
+const PAGE_PREFIX: Record<string, RegExp> = {
+  guide: /^\s*mon classeur\b/iu,
+  cover: /^\s*page de garde\b/iu,
+  memo: /^\s*fiches? de m[ée]morisation\b/iu,
+};
+
 /**
- * Le titre d'aujourd'hui dit-il que ce cours n'a plus sa place ? Le professeur a pu récrire un
- * cours ouvert pour en faire autre chose : son identifiant est resté dans la ligne.
- *  - Dans une activité ou une page seule : une page (fiche, documents, protocole) ne peut pas
- *    s'appeler correction, copie modèle, version adaptée, extraits ni évaluation ; une copie modèle
- *    doit toujours s'appeler ainsi.
- *  - Dans une évaluation (`evaluation`) : tous ses cours doivent s'appeler « Évaluation … » ; son
- *    corrigé (`correction`) doit se terminer par « (correction) ».
+ * Le titre d'aujourd'hui dit-il que ce cours n'a plus sa place dans l'élément (`role`) qui le cite ?
+ * Le professeur a pu récrire ou renommer un cours ouvert : son identifiant est resté dans la ligne.
+ * C'est la règle même du classeur du professeur (binder.ts s'en sert pour dire ce qui peut s'ouvrir) :
+ *  - activité : ses cours s'appellent « Activité … » ; une page (fiche, documents, protocole) ne peut
+ *    pas s'appeler correction, copie modèle, version adaptée, extraits ni évaluation ; sa copie modèle
+ *    doit toujours s'appeler ainsi ;
+ *  - évaluation : ses cours s'appellent « Évaluation … » ; son corrigé (`correction`) se termine par
+ *    « (correction) » ;
+ *  - page seule : elle garde son nom (« Page de garde … », « Fiche de mémorisation … », « Mon
+ *    classeur … ») ; une fiche méthode a un titre libre.
  */
-export function closedByTitle(rawTitle: string, kind: 'page' | 'copy' | 'correction', evaluation = false): boolean {
+export function closedByTitle(rawTitle: string, kind: 'page' | 'copy' | 'correction', role = 'activity'): boolean {
   const title = rawTitle.normalize('NFC');
   const m = TITLE_SUFFIX.exec(title);
   const word = m ? m[1].toLowerCase() : '';
   const base = m ? title.slice(0, m.index) : title;
+  if (role === 'method') return kind !== 'page';
+  if (Object.prototype.hasOwnProperty.call(PAGE_PREFIX, role)) {
+    return kind !== 'page' || !PAGE_PREFIX[role].test(base) || (word !== '' && role !== 'guide');
+  }
+  const evaluation = role === 'evaluation';
   const named = EVALUATION_PREFIX.test(base);
   // Une évaluation ne se glisse pas dans une activité, ni une activité dans une évaluation
   if (named !== evaluation) return true;
+  // Un cours renommé hors du classeur (« Entraînement noté — … », « Contrôle — … ») en sort aussi ici
+  if (!evaluation && !ACTIVITY_PREFIX.test(base)) return true;
   // Hors de son préfixe, le titre ne doit parler ni de correction, ni de copie modèle, ni d'évaluation
   if (UNSURE_TITLE.test(named ? base.replace(EVALUATION_PREFIX, '') : base)) return true;
   if (kind === 'copy') return !word.startsWith('copie');
@@ -174,8 +193,7 @@ export function closedByTitle(rawTitle: string, kind: 'page' | 'copy' | 'correct
 export function ownedItems(items: OpenItem[], owned: Map<string, string>): OpenItem[] {
   const out: OpenItem[] = [];
   for (const item of items) {
-    const evaluation = item.released.role === 'evaluation';
-    const open = (id: string, kind: 'page' | 'copy' | 'correction') => { const title = owned.get(id); return title !== undefined && !closedByTitle(title, kind, evaluation); };
+    const open = (id: string, kind: 'page' | 'copy' | 'correction') => { const title = owned.get(id); return title !== undefined && !closedByTitle(title, kind, item.released.role); };
     if (!open(item.anchor, 'page')) continue;
     const pages = item.released.pages.filter((p) => open(p.board, 'page'));
     const released = { ...item.released, pages };

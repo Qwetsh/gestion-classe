@@ -131,12 +131,15 @@ export function StudentDashboard() {
     window.history.pushState({ ...(window.history.state as object | null), gcBinder: true }, '');
     setBinderOpen(true);
   }, []);
+  /** Un retour est déjà demandé : un second appui ne doit pas faire quitter l'espace. */
+  const closingBinder = useRef(false);
   const closeBinder = useCallback(() => {
-    if ((window.history.state as { gcBinder?: boolean } | null)?.gcBinder) window.history.back();
+    if (closingBinder.current) return;
+    if ((window.history.state as { gcBinder?: boolean } | null)?.gcBinder) { closingBinder.current = true; window.history.back(); }
     else setBinderOpen(false);
   }, []);
   useEffect(() => {
-    const onPop = () => setBinderOpen(false);
+    const onPop = () => { closingBinder.current = false; setBinderOpen(false); };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);

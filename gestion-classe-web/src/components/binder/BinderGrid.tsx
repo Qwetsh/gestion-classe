@@ -53,13 +53,16 @@ const rowTitle = (item: BinderItem): string => (
  * sujet, puis la correction), et chaque ouverture se confirme. Par classe, le sujet ouvert à la 4A
  * serait montré à la 4C avant qu'elle compose.
  */
-function EvaluationCell({ item, level, classes, stateIn, saving, onApply }: {
+function EvaluationCell({ item, level, classes, stateIn, stale, saving, onApply }: {
   item: BinderItem;
   level: string;
   classes: BinderClass[];
   stateIn: (classId: string) => ItemState;
+  /** Des lignes ouvertes ne disent plus ce que dit le classeur (documents ajoutés, corrigé changé). */
+  stale: boolean;
   saving: boolean;
-  onApply: (state: ItemState) => void;
+  /** Nouvel état de chaque classe, ou null pour ne pas y toucher. Toutes les classes sont écrites d'un seul coup. */
+  onApply: (next: (classId: string) => ItemState | null) => void;
 }) {
   const [confirming, setConfirming] = useState<'subject' | 'correction' | null>(null);
   const open = classes.filter((c) => stateIn(c.id).visible);
@@ -68,7 +71,7 @@ function EvaluationCell({ item, level, classes, stateIn, saving, onApply }: {
   const allCorrected = corrected.length === classes.length;
   const names = (list: BinderClass[]) => list.map((c) => c.name).join(', ');
   const said = (list: BinderClass[], closed: string, all: string, some: string) => (list.length === 0 ? closed : list.length === classes.length ? all : `${some} ${names(list)} seulement`);
-  const apply = (state: ItemState) => { setConfirming(null); onApply(state); };
+  const apply = (next: (classId: string) => ItemState | null) => { setConfirming(null); onApply(next); };
 
   if (confirming) {
     const correction = confirming === 'correction';
@@ -77,7 +80,13 @@ function EvaluationCell({ item, level, classes, stateIn, saving, onApply }: {
         <span className="bg-eval__warn">
           {correction ? 'La correction' : 'Le sujet'} de cette évaluation sera visible par toutes les classes de {level} ({names(classes)}). À faire seulement quand toutes ont composé.
         </span>
-        <button type="button" className="bg-all bg-all--go" disabled={saving} onClick={() => apply({ visible: true, correction })}>
+        <button
+          type="button"
+          className="bg-all bg-all--go"
+          disabled={saving}
+          // Ouvrir le sujet ne touche pas à la correction d'une classe ; la correction ne s'ouvre que sujet ouvert partout
+          onClick={() => apply((id) => (correction ? { visible: true, correction: true } : { visible: true, correction: stateIn(id).correction }))}
+        >
           {correction ? 'Ouvrir la correction' : 'Ouvrir le sujet'}
         </button>
         <button type="button" className="bg-all" onClick={() => setConfirming(null)}>Annuler</button>
@@ -88,13 +97,25 @@ function EvaluationCell({ item, level, classes, stateIn, saving, onApply }: {
     <div className="bg-eval">
       <span>Sujet : {said(open, 'fermé', `ouvert aux ${level}`, 'ouvert aux')}</span>
       {!allOpen && <button type="button" className="bg-all" disabled={saving} onClick={() => setConfirming('subject')}>Ouvrir aux {level}</button>}
-      {open.length > 0 && <button type="button" className="bg-all" disabled={saving} onClick={() => apply({ visible: false, correction: false })}>Refermer</button>}
+      {/* Refermer ne fait que fermer : une classe où c'était fermé n'est pas touchée */}
+      {open.length > 0 && <button type="button" className="bg-all" disabled={saving} onClick={() => apply((id) => (stateIn(id).visible ? { visible: false, correction: false } : null))}>Refermer</button>}
       {hasCorrection(item) && (
         <>
           <span className="bg-eval__sep">Correction : {said(corrected, 'fermée', `ouverte aux ${level}`, 'ouverte aux')}</span>
           {allOpen && !allCorrected && <button type="button" className="bg-all" disabled={saving} onClick={() => setConfirming('correction')}>Ouvrir aux {level}</button>}
-          {corrected.length > 0 && <button type="button" className="bg-all" disabled={saving} onClick={() => apply({ visible: true, correction: false })}>Refermer</button>}
+          {corrected.length > 0 && <button type="button" className="bg-all" disabled={saving} onClick={() => apply((id) => (stateIn(id).correction ? { visible: true, correction: false } : null))}>Refermer</button>}
         </>
+      )}
+      {stale && open.length > 0 && (
+        <button
+          type="button"
+          className="bg-all"
+          disabled={saving}
+          title="Le classeur a changé depuis l’ouverture (documents, corrigé). Récrit ce qui est ouvert, pour toutes les classes à la fois, sans rien ouvrir de plus."
+          onClick={() => apply((id) => (stateIn(id).visible ? stateIn(id) : null))}
+        >
+          Mettre à jour
+        </button>
       )}
     </div>
   );
@@ -134,31 +155,47 @@ export function BinderGrid({ userId }: { userId: string }) {
   const groups = useMemo(() => groupItems(items), [items]);
   const itemByAnchor = useMemo(() => new Map(items.map((i) => [i.anchor, i])), [items]);
   const statesOf = useMemo(() => new Map(classes.map((c) => [c.id, itemStates(data?.rows.get(c.id) ?? [])])), [classes, data]);
+  /** Lignes ouvertes qui ne disent plus ce que dit le classeur, par classe : les cours d'ancrage concernés. */
   const staleOf = useMemo(
-    () => new Map(classes.map((c) => [c.id, items.length > 0 && !textsFailed ? staleRows(items, data?.rows.get(c.id) ?? []).length : 0])),
+    () => new Map(classes.map((c) => [c.id, new Set(items.length > 0 && !textsFailed ? staleRows(items, data?.rows.get(c.id) ?? []).map((s) => s.row.anchor_board_id) : [])])),
     [classes, data, items, textsFailed],
   );
 
-  /** Ouvre ou ferme des éléments pour une classe : montré tout de suite, relu en base si l'écriture échoue. */
-  const apply = useCallback(async (classId: string, changes: { item: BinderItem; state: ItemState }[]) => {
+  /**
+   * Ouvre ou ferme des éléments, pour une ou plusieurs classes : montré tout de suite, écrit en une
+   * seule fois (une évaluation s'ouvre à toutes les classes ou à aucune), et défait si l'écriture
+   * échoue : l'écran ne doit jamais montrer « ouvert » ou « fermé » ce que la base ne dit pas.
+   */
+  const apply = useCallback(async (changes: { classId: string; item: BinderItem; state: ItemState }[]) => {
     if (changes.length === 0) return;
-    const next = changes.map(({ item, state }) => rowFor(item, classId, state));
-    // (seulement si la classe est toujours à l'écran : le niveau a pu changer pendant l'écriture)
-    const patch = (rows: BinderItemRow[]) => setLoaded((cur) => (cur?.rows.has(classId) ? { ...cur, rows: new Map(cur.rows).set(classId, mergeRows(cur.rows.get(classId) ?? [], rows)) } : cur));
-    patch(next);
+    const next = changes.map(({ classId, item, state }) => rowFor(item, classId, state));
+    const touched = [...new Set(next.map((r) => r.class_id))];
+    // (seulement pour les classes encore à l'écran : le niveau a pu changer pendant l'écriture)
+    const put = (rows: BinderItemRow[], merge: boolean) => setLoaded((cur) => {
+      if (!cur) return cur;
+      const map = new Map(cur.rows);
+      for (const id of touched) {
+        if (!map.has(id)) continue;
+        const mine = rows.filter((r) => r.class_id === id);
+        map.set(id, merge ? mergeRows(map.get(id) ?? [], mine) : mine);
+      }
+      return { ...cur, rows: map };
+    });
+    const before = touched.flatMap((id) => data?.rows.get(id) ?? []);
+    put(next, true);
     setPending((n) => n + 1);
     setLoadError(null);
     try {
-      patch(await saveBinderItems(userId, next));
+      put(await saveBinderItems(userId, next), true);
     } catch (err: unknown) {
       setLoadError(err instanceof Error ? `Réglage non enregistré : ${err.message}` : 'Réglage non enregistré');
-      // L'écran ne doit jamais montrer « ouvert » ce que la base n'a pas : on relit ce qu'elle dit
-      const fresh = await fetchBinderItemsOfClasses([classId]).catch(() => null);
-      if (fresh) setLoaded((cur) => (cur?.rows.has(classId) ? { ...cur, rows: new Map(cur.rows).set(classId, fresh) } : cur));
+      // On relit ce que dit la base ; si elle ne répond pas non plus, on revient à l'état d'avant
+      const fresh = await fetchBinderItemsOfClasses(touched).catch(() => null);
+      put(fresh ?? before, false);
     } finally {
       setPending((n) => n - 1);
     }
-  }, [userId]);
+  }, [userId, data]);
 
   if (error) return <p className="mc-error" role="alert">{error}</p>;
   if (!boards) return <div className="mc-empty">Lecture du classeur…</div>;
@@ -204,9 +241,9 @@ export function BinderGrid({ userId }: { userId: string }) {
                     <button type="button" className="bg-class" onClick={() => void navigate(`/classeur?niveau=${encodeURIComponent(level)}&classe=${c.id}`)} title={`Régler la ${c.name} dans le classeur`}>
                       {c.name}
                     </button>
-                    {(staleOf.get(c.id) ?? 0) > 0 && (
+                    {(staleOf.get(c.id)?.size ?? 0) > 0 && (
                       <span className="bg-stale" title="Des éléments ouverts ne correspondent plus au classeur : ouvrez le classeur de la classe pour les mettre à jour">
-                        {staleOf.get(c.id)} à mettre à jour
+                        {staleOf.get(c.id)!.size} à mettre à jour
                       </span>
                     )}
                   </th>
@@ -229,7 +266,7 @@ export function BinderGrid({ userId }: { userId: string }) {
                             disabled={saving}
                             aria-label={`Tout ouvrir : ${group.title}, ${c.name}`}
                             title="La page de garde et les activités de la séquence. Ni les corrections, ni la fiche de mémorisation, ni l’évaluation."
-                            onClick={() => void apply(c.id, closed.map((item) => ({ item, state: { visible: true, correction: stateOf(states, item.anchor).correction } })))}
+                            onClick={() => void apply(closed.map((item) => ({ classId: c.id, item, state: { visible: true, correction: stateOf(states, item.anchor).correction } })))}
                           >
                             Tout ouvrir
                           </button>
@@ -247,8 +284,10 @@ export function BinderGrid({ userId }: { userId: string }) {
                         level={level}
                         classes={classes}
                         stateIn={(classId) => stateOf(statesOf.get(classId)!, item.anchor)}
+                        stale={classes.some((c) => staleOf.get(c.id)?.has(item.anchor))}
                         saving={saving}
-                        onApply={(state) => { for (const c of classes) void apply(c.id, [{ item, state }]); }}
+                        // Une seule écriture pour tout le niveau : ouverte à toutes les classes, ou à aucune
+                        onApply={(next) => void apply(classes.flatMap((c) => { const state = next(c.id); return state ? [{ classId: c.id, item, state }] : []; }))}
                       />
                     </td>
                   </tr>
@@ -266,7 +305,7 @@ export function BinderGrid({ userId }: { userId: string }) {
                               checked={state.visible}
                               disabled={saving}
                               aria-label={`${rowTitle(item)}, ${c.name} : ${item.role === 'activity' ? 'activité' : 'visible'}`}
-                              onChange={(e) => void apply(c.id, [{ item, state: { visible: e.target.checked, correction: e.target.checked && state.correction } }])}
+                              onChange={(e) => void apply([{ classId: c.id, item, state: { visible: e.target.checked, correction: e.target.checked && state.correction } }])}
                             />
                             {item.role === 'activity' ? 'Activité' : 'Visible'}
                           </label>
@@ -278,7 +317,7 @@ export function BinderGrid({ userId }: { userId: string }) {
                                 aria-label={`${rowTitle(item)}, ${c.name} : correction`}
                                 // Une correction déjà ouverte se referme toujours, même si l'activité n'en a plus
                                 disabled={saving || !state.visible || (!state.correction && (noCorrection || textsFailed))}
-                                onChange={(e) => void apply(c.id, [{ item, state: { visible: true, correction: e.target.checked } }])}
+                                onChange={(e) => void apply([{ classId: c.id, item, state: { visible: true, correction: e.target.checked } }])}
                               />
                               Correction
                             </label>
