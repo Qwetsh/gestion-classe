@@ -20,6 +20,16 @@ export interface StudentTpItem {
   mates: string[];
   photo_count: number;
   corrected: boolean;
+  /** Dépôt de photos ouvert (migration 089 ; absent avant). */
+  deposit_open?: boolean;
+  deposit_closes_at?: string | null;
+}
+
+/** État du dépôt de photos des élèves (migration 089). */
+export interface StudentTpDeposit {
+  open: boolean;
+  closes_at: string | null;
+  mode: 'auto' | 'closed' | 'reopened';
 }
 
 export type StudentTpDocKind = 'fiche' | 'protocole' | 'documents';
@@ -37,6 +47,8 @@ export interface StudentTpPhoto {
   caption: string | null;
   whole_class: boolean;
   author: string;
+  /** Photo déposée par l'élève lui-même (il peut la retirer tant que le dépôt est ouvert). */
+  mine?: boolean;
 }
 
 export interface StudentTpDetail {
@@ -65,10 +77,11 @@ export interface StudentTpDetail {
   } | null;
   docs: StudentTpDoc[];
   photos: StudentTpPhoto[];
+  deposit?: StudentTpDeposit;
 }
 
 export class StudentTpError extends Error {
-  kind: 'forbidden' | 'not_found' | 'network' | 'server';
+  kind: 'forbidden' | 'not_found' | 'network' | 'server' | 'closed' | 'too_large' | 'too_many';
   constructor(kind: StudentTpError['kind']) {
     super(kind);
     this.kind = kind;
@@ -95,7 +108,14 @@ export async function fetchStudentTp(code: string, sessionId: string): Promise<S
 async function call<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>('tp-eleve', { body });
   if (error) {
-    const status = (error as { context?: { status?: number } }).context?.status;
+    const context = (error as { context?: Response }).context;
+    const status = context?.status;
+    // Le dépôt fermé entre-temps répond 403 « closed » : l'élève doit le lire tel quel
+    let reason: string | null = null;
+    try { reason = context && typeof context.json === 'function' ? ((await context.json()) as { error?: string }).error ?? null : null; } catch { /* corps illisible */ }
+    if (reason === 'closed') throw new StudentTpError('closed');
+    if (status === 413) throw new StudentTpError('too_large');
+    if (status === 429) throw new StudentTpError('too_many');
     throw new StudentTpError(status === 403 ? 'forbidden' : status === 404 ? 'not_found' : status ? 'server' : 'network');
   }
   if (!data) throw new StudentTpError('server');
@@ -127,4 +147,24 @@ export function studentTpDocLoader(code: string, sessionId: string): (doc: Stude
     }
     return pending;
   };
+}
+
+/** Photo déposée : son identifiant, son heure et son adresse signée pour l'afficher aussitôt. */
+export interface DepositedPhoto {
+  id: string;
+  created_at: string;
+  caption: string | null;
+  url: string | null;
+}
+
+/** Dépose une photo déjà réduite (JPEG en base64). Refus « closed » si le dépôt vient de fermer. */
+export async function uploadStudentTpPhoto(code: string, sessionId: string, imageBase64: string, caption = ''): Promise<DepositedPhoto> {
+  const res = await call<{ photo?: DepositedPhoto }>({ action: 'upload', code, sessionId, image: imageBase64, caption });
+  if (!res.photo) throw new StudentTpError('server');
+  return res.photo;
+}
+
+/** Retire une photo que l'élève a lui-même déposée (dépôt ouvert seulement). */
+export async function deleteStudentTpPhoto(code: string, sessionId: string, photoId: string): Promise<void> {
+  await call<{ ok?: boolean }>({ action: 'delete', code, sessionId, photoId });
 }

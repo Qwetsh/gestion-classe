@@ -5,11 +5,15 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useUIFeedback } from '../../contexts/UIFeedbackContext';
 import { Icon } from '../design-system';
-import { deleteSessionPhoto, uploadSessionPhoto, type GroupSessionPhoto } from '../../lib/groupSessionPhotos';
+import { deleteSessionPhoto, fetchSessionPhotos, uploadSessionPhoto, type GroupSessionPhoto } from '../../lib/groupSessionPhotos';
 import {
   absentIds,
   addCriterion,
   clampCriterionGrades,
+  closeDeposit,
+  fetchDepositState,
+  reopenDeposit,
+  type DepositState,
   copyCriteriaToTemplate,
   deleteCriterion,
   fillMissingGrades,
@@ -110,6 +114,55 @@ export function GroupSessionDetail({ sessionId, onDeleted, onChanged }: {
   }, [sessionId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // ---------------- Dépôt des élèves (lot 4) ----------------
+  const [deposit, setDeposit] = useState<DepositState | null>(null);
+  const [depositBusy, setDepositBusy] = useState(false);
+  const refreshDeposit = useCallback(async () => {
+    setDeposit(await fetchDepositState(sessionId));
+  }, [sessionId]);
+  useEffect(() => { void refreshDeposit(); }, [refreshDeposit]);
+
+  // Dépôt ouvert : les photos des élèves arrivent ici d'elles-mêmes (toutes les 20 s)
+  const depositOpen = deposit?.open === true;
+  const urlsRef = useRef(urls);
+  useEffect(() => { urlsRef.current = urls; }, [urls]);
+  useEffect(() => {
+    if (!depositOpen) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const [list, state] = await Promise.all([fetchSessionPhotos(sessionId), fetchDepositState(sessionId)]);
+        setDeposit(state);
+        setData((prev) => {
+          if (!prev) return prev;
+          const known = new Set(prev.photos.map((p) => p.id));
+          const kept = new Set(list.map((p) => p.id));
+          return { ...prev, photos: [...prev.photos.filter((p) => kept.has(p.id)), ...list.filter((p) => !known.has(p.id))] };
+        });
+        const unsigned = list.filter((p) => !urlsRef.current[p.id]);
+        if (unsigned.length > 0) {
+          const signed = await photoUrls(unsigned);
+          setUrls((prev) => ({ ...prev, ...signed }));
+        }
+      } catch { /* on réessaiera au prochain tour */ }
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [depositOpen, sessionId]);
+
+  const toggleDeposit = async () => {
+    if (!deposit) return;
+    setDepositBusy(true);
+    try {
+      if (deposit.open) await closeDeposit(sessionId);
+      else await reopenDeposit(sessionId, 30);
+      await refreshDeposit();
+    } catch (e) {
+      console.error('Deposit error:', e);
+      toast('Le dépôt n’a pas pu changer. Réessayez.');
+    } finally {
+      setDepositBusy(false);
+    }
+  };
 
   useEffect(() => () => {
     if (changedTimer.current) window.clearTimeout(changedTimer.current);
@@ -481,6 +534,30 @@ export function GroupSessionDetail({ sessionId, onDeleted, onChanged }: {
       <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: -8 }}>
         La note du groupe va à chacun de ses membres, absents compris. Un élève qui change de groupe prend la note du nouveau.
       </div>
+
+      {deposit && (() => {
+        const studentPhotos = data.photos.filter((p) => p.author === 'student');
+        const groupsWith = new Set(studentPhotos.map((p) => p.group_id).filter(Boolean)).size;
+        const until = deposit.closes_at ? fmtTime(deposit.closes_at) : null;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 10, background: deposit.open ? '#FBFEFC' : 'var(--surface-3)', border: `1px solid ${deposit.open ? '#86C99B' : 'var(--border)'}` }}>
+            <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, background: deposit.open ? '#15803D' : '#71717A' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: deposit.open ? '#15803D' : 'var(--text)' }}>
+              {deposit.open ? 'Dépôt des élèves ouvert' : 'Dépôt des élèves fermé'}
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              {deposit.open
+                ? (deposit.mode === 'reopened' ? `rouvert, se referme tout seul à ${until}` : `se ferme tout seul à la fin de l’heure${until ? ` (${until} au plus tard)` : ''}`)
+                : (deposit.mode === 'closed' ? 'fermé par vous' : 'fermé à la fin de l’heure')}
+              {' · '}{studentPhotos.length} photo{studentPhotos.length > 1 ? 's' : ''} d’élèves{studentPhotos.length > 0 ? ` dans ${groupsWith} groupe${groupsWith > 1 ? 's' : ''}` : ''}
+            </span>
+            <span style={{ flex: 1 }} />
+            <button style={deposit.open ? { ...btn, background: '#18181B', borderColor: '#18181B', color: '#FFFFFF' } : btn} disabled={depositBusy} onClick={() => { void toggleDeposit(); }}>
+              {deposit.open ? 'Fermer plus tôt' : 'Rouvrir 30 min'}
+            </button>
+          </div>
+        );
+      })()}
 
       {groups.length === 0 ? (
         <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)' }}>Aucun groupe dans ce TP.</div>

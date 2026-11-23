@@ -12,9 +12,13 @@ import { closedByTitle, imagePaths, isUuid, ownedPaths, publicDoc } from "../cla
  * (tp_templates.student_boards, écrit par son navigateur). Le serveur ne choisit rien d'après
  * un titre ; un titre devenu « (correction) » referme le cours.
  *
- * Deux appels (POST, JSON), avec { code, studentId?, sessionId } :
- *  - { action: "photos" }          → { urls: { idDePhoto: adresseSignée } } (groupe + toute la classe) ;
- *  - { action: "doc", boardId }    → { doc, images } d'un cours ouvert pour ce TP.
+ * Appels (POST, JSON), avec { code, studentId?, sessionId } :
+ *  - { action: "photos" }               → { urls: { idDePhoto: adresseSignée } } (groupe + toute la classe) ;
+ *  - { action: "doc", boardId }         → { doc, images } d'un cours ouvert pour ce TP ;
+ *  - { action: "upload", image, caption? } → { photo } : dépôt d'une photo (lot 4, migration 089).
+ *    `image` = JPEG en base64, déjà réduit sur le téléphone de l'élève (1 Mo au plus : limite du
+ *    bucket). Refusé si le dépôt est fermé (403 « closed ») ;
+ *  - { action: "delete", photoId }      → { ok } : l'élève retire une de SES photos, dépôt ouvert.
  */
 
 const corsHeaders = {
@@ -61,7 +65,7 @@ serve(async (req: Request) => {
   const code = typeof body?.code === "string" ? body.code : "";
   const studentId = isUuid(body?.studentId) ? body.studentId : null;
   const sessionId = body?.sessionId;
-  if (action !== "photos" && action !== "doc") return json({ error: "bad_request" }, 400);
+  if (action !== "photos" && action !== "doc" && action !== "upload" && action !== "delete") return json({ error: "bad_request" }, 400);
   // Même réponse pour un accès mal formé, inconnu ou refusé : rien à apprendre de l'erreur
   if (!CODE.test(code) || !isUuid(sessionId)) return json({ error: "forbidden" }, 403);
 
@@ -72,14 +76,91 @@ serve(async (req: Request) => {
   );
 
   try {
-    return action === "photos"
-      ? await photos(supabase, code, studentId, sessionId)
-      : await doc(supabase, code, studentId, sessionId, body.boardId);
+    if (action === "photos") return await photos(supabase, code, studentId, sessionId);
+    if (action === "doc") return await doc(supabase, code, studentId, sessionId, body.boardId);
+    if (action === "upload") return await upload(supabase, code, studentId, sessionId, body.image, body.caption);
+    return await remove(supabase, code, studentId, sessionId, body.photoId);
   } catch (err) {
     if (!(err instanceof ServerError)) console.error("tp-eleve", err);
     return json({ error: "server" }, 500);
   }
 });
+
+/** Plafond d'un fichier : la limite du bucket student-photos (le téléphone réduit avant d'envoyer). */
+const MAX_BYTES = 1_000_000;
+/** Garde-fou contre un envoi en boucle : largement assez pour un TP. */
+const MAX_PHOTOS_PER_STUDENT = 30;
+
+interface DepositTarget { student_id: string; group_id: string; owner_id: string; open: boolean; my_photos: number }
+
+async function depositTarget(supabase: SupabaseClient, code: string, studentId: string | null, sessionId: string): Promise<DepositTarget | null> {
+  const rows = must(await supabase.rpc("student_tp_deposit_target", { p_code: code, p_session_id: sessionId, p_student_id: studentId })) as DepositTarget[] | null;
+  return rows?.[0] ?? null;
+}
+
+function decodeBase64(data: string): Uint8Array | null {
+  try {
+    const clean = data.replace(/^data:image\/jpeg;base64,/, "");
+    const bin = atob(clean);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+async function upload(supabase: SupabaseClient, code: string, studentId: string | null, sessionId: string, image: unknown, caption: unknown): Promise<Response> {
+  if (typeof image !== "string" || image.length > MAX_BYTES * 1.4 + 64) return json({ error: "too_large" }, 413);
+  const target = await depositTarget(supabase, code, studentId, sessionId);
+  if (!target) return json({ error: "forbidden" }, 403);
+  if (!target.open) return json({ error: "closed" }, 403);
+  if (target.my_photos >= MAX_PHOTOS_PER_STUDENT) return json({ error: "too_many" }, 429);
+
+  const bytes = decodeBase64(image);
+  if (!bytes || bytes.length === 0) return json({ error: "bad_request" }, 400);
+  if (bytes.length > MAX_BYTES) return json({ error: "too_large" }, 413);
+  // Un vrai JPEG (le téléphone réencode toujours en JPEG) : rien d'autre ne part dans le stockage
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return json({ error: "bad_request" }, 400);
+
+  const id = crypto.randomUUID();
+  const path = `${target.owner_id}/tp/${sessionId}/${id}.jpg`;
+  const up = await supabase.storage.from(PHOTOS).upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+  if (up.error) throw new ServerError();
+
+  const text = typeof caption === "string" ? caption.trim().slice(0, 120) : "";
+  const { data: row, error } = await supabase
+    .from("group_session_photos")
+    .insert({ id, session_id: sessionId, group_id: target.group_id, file_path: path, caption: text, author: "student", student_id: target.student_id })
+    .select("id, created_at, caption")
+    .single();
+  if (error || !row) {
+    await supabase.storage.from(PHOTOS).remove([path]);
+    throw new ServerError();
+  }
+  const signed = await supabase.storage.from(PHOTOS).createSignedUrl(path, SIGNED_URL_TTL);
+  return json({ photo: { id: row.id, created_at: row.created_at, caption: row.caption || null, url: signed.data?.signedUrl ?? null } });
+}
+
+async function remove(supabase: SupabaseClient, code: string, studentId: string | null, sessionId: string, photoId: unknown): Promise<Response> {
+  if (!isUuid(photoId)) return json({ error: "forbidden" }, 403);
+  const target = await depositTarget(supabase, code, studentId, sessionId);
+  if (!target) return json({ error: "forbidden" }, 403);
+  if (!target.open) return json({ error: "closed" }, 403);
+  const photo = must(await supabase
+    .from("group_session_photos")
+    .select("id, file_path")
+    .eq("id", photoId)
+    .eq("session_id", sessionId)
+    .eq("author", "student")
+    .eq("student_id", target.student_id)
+    .maybeSingle()) as { id: string; file_path: string } | null;
+  // Seulement ses propres photos : celles du professeur ou des autres élèves ne se retirent pas d'ici
+  if (!photo) return json({ error: "forbidden" }, 403);
+  must(await supabase.from("group_session_photos").delete().eq("id", photo.id));
+  await supabase.storage.from(PHOTOS).remove([photo.file_path]);
+  return json({ ok: true });
+}
 
 async function photos(supabase: SupabaseClient, code: string, studentId: string | null, sessionId: string): Promise<Response> {
   const rows = must(await supabase.rpc("student_tp_photo_paths", { p_code: code, p_session_id: sessionId, p_student_id: studentId })) as

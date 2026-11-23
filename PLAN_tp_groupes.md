@@ -95,6 +95,24 @@ site (push sur master, avec les lots 2 et 3).
   l'éval publiée. Jamais la correction ni la note.
 - Ordre de mise en service : migration 088, puis déployer `tp-eleve`, puis le site.
 
+## Lot 4 — dépôt des élèves (codé le 24/11/2026, PAS en production)
+
+- Migration `089_tp_student_deposit.sql` (essayée à blanc) : `group_sessions.deposit_closed`,
+  `deposit_until` ; `tp_deposit_state` (droits de l'appelant) ; `student_tp_deposit_target`
+  (service_role) ; `get_student_tps` (+ deposit_open) et `get_student_tp` (+ deposit, photos.mine).
+- Règle : ouvert au lancement, fermé quand la séance est terminée au téléphone, au plus tard 2 h
+  après son début ; « Fermer plus tôt » ; « Rouvrir 30 min » (se referme seul).
+  Fin de l'heure tirée de la séance, pas de l'emploi du temps.
+- Fonction `tp-eleve` : actions `upload` (JPEG base64 ≤ 1 Mo, vrai JPEG, 30 photos max par élève)
+  et `delete` (ses propres photos, dépôt ouvert). À redéployer après la 089.
+- Élève : partie « Perso » (Prendre une photo, Galerie), réduction dans le navigateur sous 1 Mo
+  (1600 px puis plus petit), file d'envoi qui attend le réseau tant que la page est ouverte,
+  retrait de ses photos. Bouton « Déposer » sur la carte du TP en cours.
+- Bureau : bandeau du dépôt dans la fiche TP (état, photos d'élèves, Fermer plus tôt / Rouvrir
+  30 min) ; nouvelles photos relues toutes les 20 s quand il est ouvert.
+- Pas fait : bouton Fermer au téléphone (nouvel APK), page « Dépôt des élèves » complète (B3 :
+  tableau par groupe), photos d'élèves vues au téléphone (le téléphone ne relit pas les photos).
+
 ## Lot 1 — pas couvert
 
 - Proposition du TP d'après l'emploi du temps : liste filtrée par niveau, le dernier TP

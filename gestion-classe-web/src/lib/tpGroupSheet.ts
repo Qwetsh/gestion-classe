@@ -397,3 +397,29 @@ export function groupTimeline(group: TpGroup, events: TpEvent[]): TimelineItem[]
 export function absentIds(events: TpEvent[]): Set<string> {
   return new Set(events.filter((e) => e.type === 'absence').map((e) => e.studentId));
 }
+
+/** Dépôt de photos des élèves (lot 4, migration 089). */
+export interface DepositState {
+  open: boolean;
+  closes_at: string | null;
+  mode: 'auto' | 'closed' | 'reopened';
+}
+
+export async function fetchDepositState(sessionId: string): Promise<DepositState | null> {
+  const { data, error } = await supabase.rpc('tp_deposit_state', { p_session_id: sessionId });
+  if (error) return null; // migration 089 absente : pas de bandeau
+  return data as DepositState;
+}
+
+/** « Fermer plus tôt » : plus aucun envoi, les photos restent. */
+export async function closeDeposit(sessionId: string): Promise<void> {
+  const { error } = await supabase.from('group_sessions').update({ deposit_closed: true, deposit_until: null }).eq('id', sessionId);
+  if (error) throw error;
+}
+
+/** « Rouvrir » : ouvert pour `minutes`, puis il se referme tout seul. */
+export async function reopenDeposit(sessionId: string, minutes = 30): Promise<void> {
+  const until = new Date(Date.now() + minutes * 60_000).toISOString();
+  const { error } = await supabase.from('group_sessions').update({ deposit_closed: false, deposit_until: until }).eq('id', sessionId);
+  if (error) throw error;
+}
