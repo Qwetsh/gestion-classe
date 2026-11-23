@@ -24,6 +24,8 @@ import { CourseLayer } from '../course/CourseLayer';
 import { flowStyle } from '../course/courseThemes';
 import { A5_SCALE } from './binderSheet';
 import { BinderSourceContext } from './binderSource';
+import { Printer } from 'lucide-react';
+import { printPages, sheetPrintPages, whenSettled } from '../../lib/binderPrint';
 import { MemoFlaps } from './MemoFlaps';
 import '../course/course.css';
 
@@ -44,6 +46,9 @@ interface Props {
 
 export function GluedSheet({ board, role, companion, left, top, onOpen, student }: Props) {
   const { loadDoc } = useContext(BinderSourceContext);
+  const rootRef = useRef<HTMLDivElement>(null);
+  /** Impression : `ask` = choix entre la fiche vierge et la fiche corrigée ; `busy` = mise en page attendue. */
+  const [printing, setPrinting] = useState<'ask' | 'busy' | null>(null);
   const [doc, setDoc] = useState<CourseDoc | null | undefined>(undefined);
   /** Copie modèle (ou feuille corrigée) lue, avec le cours dont elle vient : elle ne vaut que pour lui. */
   const [companionDoc, setCompanionDoc] = useState<{ id: string; doc: CourseDoc | null } | null>(null);
@@ -94,9 +99,30 @@ export function GluedSheet({ board, role, companion, left, top, onOpen, student 
   const width = PAGE_W * A5_SCALE;
   const height = PAGE_H * A5_SCALE;
 
+  /** La fiche porte une correction qu'on peut écrire dessus : l'impression demande laquelle des deux versions. */
+  const twoVersions = answers && !!inked;
+  /**
+   * Imprime la fiche en A4, toutes ses pages. `corrected` : la version voulue quand il y en a deux
+   * (la fiche bascule sur elle et y reste). On imprime ce qui est à l'écran, une fois mis en page.
+   */
+  const print = async (corrected?: boolean) => {
+    const root = rootRef.current;
+    if (!root) return;
+    setPrinting('busy');
+    const want = corrected === undefined ? null : corrected ? '1' : '0';
+    if (corrected !== undefined) setFilled(corrected);
+    await whenSettled(root, () => want === null || root.dataset.filled === want);
+    setPrinting(null);
+    const sheets = root.querySelector<HTMLElement>('.ce-sheets');
+    if (sheets) printPages(sheetPrintPages(sheets), corrected && twoVersions ? `${board.title} (correction)` : board.title || 'Fiche');
+  };
+
   return (
     <div
+      ref={rootRef}
       className="bd-glued"
+      // (lu par l'impression : la version affichée, pour attendre que la fiche ait basculé)
+      data-filled={inked && filled ? '1' : '0'}
       // Pas d'angle de collage : la pagination mesure les blocs à l'écran, une rotation fausserait
       // ses mesures (et le nombre de pages de la fiche)
       style={{ left, top, width, height }}
@@ -115,6 +141,27 @@ export function GluedSheet({ board, role, companion, left, top, onOpen, student 
         >
           {answers ? (filled ? 'Masquer la correction' : 'Afficher la correction') : filled ? 'Voir la fiche vierge' : 'Voir la fiche remplie'}
         </button>
+      )}
+      {shownDoc && (
+        <button
+          type="button"
+          className="bd-glued__print"
+          disabled={printing === 'busy'}
+          aria-expanded={twoVersions ? printing === 'ask' : undefined}
+          onClick={(e) => { e.stopPropagation(); if (twoVersions) setPrinting((p) => (p === 'ask' ? null : 'ask')); else void print(); }}
+          onDoubleClick={(e) => e.stopPropagation()}
+          title="Imprimer cette fiche (A4, toutes ses pages)"
+        >
+          <Printer size={24} aria-hidden /> {printing === 'busy' ? 'Préparation…' : 'Imprimer'}
+        </button>
+      )}
+      {printing === 'ask' && (
+        <div className="bd-glued__printask" role="dialog" aria-label="Quelle version imprimer ?" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+          <span>Imprimer :</span>
+          <button type="button" onClick={() => void print(false)}>la fiche vierge</button>
+          <button type="button" onClick={() => void print(true)}>la fiche corrigée</button>
+          <button type="button" className="bd-glued__printask-no" onClick={() => setPrinting(null)}>Annuler</button>
+        </div>
       )}
       {doc === null && <span className="bd-glued__note">Tableau blanc : pas de feuille à imprimer</span>}
       {doc === undefined && <span className="bd-glued__note">{!failed ? 'Chargement…' : student ? 'Cette page n’est plus disponible' : 'Fiche illisible'}</span>}

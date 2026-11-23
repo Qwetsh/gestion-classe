@@ -8,6 +8,7 @@ import type { BinderPage } from '../../lib/binder';
 import { SECTION_LABEL } from '../../lib/binder';
 import type { InkLine } from '../../lib/binderSummary';
 import { MM, PAGE_H, PAGE_W } from '../../lib/course/coursePage';
+import { Printer } from 'lucide-react';
 import { GluedSheet } from './GluedSheet';
 import { A5_SCALE, HOLES_MM } from './binderSheet';
 
@@ -22,9 +23,14 @@ const LINE_MM = 8;
 const UNDER_TOP = 238;
 
 /** Lignes écrites à la main, une par ligne du papier à partir de `topMm` (haut de la première bande). */
-function InkLines({ lines, topMm, side, closed }: { lines: InkLine[]; topMm: number; side: 'left' | 'right'; closed?: boolean }) {
+function InkLines({ lines, topMm, side, closed, onPrint }: { lines: InkLine[]; topMm: number; side: 'left' | 'right'; closed?: boolean; onPrint?: () => void }) {
   return (
-    <div className={closed ? 'bd-ink bd-ink--closed' : 'bd-ink'} style={{ top: topMm * MM, left: (side === 'right' ? 30 : 8) * MM }}>
+    <div className={`bd-ink ${closed ? 'bd-ink--closed' : ''} ${onPrint ? 'bd-ink--print' : ''}`} style={{ top: topMm * MM, left: (side === 'right' ? 30 : 8) * MM }}>
+      {onPrint && (
+        <button type="button" className="bd-ink__print" onClick={onPrint} title="Imprimer ce bilan, en entier">
+          <Printer size={22} aria-hidden /> Imprimer le bilan
+        </button>
+      )}
       {lines.map((line, i) => (
         <div key={i} className="bd-ink__line" style={{ height: LINE_MM * MM }}>
           {line.map((run, j) => (run.underline ? <u key={j}>{run.text}</u> : <span key={j}>{run.text}</span>))}
@@ -42,9 +48,11 @@ interface Props {
   inkClosed?: boolean;
   /** Vue de l'élève : la fiche telle qu'il la reçoit (page de garde non cochée). */
   student?: boolean;
+  /** Imprimer le bilan écrit sur cette page (en entier, même s'il continue sur la suivante). */
+  onPrintBilan?: () => void;
 }
 
-export function BinderLeaf({ page, side, onOpen, inkClosed, student }: Props) {
+export function BinderLeaf({ page, side, onOpen, inkClosed, student, onPrintBilan }: Props) {
   const holes = (
     <div className={`bd-holes bd-holes--${side === 'right' ? 'left' : 'right'}`} aria-hidden>
       {HOLES_MM.map((y) => <span key={y} className="bd-hole" style={{ top: y * MM }} />)}
@@ -70,7 +78,7 @@ export function BinderLeaf({ page, side, onOpen, inkClosed, student }: Props) {
             <span>{page.heading}</span>
           </div>
         )}
-        <InkLines lines={page.lines} topMm={RULING_TOP + (page.heading ? LINE_MM : 0)} side={side} />
+        <InkLines lines={page.lines} topMm={RULING_TOP + (page.heading ? LINE_MM : 0)} side={side} onPrint={onPrintBilan} />
       </div>
     );
   }
@@ -86,9 +94,9 @@ export function BinderLeaf({ page, side, onOpen, inkClosed, student }: Props) {
           <span>{page.heading}</span>
         </div>
       )}
-      {page.above && <InkLines lines={page.above} topMm={RULING_TOP} side={side} closed={inkClosed} />}
+      {page.above && <InkLines lines={page.above} topMm={RULING_TOP} side={side} closed={inkClosed} onPrint={onPrintBilan} />}
       <GluedSheet key={page.board.id} board={page.board} role={page.role} companion={page.companion} left={left} top={page.above ? (RULING_TOP + page.above.length * LINE_MM) * MM : GLUE_TOP} onOpen={onOpen ? () => onOpen(page.board.id) : undefined} student={student} />
-      {page.summary && <InkLines lines={page.summary} topMm={UNDER_TOP} side={side} closed={inkClosed} />}
+      {page.summary && <InkLines lines={page.summary} topMm={UNDER_TOP} side={side} closed={inkClosed} onPrint={onPrintBilan} />}
     </div>
   );
 }

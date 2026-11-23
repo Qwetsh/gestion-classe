@@ -14,7 +14,9 @@ export function useInkMeasure(): ((text: string) => number) | null {
     const done = () => {
       if (cancelled) return;
       const ctx = document.createElement('canvas').getContext('2d');
-      if (ctx) ctx.font = font;
+      // Même police de repli que l'affichage (`cursive`) : si la police d'écriture ne se charge pas,
+      // les lignes restent mesurées avec celle qui sera vraiment dessinée, et ne débordent pas
+      if (ctx) ctx.font = `${font}, cursive`;
       setMeasure(() => (text: string) => (ctx ? ctx.measureText(text).width : text.length * INK_PX * 0.6));
     };
     document.fonts.load(font).then(done, done);
