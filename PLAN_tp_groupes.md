@@ -95,7 +95,11 @@ site (push sur master, avec les lots 2 et 3).
   l'éval publiée. Jamais la correction ni la note.
 - Ordre de mise en service : migration 088, puis déployer `tp-eleve`, puis le site.
 
-## Lot 4 — dépôt des élèves (codé le 24/11/2026, PAS en production)
+## Lot 4 — dépôt des élèves (codé le 24/11/2026)
+
+Mis en service le 24/11/2026 sur « Oui, mets-les » de Thomas : migration 089 appliquée, `tp-eleve`
+version 2 déployée (envoi et retrait). Reste le site (push sur master, avec les lots 2 à 4).
+
 
 - Migration `089_tp_student_deposit.sql` (essayée à blanc) : `group_sessions.deposit_closed`,
   `deposit_until` ; `tp_deposit_state` (droits de l'appelant) ; `student_tp_deposit_target`
