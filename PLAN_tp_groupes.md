@@ -72,7 +72,13 @@ s'enregistre au fil des gestes (pas de brouillon en base) ; « Valider » compte
 vides. Note d'un membre : « Ajuster » (ne suit plus le groupe), « Suivre le groupe » (la remet).
 Pas encore : bandeau du dépôt (lot 4), onglet Partie Activité et /30 (lot 5).
 
-## Lot 3 — onglet TP élève, en lecture (codé le 23/11/2026, PAS en production)
+## Lot 3 — onglet TP élève, en lecture (codé le 23/11/2026)
+
+Mis en service le 23/11/2026 sur « Oui, mets-les » de Thomas : migration 088 appliquée, fonction
+`tp-eleve` déployée (version 1, verify_jwt ; déployée avec une copie réduite de
+`classeur-eleve/release.ts` : closedByTitle, publicDoc, imagePaths, ownedPaths, isUuid). Reste le
+site (push sur master, avec les lots 2 et 3).
+
 
 - Migration `088_student_tp_tab.sql` (pas appliquée) : `tp_templates.student_boards`,
   `get_student_tps`, `get_student_tp`, `student_tp_photo_paths` (service_role seulement),
