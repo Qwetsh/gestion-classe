@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { studentBinderOpen } from '../lib/studentBinder';
+import { StudentBinderView } from '../components/binder/StudentBinderView';
 import { getCardTier } from '../lib/rewardsQueries';
 import { CategoryIcon } from '../components/rewards/CategoryIcon';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -117,6 +120,29 @@ export function StudentDashboard() {
   // Onglet « Évals » : ouvert par la classe (class_student_tabs.show_grades), resolu
   // par la RPC elle-meme pour ne pas avoir a toucher get_student_dashboard.
   const [showMarks, setShowMarks] = useState(false);
+  // Onglet « Classeur » : ouvert par la classe (class_binders.tab_enabled) ; le serveur du classeur
+  // le dit lui-même. Il ouvre le classeur en plein écran, par-dessus l'espace élève.
+  /** Code de l'élève dont la classe a l'onglet ouvert (null : pas d'onglet). */
+  const [binderCode, setBinderCode] = useState<string | null>(null);
+  const showBinder = binderCode !== null;
+  const [binderOpen, setBinderOpen] = useState(false);
+  // Le retour du téléphone referme le classeur au lieu de quitter l'espace (et de faire ressaisir le code)
+  const openBinder = useCallback(() => {
+    window.history.pushState({ ...(window.history.state as object | null), gcBinder: true }, '');
+    setBinderOpen(true);
+  }, []);
+  /** Un retour est déjà demandé : un second appui ne doit pas faire quitter l'espace. */
+  const closingBinder = useRef(false);
+  const closeBinder = useCallback(() => {
+    if (closingBinder.current) return;
+    if ((window.history.state as { gcBinder?: boolean } | null)?.gcBinder) { closingBinder.current = true; window.history.back(); }
+    else setBinderOpen(false);
+  }, []);
+  useEffect(() => {
+    const onPop = () => { closingBinder.current = false; setBinderOpen(false); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
   // Un élève témoin voit tout (preview en conditions réelles).
   const isWitness = !!data?.is_witness;
@@ -134,7 +160,8 @@ export function StudentDashboard() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Academy music — play HP theme when Maison tab is active
-  const isAcademyActive = activeTab === 'academy' && !!academyData?.enabled;
+  // (le classeur ouvert par-dessus coupe la musique)
+  const isAcademyActive = activeTab === 'academy' && !!academyData?.enabled && !binderOpen;
   useEffect(() => {
     if (isAcademyActive && !muted) {
       if (!audioRef.current) {
@@ -257,6 +284,9 @@ export function StudentDashboard() {
         setShowMarks(false);
       }
 
+      // Classeur : le serveur dit si l'onglet est ouvert à la classe (rien d'autre n'est lu ici).
+      void studentBinderOpen({ code: fullCode }).then((open) => { if (currentCodeRef.current === fullCode) setBinderCode(open ? fullCode : null); });
+
       // Load academy data
       try {
         const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
@@ -315,6 +345,8 @@ export function StudentDashboard() {
     setCode(['', '', '', '', '', '']);
     setError(null);
     setActiveTab('grades');
+    setBinderCode(null);
+    setBinderOpen(false);
     currentCodeRef.current = '';
     setTimeout(() => inputRefs.current[0]?.focus(), 100);
   };
@@ -526,6 +558,21 @@ export function StudentDashboard() {
           ))}
         </div>
 
+        {/* Le classeur de la classe : hors de la barre d'onglets (déjà pleine sur un téléphone), il s'ouvre en plein écran */}
+        {showBinder && !isAcademyTab && (
+          <button
+            type="button"
+            onClick={openBinder}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
+              marginBottom: '16px', padding: '12px', borderRadius: '12px', border: 'none',
+              background: T.indigoSoft, color: T.indigo, fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <BookOpen size={18} aria-hidden /> Mon classeur de SVT
+          </button>
+        )}
+
         {activeTab === 'academy' && academyData?.enabled ? (
           academyData.house && academyData.classId ? (
             <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
@@ -702,6 +749,8 @@ export function StudentDashboard() {
           Données mises à jour en temps réel
         </p>
       </div>
+      {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
+      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} />}
     </div>
   );
 }

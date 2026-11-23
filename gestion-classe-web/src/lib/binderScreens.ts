@@ -16,7 +16,8 @@ const RED_TEXT = JSON.stringify([{ type: 'text', color: '#C00000' }]);
 /**
  * Bilans lus dans les écrans, par séquence puis par activité. Pour chaque activité, le premier de
  * ses cours (la correction, puis la fiche) qui a un écran Bilan le donne. Une lecture qui échoue
- * ne rend rien : le classeur se rabat sur la feuille de bilans.
+ * lève une erreur : le classeur se rabat sur la feuille de bilans, mais sait que ses bilans ne sont
+ * pas sûrs (il ne propose alors aucune mise à jour des classes).
  */
 export async function loadScreenSummaries(sources: BinderScreenSource[]): Promise<Map<string, SummaryRuns>> {
   const out = new Map<string, SummaryRuns>();
@@ -24,7 +25,9 @@ export async function loadScreenSummaries(sources: BinderScreenSource[]): Promis
   if (ids.length === 0) return out;
 
   const { data: docs, error } = await supabase.from('boards').select('id, screens:doc->screens').in('id', ids);
-  if (error || !docs) return out;
+  // Une lecture qui échoue n'est pas « pas de bilan » : l'appelant doit pouvoir faire la différence
+  if (error) throw error;
+  if (!docs) return out;
   const order = new Map<string, string[]>();
   for (const row of docs as { id: string; screens: unknown }[]) {
     const list = Array.isArray(row.screens) ? row.screens.filter((s): s is string => typeof s === 'string' && s !== '') : [];
@@ -38,7 +41,8 @@ export async function loadScreenSummaries(sources: BinderScreenSource[]): Promis
     .in('board_id', [...order.keys()])
     .in('page_id', [...new Set([...order.values()].flat())])
     .filter('objects', 'cs', RED_TEXT);
-  if (pagesError || !rows) return out;
+  if (pagesError) throw pagesError;
+  if (!rows) return out;
   const pages = new Map<string, { objects?: unknown }>();
   for (const r of rows as { board_id: string; page_id: string; objects: unknown }[]) pages.set(`${r.board_id}|${r.page_id}`, r);
 

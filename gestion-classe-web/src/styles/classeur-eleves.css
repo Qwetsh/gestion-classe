@@ -1,0 +1,45 @@
+/* Lecture et lien des élèves (PLAN_classeur_eleves.md, lot 2). Complète classeur.css. */
+
+/* La vue du classeur : centrée dans le bureau ; en lecture, elle remplit le bureau et se parcourt au doigt */
+.bd-scroller { flex-shrink: 0; }
+.bd-stage--read { padding: 0; }
+.bd-stage--read .bd-scroller {
+  position: absolute; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+.bd-stage--read .bd-spread-outer { margin: 8px auto 88px; }
+.bd-stage--read .bd-arrow { position: absolute; z-index: 6; bottom: 14px; width: 52px; height: 52px; border-radius: 50%; background: rgba(20,22,26,.72); }
+.bd-stage--read .bd-arrow--prev { left: 14px; }
+.bd-stage--read .bd-arrow--next { right: 14px; }
+/* En lecture, les marges de la fiche sortent de l'écran : ses boutons se rangent au bord de son texte (25 mm de marge, en A5) */
+.bd-stage--read .bd-glued__ink, .bd-stage--read .bd-glued__turn { right: 17.6mm; }
+.bd-stage--read .bd-glued__ink { border-radius: 0 0 16px 16px; }
+.bd-stage--read .bd-glued__turn { border-radius: 28px 28px 0 0; }
+
+/* Classeur ouvert par-dessus l'espace élève : au-dessus de ses en-têtes et de ses onglets */
+.bd-root--over { z-index: 1000; }
+
+/* Lien pour Pronote */
+.bd-link { position: relative; }
+.bd-link__panel {
+  position: absolute; z-index: 20; top: 44px; left: 0; width: min(380px, calc(100vw - 24px)); padding: 14px;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: #2A2D33; color: #F3F4F6;
+  box-shadow: 0 16px 40px rgba(0,0,0,.45); font-size: 14px;
+}
+.bd-link__title { margin: 0 0 8px; font-weight: 600; }
+.bd-link__title--next { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
+.bd-link__text { margin: 0 0 10px; color: #D1D5DB; line-height: 1.45; }
+.bd-link__url {
+  width: 100%; box-sizing: border-box; height: 34px; padding: 0 8px; margin-bottom: 10px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.2); background: #1F2227; color: inherit; font: inherit; font-size: 13px;
+}
+.bd-link__row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.bd-link__main, .bd-link__ghost {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 8px;
+  font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+.bd-link__main { border: 0; background: #6366F1; color: #fff; font-weight: 600; }
+.bd-link__main:hover:not(:disabled) { background: #4F46E5; }
+.bd-link__ghost { border: 1px solid rgba(255,255,255,.2); background: transparent; color: inherit; }
+.bd-link__ghost:hover:not(:disabled) { background: rgba(255,255,255,.08); }
+.bd-link__main:disabled, .bd-link__ghost:disabled { opacity: .5; cursor: default; }
+.bd-link__error { margin: 8px 0 0; color: #FCA5A5; }

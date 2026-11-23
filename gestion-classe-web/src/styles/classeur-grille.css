@@ -1,0 +1,52 @@
+/* Grille d'ouverture du classeur aux classes (vue « Classeur des classes » de Mes cours).
+   PLAN_classeur_eleves.md, lot 4. */
+
+.bg { display: flex; flex-direction: column; gap: 12px; }
+.bg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bg-intro { flex: 1; min-width: 260px; margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+.bg-select {
+  height: 36px; padding: 0 10px; font: inherit; font-size: 13px; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.bg-note { margin: 0; font-size: 12px; color: var(--text-muted); }
+
+/* Sur un écran étroit, la grille défile sous sa première colonne */
+/* (hauteur bornée : c'est dans ce cadre que l'en-tête des classes reste collé en haut) */
+.bg-scroll { max-height: calc(100vh - 230px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+@media (max-width: 640px) { .bg-item { min-width: 130px !important; max-width: 160px !important; white-space: normal; } }
+.bg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.bg-table th, .bg-table td { padding: 6px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.bg-table tbody:last-child tr:last-child th, .bg-table tbody:last-child tr:last-child td { border-bottom: 0; }
+.bg-table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); white-space: nowrap; font-weight: 600; }
+.bg-th-item { font-weight: 400; font-size: 12px; color: var(--text-muted); }
+.bg-table td { white-space: nowrap; }
+
+.bg-class {
+  padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2);
+  font: inherit; font-weight: 700; color: var(--text); cursor: pointer;
+}
+.bg-class:hover { border-color: var(--border-strong); }
+.bg-stale { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--accent-ink); }
+
+.bg-group th, .bg-group td { background: var(--surface-2); }
+.bg-group th {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted);
+}
+.bg-item { position: sticky; left: 0; z-index: 1; min-width: 220px; max-width: 420px; background: var(--surface); font-weight: 500; color: var(--text); }
+.bg-group th { position: sticky; left: 0; z-index: 1; }
+
+.bg-check { display: inline-flex; align-items: center; gap: 5px; margin-right: 12px; cursor: pointer; color: var(--text); }
+.bg-check:has(input:disabled) { color: var(--text-muted); cursor: default; }
+.bg-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--indigo, #4F46E5); }
+.bg-all {
+  height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); font: inherit; font-size: 12px; color: var(--text); cursor: pointer;
+}
+.bg-all:hover:not(:disabled) { border-color: var(--border-strong); }
+.bg-all:disabled { opacity: 0.5; cursor: default; }
+.bg-all--go { border-color: var(--accent-strong); background: var(--accent-strong); color: #fff; font-weight: 600; }
+
+/* Évaluation : une seule case pour tout le niveau */
+.bg-eval { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; white-space: normal; }
+.bg-eval__sep { margin-left: 10px; padding-left: 14px; border-left: 1px solid var(--border-strong); }
+.bg-eval__warn { flex: 1; min-width: 260px; color: var(--accent-ink); font-weight: 600; line-height: 1.4; }
