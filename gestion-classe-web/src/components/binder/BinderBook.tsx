@@ -19,7 +19,8 @@ import { BookOpen, ChevronLeft, ChevronRight, Columns2, List, RectangleVertical,
 import { SECTION_LABEL, SECTION_ORDER, binderToc, dividerIndex, sectionAt, spreadOf, turn, type BinderPage, type BinderSection } from '../../lib/binder';
 import { turnDirection } from '../../lib/binderFlaps';
 import { planFlip } from '../../lib/binderFlip';
-import { INK_WIDTH_MM } from '../../lib/binderSummary';
+import { bilanPrintPages, printPages } from '../../lib/binderPrint';
+import { INK_WIDTH_MM, summaryAt } from '../../lib/binderSummary';
 import { COL_W, MARGIN, MM, PAGE_H, PAGE_W } from '../../lib/course/coursePage';
 import { BinderLeaf, GLUE_FROM_HOLES } from './BinderLeaf';
 import { PageFlip, type FlipView } from './PageFlip';
@@ -238,6 +239,12 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   const aliveTo = shown.length ? Math.min(count - 1, Math.max(...shown) + reach) : -1;
   const alive = Array.from({ length: aliveTo - aliveFrom + 1 }, (_, k) => aliveFrom + k);
 
+  /** Imprime le bilan écrit sur la page `i`, en entier : il peut continuer sur les pages suivantes. */
+  const printBilan = (i: number) => {
+    const bilan = summaryAt(pages, i);
+    if (bilan) printPages(bilanPrintPages(bilan.title, bilan.lines), `Bilan — ${bilan.title}`);
+  };
+
   const toc = useMemo(() => binderToc(pages), [pages]);
   const visible = new Set([leftIdx, rightIdx].filter((i): i is number => i !== null));
 
@@ -353,7 +360,7 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
                           className={`bd-slot bd-slot--${side} ${veiled?.(page) ? 'bd-slot--veiled' : ''}`}
                           style={{ left: slotX(side), width: PAGE_W, height: PAGE_H, visibility: i === leftIdx || i === rightIdx ? 'visible' : 'hidden' }}
                         >
-                          <BinderLeaf page={page} side={side} onOpen={onOpen} inkClosed={inkClosed?.(page)} student={student} />
+                          <BinderLeaf page={page} side={side} onOpen={onOpen} inkClosed={inkClosed?.(page)} student={student} onPrintBilan={() => printBilan(i)} />
                         </div>
                       );
                     })}

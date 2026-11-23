@@ -344,3 +344,34 @@ export function withSummaries(
   orphans(current);
   return out;
 }
+
+/**
+ * Le bilan écrit sur la page `index`, en entier (pour l'imprimer) : ses lignes sous la fiche, puis
+ * celles qui continuent en haut de la feuille de documents ou sur des feuilles de lignes. `index`
+ * peut être n'importe laquelle de ces pages. Null : la page ne porte pas de bilan.
+ */
+export function summaryAt(pages: BinderPage[], index: number): { title: string; lines: InkLine[] } | null {
+  const page = pages[index];
+  if (!page || page.kind === 'divider') return null;
+  let start = index;
+  if (page.kind === 'ruled') {
+    const continued = /^(.*):bilan:\d+$/.exec(page.key);
+    if (!continued) {
+      // Bilan d'une activité sans fiche : ses feuilles de lignes se suivent, sous la même clé
+      const prefix = page.key.slice(0, page.key.lastIndexOf(':') + 1);
+      const group = pages.filter((p): p is Extract<BinderPage, { kind: 'ruled' }> => p.kind === 'ruled' && p.key.startsWith(prefix) && !/:bilan:\d+$/.test(p.key));
+      return { title: group[0]?.heading ?? page.label, lines: group.flatMap((p) => p.lines) };
+    }
+    start = pages.findIndex((p) => p.key === continued[1]);
+  } else if (!page.summary && page.above) {
+    // Fin du bilan, écrite au-dessus de la feuille de documents : il commence sur la page d'avant
+    start = index - 1;
+  }
+  const first = pages[start];
+  if (!first || first.kind !== 'sheet' || !first.summary) return null;
+  const lines = [...first.summary];
+  const next = pages[start + 1];
+  if (next?.kind === 'sheet' && next.above) lines.push(...next.above);
+  for (const p of pages) if (p.kind === 'ruled' && p.key.startsWith(`${first.key}:bilan:`)) lines.push(...p.lines);
+  return { title: first.heading ?? first.board.title, lines };
+}
