@@ -23,6 +23,23 @@
 
 ---
 
+## 0 bis. Relecture du 24/11/2026, avant le lot 3
+
+Le code a beaucoup bougé depuis septembre (emploi du temps Pronote, tableaux par cours, TP en îlots,
+scan des copies). Constats et décisions avec Thomas :
+
+| # | Constat | Décision |
+|---|---------|----------|
+| 1 | L'emploi du temps connaît déjà le demi-groupe de chaque cours (« 3°AP1 » à 14h40, « 3°AP2 » à 13h40 le même jour) via `timetable_label_links.group_id` (migration 043). L'alternance devine ce que Pronote sait. | **Proposition d'après l'emploi du temps** : cours de la classe dont le début est dans [maintenant - 50 min, + 30 min] (même fenêtre que les notes de cours), son groupe relié, ou « Classe entière ». **Alternance en secours** (hors ligne, libellé non relié). Jamais imposé. `utils/lessonGroup.ts` (mobile) et `lib/lessonGroup.ts` (web), testés. |
+| 2 | Seule la 3A avait ses libellés reliés : la 3D avait mémorisé « pas de groupe » avant la création de ses groupes, et `buildLinks` garde les correspondances mémorisées telles quelles. | `completeMissingGroup` (`labelMatching.ts`) complète un demi-groupe mémorisé sans groupe quand la classe a un groupe au bon numéro, à l'import comme à l'affichage (`resolveLabel`). 3°DP1 / 3°DP2 reliés en base le 24/11. 3B, 3C, 3E n'ont pas de groupes ; la 5E a des groupes sans cours en demi-groupe dans Pronote (alternance ou choix à la main). |
+| 3 | `/classe` (écran projeté) chargeait toute la classe et le plan entier. | Roster appliqué aussi sur `/classe` ; le tableau préparé du bon demi-groupe suit déjà `sessions.group_id` (`findLessonBoardForSession`). |
+| 4 | La séance mobile a grossi (TP en îlots, scan des copies, étiquettes) mais tout part de la liste `students`. | `students` = `roster.students` : présents, tirage au sort, non évalués, formation des groupes de TP suivent. Grille et plan du TP lisent `roster.positions`. La photo de placement d'une éval est filtrée par les membres du groupe. |
+| 5 | Plus aucune fausse salle « Groupe 1 / Groupe 2 » en base. | §8 sans objet. |
+| 6 | Aucun plan de groupe en base, éditeurs sans sélecteur de groupe. | Lot 4 inchangé. En attendant, le plan de la classe entière s'affiche filtré (places vides pour l'autre groupe). |
+| 7 | Séance web (accueil) peu utilisée. | Pas d'étape séparée : pastilles « Classe entière / G1 / G2 » en tête de l'écran de choix de salle, même proposition que sur mobile. |
+
+---
+
 ## 1. Décisions prises (17/09/2026)
 
 | Sujet | Décision |
@@ -308,7 +325,7 @@ les supprimer : `sessions.room_id ON DELETE CASCADE` effacerait leurs séances.
 |-----|---------|----------|
 | **1 · Socle** ✅ 17/09/2026 | Migration 037 appliquée en prod (RLS vérifiée), SQLite v15, types, `utils/sessionRoster.ts` (+ jumeau web `lib/sessionRoster.ts`, 16 tests), `lib/classGroupQueries.ts`, `services/database/classGroupRepository.ts`, sync push/pull des groupes, membres et plans de groupe, `sessions.group_id` dans push/pull, `fetchSeatingPlan`/`createSession` web avec `groupId` optionnel. | Base prête, aucune UI. `tsc` mobile et `tsc -b` web au vert, 113 tests Jest. Le round-trip réel web → mobile → web se vérifie au lot 2 (première UI qui écrit). |
 | **2 · Répartition** ✅ 17/09/2026 | Web : `components/class-groups/GroupSplitter.tsx` (modale depuis la barre latérale de Classes, bouton « Groupes de classe »), glisser-déposer entre colonnes, sélection + « Déplacer vers », échange 1 ↔ 1, équilibrer, auto-split, création depuis un plan de salle, annulation. Mobile : `stores/classGroupStore.ts`, écran `classes/[id]/groups.tsx` (tap = changement de groupe à 2 groupes, appui long = sélection, sheets création/édition/auto-split/import), section « Groupes » dans la fiche classe. Palette partagée `classGroupColors` (clé, pas hex). | `tsc` mobile et `tsc -b` web au vert, ESLint web propre sur les nouveaux fichiers. **À vérifier sur téléphone** : round-trip web → mobile → web (première UI qui écrit). |
-| **3 · Séance** | Étape Groupe dans `start.tsx` + alternance, roster dans `session/[id].tsx`, badge historique, `LiveSessionContext` + `ClassGroupPicker`, `Classroom.tsx`, `Sessions.tsx`. | Séance en demi-groupe de bout en bout, TBI compris. |
+| **3 · Séance** ✅ codé le 24/11/2026 (voir §0 bis) | Mobile : étape Groupe dans `start.tsx` (emploi du temps puis alternance), `sessionStore.startSession(..., groupId)`, roster dans `session/[id].tsx` + badge, historique. Web : pastilles de groupe dans `RoomSelector` (`LiveSessionContext`), roster sur `Classroom.tsx`, `Sessions.tsx`, `completeMissingGroup`. | Séance en demi-groupe de bout en bout, TBI compris. **À vérifier sur téléphone** (nouvel APK nécessaire). |
 | **4 · Plans par groupe** | Sélecteur de groupe dans les deux éditeurs de plan, copie depuis le plan entier. | Les fausses salles ne servent plus. |
 | **5 · Nettoyage** | Transfert d'élève, APK + build EAS hors OneDrive, migration du bricolage de Thomas. | Livraison. |
 

@@ -5,7 +5,10 @@ import { DB } from './directionB';
 import { FlowHeader, SectionLabel } from './FlowHeader';
 
 export function SessionNameInput() {
-  const { selectedClass, selectedRoom, loading, startSession, goBack, cancelFlow } = useLiveSession();
+  const { selectedClass, selectedRoom, loading, startSession, goBack, cancelFlow, classGroups, selectedGroupId } = useLiveSession();
+  const groupName = classGroups.length > 0
+    ? classGroups.find(g => g.id === selectedGroupId)?.name ?? 'Classe entière'
+    : null;
   const [topic, setTopic] = useState('');
 
   const handleStart = () => {
@@ -16,7 +19,7 @@ export function SessionNameInput() {
     <div className="flex flex-col h-full" style={{ background: DB.background }}>
       <FlowHeader
         title="Nouvelle séance"
-        subtitle={`${selectedClass?.name} · ${selectedRoom?.name}`}
+        subtitle={[selectedClass?.name, groupName, selectedRoom?.name].filter(Boolean).join(' · ')}
         onBack={goBack}
         onCancel={cancelFlow}
       />
@@ -24,7 +27,7 @@ export function SessionNameInput() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
         <div className="flex items-baseline justify-between">
-          <SectionLabel>3 · Thème de la séance</SectionLabel>
+          <SectionLabel>{classGroups.length > 0 ? 4 : 3} · Thème de la séance</SectionLabel>
           <span style={{ fontSize: 12, color: DB.textTertiary }}>Optionnel</span>
         </div>
         <textarea

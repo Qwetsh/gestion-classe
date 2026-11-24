@@ -13,6 +13,7 @@ import {
   matchClass,
   matchGroup,
   normalizeLabel,
+  resolveLabel,
   suggestLink,
 } from '../timetable/labelMatching';
 
@@ -230,6 +231,21 @@ describe('correspondance libellé → classe / groupe', () => {
       { label: '6D', classId: null, groupId: null, ignored: true },
       { label: '3°AP1', classId: 'c3a', groupId: 'g3a1', ignored: false },
     ]);
+  });
+
+  it('complète le groupe d’un demi-groupe mémorisé avant la création des groupes', () => {
+    const saved = [
+      { label: '3°AP1', classId: 'c3a', groupId: null, ignored: false }, // mémorisé sans groupe
+      { label: '3A', classId: 'c3a', groupId: null, ignored: false },    // classe entière : inchangé
+    ];
+    const links = buildLinks([label('3°AP1', '3A'), label('3A', '3A')], saved, classes, groups);
+    expect(links).toEqual([
+      { label: '3°AP1', classId: 'c3a', groupId: 'g3a1', ignored: false },
+      { label: '3A', classId: 'c3a', groupId: null, ignored: false },
+    ]);
+    const map = new Map(saved.map(l => [l.label, l]));
+    expect(resolveLabel('3°AP1', null, map, classes, groups).groupId).toBe('g3a1');
+    expect(resolveLabel('3A', null, map, classes, groups).groupId).toBeNull();
   });
 
   it('regroupe et ordonne les libellés d’un import', () => {

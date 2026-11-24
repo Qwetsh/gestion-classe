@@ -29,6 +29,8 @@ import { courseScreens, fetchCourseDoc } from '../lib/course/courseDoc';
 import { sessionTab } from '../lib/boardTabs';
 import { createClassroomBus, type ClassroomBus } from '../lib/classroomBus';
 import { MAX_ACTIVE_SESSION_MS, fetchActiveSession, type ActiveSession } from '../lib/activeSession';
+import { fetchClassGroups, fetchMemberIds } from '../lib/classGroupQueries';
+import { resolveSessionRoster } from '../lib/sessionRoster';
 import {
   fetchLessonBoardByBoardId, findLessonBoardForSession, type LessonBoard,
 } from '../lib/timetable/lessonBoardsQueries';
@@ -93,6 +95,7 @@ export function Classroom() {
 
   const [session, setSession] = useState<ActiveSession | null>(null);
   const [className, setClassName] = useState('');
+  const [groupName, setGroupName] = useState<string | null>(null);
   const [room, setRoom] = useState<RoomInfo | null>(null);
   const [students, setStudents] = useState<StudentInfo[]>([]);
   const [positions, setPositions] = useState<Record<string, string>>({});
@@ -185,7 +188,10 @@ export function Classroom() {
     let cancelled = false;
     (async () => {
       try {
-        const [cls, rm, sts, pos, evs] = await Promise.all([
+        // Demi-groupe : seuls ses élèves (et leurs places) apparaissent ; un groupe supprimé
+        // depuis retombe sur la classe entière.
+        const groupId = session.group_id ?? null;
+        const [cls, rm, sts, pos, evs, groups, memberIds] = await Promise.all([
           supabase.from('classes').select('name').eq('id', session.class_id).single(),
           supabase
             .from('rooms')
@@ -193,14 +199,25 @@ export function Classroom() {
             .eq('id', session.room_id)
             .single(),
           fetchStudentsForClass(session.class_id),
-          fetchSeatingPlan(session.class_id, session.room_id),
+          fetchSeatingPlan(session.class_id, session.room_id, groupId),
           fetchEventsForSession(session.id),
+          groupId ? fetchClassGroups(session.class_id).catch(() => []) : Promise.resolve([]),
+          groupId ? fetchMemberIds(groupId).catch(() => []) : Promise.resolve([] as string[]),
         ]);
         if (cancelled) return;
+        const group = groupId ? groups.find((g) => g.id === groupId) ?? null : null;
+        const roster = resolveSessionRoster({
+          classStudents: sts,
+          groupId: group ? group.id : null,
+          memberIds,
+          // fetchSeatingPlan a déjà choisi le plan du groupe ou, à défaut, celui de la classe
+          classPlanPositions: pos,
+        });
         setClassName(cls.data?.name ?? '');
+        setGroupName(group?.name ?? null);
         setRoom((rm.data as RoomInfo | null) ?? null);
-        setStudents(sts);
-        setPositions(pos);
+        setStudents(roster.students);
+        setPositions(roster.positions);
         setEvents(evs);
       } catch (err) {
         console.error('[Classroom] load session context:', err);
@@ -494,7 +511,10 @@ export function Classroom() {
         <>
           <header className="classroom__header">
             <div>
-              <div className="classroom__class">{className || '…'}</div>
+              <div className="classroom__class">
+                {className || '…'}
+                {groupName ? ` · ${groupName}` : ''}
+              </div>
               {session.topic && <div className="classroom__topic">{session.topic}</div>}
             </div>
             <div className="classroom__meta">

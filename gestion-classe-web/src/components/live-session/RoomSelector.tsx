@@ -1,10 +1,22 @@
 import { Check } from 'lucide-react';
 import { useLiveSession } from '../../contexts/LiveSessionContext';
+import { classGroupColor } from '../../lib/classGroupColors';
 import { DB } from './directionB';
 import { FlowHeader, SectionLabel } from './FlowHeader';
 
 export function RoomSelector() {
-  const { rooms, selectedClass, selectedRoom, loading, error, selectRoom, goBack, cancelFlow } = useLiveSession();
+  const {
+    rooms, selectedClass, selectedRoom, loading, error, selectRoom, goBack, cancelFlow,
+    classGroups, groupMemberCounts, selectedGroupId, groupHint, selectGroup,
+  } = useLiveSession();
+  const hasGroups = classGroups.length > 0;
+  const chip = (selected: boolean, main: string) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    padding: '10px 16px', borderRadius: 999, fontSize: 15, fontWeight: 600,
+    border: `1px solid ${selected ? main : DB.border}`,
+    background: selected ? main : DB.surface,
+    color: selected ? '#fff' : DB.text,
+  });
 
   return (
     <div className="flex flex-col h-full" style={{ background: DB.background }}>
@@ -17,7 +29,31 @@ export function RoomSelector() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
-        <SectionLabel>2 · Choisir une salle</SectionLabel>
+        {/* Groupe de classe (demi-groupe), seulement si la classe en a */}
+        {hasGroups && (
+          <div style={{ marginBottom: 20 }}>
+            <SectionLabel>2 · Groupe</SectionLabel>
+            <div className="flex flex-wrap" style={{ gap: 8 }}>
+              <button onClick={() => selectGroup(null)} style={chip(selectedGroupId === null, DB.primary)}>
+                Classe entière
+              </button>
+              {classGroups.map((g, index) => {
+                const color = classGroupColor(g.color, index);
+                const selected = selectedGroupId === g.id;
+                return (
+                  <button key={g.id} onClick={() => selectGroup(g.id)} style={chip(selected, color.main)}>
+                    <span style={{ width: 10, height: 10, borderRadius: 5, background: selected ? '#fff' : color.main }} />
+                    {g.name}
+                    <span style={{ fontWeight: 400, fontSize: 13, opacity: 0.8 }}>{groupMemberCounts[g.id] ?? 0}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {groupHint && <p style={{ fontSize: 12.5, color: DB.textTertiary, marginTop: 8 }}>{groupHint}</p>}
+          </div>
+        )}
+
+        <SectionLabel>{hasGroups ? 3 : 2} · Choisir une salle</SectionLabel>
 
         {error && (
           <div

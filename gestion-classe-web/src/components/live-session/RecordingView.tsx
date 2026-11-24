@@ -38,8 +38,9 @@ export function RecordingView() {
     startedAt, notes, loading, error, activeSorties, oralEvaluations,
     addEvent, removeLastEvent, deleteEventById, endSession, cancelSessionAction,
     minimize, updateNotes, markReturn, addOralEvaluation, resetOralEvaluations,
-    getAbsentStudentIds, getStudentWithSortie,
+    getAbsentStudentIds, getStudentWithSortie, classGroups, selectedGroupId,
   } = useLiveSession();
+  const sessionGroupName = classGroups.find(g => g.id === selectedGroupId)?.name ?? null;
   const { confirm: showConfirm } = useUIFeedback();
 
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
@@ -279,7 +280,9 @@ export function RecordingView() {
         </button>
         <div className="flex-1 min-w-0 text-center">
           <div className="truncate" style={{ fontSize: 15, fontWeight: 700, color: DB.text }}>
-            {selectedClass?.name}{selectedRoom ? ` · ${selectedRoom.name}` : ''}
+            {selectedClass?.name}
+            {sessionGroupName ? ` · ${sessionGroupName}` : ''}
+            {selectedRoom ? ` · ${selectedRoom.name}` : ''}
           </div>
           <SessionTimer startedAt={startedAt} />
         </div>

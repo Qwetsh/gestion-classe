@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   fetchClassesForUser,
@@ -22,6 +22,14 @@ import {
   type SessionEvent,
   type OralEvaluation,
 } from '../lib/liveSessionQueries';
+import {
+  fetchClassGroups,
+  fetchGroupMembers,
+  fetchLastGroupIdForClass,
+  type ClassGroupInfo,
+} from '../lib/classGroupQueries';
+import { nextGroupForClass, resolveSessionRoster } from '../lib/sessionRoster';
+import { fetchLessonGroupFor } from '../lib/lessonGroup';
 
 export type LiveSessionStep = 'idle' | 'select-class' | 'select-room' | 'session-name' | 'recording';
 
@@ -37,6 +45,14 @@ interface LiveSessionState {
   rooms: RoomInfo[];
   selectedClass: ClassInfo | null;
   selectedRoom: RoomInfo | null;
+  /** Groupes de classe (demi-groupes) de la classe choisie ; vide = pas d'étape Groupe */
+  classGroups: ClassGroupInfo[];
+  /** Effectif de chaque groupe (groupId -> nombre d'élèves) */
+  groupMemberCounts: Record<string, number>;
+  /** Groupe de la séance ; null = classe entière */
+  selectedGroupId: string | null;
+  /** D'où vient la proposition (« D'après l'emploi du temps (3°AP1) ») ; null après un choix manuel */
+  groupHint: string | null;
   students: StudentInfo[];
   positions: Record<string, string>; // "row-col" -> studentId
   sessionId: string | null;
@@ -53,6 +69,7 @@ interface LiveSessionActions {
   startFlow: () => void;
   selectClass: (cls: ClassInfo) => void;
   selectRoom: (room: RoomInfo) => void;
+  selectGroup: (groupId: string | null) => void;
   goBack: () => void;
   startSession: (topic?: string) => void;
   addEvent: (studentId: string, type: string, subtype?: string | null, note?: string | null, photo?: File | null) => void;
@@ -80,6 +97,10 @@ const initialState: LiveSessionState = {
   rooms: [],
   selectedClass: null,
   selectedRoom: null,
+  classGroups: [],
+  groupMemberCounts: {},
+  selectedGroupId: null,
+  groupHint: null,
   students: [],
   positions: {},
   sessionId: null,
@@ -95,6 +116,9 @@ const initialState: LiveSessionState = {
 export function LiveSessionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [state, setState] = useState<LiveSessionState>(initialState);
+  // Proposition de groupe : un choix manuel l'emporte ; une proposition périmée (autre classe) est jetée
+  const groupTouchedRef = useRef(false);
+  const groupRequestRef = useRef(0);
 
   const startFlow = useCallback(async () => {
     if (!user) return;
@@ -109,14 +133,44 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
 
   const selectClass = useCallback(async (cls: ClassInfo) => {
     if (!user) return;
-    setState(s => ({ ...s, selectedClass: cls, step: 'select-room', loading: true, error: null }));
+    const request = ++groupRequestRef.current;
+    const isCurrent = () => groupRequestRef.current === request;
+    groupTouchedRef.current = false;
+    setState(s => ({
+      ...s, selectedClass: cls, step: 'select-room', loading: true, error: null,
+      classGroups: [], groupMemberCounts: {}, selectedGroupId: null, groupHint: null,
+    }));
     try {
-      const rooms = await fetchRoomsForUser(user.id);
-      setState(s => ({ ...s, rooms, loading: false }));
+      const [rooms, groups, members] = await Promise.all([
+        fetchRoomsForUser(user.id),
+        fetchClassGroups(cls.id).catch(() => [] as ClassGroupInfo[]),
+        fetchGroupMembers(cls.id).catch(() => []),
+      ]);
+      if (!isCurrent()) return;
+      const counts: Record<string, number> = {};
+      for (const m of members) counts[m.group_id] = (counts[m.group_id] || 0) + 1;
+      setState(s => ({ ...s, rooms, classGroups: groups, groupMemberCounts: counts, loading: false }));
+      if (groups.length === 0) return;
+
+      // Proposition : alternance avec la dernière séance en groupe, puis emploi du temps s'il répond
+      const lastGroupId = await fetchLastGroupIdForClass(cls.id).catch(() => null);
+      const alternated = nextGroupForClass(groups, lastGroupId);
+      if (!isCurrent() || groupTouchedRef.current) return;
+      if (alternated) {
+        setState(s => ({ ...s, selectedGroupId: alternated, groupHint: 'Proposé en alternance avec la dernière séance en groupe' }));
+      }
+      const lesson = await fetchLessonGroupFor(cls.id, new Date(), groups.map(g => g.id));
+      if (!lesson || !isCurrent() || groupTouchedRef.current) return;
+      setState(s => ({ ...s, selectedGroupId: lesson.groupId, groupHint: `D'après l'emploi du temps (${lesson.label})` }));
     } catch {
-      setState(s => ({ ...s, error: 'Erreur de chargement des salles', loading: false }));
+      if (isCurrent()) setState(s => ({ ...s, error: 'Erreur de chargement des salles', loading: false }));
     }
   }, [user]);
+
+  const selectGroup = useCallback((groupId: string | null) => {
+    groupTouchedRef.current = true;
+    setState(s => ({ ...s, selectedGroupId: groupId, groupHint: null }));
+  }, []);
 
   const selectRoom = useCallback(async (room: RoomInfo) => {
     if (!state.selectedClass) return;
@@ -125,7 +179,10 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
 
   const goBack = useCallback(() => {
     setState(s => {
-      if (s.step === 'select-room') return { ...s, step: 'select-class', selectedClass: null };
+      if (s.step === 'select-room') {
+        groupRequestRef.current++;
+        return { ...s, step: 'select-class', selectedClass: null, classGroups: [], groupMemberCounts: {}, selectedGroupId: null, groupHint: null };
+      }
       if (s.step === 'session-name') return { ...s, step: 'select-room', selectedRoom: null };
       return s;
     });
@@ -134,12 +191,21 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
   const startSession = useCallback(async (topic?: string) => {
     if (!user || !state.selectedClass || !state.selectedRoom) return;
     setState(s => ({ ...s, loading: true, error: null }));
+    const groupId = state.classGroups.some(g => g.id === state.selectedGroupId) ? state.selectedGroupId : null;
     try {
-      const [sessionId, students, positions] = await Promise.all([
-        createSession(user.id, state.selectedClass.id, state.selectedRoom.id, topic),
+      const [sessionId, classStudents, plan, members] = await Promise.all([
+        createSession(user.id, state.selectedClass.id, state.selectedRoom.id, topic, groupId),
         fetchStudentsForClass(state.selectedClass.id),
-        fetchSeatingPlan(state.selectedClass.id, state.selectedRoom.id),
+        fetchSeatingPlan(state.selectedClass.id, state.selectedRoom.id, groupId),
+        groupId ? fetchGroupMembers(state.selectedClass.id) : Promise.resolve([]),
       ]);
+      // Demi-groupe : seuls ses élèves (et leurs places) dans la grille et les listes
+      const { students, positions } = resolveSessionRoster({
+        classStudents,
+        groupId,
+        memberIds: members.filter(m => m.group_id === groupId).map(m => m.student_id),
+        classPlanPositions: plan,
+      });
       const now = new Date().toISOString();
       // Load oral evaluations for this class
       let oralEvaluations: OralEvaluation[] = [];
@@ -152,7 +218,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
     } catch {
       setState(s => ({ ...s, error: 'Erreur lors du demarrage de la seance', loading: false }));
     }
-  }, [user, state.selectedClass, state.selectedRoom]);
+  }, [user, state.selectedClass, state.selectedRoom, state.classGroups, state.selectedGroupId]);
 
   const addEvent = useCallback(async (
     studentId: string,
@@ -350,6 +416,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
         startFlow,
         selectClass,
         selectRoom,
+        selectGroup,
         goBack,
         startSession,
         addEvent,
