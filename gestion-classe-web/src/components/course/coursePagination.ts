@@ -364,7 +364,7 @@ function measureTable(view: EditorView, node: PMNode, pos: number, el: HTMLEleme
 export function measureUnits(view: EditorView): Unit[] {
   const dom = view.dom as HTMLElement;
   const domTop = dom.getBoundingClientRect().top;
-  // Largeur exacte avant zoom (offsetWidth est arrondi au px : 605 pour 604,72, soit ≈ 0,5 px
+  // Largeur exacte avant zoom (offsetWidth est arrondi au px : 681 pour 680,7, soit ≈ 0,3 px
   // de dérive par page)
   const layoutW = parseFloat(getComputedStyle(dom).width) || dom.offsetWidth;
   const scale = layoutW ? dom.getBoundingClientRect().width / layoutW : 1;

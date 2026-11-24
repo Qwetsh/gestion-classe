@@ -121,13 +121,13 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - `Image(fichier, page_entiere=True)` : une **page A4 déjà mise en page** (feuille de documents
   convertie depuis Word, page d'un PDF) occupe toute la feuille, marges comprises, seule sur sa
   page : elle s'imprime à sa taille réelle. Sans ce réglage, la page est réduite dans la colonne de
-  16 cm et ses propres marges s'ajoutent aux 2,5 cm du cours (retour de Thomas, 24/11/2026).
+  18 cm et ses propres marges s'ajoutent aux 1,5 cm du cours (retour de Thomas, 24/11/2026).
   Une image par page, sans `SautDePage()` entre elles (la pagination s'en charge).
 
 **Tableaux** :
 
 - `Tableau(Ligne(Cellule(blocs, [largeurs px], lignes=rowspan, fond, milieu)), style)` ;
-- `largeurs(*parts)` : des largeurs dont la somme fait la colonne (605 px) ;
+- `largeurs(*parts)` : des largeurs dont la somme fait la colonne (680 px) ;
 - `TableauSimple(entetes, lignes)` ;
 - `TableauCompetences([(question, points, compétence), …])` : le tableau questions → compétences
   d'une évaluation (§ 3), domaines du socle et total compris.
@@ -203,10 +203,13 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 - alignement à gauche, consignes décomposées, verbes d'action en gras ;
 - ne pas réduire la taille ou l'interligne pour faire tenir une fiche : raccourcir le texte.
 
-Thème `fiche`, première page sans en-tête ni pied. Les marges sont fixes (2,5 cm), donc la colonne
-fait 16 cm : il faut rester concis. Avec le cartouche, une fiche de plus de **200 mots environ**
-passe sur deux pages (estimation du 22/11/2026, à recaler sur la première fiche affichée ; en
-Arial 11, la limite était de 300 mots) : raccourcir ou prévenir Thomas.
+Thème `fiche`, première page sans en-tête ni pied. Les marges sont fixes : **1,5 cm** depuis le
+24/11/2026 (Thomas : « 1,5 cm suffit, et on gagnerait beaucoup de place » ; 2,5 cm avant), donc la
+colonne fait 18 cm (680 px). Avec le cartouche, une fiche de plus de **250 mots environ** passe sur
+deux pages (estimation du 24/11/2026 : 200 mots avec les marges de 2,5 cm, surface utile + 20 %,
+à recaler sur la première fiche affichée) : raccourcir ou prévenir Thomas. Les cours écrits avant
+gardent leur texte ; leurs tableaux pleine largeur (cartouche compris) sont élargis à 18 cm par
+l'éditeur à l'ouverture, les autres tableaux et les images gardent leur taille.
 
 Pour un **cours** (trace écrite) :
 
@@ -370,7 +373,7 @@ cd <dépôt>/gestion-classe-web && npm run course:check
 ```
 
 - Lire `course-drafts/<nom>.report.txt`. Il donne aussi la **longueur en mots** : au-delà de
-  200 mots environ, une fiche avec cartouche passe sur deux pages (§ 3).
+  250 mots environ, une fiche avec cartouche passe sur deux pages (§ 3).
 - La commande vérifie **tous** les brouillons du dossier et réécrit leurs rapports. Une ligne
   « 1 skipped » est normale : c'est le test « aucun brouillon », qui ne joue pas quand il y en a.
 - Corriger **toutes** les erreurs (✗) dans le script, régénérer et revérifier.

@@ -20,8 +20,9 @@ import tempfile
 
 from gc_animation import CHROME
 
-# Zone de texte d'une page A4 avec les marges de l'éditeur (16 × 24,7 cm) : un peu moins haut pour
-# laisser la ligne vide que l'éditeur ajoute après l'image.
+# Page dessinée pour l'ancienne zone de texte de l'éditeur (marges de 2,5 cm : 16 × 24,7 cm), un peu
+# moins haute pour laisser la ligne vide que l'éditeur ajoute après l'image. Posée à 15,2 cm de large,
+# elle tient aussi dans la zone actuelle (marges de 1,5 cm : 18 × 26,7 cm).
 LARGEUR, HAUTEUR = 605, 900
 ECHELLE = 3          # 1815 × 2700 px : net à l'impression
 

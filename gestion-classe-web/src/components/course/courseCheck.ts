@@ -39,7 +39,7 @@ export interface DraftReport {
   errors: string[];
   /** À relire : le cours s'ouvrira, mais pas tout à fait comme prévu. */
   warnings: string[];
-  /** Nombre de mots (repère de longueur : une fiche à cartouche tient sur une page jusqu'à 300 mots environ). */
+  /** Nombre de mots (repère de longueur : une fiche à cartouche tient sur une page jusqu'à 250 mots environ en Arial 12, marges de 1,5 cm). */
   words?: number;
 }
 

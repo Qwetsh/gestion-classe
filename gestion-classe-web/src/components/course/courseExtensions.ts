@@ -342,7 +342,7 @@ export const CourseImage = Image.extend({
       /**
        * Page entière (feuille de documents, page de PDF) : l'image occupe toute la feuille A4,
        * marges du cours comprises, seule sur sa page. Elle s'imprime à sa taille réelle au lieu
-       * d'être réduite dans la colonne de 16 cm.
+       * d'être réduite dans la colonne de 18 cm.
        */
       page: {
         default: false,
