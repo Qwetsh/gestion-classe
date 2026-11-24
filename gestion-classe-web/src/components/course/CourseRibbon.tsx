@@ -226,7 +226,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         rowHeight: (e.getAttributes('tableRow').minHeight ?? null) as number | null,
         onImage: e.isActive('image'),
         imageAlign: (e.getAttributes('image') as { align?: string }).align ?? 'center',
-        image: e.getAttributes('image') as { caption?: string | null; frame?: ImageFrame; alt?: string | null; rotate?: number; flip?: boolean; crop?: ImageCrop | null },
+        image: e.getAttributes('image') as { caption?: string | null; frame?: ImageFrame; alt?: string | null; rotate?: number; flip?: boolean; crop?: ImageCrop | null; page?: boolean },
         inColumns: !!findColumns(e.state),
         columnsLayout: ((findColumns(e.state)?.node.attrs.layout as ColumnsLayout | undefined) ?? '1-1'),
         onEncart: e.isActive('encart'),
@@ -1030,11 +1030,14 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 {[[25, 50], [75, 100]].map((row) => (
                   <div key={row[0]} className="ce-row">
                     {row.map((p) => (
-                      <Sm key={p} label={`${p} %`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100) })} />
+                      <Sm key={p} label={`${p} %`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100), page: false })} />
                     ))}
                   </div>
                 ))}
               </div>
+              <Big icon="fitPage" label="Page entière" on={!!s.image.page}
+                title="Toute la feuille A4, marges comprises, seule sur sa page : pour une feuille de documents ou une page de PDF déjà mise en page, qui s'imprime alors à sa taille réelle"
+                onClick={() => updateNode('image', { page: !s.image.page })} />
             </Group>
             <Group label="Légende">
               <Big icon="caption" label="Légende" title="Légende sous l'image, numérotée (« Document 1 : … »)" on={s.image.caption != null}

@@ -339,6 +339,16 @@ export const CourseImage = Image.extend({
         parseHTML: (el: HTMLElement) => { try { return JSON.parse(el.getAttribute('data-credit') || 'null'); } catch { return null; } },
         renderHTML: (a: { credit?: unknown }) => (a.credit ? { 'data-credit': JSON.stringify(a.credit) } : {}),
       },
+      /**
+       * Page entière (feuille de documents, page de PDF) : l'image occupe toute la feuille A4,
+       * marges du cours comprises, seule sur sa page. Elle s'imprime à sa taille réelle au lieu
+       * d'être réduite dans la colonne de 16 cm.
+       */
+      page: {
+        default: false,
+        parseHTML: (el: HTMLElement) => el.hasAttribute('data-page'),
+        renderHTML: (a: { page?: boolean }) => (a.page ? { 'data-page': '' } : {}),
+      },
     };
   },
   addNodeView() {

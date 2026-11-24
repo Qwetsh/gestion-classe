@@ -201,12 +201,17 @@ def Zone(style='lignes', lignes=4):
     return {'type': 'writingZone', 'attrs': {'style': style, 'lines': lignes}}
 
 
-def Image(fichier, largeur_cm=None, legende=None, alignement='center'):
+def Image(fichier, largeur_cm=None, legende=None, alignement='center', page_entiere=False):
     """Image du cours. Le fichier est envoyé dans l'application (jeton d'import, voir gc_envoi.py),
     puis cité par son chemin : une image déjà envoyée n'est pas renvoyée.
     largeur_cm : largeur affichée (sinon la largeur naturelle, plafonnée à la colonne de 16 cm).
-    legende : texte sous l'image. alignement : 'left', 'center' ou 'right'."""
+    legende : texte sous l'image. alignement : 'left', 'center' ou 'right'.
+    page_entiere : l'image est une page A4 déjà mise en page (feuille de documents convertie depuis
+    Word ou un PDF) : elle occupe toute la feuille, marges du cours comprises, seule sur sa page, et
+    s'imprime à sa taille réelle. largeur_cm, legende et alignement sont alors ignorés."""
     from gc_envoi import envoyer_image
+    if page_entiere:
+        return {'type': 'image', 'attrs': {'path': envoyer_image(fichier), 'page': True}}
     attrs = {'path': envoyer_image(fichier), 'align': alignement}
     if largeur_cm:
         attrs['width'] = int(round(min(largeur_cm, 16) * 96 / 2.54))

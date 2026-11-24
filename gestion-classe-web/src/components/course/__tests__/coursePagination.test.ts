@@ -178,3 +178,43 @@ describe('paragraphe qui se coupe (T15c)', () => {
   });
 });
 
+
+describe('image « page entière »', () => {
+  /** Une image page entière : haute de toute la page utile, sans marge. */
+  const page = (pos: number, top: number): Unit => ({ pos, top, h: CONTENT_H, mt: 0, mb: 0, type: 'image', page: true });
+  const unit = (pos: number, top: number, extra: Partial<Unit> = {}): Unit => ({ pos, top, h: 20, mt: 0, mb: 8, type: 'paragraph', ...extra });
+
+  it('trois pages à la suite : une par feuille, chacune en haut de sa page', () => {
+    const units = [page(0, 0), page(10, CONTENT_H), page(20, 2 * CONTENT_H)];
+    const l = paginate(units, SHEET_GAP);
+    expect(l.pages).toBe(3);
+    expect(l.spacers.map((s) => s.pos)).toEqual([10, 20]);
+    // La deuxième image commence pile en haut de la page 2
+    expect(CONTENT_H + l.spacers[0].h).toBeCloseTo(STRIDE, 5);
+  });
+
+  it('après du texte, la page entière part sur la feuille suivante', () => {
+    const l = paginate([unit(0, 0), page(10, 28)], SHEET_GAP);
+    expect(l.pages).toBe(2);
+    expect(l.spacers.map((s) => s.pos)).toEqual([10]);
+  });
+
+  it('le paragraphe vide qui termine le cours n’ajoute pas de page blanche', () => {
+    const l = paginate([page(0, 0), unit(10, CONTENT_H, { empty: true, mb: 0 })], SHEET_GAP);
+    expect(l.pages).toBe(1);
+    expect(l.spacers).toEqual([]);
+  });
+
+  it('un saut de page entre deux pages entières ne laisse pas de feuille vide', () => {
+    const units = [page(0, 0), unit(10, CONTENT_H, { type: 'pageBreak', mb: 0 }), page(20, CONTENT_H + 20), unit(30, 2 * CONTENT_H + 20, { empty: true, mb: 0 })];
+    const l = paginate(units, SHEET_GAP);
+    expect(l.pages).toBe(2);
+    expect(l.spacers.map((s) => s.pos)).toEqual([20]);
+  });
+
+  it('du texte écrit sous une page entière passe à la feuille suivante', () => {
+    const l = paginate([page(0, 0), unit(10, CONTENT_H), unit(20, CONTENT_H + 28, { empty: true })], SHEET_GAP);
+    expect(l.pages).toBe(2);
+    expect(l.spacers.map((s) => s.pos)).toEqual([10]);
+  });
+});
