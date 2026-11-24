@@ -103,7 +103,7 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 
 - `T(texte, gras, italique, souligne, couleur, taille, exposant, indice, surligne, police)` ;
 - `B()` (gras), `I()` (italique), `C(texte, couleur)` ;
-- `Pointilles(cm)` : pointillés de réponse ;
+- `Pointilles(cm)` : pointillés de réponse (pas sous les questions d'une fiche d'activité, § 3) ;
 - `Bareme(n)`, `TotalBareme()` : barème « / n », calé à droite ;
 - `Icone('Nom')` : voir `icones.md` (icônes Lucide, dessinées) ; **jamais d'émoji** (§ 3) ;
 - `Saut()` : retour à la ligne dans le paragraphe.
@@ -115,7 +115,8 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - `Titre(1|2|3, ...)` ;
 - listes : `Puces`, `Numeros`, `Cases` (cases à cocher) ;
 - `Encadre(..., type_, titre, couleur, bordure, titre_gras)`, et `EncadreFiche(titre, couleur, ...)` pour le cadre fin des fiches Word ;
-- `Zone(style, lignes)` : zone d'écriture Seyès, carreaux, lignes, pointillés ou blanc ;
+- `Zone(style, lignes)` : zone d'écriture Seyès, carreaux, lignes, pointillés ou blanc (pas sous les
+  questions d'une fiche d'activité, sauf cas précis, § 3) ;
 - `Colonnes([...], [...])`, `SautDePage()`, `Trait()` ;
 - `Image(fichier, largeur_cm, legende)` : envoie le fichier puis l'insère (demande le jeton d'import, § 5).
 - `Image(fichier, page_entiere=True)` : une **page A4 déjà mise en page** (feuille de documents
@@ -183,6 +184,13 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 3. Un `Rappel(...)` de méthode ou de vocabulaire, s'il est utile.
 4. `titre2('Questions')`, puis des `question(n, ...)` : « n. » en gras, verbes de consigne en gras,
    documents cités en gras (« **document 1** »).
+
+   **Pas de place pour écrire** (Thomas, 24/11/2026) : ni `Zone`, ni amorce à `Pointilles` sous
+   les questions. Les élèves écrivent leurs réponses à la suite, sur une feuille à part (comme en
+   évaluation). Seuls des cas précis gardent une place sur la fiche — un tableau ou un schéma à
+   compléter, un document à annoter — et on le dit à Thomas dans le plan. En convertissant une
+   fiche de OneDrive, ne pas reprendre ses zones ; ne pas toucher sans demande aux fiches déjà en
+   base qui en ont.
 5. `PourAllerPlusLoin(...)` : une question bonus.
 
    **Pas de tableau de coups de pouce** (encadré gris 🆘, indices en écriture miroir ou au
@@ -197,7 +205,7 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 
 - corps de l'élève (consignes, situation, questions, réponses) en **Arial 12, interligne 1,5** :
   c'est le défaut de `Cours`, `c.para()` et `Question` (`INTERLIGNE_ELEVE`) ; les zones d'écriture
-  (lignes de 8 mm) le respectent déjà ;
+  (lignes de 8 mm), dans les rares cas où il en faut une, le respectent déjà ;
 - encadrés (`Rappel`, `PourAllerPlusLoin`, `JaiReussi`) en **11 pt** (`TAILLE_ENCADRE`) ;
 - cartouche et ligne d'identité en 8-10 pt (lus une fois) ;
 - alignement à gauche, consignes décomposées, verbes d'action en gras ;
