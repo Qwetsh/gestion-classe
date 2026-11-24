@@ -118,6 +118,11 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - `Zone(style, lignes)` : zone d'écriture Seyès, carreaux, lignes, pointillés ou blanc ;
 - `Colonnes([...], [...])`, `SautDePage()`, `Trait()` ;
 - `Image(fichier, largeur_cm, legende)` : envoie le fichier puis l'insère (demande le jeton d'import, § 5).
+- `Image(fichier, page_entiere=True)` : une **page A4 déjà mise en page** (feuille de documents
+  convertie depuis Word, page d'un PDF) occupe toute la feuille, marges comprises, seule sur sa
+  page : elle s'imprime à sa taille réelle. Sans ce réglage, la page est réduite dans la colonne de
+  16 cm et ses propres marges s'ajoutent aux 2,5 cm du cours (retour de Thomas, 24/11/2026).
+  Une image par page, sans `SautDePage()` entre elles (la pagination s'en charge).
 
 **Tableaux** :
 

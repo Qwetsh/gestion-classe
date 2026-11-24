@@ -503,13 +503,17 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
         ed.view.pasteHTML(html);
         toast(`« ${file.name} » importé : relisez-le. Les couleurs, colonnes, zones de texte et en-têtes de Word ne sont pas repris.`, 'success');
       } else {
-        const blobs = await pdfToImages(file, (done, total) => setImporting(`PDF : page ${Math.min(done + 1, total)} sur ${total}…`));
+        const rendered = await pdfToImages(file, (done, total) => setImporting(`PDF : page ${Math.min(done + 1, total)} sur ${total}…`));
         const nodes = [];
-        for (let i = 0; i < blobs.length; i++) {
-          setImporting(`Envoi des pages : ${i + 1} sur ${blobs.length}…`);
-          const img = await uploadBoardImage(new File([blobs[i]], `page-${i + 1}.jpg`, { type: 'image/jpeg' }), userId, `board:${boardId}`);
-          // Bordure fine : le bord d'une page blanche reste visible sur la feuille
-          nodes.push({ type: 'image', attrs: { path: img.path, width: Math.round(COL_W), frame: 'border', alt: `${file.name}, page ${i + 1}` } });
+        for (let i = 0; i < rendered.length; i++) {
+          setImporting(`Envoi des pages : ${i + 1} sur ${rendered.length}…`);
+          const img = await uploadBoardImage(new File([rendered[i].blob], `page-${i + 1}.jpg`, { type: 'image/jpeg' }), userId, `board:${boardId}`);
+          const alt = `${file.name}, page ${i + 1}`;
+          // Page en portrait : déjà mise en page pour l'impression, elle prend toute la feuille A4.
+          // En paysage : dans la colonne, avec une bordure fine (le bord d'une page blanche reste visible).
+          nodes.push(rendered[i].portrait
+            ? { type: 'image', attrs: { path: img.path, page: true, alt } }
+            : { type: 'image', attrs: { path: img.path, width: Math.round(COL_W), frame: 'border', alt } });
         }
         const pos = at ?? ed.state.selection.to;
         // Une seule étape : un Ctrl+Z retire toutes les pages

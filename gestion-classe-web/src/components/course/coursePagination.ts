@@ -98,6 +98,10 @@ export interface Unit {
   row?: RowBreak;
   /** Paragraphe d'au moins quatre lignes : ses débuts de ligne, où on peut le couper (lot T15c). */
   lines?: LineStart[];
+  /** Image « page entière » : haute de toute la page utile, elle couvre aussi les marges. */
+  page?: boolean;
+  /** Paragraphe vide. */
+  empty?: boolean;
 }
 
 interface PaginationState { deco: DecorationSet; layout: PageLayout }
@@ -198,6 +202,7 @@ function collapsesThrough(cs: CSSStyleDeclaration, side: 'Top' | 'Bottom'): bool
 
 interface Measured {
   pos: number; anchor: HTMLElement; top: number; bottom: number; mt: number; mb: number; type: string; inBox: boolean; row?: RowBreak;
+  page?: boolean; empty?: boolean;
   /** Paragraphe long : débuts de ligne (hauts en px d'écran, déjà sans les intercalaires en ligne). */
   lines?: LineStart[];
   /** Hauteur (px d'écran) des intercalaires en ligne posés dans ce paragraphe. */
@@ -286,6 +291,8 @@ function measureNode(view: EditorView, node: PMNode, pos: number, el: HTMLElemen
     pos, anchor: el, top: r.top, bottom: r.bottom,
     mt: parseFloat(cs.marginTop) || 0, mb: parseFloat(cs.marginBottom) || 0, type: node.type.name, inBox,
   };
+  if (node.type.name === 'image' && node.attrs.page) self.page = true;
+  if (node.type.name === 'paragraph' && node.content.size === 0) self.empty = true;
   if (node.type.name === 'paragraph' && !inBox) {
     const found = measureLines(view, node, pos, el, scale);
     if (found) { self.lines = found.lines; self.inner = found.inner; }
@@ -388,6 +395,8 @@ export function measureUnits(view: EditorView): Unit[] {
       type: m.type,
       ...(m.inBox ? { inBox: true } : {}),
       ...(m.row ? { row: m.row } : {}),
+      ...(m.page ? { page: true } : {}),
+      ...(m.empty ? { empty: true } : {}),
       ...(m.lines ? { lines: m.lines.map((l) => ({ ...l, top: (l.top - domTop) / scale - removed })) } : {}),
     });
     removed += inner; // les unités suivantes sont décalées des intercalaires posés dans ce paragraphe
@@ -441,7 +450,10 @@ export function paginate(units: Unit[], gap: number): PageLayout {
       return cut;
     };
 
-    let placed = false;
+    // Juste sous une page entière, un saut de page ou le paragraphe vide qui termine le cours reste
+    // sur cette feuille (caché sous l'image) : renvoyé à la suivante, il imprimerait une page blanche
+    const afterPage = !!units[i - 1]?.page && !forceBreak;
+    let placed = afterPage && (u.type === 'pageBreak' || (!!u.empty && i === units.length - 1));
     if (u.lines && !forceBreak && top + h > pageTop + CONTENT_H + 0.5) placed = cutLines();
     if (!placed && prevBottom !== null) {
       const notFirstOnPage = top - mt > pageTop + 0.5;

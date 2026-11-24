@@ -46,6 +46,8 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
    - Source : `Fiche_eleve_….docx`, sinon le `.docx` élève le plus récent.
    - Les documents élève (feuille « Documents » à part, pages PDF jointes) vont dans un **cours
      à part**, même titre suivi de « (documents) », même niveau et même séquence, sans écrans.
+     Une page déjà mise en page (rendu de la feuille Word, page PDF) s'y pose avec
+     `Image(fichier, page_entiere=True)` : toute la feuille A4, à sa taille réelle à l'impression.
      Des documents mêlés aux questions sur la même feuille restent dans la fiche.
    - Les réponses viennent du `_CORRIGE.docx` ou du `corrigé`.
    - Une manipulation (matériel et protocole sur la fiche, ou fiche protocole sur Canva) donne une

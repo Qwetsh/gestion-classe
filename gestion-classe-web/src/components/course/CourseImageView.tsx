@@ -6,11 +6,13 @@
  * de tour (`rotate`), miroir (`flip`), cadre (`frame`) et légende (`caption`, numérotée par un
  * compteur CSS : « Document 1 : … »). Le fichier n'est jamais modifié : tout est affiché.
  * Lot T16b : crédit d'une image de la banque (`credit`), écrit en petit sous l'image.
+ * Page entière (`page`) : la feuille A4 complète, marges du cours comprises, pour une feuille de
+ * documents ou une page de PDF déjà mise en page (pas de légende, de rognage ni de poignée).
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { signedUrl } from '../../lib/boardMedia';
-import { COL_W } from '../../lib/course/coursePage';
+import { COL_W, PAGE_H, PAGE_W } from '../../lib/course/coursePage';
 import { IMAGE_CAPTION_EVENT, IMAGE_CROP_EVENT, type ImageCrop, type ImageFrame } from './courseImageTypes';
 
 const NO_CROP: ImageCrop = { t: 0, r: 0, b: 0, l: 0 };
@@ -21,10 +23,10 @@ type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 export function CourseImageView({ node, updateAttributes, selected }: NodeViewProps) {
-  const { path, src, alt, width, align, caption, crop, rotate, flip, frame, credit } = node.attrs as {
+  const { path, src, alt, width, align, caption, crop, rotate, flip, frame, credit, page } = node.attrs as {
     path: string | null; src: string | null; alt: string | null; width: number | null; align: 'left' | 'center' | 'right';
     caption: string | null; crop: ImageCrop | null; rotate: number; flip: boolean; frame: ImageFrame;
-    credit: { text: string; url: string } | null;
+    credit: { text: string; url: string } | null; page: boolean;
   };
   const [signed, setSigned] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -203,6 +205,34 @@ export function CourseImageView({ node, updateAttributes, selected }: NodeViewPr
 
   const ready = !!url && !failed;
   const frameClass = frame && frame !== 'none' ? `ce-img__box--${frame}` : '';
+
+  // ---- Page entière : la feuille A4 complète, marges comprises (feuille de documents, PDF) ----
+  if (page) {
+    // L'image tournée tient dans la feuille sans être déformée, centrée
+    const fit = natural ? Math.min(PAGE_W / rw, PAGE_H / rh) : 0;
+    const W = rw * fit;
+    const H = rh * fit;
+    return (
+      <NodeViewWrapper className={`ce-img ce-img--page ${selected ? 'is-selected' : ''}`} data-drag-handle="">
+        <div className="ce-img__page">
+          {!ready || !natural ? (
+            <>
+              <div className="ce-img__placeholder">{failed ? 'Image indisponible' : 'Chargement de l’image…'}</div>
+              {ready && (
+                <img src={url ?? undefined} alt="" draggable={false} style={{ position: 'absolute', width: 1, opacity: 0 }}
+                  onLoad={(e) => { const im = e.currentTarget; setNatural({ w: im.naturalWidth || 1, h: im.naturalHeight || 1 }); }}
+                  onError={() => setFailed(true)} />
+              )}
+            </>
+          ) : (
+            <div className="ce-img__frame" style={{ left: (PAGE_W - W) / 2, top: (PAGE_H - H) / 2, width: W, height: H }}>
+              {renderImg(W, H)}
+            </div>
+          )}
+        </div>
+      </NodeViewWrapper>
+    );
+  }
 
   let body: React.ReactNode;
   if (!ready) {
