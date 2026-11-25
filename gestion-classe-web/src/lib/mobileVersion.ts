@@ -1,0 +1,160 @@
+/**
+ * Version couleur au format téléphone d'un document imprimé : fonctions pures, sans accès à la base
+ * (la lecture et l'écriture des liens sont dans mobileVersionQueries.ts).
+ *
+ * Chaque document imprimé depuis l'éditeur de cours (fiche, documents, protocole…) porte, en haut à
+ * droite de sa première page, dans la marge, un QR code vers `/d/<jeton>` : la page publique qui
+ * montre le même document, en couleur, sur une colonne de téléphone. Le QR code n'est jamais écrit
+ * dans le document : il est posé par-dessus la feuille, seulement à l'impression.
+ *
+ * Les règles de ce qui peut sortir (jamais une correction ni une évaluation) sont partagées avec le
+ * serveur : supabase/functions/version-mobile/rules.ts.
+ */
+import QRCode from 'qrcode';
+import type { JSONContent } from '@tiptap/core';
+import { COL_W, MARGIN, MM } from './course/coursePage';
+import { MOBILE_TOKEN, mobileEligible } from '../../../supabase/functions/version-mobile/rules';
+
+export { MOBILE_TOKEN, mobileEligible };
+
+// ---------------------------------------------------------------------------------------------
+// Lien
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Jeton d'un lien : 20 caractères base64url (15 octets tirés au hasard, 120 bits : impossible à
+ * deviner). Assez court pour que l'adresse tienne dans un QR code de version 4 (33 × 33 modules) en
+ * correction M, lisible à 1,2 cm de côté.
+ */
+export function newMobileToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(15));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Adresse de la version téléphone : la plus courte possible (`/d/<jeton>`), pour un QR code lisible. */
+export function mobileUrl(token: string, origin: string = window.location.origin, base: string = import.meta.env.BASE_URL): string {
+  return `${origin}${base.replace(/\/$/, '')}/d/${token}`;
+}
+
+export interface CourseRef { id: string; title: string }
+
+/**
+ * Le document vers lequel pointe le QR code d'un cours imprimé : toujours l'original de la
+ * bibliothèque. Une copie posée pour une classe (`lesson_boards.source_board_id`) renvoie au lien de
+ * son original ; un original introuvable (supprimé depuis) laisse la copie servir elle-même.
+ * Pas de lien (null) si le cours imprimé ou son original est une correction ou une évaluation.
+ */
+export function mobileTarget(printed: CourseRef, original: CourseRef | null): string | null {
+  if (!mobileEligible(printed.title)) return null;
+  if (original && original.id !== printed.id) return mobileEligible(original.title) ? original.id : null;
+  return printed.id;
+}
+
+// ---------------------------------------------------------------------------------------------
+// QR code imprimé
+// ---------------------------------------------------------------------------------------------
+
+/** Écart entre le QR code et les bords de la feuille (3 mm). */
+export const QR_INSET = 3 * MM;
+/** Côté du QR code : entre 1,2 et 1,8 cm. */
+export const QR_MIN = 12 * MM;
+export const QR_MAX = 18 * MM;
+
+/**
+ * Taille et place du QR code (px CSS, comme la feuille) : dans la marge du haut, à 3 mm des bords,
+ * aussi grand que la marge le permet, entre 1,2 et 1,8 cm de côté. Marges de 2,5 cm : 1,8 cm ;
+ * marges de 1,5 cm : 1,2 cm (il occupe alors juste le coin de la feuille, hors de la colonne).
+ */
+export function qrBox(margin: number = MARGIN): { size: number; inset: number } {
+  return { size: Math.min(QR_MAX, Math.max(QR_MIN, margin - QR_INSET)), inset: QR_INSET };
+}
+
+/**
+ * Modules d'un QR code (correction M, pour résister à la photocopie), en un seul tracé SVG : un
+ * rectangle par suite de modules noirs d'une ligne. `size` : nombre de modules par côté, sans marge.
+ */
+export function qrModules(text: string): { size: number; version: number; path: string } {
+  const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
+  const { size, data } = qr.modules;
+  let path = '';
+  for (let r = 0; r < size; r++) {
+    let c = 0;
+    while (c < size) {
+      if (!data[r * size + c]) { c++; continue; }
+      let end = c;
+      while (end < size && data[r * size + end]) end++;
+      path += `M${c} ${r}h${end - c}v1h-${end - c}z`;
+      c = end;
+    }
+  }
+  return { size, version: qr.version, path };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Rendu sur le téléphone
+// ---------------------------------------------------------------------------------------------
+
+/** Largeur (px) à partir de laquelle une image prend toute la largeur du téléphone ; les plus petites (pictogrammes) gardent la leur. */
+export const PHONE_FULL_IMAGE = Math.round(COL_W * 0.4);
+
+const textOf = (n: JSONContent): string => n.text ?? (n.content ?? []).map(textOf).join(' ');
+
+/** Cartouche des fiches (gc_cours.py, Cartouche) : un tableau en tête de fiche, avec « Note : » et « Commentaire : ». */
+function isCartouche(n: JSONContent): boolean {
+  if (n.type !== 'table') return false;
+  const text = textOf(n);
+  return /\bNote\s*:/.test(text) && /Commentaire\s*:/.test(text);
+}
+
+const WHITE = /^(?:#f{3}(?:f{3})?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))$/i;
+
+/** Retire le texte blanc (bandeau de séquence sur fond sombre) : sans son fond, il serait invisible. */
+function withoutWhite(n: JSONContent): JSONContent {
+  const marks = n.marks?.map((m) => {
+    if (m.type !== 'textStyle' || typeof m.attrs?.color !== 'string' || !WHITE.test(m.attrs.color.trim())) return m;
+    const attrs = { ...m.attrs };
+    delete attrs.color;
+    return { ...m, attrs };
+  });
+  return { ...n, ...(marks ? { marks } : {}), ...(n.content ? { content: n.content.map(withoutWhite) } : {}) };
+}
+
+/**
+ * Le cartouche à plat, pour une colonne étroite : le titre, la séquence, la durée, la problématique,
+ * les objectifs, les uns sous les autres. Ce qui ne sert qu'au papier (note, commentaire, cercles
+ * des compétences, niveau seul dans sa case) est laissé de côté.
+ */
+function flatCartouche(table: JSONContent): JSONContent[] {
+  const out: JSONContent[] = [];
+  for (const row of table.content ?? []) {
+    for (const cell of row.content ?? []) {
+      const text = textOf(cell).replace(/\s+/g, ' ').trim();
+      if (text.length <= 3 || /^(?:Note|Commentaire)\s*:/i.test(text) || text.includes('○')) continue;
+      for (const block of cell.content ?? []) out.push(withoutWhite(block));
+    }
+  }
+  return out;
+}
+
+function phoneNode(n: JSONContent): JSONContent {
+  if (n.type === 'image' && !n.attrs?.page) {
+    const width = n.attrs?.width;
+    if (typeof width === 'number' && width < PHONE_FULL_IMAGE) return n;
+    return { ...n, attrs: { ...n.attrs, width: null } };
+  }
+  return n.content ? { ...n, content: n.content.map(phoneNode) } : n;
+}
+
+/**
+ * Le document tel qu'il se lit sur un téléphone : cartouche mis à plat (les trois premiers blocs),
+ * images à toute la largeur. Les encarts, zones d'écriture et pointillés ont déjà été retirés par le
+ * serveur.
+ */
+export function phoneContent(content: JSONContent): JSONContent {
+  const blocks: JSONContent[] = [];
+  (content.content ?? []).forEach((block, i) => {
+    if (i < 3 && isCartouche(block)) blocks.push(...flatCartouche(block));
+    else blocks.push(block);
+  });
+  return phoneNode({ ...content, content: blocks });
+}

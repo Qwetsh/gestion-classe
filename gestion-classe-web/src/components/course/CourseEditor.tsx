@@ -52,6 +52,9 @@ import { CourseImageSearch } from './CourseImageSearch';
 import { CourseClassWritings } from './CourseClassWritings';
 import { fetchCourseVersos, type ClassVerso } from '../../lib/boardVersos';
 import { MM } from '../../lib/course/coursePage';
+import { mobileEligible, mobileUrl } from '../../lib/mobileVersion';
+import { ensureMobileToken, findMobileToken, mobileLinksUnavailable, resolveMobileTarget } from '../../lib/mobileVersionQueries';
+import { CourseMobileQr } from './CourseMobileQr';
 import './course.css';
 // Polices ajoutées au lot T16a (OFL) : OpenDyslexic et l'écriture attachée de l'école française
 import '@fontsource/opendyslexic/400.css';
@@ -244,6 +247,13 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
   useEffect(() => { modeRef.current = mode; }, [mode]);
   /** Fenêtre « Imprimer » / « Exporter en PDF » (lot T13). */
   const [printDialog, setPrintDialog] = useState<'print' | 'pdf' | null>(null);
+  /**
+   * Version téléphone (lib/mobileVersion.ts) : l'original vers lequel pointe le QR code imprimé
+   * (null : correction, évaluation, ou pas encore connu) et le jeton de son lien (null : jamais imprimé).
+   */
+  const [mobile, setMobile] = useState<{ target: string | null; token: string | null }>({ target: null, token: null });
+  const mobileRef = useRef(mobile);
+  useEffect(() => { mobileRef.current = mobile; }, [mobile]);
   const fileRef = useRef<HTMLInputElement>(null);
   /** Sélecteur « Importer un fichier Word ou PDF » (lot T10a). */
   const docFileRef = useRef<HTMLInputElement>(null);
@@ -784,14 +794,53 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
     };
   }, []);
 
+  // ---- Version téléphone : le lien du QR code imprimé (lib/mobileVersion.ts) ----
+
+  // L'original visé et son lien, s'il existe déjà : relus à l'ouverture et quand le titre change
+  useEffect(() => {
+    let cancelled = false;
+    resolveMobileTarget(boardId, title)
+      .then(async (target) => ({ target, token: target ? await findMobileToken(target) : null }))
+      .then((m) => { if (!cancelled) setMobile(m); })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setMobile({ target: null, token: null });
+        console.warn('[mobileVersion] lien de la version téléphone illisible : impression sans QR code', err);
+      });
+    return () => { cancelled = true; };
+  }, [boardId, title]);
+
+  /**
+   * Première impression d'un document qui peut avoir une version téléphone : son lien est créé
+   * juste avant (4 s au plus ; sinon, impression sans QR code, le lien servira la fois suivante).
+   */
+  const withMobileLink = useCallback(async (): Promise<void> => {
+    const { target, token } = mobileRef.current;
+    if (!target || token) return;
+    const keep = (t: string | null) => (m: typeof mobileRef.current) => (t && m.target === target ? { target, token: t } : m);
+    try {
+      const pending = ensureMobileToken(userId, target);
+      pending.then((t) => setMobile(keep(t)), () => undefined);
+      const created = await Promise.race([pending, new Promise<null>((resolve) => { window.setTimeout(() => resolve(null), 4000); })]);
+      if (created) flushSync(() => setMobile(keep(created)));
+      else if (!mobileLinksUnavailable()) console.warn('[mobileVersion] lien pas encore créé : impression sans QR code');
+    } catch (err) {
+      console.warn('[mobileVersion] lien non créé : impression sans QR code', err);
+    }
+  }, [userId]);
 
   /**
    * Impression avec options (lot T13) : classes posées sur <body> (la version adaptée change la
    * mise en page : la pagination de `beforeprint` la mesure), copie « deux par feuille » faite
-   * après ce recalcul, tout est retiré après l'impression.
+   * après ce recalcul, tout est retiré après l'impression. Le lien de la version téléphone est créé
+   * avant, s'il manque.
    */
   const printWith = (o: PrintOptions) => {
     flushSync(() => setPrintDialog(null));
+    void withMobileLink().then(() => printNow(o));
+  };
+
+  const printNow = (o: PrintOptions) => {
     const classes = printClasses(o);
     if (classes.length === 0) { window.print(); return; }
     document.body.classList.add(...classes);
@@ -824,6 +873,14 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
         pendingRef.current = true;
         void flushRef.current().then((ok) => { if (ok) toast('Cours enregistré.', 'success'); });
       }
+      // Ctrl+P (version normale) à la première impression : le lien du QR code est créé avant
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'p') {
+        const m = mobileRef.current;
+        if (m.target && !m.token) {
+          e.preventDefault();
+          void withMobileLink().then(() => window.print());
+        }
+      }
       // Stylet sorti : Ctrl+Z / Ctrl+Y / Suppr / Échap s'appliquent au calque
       if (modeRef.current === 'stylet' && !editingEncartRef.current && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
         const k0 = e.key.toLowerCase();
@@ -846,7 +903,7 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [toast]);
+  }, [toast, withMobileLink]);
 
   // ---- Bureau : page courante, largeur de la barre de défilement (alignement de la règle) ----
 
@@ -1379,6 +1436,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
               onSelect={setLayerSel}
               onChange={changeLayer}
             />
+            {/* QR code de la version téléphone : première feuille, imprimé seulement */}
+            {mobile.target && mobile.token && mobileEligible(title) && <CourseMobileQr url={mobileUrl(mobile.token)} />}
           </div>
         </div>
       </div>
