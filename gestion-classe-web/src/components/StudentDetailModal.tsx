@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchStudentAppreciations, type BulletinAppreciation } from '../lib/bulletinAppreciationsQueries';
 import { CategoryIcon } from './rewards/CategoryIcon';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import { classTone } from '../lib/classColors';
@@ -212,6 +213,17 @@ export function StudentDetailModal({
 
   // ---- Séances ----
   const bars = useMemo(() => sessionBars(sg.events), [sg.events]);
+
+  // Appréciations de bulletin (migration 091), de la plus récente à la plus ancienne
+  const [appreciations, setAppreciations] = useState<BulletinAppreciation[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setAppreciations([]);
+    fetchStudentAppreciations(student.id)
+      .then((rows) => { if (!cancelled) setAppreciations(rows); })
+      .catch(() => { /* bloc masqué si la lecture échoue */ });
+    return () => { cancelled = true; };
+  }, [student.id]);
   const hasBars = bars.some((b) => b.participation > 0 || b.malus > 0 || b.absent);
   const maxParticipation = Math.max(1, ...bars.map((b) => b.participation));
 
@@ -626,6 +638,24 @@ export function StudentDetailModal({
                   </div>
                 )}
               </section>
+
+              {appreciations.length > 0 && (
+                <section>
+                  <div className="rf-fiche__sectionhead">
+                    <h4 className="rf-fiche__title">Appréciations de bulletin<span className="rf-fiche__count">{appreciations.length}</span></h4>
+                  </div>
+                  <div className="rf-fiche__rows">
+                    {appreciations.map((a) => (
+                      <div key={a.id} className="rf-fiche__row rf-fiche__row--top">
+                        <span className="rf-fiche__row-date" title={a.class_name ? `${a.school_year} · ${a.class_name}` : a.school_year}>
+                          T{a.trimester}{a.school_year !== appreciations[0].school_year ? ` ${a.school_year.slice(2, 4)}-${a.school_year.slice(7, 9)}` : ''}
+                        </span>
+                        <span className="rf-fiche__row-main">{a.content}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {archivedByYear.length > 0 && (
                 <section>
