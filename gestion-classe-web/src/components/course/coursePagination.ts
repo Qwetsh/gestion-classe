@@ -35,6 +35,7 @@ import type { Editor } from '@tiptap/core';
 import { DOMSerializer, type Node as PMNode } from '@tiptap/pm/model';
 import { TableMap } from '@tiptap/pm/tables';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Mapping } from '@tiptap/pm/transform';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { CONTENT_H, MARGIN, PAGE_H, SHEET_GAP } from '../../lib/course/coursePage';
@@ -104,7 +105,17 @@ export interface Unit {
   empty?: boolean;
 }
 
-interface PaginationState { deco: DecorationSet; layout: PageLayout }
+export interface PaginationState {
+  deco: DecorationSet;
+  /** Mise en page dont viennent les intercalaires affichés. */
+  layout: PageLayout;
+  /**
+   * Des intercalaires ont disparu depuis le dernier calcul (document remplacé d'un bloc : version
+   * de l'autre appareil, version restaurée ; zone effacée qui les contenait). Le prochain calcul
+   * doit être réappliqué même s'il est identique à `layout`.
+   */
+  stale?: boolean;
+}
 
 export const paginationKey = new PluginKey<PaginationState>('coursePagination');
 
@@ -187,6 +198,20 @@ function spacerWidgets(s: Spacer): Decoration[] {
     }, { side: -1, key: `${key}-h${headPos}-${Math.round(row.headH * 10)}`, ignoreSelection: true }));
   }
   return out;
+}
+
+/**
+ * Suit les intercalaires à travers une modification du document. Un intercalaire dont la position
+ * a été effacée disparaît du jeu de décorations : la mise en page mémorisée ne correspond plus à
+ * l'écran, on la marque périmée. Sans ça, remplacer le cours par un contenu identique (« Ouvert
+ * aussi ailleurs » puis reprise de la version du serveur) retirait tous les intercalaires, et le
+ * recalcul, identique à la mise en page mémorisée, n'était jamais réappliqué : le texte coulait
+ * par-dessus les marges et l'espace entre les feuilles.
+ */
+export function mapPaginationState(value: PaginationState, mapping: Mapping, doc: PMNode): PaginationState {
+  const deco = value.deco.map(mapping, doc);
+  const lost = deco.find().length < value.deco.find().length;
+  return { deco, layout: value.layout, stale: value.stale || lost };
 }
 
 // ---- 1) Mesure ----
@@ -516,8 +541,8 @@ function sameLayout(a: PageLayout, b: PageLayout): boolean {
 }
 
 function applyLayout(view: EditorView, layout: PageLayout, onLayout?: (l: PageLayout) => void) {
-  const current = paginationKey.getState(view.state)?.layout;
-  if (current && sameLayout(current, layout)) return;
+  const current = paginationKey.getState(view.state);
+  if (current && !current.stale && sameLayout(current.layout, layout)) return;
   view.dispatch(view.state.tr.setMeta(paginationKey, layout).setMeta('addToHistory', false));
   onLayout?.(layout);
 }
@@ -552,7 +577,7 @@ export const CoursePagination = Extension.create<PaginationOptions, PaginationSt
             const next = tr.getMeta(paginationKey) as PageLayout | undefined;
             if (next) return { deco: DecorationSet.create(tr.doc, next.spacers.flatMap(spacerWidgets)), layout: next };
             if (!tr.docChanged) return value;
-            return { deco: value.deco.map(tr.mapping, tr.doc), layout: value.layout };
+            return mapPaginationState(value, tr.mapping, tr.doc);
           },
         },
         props: {

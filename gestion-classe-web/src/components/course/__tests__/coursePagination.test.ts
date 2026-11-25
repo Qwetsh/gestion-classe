@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { paginate, type Unit } from '../coursePagination';
+import { Schema } from '@tiptap/pm/model';
+import { Transform } from '@tiptap/pm/transform';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { mapPaginationState, paginate, type PaginationState, type Unit } from '../coursePagination';
 import { CONTENT_H, MARGIN, PAGE_H, SHEET_GAP } from '../../../lib/course/coursePage';
 
 const STRIDE = PAGE_H + SHEET_GAP;
@@ -216,5 +219,42 @@ describe('image « page entière »', () => {
     const l = paginate([page(0, 0), unit(10, CONTENT_H), unit(20, CONTENT_H + 28, { empty: true })], SHEET_GAP);
     expect(l.pages).toBe(2);
     expect(l.spacers.map((s) => s.pos)).toEqual([10]);
+  });
+});
+
+describe('intercalaires suivis à travers les modifications', () => {
+  const schema = new Schema({
+    nodes: { doc: { content: 'paragraph+' }, paragraph: { content: 'text*', toDOM: () => ['p', 0] }, text: {} },
+  });
+  const para = (t: string) => schema.node('paragraph', null, t ? [schema.text(t)] : []);
+  const doc = schema.node('doc', null, [para('Question 3'), para('b) suite'), para('4. Document 3')]);
+  // Intercalaire devant le 2e paragraphe (renvoyé en haut de la page 2)
+  const spacerPos = doc.child(0).nodeSize;
+  const layout = { pages: 2, spacers: [{ pos: spacerPos, h: 252 }], gap: SHEET_GAP };
+  const widget = () => Decoration.widget(spacerPos, () => ({}) as unknown as HTMLElement, { side: -1, key: 'sp' });
+  const state = (): PaginationState => ({ deco: DecorationSet.create(doc, [widget()]), layout });
+
+  it('une frappe ailleurs garde l’intercalaire et la mise en page à jour', () => {
+    const tr = new Transform(doc).insert(doc.content.size - 2, schema.text('x'));
+    const next = mapPaginationState(state(), tr.mapping, tr.doc);
+    expect(next.deco.find()).toHaveLength(1);
+    expect(next.stale).toBe(false);
+  });
+
+  it('document remplacé par un contenu identique (version de l’autre appareil) : mise en page à réappliquer', () => {
+    const tr = new Transform(doc).replaceWith(0, doc.content.size, doc.content);
+    const next = mapPaginationState(state(), tr.mapping, tr.doc);
+    expect(tr.doc.eq(doc)).toBe(true);
+    // L'intercalaire est perdu alors que le recalcul donnera la même mise en page : il faut forcer
+    expect(next.deco.find()).toHaveLength(0);
+    expect(next.stale).toBe(true);
+    expect(next.layout).toBe(layout);
+  });
+
+  it('reste à réappliquer tant qu’aucun calcul n’est passé', () => {
+    const tr = new Transform(doc).replaceWith(0, doc.content.size, doc.content);
+    const lost = mapPaginationState(state(), tr.mapping, tr.doc);
+    const tr2 = new Transform(tr.doc).insert(2, schema.text('y'));
+    expect(mapPaginationState(lost, tr2.mapping, tr2.doc).stale).toBe(true);
   });
 });
