@@ -168,6 +168,8 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 
 ## 3. Les habitudes des fiches de Thomas
 
+**QR code « Version couleur » : rien à faire dans les brouillons.** Tout document imprimé ou exporté en PDF depuis l'éditeur (fiche, documents, extraits, protocole, version adaptée) porte automatiquement, en haut à droite de sa première page, dans la marge, un QR code vers sa version couleur au format téléphone (page `/d/<jeton>`, qui suit les modifications du cours). Jamais sur une correction, une copie modèle ni une évaluation. Ne pas laisser de place pour lui : il tient dans la marge (migration 090, fonction `version-mobile`).
+
 Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exemples/microbiote.py` :
 
 1. `LigneIdentite()`, puis `Cartouche(...)`. Le cartouche contient :

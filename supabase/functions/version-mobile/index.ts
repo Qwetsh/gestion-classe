@@ -1,0 +1,106 @@
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { imagePaths, isUuid, ownedPaths } from "../classeur-eleve/release.ts";
+import { MOBILE_TOKEN, mobileDoc, mobileEligible } from "./rules.ts";
+
+/**
+ * Sert la version couleur au format téléphone d'un document imprimé, à qui scanne son QR code.
+ *
+ * Les cours (`boards`) et leurs images (bucket `board-assets`) sont privés : leurs politiques sont
+ * écrites pour le professeur. Qui scanne n'a pas de compte : il arrive par le jeton du QR code
+ * (table `board_mobile_links`, migration 090, créé par le navigateur du professeur à la première
+ * impression). Cette fonction tranche avec la clé de service, qui ne quitte jamais le serveur.
+ *
+ * Le document est lu à chaque appel : la page du téléphone suit les modifications du cours. Le
+ * titre est relu aussi : une correction ou une évaluation n'est jamais servie (rules.ts), même si
+ * un jeton existe pour elle.
+ *
+ * Un appel (POST, JSON) : { token } → { title, doc, images } : le texte du cours et les adresses
+ * signées de ses images. Même refus (403) pour un jeton mal formé, inconnu, coupé, ou un cours qui
+ * ne peut pas sortir : rien à apprendre de l'erreur.
+ */
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "*",
+};
+
+const BUCKET = "board-assets";
+/** Durée de vie des adresses d'images : le temps de lire le document (la page se relit au-delà). */
+const SIGNED_URL_TTL = 60 * 60 * 6;
+
+/** Panne de la base ou du stockage : à ne pas confondre avec un refus (on lirait « ce lien ne fonctionne plus »). */
+class ServerError extends Error {}
+/** Résultat d'une requête, ou une erreur de serveur si elle a échoué. */
+function must<T>(res: { data: T; error: unknown }): T {
+  if (res.error) throw new ServerError();
+  return res.data;
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "bad_request" }, 400);
+  }
+  const token = typeof body?.token === "string" ? body.token : null;
+  if (token === null || !MOBILE_TOKEN.test(token)) return json({ error: "forbidden" }, 403);
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  try {
+    return await answer(supabase, token);
+  } catch (err) {
+    // Toute panne répond en 500 avec ses en-têtes (sans eux, le navigateur dirait « pas de connexion »)
+    if (!(err instanceof ServerError)) console.error("version-mobile", err);
+    return json({ error: "server" }, 500);
+  }
+});
+
+async function answer(supabase: SupabaseClient, token: string): Promise<Response> {
+  const link = must(await supabase
+    .from("board_mobile_links")
+    .select("board_id, user_id")
+    .eq("token", token)
+    .maybeSingle());
+  if (!link || !isUuid(link.board_id) || !isUuid(link.user_id)) return json({ error: "forbidden" }, 403);
+
+  // Le lien doit avoir été créé par le propriétaire du cours
+  const board = must(await supabase
+    .from("boards")
+    .select("title, doc")
+    .eq("id", link.board_id)
+    .eq("user_id", link.user_id)
+    .maybeSingle());
+  if (!board) return json({ error: "forbidden" }, 403);
+  const title = typeof board.title === "string" ? board.title : "";
+  // Une correction ou une évaluation ne sort jamais, même par un jeton existant
+  if (!mobileEligible(title)) return json({ error: "forbidden" }, 403);
+
+  const doc = mobileDoc(board.doc);
+  if (!doc) return json({ error: "not_found" }, 404);
+
+  const paths = ownedPaths(imagePaths(doc.content), link.user_id);
+  const images: Record<string, string> = {};
+  if (paths.length > 0) {
+    const signed = must(await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL));
+    for (const s of signed ?? []) if (s.path && s.signedUrl) images[s.path] = s.signedUrl;
+  }
+  return json({ title, doc, images });
+}
