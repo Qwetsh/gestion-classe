@@ -253,7 +253,7 @@ function TpDetail({ code, sessionId, initialPart, onBack }: { code: string; sess
     { key: 'fiche', label: 'Fiche d’activité' },
     { key: 'protocole', label: 'Protocole' },
     ...(docOf('documents') ? [{ key: 'documents' as Part, label: 'Documents' }] : []),
-    { key: 'photos', label: 'Perso', badge: detail.photos.length || undefined },
+    { key: 'photos', label: 'Photos', badge: detail.photos.length || undefined },
   ] : [];
 
   return (
