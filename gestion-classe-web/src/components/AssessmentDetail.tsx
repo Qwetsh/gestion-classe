@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { linkedDocBoardId } from '../lib/assessmentLibrary';
+import { documentsOf, linkedDocBoardId } from '../lib/assessmentLibrary';
+import { levelFromClassName } from '../lib/boardsQueries';
+import { LibraryDocPicker } from './LibraryDocPicker';
 import { courseHref } from '../lib/courseLibrary';
 import { CopyViewer } from './CopyViewer';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
@@ -40,6 +42,7 @@ import {
   fetchLatestAiCorrections,
   fetchBoardTitles,
   getDocUrl,
+  setAssessmentLibraryDoc,
   purgeCopiesNow,
   updateAssessment,
   uploadAssessmentDoc,
@@ -172,6 +175,18 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     }
   };
 
+  /** Retire le fichier ajouté à la main (celui de la série, ou celui de l'éval). */
+  const removeDocFile = async (kind: AssessmentDocKind, path: string) => {
+    if (group.seriesId) {
+      const series = group.items[0]?.assessment_series ?? null;
+      const shared = kind === 'subject' ? series?.subject_path : series?.correction_path;
+      if (shared) await deleteSeriesDoc(group.seriesId, kind, shared);
+      await clearSeriesAssessmentDocs(group.seriesId, kind);
+    } else {
+      await deleteAssessmentDoc(group.items[0].id, kind, path);
+    }
+  };
+
   const handleDeleteDoc = async (kind: AssessmentDocKind) => {
     const path = groupDocPath(group, kind);
     if (!path) return;
@@ -179,17 +194,37 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     const scope = group.items.length > 1 ? ` pour les ${group.items.length} classes` : '';
     if (!window.confirm(`Supprimer ${label}${scope} ?`)) return;
     try {
-      if (group.seriesId) {
-        const series = group.items[0]?.assessment_series ?? null;
-        const shared = kind === 'subject' ? series?.subject_path : series?.correction_path;
-        if (shared) await deleteSeriesDoc(group.seriesId, kind, shared);
-        await clearSeriesAssessmentDocs(group.seriesId, kind);
-      } else {
-        await deleteAssessmentDoc(group.items[0].id, kind, path);
-      }
+      await removeDocFile(kind, path);
       await onReload();
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Échec de la suppression');
+    }
+  };
+
+  // --- Sujet ou corrigé choisi dans Mes cours (migration 095) ---
+  const [pickingDoc, setPickingDoc] = useState<AssessmentDocKind | null>(null);
+  const pickLibraryDoc = async (kind: AssessmentDocKind, board: { id: string; documentsId?: string | null }) => {
+    const path = groupDocPath(group, kind);
+    const label = kind === 'subject' ? 'Le sujet' : 'Le corrigé';
+    // Le fichier ajouté à la main passe avant le cours : il est retiré pour laisser la place.
+    if (path && !window.confirm(`${label} déposé en fichier sera retiré et remplacé par ce cours de Mes cours. Continuer ?`)) return;
+    try {
+      if (path) await removeDocFile(kind, path);
+      await setAssessmentLibraryDoc(group.items.map((a) => a.id), kind, board);
+      setPickingDoc(null);
+      await onReload();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Cours non relié');
+    }
+  };
+  const unlinkLibraryDoc = async (kind: AssessmentDocKind) => {
+    const label = kind === 'subject' ? 'la fiche' : 'la correction';
+    if (!window.confirm(`Ne plus utiliser ${label} de Mes cours pour cette évaluation ? Le cours lui-même n’est pas touché.`)) return;
+    try {
+      await setAssessmentLibraryDoc(group.items.map((a) => a.id), kind, null);
+      await onReload();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Lien non retiré');
     }
   };
 
@@ -346,9 +381,11 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Link to={courseHref(boardId)} target="_blank" rel="noopener" style={{ ...btnPrimary, textDecoration: 'none' }}>Ouvrir</Link>
+                      <button onClick={() => setPickingDoc(kind)} style={btnGhost}>Autre cours</button>
                       <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>
-                        {uploading === kind ? 'Envoi…' : 'Ajouter un fichier à la place'}
+                        {uploading === kind ? 'Envoi…' : 'Fichier à la place'}
                       </button>
+                      <button onClick={() => { void unlinkLibraryDoc(kind); }} style={btnDanger}>Retirer</button>
                     </div>
                   </>
                 );
@@ -358,13 +395,19 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                   <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>
                     {uploading === kind ? '…' : 'Remplacer'}
                   </button>
+                  <button onClick={() => setPickingDoc(kind)} style={btnGhost} title="Remplacer ce fichier par un cours de Mes cours">Mes cours</button>
                   <button onClick={() => handleDeleteDoc(kind)} style={btnDanger}>Supprimer</button>
                 </div>
               ) : (
                 <>
-                  <button onClick={() => inputRef.current?.click()} style={btnPrimary} disabled={uploading === kind}>
-                    {uploading === kind ? 'Envoi…' : `+ Ajouter le ${label.toLowerCase()} (PDF ou image)`}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={() => setPickingDoc(kind)} style={btnPrimary}>
+                      Choisir dans Mes cours
+                    </button>
+                    <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>
+                      {uploading === kind ? 'Envoi…' : 'Importer un fichier (PDF ou image)'}
+                    </button>
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.5 }}>
                     Document Word : dans Word, <strong>Fichier → Enregistrer sous → PDF</strong>.
                     La conversion automatique d’un .docx abîme la mise en page.
@@ -375,6 +418,20 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
           );
         })}
       </div>
+
+      {pickingDoc && (
+        <LibraryDocPicker
+          userId={userId}
+          level={levelFromClassName(group.items[0]?.classes?.name ?? '')}
+          kind={pickingDoc}
+          onClose={() => setPickingDoc(null)}
+          onPick={(board, g) => pickLibraryDoc(pickingDoc, {
+            id: board.id,
+            // Le sujet emporte les documents de son activité (lus par « Corriger avec Claude »).
+            documentsId: pickingDoc === 'subject' ? documentsOf(g) : null,
+          })}
+        />
+      )}
 
       {/* Copies et notes : une ligne par classe, puis la visionneuse de la classe ouverte */}
       <div style={card}>

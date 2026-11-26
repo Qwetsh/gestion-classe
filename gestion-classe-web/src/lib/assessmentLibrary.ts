@@ -182,3 +182,25 @@ export function linkedDocBoardId(
   }
   return null;
 }
+
+/**
+ * Cours d'une activité proposés comme sujet ou corrigé (« Choisir dans Mes cours ») : tous sauf
+ * la copie modèle et les extraits, le rôle attendu en tête et mis en avant (la fiche pour le
+ * sujet, la correction pour le corrigé).
+ */
+export function pickableMembers(
+  group: ActivityGroup,
+  kind: 'subject' | 'correction',
+): { variant: ActivityGroup['members'][number]['variant']; board: ActivityGroup['members'][number]['board']; preferred: boolean }[] {
+  const wanted = kind === 'subject' ? 'fiche' : 'correction';
+  const usable = group.members.filter((m) => m.variant !== 'copie' && m.variant !== 'extraits');
+  return [
+    ...usable.filter((m) => m.variant === wanted).map((m) => ({ ...m, preferred: true })),
+    ...usable.filter((m) => m.variant !== wanted).map((m) => ({ ...m, preferred: false })),
+  ];
+}
+
+/** Documents de l'activité d'un sujet choisi : ils accompagnent la fiche pour « Corriger ». */
+export function documentsOf(group: ActivityGroup): string | null {
+  return group.members.find((m) => m.variant === 'documents')?.board.id ?? null;
+}
