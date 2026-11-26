@@ -29,7 +29,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
     try {
       const { error } = await supabase.from('feedbacks').insert({
         user_id: user.id,
-        user_email: user.email,
+        user_email: user.email ?? '',
         type,
         message: message.trim(),
       });

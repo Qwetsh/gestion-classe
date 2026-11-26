@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * Sert le sujet ou le corrigé d'une évaluation à un élève, sans ouvrir le bucket.
@@ -35,6 +35,24 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * Frein sur les essais de codes élèves (migration 094). La base ne voit que l'adresse de cette
+ * fonction : on lui transmet celle du visiteur. `cf-connecting-ip` ne peut pas être falsifié ;
+ * à défaut, le dernier élément de `x-forwarded-for` (le premier est écrit par le visiteur).
+ * Renvoie true si l'appel doit être traité comme un code invalide.
+ */
+async function codeBlocked(supabase: SupabaseClient, req: Request, code: string): Promise<boolean> {
+  const forwarded = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const ip = req.headers.get("cf-connecting-ip") ?? forwarded[forwarded.length - 1] ?? "0.0.0.0";
+  const { data, error } = await supabase.rpc("_student_code_gate", { p_codes: [code], p_ip: ip });
+  // Base injoignable ou migration absente : on ne ferme pas l'espace élève pour autant.
+  if (error) {
+    console.error("student_code_gate", error.message);
+    return false;
+  }
+  return data === true;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -62,6 +80,8 @@ serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } },
   );
+
+  if (await codeBlocked(supabase, req, code)) return json({ error: "invalid_code" }, 403);
 
   // 1. L'évaluation existe et est publiée.
   const { data: assessment } = await supabase

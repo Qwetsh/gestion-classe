@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { paginate, type Unit } from '../coursePagination';
+import { Schema } from '@tiptap/pm/model';
+import { Transform } from '@tiptap/pm/transform';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { mapPaginationState, paginate, type PaginationState, type Unit } from '../coursePagination';
 import { CONTENT_H, MARGIN, PAGE_H, SHEET_GAP } from '../../../lib/course/coursePage';
 
 const STRIDE = PAGE_H + SHEET_GAP;
@@ -50,9 +53,10 @@ describe('répartition en pages', () => {
   });
 
   it('un titre en bas de page part avec le début du bloc suivant', () => {
-    const units = stack(31, 30, 0);
-    // Le 31e bloc (dernier qui tient) devient un titre suivi d'un paragraphe qui ne tient plus
-    const title = units[30];
+    const n = Math.floor(CONTENT_H / 30);
+    const units = stack(n, 30, 0);
+    // Le dernier bloc qui tient devient un titre suivi d'un paragraphe qui ne tient plus
+    const title = units[n - 1];
     title.type = 'heading';
     units.push({ pos: 999, top: title.top + title.h, h: 60, mt: 0, mb: 0, type: 'paragraph' });
     const l = paginate(units, SHEET_GAP);
@@ -178,3 +182,80 @@ describe('paragraphe qui se coupe (T15c)', () => {
   });
 });
 
+
+describe('image « page entière »', () => {
+  /** Une image page entière : haute de toute la page utile, sans marge. */
+  const page = (pos: number, top: number): Unit => ({ pos, top, h: CONTENT_H, mt: 0, mb: 0, type: 'image', page: true });
+  const unit = (pos: number, top: number, extra: Partial<Unit> = {}): Unit => ({ pos, top, h: 20, mt: 0, mb: 8, type: 'paragraph', ...extra });
+
+  it('trois pages à la suite : une par feuille, chacune en haut de sa page', () => {
+    const units = [page(0, 0), page(10, CONTENT_H), page(20, 2 * CONTENT_H)];
+    const l = paginate(units, SHEET_GAP);
+    expect(l.pages).toBe(3);
+    expect(l.spacers.map((s) => s.pos)).toEqual([10, 20]);
+    // La deuxième image commence pile en haut de la page 2
+    expect(CONTENT_H + l.spacers[0].h).toBeCloseTo(STRIDE, 5);
+  });
+
+  it('après du texte, la page entière part sur la feuille suivante', () => {
+    const l = paginate([unit(0, 0), page(10, 28)], SHEET_GAP);
+    expect(l.pages).toBe(2);
+    expect(l.spacers.map((s) => s.pos)).toEqual([10]);
+  });
+
+  it('le paragraphe vide qui termine le cours n’ajoute pas de page blanche', () => {
+    const l = paginate([page(0, 0), unit(10, CONTENT_H, { empty: true, mb: 0 })], SHEET_GAP);
+    expect(l.pages).toBe(1);
+    expect(l.spacers).toEqual([]);
+  });
+
+  it('un saut de page entre deux pages entières ne laisse pas de feuille vide', () => {
+    const units = [page(0, 0), unit(10, CONTENT_H, { type: 'pageBreak', mb: 0 }), page(20, CONTENT_H + 20), unit(30, 2 * CONTENT_H + 20, { empty: true, mb: 0 })];
+    const l = paginate(units, SHEET_GAP);
+    expect(l.pages).toBe(2);
+    expect(l.spacers.map((s) => s.pos)).toEqual([20]);
+  });
+
+  it('du texte écrit sous une page entière passe à la feuille suivante', () => {
+    const l = paginate([page(0, 0), unit(10, CONTENT_H), unit(20, CONTENT_H + 28, { empty: true })], SHEET_GAP);
+    expect(l.pages).toBe(2);
+    expect(l.spacers.map((s) => s.pos)).toEqual([10]);
+  });
+});
+
+describe('intercalaires suivis à travers les modifications', () => {
+  const schema = new Schema({
+    nodes: { doc: { content: 'paragraph+' }, paragraph: { content: 'text*', toDOM: () => ['p', 0] }, text: {} },
+  });
+  const para = (t: string) => schema.node('paragraph', null, t ? [schema.text(t)] : []);
+  const doc = schema.node('doc', null, [para('Question 3'), para('b) suite'), para('4. Document 3')]);
+  // Intercalaire devant le 2e paragraphe (renvoyé en haut de la page 2)
+  const spacerPos = doc.child(0).nodeSize;
+  const layout = { pages: 2, spacers: [{ pos: spacerPos, h: 252 }], gap: SHEET_GAP };
+  const widget = () => Decoration.widget(spacerPos, () => ({}) as unknown as HTMLElement, { side: -1, key: 'sp' });
+  const state = (): PaginationState => ({ deco: DecorationSet.create(doc, [widget()]), layout });
+
+  it('une frappe ailleurs garde l’intercalaire et la mise en page à jour', () => {
+    const tr = new Transform(doc).insert(doc.content.size - 2, schema.text('x'));
+    const next = mapPaginationState(state(), tr.mapping, tr.doc);
+    expect(next.deco.find()).toHaveLength(1);
+    expect(next.stale).toBe(false);
+  });
+
+  it('document remplacé par un contenu identique (version de l’autre appareil) : mise en page à réappliquer', () => {
+    const tr = new Transform(doc).replaceWith(0, doc.content.size, doc.content);
+    const next = mapPaginationState(state(), tr.mapping, tr.doc);
+    expect(tr.doc.eq(doc)).toBe(true);
+    // L'intercalaire est perdu alors que le recalcul donnera la même mise en page : il faut forcer
+    expect(next.deco.find()).toHaveLength(0);
+    expect(next.stale).toBe(true);
+    expect(next.layout).toBe(layout);
+  });
+
+  it('reste à réappliquer tant qu’aucun calcul n’est passé', () => {
+    const tr = new Transform(doc).replaceWith(0, doc.content.size, doc.content);
+    const lost = mapPaginationState(state(), tr.mapping, tr.doc);
+    const tr2 = new Transform(tr.doc).insert(2, schema.text('y'));
+    expect(mapPaginationState(lost, tr2.mapping, tr2.doc).stale).toBe(true);
+  });
+});

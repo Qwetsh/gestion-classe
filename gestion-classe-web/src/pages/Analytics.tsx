@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { fromDb } from '../lib/dbJson';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -265,10 +266,10 @@ export function Analytics() {
           return;
         }
 
-        setStudentGenders((data || []).map(s => ({ id: s.id, gender: s.gender || 'M' })));
-        setStudents((data || []).map(s => ({
+        setStudentGenders((data || []).map(s => ({ id: s.id, gender: s.gender === 'F' ? 'F' as const : 'M' as const })));
+        setStudents(fromDb<StudentData[]>((data || []).map(s => ({
           id: s.id, pseudo: s.pseudo, class_id: s.class_id, gender: s.gender ?? null,
-        })));
+        }))));
       } catch (err) {
         console.error('Error loading students:', err);
         setStudentGenders([]);

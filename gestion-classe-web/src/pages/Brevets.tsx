@@ -13,7 +13,7 @@ import { AnnaleViewer } from '../components/annales/AnnaleViewer';
 import { AnnaleForm } from '../components/annales/AnnaleForm';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { brevets, type Matiere } from '../lib/brevets';
-import { fetchCustomAnnales, deleteCustomAnnale, type BrevetItem } from '../lib/customAnnales';
+import { fetchCustomAnnales, deleteCustomAnnale, AnnaleNotOwnedError, type BrevetItem } from '../lib/customAnnales';
 import { MATIERES, filterAnnales, groupAnnales, matiereOf, type AnnaleView } from '../lib/annalesLibrary';
 import '../styles/mes-cours.css';
 import '../styles/annales.css';
@@ -94,7 +94,7 @@ export function Brevets() {
       setCustom((prev) => prev.filter((c) => c.id !== b.id));
     } catch (err) {
       console.error('Suppression annale :', err);
-      toast('La suppression a échoué.');
+      toast(err instanceof AnnaleNotOwnedError ? err.message : 'La suppression a échoué.');
     }
   };
 

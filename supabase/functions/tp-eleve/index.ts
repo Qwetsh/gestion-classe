@@ -76,6 +76,7 @@ serve(async (req: Request) => {
   );
 
   try {
+    if (await codeBlocked(supabase, req, code)) return json({ error: "forbidden" }, 403);
     if (action === "photos") return await photos(supabase, code, studentId, sessionId);
     if (action === "doc") return await doc(supabase, code, studentId, sessionId, body.boardId);
     if (action === "upload") return await upload(supabase, code, studentId, sessionId, body.image, body.caption);
@@ -85,6 +86,24 @@ serve(async (req: Request) => {
     return json({ error: "server" }, 500);
   }
 });
+
+/**
+ * Frein sur les essais de codes élèves (migration 094). La base ne voit que l'adresse de cette
+ * fonction : on lui transmet celle du visiteur. `cf-connecting-ip` ne peut pas être falsifié ;
+ * à défaut, le dernier élément de `x-forwarded-for` (le premier est écrit par le visiteur).
+ * Renvoie true si l'appel doit être traité comme un code invalide.
+ */
+async function codeBlocked(supabase: SupabaseClient, req: Request, code: string): Promise<boolean> {
+  const forwarded = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const ip = req.headers.get("cf-connecting-ip") ?? forwarded[forwarded.length - 1] ?? "0.0.0.0";
+  const { data, error } = await supabase.rpc("_student_code_gate", { p_codes: [code], p_ip: ip });
+  // Base injoignable ou migration absente : on ne ferme pas l'espace élève pour autant.
+  if (error) {
+    console.error("student_code_gate", error.message);
+    return false;
+  }
+  return data === true;
+}
 
 /** Plafond d'un fichier : la limite du bucket student-photos (le téléphone réduit avant d'envoyer). */
 const MAX_BYTES = 1_000_000;

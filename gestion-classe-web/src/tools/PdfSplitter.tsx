@@ -28,7 +28,7 @@ async function renderPageThumbnail(pdfBytes: ArrayBuffer, pageIndex: number): Pr
 
   await page.render({ canvasContext: ctx, viewport, canvas } as never).promise;
   const url = canvas.toDataURL('image/jpeg', 0.6);
-  doc.destroy();
+  doc.loadingTask.destroy();
   return url;
 }
 

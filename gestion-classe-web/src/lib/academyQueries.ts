@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 
 // ============================================================
 // Academy Module — Queries Supabase
@@ -101,7 +102,7 @@ export async function fetchAssignments(classId: string): Promise<AcademyAssignme
     .from('academy_assignments')
     .select('*')
     .eq('class_id', classId);
-  return data || [];
+  return fromDb<AcademyAssignment[]>(data || []);
 }
 
 export async function saveAssignment(
@@ -131,7 +132,7 @@ export async function fetchBonuses(classId: string): Promise<AcademyHouseBonus[]
     .select('*')
     .eq('class_id', classId)
     .order('created_at', { ascending: false });
-  return data || [];
+  return fromDb<AcademyHouseBonus[]>(data || []);
 }
 
 export async function saveBonus(
@@ -341,7 +342,7 @@ export async function calculateHousePoints(classId: string): Promise<HousePoints
     }
 
     for (const sg of sessionGroups || []) {
-      const houseId = HOUSE_NAME_TO_ID[sg.name.toLowerCase()];
+      const houseId = HOUSE_NAME_TO_ID[(sg.name ?? '').toLowerCase()];
       if (!houseId) continue;
 
       const grades = allGrades.filter(g => g.group_id === sg.id);

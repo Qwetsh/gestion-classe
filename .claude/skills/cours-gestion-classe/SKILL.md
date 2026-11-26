@@ -16,11 +16,26 @@ ne saute jamais la vérification.
 3. **Vérifier** avec `npm run course:check` (schéma réel de l'éditeur) et corriger jusqu'à zéro erreur.
 4. **Créer le cours** en base avec la requête préparée, via le connecteur Supabase.
 
-Chemins (dépôt `Gestion classe`, à adapter si la session est dans un worktree) :
+**Où sont les outils.** Un seul endroit, quel que soit le dossier d'où la session est lancée (le
+dossier École comme le dépôt) : le checkout des outils, `C:\Users\Utilisateur\gc-worktrees\outils-master`,
+copie de `master` hors OneDrive. Dans cette skill, `<dépôt>` désigne ce dossier, et `<skill>`
+son sous-dossier `.claude\skills\cours-gestion-classe`. Le dépôt principal
+(`OneDrive\Code\Gestion classe`) sert à changer le logiciel, pas à produire du contenu.
 
-- skill : `.claude/skills/cours-gestion-classe/` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `gc_semaine.py`, `exemples/`, `icones.md`)
+En début de session, remettre les outils à jour (cela réinstalle aussi les skills du compte, pour
+que la même version se charge partout) :
+
+```
+python -I C:\Users\Utilisateur\gc-worktrees\outils-master\scripts\maj_outils_claude.py
+```
+
+Une skill ne se modifie jamais dans `~\.claude\skills` ni dans le checkout des outils : elle se
+modifie dans le dépôt, sur une branche, par une PR.
+
+- skill : `<dépôt>\.claude\skills\cours-gestion-classe\` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `gc_semaine.py`, `exemples/`, `icones.md`)
+- vérifications : `npm run course:check` et `npm run screens:check`, lancées dans `<dépôt>\gestion-classe-web`
 - poser un cours sur l'emploi du temps : skill `prepare-semaine` (`gc_semaine.py placer`), jamais par une requête écrite à la main
-- brouillons : `gestion-classe-web/course-drafts/` (ignoré par git)
+- brouillons : `<dépôt>\gestion-classe-web\course-drafts\` (ignoré par git, hors OneDrive : un brouillon se refabrique, il ne se garde pas)
 - projet Supabase de production : `djodkjysovalpufgevrr`
 
 ## 0. Relire les consignes pédagogiques (toujours, avant tout travail sur un cours)
@@ -103,7 +118,7 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 
 - `T(texte, gras, italique, souligne, couleur, taille, exposant, indice, surligne, police)` ;
 - `B()` (gras), `I()` (italique), `C(texte, couleur)` ;
-- `Pointilles(cm)` : pointillés de réponse ;
+- `Pointilles(cm)` : pointillés de réponse (pas sous les questions d'une fiche d'activité, § 3) ;
 - `Bareme(n)`, `TotalBareme()` : barème « / n », calé à droite ;
 - `Icone('Nom')` : voir `icones.md` (icônes Lucide, dessinées) ; **jamais d'émoji** (§ 3) ;
 - `Saut()` : retour à la ligne dans le paragraphe.
@@ -115,14 +130,20 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 - `Titre(1|2|3, ...)` ;
 - listes : `Puces`, `Numeros`, `Cases` (cases à cocher) ;
 - `Encadre(..., type_, titre, couleur, bordure, titre_gras)`, et `EncadreFiche(titre, couleur, ...)` pour le cadre fin des fiches Word ;
-- `Zone(style, lignes)` : zone d'écriture Seyès, carreaux, lignes, pointillés ou blanc ;
+- `Zone(style, lignes)` : zone d'écriture Seyès, carreaux, lignes, pointillés ou blanc (pas sous les
+  questions d'une fiche d'activité, sauf cas précis, § 3) ;
 - `Colonnes([...], [...])`, `SautDePage()`, `Trait()` ;
 - `Image(fichier, largeur_cm, legende)` : envoie le fichier puis l'insère (demande le jeton d'import, § 5).
+- `Image(fichier, page_entiere=True)` : une **page A4 déjà mise en page** (feuille de documents
+  convertie depuis Word, page d'un PDF) occupe toute la feuille, marges comprises, seule sur sa
+  page : elle s'imprime à sa taille réelle. Sans ce réglage, la page est réduite dans la colonne de
+  18 cm et ses propres marges s'ajoutent aux 1,5 cm du cours (retour de Thomas, 24/11/2026).
+  Une image par page, sans `SautDePage()` entre elles (la pagination s'en charge).
 
 **Tableaux** :
 
 - `Tableau(Ligne(Cellule(blocs, [largeurs px], lignes=rowspan, fond, milieu)), style)` ;
-- `largeurs(*parts)` : des largeurs dont la somme fait la colonne (605 px) ;
+- `largeurs(*parts)` : des largeurs dont la somme fait la colonne (680 px) ;
 - `TableauSimple(entetes, lignes)` ;
 - `TableauCompetences([(question, points, compétence), …])` : le tableau questions → compétences
   d'une évaluation (§ 3), domaines du socle et total compris.
@@ -163,6 +184,10 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 
 ## 3. Les habitudes des fiches de Thomas
 
+**QR code « Version couleur » : rien à faire dans les brouillons.** Tout document imprimé ou exporté en PDF depuis l'éditeur (fiche, documents, extraits, protocole, version adaptée) porte automatiquement, en haut à droite de sa première page, dans la marge, un QR code vers sa version couleur au format téléphone (page `/d/<jeton>`, qui suit les modifications du cours). Jamais sur une correction, une copie modèle ni une évaluation. Ne pas laisser de place pour lui : il tient dans la marge (migration 090, fonction `version-mobile`).
+
+**Version mobile sur mesure** : pour remplacer, sur demande de Thomas, cette version automatique par une page pensée pour le téléphone (schémas interactifs, animations validées), que le même QR code ouvre sans réimpression : skill `version-mobile` (`.claude/skills/version-mobile/`, `gc_mobile.py`, `gc_envoi.py mobile`).
+
 Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exemples/microbiote.py` :
 
 1. `LigneIdentite()`, puis `Cartouche(...)`. Le cartouche contient :
@@ -178,6 +203,13 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 3. Un `Rappel(...)` de méthode ou de vocabulaire, s'il est utile.
 4. `titre2('Questions')`, puis des `question(n, ...)` : « n. » en gras, verbes de consigne en gras,
    documents cités en gras (« **document 1** »).
+
+   **Pas de place pour écrire** (Thomas, 24/11/2026) : ni `Zone`, ni amorce à `Pointilles` sous
+   les questions. Les élèves écrivent leurs réponses à la suite, sur une feuille à part (comme en
+   évaluation). Seuls des cas précis gardent une place sur la fiche — un tableau ou un schéma à
+   compléter, un document à annoter — et on le dit à Thomas dans le plan. En convertissant une
+   fiche de OneDrive, ne pas reprendre ses zones ; ne pas toucher sans demande aux fiches déjà en
+   base qui en ont.
 5. `PourAllerPlusLoin(...)` : une question bonus.
 
    **Pas de tableau de coups de pouce** (encadré gris 🆘, indices en écriture miroir ou au
@@ -192,16 +224,19 @@ Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exe
 
 - corps de l'élève (consignes, situation, questions, réponses) en **Arial 12, interligne 1,5** :
   c'est le défaut de `Cours`, `c.para()` et `Question` (`INTERLIGNE_ELEVE`) ; les zones d'écriture
-  (lignes de 8 mm) le respectent déjà ;
+  (lignes de 8 mm), dans les rares cas où il en faut une, le respectent déjà ;
 - encadrés (`Rappel`, `PourAllerPlusLoin`, `JaiReussi`) en **11 pt** (`TAILLE_ENCADRE`) ;
 - cartouche et ligne d'identité en 8-10 pt (lus une fois) ;
 - alignement à gauche, consignes décomposées, verbes d'action en gras ;
 - ne pas réduire la taille ou l'interligne pour faire tenir une fiche : raccourcir le texte.
 
-Thème `fiche`, première page sans en-tête ni pied. Les marges sont fixes (2,5 cm), donc la colonne
-fait 16 cm : il faut rester concis. Avec le cartouche, une fiche de plus de **200 mots environ**
-passe sur deux pages (estimation du 22/11/2026, à recaler sur la première fiche affichée ; en
-Arial 11, la limite était de 300 mots) : raccourcir ou prévenir Thomas.
+Thème `fiche`, première page sans en-tête ni pied. Les marges sont fixes : **1,5 cm** depuis le
+24/11/2026 (Thomas : « 1,5 cm suffit, et on gagnerait beaucoup de place » ; 2,5 cm avant), donc la
+colonne fait 18 cm (680 px). Avec le cartouche, une fiche de plus de **250 mots environ** passe sur
+deux pages (estimation du 24/11/2026 : 200 mots avec les marges de 2,5 cm, surface utile + 20 %,
+à recaler sur la première fiche affichée) : raccourcir ou prévenir Thomas. Les cours écrits avant
+gardent leur texte ; leurs tableaux pleine largeur (cartouche compris) sont élargis à 18 cm par
+l'éditeur à l'ouverture, les autres tableaux et les images gardent leur taille.
 
 Pour un **cours** (trace écrite) :
 
@@ -365,7 +400,7 @@ cd <dépôt>/gestion-classe-web && npm run course:check
 ```
 
 - Lire `course-drafts/<nom>.report.txt`. Il donne aussi la **longueur en mots** : au-delà de
-  200 mots environ, une fiche avec cartouche passe sur deux pages (§ 3).
+  250 mots environ, une fiche avec cartouche passe sur deux pages (§ 3).
 - La commande vérifie **tous** les brouillons du dossier et réécrit leurs rapports. Une ligne
   « 1 skipped » est normale : c'est le test « aucun brouillon », qui ne joue pas quand il y en a.
 - Corriger **toutes** les erreurs (✗) dans le script, régénérer et revérifier.
@@ -527,7 +562,8 @@ marcher avant le chargement. Fiches de l'hôpital : `C:/dev/hopital-virtuel/cont
 
 **Tout support interactif vit dans le tableau** (écrans, animations, scènes riches) : pas de
 fichier HTML autonome ni de widget Genially (Thomas, 22/11/2026). Pour les élèves, l'export
-« page web pour les élèves » du tableau en tient lieu.
+« page web pour les élèves » du tableau en tient lieu. Seule exception : la version mobile sur mesure d'un
+document (skill `version-mobile`, validée par Thomas le 26/11/2026).
 
 **Une animation ou une scène riche ne se code qu'avec l'accord explicite de Thomas**, donnée à
 cette animation-là, après un storyboard (règle du 21/11/2026, skill `tableau-seance` § 2-3).

@@ -95,14 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session.user) {
             supabase.rpc('track_user_activity', {
               p_user_id: session.user.id,
-              p_user_email: session.user.email,
+              p_user_email: session.user.email ?? '',
               p_device_info: navigator.userAgent,
             }).then(({ error: actErr }) => {
               if (actErr) console.error('[Auth] Activity tracking error:', actErr);
             });
             supabase.rpc('log_device_connection', {
               p_user_id: session.user.id,
-              p_user_email: session.user.email,
+              p_user_email: session.user.email ?? '',
               p_device_info: navigator.userAgent,
               p_platform: 'web',
             }).then(({ error: devErr }) => {
@@ -168,14 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.user) {
       supabase.rpc('track_user_activity', {
         p_user_id: data.user.id,
-        p_user_email: data.user.email,
+        p_user_email: data.user.email ?? '',
         p_device_info: navigator.userAgent,
       }).then(({ error: actErr }) => {
         if (actErr) console.error('[Auth] Activity tracking error:', actErr);
       });
       supabase.rpc('log_device_connection', {
         p_user_id: data.user.id,
-        p_user_email: data.user.email,
+        p_user_email: data.user.email ?? '',
         p_device_info: navigator.userAgent,
         p_platform: 'web',
       }).then(({ error: devErr }) => {

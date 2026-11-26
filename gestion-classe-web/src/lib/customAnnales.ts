@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 import type { Brevet, Matiere } from './brevets';
 import type { Programme } from './annalesLibrary';
 
@@ -67,7 +68,7 @@ export async function fetchCustomAnnales(): Promise<BrevetItem[]> {
     .order('annee', { ascending: false })
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(rowToBrevet);
+  return fromDb<CustomAnnaleRow[]>(data ?? []).map(rowToBrevet);
 }
 
 /** Uploade le PDF dans le bucket puis insere la ligne. Reserve au prof connecte. */
@@ -103,15 +104,31 @@ export async function addCustomAnnale(input: NewAnnaleInput, file: File): Promis
     await supabase.storage.from(BUCKET).remove([filePath]);
     throw error;
   }
-  return rowToBrevet(data);
+  return rowToBrevet(fromDb<CustomAnnaleRow>(data));
 }
 
-/** Supprime un sujet ajoute manuellement (fichier + ligne). Reserve au prof connecte. */
+/** Le sujet appartient à un autre compte : la base n'a rien supprimé. */
+export class AnnaleNotOwnedError extends Error {
+  constructor() {
+    super('Ce sujet a été ajouté par un autre compte : lui seul peut le supprimer.');
+    this.name = 'AnnaleNotOwnedError';
+  }
+}
+
+/**
+ * Supprime un sujet ajouté manuellement (ligne puis fichier).
+ *
+ * Seul le compte qui a ajouté le sujet peut le supprimer (migration 097), et la base ne renvoie pas
+ * d'erreur quand elle n'efface rien : sans relire ce qui a été supprimé, le sujet d'un collègue
+ * semblerait disparaître puis reviendrait au rechargement. La ligne part donc en premier, et le
+ * fichier seulement si elle est bien partie.
+ */
 export async function deleteCustomAnnale(item: BrevetItem): Promise<void> {
   if (!item.id) return;
+  const { data, error } = await supabase.from('custom_annales').delete().eq('id', item.id).select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new AnnaleNotOwnedError();
   if (item.file_path) {
     await supabase.storage.from(BUCKET).remove([item.file_path]);
   }
-  const { error } = await supabase.from('custom_annales').delete().eq('id', item.id);
-  if (error) throw error;
 }

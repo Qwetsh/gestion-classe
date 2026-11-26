@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { fromJson } from './dbJson';
 import { fetchSessionPhotos, getPhotoUrl, type GroupSessionPhoto } from './groupSessionPhotos';
 
 /**
@@ -408,7 +409,7 @@ export interface DepositState {
 export async function fetchDepositState(sessionId: string): Promise<DepositState | null> {
   const { data, error } = await supabase.rpc('tp_deposit_state', { p_session_id: sessionId });
   if (error) return null; // migration 089 absente : pas de bandeau
-  return data as DepositState;
+  return fromJson<DepositState>(data);
 }
 
 /** « Fermer plus tôt » : plus aucun envoi, les photos restent. */

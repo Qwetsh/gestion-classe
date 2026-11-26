@@ -236,7 +236,7 @@ async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string[]> {
     pageTexts.push(lines.join('').trim());
   }
 
-  doc.destroy();
+  doc.loadingTask.destroy();
   return pageTexts;
 }
 

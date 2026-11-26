@@ -32,6 +32,8 @@ interface Props {
   editor: Editor;
   onPrint: () => void;
   onExportPdf: () => void;
+  /** Partager en lecture seule : le lien à coller dans le cahier de texte. */
+  onShare: () => void;
   onRename: () => void;
   onInsertImage: () => void;
   onInsertQr: () => void;
@@ -172,7 +174,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onBoard, boardCount, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onShare, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onBoard, boardCount, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -226,7 +228,7 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
         rowHeight: (e.getAttributes('tableRow').minHeight ?? null) as number | null,
         onImage: e.isActive('image'),
         imageAlign: (e.getAttributes('image') as { align?: string }).align ?? 'center',
-        image: e.getAttributes('image') as { caption?: string | null; frame?: ImageFrame; alt?: string | null; rotate?: number; flip?: boolean; crop?: ImageCrop | null },
+        image: e.getAttributes('image') as { caption?: string | null; frame?: ImageFrame; alt?: string | null; rotate?: number; flip?: boolean; crop?: ImageCrop | null; page?: boolean },
         inColumns: !!findColumns(e.state),
         columnsLayout: ((findColumns(e.state)?.node.attrs.layout as ColumnsLayout | undefined) ?? '1-1'),
         onEncart: e.isActive('encart'),
@@ -384,6 +386,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Imprimer">
               <Big icon="print" label="Imprimer" title="Imprimer le cours (Ctrl+P)" onClick={onPrint} />
               <Big icon="pdf" label="Exporter en PDF" title="Exporter en PDF : choisir « Enregistrer au format PDF » dans la fenêtre d'impression" onClick={onExportPdf} />
+            </Group>
+            <Group label="Partager">
+              <Big icon="link" label="Lien lecture seule" title="Copier un lien à coller dans le cahier de texte : les élèves lisent le document, l'impriment ou l'enregistrent en PDF, sans compte et sans rien pouvoir modifier" onClick={onShare} />
             </Group>
             <Group label="Importer">
               <Big icon="openFile" label="Word ou PDF…" title="Insérer un fichier Word (.docx) ou les pages d'un PDF à l'endroit du curseur (ou déposez le fichier sur la feuille)" onClick={onImportFile} />
@@ -1030,11 +1035,14 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
                 {[[25, 50], [75, 100]].map((row) => (
                   <div key={row[0]} className="ce-row">
                     {row.map((p) => (
-                      <Sm key={p} label={`${p} %`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100) })} />
+                      <Sm key={p} label={`${p} %`} title={`${p} % de la largeur du texte`} onClick={() => updateNode('image', { width: Math.round((COL_W * p) / 100), page: false })} />
                     ))}
                   </div>
                 ))}
               </div>
+              <Big icon="fitPage" label="Page entière" on={!!s.image.page}
+                title="Toute la feuille A4, marges comprises, seule sur sa page : pour une feuille de documents ou une page de PDF déjà mise en page, qui s'imprime alors à sa taille réelle"
+                onClick={() => updateNode('image', { page: !s.image.page })} />
             </Group>
             <Group label="Légende">
               <Big icon="caption" label="Légende" title="Légende sous l'image, numérotée (« Document 1 : … »)" on={s.image.caption != null}

@@ -20,7 +20,7 @@
 body.ce-open { overflow: hidden; }
 
 /* Variables de l'habillage : l'éditeur de cours (.ce-root) et le ruban du tableau blanc (.ce-chrome) */
-.ce-root, .ce-chrome, .ce-pres {
+.ce-root, .ce-chrome, .ce-pres, .ce-modal {
   --ce-accent: var(--indigo, #4F46E5);
   --ce-accent-soft: var(--indigo-soft, #EEF0FF);
   --ce-accent-ink: #3730A3;
@@ -347,6 +347,17 @@ body.ce-open { overflow: hidden; }
 .ce-input--alt { width: 170px; }
 .ce-img.is-selected .ce-img__box { outline: 2px solid var(--ce-accent); outline-offset: 2px; }
 .ce-img__placeholder { height: 120px; display: flex; align-items: center; justify-content: center; background: #F1F5F9; color: #94A3B8; font: 13px Inter, sans-serif; line-height: 1.3; border-radius: 4px; }
+/*
+ * Page entière : le bloc a exactement la hauteur utile d'une page (la pagination le met seul sur
+ * sa feuille) et l'image en déborde des marges pour couvrir toute la feuille A4 (en-tête et pied
+ * compris). Valeurs = coursePage.ts (MARGIN, PAGE_W, PAGE_H, CONTENT_H).
+ */
+.ce-img.ce-img--page { display: block; position: relative; margin: 0; height: 1009.52px; }
+.ce-img__page { position: absolute; left: -56.5px; top: -56.5px; width: 793.7px; height: 1122.52px; overflow: hidden; background: #fff; line-height: 0; }
+.ce-img__page .ce-img__placeholder { height: 100%; border-radius: 0; }
+.ce-img--page.is-selected .ce-img__page { outline: 3px solid var(--ce-accent); outline-offset: -3px; }
+/* Projeté en classe : la bande ne montre que la colonne, la page y est ramenée à sa largeur */
+.ce-pres .ce-img__page { top: 0; transform: scale(0.8576); transform-origin: 50% 0; }
 .ce-img__handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 3px; background: #fff; border: 2px solid var(--ce-accent); cursor: nwse-resize; }
 
 /* ---------- Encart tableau 16:9 (= un écran en classe) ---------- */
@@ -558,6 +569,17 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-main { flex: 1; min-height: 0; display: flex; position: relative; }
 .ce-main > .ce-desk { flex: 1; min-width: 0; }
 .ce-chip--warn { background: #FFEDD5; color: #9A3412; }
+/* Version mobile du document (barre de titre) : automatique ou sur mesure (migration 093) */
+.ce-mstatus { color: var(--ce-muted); font-size: 12px; white-space: nowrap; }
+.ce-mstatus-box { position: relative; flex: none; }
+.ce-mstatus-chip { border: 0; cursor: pointer; font-family: inherit; }
+.ce-mstatus-chip--ok { background: var(--ce-accent-soft); color: var(--ce-accent-ink); }
+.ce-mstatus-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: 300px; padding: 12px; background: #fff; border: 1px solid var(--ce-line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .14); font-size: 13px; line-height: 1.4; }
+.ce-mstatus-pop p { margin: 0 0 8px; }
+.ce-mstatus-pop__warn { color: #9A3412; }
+.ce-mstatus-pop__hint { color: var(--ce-muted); }
+.ce-mstatus-pop__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+@media (max-width: 900px) { .ce-mstatus { display: none; } }
 .ce-dialog__hint { margin: 0; font-size: 12px; color: var(--ce-muted); }
 .ce-conflict { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #FFF7ED; border-bottom: 1px solid #FDBA74; color: #7C2D12; font-size: 13px; flex: none; flex-wrap: wrap; }
 .ce-conflict > div { display: flex; flex-direction: column; gap: 2px; }
@@ -636,9 +658,9 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-flow[data-invisibles] .ce-doc :is(p, h1, h2, h3, h4)::after { content: '¶'; display: inline-block; width: 0; overflow: visible; color: #60A5FA; font-weight: 400; font-style: normal; font-size: 1rem; pointer-events: none; }
 
 /* ---------- En-tête et pied de page (lot T9a), dans les marges de chaque feuille ---------- */
-.ce-hf { position: absolute; left: 94.49px; right: 94.49px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: baseline; font: 12px/1.3 var(--ce-doc-font); color: #6B7280; user-select: none; cursor: default; min-height: 18px; }
-.ce-hf--header { top: 40px; }
-.ce-hf--footer { bottom: 38px; }
+.ce-hf { position: absolute; left: 56.5px; right: 56.5px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: baseline; font: 12px/1.3 var(--ce-doc-font); color: #6B7280; user-select: none; cursor: default; min-height: 18px; }
+.ce-hf--header { top: 22px; }
+.ce-hf--footer { bottom: 20px; }
 .ce-hf__cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ce-hf__cell--left { text-align: left; }
 .ce-hf__cell--center { text-align: center; }
@@ -696,7 +718,18 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
 /* Deux par feuille : la copie figée n'existe que pendant l'impression */
 .ce-twoup { display: none; }
 
+/* QR code de la version téléphone (CourseMobileQr) : sur le papier seulement, par-dessus la première feuille */
+.ce-qrprint { display: none; }
+
 .ce-printd { width: min(560px, calc(100vw - 32px)); }
+/* Partager en lecture seule (CourseShareDialog) */
+.ce-shared { width: min(520px, calc(100vw - 32px)); }
+.ce-shared__link { display: flex; gap: 8px; }
+.ce-shared__link .ce-input { flex: 1; min-width: 0; height: 30px; font-size: 12px; }
+.ce-shared__warn { margin: 0; padding: 8px 10px; border-radius: 6px; background: #FEF3C7; color: #92400E; font-size: 12px; }
+.ce-shared__ok { margin: 0; font-size: 12px; color: #047857; }
+.ce-shared__confirm { flex: 1; font-size: 12px; color: #B91C1C; }
+a.ce-btn { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
 .ce-printd__row { display: flex; flex-direction: column; gap: 6px; }
 .ce-printd__choices { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
 .ce-printd__choice { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--ce-line-2); border-radius: 8px; background: #fff; cursor: pointer; font: 12px/1.35 Inter, sans-serif; color: var(--ce-muted); }
@@ -725,6 +758,10 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   body.ce-print-twoup .ce-twoup__copy { position: absolute !important; top: 0; transform-origin: 0 0; }
   body.ce-print-twoup .ce-twoup__cut { position: absolute; top: 0; bottom: 0; left: 148.5mm; border-left: 1px dashed #BBB; }
   .ce-root .ce-modal { display: none !important; }
+  /* Au-dessus du texte (et d'une image « page entière ») et du calque d'annotations */
+  .ce-qrprint { display: flex; position: absolute; z-index: 3; align-items: center; gap: 1mm; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ce-qrprint svg { display: block; flex: none; }
+  .ce-qrprint__label { padding-left: 1mm; font: 600 6.5pt/1.15 Arial, Helvetica, sans-serif; color: #111; text-align: right; white-space: nowrap; }
 }
 
 /* ---------- Thèmes (lot T16a) : vignettes du ruban ---------- */
@@ -812,7 +849,8 @@ body.ce-presenting { overflow: hidden; }
   .ce-root .ce-sheet { box-shadow: none; }
   .ce-doc .ce-pagebreak { border: 0; }
   .ce-doc .ce-pagebreak::after { display: none; }
-  .ce-doc .ProseMirror-selectednode, .ce-img.is-selected .ce-img__box { outline: 0; }
+  .ce-doc .ProseMirror-selectednode, .ce-img.is-selected .ce-img__box, .ce-img--page.is-selected .ce-img__page { outline: 0; }
+  .ce-img__page .ce-img__placeholder { visibility: hidden; }
   .ce-doc .ce-col { outline: 0 !important; }
   .ce-hf--empty, .ce-hf__missing { display: none !important; }
   .ce-hf { outline: 0 !important; }

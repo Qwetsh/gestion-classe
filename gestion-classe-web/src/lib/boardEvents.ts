@@ -14,6 +14,7 @@ import { cloneObjects, needsTarget, objectId, type BoardObject, type Interaction
 import type { ShapeObject } from './boardShapes';
 import { WINDOW_CARD, type WidgetObject, type WindowObject } from './boardMedia';
 import { supabase } from './supabase';
+import { toJson } from './dbJson';
 
 export interface EventPending { action: InteractionAction; params?: Interaction['params'] }
 /** Ce qu'une insertion pose sur la page : ses objets, le bouton porteur, et l'action encore sans cible. */
@@ -209,7 +210,7 @@ export async function pullEvents(): Promise<void> {
 
 async function pushEvent(e: SavedEvent): Promise<void> {
   if (!owner || tableMissing) return;
-  const { error } = await supabase.from('user_board_events').upsert({ id: e.id, user_id: owner, label: e.label, payload: { objects: e.objects }, created_at: e.createdAt });
+  const { error } = await supabase.from('user_board_events').upsert({ id: e.id, user_id: owner, label: e.label, payload: toJson({ objects: e.objects }), created_at: e.createdAt });
   if (error) { if (isMissingTable(error)) tableMissing = true; else console.warn('[boardEvents] enregistrement :', error); }
 }
 

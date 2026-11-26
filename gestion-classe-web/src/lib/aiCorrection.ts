@@ -44,7 +44,11 @@ export const RUN_STALE_MS = 10 * 60_000;
 export const COST_PER_COPY_USD = 0.3;
 export const COST_HINT = '≈ 0,30 $';
 
-export const NO_KIT_MESSAGE = 'Corrige d’abord la classe dans le Correcteur';
+export const NO_KIT_MESSAGE = 'Relie l’évaluation à son activité de Mes cours, ou corrige d’abord la classe dans le Correcteur';
+
+/** Aide affichée sous le bouton grisé : les deux façons d'avoir un kit. */
+export const NO_KIT_HELP =
+  'Pas encore de barème pour « Corriger avec Claude » : choisis l’activité de l’évaluation (Modifier l’évaluation › Activité), ou envoie le kit depuis le Correcteur (push_grades.py --kit).';
 
 /** Bouton à proposer : Corriger une copie scannée sans note, Recorriger une copie notée. */
 export function correctionMode(row: { pages: number; grade: { grade: number | null } | null }): AiCorrectionMode | null {
@@ -87,6 +91,7 @@ const START_ERRORS: Record<string, string> = {
   no_kit_for_version: 'Pas de kit pour la version du sujet de cette copie : envoie-le depuis le Correcteur (push_grades.py --kit).',
   kit_version_unsure: 'Le kit n’indique pas sa version du sujet et cette copie a une version à elle : envoie un kit par version depuis le Correcteur.',
   not_found: 'Évaluation introuvable.',
+  not_allowed: 'Correction par Claude réservée aux comptes autorisés.',
   unauthorized: 'Session expirée : reconnecte-toi.',
 };
 

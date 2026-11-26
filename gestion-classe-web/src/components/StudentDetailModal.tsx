@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchStudentAppreciations, type BulletinAppreciation } from '../lib/bulletinAppreciationsQueries';
 import { CategoryIcon } from './rewards/CategoryIcon';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import { classTone } from '../lib/classColors';
@@ -84,10 +85,10 @@ function sessionBars(events: StudentGrade['events'], max = 12): SessionBar[] {
     .slice(-max);
 }
 
-const dayMonth = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-const fullDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const dayMonth = (iso: string | null) =>
+  iso === null ? '' : new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+const fullDate = (iso: string | null) =>
+  iso === null ? '' : new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 const dayTime = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const slashDate = (iso: string) => {
@@ -212,6 +213,17 @@ export function StudentDetailModal({
 
   // ---- Séances ----
   const bars = useMemo(() => sessionBars(sg.events), [sg.events]);
+
+  // Appréciations de bulletin (migration 091), de la plus récente à la plus ancienne
+  const [appreciations, setAppreciations] = useState<BulletinAppreciation[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setAppreciations([]);
+    fetchStudentAppreciations(student.id)
+      .then((rows) => { if (!cancelled) setAppreciations(rows); })
+      .catch(() => { /* bloc masqué si la lecture échoue */ });
+    return () => { cancelled = true; };
+  }, [student.id]);
   const hasBars = bars.some((b) => b.participation > 0 || b.malus > 0 || b.absent);
   const maxParticipation = Math.max(1, ...bars.map((b) => b.participation));
 
@@ -506,6 +518,7 @@ export function StudentDetailModal({
                   if (group) sub.push(/^groupe/i.test(group.group_name) ? group.group_name : `Groupe ${group.group_name}`);
                   if (grade?.grade_raw != null && bareme !== 20) sub.push(`${formatGrade(Number(grade.grade_raw))}/${bareme}`);
                   if (!a.counts_in_average) sub.push('hors moyenne');
+                  else if (a.only_if_raises_average) sub.push('si elle monte la moyenne');
                   return (
                     <div key={a.id} className="rf-fiche__note">
                       <span className="rf-fiche__note-name">
@@ -626,6 +639,24 @@ export function StudentDetailModal({
                   </div>
                 )}
               </section>
+
+              {appreciations.length > 0 && (
+                <section>
+                  <div className="rf-fiche__sectionhead">
+                    <h4 className="rf-fiche__title">Appréciations de bulletin<span className="rf-fiche__count">{appreciations.length}</span></h4>
+                  </div>
+                  <div className="rf-fiche__rows">
+                    {appreciations.map((a) => (
+                      <div key={a.id} className="rf-fiche__row rf-fiche__row--top">
+                        <span className="rf-fiche__row-date" title={a.class_name ? `${a.school_year} · ${a.class_name}` : a.school_year}>
+                          T{a.trimester}{a.school_year !== appreciations[0].school_year ? ` ${a.school_year.slice(2, 4)}-${a.school_year.slice(7, 9)}` : ''}
+                        </span>
+                        <span className="rf-fiche__row-main">{a.content}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {archivedByYear.length > 0 && (
                 <section>

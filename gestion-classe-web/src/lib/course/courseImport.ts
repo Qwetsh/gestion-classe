@@ -5,7 +5,8 @@
  *   italique, souligné, barré), que l'éditeur colle ensuite comme un collage « Adapter au cours »
  *   (lot T5) : même nettoyage, images rapatriées dans le stockage du cours. Ce que mammoth ne
  *   reprend pas : couleurs, alignements, colonnes, zones de texte, en-têtes, équations.
- * - PDF : chaque page devient une image du cours (pdfjs).
+ * - PDF : chaque page devient une image du cours (pdfjs) ; une page en portrait occupe toute la
+ *   feuille (image « page entière ») et s'imprime donc à sa taille réelle.
  *
  * Un cours créé « à partir d'un fichier Word » passe le fichier à l'éditeur par une petite file
  * d'attente en mémoire : l'import se fait à l'ouverture, avec l'éditeur et ses outils.
@@ -62,14 +63,20 @@ export const PDF_PAGES_MAX = 60;
 export async function pdfPageCount(file: File): Promise<number> {
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  try { return doc.numPages; } finally { await doc.destroy(); }
+  try { return doc.numPages; } finally { await doc.loadingTask.destroy(); }
+}
+
+export interface PdfPageImage {
+  blob: Blob;
+  /** Page en portrait (plus haute que large) : elle peut occuper toute une feuille A4. */
+  portrait: boolean;
 }
 
 /** Pages d'un PDF en images JPEG (1 600 px de large, fond blanc), dans l'ordre. */
-export async function pdfToImages(file: File, onPage?: (done: number, total: number) => void, maxPages = PDF_PAGES_MAX): Promise<Blob[]> {
+export async function pdfToImages(file: File, onPage?: (done: number, total: number) => void, maxPages = PDF_PAGES_MAX): Promise<PdfPageImage[]> {
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const out: Blob[] = [];
+  const out: PdfPageImage[] = [];
   try {
     const total = Math.min(doc.numPages, maxPages);
     for (let i = 1; i <= total; i++) {
@@ -86,11 +93,12 @@ export async function pdfToImages(file: File, onPage?: (done: number, total: num
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       // pdfjs-dist v5 : le type RenderParameters exige un cast (voir mémoire projet)
       await page.render({ canvasContext: ctx, viewport } as never).promise;
-      out.push(await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Page illisible'))), 'image/jpeg', 0.86)));
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Page illisible'))), 'image/jpeg', 0.86));
+      out.push({ blob, portrait: canvas.height > canvas.width });
     }
     onPage?.(total, total);
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
   return out;
 }

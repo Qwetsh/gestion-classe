@@ -9,7 +9,9 @@ Thomas demande en une phrase ; Claude trouve l'activité, choisit les cours, vé
 copies et rend compte. Thomas reprend ensuite ce qu'il veut dans l'app. Le plan complet est dans
 `PLAN_preparation_semaine.md` (§ 4 : le dialogue).
 
-Outils : la skill `cours-gestion-classe` (`.claude/skills/cours-gestion-classe/`). La lire
+Outils : la skill `cours-gestion-classe`, dans le checkout des outils
+(`<skill>` = `C:\Users\Utilisateur\gc-worktrees\outils-master\.claude\skills\cours-gestion-classe`,
+à remettre à jour en début de session : voir sa rubrique « Où sont les outils »). La lire
 d'abord pour tout ce qui est écrit : fiche (`gc_cours.py`), écrans (`gc_ecrans.py`), envoi
 (`gc_envoi.py`). Avant de convertir ou d'écrire une activité, relire les consignes pédagogiques
 de son § 0 (dossier `_Claude\projet-assistant\`, hors du dépôt). Le placement passe par `gc_semaine.py`, avec le même jeton d'import.
@@ -46,6 +48,8 @@ python -I <skill>/gc_semaine.py retirer <id de la copie>            # sur demand
    - Source : `Fiche_eleve_….docx`, sinon le `.docx` élève le plus récent.
    - Les documents élève (feuille « Documents » à part, pages PDF jointes) vont dans un **cours
      à part**, même titre suivi de « (documents) », même niveau et même séquence, sans écrans.
+     Une page déjà mise en page (rendu de la feuille Word, page PDF) s'y pose avec
+     `Image(fichier, page_entiere=True)` : toute la feuille A4, à sa taille réelle à l'impression.
      Des documents mêlés aux questions sur la même feuille restent dans la fiche.
    - Les réponses viennent du `_CORRIGE.docx` ou du `corrigé`.
    - Une manipulation (matériel et protocole sur la fiche, ou fiche protocole sur Canva) donne une

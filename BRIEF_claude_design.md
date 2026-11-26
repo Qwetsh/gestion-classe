@@ -187,5 +187,5 @@ décisions), puis implémentation avec `npx tsc -b`, `eslint` et `npm run build`
 | Rendu canvas (fonds, encre, formes, texte, objets) | `gestion-classe-web/src/lib/board*.ts` |
 | Handoff design précédent (mobile), pour le format attendu | `design_handoff_reskin_direction_b/README.md` |
 | Menu radial élève à harmoniser | `src/components/live-session/WebRadialMenu.tsx` |
-| Captures d'inspiration déjà collectées | `ExempleMenuRadial.png`, `Exemple background.png`, `Exemple particule.png` |
+| Captures d'inspiration déjà collectées | `_references/ExempleMenuRadial.png`, `_references/Exemple background.png`, `_references/Exemple particule.png` (hors git) |
 | PRD, architecture, UX d'origine | `_bmad-output/planning-artifacts/` |

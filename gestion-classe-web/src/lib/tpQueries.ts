@@ -81,7 +81,7 @@ export async function listTps(userId: string): Promise<Tp[]> {
   if (rows.length === 0) return [];
   const { data: used } = await supabase.from('group_sessions').select('template_id').in('template_id', rows.map((r) => r.id));
   const counts = new Map<string, number>();
-  for (const u of used ?? []) counts.set(u.template_id, (counts.get(u.template_id) ?? 0) + 1);
+  for (const u of used ?? []) if (u.template_id) counts.set(u.template_id, (counts.get(u.template_id) ?? 0) + 1);
   return rows.map((r) => fromRow(r, counts.get(r.id) ?? 0));
 }
 

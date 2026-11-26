@@ -1,0 +1,49 @@
+name: Vérification
+
+# Sur chaque PR : les tests, puis la compilation et la construction du site, exactement comme à la
+# mise en ligne. Une PR dont cette vérification est rouge ne doit pas être fusionnée.
+#
+# Les valeurs Supabase sont factices : aucun test n'appelle la base, mais le code refuse de se
+# charger sans elles. Les vraies valeurs restent réservées à la mise en ligne (deploy.yml).
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Tests et construction du site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VITE_SUPABASE_URL: https://exemple.supabase.co
+      VITE_SUPABASE_ANON_KEY: cle-factice-pour-les-tests
+    defaults:
+      run:
+        working-directory: gestion-classe-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: gestion-classe-web/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Compilation et construction
+        run: npm run build

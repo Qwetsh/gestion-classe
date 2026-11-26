@@ -35,6 +35,7 @@ import type { Editor } from '@tiptap/core';
 import { DOMSerializer, type Node as PMNode } from '@tiptap/pm/model';
 import { TableMap } from '@tiptap/pm/tables';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Mapping } from '@tiptap/pm/transform';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { CONTENT_H, MARGIN, PAGE_H, SHEET_GAP } from '../../lib/course/coursePage';
@@ -98,9 +99,23 @@ export interface Unit {
   row?: RowBreak;
   /** Paragraphe d'au moins quatre lignes : ses débuts de ligne, où on peut le couper (lot T15c). */
   lines?: LineStart[];
+  /** Image « page entière » : haute de toute la page utile, elle couvre aussi les marges. */
+  page?: boolean;
+  /** Paragraphe vide. */
+  empty?: boolean;
 }
 
-interface PaginationState { deco: DecorationSet; layout: PageLayout }
+export interface PaginationState {
+  deco: DecorationSet;
+  /** Mise en page dont viennent les intercalaires affichés. */
+  layout: PageLayout;
+  /**
+   * Des intercalaires ont disparu depuis le dernier calcul (document remplacé d'un bloc : version
+   * de l'autre appareil, version restaurée ; zone effacée qui les contenait). Le prochain calcul
+   * doit être réappliqué même s'il est identique à `layout`.
+   */
+  stale?: boolean;
+}
 
 export const paginationKey = new PluginKey<PaginationState>('coursePagination');
 
@@ -185,6 +200,20 @@ function spacerWidgets(s: Spacer): Decoration[] {
   return out;
 }
 
+/**
+ * Suit les intercalaires à travers une modification du document. Un intercalaire dont la position
+ * a été effacée disparaît du jeu de décorations : la mise en page mémorisée ne correspond plus à
+ * l'écran, on la marque périmée. Sans ça, remplacer le cours par un contenu identique (« Ouvert
+ * aussi ailleurs » puis reprise de la version du serveur) retirait tous les intercalaires, et le
+ * recalcul, identique à la mise en page mémorisée, n'était jamais réappliqué : le texte coulait
+ * par-dessus les marges et l'espace entre les feuilles.
+ */
+export function mapPaginationState(value: PaginationState, mapping: Mapping, doc: PMNode): PaginationState {
+  const deco = value.deco.map(mapping, doc);
+  const lost = deco.find().length < value.deco.find().length;
+  return { deco, layout: value.layout, stale: value.stale || lost };
+}
+
 // ---- 1) Mesure ----
 
 /**
@@ -198,6 +227,7 @@ function collapsesThrough(cs: CSSStyleDeclaration, side: 'Top' | 'Bottom'): bool
 
 interface Measured {
   pos: number; anchor: HTMLElement; top: number; bottom: number; mt: number; mb: number; type: string; inBox: boolean; row?: RowBreak;
+  page?: boolean; empty?: boolean;
   /** Paragraphe long : débuts de ligne (hauts en px d'écran, déjà sans les intercalaires en ligne). */
   lines?: LineStart[];
   /** Hauteur (px d'écran) des intercalaires en ligne posés dans ce paragraphe. */
@@ -286,6 +316,8 @@ function measureNode(view: EditorView, node: PMNode, pos: number, el: HTMLElemen
     pos, anchor: el, top: r.top, bottom: r.bottom,
     mt: parseFloat(cs.marginTop) || 0, mb: parseFloat(cs.marginBottom) || 0, type: node.type.name, inBox,
   };
+  if (node.type.name === 'image' && node.attrs.page) self.page = true;
+  if (node.type.name === 'paragraph' && node.content.size === 0) self.empty = true;
   if (node.type.name === 'paragraph' && !inBox) {
     const found = measureLines(view, node, pos, el, scale);
     if (found) { self.lines = found.lines; self.inner = found.inner; }
@@ -357,7 +389,7 @@ function measureTable(view: EditorView, node: PMNode, pos: number, el: HTMLEleme
 export function measureUnits(view: EditorView): Unit[] {
   const dom = view.dom as HTMLElement;
   const domTop = dom.getBoundingClientRect().top;
-  // Largeur exacte avant zoom (offsetWidth est arrondi au px : 605 pour 604,72, soit ≈ 0,5 px
+  // Largeur exacte avant zoom (offsetWidth est arrondi au px : 681 pour 680,7, soit ≈ 0,3 px
   // de dérive par page)
   const layoutW = parseFloat(getComputedStyle(dom).width) || dom.offsetWidth;
   const scale = layoutW ? dom.getBoundingClientRect().width / layoutW : 1;
@@ -388,6 +420,8 @@ export function measureUnits(view: EditorView): Unit[] {
       type: m.type,
       ...(m.inBox ? { inBox: true } : {}),
       ...(m.row ? { row: m.row } : {}),
+      ...(m.page ? { page: true } : {}),
+      ...(m.empty ? { empty: true } : {}),
       ...(m.lines ? { lines: m.lines.map((l) => ({ ...l, top: (l.top - domTop) / scale - removed })) } : {}),
     });
     removed += inner; // les unités suivantes sont décalées des intercalaires posés dans ce paragraphe
@@ -441,7 +475,10 @@ export function paginate(units: Unit[], gap: number): PageLayout {
       return cut;
     };
 
-    let placed = false;
+    // Juste sous une page entière, un saut de page ou le paragraphe vide qui termine le cours reste
+    // sur cette feuille (caché sous l'image) : renvoyé à la suivante, il imprimerait une page blanche
+    const afterPage = !!units[i - 1]?.page && !forceBreak;
+    let placed = afterPage && (u.type === 'pageBreak' || (!!u.empty && i === units.length - 1));
     if (u.lines && !forceBreak && top + h > pageTop + CONTENT_H + 0.5) placed = cutLines();
     if (!placed && prevBottom !== null) {
       const notFirstOnPage = top - mt > pageTop + 0.5;
@@ -504,8 +541,8 @@ function sameLayout(a: PageLayout, b: PageLayout): boolean {
 }
 
 function applyLayout(view: EditorView, layout: PageLayout, onLayout?: (l: PageLayout) => void) {
-  const current = paginationKey.getState(view.state)?.layout;
-  if (current && sameLayout(current, layout)) return;
+  const current = paginationKey.getState(view.state);
+  if (current && !current.stale && sameLayout(current.layout, layout)) return;
   view.dispatch(view.state.tr.setMeta(paginationKey, layout).setMeta('addToHistory', false));
   onLayout?.(layout);
 }
@@ -540,7 +577,7 @@ export const CoursePagination = Extension.create<PaginationOptions, PaginationSt
             const next = tr.getMeta(paginationKey) as PageLayout | undefined;
             if (next) return { deco: DecorationSet.create(tr.doc, next.spacers.flatMap(spacerWidgets)), layout: next };
             if (!tr.docChanged) return value;
-            return { deco: value.deco.map(tr.mapping, tr.doc), layout: value.layout };
+            return mapPaginationState(value, tr.mapping, tr.doc);
           },
         },
         props: {
