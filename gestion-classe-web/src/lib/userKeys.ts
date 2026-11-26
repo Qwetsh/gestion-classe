@@ -5,6 +5,7 @@
  * à chaque enregistrement, le navigateur alimente le compte.
  */
 import { supabase } from './supabase';
+import { toJson } from './dbJson';
 
 /** Entrées localStorage synchronisées, et leur nom dans la colonne `keys`. */
 const SYNCED: { storage: string; field: string; json: boolean }[] = [
@@ -50,6 +51,6 @@ export async function pushKeys(): Promise<void> {
       keys[field] = json ? JSON.parse(raw) : raw;
     } catch { /* entrée illisible : ignorée */ }
   }
-  const { error } = await supabase.from('user_api_keys').upsert({ user_id: owner, keys, updated_at: new Date().toISOString() });
+  const { error } = await supabase.from('user_api_keys').upsert({ user_id: owner, keys: toJson(keys), updated_at: new Date().toISOString() });
   if (error) { if (isMissingTable(error)) tableMissing = true; else console.warn('[userKeys] enregistrement :', error); }
 }

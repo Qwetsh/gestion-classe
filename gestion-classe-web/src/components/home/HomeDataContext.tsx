@@ -7,6 +7,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
+import { fetchTeacherEvents } from '../../lib/eventsQueries';
 import { useAuth } from '../../hooks/useAuth';
 import { pronoteFetcher } from '../../lib/pronoteFetcher';
 import type { TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
@@ -656,11 +657,11 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
           // Parallel batch 2: config + events (via sessions join) + manual participations (via user_id)
           const [
             { data: configsData },
-            { data: allEventsData },
+            allEventsData,
             { data: manualPartData },
           ] = await Promise.all([
             supabase.from('class_trimester_config').select('*').in('class_id', classIds),
-            supabase.from('events').select('student_id, type, session_id, sessions!inner(user_id)').eq('sessions.user_id', user.id),
+            fetchTeacherEvents(user.id),
             supabase.from('manual_participations').select('student_id, count').eq('user_id', user.id),
           ]);
 
@@ -669,7 +670,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
 
           // Calculate grades per student
           const eventsByStudent = new Map<string, any[]>();
-          (allEventsData || []).forEach(e => {
+          allEventsData.forEach(e => {
             const arr = eventsByStudent.get(e.student_id) || [];
             arr.push(e);
             eventsByStudent.set(e.student_id, arr);
@@ -682,7 +683,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
 
           // Count sessions per student (unique session_ids in events)
           const sessionsByStudent = new Map<string, Set<string>>();
-          (allEventsData || []).forEach(e => {
+          allEventsData.forEach(e => {
             const set = sessionsByStudent.get(e.student_id) || new Set();
             set.add(e.session_id);
             sessionsByStudent.set(e.student_id, set);
@@ -699,7 +700,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
             const totalPart = participations + manualPart;
             const sessCount = sessionsByStudent.get(student.id)?.size || 0;
 
-            const config = configMap.get(student.class_id);
+            const config = student.class_id ? configMap.get(student.class_id) : undefined;
             const targetPart = config?.target_participations || 15;
             const totalSessionsExpected = config?.total_sessions_expected || 60;
             const malusPenalty = config?.bavardage_penalty ?? false;
@@ -720,7 +721,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
             studentGrades.push({
               id: student.id,
               pseudo: student.pseudo,
-              class_id: student.class_id,
+              class_id: student.class_id ?? '',
               class_name: (student.classes as any)?.name || 'Classe inconnue',
               grade,
               malus: malusCount,

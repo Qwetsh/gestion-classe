@@ -9,7 +9,9 @@ Thomas demande en une phrase ; Claude trouve l'activité, choisit les cours, vé
 copies et rend compte. Thomas reprend ensuite ce qu'il veut dans l'app. Le plan complet est dans
 `PLAN_preparation_semaine.md` (§ 4 : le dialogue).
 
-Outils : la skill `cours-gestion-classe` (`.claude/skills/cours-gestion-classe/`). La lire
+Outils : la skill `cours-gestion-classe`, dans le checkout des outils
+(`<skill>` = `C:\Users\Utilisateur\gc-worktrees\outils-master\.claude\skills\cours-gestion-classe`,
+à remettre à jour en début de session : voir sa rubrique « Où sont les outils »). La lire
 d'abord pour tout ce qui est écrit : fiche (`gc_cours.py`), écrans (`gc_ecrans.py`), envoi
 (`gc_envoi.py`). Avant de convertir ou d'écrire une activité, relire les consignes pédagogiques
 de son § 0 (dossier `_Claude\projet-assistant\`, hors du dépôt). Le placement passe par `gc_semaine.py`, avec le même jeton d'import.

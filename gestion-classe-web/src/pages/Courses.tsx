@@ -14,6 +14,9 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, FileText, Search } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { CourseShareDialog } from '../components/course/CourseShareDialog';
+import { mobileUrl } from '../lib/mobileVersion';
+import { ShareUnavailableError, ensureShareToken, resolveLinkTarget } from '../lib/mobileVersionQueries';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import {
   boardsUnavailable,
@@ -75,6 +78,30 @@ export function Courses() {
   const { user } = useAuth();
   const userId = user?.id ?? '';
   const { toast, confirm } = useUIFeedback();
+  /** Fenêtre « Partager en lecture seule » ouverte depuis la liste, sans ouvrir le cours. */
+  const [sharing, setSharing] = useState<Board | null>(null);
+
+  /**
+   * Clic droit › « Copier le lien lecture seule » : le lien de partage du document (créé s'il
+   * n'existe pas) copié pour le cahier de texte. Presse-papiers refusé (navigateur strict après
+   * l'attente du serveur) : la fenêtre de partage s'ouvre, avec le lien prêt à copier.
+   */
+  const copyShareLink = async (b: Board) => {
+    try {
+      const target = await resolveLinkTarget('share', b.id, b.title);
+      if (!target) { toast('Une évaluation, une copie modèle ou un devoir noté ne se partage pas par un lien.'); return; }
+      const url = mobileUrl(await ensureShareToken(userId, target));
+      try {
+        await navigator.clipboard.writeText(url);
+        toast(target === b.id ? 'Lien lecture seule copié : collez-le dans le cahier de texte.' : 'Lien lecture seule copié (il ouvre l’original de la bibliothèque).', 'success');
+      } catch {
+        setSharing(b);
+      }
+    } catch (err) {
+      if (err instanceof ShareUnavailableError) toast('Le partage n’est pas encore activé sur le serveur.');
+      else { console.warn('[Courses] lien de partage :', err); toast('Le lien n’a pas pu être créé. Réessayez dans un instant.'); }
+    }
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -513,6 +540,8 @@ export function Courses() {
             onSaveAsTemplate={(b) => void duplicate(b, true)}
             onDelete={(b) => void remove(b)}
             onEditLinks={setLinking}
+            onCopyShareLink={(b) => void copyShareLink(b)}
+            onManageShareLink={setSharing}
             onRenameSequence={renameSequence}
             files={methodsView ? null : filesApi}
             tps={methodsView ? undefined : tpsOfActivities}
@@ -559,6 +588,7 @@ export function Courses() {
         />
       )}
 
+      {sharing && <CourseShareDialog boardId={sharing.id} userId={userId} title={sharing.title} onClose={() => setSharing(null)} />}
       {linking && (
         <CourseLinksDialog
           board={linking}

@@ -71,7 +71,8 @@ describe('affichage', () => {
     expect(isApiGrade(null)).toBe(false);
   });
   it('messages et coût', () => {
-    expect(describeStartError('no_kit')).toMatch('Corrige d’abord la classe dans le Correcteur');
+    expect(describeStartError('no_kit')).toMatch('corrige d’abord la classe dans le Correcteur');
+    expect(describeStartError('no_kit')).toMatch('activité de Mes cours');
     expect(describeStartError('bizarre')).toBe('Correction impossible (bizarre).');
     expect(describeStartError('no_kit_for_version', { versions: ['v5'], student_version: 'v4' })).toMatch(/Copie : v4\. Kits : v5\.$/);
     expect(describeStartError('already_running', { versions: ['v5'] })).toBe('Une correction est déjà en cours pour cet élève.');

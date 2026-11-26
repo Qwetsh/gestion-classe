@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import { fetchStudentWorkCorrection, type StudentWorkActivity, type StudentWorkView } from '../lib/studentGrades';
 import {
   ZONE_NAMES,
@@ -20,22 +21,24 @@ import {
  * est celui du prof (`questionScore`) : l'élève lit le même chiffre que sur la copie imprimée.
  */
 
+// Les couleurs sont celles de l'espace élève (styles/eleve.css) : la copie suit le thème choisi.
+// Cet écran n'existe que dans l'espace élève, sous sa racine `.el`.
 const T = {
-  bg: '#1e1712',
-  card: '#2a2018',
-  cardBorder: '#3a2e22',
-  inset: '#241c15',
-  text: '#e8dcc8',
-  textMuted: '#a09080',
-  textDim: '#6a5c4e',
-  pos: '#4ade80',
-  posSoft: '#14331f',
-  neg: '#f87171',
-  negSoft: '#3a1f1f',
-  warn: '#fbbf24',
-  warnSoft: '#3a2d12',
-  indigo: '#a5b4fc',
-  indigoSoft: '#1e1b4b',
+  bg: 'var(--el-bg)',
+  card: 'var(--el-surface)',
+  cardBorder: 'var(--el-line)',
+  inset: 'var(--el-bg)',
+  text: 'var(--el-text)',
+  textMuted: 'var(--el-muted)',
+  textDim: 'var(--el-dim)',
+  pos: 'var(--el-pos)',
+  posSoft: 'var(--el-pos-soft)',
+  neg: 'var(--el-neg)',
+  negSoft: 'var(--el-neg-soft)',
+  warn: 'var(--el-warn)',
+  warnSoft: 'var(--el-warn-soft)',
+  indigo: 'var(--el-indigo-ink)',
+  indigoSoft: 'var(--el-indigo-soft)',
 } as const;
 
 const SKILL_LEVELS = ['Insuffisante', 'Fragile', 'Satisfaisante', 'Très bonne'];
@@ -72,7 +75,7 @@ function TableAnswer({ def, q, content }: { def: ActivityDefinition; q: Activity
         const row = lignes[l.id] ?? {};
         const zone = ZONE_NAMES[String(row.zone ?? '')] ?? (row.zone ? String(row.zone) : null);
         return (
-          <div key={l.id} style={{ background: T.inset, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: '8px 10px' }}>
+          <div key={l.id} style={{ background: T.inset, border: `1px solid ${T.cardBorder}`, borderRadius: 6, padding: '8px 10px' }}>
             <div style={{ color: T.text, fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
               Ligne {i + 1} <span style={{ color: T.textMuted, fontWeight: 500 }}>· {zone ?? 'zone non choisie'}</span>
             </div>
@@ -102,7 +105,7 @@ function Answer({ def, q, content }: { def: ActivityDefinition; q: ActivityQuest
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {(q.champs ?? []).map((ch) => (
-          <div key={ch.id} style={{ background: T.inset, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: '8px 10px' }}>
+          <div key={ch.id} style={{ background: T.inset, border: `1px solid ${T.cardBorder}`, borderRadius: 6, padding: '8px 10px' }}>
             <div style={{ color: T.indigo, fontSize: 12, fontWeight: 700, marginBottom: 3 }}>{ch.nom}</div>
             <div style={{ color: T.text, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
               {o[ch.id]?.trim() ? o[ch.id].trim() : <Empty />}
@@ -114,7 +117,7 @@ function Answer({ def, q, content }: { def: ActivityDefinition; q: ActivityQuest
   }
   const t = v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v);
   return (
-    <div style={{ background: T.inset, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: '8px 10px', color: T.text, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+    <div style={{ background: T.inset, border: `1px solid ${T.cardBorder}`, borderRadius: 6, padding: '8px 10px', color: T.text, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
       {t.trim() ? t.trim() : <Empty label="— pas de réponse" />}
     </div>
   );
@@ -127,7 +130,7 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
   const got = questionScore(q, work.correction);
   const color = q.bonus ? T.indigo : scoreColor(got, q.points);
   return (
-    <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 14 }}>
+    <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: 14 }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <span style={{
           flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center',
@@ -139,20 +142,20 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
         </span>
       </header>
 
-      <div style={{ color: T.textDim, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Ta réponse</div>
+      <div style={{ color: T.textDim, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Ta réponse</div>
       <Answer def={def} q={q} content={work.content} />
 
-      <div style={{ color: T.textDim, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '12px 0 6px' }}>Correction</div>
+      <div style={{ color: T.textDim, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '12px 0 6px' }}>Correction</div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {q.criteres.map((cr) => {
           const on = !!c?.criteres?.[cr.id];
           return (
             <li key={cr.id} style={{
-              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px', borderRadius: 10,
-              background: on ? T.posSoft : T.inset, border: `1px solid ${on ? T.pos + '44' : T.cardBorder}`,
+              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px', borderRadius: 6,
+              background: on ? T.posSoft : T.inset, border: `1px solid ${on ? 'color-mix(in srgb, var(--el-pos) 30%, transparent)' : T.cardBorder}`,
             }}>
-              <span style={{ color: on ? T.pos : T.textDim, fontWeight: 700, flexShrink: 0 }}>{on ? '✓' : '✗'}</span>
-              <span style={{ flex: 1, color: on ? T.text : T.textMuted, fontSize: 13, lineHeight: 1.4 }}>{cr.nom}</span>
+              <span style={{ color: on ? T.pos : T.neg, fontWeight: 700, flexShrink: 0 }} role="img" aria-label={on ? 'obtenu' : 'non obtenu'}>{on ? '✓' : '✗'}</span>
+              <span style={{ flex: 1, color: on ? T.text : T.textMuted, fontSize: 15, lineHeight: 1.4 }}>{cr.nom}</span>
               <span style={{ color: T.textDim, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>{q.bonus ? '★' : `${pts(cr.points)} pt`}</span>
             </li>
           );
@@ -160,8 +163,8 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
       </ul>
 
       {c?.remarque && (
-        <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 10, background: T.warnSoft, borderLeft: `3px solid ${T.warn}`, color: T.text, fontSize: 14, lineHeight: 1.45 }}>
-          <span style={{ color: T.warn, fontWeight: 700, marginRight: 6 }}>💬</span>{c.remarque}
+        <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 6, background: T.indigoSoft, color: T.indigo, fontSize: 15, lineHeight: 1.45 }}>
+          {c.remarque}
         </div>
       )}
     </section>
@@ -211,17 +214,18 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
         padding: 'max(10px, env(safe-area-inset-top)) 12px 10px', background: T.bg, borderBottom: `1px solid ${T.cardBorder}`,
       }}>
         <button onClick={onClose} aria-label="Retour aux notes" style={{
-          background: T.card, border: `1px solid ${T.cardBorder}`, color: T.text, borderRadius: 10,
-          padding: '8px 12px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-        }}>← Retour</button>
+          background: T.card, border: `1px solid ${T.cardBorder}`, color: T.text, borderRadius: 6,
+          minHeight: 44, padding: '0 12px 0 8px', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+        }}><ChevronLeft size={20} aria-hidden /> Retour</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: T.textDim, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ma copie corrigée</div>
+          <div style={{ color: T.textDim, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ma copie corrigée</div>
           <div style={{ color: T.text, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {data?.activity.title ?? assessmentName}
           </div>
         </div>
         {total !== null && (
-          <div style={{ flexShrink: 0, textAlign: 'right', background: T.indigoSoft, border: `1px solid ${T.indigo}55`, borderRadius: 12, padding: '6px 10px' }}>
+          <div style={{ flexShrink: 0, textAlign: 'right', background: T.indigoSoft, border: `1px solid ${T.cardBorder}`, borderRadius: 6, padding: '6px 10px' }}>
             <span style={{ color: T.indigo, fontWeight: 700, fontSize: 18 }}>{total}</span>
             <span style={{ color: T.textMuted, fontSize: 12 }}> / {bareme}</span>
           </div>
@@ -232,7 +236,7 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
         {error && <p style={{ color: T.neg, textAlign: 'center', padding: '24px 0' }}>{error}</p>}
         {!error && data === undefined && <p style={{ color: T.textMuted, textAlign: 'center', padding: '24px 0' }}>Chargement…</p>}
         {!error && data === null && (
-          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, textAlign: 'center' }}>
+          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: 24, textAlign: 'center' }}>
             <p style={{ color: T.text, marginBottom: 6 }}>Ta copie n’est pas encore consultable.</p>
             <p style={{ color: T.textDim, fontSize: 13, margin: 0 }}>Elle apparaîtra ici quand ton professeur l’aura corrigée.</p>
           </div>
@@ -240,7 +244,7 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
 
         {data && (
           <>
-            <div style={{ color: T.textMuted, fontSize: 12, lineHeight: 1.5 }}>
+            <div style={{ color: T.textMuted, fontSize: 14, lineHeight: 1.5 }}>
               {data.activity.sequence && <div>{data.activity.sequence}</div>}
               <div>
                 Envoi n°{data.work.version}{data.work.submitted_at ? ` du ${fmtDate(data.work.submitted_at)}` : ''}
@@ -254,8 +258,8 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
             ))}
 
             {(data.activity.definition.competences?.length ?? 0) > 0 && (
-              <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 14 }}>
-                <div style={{ color: T.textDim, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Compétences</div>
+              <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: 14 }}>
+                <div style={{ color: T.textDim, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Compétences</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(data.activity.definition.competences ?? []).map((comp) => {
                     const lvl = data.work.skills?.[comp.id];
@@ -278,16 +282,16 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
             )}
 
             {data.work.advice && (
-              <section style={{ background: T.indigoSoft, border: `1px solid ${T.indigo}55`, borderRadius: 16, padding: 14 }}>
-                <div style={{ color: T.indigo, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Conseils pour la prochaine fois</div>
+              <section style={{ background: T.indigoSoft, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: 14 }}>
+                <div style={{ color: T.indigo, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Conseils pour la prochaine fois</div>
                 <p style={{ margin: 0, color: T.text, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{data.work.advice}</p>
               </section>
             )}
 
             <button onClick={onClose} style={{
-              marginTop: 4, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.text, borderRadius: 12,
-              padding: '12px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            }}>← Retour aux notes</button>
+              marginTop: 4, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.text, borderRadius: 6,
+              minHeight: 48, padding: '0 12px', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Retour aux notes</button>
           </>
         )}
       </div>

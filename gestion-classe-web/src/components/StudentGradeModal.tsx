@@ -10,7 +10,7 @@ import { WorkAnswersView } from './productions/WorkAnswersView';
 import { KindIcon } from './KindIcon';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import { hasCopies, publicationState, PUBLICATION_LABEL } from '../lib/assessmentGroups';
-import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
+import { COST_HINT, NO_KIT_HELP, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 import { alignTranscript } from '../lib/copyTranscript';
 import { productionDetails } from '../lib/productionDetails';
 import { parseGradeDetails } from '../lib/gradeDetails';
@@ -296,7 +296,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
             {noteError && <div style={{ fontSize: 12, color: 'var(--neg)', margin: '-4px 0 10px' }}>{noteError}</div>}
             {withCopies && !hasKit && mode === 'corriger' && (
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
-                {NO_KIT_MESSAGE} : « Corriger avec Claude » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
+                {NO_KIT_HELP}
               </div>
             )}
             <AiRunPanel run={aiRuns[row.student.id]} apiGrade={isApiGrade(grade?.details)} />

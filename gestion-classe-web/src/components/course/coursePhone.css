@@ -1,0 +1,56 @@
+/*
+ * Version couleur d'un document imprimé, lue sur un téléphone (page /d/<jeton>, CoursePhoneDoc) :
+ * le cours de l'éditeur sur une seule colonne. On ne touche qu'à la mise en page ; les couleurs, les
+ * encadrés et les tableaux gardent le style des feuilles (course.css).
+ */
+.ce-phone { --ce-phone-page: .45; width: 100%; min-width: 0; }
+.ce-phone .ce-flow { position: relative; z-index: auto; width: auto; }
+.ce-phone .ce-doc { overflow-wrap: anywhere; }
+/* Colonne étroite : pas de justification (lézardes), césure permise */
+.ce-phone .ce-doc [style*="text-align: justify"] { text-align: left !important; }
+.ce-phone .ce-doc p, .ce-phone .ce-doc li { hyphens: auto; -webkit-hyphens: auto; }
+/* Colonnes du cours : les unes sous les autres */
+.ce-phone .ce-doc .ce-cols { grid-template-columns: 1fr !important; gap: 12px; }
+.ce-phone .ce-doc .ce-col { outline: 0; }
+.ce-phone .ce-doc .ce-pagebreak { display: none; }
+/* Tableau plus large que l'écran : il défile de côté, la page non */
+.ce-phone .ce-doc .tableWrapper { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Image « page entière » : la feuille A4 réduite à la largeur de la colonne */
+.ce-phone .ce-img.ce-img--page { height: calc(1122.52px * var(--ce-phone-page)); margin: 8px 0 14px; overflow: hidden; box-shadow: 0 0 0 1px #E5E7EB; }
+.ce-phone .ce-img__page { left: 0; top: 0; transform: scale(var(--ce-phone-page)); transform-origin: 0 0; }
+.ce-phone .ce-img__caption:has(.is-empty), .ce-phone .ce-img__handle { display: none; }
+
+/* ---------- La page ---------- */
+.mdoc { min-height: 100vh; min-height: 100dvh; background: #fff; color: #111827; }
+.mdoc__bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top)); background: rgba(255, 255, 255, .96); border-bottom: 1px solid #E5E7EB; backdrop-filter: blur(6px); }
+.mdoc__title { flex: 1; min-width: 0; margin: 0; font: 600 15px/1.3 Inter, system-ui, sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdoc__tag { flex: none; padding: 2px 8px; border-radius: 999px; background: #EEF2FF; color: #4338CA; font: 600 11px/18px Inter, system-ui, sans-serif; }
+.mdoc__body { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
+.mdoc__message { max-width: 420px; margin: 18vh auto 0; padding: 0 24px; text-align: center; font: 15px/1.5 Inter, system-ui, sans-serif; color: #374151; }
+.mdoc__message strong { display: block; margin-bottom: 6px; font-size: 17px; color: #111827; }
+
+/* ---------- Vue « Pages A4 » (CourseA4Doc) : les feuilles de l'éditeur, réduites à l'écran ---------- */
+.ce-a4 { width: 100%; min-width: 0; }
+.ce-a4__outer { position: relative; margin: 0 auto; }
+.ce-a4 .ce-sheets { cursor: default; }
+.mdoc__body--a4 { max-width: 840px; background: #E7E9EE; min-height: calc(100dvh - 52px); }
+.mdoc__views { flex: none; display: inline-flex; padding: 2px; border-radius: 8px; background: #F3F4F6; }
+.mdoc__views button { height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #374151; font: 600 12px/30px Inter, system-ui, sans-serif; cursor: pointer; }
+.mdoc__views button[aria-pressed="true"] { background: #fff; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.mdoc__print { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: #4F46E5; color: #fff; font: 600 13px/34px Inter, system-ui, sans-serif; cursor: pointer; }
+.mdoc__print:disabled { opacity: .6; cursor: wait; }
+.mdoc__tag--share { background: #ECFDF5; color: #047857; }
+.mdoc__custom { flex: none; height: 30px; padding: 0 10px; border: 1px solid #C7D2FE; border-radius: 8px; background: #EEF2FF; color: #4338CA; font: 600 12px/28px Inter, system-ui, sans-serif; cursor: pointer; }
+/* Version sur mesure (migration 093) : la page de Claude en plein écran, dans un cadre isolé */
+.mdoc-custom { position: fixed; inset: 0; background: #fff; }
+.mdoc-custom__frame { display: block; width: 100%; height: 100%; border: 0; }
+/* Bouton discret, en bas à droite (la page laisse 56 px libres en bas : skill version-mobile) */
+.mdoc-custom__simple { position: fixed; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 2; height: 30px; padding: 0 12px; border: 1px solid rgba(17, 24, 39, .14); border-radius: 15px; background: rgba(255, 255, 255, .88); color: #374151; font: 600 12px/28px Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); backdrop-filter: blur(4px); opacity: .85; cursor: pointer; }
+.mdoc-custom__simple:hover, .mdoc-custom__simple:focus-visible { opacity: 1; }
+@media (max-width: 520px) {
+  .mdoc__bar { flex-wrap: wrap; }
+  .mdoc__title { flex-basis: 100%; }
+  .mdoc__tag { display: none; }
+}
+/* Étiquette de l'éditeur (« ✎ Zone d'écriture · 6 lignes ») : un repère du professeur, pas pour l'élève, ni à l'écran ni à l'impression */
+.ce-a4 .ce-zone::before, .bd-print .ce-zone::before { content: none; }

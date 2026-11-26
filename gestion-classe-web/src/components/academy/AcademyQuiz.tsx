@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { fromJson } from '../../lib/dbJson';
 import { fetchQuestions, type AcademyQuestion, type AcademyAnswer } from '../../lib/academyQueries';
 import { Starfield, FloatingCandles, Candle, Ornament, WaxSeal } from './Atmosphere';
 import { HouseCrest } from './HouseCrest';
@@ -88,8 +89,9 @@ export function AcademyQuiz({ studentCode, onComplete }: AcademyQuizProps) {
       console.log('[AcademyQuiz] RPC result:', result, 'error:', rpcError);
 
       if (rpcError) throw rpcError;
-      if (result?.error) {
-        setError(result.error === 'already_submitted' ? 'Tu as déjà passé le test.' : `Erreur: ${result.error}`);
+      const outcome = fromJson<{ error?: string } | null>(result);
+      if (outcome?.error) {
+        setError(outcome.error === 'already_submitted' ? 'Tu as déjà passé le test.' : `Erreur: ${outcome.error}`);
         setPhase('waiting');
         return;
       }

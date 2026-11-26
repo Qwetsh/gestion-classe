@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { fromDb } from '../lib/dbJson';
 
 interface Announcement {
   id: string;
@@ -172,7 +173,7 @@ export function AnnouncementBanner() {
       .eq('active', true)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        if (data) setAnnouncements(data);
+        if (data) setAnnouncements(fromDb<Announcement[]>(data));
       });
   }, []);
 

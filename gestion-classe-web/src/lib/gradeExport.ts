@@ -69,7 +69,7 @@ function averageOf(cls: ExportClass, studentId: string, period: number | null): 
     .filter((a) => period === null || a.period === period)
     .map((a) => ({
       entry: entryOf(cls, a.id, studentId),
-      assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average },
+      assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average, onlyIfRaises: !!a.only_if_raises_average },
     }));
   const avg = studentAverage(rows);
   return avg === null ? null : round2(avg);
@@ -99,6 +99,7 @@ export function studentLabel(s: ExportStudent): string {
 function columnLabel(a: AssessmentRow, multiYear: boolean): string {
   const bits = [`coef ${Number(a.coefficient)}`, `/${Number(a.bareme_total ?? 20)}`];
   if (!a.counts_in_average) bits.push('hors moyenne');
+  else if (a.only_if_raises_average) bits.push('si elle monte la moyenne');
   const prefix = multiYear && a.school_year ? `${a.school_year} ` : '';
   return `${prefix}T${a.period ?? '?'} · ${a.name} (${bits.join(', ')})`;
 }
@@ -288,7 +289,7 @@ export function exportGradeBookPdf(data: GradeBookExport, account: string): void
         (() => {
           const rows = assessments.map((a) => ({
             entry: entryOf(cls, a.id, s.id),
-            assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average },
+            assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average, onlyIfRaises: !!a.only_if_raises_average },
           }));
           const avg = studentAverage(rows);
           return avg === null ? '—' : avg.toFixed(1).replace('.', ',');

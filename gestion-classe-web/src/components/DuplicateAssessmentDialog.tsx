@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal } from './Modal';
 import { levelFromClassName } from '../lib/boardsQueries';
+import { linkFromRow } from '../lib/assessmentLibrary';
 import {
   ASSESSMENT_KIND_LABEL,
   createAssessment,
@@ -72,8 +73,11 @@ export function DuplicateAssessmentDialog({
         coefficient: Number(source.coefficient),
         kind: source.kind,
         countsInAverage: source.counts_in_average,
+        onlyIfRaisesAverage: !!source.only_if_raises_average,
         shortName: source.short_name ?? null,
         sequence: source.sequence ?? null,
+        // Même activité de Mes cours (migration 095) : « Corriger » lit la même correction.
+        library: linkFromRow(source),
       };
       const docs: [AssessmentDocKind, string | null][] = [['subject', subjectPath], ['correction', correctionPath]];
       let firstId: string;
@@ -112,7 +116,7 @@ export function DuplicateAssessmentDialog({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
         <div style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
           {ASSESSMENT_KIND_LABEL[source.kind]} · /{Number(source.bareme_total ?? 20)} · coef {Number(source.coefficient)}
-          {source.sequence ? ` · ${source.sequence}` : ''}{!source.counts_in_average ? ' · hors moyenne' : ''}.
+          {source.sequence ? ` · ${source.sequence}` : ''}{!source.counts_in_average ? ' · hors moyenne' : source.only_if_raises_average ? ' · compte seulement si elle monte la moyenne' : ''}.
           La copie arrive au trimestre en cours, sans notes, sans copies, non publiée.
         </div>
         <label style={field}>

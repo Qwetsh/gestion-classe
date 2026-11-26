@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { preloadTeacherPages } from '../lazyPages';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -8,6 +9,13 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, session, isLoading } = useAuth();
+
+  // Enseignant connecté : les autres pages se téléchargent en tâche de fond, pour qu'en
+  // ouvrir une ne fasse pas attendre (les pages élèves ne passent pas par ici).
+  const signedIn = Boolean(user && session);
+  useEffect(() => {
+    if (signedIn) preloadTeacherPages();
+  }, [signedIn]);
 
   if (isLoading) {
     return (

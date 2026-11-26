@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 import type { TableGroup } from './seatingLayouts';
 
 export interface ClassInfo {
@@ -52,7 +53,7 @@ export async function fetchRoomsForUser(userId: string): Promise<RoomInfo[]> {
     .eq('user_id', userId)
     .order('name');
   if (error) throw error;
-  return data || [];
+  return fromDb<RoomInfo[]>(data || []);
 }
 
 export async function fetchStudentsForClass(classId: string): Promise<StudentInfo[]> {
@@ -62,7 +63,7 @@ export async function fetchStudentsForClass(classId: string): Promise<StudentInf
     .eq('class_id', classId)
     .order('pseudo');
   if (error) throw error;
-  return data || [];
+  return fromDb<StudentInfo[]>(data || []);
 }
 
 /**
@@ -258,7 +259,7 @@ export interface OralEvaluation {
   grade: number;
   trimester: number;
   school_year: string;
-  created_at: string;
+  evaluated_at: string | null;
 }
 
 function getCurrentSchoolYear(): string {
@@ -285,7 +286,7 @@ export async function fetchOralEvaluations(
   const trimester = getCurrentTrimester();
   const { data, error } = await supabase
     .from('oral_evaluations')
-    .select('id, student_id, class_id, grade, trimester, school_year, created_at')
+    .select('id, student_id, class_id, grade, trimester, school_year, evaluated_at')
     .eq('user_id', userId)
     .eq('class_id', classId)
     .eq('school_year', schoolYear)
@@ -310,7 +311,7 @@ export async function insertOralEvaluation(
       trimester: getCurrentTrimester(),
       school_year: getCurrentSchoolYear(),
     })
-    .select('id, student_id, class_id, grade, trimester, school_year, created_at')
+    .select('id, student_id, class_id, grade, trimester, school_year, evaluated_at')
     .single();
   if (error) throw error;
   return data;

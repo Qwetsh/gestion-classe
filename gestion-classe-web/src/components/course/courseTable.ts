@@ -6,12 +6,13 @@
  * Le tableau redimensionnable est dessiné par une vue de TipTap (`TableView`) qui ignore les
  * attributs ajoutés au nœud : `CourseTableView` les reporte sur l'enveloppe du tableau.
  */
+import { Extension, type JSONContent } from '@tiptap/core';
 import { Table, TableCell, TableHeader, TableRow, TableView } from '@tiptap/extension-table';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { TableMap } from '@tiptap/pm/tables';
 import type { EditorView } from '@tiptap/pm/view';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
-import { COL_W } from '../../lib/course/coursePage';
+import { COL_W, LEGACY_COL_W } from '../../lib/course/coursePage';
 
 export type TableStyle = 'grid' | 'outer' | 'lines' | 'zebra' | 'header' | 'none';
 
@@ -51,6 +52,9 @@ declare module '@tiptap/core' {
     };
   }
 }
+
+/** Largeur d'un tableau pleine colonne : px entiers, pour que sa bordure tienne dans la colonne. */
+const FULL_TABLE_W = Math.floor(COL_W);
 
 // ---- Vue : reporte les attributs du tableau sur son enveloppe ----
 
@@ -142,7 +146,8 @@ export const CourseTable = Table.extend({
         const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : COL_W / n;
         const filled = current.map((w) => w || fallback);
         const total = filled.reduce((a, b) => a + b, 0);
-        const target = (COL_W * percent) / 100;
+        // 100 % = largeur entière de la colonne (680 px) : avec sa bordure, le tableau tient sans défilement
+        const target = Math.min(FULL_TABLE_W, (COL_W * percent) / 100);
         applyColumnWidths(tr, found.pos, found.node, filled.map((w) => (w / total) * target));
         return true;
       },
@@ -158,7 +163,7 @@ export const CourseTable = Table.extend({
           const span = Number(cell.attrs.colspan) || 1;
           for (let j = 0; j < span; j++) { if (cw?.[j]) total += cw[j]; else complete = false; }
         });
-        const width = complete ? total : COL_W;
+        const width = complete ? total : FULL_TABLE_W;
         applyColumnWidths(tr, found.pos, found.node, Array.from({ length: n }, () => width / n));
         return true;
       },
@@ -215,10 +220,87 @@ export const CourseTableHeader = TableHeader.extend({
   },
 });
 
-/** Les quatre nœuds de tableau, à poser à la place de `TableKit`. */
+
+// ---- Cours écrits pour l'ancienne colonne (marges de 2,5 cm, avant le 24/11/2026) ----
+
+/**
+ * Un tableau dont la largeur totale tombe ici remplissait l'ancienne colonne de 604,72 px : 604
+ * (largeurs entières de la skill et des modèles), 605 (arrondi) ou 604,72 (bouton « 100 % »).
+ */
+const fillsLegacyColumn = (total: number) => total >= LEGACY_COL_W - 4 && total <= LEGACY_COL_W + 1.5;
+
+/** Largeurs des colonnes d'après la première ligne (null si une colonne n'a pas de largeur). */
+function firstRowWidths(table: JSONContent): number[] | null {
+  const first = table.content?.[0];
+  if (!first?.content?.length) return null;
+  const out: number[] = [];
+  for (const cell of first.content) {
+    const span = Number(cell.attrs?.colspan) || 1;
+    const cw = cell.attrs?.colwidth as number[] | null | undefined;
+    for (let j = 0; j < span; j++) {
+      const w = cw?.[j];
+      if (!w || !(w > 0)) return null;
+      out.push(w);
+    }
+  }
+  return out;
+}
+
+/**
+ * Élargit les tableaux pleine largeur d'un cours écrit pour l'ancienne colonne (cartouche,
+ * tableaux de la skill, tableaux à 100 %) : leurs colonnes gardent leurs proportions et
+ * remplissent la colonne de 18 cm. Seuls les tableaux posés directement dans la page sont
+ * concernés : un tableau dans un encadré ou des colonnes tient déjà dans sa boîte, plus large
+ * qu'avant. Les autres tableaux et les images gardent leur taille en px (donc leur taille réelle
+ * sur la feuille). Rend le même objet quand rien ne change.
+ *
+ * Appliqué à l'ouverture (extension `LegacyTableWidths`) : rien n'est réécrit en base tant que
+ * le cours n'est pas modifié ; sa prochaine sauvegarde enregistre les nouvelles largeurs.
+ */
+export function fitLegacyTables(content: JSONContent): JSONContent {
+  if (content?.type !== 'doc' || !Array.isArray(content.content)) return content;
+  let changed = false;
+  const blocks = content.content.map((block) => {
+    if (block.type !== 'table') return block;
+    const widths = firstRowWidths(block);
+    if (!widths) return block;
+    const total = widths.reduce((a, b) => a + b, 0);
+    if (!fillsLegacyColumn(total)) return block;
+    const factor = FULL_TABLE_W / total;
+    // Arrondi au plus proche, sauf s'il fait dépasser la largeur pleine : alors vers le bas
+    const rounded = widths.reduce((a, w) => a + Math.round(w * factor), 0) <= FULL_TABLE_W;
+    const scale = (w: number) => (rounded ? Math.round(w * factor) : Math.floor(w * factor));
+    changed = true;
+    return {
+      ...block,
+      content: (block.content ?? []).map((row) => ({
+        ...row,
+        content: (row.content ?? []).map((cell) => {
+          const cw = cell.attrs?.colwidth as number[] | null | undefined;
+          return Array.isArray(cw) ? { ...cell, attrs: { ...cell.attrs, colwidth: cw.map((w) => (w > 0 ? scale(w) : w)) } } : cell;
+        }),
+      })),
+    };
+  });
+  return changed ? { ...content, content: blocks } : content;
+}
+
+/** Applique `fitLegacyTables` au document donné à la création de l'éditeur (tous les affichages d'un cours). */
+export const LegacyTableWidths = Extension.create({
+  name: 'legacyTableWidths',
+  onBeforeCreate() {
+    const content = this.editor.options.content;
+    if (content && typeof content === 'object' && !Array.isArray(content)) {
+      this.editor.options.content = fitLegacyTables(content as JSONContent);
+    }
+  },
+});
+
+/** Les quatre nœuds de tableau, à poser à la place de `TableKit`, et l'élargissement des anciens tableaux. */
 export const courseTableExtensions = [
   CourseTable.configure({ resizable: true, View: CourseTableView }),
   CourseTableRow,
   CourseTableHeader,
   CourseTableCell,
+  LegacyTableWidths,
 ];

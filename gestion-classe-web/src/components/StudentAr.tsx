@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, Camera, RotateCcw, ZoomIn } from 'lucide-react';
 
 // Réalité augmentée par reconnaissance d'image (MindAR + A-Frame).
 //
@@ -19,14 +20,11 @@ const MODEL_URL = `${BASE}ar/models/demodex.glb`;
 const REF_MODEL_URL = `${BASE}ar/models/demodex-ref.glb`;
 const DRACO_PATH = `${BASE}ar/vendor/draco/`;
 
+// Teintes du bandeau posé sur l'image de la caméra (fond noir). L'écran d'accueil, lui, suit
+// l'espace élève (styles/eleve.css, racine `.el`).
 const T = {
-  card: '#2a2018',
-  cardBorder: '#3a2e22',
-  text: '#e8dcc8',
-  textMuted: '#a09080',
-  gold: '#d4a843',
-  goldBright: '#e8c066',
-  neg: '#f87171',
+  cardBorder: 'rgba(255, 255, 255, 0.45)',
+  text: '#FFFFFF',
   pos: '#4ade80',
 } as const;
 
@@ -628,33 +626,20 @@ export function StudentAr() {
   return (
     <>
       {phase !== 'active' && (
-        <div style={{
-          background: T.card, border: `1px solid ${T.cardBorder}`,
-          borderRadius: 16, padding: 24, textAlign: 'center', color: T.text,
-        }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>🔍</div>
-          <h2 style={{ fontSize: 20, margin: '0 0 8px', color: T.goldBright, fontStyle: 'italic' }}>
-            Réalité augmentée
-          </h2>
-          <p style={{ fontSize: 14, color: T.textMuted, lineHeight: 1.6, margin: '0 0 20px' }}>
-            Vise une image de ton cours avec la caméra : l'organisme apparaît en 3D,
-            avec sa taille réelle.
-          </p>
+        <div className="el-card el-card--stack">
+          <span className="el-icon-box" style={{ width: 48, height: 48 }}><Box size={26} strokeWidth={1.8} aria-hidden /></span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <h1 className="el-h1" style={{ fontSize: 22, lineHeight: '28px' }}>En 3D</h1>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: '23px', color: 'var(--el-muted)' }}>
+              Vise une image de ton cours avec la caméra : l'organisme apparaît en 3D,
+              avec sa taille réelle.
+            </p>
+          </div>
 
-          {error && (
-            <p style={{ fontSize: 13, color: T.neg, lineHeight: 1.5, margin: '0 0 16px' }}>{error}</p>
-          )}
+          {error && <p className="el-error" role="alert">{error}</p>}
 
-          <button
-            onClick={start}
-            disabled={phase === 'loading'}
-            style={{
-              width: '100%', padding: 14, borderRadius: 12, border: 'none',
-              background: T.gold, color: '#241a0c', fontSize: 15, fontWeight: 700,
-              cursor: phase === 'loading' ? 'default' : 'pointer', opacity: phase === 'loading' ? 0.6 : 1,
-            }}
-          >
-            {phase === 'loading' ? 'Chargement…' : '📷 Activer la caméra'}
+          <button type="button" className="el-btn el-btn--primary el-btn--tall el-btn--block" onClick={start} disabled={phase === 'loading'}>
+            <Camera size={20} aria-hidden /> {phase === 'loading' ? 'Chargement…' : 'Activer la caméra'}
           </button>
         </div>
       )}
@@ -694,7 +679,7 @@ export function StudentAr() {
                 background: 'transparent', border: `1px solid ${T.cardBorder}`, color: T.text,
               }}
             >
-              🔎 ×{ratioRef.current}
+              <ZoomIn size={18} aria-hidden style={{ verticalAlign: '-3px', marginRight: 6 }} />×{ratioRef.current}
             </button>
           )}
           <button
@@ -704,7 +689,7 @@ export function StudentAr() {
               background: 'transparent', border: `1px solid ${T.cardBorder}`, color: T.text,
             }}
           >
-            ⟳
+            <RotateCcw size={18} aria-label="Recentrer" />
           </button>
           <button
             onClick={stop}
