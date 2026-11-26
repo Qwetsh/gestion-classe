@@ -1,4 +1,6 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fetchAllPages, type PageResult } from './paging';
+import { fromDb } from './dbJson';
 import { getCurrentSchoolYear } from './constants';
 import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
@@ -21,33 +23,7 @@ const GRADE_SELECT =
   'id, assessment_id, student_id, grade, grade_raw, comment, status, is_adapted,' +
   ' is_validated, validated_at, updated_at, subject_version, copy_annotated';
 
-/**
- * PostgREST plafonne une reponse a 1000 lignes (meme constante que `PAGE_SIZE` dans
- * Analytics.tsx et Classes.tsx, ou le probleme s'est deja pose sur `events`).
- */
-const PAGE_SIZE = 1000;
-
-export interface PageResult<T> { data: T[] | null; error: { message: string } | null }
-
-/**
- * Parcourt toutes les pages d'une requete.
- *
- * Sans ca, une sauvegarde de plus de 1000 notes serait tronquee **sans aucune erreur** :
- * le fichier se telecharge, il a l'air complet, et il ne l'est pas. C'est precisement
- * le mode de defaillance contre lequel le carnet existe.
- */
-export async function fetchAllPages<T>(
-  build: (from: number, to: number) => Promise<PageResult<T>>,
-): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await build(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    const page = data ?? [];
-    out.push(...page);
-    if (page.length < PAGE_SIZE) return out;
-  }
-}
+export { fetchAllPages, type PageResult } from './paging';
 
 interface RawGradeRow {
   user_id: string;
@@ -616,7 +592,7 @@ export async function fetchLatestAiCorrections(assessmentId: string): Promise<Re
     .order('started_at', { ascending: false });
   if (isMissingTable(error)) return {};
   if (error) throw error;
-  return latestRunByStudent((data || []) as AiCorrectionRun[]);
+  return latestRunByStudent(fromDb<AiCorrectionRun[]>(data || []));
 }
 
 export async function fetchAiCorrection(runId: string): Promise<AiCorrectionRun | null> {
@@ -1218,7 +1194,7 @@ export async function linkAssessmentToTarget(input: {
   if (!seriesId) {
     const { data, error } = await supabase
       .from('assessment_series')
-      .insert({ user_id: input.userId, name: input.target.name, level: input.level, school_year: input.schoolYear })
+      .insert({ user_id: input.userId, name: input.target.name, level: input.level, school_year: input.schoolYear ?? getCurrentSchoolYear() })
       .select('id')
       .single();
     if (error) throw error;

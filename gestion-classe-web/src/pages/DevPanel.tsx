@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
+import { fromDb } from '../lib/dbJson';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -138,7 +139,7 @@ function FeedbacksTab() {
       .from('feedbacks')
       .select('*')
       .order('created_at', { ascending: false });
-    setFeedbacks(data || []);
+    setFeedbacks(fromDb<Feedback[]>(data || []));
     setIsLoading(false);
   };
 
@@ -363,7 +364,7 @@ function DevicesTab() {
       .select('*')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setConnections(data || []);
+        setConnections(fromDb<DeviceConnection[]>(data || []));
         setIsLoading(false);
       });
   }, []);
@@ -663,7 +664,7 @@ function AnnouncementsTab() {
       .from('announcements')
       .select('*')
       .order('created_at', { ascending: false });
-    setAnnouncements(data || []);
+    setAnnouncements(fromDb<Announcement[]>(data || []));
     setIsLoading(false);
   };
 

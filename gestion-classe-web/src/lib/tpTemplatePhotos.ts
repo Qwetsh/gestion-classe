@@ -1,4 +1,5 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 
 const BUCKET = 'student-photos';
 
@@ -19,7 +20,7 @@ export async function fetchTemplatePhotos(templateId: string): Promise<TpTemplat
     .order('display_order')
     .order('created_at');
   if (error) throw error;
-  return data || [];
+  return fromDb<TpTemplatePhoto[]>(data || []);
 }
 
 export async function uploadTemplatePhoto(
@@ -53,7 +54,7 @@ export async function uploadTemplatePhoto(
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return fromDb<TpTemplatePhoto>(data);
 }
 
 export async function deleteTemplatePhoto(photo: TpTemplatePhoto): Promise<void> {

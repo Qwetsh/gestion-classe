@@ -7,7 +7,8 @@
  * en local — la synchronisation reprend d'elle-même une fois la migration 042 appliquée.
  */
 
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { toJson } from './dbJson';
 
 const CACHE_PREFIX = 'gc_pref_';
 
@@ -70,7 +71,7 @@ export async function savePreference<T>(userId: string, key: string, value: T): 
 
   const { error } = await supabase
     .from('user_preferences')
-    .upsert({ user_id: userId, key, value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
+    .upsert({ user_id: userId, key, value: toJson(value), updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
 
   if (error) {
     if (isMissingTable(error)) remoteUnavailable = true;

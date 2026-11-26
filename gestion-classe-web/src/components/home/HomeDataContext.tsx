@@ -6,7 +6,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../../lib/supabaseUntyped';
+import { supabase } from '../../lib/supabase';
 import { fetchTeacherEvents } from '../../lib/eventsQueries';
 import { useAuth } from '../../hooks/useAuth';
 import { pronoteFetcher } from '../../lib/pronoteFetcher';
@@ -700,7 +700,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
             const totalPart = participations + manualPart;
             const sessCount = sessionsByStudent.get(student.id)?.size || 0;
 
-            const config = configMap.get(student.class_id);
+            const config = student.class_id ? configMap.get(student.class_id) : undefined;
             const targetPart = config?.target_participations || 15;
             const totalSessionsExpected = config?.total_sessions_expected || 60;
             const malusPenalty = config?.bavardage_penalty ?? false;
@@ -721,7 +721,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
             studentGrades.push({
               id: student.id,
               pseudo: student.pseudo,
-              class_id: student.class_id,
+              class_id: student.class_id ?? '',
               class_name: (student.classes as any)?.name || 'Classe inconnue',
               grade,
               malus: malusCount,

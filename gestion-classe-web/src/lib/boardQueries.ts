@@ -1,4 +1,6 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import type { TablesInsert } from './database.types';
+import { toJson } from './dbJson';
 import { BOARD_PAGE_H, type BoardPage, type Background, type Stroke, type PageImage } from './boardRender';
 import type { TextBox } from './boardText';
 import { migrateLegacyTexts, type BoardObject } from './boardObjects';
@@ -168,7 +170,9 @@ export async function upsertBoardPages(
     ...(metaColumnMissing ? {} : { meta: pageMeta(page) }),
     updated_at: now,
   }));
-  const write = () => supabase.from('board_pages').upsert(rows(), { onConflict: conflict });
+  // Les lignes portent `session_id` ou `board_id` selon le tableau, et leurs colonnes JSON sont
+  // des structures applicatives : TypeScript ne peut pas les rapprocher de la table.
+  const write = () => supabase.from('board_pages').upsert(rows() as unknown as TablesInsert<'board_pages'>[], { onConflict: conflict });
   let { error } = await write();
   for (let i = 0; i < 2 && error; i++) {
     if (!objectsColumnMissing && isMissingObjectsColumn(error)) {
@@ -208,7 +212,7 @@ export async function saveSessionReveal(userId: string, sessionId: string, revea
   if (stateTableMissing) return false;
   const { error } = await supabase
     .from('session_board_state')
-    .upsert({ session_id: sessionId, user_id: userId, reveal, updated_at: new Date().toISOString() }, { onConflict: 'session_id' });
+    .upsert({ session_id: sessionId, user_id: userId, reveal: toJson(reveal), updated_at: new Date().toISOString() }, { onConflict: 'session_id' });
   if (isMissingStateTable(error)) { stateTableMissing = true; return false; }
   if (error) { console.warn('[boardQueries] révélations de séance :', error.message); return false; }
   return true;

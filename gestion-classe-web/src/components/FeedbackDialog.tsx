@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { X, CheckCircle2, Bug, Lightbulb, MessageSquare } from 'lucide-react';
@@ -29,7 +29,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
     try {
       const { error } = await supabase.from('feedbacks').insert({
         user_id: user.id,
-        user_email: user.email,
+        user_email: user.email ?? '',
         type,
         message: message.trim(),
       });

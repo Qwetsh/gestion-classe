@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 import { sanitizePhotoPath } from '../lib/security';
@@ -282,7 +282,7 @@ export function SessionDetail() {
           classes (name),
           rooms (name)
         `)
-        .eq('id', id)
+        .eq('id', id ?? '')
         .single();
 
       if (sessionData) {
@@ -321,7 +321,7 @@ export function SessionDetail() {
           timestamp,
           students (pseudo)
         `)
-        .eq('session_id', id)
+        .eq('session_id', id ?? '')
         .order('timestamp', { ascending: true });
 
       if (eventsData) {
@@ -342,7 +342,7 @@ export function SessionDetail() {
       const { data: groupsData } = await supabase
         .from('session_groups')
         .select('id, group_number, created_at')
-        .eq('session_id', id)
+        .eq('session_id', id ?? '')
         .order('group_number', { ascending: true });
 
       if (groupsData && groupsData.length > 0) {
@@ -370,7 +370,7 @@ export function SessionDetail() {
 
           groupsWithDetails.push({
             id: group.id,
-            group_number: group.group_number,
+            group_number: group.group_number as number,
             created_at: group.created_at,
             members: (membersData || []).map((m) => ({
               id: m.id,

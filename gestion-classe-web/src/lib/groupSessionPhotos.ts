@@ -1,4 +1,5 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 
 const BUCKET = 'student-photos';
 
@@ -23,7 +24,7 @@ export async function fetchSessionPhotos(sessionId: string): Promise<GroupSessio
     .order('display_order')
     .order('created_at');
   if (error) throw error;
-  return data || [];
+  return fromDb<GroupSessionPhoto[]>(data || []);
 }
 
 export async function uploadSessionPhoto(
@@ -59,7 +60,7 @@ export async function uploadSessionPhoto(
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return fromDb<GroupSessionPhoto>(data);
 }
 
 export async function deleteSessionPhoto(photo: GroupSessionPhoto): Promise<void> {

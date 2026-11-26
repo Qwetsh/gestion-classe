@@ -1,4 +1,5 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fromDb, fromJson } from './dbJson';
 
 // ============================================
 // Types
@@ -252,7 +253,7 @@ export async function fetchCategories(userId: string): Promise<StampCategory[]> 
   if (error) throw error;
   // Deduplicate by label (mobile sync + web seed can create doubles)
   const seen = new Set<string>();
-  return (data || []).filter(cat => {
+  return fromDb<StampCategory[]>(data || []).filter(cat => {
     if (seen.has(cat.label)) return false;
     seen.add(cat.label);
     return true;
@@ -267,7 +268,7 @@ export async function createCategory(userId: string, label: string, icon: string
     .single();
 
   if (error) throw error;
-  return data;
+  return fromDb<StampCategory>(data);
 }
 
 export async function updateCategory(id: string, updates: Partial<Pick<StampCategory, 'label' | 'icon' | 'icon_ref' | 'color' | 'display_order' | 'is_active'>>): Promise<void> {
@@ -328,7 +329,7 @@ export async function fetchBonuses(userId: string): Promise<Bonus[]> {
   if (error) throw error;
   // Deduplicate by label (mobile sync + web seed can create doubles)
   const seen = new Set<string>();
-  return (data || []).filter(bonus => {
+  return fromDb<Bonus[]>(data || []).filter(bonus => {
     if (seen.has(bonus.label)) return false;
     seen.add(bonus.label);
     return true;
@@ -343,7 +344,7 @@ export async function createBonus(userId: string, label: string, displayOrder: n
     .single();
 
   if (error) throw error;
-  return data;
+  return fromDb<Bonus>(data);
 }
 
 export async function updateBonus(id: string, updates: Partial<Pick<Bonus, 'label' | 'display_order' | 'is_active'>>): Promise<void> {
@@ -473,7 +474,7 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
   }
 
   // Build overview
-  return students.map(s => {
+  return fromDb<StudentStampOverview[]>(students.map(s => {
     const card = cardMap.get(s.id);
     const className = (s.classes as any)?.name || '';
     const selection = card ? selectionByCard.get(card.id) : undefined;
@@ -490,7 +491,7 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
       bonus_label: selection?.label || null,
       bonus_used: selection?.used || false,
     };
-  }).sort((a, b) => a.pseudo.localeCompare(b.pseudo));
+  })).sort((a, b) => a.pseudo.localeCompare(b.pseudo));
 }
 
 // ============================================
@@ -506,9 +507,10 @@ export async function awardStamp(_userId: string, studentId: string, categoryId:
   });
 
   if (error) throw error;
-  if (!data || data.error) throw new Error(data?.error || 'Attribution impossible');
+  const result = fromJson<{ error?: string; stamp_count: number; card_complete?: boolean } | null>(data);
+  if (!result || result.error) throw new Error(result?.error || 'Attribution impossible');
 
-  return { stampCount: data.stamp_count, cardComplete: !!data.card_complete };
+  return { stampCount: result.stamp_count, cardComplete: !!result.card_complete };
 }
 
 /**
@@ -521,8 +523,9 @@ export async function selectBonusForStudent(studentId: string, bonusId: string):
     p_bonus_id: bonusId,
   });
   if (error) throw error;
-  if (!data || data.error) throw new Error(data?.error || 'Choix du bonus impossible');
-  return { newCardNumber: data.new_card_number };
+  const result = fromJson<{ error?: string; new_card_number: number } | null>(data);
+  if (!result || result.error) throw new Error(result?.error || 'Choix du bonus impossible');
+  return { newCardNumber: result.new_card_number };
 }
 
 export async function markBonusUsed(selectionId: string): Promise<void> {
@@ -608,7 +611,7 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
     .eq('status', 'completed')
     .order('card_number', { ascending: false });
 
-  const stampDetails: StampDetail[] = (stamps || []).map(s => ({
+  const stampDetails = fromDb<StampDetail[]>((stamps || []).map(s => ({
     id: s.id,
     slot_number: s.slot_number,
     category_label: (s.stamp_categories as any)?.label || '?',
@@ -616,7 +619,7 @@ export async function fetchStudentStampDetail(studentId: string): Promise<Studen
     category_icon_ref: (s.stamp_categories as any)?.icon_ref ?? null,
     category_color: (s.stamp_categories as any)?.color || '#999',
     awarded_at: s.awarded_at,
-  }));
+  })));
 
   const completed = (completedCards || [])
     .filter(c => c.id !== card.id) // exclude the card we're showing as "active"

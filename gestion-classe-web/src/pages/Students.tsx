@@ -1,7 +1,7 @@
 import { classColor } from '../lib/classColors';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
@@ -524,11 +524,11 @@ export function Students() {
             trimester: 3,
             grade: sg.grade,
             participations: sg.totalParticipations,
-            class_id: sg.student.class_id,
+            class_id: sg.student.class_id ?? '',
           }));
 
           const allTrimesterGrades = [
-            ...(archivedGradesData || []),
+            ...(archivedGradesData || []).map(g => ({ ...g, class_id: g.class_id ?? '' })),
             ...t3Grades,
           ];
 
@@ -769,9 +769,9 @@ export function Students() {
 
       const byClass = new Map<string, { pseudo: string; code: string | null }[]>();
       for (const s of data || []) {
-        const list = byClass.get(s.class_id) || [];
+        const list = byClass.get(s.class_id ?? '') || [];
         list.push({ pseudo: s.pseudo, code: s.student_code || null });
-        byClass.set(s.class_id, list);
+        byClass.set(s.class_id ?? '', list);
       }
       const sortedClasses = [...classes]
         .sort((a, b) => a.name.localeCompare(b.name, 'fr'))

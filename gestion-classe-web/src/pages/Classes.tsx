@@ -1,7 +1,7 @@
 import { classColor } from '../lib/classColors';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useIsMobile, useIsNarrowViewport } from '../hooks/useIsMobile';
 import { Layout } from '../components/Layout';
@@ -25,6 +25,7 @@ import {
   fetchClassStudents,
   fetchRooms,
   fetchSeatGrades,
+  saveRoomTableGroups,
   type ClassRoomPlan,
   type ClassStudent as Student,
   type ClassWithCount as Class,
@@ -514,10 +515,7 @@ export function Classes() {
     if (!selectedRoom) return;
     setRooms((prev) => prev.map((rm) => (rm.id === selectedRoom.id ? { ...rm, table_groups: next } : rm)));
     setSelectedRoom({ ...selectedRoom, table_groups: next });
-    await supabase
-      .from('rooms')
-      .update({ table_groups: next, updated_at: new Date().toISOString() })
-      .eq('id', selectedRoom.id);
+    await saveRoomTableGroups(selectedRoom.id, next);
   };
 
   const handleLinkClick = (row: number, col: number) => {

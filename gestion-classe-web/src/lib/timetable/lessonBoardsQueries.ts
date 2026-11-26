@@ -8,7 +8,8 @@
  *
  * Table absente (migration non appliquée) : listes vides, création refusée avec un message.
  */
-import { supabase } from '../supabaseUntyped';
+import { supabase } from '../supabase';
+import type { TablesInsert } from '../database.types';
 import { copyBoardPages, createBoard, deleteBoard, levelFromClassName } from '../boardsQueries';
 import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
 import { lessonNoteKey } from './lessonNotesQueries';
@@ -189,7 +190,7 @@ export async function createLessonBoard(userId: string, lesson: LessonRef, sourc
       group_id: lesson.groupId ?? null,
       board_id: board.id,
     };
-    const insert = (payload: Record<string, unknown>) => supabase.from('lesson_boards').insert(payload).select(SELECT).single();
+    const insert = (payload: TablesInsert<'lesson_boards'>) => supabase.from('lesson_boards').insert(payload).select(SELECT).single();
     let { data, error } = await insert(origin ? { ...row, source_board_id: origin } : row);
     // Colonne de provenance absente (migration 077) : le cours est placé quand même, sans elle
     if (origin && isMissingSourceColumn(error)) {

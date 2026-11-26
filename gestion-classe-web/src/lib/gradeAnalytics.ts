@@ -10,7 +10,7 @@
  */
 
 import { supabase } from './supabase';
-import { fetchAllPages, type PageResult } from './evaluationQueries';
+import { fetchAllPages, type PageResult } from './paging';
 import {
   describeGrades,
   effectiveGrade,
