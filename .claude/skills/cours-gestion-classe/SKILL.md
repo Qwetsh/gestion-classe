@@ -16,11 +16,26 @@ ne saute jamais la vérification.
 3. **Vérifier** avec `npm run course:check` (schéma réel de l'éditeur) et corriger jusqu'à zéro erreur.
 4. **Créer le cours** en base avec la requête préparée, via le connecteur Supabase.
 
-Chemins (dépôt `Gestion classe`, à adapter si la session est dans un worktree) :
+**Où sont les outils.** Un seul endroit, quel que soit le dossier d'où la session est lancée (le
+dossier École comme le dépôt) : le checkout des outils, `C:\Users\Utilisateur\gc-worktrees\outils-master`,
+copie de `master` hors OneDrive. Dans cette skill, `<dépôt>` désigne ce dossier, et `<skill>`
+son sous-dossier `.claude\skills\cours-gestion-classe`. Le dépôt principal
+(`OneDrive\Code\Gestion classe`) sert à changer le logiciel, pas à produire du contenu.
 
-- skill : `.claude/skills/cours-gestion-classe/` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `gc_semaine.py`, `exemples/`, `icones.md`)
+En début de session, remettre les outils à jour (cela réinstalle aussi les skills du compte, pour
+que la même version se charge partout) :
+
+```
+python -I C:\Users\Utilisateur\gc-worktrees\outils-master\scripts\maj_outils_claude.py
+```
+
+Une skill ne se modifie jamais dans `~\.claude\skills` ni dans le checkout des outils : elle se
+modifie dans le dépôt, sur une branche, par une PR.
+
+- skill : `<dépôt>\.claude\skills\cours-gestion-classe\` (`gc_cours.py`, `gc_ecrans.py`, `gc_envoi.py`, `gc_semaine.py`, `exemples/`, `icones.md`)
+- vérifications : `npm run course:check` et `npm run screens:check`, lancées dans `<dépôt>\gestion-classe-web`
 - poser un cours sur l'emploi du temps : skill `prepare-semaine` (`gc_semaine.py placer`), jamais par une requête écrite à la main
-- brouillons : `gestion-classe-web/course-drafts/` (ignoré par git)
+- brouillons : `<dépôt>\gestion-classe-web\course-drafts\` (ignoré par git, hors OneDrive : un brouillon se refabrique, il ne se garde pas)
 - projet Supabase de production : `djodkjysovalpufgevrr`
 
 ## 0. Relire les consignes pédagogiques (toujours, avant tout travail sur un cours)

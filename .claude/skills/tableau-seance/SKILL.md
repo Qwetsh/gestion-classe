@@ -19,6 +19,11 @@ Outils (les lire avant la première utilisation) :
 - ce dossier : `plus-value.md` (quel enrichissement pour quel moment, ressources disponibles) et
   `banque.md` (scènes et dessins déjà faits, à réutiliser).
 
+Tous ces outils sont dans le checkout des outils, `C:\Users\Utilisateur\gc-worktrees\outils-master`
+(`cours-gestion-classe/…` se lit `C:\Users\Utilisateur\gc-worktrees\outils-master\.claude\skills\cours-gestion-classe\…`),
+à remettre à jour en début de session : voir la rubrique « Où sont les outils » de la skill
+`cours-gestion-classe`.
+
 ## 0. Relire ce que l'on sait (toujours, avant tout)
 
 La connaissance de Thomas est **hors du dépôt** (le dépôt est public) :
