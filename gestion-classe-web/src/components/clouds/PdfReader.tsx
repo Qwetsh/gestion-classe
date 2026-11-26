@@ -48,7 +48,7 @@ function PdfReaderInner({ file }: Props) {
         const pdfjs = await getPdfjs();
         const data = await file.arrayBuffer();
         doc = await pdfjs.getDocument({ data }).promise;
-        if (cancelled) { await doc.destroy(); return; }
+        if (cancelled) { await doc.loadingTask.destroy(); return; }
         const list: PageSize[] = [];
         for (let i = 1; i <= doc.numPages; i++) {
           const v = (await doc.getPage(i)).getViewport({ scale: 1 });
@@ -61,7 +61,7 @@ function PdfReaderInner({ file }: Props) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'PDF illisible');
       }
     })();
-    return () => { cancelled = true; void doc?.destroy(); };
+    return () => { cancelled = true; void doc?.loadingTask.destroy(); };
   }, [file]);
 
   // Largeur disponible (réagit au redimensionnement)

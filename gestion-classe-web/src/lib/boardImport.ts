@@ -106,7 +106,7 @@ async function renderPdfPages(file: File, userId: string, sessionId: string, onP
       pages.push(await pageFromCanvas(userId, sessionId, canvas, layout));
     }
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
   return pages;
 }

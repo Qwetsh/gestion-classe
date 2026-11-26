@@ -112,7 +112,7 @@ async function eachPdfPage(file: File, onPage: (canvas: HTMLCanvasElement) => Pr
       await onPage(canvas);
     }
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
 }
 
