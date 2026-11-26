@@ -6,7 +6,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseUntyped';
 import { fetchTeacherEvents } from '../../lib/eventsQueries';
 import { useAuth } from '../../hooks/useAuth';
 import { pronoteFetcher } from '../../lib/pronoteFetcher';

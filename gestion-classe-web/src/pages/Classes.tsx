@@ -1,7 +1,7 @@
 import { classColor } from '../lib/classColors';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { useAuth } from '../hooks/useAuth';
 import { useIsMobile, useIsNarrowViewport } from '../hooks/useIsMobile';
 import { Layout } from '../components/Layout';

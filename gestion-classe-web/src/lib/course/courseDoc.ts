@@ -8,7 +8,7 @@
 import type { JSONContent } from '@tiptap/core';
 import type { CourseLayer } from './courseLayer';
 import type { CourseLink } from './courseLinks';
-import { supabase } from '../supabase';
+import { supabase } from '../supabaseUntyped';
 import { createBoard, deleteBoard, type Board, type BoardMeta } from '../boardsQueries';
 import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
 

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import type { Brevet, Matiere } from './brevets';
 import type { Programme } from './annalesLibrary';
 

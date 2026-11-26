@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';

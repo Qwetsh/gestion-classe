@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG, getGroupColor } from '../lib/constants';
 import { sanitizePhotoPath } from '../lib/security';

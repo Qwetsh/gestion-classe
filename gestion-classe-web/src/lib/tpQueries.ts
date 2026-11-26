@@ -2,7 +2,7 @@
  * Lectures et écritures de « Mes TP » (tables tp_templates, tp_template_criteria ; migration 079
  * pour le rangement et la fiche complète).
  */
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 
 export interface TpCriterion {
   id?: string;

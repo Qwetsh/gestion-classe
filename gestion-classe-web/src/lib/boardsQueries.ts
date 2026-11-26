@@ -8,7 +8,7 @@
  * Tant que la migration add_boards.sql n'est pas appliquée, la liste est vide et la création échoue
  * proprement : l'accueil garde son tableau libre local.
  */
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { fetchBoardPages, upsertBoardPages } from './boardQueries';
 import { importFilesToPages, type ImportProgress } from './boardImport';
 import type { BoardPage } from './boardRender';

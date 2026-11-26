@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { activityIndex, sameStudentBoards, studentBoardsOfTp, type ActivityBoard, type TpStudentBoards } from './tpLibrary';
 
 /**

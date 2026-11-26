@@ -13,7 +13,7 @@
 import { cloneObjects, needsTarget, objectId, type BoardObject, type Interaction, type InteractionAction, type TextObject } from './boardObjects';
 import type { ShapeObject } from './boardShapes';
 import { WINDOW_CARD, type WidgetObject, type WindowObject } from './boardMedia';
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 
 export interface EventPending { action: InteractionAction; params?: Interaction['params'] }
 /** Ce qu'une insertion pose sur la page : ses objets, le bouton porteur, et l'action encore sans cible. */

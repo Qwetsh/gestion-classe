@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { BOARD_PAGE_H, type BoardPage, type Background, type Stroke, type PageImage } from './boardRender';
 import type { TextBox } from './boardText';
 import { migrateLegacyTexts, type BoardObject } from './boardObjects';

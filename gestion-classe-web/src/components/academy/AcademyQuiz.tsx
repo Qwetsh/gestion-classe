@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseUntyped';
 import { fetchQuestions, type AcademyQuestion, type AcademyAnswer } from '../../lib/academyQueries';
 import { Starfield, FloatingCandles, Candle, Ornament, WaxSeal } from './Atmosphere';
 import { HouseCrest } from './HouseCrest';
