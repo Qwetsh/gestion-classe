@@ -1257,7 +1257,7 @@ export function Classes() {
                 {classGroups.length > 0 && selectedRoom && (
                   <PlanScopeBar
                     groups={classGroups}
-                    sizes={groupSizes(groupMembers)}
+                    sizes={groupSizes(groupMembers, students)}
                     classSize={students.length}
                     value={planGroupId}
                     onChange={changePlanGroup}
