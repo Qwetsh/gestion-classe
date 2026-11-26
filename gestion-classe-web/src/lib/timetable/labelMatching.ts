@@ -77,6 +77,23 @@ export function suggestLink(label: TimetableLabel, classes: MatchClass[], groups
 }
 
 /**
+ * Correspondance mémorisée en classe entière alors que le libellé désigne un demi-groupe
+ * (« 3°DP1 ») et que la classe a, depuis, un groupe qui y répond (« Groupe 1 ») : on complète.
+ * Cas réel : groupes créés APRÈS le premier rapprochement, qui avait mémorisé « pas de groupe ».
+ * `classLabel` : classe Pronote du cours, à défaut le nom de la classe de l'application.
+ */
+export function completeMissingGroup(
+  link: LabelLink,
+  classLabel: string | null,
+  groups: MatchGroup[],
+): LabelLink {
+  if (link.ignored || !link.classId || link.groupId) return link;
+  const num = classLabel ? groupNumber(link.label, classLabel) : null;
+  const grp = num ? matchGroup(num, link.classId, groups) : null;
+  return grp ? { ...link, groupId: grp.id } : link;
+}
+
+/**
  * Correspondances pour tous les libellés d'un import : celles déjà mémorisées sont gardées telles
  * quelles (l'enseignant a pu les corriger), les nouvelles sont proposées automatiquement.
  */
@@ -94,7 +111,8 @@ export function buildLinks(
     const known = byLabel.get(l.label);
     // une classe supprimée depuis : on repropose plutôt que de pointer dans le vide
     if (known && (known.ignored || (known.classId && classIds.has(known.classId)))) {
-      return { ...known, groupId: known.groupId && groupIds.has(known.groupId) ? known.groupId : null };
+      const kept = { ...known, groupId: known.groupId && groupIds.has(known.groupId) ? known.groupId : null };
+      return completeMissingGroup(kept, l.classLabel, groups);
     }
     return suggestLink(l, classes, groups);
   });
@@ -139,8 +157,11 @@ export function resolveLabel(
   classes: MatchClass[],
   groups: MatchGroup[],
 ): ResolvedLabel {
-  const link = links.get(label)
-    ?? suggestLink({ label, classLabel: classLabel ?? label, subjects: [], lessonCount: 0 }, classes, groups);
+  const saved = links.get(label);
+  const savedClass = saved?.classId ? classes.find(c => c.id === saved.classId) ?? null : null;
+  const link = saved
+    ? completeMissingGroup(saved, classLabel ?? savedClass?.name ?? null, groups)
+    : suggestLink({ label, classLabel: classLabel ?? label, subjects: [], lessonCount: 0 }, classes, groups);
   const cls = !link.ignored && link.classId ? classes.find(c => c.id === link.classId) ?? null : null;
   const grp = cls && link.groupId ? groups.find(g => g.id === link.groupId) ?? null : null;
   return {

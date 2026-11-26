@@ -32,7 +32,7 @@
     "src/pages/GroupSessions.tsx": 5,
     "src/pages/Journal.tsx": 1,
     "src/pages/SessionDetail.tsx": 11,
-    "src/pages/Sessions.tsx": 13,
+    "src/pages/Sessions.tsx": 12,
     "src/pages/StudentDashboard.tsx": 6,
     "src/pages/Students.tsx": 43
   }

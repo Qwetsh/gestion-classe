@@ -3,17 +3,22 @@ import '../styles/refonte-seances.css';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { fromJson } from '../lib/dbJson';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG } from '../lib/constants';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Icon } from '../components/design-system';
+import { fetchClassGroupsForUser, fetchMemberIds } from '../lib/classGroupQueries';
+import { fetchSeatingPlan } from '../lib/liveSessionQueries';
+import { resolveSessionRoster } from '../lib/sessionRoster';
 
 interface Session {
   id: string;
   class_id: string;
   class_name: string;
+  /** Groupe de classe (demi-groupe) ; null = classe entière */
+  group_id: string | null;
+  group_name: string | null;
   topic: string | null;
   notes: string | null;
   started_at: string;
@@ -137,7 +142,7 @@ export function Sessions() {
 
       let query = supabase
         .from('sessions')
-        .select(`id, class_id, topic, notes, started_at, ended_at, classes (name)`)
+        .select(`id, class_id, group_id, topic, notes, started_at, ended_at, classes (name)`)
         .eq('user_id', user.id)
         .order('started_at', { ascending: false });
 
@@ -157,6 +162,13 @@ export function Sessions() {
         const countsMap = new Map<string, any>();
         (countsData || []).forEach((row: any) => countsMap.set(row.session_id, row));
 
+        // Noms des groupes de classe (lus à part : pas d'embarquement PostgREST en plus)
+        const groupNames = new Map<string, string>();
+        if (sessionsData.some(s => s.group_id)) {
+          const groups = await fetchClassGroupsForUser(user.id).catch(() => []);
+          groups.forEach(g => groupNames.set(g.id, g.name));
+        }
+
         // Map sessions with counts
         const sessionsWithCounts = sessionsData.map((session) => {
           const counts = countsMap.get(session.id);
@@ -164,6 +176,8 @@ export function Sessions() {
             id: session.id,
             class_id: session.class_id,
             class_name: (session.classes as any)?.name || 'Classe inconnue',
+            group_id: session.group_id ?? null,
+            group_name: session.group_id ? groupNames.get(session.group_id) ?? null : null,
             topic: session.topic,
             notes: session.notes,
             started_at: session.started_at,
@@ -204,17 +218,12 @@ export function Sessions() {
       // Supabase returns rooms as object for foreign key relation, cast via any
       const roomData = (sessionWithRoom?.rooms as any) as { grid_rows: number; grid_cols: number; disabled_cells: string[] } | null;
 
-      // Parallel fetch: plan, students, events
-      const [planResult, studentsResult, eventsResult] = await Promise.all([
-        // Fetch class room plan (only if we have a room)
+      // Parallel fetch: plan, students, events (+ membres du groupe pour une séance en demi-groupe)
+      const [planPositions, studentsResult, eventsResult, memberIds] = await Promise.all([
+        // Plan du groupe s'il existe, sinon celui de la classe (only if we have a room)
         roomId
-          ? supabase
-              .from('class_room_plans')
-              .select('positions')
-              .eq('class_id', session.class_id)
-              .eq('room_id', roomId)
-              .single()
-          : Promise.resolve({ data: null }),
+          ? fetchSeatingPlan(session.class_id, roomId, session.group_id).catch(() => ({}))
+          : Promise.resolve({}),
         // Fetch students
         supabase
           .from('students')
@@ -227,12 +236,19 @@ export function Sessions() {
           .select('id, student_id, type, subtype, note, timestamp')
           .eq('session_id', session.id)
           .order('timestamp', { ascending: true }),
+        session.group_id ? fetchMemberIds(session.group_id).catch(() => [] as string[]) : Promise.resolve([] as string[]),
       ]);
 
+      const roster = resolveSessionRoster({
+        classStudents: studentsResult.data || [],
+        groupId: session.group_id && session.group_name ? session.group_id : null,
+        memberIds,
+        classPlanPositions: planPositions,
+      });
       setClassroomData({
         room: roomData || null,
-        positions: fromJson<Record<string, string> | null | undefined>(planResult.data?.positions) || {},
-        students: studentsResult.data || [],
+        positions: roster.positions,
+        students: roster.students,
         events: eventsResult.data || [],
       });
     } catch (err) {
@@ -596,7 +612,10 @@ export function Sessions() {
                           {/* La puce porte la classe ; le texte est le titre (ou la classe s'il n'y en a pas) */}
                           <ClassChip label={getClassLabel(session.class_name)} color={color} size={28} />
                           <div className="rf-row__title">
-                            <span>{session.topic || session.class_name}</span>
+                            <span>
+                              {session.topic || session.class_name}
+                              {session.group_name ? ` · ${session.group_name}` : ''}
+                            </span>
                             {session.notes && <span title="Cette séance a une note" className="rf-row__note"><Icon name="note" size={13} /></span>}
                           </div>
                           {/* Badges : seulement les valeurs non nulles */}
@@ -813,7 +832,10 @@ export function Sessions() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <ClassChip label={getClassLabel(selectedSession.class_name)} color={classColor(selectedSession.class_name)} size={28} />
                   <div>
-                    <div className="rf-sheet__class">{selectedSession.class_name}</div>
+                    <div className="rf-sheet__class">
+                      {selectedSession.class_name}
+                      {selectedSession.group_name ? ` · ${selectedSession.group_name}` : ''}
+                    </div>
                     <div className="rf-sheet__meta">
                       {formatDate(selectedSession.started_at)} · {formatTime(selectedSession.started_at)}
                       {selectedSession.ended_at && ` (${getDuration(selectedSession.started_at, selectedSession.ended_at)})`}
