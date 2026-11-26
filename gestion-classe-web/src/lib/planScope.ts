@@ -30,9 +30,18 @@ export function keepPlacedStudents(positions: PlanPositions | null | undefined, 
   return kept;
 }
 
-/** Effectif de chaque groupe. */
-export function groupSizes(members: readonly { group_id: string }[]): Record<string, number> {
+/**
+ * Effectif de chaque groupe, en ne comptant que les élèves de la classe : un membre parti dans une
+ * autre classe (ligne restée d'un transfert ancien) n'est pas à placer et ne compte pas.
+ */
+export function groupSizes(
+  members: readonly { group_id: string; student_id: string }[],
+  students: readonly { id: string }[],
+): Record<string, number> {
+  const inClass = new Set(students.map((s) => s.id));
   const sizes: Record<string, number> = {};
-  for (const m of members) sizes[m.group_id] = (sizes[m.group_id] ?? 0) + 1;
+  for (const m of members) {
+    if (inClass.has(m.student_id)) sizes[m.group_id] = (sizes[m.group_id] ?? 0) + 1;
+  }
   return sizes;
 }

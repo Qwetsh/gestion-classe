@@ -48,7 +48,11 @@ describe('keepPlacedStudents', () => {
 
 describe('groupSizes', () => {
   it('compte les membres par groupe', () => {
-    expect(groupSizes(members)).toEqual({ g1: 2, g2: 1 });
-    expect(groupSizes([])).toEqual({});
+    expect(groupSizes(members, students)).toEqual({ g1: 2, g2: 1 });
+    expect(groupSizes([], students)).toEqual({});
+  });
+
+  it('ne compte pas un membre parti dans une autre classe', () => {
+    expect(groupSizes([...members, { group_id: 'g1', student_id: 'parti' }], students)).toEqual({ g1: 2, g2: 1 });
   });
 });
