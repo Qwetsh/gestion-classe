@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decodeBase64, encodeBase64Url } from "jsr:@std/encoding@1";
+import { linkTarget, type CourseRef } from "../version-mobile/rules.ts";
+import { customPageProblem, docFingerprint } from "../version-mobile/custom.ts";
 
 /**
  * Dépôt de cours par jeton d'import (migration 075, PLAN_preparation_semaine.md étape 1).
@@ -39,6 +41,14 @@ import { decodeBase64, encodeBase64Url } from "jsr:@std/encoding@1";
  *      comme pour "place", ou par sa date, son heure de début (heure de Paris) et sa classe.
  *      status : "saved", "same" (texte identique), "exists" (une autre entrée : jamais écrasée
  *      sans { replace: true }, sur demande du professeur), "replaced", "not_found", "ambiguous"
+ *  - "mobile"  (jeton)        { token, board_id, html }  → { board_id, token, bytes, replaced, copy_of? }
+ *      version mobile « sur mesure » d'un document (migration 093) : une page HTML complète et
+ *      autonome (5 Mo au plus, rien chargé du réseau : version-mobile/custom.ts), servie par le
+ *      QR code imprimé à la place de la version automatique. Une copie posée pour une classe est
+ *      ramenée à son original ; jamais une correction ni une évaluation. Remplace la précédente.
+ *      Le lien du QR code est créé s'il n'existait pas encore (comme à la première impression) :
+ *      la réponse donne son jeton, l'adresse est /d/<jeton>.
+ *      avec { remove: true } (sans html) : retire la version sur mesure → { ok, board_id, removed }
  *
  * Le jeton n'écrit que dans l'espace de son propriétaire. Il ne lit que l'emploi du temps et les
  * titres de la bibliothèque (action "agenda") : rien sur les élèves, aucun contenu de cours. Il ne
@@ -352,6 +362,57 @@ async function journalLesson(sb: SupabaseClient, userId: string, item: Record<st
 async function originOf(sb: SupabaseClient, userId: string, boardId: string): Promise<string | null> {
   const { data } = await sb.from("lesson_boards").select("source_board_id").eq("user_id", userId).eq("board_id", boardId).maybeSingle();
   return data ? (data.source_board_id as string | null) ?? null : boardId;
+}
+
+// ---- Version mobile sur mesure (action "mobile", migration 093) ----
+
+/** Table absente (migration pas encore appliquée). */
+function isMissingTable(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return !!e && (e.code === "42P01" || e.code === "PGRST205" || /does not exist|schema cache/i.test(e.message ?? ""));
+}
+
+/**
+ * Le cours d'une version sur mesure : l'original de la bibliothèque pour une copie posée sur
+ * l'emploi du temps (lesson_boards.source_board_id), le cours lui-même sinon, ou si l'original a
+ * été supprimé (même règle que le QR code : rules.ts, linkTarget). `eligible` : refus d'une
+ * correction ou d'une évaluation (le cours ou son original) ; pas pour un retrait.
+ */
+async function customTarget(sb: SupabaseClient, userId: string, boardId: string, eligible: boolean): Promise<{ id: string } | { error: string; status: number }> {
+  const { data: course, error } = await sb.from("boards").select("id, title").eq("id", boardId).eq("user_id", userId).maybeSingle();
+  if (error) return { error: "read_failed", status: 500 };
+  if (!course) return { error: "not_found", status: 404 };
+  const { data: placed } = await sb.from("lesson_boards").select("source_board_id").eq("user_id", userId).eq("board_id", boardId).maybeSingle();
+  const sourceId = (placed?.source_board_id as string | null | undefined) ?? null;
+  let original: CourseRef | null = null;
+  if (sourceId && sourceId !== boardId) {
+    const { data } = await sb.from("boards").select("id, title").eq("id", sourceId).eq("user_id", userId).maybeSingle();
+    original = (data as CourseRef | null) ?? null;
+  }
+  const ref = course as CourseRef;
+  if (!eligible) return { id: original?.id ?? ref.id };
+  const id = linkTarget("qr", ref, original);
+  return id ? { id } : { error: "not_eligible", status: 403 };
+}
+
+/** Jeton base64url de 20 caractères (120 bits), comme celui que crée le navigateur à la première impression. */
+const newMobileToken = () => encodeBase64Url(crypto.getRandomValues(new Uint8Array(15)));
+
+/** Jeton du QR code d'un original, créé s'il manque ; null si la migration 090 manque ou en cas de panne. */
+async function ensureQrToken(sb: SupabaseClient, userId: string, boardId: string): Promise<string | null> {
+  const read = async (): Promise<string | null> => {
+    const { data, error } = await sb.from("board_mobile_links").select("token").eq("board_id", boardId).maybeSingle();
+    if (error) return null;
+    return (data?.token as string | undefined) ?? "";
+  };
+  const found = await read();
+  if (found === null) return null;
+  if (found) return found;
+  const token = newMobileToken();
+  const { error } = await sb.from("board_mobile_links").insert({ board_id: boardId, user_id: userId, token });
+  // Créé entre-temps par le navigateur (impression) : on prend celui-là
+  if (error?.code === "23505") return (await read()) || null;
+  return error ? null : token;
 }
 
 Deno.serve(async (req: Request) => {
@@ -774,6 +835,61 @@ Deno.serve(async (req: Request) => {
         results.push({ ...base, status: error ? (error.code === "23505" ? "exists" : "write_failed") : "saved" });
       }
       return json({ results });
+    }
+
+    case "mobile": {
+      const t = await liveToken(sb, body.token);
+      if (!t) return json({ error: "invalid_token" }, 401);
+      const boardId = String(body.board_id ?? "");
+      if (!UUID.test(boardId)) return json({ error: "bad_request" }, 400);
+
+      if (body.remove === true) {
+        const target = await customTarget(sb, t.user_id, boardId, false);
+        if ("error" in target) return json({ error: target.error }, target.status);
+        const { data, error } = await sb.from("board_mobile_custom").delete().eq("board_id", target.id).eq("user_id", t.user_id).select("board_id");
+        if (error) return isMissingTable(error) ? json({ error: "migration_missing" }, 503) : json({ error: "write_failed" }, 500);
+        return json({ ok: true, board_id: target.id, removed: (data ?? []).length > 0 });
+      }
+
+      // La page d'abord : un refus clair avant toute lecture
+      const problem = customPageProblem(body.html);
+      if (problem) return json(problem, problem.error === "too_large" ? 413 : 400);
+      const html = body.html as string;
+      const bytes = new TextEncoder().encode(html).length;
+
+      const target = await customTarget(sb, t.user_id, boardId, true);
+      if ("error" in target) return json({ error: target.error }, target.status);
+      const { data: board, error: boardError } = await sb.from("boards").select("id, doc, updated_at").eq("id", target.id).eq("user_id", t.user_id).maybeSingle();
+      if (boardError) return json({ error: "read_failed" }, 500);
+      if (!board) return json({ error: "not_found" }, 404);
+      // L'état du document au moment du dépôt : l'éditeur dira quand il aura changé
+      const fingerprint = docFingerprint(board.doc);
+      if (!fingerprint) return json({ error: "not_a_course" }, 400);
+      const rev = (board.doc as Record<string, unknown>).rev;
+
+      const { data: before, error: readError } = await sb.from("board_mobile_custom").select("board_id").eq("board_id", target.id).maybeSingle();
+      if (readError) return isMissingTable(readError) ? json({ error: "migration_missing" }, 503) : json({ error: "read_failed" }, 500);
+      const now = new Date().toISOString();
+      const { error } = await sb.from("board_mobile_custom").upsert({
+        board_id: target.id,
+        user_id: t.user_id,
+        html,
+        bytes,
+        doc_fingerprint: fingerprint,
+        doc_rev: typeof rev === "string" ? rev : null,
+        board_updated_at: board.updated_at ?? null,
+        deposited_at: now,
+        checked_at: now,
+      }, { onConflict: "board_id" });
+      if (error) return json({ error: "write_failed" }, 500);
+      const token = await ensureQrToken(sb, t.user_id, target.id);
+      return json({
+        board_id: target.id,
+        ...(target.id !== boardId ? { copy_of: boardId } : {}),
+        token,
+        bytes,
+        replaced: !!before,
+      });
     }
 
     default:

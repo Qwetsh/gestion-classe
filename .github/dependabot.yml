@@ -1,0 +1,19 @@
+# Dependabot : correctifs de sécurité seulement.
+#
+# open-pull-requests-limit à 0 coupe les PR de simple montée de version (une app entretenue par une
+# seule personne n'a pas besoin de dix PR par semaine). Les correctifs de sécurité ne sont pas
+# concernés par cette limite : ils arrivent regroupés dans une seule PR, que la vérification
+# automatique (ci.yml) teste comme les autres.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /gestion-classe-web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      securite:
+        applies-to: security-updates
+        patterns:
+          - '*'

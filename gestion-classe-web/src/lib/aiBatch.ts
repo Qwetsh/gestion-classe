@@ -43,7 +43,7 @@ export function isFatalRunError(message: string | null | undefined): boolean {
 }
 
 /** Codes de refus au démarrage qui valent pour toute la classe (et pas pour un seul élève). */
-export const FATAL_START_CODES = new Set(['no_api_key', 'unauthorized', 'no_kit', 'not_found']);
+export const FATAL_START_CODES = new Set(['no_api_key', 'unauthorized', 'no_kit', 'not_found', 'not_allowed']);
 
 export interface BatchFailure {
   studentId: string;

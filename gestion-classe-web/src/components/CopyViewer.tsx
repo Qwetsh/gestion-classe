@@ -10,8 +10,9 @@ import { ClassCopiesDialog } from './ClassCopiesDialog';
 import { downloadCorrectionsPdf, exportableSheets } from './ExportCorrectionsDialog';
 import { AiRunPanel, Badge } from './AiRunPanel';
 import { AiBatchPanel } from './AiBatchPanel';
+import { LibraryKitPanel } from './LibraryKitPanel';
 import { isSelectable, useAssessmentCopies, type CopyRow, type CopyRowState } from '../hooks/useAssessmentCopies';
-import { COST_HINT, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
+import { COST_HINT, NO_KIT_HELP, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 
 type Filter = 'all' | CopyRowState;
 
@@ -99,7 +100,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
       return id ? { assessmentId: assessment.id, studentId: id } : null;
     });
   }, [initialStudent, assessment.id]);
-  const { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, trackRun } =
+  const { rows, urls, loading, hasKit, kits, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, trackRun } =
     useAssessmentCopies(assessment, { onError, onChanged, refreshKey, onLoaded });
 
   const visible = useMemo(
@@ -258,6 +259,9 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
           >
             Ajouter les copies de la classe
           </button>
+        )}
+        {!paperless && (
+          <LibraryKitPanel assessment={assessment} kits={kits} onChanged={() => { void load(); }} onError={onError} />
         )}
         {!paperless && (
           <AiBatchPanel assessmentId={assessment.id} rows={rows} aiRuns={aiRuns} hasKit={hasKit} trackRun={trackRun} />
@@ -432,7 +436,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
             </div>
             {!hasKit && correctionMode({ pages: selected.pages.length, grade: selected.grade }) === 'corriger' && (
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
-                {NO_KIT_MESSAGE} : le bouton « Corriger avec Claude » s’active quand le kit de l’éval est envoyé (push_grades.py --kit).
+                {NO_KIT_HELP}
               </div>
             )}
             <AiRunPanel run={aiRuns[selected.student.id]} apiGrade={isApiGrade(selected.grade?.details)} />

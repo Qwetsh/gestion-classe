@@ -20,7 +20,7 @@
 body.ce-open { overflow: hidden; }
 
 /* Variables de l'habillage : l'éditeur de cours (.ce-root) et le ruban du tableau blanc (.ce-chrome) */
-.ce-root, .ce-chrome, .ce-pres {
+.ce-root, .ce-chrome, .ce-pres, .ce-modal {
   --ce-accent: var(--indigo, #4F46E5);
   --ce-accent-soft: var(--indigo-soft, #EEF0FF);
   --ce-accent-ink: #3730A3;
@@ -569,6 +569,17 @@ body.ce-encart-editing .ce-root { visibility: hidden; }
 .ce-main { flex: 1; min-height: 0; display: flex; position: relative; }
 .ce-main > .ce-desk { flex: 1; min-width: 0; }
 .ce-chip--warn { background: #FFEDD5; color: #9A3412; }
+/* Version mobile du document (barre de titre) : automatique ou sur mesure (migration 093) */
+.ce-mstatus { color: var(--ce-muted); font-size: 12px; white-space: nowrap; }
+.ce-mstatus-box { position: relative; flex: none; }
+.ce-mstatus-chip { border: 0; cursor: pointer; font-family: inherit; }
+.ce-mstatus-chip--ok { background: var(--ce-accent-soft); color: var(--ce-accent-ink); }
+.ce-mstatus-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: 300px; padding: 12px; background: #fff; border: 1px solid var(--ce-line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .14); font-size: 13px; line-height: 1.4; }
+.ce-mstatus-pop p { margin: 0 0 8px; }
+.ce-mstatus-pop__warn { color: #9A3412; }
+.ce-mstatus-pop__hint { color: var(--ce-muted); }
+.ce-mstatus-pop__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+@media (max-width: 900px) { .ce-mstatus { display: none; } }
 .ce-dialog__hint { margin: 0; font-size: 12px; color: var(--ce-muted); }
 .ce-conflict { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #FFF7ED; border-bottom: 1px solid #FDBA74; color: #7C2D12; font-size: 13px; flex: none; flex-wrap: wrap; }
 .ce-conflict > div { display: flex; flex-direction: column; gap: 2px; }
@@ -707,7 +718,18 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
 /* Deux par feuille : la copie figée n'existe que pendant l'impression */
 .ce-twoup { display: none; }
 
+/* QR code de la version téléphone (CourseMobileQr) : sur le papier seulement, par-dessus la première feuille */
+.ce-qrprint { display: none; }
+
 .ce-printd { width: min(560px, calc(100vw - 32px)); }
+/* Partager en lecture seule (CourseShareDialog) */
+.ce-shared { width: min(520px, calc(100vw - 32px)); }
+.ce-shared__link { display: flex; gap: 8px; }
+.ce-shared__link .ce-input { flex: 1; min-width: 0; height: 30px; font-size: 12px; }
+.ce-shared__warn { margin: 0; padding: 8px 10px; border-radius: 6px; background: #FEF3C7; color: #92400E; font-size: 12px; }
+.ce-shared__ok { margin: 0; font-size: 12px; color: #047857; }
+.ce-shared__confirm { flex: 1; font-size: 12px; color: #B91C1C; }
+a.ce-btn { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
 .ce-printd__row { display: flex; flex-direction: column; gap: 6px; }
 .ce-printd__choices { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
 .ce-printd__choice { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--ce-line-2); border-radius: 8px; background: #fff; cursor: pointer; font: 12px/1.35 Inter, sans-serif; color: var(--ce-muted); }
@@ -736,6 +758,10 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
   body.ce-print-twoup .ce-twoup__copy { position: absolute !important; top: 0; transform-origin: 0 0; }
   body.ce-print-twoup .ce-twoup__cut { position: absolute; top: 0; bottom: 0; left: 148.5mm; border-left: 1px dashed #BBB; }
   .ce-root .ce-modal { display: none !important; }
+  /* Au-dessus du texte (et d'une image « page entière ») et du calque d'annotations */
+  .ce-qrprint { display: flex; position: absolute; z-index: 3; align-items: center; gap: 1mm; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ce-qrprint svg { display: block; flex: none; }
+  .ce-qrprint__label { padding-left: 1mm; font: 600 6.5pt/1.15 Arial, Helvetica, sans-serif; color: #111; text-align: right; white-space: nowrap; }
 }
 
 /* ---------- Thèmes (lot T16a) : vignettes du ruban ---------- */

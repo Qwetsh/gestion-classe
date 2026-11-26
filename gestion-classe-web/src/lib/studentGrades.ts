@@ -23,6 +23,8 @@ export interface StudentAssessment {
   coefficient: number;
   bareme_total: number | null;
   counts_in_average: boolean;
+  /** Migration 093 : ne compte que si elle fait monter la moyenne. Absent avant la migration. */
+  only_if_raises_average?: boolean;
   grade: number | null;
   grade_raw: number | null;
   comment: string | null;

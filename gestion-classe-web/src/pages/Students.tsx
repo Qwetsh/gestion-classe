@@ -8,6 +8,7 @@ import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepa
 import { generateBulletinContext, downloadBulletinContext, getOralLabel } from '../lib/generateBulletinContext';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import { fetchStudentGradeReport, fetchCurrentPeriod, type StudentGradeReport } from '../lib/evaluationQueries';
+import { fetchTeacherEvents } from '../lib/eventsQueries';
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import QRCode from 'qrcode';
@@ -769,17 +770,9 @@ export function Students() {
         setIsGeneratingReport(true);
         try {
           // Load all events for the current trimester
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(`
-              id, type, student_id,
-              sessions!inner (class_id, user_id)
-            `)
-            .eq('sessions.user_id', user.id);
-
-          const events = (eventsData || []).map((e: any) => ({
+          const events = (await fetchTeacherEvents(user.id)).map((e) => ({
             type: e.type,
-            class_id: e.sessions.class_id,
+            class_id: e.class_id,
             student_id: e.student_id,
           }));
 
@@ -889,14 +882,9 @@ export function Students() {
         setIsGeneratingReport(true);
         try {
           // Load all events for the year
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(`id, type, student_id, sessions!inner (class_id, user_id)`)
-            .eq('sessions.user_id', user.id);
-
-          const events = (eventsData || []).map((e: any) => ({
+          const events = (await fetchTeacherEvents(user.id)).map((e) => ({
             type: e.type,
-            class_id: e.sessions.class_id,
+            class_id: e.class_id,
             student_id: e.student_id,
           }));
 
@@ -988,11 +976,7 @@ export function Students() {
         const className = classStudents[0]?.student.class_name || 'Inconnu';
 
         // Load all events for this class this year
-        const { data: classEvents } = await supabase
-          .from('events')
-          .select(`type, sessions!inner (class_id, user_id)`)
-          .eq('sessions.user_id', user.id)
-          .eq('sessions.class_id', classId);
+        const classEvents = await fetchTeacherEvents(user.id, classId);
 
         const stats = {
           participations: 0,
@@ -1000,7 +984,7 @@ export function Students() {
           absences: 0,
           sorties: 0,
         };
-        (classEvents || []).forEach((e: any) => {
+        classEvents.forEach((e) => {
           if (e.type === 'participation') stats.participations++;
           else if (e.type === 'bavardage') stats.malus++;
           else if (e.type === 'absence') stats.absences++;

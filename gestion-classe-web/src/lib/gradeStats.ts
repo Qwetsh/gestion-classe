@@ -55,6 +55,11 @@ export interface GradeEntry {
 export interface AssessmentWeight {
   coefficient: number;
   countsInAverage: boolean;
+  /**
+   * Migration 093 : la note n'est retenue que si elle fait monter la moyenne de l'élève
+   * (la « note facultative » de Pronote). Sans effet si `countsInAverage` est faux.
+   */
+  onlyIfRaises?: boolean;
 }
 
 export interface Histogram {
@@ -256,19 +261,37 @@ export function weightedAverage(items: readonly WeightedValue[]): number | null 
  * Moyenne d'un élève sur une période : parcourt ses notes, écarte celles qui ne comptent
  * pas (statut exclu, évaluation `counts_in_average = false`, coefficient nul) et pondère.
  *
+ * Une évaluation `onlyIfRaises` ne pèse que pour l'élève qu'elle avantage : ses notes sont
+ * essayées de la meilleure à la moins bonne, et gardées tant qu'elles dépassent la moyenne
+ * déjà obtenue. C'est la plus haute moyenne possible, quel que soit l'ordre des évaluations.
+ * Un élève qui n'a encore aucune autre note garde sa meilleure note de ce genre.
+ *
  * @param rows - les notes de l'élève, chacune accompagnée du poids de son évaluation.
  */
 export function studentAverage(
   rows: readonly { entry: GradeEntry; assessment: AssessmentWeight }[],
 ): number | null {
   const items: WeightedValue[] = [];
+  const optional: WeightedValue[] = [];
   for (const { entry, assessment } of rows) {
     if (!assessment.countsInAverage) continue;
     const value = effectiveGrade(entry);
     if (value === null) continue;
-    items.push({ value, coefficient: toNumber(assessment.coefficient) ?? 0 });
+    const item = { value, coefficient: toNumber(assessment.coefficient) ?? 0 };
+    if (assessment.onlyIfRaises) optional.push(item);
+    else items.push(item);
   }
-  return weightedAverage(items);
+  let average = weightedAverage(items);
+  optional.sort((a, b) => b.value - a.value);
+  for (const item of optional) {
+    if (item.coefficient <= 0) continue;
+    // Triées de la meilleure à la moins bonne : dès qu'une note ne monte plus la moyenne,
+    // aucune des suivantes ne le fera.
+    if (average !== null && item.value <= average) break;
+    items.push(item);
+    average = weightedAverage(items);
+  }
+  return average;
 }
 
 // ============================================================
