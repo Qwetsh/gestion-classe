@@ -1,0 +1,41 @@
+/* Mode « Bulletin » de la page Élèves (BulletinAppreciationsPanel) */
+.bap { border-top: 1px solid var(--border); }
+
+.bap__bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0;
+}
+.bap__meta { font-size: 13px; color: var(--text-muted); }
+.bap__spacer { flex: 1; }
+
+.bap__error { padding: 8px 0; color: var(--neg); font-size: 13px; }
+
+.bap__row {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.bap__who { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; min-width: 0; }
+.bap__name { font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bap__grade { font-size: 12px; color: var(--text-muted); }
+.bap__tag {
+  align-self: flex-start; font-size: 11px; padding: 1px 6px; border-radius: 4px;
+  background: var(--indigo-soft); color: var(--indigo-ink);
+}
+
+.bap__field { min-width: 0; }
+.bap__text {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  font: inherit; font-size: 14px; line-height: 1.45; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px;
+}
+.bap__text:focus { outline: none; border-color: var(--indigo); }
+.bap__foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 12px; color: var(--text-muted); }
+.bap__count.is-full { color: var(--warn); font-weight: 500; }
+.bap__state { flex: 1; }
+.bap__copy { padding: 2px 10px; font-size: 12px; }
+
+@media (max-width: 720px) {
+  .bap__row { grid-template-columns: 1fr; gap: 6px; }
+  .bap__who { flex-direction: row; align-items: baseline; gap: 8px; padding-top: 0; }
+}

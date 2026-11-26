@@ -7,7 +7,7 @@
     "src/components/course/CourseEditor.tsx": 1636,
     "src/lib/evaluationQueries.ts": 1710,
     "src/pages/Classes.tsx": 1943,
-    "src/pages/Students.tsx": 2113,
+    "src/pages/Students.tsx": 2112,
     "src/tools/timeline-templates.ts": 1534,
     "src/tools/TimelineGenerator.tsx": 1710
   },

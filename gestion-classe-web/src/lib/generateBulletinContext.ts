@@ -63,7 +63,7 @@ export function generateBulletinContext(options: BulletinExportOptions): string 
   lines.push(`- **Absences** : nombre de seances manquees`);
   lines.push(`- **Note** : note de participation calculee sur 20`);
   lines.push(`- **Bonus** : participations supplementaires au-dela de l'objectif`);
-  lines.push(`- **Oral** : evaluation de la qualite de l'expression orale (1-5)`);
+  lines.push(`- **Oral** : note d'interrogation orale de cours (1-5), ce n'est PAS une evaluation de l'expression orale`);
   lines.push(`- **Remarques** : observations libres notees en cours`);
   lines.push(`- **Sorties** : nombre de sorties de classe par motif`);
   lines.push(`- **TP** : notes de travaux pratiques en groupe`);
@@ -87,7 +87,7 @@ export function generateBulletinContext(options: BulletinExportOptions): string 
       lines.push(`| Bonus | +${s.bonus.toFixed(0)} participations au-dela de l'objectif |`);
     }
     if (s.oralGrade !== null) {
-      lines.push(`| Oral | ${s.oralGrade}/5 (${s.oralLabel}) |`);
+      lines.push(`| Interrogation orale de cours | ${s.oralGrade}/5 (${s.oralLabel}) |`);
     }
 
     if (s.groupGrades.length > 0) {
@@ -133,6 +133,8 @@ export function generateBulletinContext(options: BulletinExportOptions): string 
   lines.push(`- Si beaucoup d'absences : mentionner l'impact sur la progression`);
   lines.push(`- Si bonne participation + bonne note : encourager et feliciter`);
   lines.push(`- Si remarques specifiques : les integrer naturellement`);
+  lines.push(`- Note d'oral : parler de l'interrogation orale de cours (reussie ou non), jamais de "s'exprimer bien a l'oral"`);
+  lines.push(`- 300 caracteres maximum par appreciation (limite Pronote)`);
   lines.push(`- Tutoiement interdit, utiliser "vous" ou formulation impersonnelle`);
   lines.push(`- Format de sortie : tableau avec colonnes Prenom | Appreciation`);
 

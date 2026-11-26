@@ -21,6 +21,9 @@ import { MoreMenu } from '../components/MoreMenu';
 import { useIsNarrowViewport } from '../hooks/useIsMobile';
 import type { AccommodationKey } from '../lib/accommodations';
 import { StudentDetailModal } from '../components/StudentDetailModal';
+import { BulletinAppreciationsPanel } from '../components/BulletinAppreciationsPanel';
+import { useStudentsLayout } from '../hooks/useStudentsLayout';
+import { getCurrentSchoolYear } from '../lib/constants';
 import { engagementInfo } from '../lib/engagement';
 import { loadStudentsPage } from '../lib/studentsPageQueries';
 import type { ClassConfig, ImplicationEvent as Event, StudentGrade, TrimesterSettings } from '../lib/implicationGrades';
@@ -161,24 +164,8 @@ export function Students() {
 
   // Layout and filter state
   // Vue liste par défaut (direction C) ; le choix de l'enseignant est mémorisé sur cet appareil.
-  const [layout, setLayoutState] = useState<'grid' | 'list'>(() => {
-    try { return localStorage.getItem('gc-students-layout') === 'grid' ? 'grid' : 'list'; } catch { return 'list'; }
-  });
-  const setLayout = (next: 'grid' | 'list') => {
-    setLayoutState(next);
-    try { localStorage.setItem('gc-students-layout', next); } catch { /* stockage indisponible */ }
-  };
+  const [layout, setLayout] = useStudentsLayout();
   const [filter, setFilter] = useState<'all' | 'attention' | 'top'>('all');
-
-  function getCurrentSchoolYear(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (month >= 8) {
-      return `${year}-${year + 1}`;
-    }
-    return `${year - 1}-${year}`;
-  }
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -1505,6 +1492,9 @@ export function Students() {
                 <div className="segbtn">
                   <button className={`segbtn__b ${layout === 'grid' ? 'is-on' : ''}`} onClick={() => setLayout('grid')}><Icon name="grid" size={14} /></button>
                   <button className={`segbtn__b ${layout === 'list' ? 'is-on' : ''}`} onClick={() => setLayout('list')}><Icon name="list" size={14} /></button>
+                  <button className={`segbtn__b ${layout === 'bulletin' ? 'is-on' : ''}`} onClick={() => setLayout('bulletin')} title="Appréciations de bulletin du trimestre">
+                    <Icon name="note" size={14} /> Bulletin
+                  </button>
                 </div>
               </div>
 
@@ -1513,8 +1503,17 @@ export function Students() {
                 <Distribution grades={filteredAndSortedGrades.map(s => s.grade)} color="var(--indigo)" />
               </div>
 
-              {/* Student grid or list */}
-              {layout === 'grid' ? (
+              {/* Student grid, list or bulletin appreciations */}
+              {layout === 'bulletin' && user ? (
+                <BulletinAppreciationsPanel
+                  userId={user.id}
+                  classId={selectedClassId}
+                  className={selectedClassStats.name}
+                  schoolYear={trimesterSettings.school_year}
+                  currentTrimester={trimesterSettings.current_trimester}
+                  students={filteredAndSortedGrades.map(sg => ({ id: sg.student.id, pseudo: sg.student.pseudo, grade: sg.grade }))}
+                />
+              ) : layout === 'grid' ? (
                 <div className="sgrid">
                   {paginatedGrades.map(sg => {
                     const mk = sg.grade;
@@ -1609,8 +1608,8 @@ export function Students() {
                 </div>
               )}
 
-              {/* Pagination */}
-              {totalPages > 1 && (
+              {/* Pagination (le mode Bulletin affiche toute la classe) */}
+              {totalPages > 1 && layout !== 'bulletin' && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 }}>
                   <button className="btn btn--ghost" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Précédent</button>
                   <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Page {currentPage} / {totalPages}</span>
