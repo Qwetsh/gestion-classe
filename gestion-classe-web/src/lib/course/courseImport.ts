@@ -63,7 +63,7 @@ export const PDF_PAGES_MAX = 60;
 export async function pdfPageCount(file: File): Promise<number> {
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  try { return doc.numPages; } finally { await doc.destroy(); }
+  try { return doc.numPages; } finally { await doc.loadingTask.destroy(); }
 }
 
 export interface PdfPageImage {
@@ -98,7 +98,7 @@ export async function pdfToImages(file: File, onPage?: (done: number, total: num
     }
     onPage?.(total, total);
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
   return out;
 }

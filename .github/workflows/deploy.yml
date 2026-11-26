@@ -24,13 +24,21 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: gestion-classe-web/package-lock.json
 
       - name: Install dependencies
         working-directory: gestion-classe-web
         run: npm ci
+
+      # Une mise en ligne ne part pas si un test échoue. Valeurs factices : aucun test n'appelle la base.
+      - name: Tests
+        working-directory: gestion-classe-web
+        run: npm test
+        env:
+          VITE_SUPABASE_URL: https://exemple.supabase.co
+          VITE_SUPABASE_ANON_KEY: cle-factice-pour-les-tests
 
       - name: Build
         working-directory: gestion-classe-web

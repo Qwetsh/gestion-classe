@@ -8,6 +8,7 @@ import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepa
 import { generateBulletinContext, downloadBulletinContext, getOralLabel } from '../lib/generateBulletinContext';
 import { fetchStudentStampDetail, getCardTier, type StudentStampDetail } from '../lib/rewardsQueries';
 import { fetchStudentGradeReport, fetchCurrentPeriod, type StudentGradeReport } from '../lib/evaluationQueries';
+import { fetchTeacherEvents } from '../lib/eventsQueries';
 import { fetchConnectionStats, fetchStudentConnections, type ConnectionStat } from '../lib/connectionQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import QRCode from 'qrcode';
@@ -18,79 +19,18 @@ import '../styles/refonte-eleves.css';
 import { AccommodationBadges } from '../components/AccommodationBadges';
 import { MoreMenu } from '../components/MoreMenu';
 import { useIsNarrowViewport } from '../hooks/useIsMobile';
-import type { AccommodationKey, StudentAccommodations } from '../lib/accommodations';
+import type { AccommodationKey } from '../lib/accommodations';
 import { StudentDetailModal } from '../components/StudentDetailModal';
 import { BulletinAppreciationsPanel } from '../components/BulletinAppreciationsPanel';
 import { engagementInfo } from '../lib/engagement';
+import { loadStudentsPage } from '../lib/studentsPageQueries';
+import type { ClassConfig, ImplicationEvent as Event, StudentGrade, TrimesterSettings } from '../lib/implicationGrades';
+
+export type { StudentGrade };
 
 // Seuil de malus a partir duquel un eleve est signale dans le filtre "A suivre"
 const MALUS_ALERT_THRESHOLD = 5;
 
-interface Student {
-  id: string;
-  pseudo: string;
-  class_id: string;
-  class_name: string;
-  created_at: string;
-  gender: 'M' | 'F';
-  student_code?: string;
-  is_witness: boolean;
-  has_pap: boolean;
-  has_ppre: boolean;
-  has_pai: boolean;
-}
-
-interface Event {
-  id: string;
-  student_id: string;
-  session_id: string;
-  type: string;
-  subtype: string | null;
-  note: string | null;
-  photo_path: string | null;
-  timestamp: string;
-  session_date: string;
-  class_name: string;
-}
-
-interface TrimesterSettings {
-  current_trimester: number;
-  school_year: string;
-}
-
-interface ClassConfig {
-  class_id: string;
-  target_participations: number;
-  total_sessions_expected: number;
-  bavardage_penalty: boolean;
-  base_grade: number | null;
-}
-
-// TrimesterBoundary type inlined where needed
-
-interface ArchivedGrade {
-  trimester: number;
-  school_year: string;
-  class_name: string | null;
-  participations: number;
-  absences: number;
-  target_participations: number;
-  adjusted_target: number;
-  grade: number;
-  bonus: number;
-  archived_at: string;
-}
-
-interface OralEvaluation {
-  id: string;
-  student_id: string;
-  class_id: string;
-  user_id: string;
-  trimester: number;
-  school_year: string;
-  grade: number;
-  evaluated_at: string;
-}
 
 export interface GroupSessionGrade {
   session_id: string;
@@ -102,36 +42,6 @@ export interface GroupSessionGrade {
   max_points: number;
 }
 
-interface ManualParticipation {
-  id: string;
-  student_id: string;
-  trimester: number;
-  school_year: string;
-  count: number;
-  reason: string | null;
-  created_at: string;
-}
-
-export interface StudentGrade {
-  student: Student;
-  participations: number;
-  manualParticipations: number;
-  totalParticipations: number;
-  malus: number;
-  effectiveParticipations: number;
-  absences: number;
-  targetParticipations: number;
-  totalSessionsExpected: number;
-  adjustedTarget: number;
-  malusPenalty: boolean;
-  baseGrade: number | null;
-  grade: number;
-  bonus: number;
-  events: Event[];
-  manualParticipationsList: ManualParticipation[];
-  archivedGrades: ArchivedGrade[];
-  oralEvaluation: OralEvaluation | null;
-}
 
 interface ClassFilter {
   id: string;
@@ -281,301 +191,15 @@ export function Students() {
     setError(null);
 
     try {
-    // Phase 1: Load trimester settings first (needed for other queries)
-    let settingsData: { current_trimester: number; school_year: string } | null = null;
-    const { data: existingSettings } = await supabase
-      .from('trimester_settings')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (existingSettings) {
-      settingsData = existingSettings;
-      setTrimesterSettings({
-        current_trimester: existingSettings.current_trimester,
-        school_year: existingSettings.school_year,
-      });
-    } else {
-      const defaultSettings = {
-        user_id: user.id,
-        current_trimester: 1,
-        school_year: getCurrentSchoolYear(),
-      };
-      await supabase.from('trimester_settings').insert(defaultSettings);
-      settingsData = defaultSettings;
-      setTrimesterSettings({
-        current_trimester: defaultSettings.current_trimester,
-        school_year: defaultSettings.school_year,
-      });
-    }
-
-    const currentTrimester = settingsData!.current_trimester;
-    const currentSchoolYear = settingsData!.school_year;
-
-    // Phase 2: Run independent queries in parallel
-    const [
-      { data: boundariesData },
-      { data: classesData },
-      { data: configsData },
-      { data: studentsData },
-    ] = await Promise.all([
-      supabase
-        .from('trimester_boundaries')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('school_year', currentSchoolYear)
-        .order('trimester'),
-      supabase
-        .from('classes')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .order('name'),
-      supabase
-        .from('class_trimester_config')
-        .select('*'),
-      supabase
-        .from('students')
-        .select(`
-          id,
-          pseudo,
-          class_id,
-          created_at,
-          gender,
-          student_code,
-          is_witness,
-          has_pap,
-          has_ppre,
-          has_pai,
-          classes (name)
-        `)
-        .eq('user_id', user.id)
-        .order('pseudo'),
-    ]);
-
-    // Handle boundary creation if needed (non-blocking for display)
-    const currentBoundary = boundariesData?.find(
-      b => b.trimester === currentTrimester
-    );
-    if (!currentBoundary) {
-      supabase.from('trimester_boundaries').insert({
-        user_id: user.id,
-        trimester: currentTrimester,
-        school_year: currentSchoolYear,
-        started_at: new Date().toISOString(),
-      });
-    }
-
-    setClasses(classesData || []);
-
-    // Auto-select first class if none selected
-    if (classesData && classesData.length > 0) {
-      setSelectedClassId(prev => prev || classesData[0].id);
-    }
-
-    const configMap = new Map<string, ClassConfig>();
-    (configsData || []).forEach(c => {
-      configMap.set(c.class_id, {
-        class_id: c.class_id,
-        target_participations: c.target_participations,
-        total_sessions_expected: c.total_sessions_expected,
-        bavardage_penalty: c.bavardage_penalty ?? false,
-        base_grade: c.base_grade ?? null,
-      });
-    });
-    setClassConfigs(configMap);
-
-    if (!studentsData || studentsData.length === 0) {
-      setStudentGrades([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Get current trimester boundary for date filtering
-    const currentTrimesterBoundary = boundariesData?.find(
-      b => b.trimester === currentTrimester && b.school_year === currentSchoolYear
-    );
-    const trimesterStartDate = currentTrimesterBoundary?.started_at || new Date(0).toISOString();
-
-    // Phase 3: Load student-related data in parallel
-    const studentIds = studentsData.map(s => s.id);
-
-    // Paginate events query to bypass Supabase's 1000-row default limit
-    const EVENTS_PAGE_SIZE = 1000;
-    const allEventsData: any[] = [];
-    let eventsFrom = 0;
-    let hasMoreEvents = true;
-
-    while (hasMoreEvents) {
-      const { data, error: eventsError } = await supabase
-        .from('events')
-        .select('id, student_id, session_id, type, subtype, note, timestamp')
-        .in('student_id', studentIds)
-        .gte('timestamp', trimesterStartDate)
-        .order('timestamp', { ascending: false })
-        .range(eventsFrom, eventsFrom + EVENTS_PAGE_SIZE - 1);
-
-      if (eventsError) {
-        console.error('Error loading events:', eventsError);
-        break;
+      const data = await loadStudentsPage(user.id, getCurrentSchoolYear());
+      setTrimesterSettings(data.settings);
+      setClasses(data.classes);
+      // Auto-select first class if none selected
+      if (data.classes.length > 0) {
+        setSelectedClassId(prev => prev || data.classes[0].id);
       }
-
-      if (data && data.length > 0) {
-        allEventsData.push(...data);
-      }
-
-      hasMoreEvents = data !== null && data.length === EVENTS_PAGE_SIZE;
-      eventsFrom += EVENTS_PAGE_SIZE;
-    }
-
-    const eventsData = allEventsData;
-
-    const [
-      { data: manualParticipationsData },
-      { data: archivedGradesData },
-      { data: oralEvaluationsData },
-    ] = await Promise.all([
-      supabase
-        .from('manual_participations')
-        .select('*')
-        .in('student_id', studentIds)
-        .eq('trimester', currentTrimester)
-        .eq('school_year', currentSchoolYear)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('trimester_grades')
-        .select('*')
-        .in('student_id', studentIds)
-        .order('school_year', { ascending: false }),
-      supabase
-        .from('oral_evaluations')
-        .select('*')
-        .in('student_id', studentIds)
-        .eq('trimester', currentTrimester)
-        .eq('school_year', currentSchoolYear),
-    ]);
-
-    // Pre-index events by student_id (O(n) instead of O(n²))
-    const eventsByStudent = new Map<string, typeof eventsData>();
-    (eventsData || []).forEach(e => {
-      const list = eventsByStudent.get(e.student_id);
-      if (list) {
-        list.push(e);
-      } else {
-        eventsByStudent.set(e.student_id, [e]);
-      }
-    });
-
-    // Build grades for each student
-    const grades: StudentGrade[] = studentsData.map(student => {
-      const rawEvents = eventsByStudent.get(student.id) || [];
-      const studentEvents: Event[] = rawEvents.map(e => ({
-        id: e.id,
-        student_id: e.student_id,
-        session_id: e.session_id,
-        type: e.type,
-        subtype: e.subtype,
-        note: e.note,
-        photo_path: null,
-        timestamp: e.timestamp,
-        session_date: e.timestamp,
-        class_name: '',
-      }));
-
-      const participations = rawEvents.filter(e => e.type === 'participation').length;
-      const malus = rawEvents.filter(e => e.type === 'bavardage').length;
-      const absences = rawEvents.filter(e => e.type === 'absence').length;
-
-      const studentManualParticipations = (manualParticipationsData || [])
-        .filter(mp => mp.student_id === student.id);
-      const manualParticipationsCount = studentManualParticipations.reduce((sum, mp) => sum + mp.count, 0);
-      const totalParticipations = participations + manualParticipationsCount;
-
-      const config = configMap.get(student.class_id);
-      const targetParticipations = config?.target_participations || 15;
-      const totalSessionsExpected = config?.total_sessions_expected || 60;
-      const malusPenalty = config?.bavardage_penalty ?? false;
-      const baseGrade = config?.base_grade ?? null;
-
-      const effectiveParticipations = malusPenalty
-        ? Math.max(0, totalParticipations - malus)
-        : totalParticipations;
-
-      const reductionPerAbsence = targetParticipations / totalSessionsExpected;
-      const adjustedTarget = Math.max(1, targetParticipations - (absences * reductionPerAbsence));
-
-      // Calculate grade based on mode: base_grade or target-based
-      let rawGrade: number;
-      let grade: number;
-      let bonus: number;
-
-      if (baseGrade !== null && baseGrade > 0) {
-        // Mode "note de base" : note = base + participations - malus (si pénalité active)
-        const modifier = malusPenalty
-          ? totalParticipations - malus
-          : totalParticipations;
-        rawGrade = baseGrade + modifier;
-        grade = Math.min(20, Math.max(0, rawGrade));
-        bonus = rawGrade > 20 ? rawGrade - 20 : 0;
-      } else {
-        // Mode "objectif" : note = (participations / objectif) * 20
-        rawGrade = (effectiveParticipations / adjustedTarget) * 20;
-        grade = Math.min(20, Math.max(0, rawGrade));
-        bonus = rawGrade > 20 ? effectiveParticipations - adjustedTarget : 0;
-      }
-
-      const studentArchivedGrades = (archivedGradesData || [])
-        .filter(g => g.student_id === student.id)
-        .map(g => ({
-          trimester: g.trimester,
-          school_year: g.school_year,
-          class_name: g.class_name ?? null,
-          participations: g.participations,
-          absences: g.absences,
-          target_participations: g.target_participations,
-          adjusted_target: parseFloat(g.adjusted_target),
-          grade: parseFloat(g.grade),
-          bonus: parseFloat(g.bonus),
-          archived_at: g.archived_at,
-        }));
-
-      const studentOralEvaluation = (oralEvaluationsData || [])
-        .find(oe => oe.student_id === student.id) || null;
-
-      return {
-        student: {
-          id: student.id,
-          pseudo: student.pseudo,
-          class_id: student.class_id,
-          class_name: (student.classes as any)?.name || 'Classe inconnue',
-          created_at: student.created_at,
-          gender: (student.gender as 'M' | 'F') || 'M',
-          student_code: (student as any).student_code || undefined,
-          is_witness: (student as any).is_witness ?? false,
-          has_pap: !!(student as StudentAccommodations).has_pap,
-          has_ppre: !!(student as StudentAccommodations).has_ppre,
-          has_pai: !!(student as StudentAccommodations).has_pai,
-        },
-        participations,
-        manualParticipations: manualParticipationsCount,
-        totalParticipations,
-        malus,
-        effectiveParticipations,
-        absences,
-        targetParticipations,
-        totalSessionsExpected,
-        adjustedTarget,
-        malusPenalty,
-        baseGrade,
-        grade,
-        bonus,
-        events: studentEvents,
-        manualParticipationsList: studentManualParticipations,
-        archivedGrades: studentArchivedGrades,
-        oralEvaluation: studentOralEvaluation,
-      };
-    });
-
-    setStudentGrades(grades);
+      setClassConfigs(data.classConfigs);
+      setStudentGrades(data.studentGrades);
     } catch (err) {
       console.error('Error loading students data:', err);
       setError('Erreur lors du chargement des donnees.');
@@ -774,17 +398,9 @@ export function Students() {
         setIsGeneratingReport(true);
         try {
           // Load all events for the current trimester
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(`
-              id, type, student_id,
-              sessions!inner (class_id, user_id)
-            `)
-            .eq('sessions.user_id', user.id);
-
-          const events = (eventsData || []).map((e: any) => ({
+          const events = (await fetchTeacherEvents(user.id)).map((e) => ({
             type: e.type,
-            class_id: e.sessions.class_id,
+            class_id: e.class_id,
             student_id: e.student_id,
           }));
 
@@ -792,7 +408,7 @@ export function Students() {
           const allStudents = studentGrades.map(sg => ({
             id: sg.student.id,
             pseudo: sg.student.pseudo,
-            class_id: sg.student.class_id,
+            class_id: sg.student.class_id ?? '',
           }));
 
           // Prepare gender stats
@@ -894,14 +510,9 @@ export function Students() {
         setIsGeneratingReport(true);
         try {
           // Load all events for the year
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(`id, type, student_id, sessions!inner (class_id, user_id)`)
-            .eq('sessions.user_id', user.id);
-
-          const events = (eventsData || []).map((e: any) => ({
+          const events = (await fetchTeacherEvents(user.id)).map((e) => ({
             type: e.type,
-            class_id: e.sessions.class_id,
+            class_id: e.class_id,
             student_id: e.student_id,
           }));
 
@@ -918,18 +529,18 @@ export function Students() {
             trimester: 3,
             grade: sg.grade,
             participations: sg.totalParticipations,
-            class_id: sg.student.class_id,
+            class_id: sg.student.class_id ?? '',
           }));
 
           const allTrimesterGrades = [
-            ...(archivedGradesData || []),
+            ...(archivedGradesData || []).map(g => ({ ...g, class_id: g.class_id ?? '' })),
             ...t3Grades,
           ];
 
           const allStudents = studentGrades.map(sg => ({
             id: sg.student.id,
             pseudo: sg.student.pseudo,
-            class_id: sg.student.class_id,
+            class_id: sg.student.class_id ?? '',
           }));
 
           const genderStats = {
@@ -963,7 +574,7 @@ export function Students() {
       // 2. Archiver les notes du trimestre courant (T3) avec le nom de classe,
       //    pour les élèves conservés uniquement (les sortants vont être supprimés).
       const gradesToArchive = studentGrades
-        .filter(sg => !leavingClassIds.has(sg.student.class_id))
+        .filter(sg => !leavingClassIds.has(sg.student.class_id ?? ''))
         .map(sg => ({
           student_id: sg.student.id,
           class_id: sg.student.class_id,
@@ -993,11 +604,7 @@ export function Students() {
         const className = classStudents[0]?.student.class_name || 'Inconnu';
 
         // Load all events for this class this year
-        const { data: classEvents } = await supabase
-          .from('events')
-          .select(`type, sessions!inner (class_id, user_id)`)
-          .eq('sessions.user_id', user.id)
-          .eq('sessions.class_id', classId);
+        const classEvents = await fetchTeacherEvents(user.id, classId ?? undefined);
 
         const stats = {
           participations: 0,
@@ -1005,7 +612,7 @@ export function Students() {
           absences: 0,
           sorties: 0,
         };
-        (classEvents || []).forEach((e: any) => {
+        classEvents.forEach((e) => {
           if (e.type === 'participation') stats.participations++;
           else if (e.type === 'bavardage') stats.malus++;
           else if (e.type === 'absence') stats.absences++;
@@ -1035,10 +642,10 @@ export function Students() {
 
       // 4. Élèves sortants (classes cochées) vs conservés
       const leavingStudentIds = studentGrades
-        .filter(sg => leavingClassIds.has(sg.student.class_id))
+        .filter(sg => leavingClassIds.has(sg.student.class_id ?? ''))
         .map(sg => sg.student.id);
       const keptStudentIds = studentGrades
-        .filter(sg => !leavingClassIds.has(sg.student.class_id))
+        .filter(sg => !leavingClassIds.has(sg.student.class_id ?? ''))
         .map(sg => sg.student.id);
 
       // 5. Supprimer définitivement les élèves sortants (cascade : notes, tampons, événements, maison…)
@@ -1167,9 +774,9 @@ export function Students() {
 
       const byClass = new Map<string, { pseudo: string; code: string | null }[]>();
       for (const s of data || []) {
-        const list = byClass.get(s.class_id) || [];
+        const list = byClass.get(s.class_id ?? '') || [];
         list.push({ pseudo: s.pseudo, code: s.student_code || null });
-        byClass.set(s.class_id, list);
+        byClass.set(s.class_id ?? '', list);
       }
       const sortedClasses = [...classes]
         .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
@@ -2281,8 +1888,8 @@ export function Students() {
             </div>
 
             {(() => {
-              const leavingCount = studentGrades.filter(sg => leavingClassIds.has(sg.student.class_id) && !sg.student.is_witness).length;
-              const keptCount = studentGrades.filter(sg => !leavingClassIds.has(sg.student.class_id) && !sg.student.is_witness).length;
+              const leavingCount = studentGrades.filter(sg => leavingClassIds.has(sg.student.class_id ?? '') && !sg.student.is_witness).length;
+              const keptCount = studentGrades.filter(sg => !leavingClassIds.has(sg.student.class_id ?? '') && !sg.student.is_witness).length;
               const [startYear] = trimesterSettings.school_year.split('-').map(Number);
               return (
                 <div className="bg-[var(--bg)] border border-[var(--border)] rounded-lg p-3 mb-4 text-sm">

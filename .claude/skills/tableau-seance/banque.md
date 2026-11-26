@@ -5,13 +5,16 @@ reprend (et se cite dans la proposition : « la 3D du patient, comme pour la 3e 
 banque fait gagner du temps et garde le même style d'une séance à l'autre. Chaque nouvelle scène
 réussie et chaque nouveau thème de dessins s'ajoutent ici, avec la date et le retour de Thomas.
 
-Fichiers : `.claude/skills/cours-gestion-classe/` (`animation/banque/`, `exemples/`).
+Fichiers : `.claude/skills/cours-gestion-classe/` (`animation/banque/`, `exemples/`). Un chemin qui
+commence par `_Claude/exemples/` désigne le dossier privé de Thomas
+(`C:\Users\Utilisateur\OneDrive\Documents\Ecole\_Claude\exemples\`) : les corrections d'évaluation n'ont pas leur place dans un dépôt
+public.
 
 ## Banques de dessins et d'outils (`animation/banque/`)
 
 | Banque | Ce qu'elle donne | Thème |
 |---|---|---|
-| `immunite.js` | virus (Epstein-Barr : antigènes triangulaires ; grippe : carrés), antigène, anticorps (creux complémentaires), lymphocyte B, phagocyte, cellule, fonds | 3e S2, système immunitaire |
+| `immunite.js` | virus (Epstein-Barr : antigènes triangulaires ; grippe : carrés), antigène, anticorps (creux complémentaires), lymphocyte B, phagocyte, cellule, fonds ; depuis le 22/11/2026 : staphylocoque (`bacterie`, digéré avec `dig`), toxines tétanique (sites ronds) et diphtérique (sites carrés) (`toxine`, `bindTox`), souris et lapin de laboratoire | 3e S2, système immunitaire |
 | `scene3d.js` | la 3D sous les étiquettes SVG : `S3D.create`, `load` (GLB), `fit`, `box.at`, `view` (caméra en images-clés), `pose` (animation du modèle), `toStage` (étiquette qui suit le modèle), `glow`, `spot` | tout modèle 3D (bibliothèque `three`) |
 | `bacteries.js` | bactérie en bâtonnet (`bacterie` : bleue sensible, rouge résistante), boîte de Petri (`boite`), tapis de bactéries avec trous (`tapis`), pastille lettrée, halo de diffusion (`halo`), zone nette (`zone`), règle graduée (`regle`) ; couleurs `BA` (chou rouge, rose acide, microbiote) | 3e S2 A3 (antibiogramme, résistances) ; réutilisable pour la séquence 1 (développement bactérien) |
 | `tectonique.js` | contours réels de l'Afrique et de l'Amérique du Sud (Natural Earth, domaine public) et zones à Mesosaurus ; rotation sur la sphère (`R`, `tourne`, `SA_A(w)` : l'Atlantique ouvert de w°, pôle de Bullard), projection de Lambert avec caméra (`camera`), `distance`, `centre` ; Mesosaurus qui nage (`mesosaurus`) ; couleurs de coupe (`COUPE` : croûtes, manteau rigide, asthénosphère, vert de la lithosphère) | 4e S2 (dérive, frontières, profondeur des plaques) |
@@ -30,6 +33,11 @@ Fichiers : `.claude/skills/cours-gestion-classe/` (`animation/banque/`, `exemple
 | « L'Atlantique sud s'ouvre » — 5 étapes : de 130 Ma à aujourd'hui, dorsale et fond océanique coloré par âge, compteur à 3 cm/an, calcul, largeurs 3 000 / 6 000 km, limites du modèle | `exemples/wegener_ouverture_scene.js` (même carte que le puzzle) | 4e S2 A3, correction Q5 ; réutilisable en A1 (divergence) | idem |
 | « Comment lire un antibiogramme ? » — 6 étapes : le modèle de la classe (gel au chou rouge, vinaigre dilué) à côté d'un vrai antibiogramme, pastilles, diffusion, zones (couleur / zone claire, 15 min contre 16-20 h), mesure du diamètre, bilan | `exemples/antibiogramme_animations.py` + `antibiogramme_lecture_scene.js` | 3e S2 A3, activité | acceptée sur storyboard le 22/11/2026 ; posée sur l'original, *non jouée* |
 | « Quand les antibiotiques ne marchent plus » — 6 étapes : colonie avec résistantes présentes par hasard, une prise (les sensibles meurent), multiplication des résistantes, nouvelle prise sans effet, microbiote appauvri, bilan « sélection » | `exemples/antibiogramme_resistance_scene.js` | 3e S2 A3, activité et correction (document 3, Q6) | idem |
+
+| « Même lumière, plus grande surface » — 5 étapes : rayons parallèles sur la Terre, encarts « vu de près » (feuille quadrillée de l'A3 : 4 carreaux à l'équateur, 8 près du pôle), thermomètres, deux idées fausses barrées (distance, glace) | `_Claude/exemples/meteo_animations.py` + `meteo_poles_scene.js` | 5e S1, correction de l'évaluation 1, Q6 ; réutilisable pour la correction de l'A3 (séance 2) | acceptée sur storyboard le 21/11/2026 ; posée pour la 5D (23/11), *non jouée* |
+| « La brise de mer se lève » — 6 étapes : le sable chauffe, particules d'air qui tournent (espacées = moins dense, serrées = plus dense), les 4 flèches du barème une à une, drapeau qui se lève, bonus la nuit (brise de terre) | `_Claude/exemples/meteo_brise_scene.js` | 5e S1, correction de l'évaluation 1, Q8-9 ; réutilisable pour l'A3 (séance 3, boîte à convection) | idem |
+| « Englober n'est pas détruire » — 5 étapes : adhésion, ingestion, digestion chez l'enfant en bonne santé (compteur 100 → 3 %), puis l'enfant malade où la bactérie survit et se divise (44 %), bilan côte à côte | `_Claude/exemples/entrainement3e_animations.py` + `entrainement3e_phagocytose_scene.js` | 3e S2, correction de l'entraînement noté, Q4 ; réutilisable pour la phagocytose (A1, M. Apabien) | acceptée sur storyboard le 22/11/2026 ; posée sur l'original, *non jouée* |
+| « Ce que contient le sérum A » — 6 étapes : le lapin fabrique des anticorps (LB), le sérum sans cellules, lots 2, 3 (témoin) et 4 (autre toxine), bilan spécificité | `_Claude/exemples/entrainement3e_serum_scene.js` (même fichier Python) | 3e S2, correction de l'entraînement noté, Q10-11 ; réutilisable pour la sérothérapie et la vaccination (A4) | idem |
 
 ## Pages de sites pilotables
 

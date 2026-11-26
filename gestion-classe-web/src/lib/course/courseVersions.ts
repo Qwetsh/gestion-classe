@@ -11,6 +11,7 @@
  */
 import type { JSONContent } from '@tiptap/core';
 import { supabase } from '../supabase';
+import { fromJson, toJson } from '../dbJson';
 import type { CourseDoc } from './courseDoc';
 
 export type VersionKind = 'auto' | 'manual' | 'restore' | 'import' | 'conflict';
@@ -90,7 +91,7 @@ export async function lastVersionAt(boardId: string): Promise<number | null> {
 export async function fetchVersionDoc(id: string): Promise<CourseDoc> {
   const { data, error } = await supabase.from('board_doc_versions').select('doc').eq('id', id).single();
   if (error) throw error;
-  return (data as { doc: CourseDoc }).doc;
+  return fromJson<CourseDoc>(data.doc);
 }
 
 /** Ajoute une version puis fait le ménage. Renvoie false si l'historique est indisponible. */
@@ -100,7 +101,7 @@ export async function createVersion(userId: string, boardId: string, doc: Course
   delete snapshot.rev;
   const { error } = await supabase
     .from('board_doc_versions')
-    .insert({ user_id: userId, board_id: boardId, doc: snapshot, kind, label: label?.trim() || null, words: countWords(doc.content) });
+    .insert({ user_id: userId, board_id: boardId, doc: toJson(snapshot), kind, label: label?.trim() || null, words: countWords(doc.content) });
   if (isMissingTable(error)) { tableMissing = true; return false; }
   if (error) throw error;
   void pruneVersions(boardId).catch((err: unknown) => console.warn('[courseVersions] ménage :', err));

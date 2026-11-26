@@ -13,9 +13,10 @@
 import QRCode from 'qrcode';
 import type { JSONContent } from '@tiptap/core';
 import { COL_W, MARGIN, MM } from './course/coursePage';
-import { MOBILE_TOKEN, mobileEligible } from '../../../supabase/functions/version-mobile/rules';
+import { MOBILE_TOKEN, linkEligible, linkTarget, mobileEligible, shareEligible, type CourseRef, type LinkKind } from '../../../supabase/functions/version-mobile/rules';
 
-export { MOBILE_TOKEN, mobileEligible };
+export { MOBILE_TOKEN, linkEligible, linkTarget, mobileEligible, shareEligible, type CourseRef, type LinkKind };
+export { CUSTOM_MAX_BYTES, customPageProblem, customState, docFingerprint, servedVersion, type CustomProblem, type CustomState } from '../../../supabase/functions/version-mobile/custom';
 
 // ---------------------------------------------------------------------------------------------
 // Lien
@@ -36,8 +37,6 @@ export function mobileUrl(token: string, origin: string = window.location.origin
   return `${origin}${base.replace(/\/$/, '')}/d/${token}`;
 }
 
-export interface CourseRef { id: string; title: string }
-
 /**
  * Le document vers lequel pointe le QR code d'un cours imprimé : toujours l'original de la
  * bibliothèque. Une copie posée pour une classe (`lesson_boards.source_board_id`) renvoie au lien de
@@ -45,9 +44,7 @@ export interface CourseRef { id: string; title: string }
  * Pas de lien (null) si le cours imprimé ou son original est une correction ou une évaluation.
  */
 export function mobileTarget(printed: CourseRef, original: CourseRef | null): string | null {
-  if (!mobileEligible(printed.title)) return null;
-  if (original && original.id !== printed.id) return mobileEligible(original.title) ? original.id : null;
-  return printed.id;
+  return linkTarget('qr', printed, original);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -136,19 +133,26 @@ function flatCartouche(table: JSONContent): JSONContent[] {
   return out;
 }
 
+/** Zones d'écriture et pointillés (gardés par un lien de partage pour l'impression) : rien à faire d'eux sur un téléphone. */
+const PAPER_ONLY = new Set(['writingZone', 'dots']);
+
 function phoneNode(n: JSONContent): JSONContent {
   if (n.type === 'image' && !n.attrs?.page) {
     const width = n.attrs?.width;
     if (typeof width === 'number' && width < PHONE_FULL_IMAGE) return n;
     return { ...n, attrs: { ...n.attrs, width: null } };
   }
-  return n.content ? { ...n, content: n.content.map(phoneNode) } : n;
+  if (!n.content) return n;
+  const content = n.content.filter((c) => !PAPER_ONLY.has(c.type ?? '')).map(phoneNode);
+  // Un encadré qui ne portait qu'une zone d'écriture garde un paragraphe (le schéma refuse certains conteneurs vides)
+  if (content.length === 0 && n.content.length > 0 && n.type !== 'paragraph' && n.type !== 'heading') content.push({ type: 'paragraph' });
+  return { ...n, content };
 }
 
 /**
  * Le document tel qu'il se lit sur un téléphone : cartouche mis à plat (les trois premiers blocs),
- * images à toute la largeur. Les encarts, zones d'écriture et pointillés ont déjà été retirés par le
- * serveur.
+ * images à toute la largeur, sans zones d'écriture ni pointillés. Les encarts ont déjà été retirés
+ * par le serveur (et, pour le lien du QR code, les zones d'écriture et les pointillés aussi).
  */
 export function phoneContent(content: JSONContent): JSONContent {
   const blocks: JSONContent[] = [];
@@ -157,4 +161,39 @@ export function phoneContent(content: JSONContent): JSONContent {
     else blocks.push(block);
   });
   return phoneNode({ ...content, content: blocks });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Version sur mesure (migration 093) : la page déposée par Claude, dans un cadre isolé
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Règles de la page sur mesure : rien du réseau. Images, polices, sons et vidéos seulement en
+ * data URI (ou blob: créé par la page elle-même) ; styles et scripts seulement écrits dans la page.
+ * `connect-src data: blob:` : une scène 3D lit les textures de son modèle par une adresse blob:
+ * (rien ne sort de la page). Les cadres `srcdoc` d'une animation héritent de ces règles.
+ */
+export const CUSTOM_CSP = [
+  "default-src 'none'",
+  'img-src data: blob:',
+  "style-src 'unsafe-inline'",
+  "script-src 'unsafe-inline'",
+  'font-src data:',
+  'media-src data: blob:',
+  'connect-src data: blob:',
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+
+const DOCTYPE = /^(\uFEFF?(?:\s|<!--[\s\S]*?-->)*<!doctype[^>]*>)/i;
+
+/**
+ * La page sur mesure prête pour le `srcdoc` du cadre : la CSP et « pas d'adresse transmise » posées
+ * en tout premier (après le doctype, qui doit rester en tête : sans lui, la page passerait en mode
+ * de compatibilité). Une CSP écrite plus loin par la page ne peut que restreindre davantage.
+ */
+export function customSrcdoc(html: string): string {
+  const guard = `<meta http-equiv="Content-Security-Policy" content="${CUSTOM_CSP}"><meta name="referrer" content="no-referrer">`;
+  const m = DOCTYPE.exec(html);
+  return m ? m[1] + guard + html.slice(m[1].length) : guard + html;
 }

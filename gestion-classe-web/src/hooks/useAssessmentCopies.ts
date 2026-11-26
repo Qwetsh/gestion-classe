@@ -10,6 +10,7 @@ import {
   fetchLatestAiCorrections,
   getCopyUrls,
   hasCorrectionKit,
+  fetchKitSummaries,
   startAiCorrection,
   validateGrade,
   type AssessmentRow,
@@ -17,6 +18,7 @@ import {
   type GradeRow,
   type RosterStudent,
 } from '../lib/evaluationQueries';
+import type { KitSummary } from '../lib/assessmentLibrary';
 import { parseTranscript, type TranscriptItem } from '../lib/copyTranscript';
 import {
   COST_HINT,
@@ -73,6 +75,8 @@ export function useAssessmentCopies(
   const [hasKit, setHasKit] = useState(false);
   // Versions du sujet qui ont un kit (une copie d'une autre version n'a pas le bon barème).
   const [kitVersions, setKitVersions] = useState<string[]>([]);
+  // Kits résumés (barème, origine) : celui préparé depuis Mes cours se vérifie au-dessus des copies.
+  const [kits, setKits] = useState<KitSummary[]>([]);
   const [aiRuns, setAiRuns] = useState<Record<string, AiCorrectionRun>>({});
   const [startingId, setStartingId] = useState<string | null>(null);
 
@@ -87,7 +91,7 @@ export function useAssessmentCopies(
     const a = assessmentRef.current;
     setLoading(true);
     try {
-      const [roster, copies, grades, transcripts, kit, runs, versions] = await Promise.all([
+      const [roster, copies, grades, transcripts, kit, runs, versions, summaries] = await Promise.all([
         fetchExpectedStudents([a]),
         fetchAssessmentCopies(a.id),
         fetchAssessmentGrades(a.id),
@@ -95,8 +99,12 @@ export function useAssessmentCopies(
         hasCorrectionKit(a.id),
         fetchLatestAiCorrections(a.id),
         fetchKitVersions(a.id),
+        fetchKitSummaries(a.id),
       ]);
-      setHasKit(kit);
+      // Une éval reliée à la correction d'une activité de Mes cours (migration 095) n'attend pas
+      // de kit du Correcteur : « Corriger » le prépare depuis la correction.
+      setHasKit(kit || !!a.library_correction_board_id);
+      setKits(summaries);
       setKitVersions(versions);
       setAiRuns(runs);
       const gradeBy = new Map(grades.map((g) => [g.student_id, g]));
@@ -214,5 +222,5 @@ export function useAssessmentCopies(
     setAiRuns((prev) => ({ ...prev, [run.student_id]: run }));
   }, []);
 
-  return { rows, urls, loading, hasKit, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, replaceGrade, trackRun };
+  return { rows, urls, loading, hasKit, kits, aiRuns, startingId, knownVersions, anyScanned, load, validate, correct, replaceGrade, trackRun };
 }

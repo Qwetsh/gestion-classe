@@ -3,6 +3,7 @@ import '../styles/refonte-seances.css';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { fromJson } from '../lib/dbJson';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG } from '../lib/constants';
@@ -230,7 +231,7 @@ export function Sessions() {
 
       setClassroomData({
         room: roomData || null,
-        positions: planResult.data?.positions || {},
+        positions: fromJson<Record<string, string> | null | undefined>(planResult.data?.positions) || {},
         students: studentsResult.data || [],
         events: eventsResult.data || [],
       });

@@ -28,3 +28,29 @@
 .mdoc__body { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
 .mdoc__message { max-width: 420px; margin: 18vh auto 0; padding: 0 24px; text-align: center; font: 15px/1.5 Inter, system-ui, sans-serif; color: #374151; }
 .mdoc__message strong { display: block; margin-bottom: 6px; font-size: 17px; color: #111827; }
+
+/* ---------- Vue « Pages A4 » (CourseA4Doc) : les feuilles de l'éditeur, réduites à l'écran ---------- */
+.ce-a4 { width: 100%; min-width: 0; }
+.ce-a4__outer { position: relative; margin: 0 auto; }
+.ce-a4 .ce-sheets { cursor: default; }
+.mdoc__body--a4 { max-width: 840px; background: #E7E9EE; min-height: calc(100dvh - 52px); }
+.mdoc__views { flex: none; display: inline-flex; padding: 2px; border-radius: 8px; background: #F3F4F6; }
+.mdoc__views button { height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #374151; font: 600 12px/30px Inter, system-ui, sans-serif; cursor: pointer; }
+.mdoc__views button[aria-pressed="true"] { background: #fff; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.mdoc__print { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: #4F46E5; color: #fff; font: 600 13px/34px Inter, system-ui, sans-serif; cursor: pointer; }
+.mdoc__print:disabled { opacity: .6; cursor: wait; }
+.mdoc__tag--share { background: #ECFDF5; color: #047857; }
+.mdoc__custom { flex: none; height: 30px; padding: 0 10px; border: 1px solid #C7D2FE; border-radius: 8px; background: #EEF2FF; color: #4338CA; font: 600 12px/28px Inter, system-ui, sans-serif; cursor: pointer; }
+/* Version sur mesure (migration 093) : la page de Claude en plein écran, dans un cadre isolé */
+.mdoc-custom { position: fixed; inset: 0; background: #fff; }
+.mdoc-custom__frame { display: block; width: 100%; height: 100%; border: 0; }
+/* Bouton discret, en bas à droite (la page laisse 56 px libres en bas : skill version-mobile) */
+.mdoc-custom__simple { position: fixed; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 2; height: 30px; padding: 0 12px; border: 1px solid rgba(17, 24, 39, .14); border-radius: 15px; background: rgba(255, 255, 255, .88); color: #374151; font: 600 12px/28px Inter, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); backdrop-filter: blur(4px); opacity: .85; cursor: pointer; }
+.mdoc-custom__simple:hover, .mdoc-custom__simple:focus-visible { opacity: 1; }
+@media (max-width: 520px) {
+  .mdoc__bar { flex-wrap: wrap; }
+  .mdoc__title { flex-basis: 100%; }
+  .mdoc__tag { display: none; }
+}
+/* Étiquette de l'éditeur (« ✎ Zone d'écriture · 6 lignes ») : un repère du professeur, pas pour l'élève, ni à l'écran ni à l'impression */
+.ce-a4 .ce-zone::before, .bd-print .ce-zone::before { content: none; }

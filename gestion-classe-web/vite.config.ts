@@ -70,6 +70,9 @@ export default defineConfig({
   ],
   base: '/gestion-classe/',
   build: {
+    // Une seule feuille de style, comme avant le chargement des pages à la demande : l'ordre
+    // des règles CSS ne dépend pas de l'ordre dans lequel les pages sont ouvertes.
+    cssCodeSplit: false,
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),

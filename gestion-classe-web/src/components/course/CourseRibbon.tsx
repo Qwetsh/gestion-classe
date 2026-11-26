@@ -32,6 +32,8 @@ interface Props {
   editor: Editor;
   onPrint: () => void;
   onExportPdf: () => void;
+  /** Partager en lecture seule : le lien à coller dans le cahier de texte. */
+  onShare: () => void;
   onRename: () => void;
   onInsertImage: () => void;
   onInsertQr: () => void;
@@ -172,7 +174,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onBoard, boardCount, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
+export function CourseRibbon({ editor, onPrint, onExportPdf, onShare, onRename, onInsertImage, onInsertQr, onSearchImage, onInsertLink, onPaste, zoom, onZoom, onFitWidth, showRuler, onToggleRuler, onEditEncart, settings, onSettings, onHistory, historyOpen, onSaveVersion, onDuplicate, onSaveTemplate, onFind, onReplace, onFitPage, showOutline, onToggleOutline, showInvisibles, onToggleInvisibles, onReplaceImage, onHeaderFooter, onImportFile, spell, onSpellCheck, onSpellNext, onSpellLive, onSpellHide, mode, onMode, onBoard, boardCount, onPresent, drawStyle, onDrawStyle, layerCanUndo, layerCanRedo, onLayerUndo, onLayerRedo, layerHasSelection, layerCount, onLayerDelete, onLayerClear }: Props) {
   const [view, setView] = useState<{ tab: RibbonTab; ctx: RibbonTab | null }>({ tab: 'accueil', ctx: null });
 
   const s = useEditorState({
@@ -384,6 +386,9 @@ export function CourseRibbon({ editor, onPrint, onExportPdf, onRename, onInsertI
             <Group label="Imprimer">
               <Big icon="print" label="Imprimer" title="Imprimer le cours (Ctrl+P)" onClick={onPrint} />
               <Big icon="pdf" label="Exporter en PDF" title="Exporter en PDF : choisir « Enregistrer au format PDF » dans la fenêtre d'impression" onClick={onExportPdf} />
+            </Group>
+            <Group label="Partager">
+              <Big icon="link" label="Lien lecture seule" title="Copier un lien à coller dans le cahier de texte : les élèves lisent le document, l'impriment ou l'enregistrent en PDF, sans compte et sans rien pouvoir modifier" onClick={onShare} />
             </Group>
             <Group label="Importer">
               <Big icon="openFile" label="Word ou PDF…" title="Insérer un fichier Word (.docx) ou les pages d'un PDF à l'endroit du curseur (ou déposez le fichier sur la feuille)" onClick={onImportFile} />

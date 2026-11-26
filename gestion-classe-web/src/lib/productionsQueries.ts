@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { fromDb, fromJson, toJson } from './dbJson';
 import { createAssessment, saveGrade } from './evaluationQueries';
 import { toTwenty } from './gradeStats';
 import type { ClassWorkLite } from './carnetProductions';
@@ -128,7 +129,7 @@ export async function fetchActivities(): Promise<ActivityRow[]> {
     .eq('is_deleted', false)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as ActivityRow[];
+  return fromDb<ActivityRow[]>(data ?? []);
 }
 
 /** Activité numérique liée à une éval du carnet (activity_assessments), ou null. */
@@ -198,7 +199,7 @@ export async function fetchClassProductions(classId: string): Promise<{
     fetchClassActivityLinkStates(classId),
   ]);
   if (acts.error) throw acts.error;
-  return { activities: (acts.data ?? []) as ActivityRow[], works, ...states };
+  return { activities: fromDb<ActivityRow[]>(acts.data ?? []), works, ...states };
 }
 
 /** Production d'un élève pour une activité (la plus récente), ou null. */
@@ -429,7 +430,7 @@ export async function saveWorkCorrection(
   const { error } = await supabase
     .from('student_works')
     .update({
-      correction: input.correction,
+      correction: toJson(input.correction),
       advice: input.advice,
       skills: input.skills,
       total_points: input.totalPoints,
@@ -565,8 +566,9 @@ export async function fetchHeldWorks(): Promise<HeldWorkRow[]> {
 export async function acceptHeldWorks(activityId: string): Promise<{ accepted: number; failed: number }> {
   const { data, error } = await supabase.rpc('student_work_accept_held', { p_activity_id: activityId });
   if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data as { accepted: number; failed: number };
+  const result = fromJson<{ error?: string; accepted: number; failed: number } | null>(data);
+  if (result?.error) throw new Error(result.error);
+  return result as { accepted: number; failed: number };
 }
 
 export async function discardHeldWorks(activityId: string): Promise<void> {

@@ -85,10 +85,10 @@ function sessionBars(events: StudentGrade['events'], max = 12): SessionBar[] {
     .slice(-max);
 }
 
-const dayMonth = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-const fullDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const dayMonth = (iso: string | null) =>
+  iso === null ? '' : new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+const fullDate = (iso: string | null) =>
+  iso === null ? '' : new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 const dayTime = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const slashDate = (iso: string) => {
@@ -518,6 +518,7 @@ export function StudentDetailModal({
                   if (group) sub.push(/^groupe/i.test(group.group_name) ? group.group_name : `Groupe ${group.group_name}`);
                   if (grade?.grade_raw != null && bareme !== 20) sub.push(`${formatGrade(Number(grade.grade_raw))}/${bareme}`);
                   if (!a.counts_in_average) sub.push('hors moyenne');
+                  else if (a.only_if_raises_average) sub.push('si elle monte la moyenne');
                   return (
                     <div key={a.id} className="rf-fiche__note">
                       <span className="rf-fiche__note-name">

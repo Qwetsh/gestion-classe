@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { LiveSessionProvider } from './contexts/LiveSessionContext';
@@ -6,33 +7,38 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { UIFeedbackProvider } from './contexts/UIFeedbackContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Analytics } from './pages/Analytics';
-import { Classes } from './pages/Classes';
-import { Sessions } from './pages/Sessions';
-import { SessionDetail } from './pages/SessionDetail';
-import { Journal } from './pages/Journal';
-import { GroupSessions } from './pages/GroupSessions';
-import { TpTemplates } from './pages/TpTemplates';
-import { DevPanel } from './pages/DevPanel';
-import { ToolGrid, ToolView } from './pages/Toolbox';
-import { Students } from './pages/Students';
-import { Rewards } from './pages/Rewards';
-import { StudentDashboard } from './pages/StudentDashboard';
-import { StudentBinder } from './pages/StudentBinder';
-import { MobileDocument } from './pages/MobileDocument';
-import { Classroom } from './pages/Classroom';
-import { Pronote } from './pages/Pronote';
-import { Academy } from './pages/Academy';
-import { Brevets } from './pages/Brevets';
-import { Clouds } from './pages/Clouds';
-import { Courses } from './pages/Courses';
-import { Binder } from './pages/Binder';
-import { Evaluations } from './pages/Evaluations';
-import { AssessmentSheet } from './pages/AssessmentSheet';
-import { Productions } from './pages/Productions';
-import { LiveActivity } from './pages/LiveActivity';
-import { CopyDepot } from './pages/CopyDepot';
+// Les autres pages sont chargées à la demande (voir lazyPages.ts)
+import {
+  Dashboard,
+  Analytics,
+  Classes,
+  Sessions,
+  SessionDetail,
+  Journal,
+  GroupSessions,
+  TpTemplates,
+  DevPanel,
+  ToolGrid,
+  ToolView,
+  Students,
+  Rewards,
+  StudentDashboard,
+  StudentBinder,
+  MobileDocument,
+  Classroom,
+  Pronote,
+  Academy,
+  Brevets,
+  Clouds,
+  Courses,
+  Binder,
+  Evaluations,
+  AssessmentSheet,
+  Productions,
+  LiveActivity,
+  CopyDepot,
+} from './lazyPages';
+import { PageLoading } from './components/PageLoading';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LiveSessionOverlay } from './components/live-session/LiveSessionOverlay';
 import { GroupSessionOverlay } from './components/live-session/GroupSessionOverlay';
@@ -48,6 +54,7 @@ function App() {
     <BrowserRouter basename="/gestion-classe">
       <LiveSessionOverlay />
       <GroupSessionOverlay />
+      <Suspense fallback={<PageLoading />}>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
@@ -260,6 +267,7 @@ function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
     </GroupSessionProvider>
     </LiveSessionProvider>

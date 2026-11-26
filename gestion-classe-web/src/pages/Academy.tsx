@@ -100,7 +100,7 @@ export function Academy() {
         : { data: [] };
 
       for (const sg of sessionGroups || []) {
-        const houseId = HOUSE_NAME_TO_ID[sg.name.toLowerCase()];
+        const houseId = HOUSE_NAME_TO_ID[(sg.name ?? '').toLowerCase()];
         if (!houseId) continue;
         if (!houseScoresMap[sg.session_id]) {
           houseScoresMap[sg.session_id] = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };

@@ -8,7 +8,7 @@ import jsQR from 'jsqr';
 import type { JSONContent } from '@tiptap/core';
 import { MM } from '../course/coursePage';
 import { splitVariant } from '../courseLibrary';
-import { MOBILE_TOKEN, PHONE_FULL_IMAGE, QR_INSET, mobileEligible, mobileTarget, mobileUrl, newMobileToken, phoneContent, qrBox, qrModules } from '../mobileVersion';
+import { MOBILE_TOKEN, PHONE_FULL_IMAGE, QR_INSET, linkEligible, linkTarget, mobileEligible, mobileTarget, mobileUrl, newMobileToken, phoneContent, qrBox, qrModules, shareEligible } from '../mobileVersion';
 import { mobileDoc } from '../../../../supabase/functions/version-mobile/rules';
 
 const ORIGIN = 'https://qwetsh.github.io';
@@ -209,5 +209,72 @@ describe('ce que le téléphone affiche', () => {
     const widths = [0, 1, 2, 3].map((i) => out.content![i].attrs!.width);
     expect(widths).toEqual([null, null, PHONE_FULL_IMAGE - 10, 300]);
     expect(out.content![4].content![0].content![0].attrs!.width).toBeNull();
+  });
+});
+
+describe('lien de partage en lecture seule (cahier de texte)', () => {
+  it('ouvre aussi une correction d’activité, mais jamais une évaluation, une copie modèle ni un devoir noté', () => {
+    for (const title of [
+      'Activité 3 — La dérive des continents',
+      'Activité 3 — La dérive des continents (documents)',
+      'Activité 3 — La dérive des continents (correction)',
+      'Activité 3 — La dérive des continents (corrigé)',
+      'FM3 — Réaliser un dessin d’observation',
+    ]) expect(shareEligible(title), title).toBe(true);
+    for (const title of [
+      'Évaluation — La Terre, de la surface au centre',
+      'Évaluation — La Terre (correction)',
+      'Correction de l’évaluation 1',
+      'Activité 3 — La dérive des continents (copie modèle)',
+      'Entraînement noté — Les angines',
+      'Contrôle — Les volcans',
+      'DS 2',
+    ]) expect(shareEligible(title), title).toBe(false);
+  });
+
+  it('le QR code imprimé reste fermé aux corrections', () => {
+    expect(linkEligible('qr', 'Activité 3 — Wegener (correction)')).toBe(false);
+    expect(linkEligible('share', 'Activité 3 — Wegener (correction)')).toBe(true);
+  });
+
+  it('vise l’original de la bibliothèque, comme le QR code', () => {
+    const copy = { id: 'copie', title: '5e B · mar. 10 nov.' };
+    expect(linkTarget('share', copy, { id: 'orig', title: 'Activité 2 — Le climat (correction)' })).toBe('orig');
+    expect(linkTarget('qr', copy, { id: 'orig', title: 'Activité 2 — Le climat (correction)' })).toBeNull();
+    expect(linkTarget('share', copy, { id: 'orig', title: 'Évaluation 1 — Le climat' })).toBeNull();
+    expect(linkTarget('share', { id: 'a', title: 'Activité 2 (correction)' }, null)).toBe('a');
+  });
+
+  it('le serveur garde les zones d’écriture et les pointillés (pour imprimer la fiche), jamais les encarts', () => {
+    const doc = {
+      version: 3,
+      content: {
+        type: 'doc',
+        content: [
+          { type: 'encart', attrs: { pageId: 'page-1' } },
+          { type: 'paragraph', content: [{ type: 'text', text: 'Le noyau contient ' }, { type: 'dots', attrs: { cm: null } }] },
+          { type: 'callout', content: [{ type: 'writingZone', attrs: { lines: 5 } }] },
+        ],
+      },
+    };
+    const out = JSON.stringify(mobileDoc(doc, 'share')!.content);
+    expect(out).not.toContain('encart');
+    expect(out).toContain('writingZone');
+    expect(out).toContain('"dots"');
+  });
+
+  it('la vue téléphone retire les zones d’écriture et les pointillés', () => {
+    const out = phoneContent({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Le noyau contient ' }, { type: 'dots', attrs: { cm: null } }] },
+        { type: 'callout', content: [{ type: 'writingZone', attrs: { lines: 5 } }] },
+        { type: 'writingZone', attrs: { lines: 3 } },
+      ],
+    });
+    const text = JSON.stringify(out);
+    expect(text).not.toMatch(/writingZone|"dots"/);
+    expect(out.content).toHaveLength(2);
+    expect(out.content?.[1]).toEqual({ type: 'callout', content: [{ type: 'paragraph' }] });
   });
 });

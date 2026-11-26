@@ -2,6 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { reloadOnceForStaleBuild } from './lib/lazyPage'
+
+// Un morceau de l'app introuvable (onglet resté ouvert pendant une mise en ligne) : on
+// recharge une fois pour récupérer la nouvelle version.
+window.addEventListener('vite:preloadError', (event) => {
+  if (reloadOnceForStaleBuild()) event.preventDefault()
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

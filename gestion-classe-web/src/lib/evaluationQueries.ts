@@ -1,10 +1,13 @@
 import { supabase } from './supabase';
+import { fetchAllPages, type PageResult } from './paging';
+import { fromDb } from './dbJson';
 import { getCurrentSchoolYear } from './constants';
 import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';
 import { computeCopyOverview, extendedPurgeDate, type CopyGradeInput, type CopyOverview } from './copyStatus';
 import { planCopyPurge } from './copyTranscript';
 import { latestRunByStudent, type AiCorrectionMode, type AiCorrectionRun } from './aiCorrection';
+import { libraryColumns, summarizeKit, type KitSummary, type KitSummaryRow, type LibraryLink } from './assessmentLibrary';
 
 // Buckets (memes noms que cote mobile / migrations)
 const COPIES_BUCKET = 'assessment-copies';
@@ -20,33 +23,7 @@ const GRADE_SELECT =
   'id, assessment_id, student_id, grade, grade_raw, comment, status, is_adapted,' +
   ' is_validated, validated_at, updated_at, subject_version, copy_annotated';
 
-/**
- * PostgREST plafonne une reponse a 1000 lignes (meme constante que `PAGE_SIZE` dans
- * Analytics.tsx et Classes.tsx, ou le probleme s'est deja pose sur `events`).
- */
-const PAGE_SIZE = 1000;
-
-export interface PageResult<T> { data: T[] | null; error: { message: string } | null }
-
-/**
- * Parcourt toutes les pages d'une requete.
- *
- * Sans ca, une sauvegarde de plus de 1000 notes serait tronquee **sans aucune erreur** :
- * le fichier se telecharge, il a l'air complet, et il ne l'est pas. C'est precisement
- * le mode de defaillance contre lequel le carnet existe.
- */
-export async function fetchAllPages<T>(
-  build: (from: number, to: number) => Promise<PageResult<T>>,
-): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await build(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    const page = data ?? [];
-    out.push(...page);
-    if (page.length < PAGE_SIZE) return out;
-  }
-}
+export { fetchAllPages, type PageResult } from './paging';
 
 interface RawGradeRow {
   user_id: string;
@@ -114,6 +91,11 @@ export interface AssessmentRow {
   kind: AssessmentKind;
   group_id: string | null;
   counts_in_average: boolean;
+  /**
+   * Migration 093 : ne compte que pour l'élève dont elle fait monter la moyenne. Absent tant
+   * que la migration n'est pas appliquée.
+   */
+  only_if_raises_average?: boolean;
   /** TRUE : les élèves de la classe voient leur note, le sujet et le corrigé (migration 040). */
   published_to_students: boolean;
   /** Migration 064 : publiée sans les corrections (note seule). Absent avant la migration. */
@@ -132,13 +114,19 @@ export interface AssessmentRow {
   sequence?: string | null;
   /** Migration 063 : séance de groupe dont l'éval (kind = groupe) reprend les notes. */
   group_session_id?: string | null;
+  /** Migration 095 : fiche, documents et correction de l'activité de Mes cours choisie. */
+  library_board_id?: string | null;
+  library_documents_board_id?: string | null;
+  library_correction_board_id?: string | null;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
-export type AssessmentKind = 'ecrit' | 'tp' | 'oral' | 'dm' | 'projet' | 'groupe';
+export type AssessmentKind = 'ecrit' | 'activite' | 'tp' | 'oral' | 'dm' | 'projet' | 'groupe';
 
 export const ASSESSMENT_KIND_LABEL: Record<AssessmentKind, string> = {
   ecrit: 'Évaluation écrite',
+  // Migration 093.
+  activite: 'Activité notée',
   tp: 'TP',
   oral: 'Oral',
   dm: 'Devoir maison',
@@ -232,9 +220,13 @@ export interface CreateAssessmentInput {
   /** Demi-classe concernee (NULL = classe entiere). */
   groupId?: string | null;
   countsInAverage?: boolean;
+  /** Migration 093 : envoye seulement s'il est vrai (une base sans la migration accepte le reste). */
+  onlyIfRaisesAverage?: boolean;
   /** Migration 060 : envoyes seulement s'ils sont renseignes (une base sans la migration accepte le reste). */
   shortName?: string | null;
   sequence?: string | null;
+  /** Migration 095 : activite de Mes cours ; envoyee seulement si elle est choisie. */
+  library?: LibraryLink | null;
 }
 
 /** Cree une evaluation depuis le web. Renvoie la ligne creee. */
@@ -256,7 +248,9 @@ export async function createAssessment(input: CreateAssessmentInput): Promise<As
       series_id: input.seriesId ?? null,
       group_id: input.groupId ?? null,
       counts_in_average: input.countsInAverage ?? true,
+      ...(input.onlyIfRaisesAverage ? { only_if_raises_average: true } : {}),
       ...optionalLabels(input),
+      ...libraryColumns(input.library),
     })
     .select(ASSESSMENT_SELECT)
     .single();
@@ -523,6 +517,72 @@ export async function hasCorrectionKit(assessmentId: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+/**
+ * Kits de l'éval, résumés (barème, origine) : affichés au-dessus des copies, pour vérifier le
+ * barème d'un kit préparé depuis Mes cours (migration 095).
+ */
+export async function fetchKitSummaries(assessmentId: string): Promise<KitSummary[]> {
+  const { data, error } = await supabase
+    .from('assessment_correction_kits')
+    .select('version_key, source:kit->>source, questions:kit->bareme->questions, library:kit->library')
+    .eq('assessment_id', assessmentId);
+  if (error) return [];
+  return ((data || []) as KitSummaryRow[]).map(summarizeKit);
+}
+
+/**
+ * Pose (ou retire, `board` null) un cours de Mes cours comme sujet ou corrigé des évals données
+ * (une éval, ou toutes les classes d'une série) : colonnes de la migration 095, les mêmes que
+ * l'activité choisie dans la fenêtre de l'éval. Le sujet emporte les documents de son activité.
+ * Les kits préparés depuis l'ancien cours sont retirés : « Corriger » repart du nouveau.
+ */
+export async function setAssessmentLibraryDoc(
+  assessmentIds: string[],
+  kind: AssessmentDocKind,
+  board: { id: string; documentsId?: string | null } | null,
+): Promise<void> {
+  if (assessmentIds.length === 0) return;
+  const row = kind === 'subject'
+    ? { library_board_id: board?.id ?? null, library_documents_board_id: board?.documentsId ?? null }
+    : { library_correction_board_id: board?.id ?? null };
+  const { error } = await supabase.from('written_assessments').update(row).in('id', assessmentIds);
+  if (error) throw error;
+  await dropLibraryKits(assessmentIds, null);
+}
+
+/** Titres de cours de Mes cours (sujet et corrigé reliés à une éval, migration 095). */
+export async function fetchBoardTitles(ids: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return {};
+  const { data, error } = await supabase.from('boards').select('id, title').in('id', unique);
+  if (error) return {};
+  return Object.fromEntries(((data || []) as { id: string; title: string }[]).map((b) => [b.id, b.title]));
+}
+
+/** Dernière modification d'un cours de la bibliothèque (correction retouchée depuis le kit ?). */
+export async function fetchBoardUpdatedAt(boardId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('boards').select('updated_at').eq('id', boardId).maybeSingle();
+  if (error) throw error;
+  return (data as { updated_at: string } | null)?.updated_at ?? null;
+}
+
+/**
+ * Retire les kits préparés depuis Mes cours qui ne correspondent plus à l'activité de l'éval
+ * (activité changée ou retirée) : le prochain « Corriger » repart de la bonne correction. Les kits
+ * du Correcteur ne sont jamais touchés.
+ */
+export async function dropLibraryKits(assessmentIds: string[], keepCorrectionId: string | null = null): Promise<void> {
+  if (assessmentIds.length === 0) return;
+  let q = supabase
+    .from('assessment_correction_kits')
+    .delete()
+    .in('assessment_id', assessmentIds)
+    .eq('kit->>source', 'bibliotheque');
+  if (keepCorrectionId) q = q.neq('kit->library->>correction_board_id', keepCorrectionId);
+  const { error } = await q;
+  if (error && !isMissingTable(error)) throw error;
+}
+
 /** Dernier appel de correction automatique de chaque élève de l'éval. */
 export async function fetchLatestAiCorrections(assessmentId: string): Promise<Record<string, AiCorrectionRun>> {
   const { data, error } = await supabase
@@ -532,7 +592,7 @@ export async function fetchLatestAiCorrections(assessmentId: string): Promise<Re
     .order('started_at', { ascending: false });
   if (isMissingTable(error)) return {};
   if (error) throw error;
-  return latestRunByStudent((data || []) as AiCorrectionRun[]);
+  return latestRunByStudent(fromDb<AiCorrectionRun[]>(data || []));
 }
 
 export async function fetchAiCorrection(runId: string): Promise<AiCorrectionRun | null> {
@@ -1081,12 +1141,16 @@ export interface UpdateAssessmentInput {
   coefficient?: number;
   kind?: AssessmentKind;
   countsInAverage?: boolean;
+  /** Migration 093. */
+  onlyIfRaisesAverage?: boolean;
   publishedToStudents?: boolean;
   /** Migration 064 : publiée sans les corrections. */
   correctionsWithheld?: boolean;
   /** Migration 060. Chaîne vide = effacer. */
   shortName?: string | null;
   sequence?: string | null;
+  /** Migration 095. Lien vide = effacer ; absent = ne rien toucher. */
+  library?: LibraryLink | null;
 }
 
 /** Modifie une évaluation. Ne propage rien à sa série : la propagation est un geste explicite. */
@@ -1100,14 +1164,16 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.coefficient !== undefined) row.coefficient = patch.coefficient;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
+  if (patch.onlyIfRaisesAverage !== undefined) row.only_if_raises_average = patch.onlyIfRaisesAverage;
   if (patch.publishedToStudents !== undefined) row.published_to_students = patch.publishedToStudents;
   if (patch.correctionsWithheld !== undefined) row.corrections_withheld = patch.correctionsWithheld;
-  Object.assign(row, optionalLabels(patch, true));
+  Object.assign(row, optionalLabels(patch, true), libraryColumns(patch.library, true));
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from('written_assessments').update(row).eq('id', assessmentId);
   if (error) throw error;
 
+  if (patch.library !== undefined) await dropLibraryKits([assessmentId], patch.library?.correctionId ?? null);
   if (patch.baremeTotal !== undefined) await recomputeGradesForBareme(assessmentId, patch.baremeTotal);
 }
 
@@ -1128,7 +1194,7 @@ export async function linkAssessmentToTarget(input: {
   if (!seriesId) {
     const { data, error } = await supabase
       .from('assessment_series')
-      .insert({ user_id: input.userId, name: input.target.name, level: input.level, school_year: input.schoolYear })
+      .insert({ user_id: input.userId, name: input.target.name, level: input.level, school_year: input.schoolYear ?? getCurrentSchoolYear() })
       .select('id')
       .single();
     if (error) throw error;
@@ -1168,8 +1234,10 @@ export interface CreateSeriesInput {
   coefficient?: number;
   kind?: AssessmentKind;
   countsInAverage?: boolean;
+  onlyIfRaisesAverage?: boolean;
   shortName?: string | null;
   sequence?: string | null;
+  library?: LibraryLink | null;
 }
 
 /**
@@ -1216,7 +1284,9 @@ export async function createAssessmentSeries(input: CreateSeriesInput): Promise<
         kind: input.kind ?? 'ecrit',
         series_id: series.id,
         counts_in_average: input.countsInAverage ?? true,
+        ...(input.onlyIfRaisesAverage ? { only_if_raises_average: true } : {}),
         ...optionalLabels(input),
+        ...libraryColumns(input.library),
       })),
     )
     .select(ASSESSMENT_SELECT);
@@ -1502,6 +1572,7 @@ export async function fetchStudentGradeReport(
           assessment: {
             coefficient: toNumber(l.assessment.coefficient) ?? 0,
             countsInAverage: l.assessment.counts_in_average,
+            onlyIfRaises: !!l.assessment.only_if_raises_average,
           },
         })),
     );
@@ -1537,7 +1608,8 @@ export async function updateSeriesAssessments(
   if (patch.coefficient !== undefined) row.coefficient = patch.coefficient;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
-  Object.assign(row, optionalLabels(patch, true));
+  if (patch.onlyIfRaisesAverage !== undefined) row.only_if_raises_average = patch.onlyIfRaisesAverage;
+  Object.assign(row, optionalLabels(patch, true), libraryColumns(patch.library, true));
   // La date n'est jamais propagée : chaque classe passe l'évaluation son jour.
   if (Object.keys(row).length === 0) return;
 
@@ -1557,6 +1629,9 @@ export async function updateSeriesAssessments(
     .eq('is_deleted', false);
   if (error) throw error;
 
+  if (patch.library !== undefined) {
+    await dropLibraryKits(((before || []) as { id: string }[]).map((a) => a.id), patch.library?.correctionId ?? null);
+  }
   if (patch.baremeTotal !== undefined) {
     const bareme = patch.baremeTotal;
     for (const a of (before || []) as { id: string; bareme_total: number | null }[]) {

@@ -87,9 +87,11 @@ export function hasCopyContent(o: CopyOverview | undefined): boolean {
   return !!o && (o.scanned > 0 || o.graded > 0 || o.transcribed > 0);
 }
 
-/** Les copies ne concernent que l'écrit et le devoir maison. */
+/** Types à copies papier : l'écrit, l'activité notée (fiche rendue sur papier) et le devoir maison. */
+const COPY_KINDS: ReadonlySet<AssessmentRow['kind']> = new Set(['ecrit', 'activite', 'dm']);
+
 export function hasCopies(a: Pick<AssessmentRow, 'kind'>): boolean {
-  return a.kind === 'ecrit' || a.kind === 'dm';
+  return COPY_KINDS.has(a.kind);
 }
 
 /** Brouillons du Correcteur qui attendent la validation du prof, pour une classe. */
