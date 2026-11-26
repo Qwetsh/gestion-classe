@@ -31,7 +31,7 @@ Thumbs.db
 __pycache__/
 
 # État local de la CLI Supabase
-supabase/.temp/
+**/supabase/.temp/
 
 # Fichiers de travail posés à la racine (captures, instantanés d'écran, PDF d'essai) : le dépôt est
 # public, un « git add -A » ne doit pas les publier. Rien de ce type n'est suivi à la racine.
@@ -42,5 +42,7 @@ supabase/.temp/
 /_snapshot*.txt
 /_snap_*.txt
 /_ul*
+# Références visuelles de Thomas (captures, modèles, blasons) : hors du dépôt public
+/_references/
 /_classeur_*/
 /AUDIT_SANTE_PROJET_*.md
