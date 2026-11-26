@@ -8,7 +8,10 @@ import {
   groupsForAssessment,
   hasLibraryLink,
   libraryColumns,
+  documentsOf,
+  linkedDocBoardId,
   linkFromGroup,
+  pickableMembers,
   linkFromRow,
   matchLibrarySequence,
   sameLink,
@@ -136,5 +139,39 @@ describe('summarizeKit', () => {
     expect(correctionChangedSince(k, '2026-11-21T08:00:00Z')).toBe(true);
     expect(correctionChangedSince(k, '2026-11-19T08:00:00Z')).toBe(false);
     expect(correctionChangedSince(k, null)).toBe(false);
+  });
+});
+
+describe('linkedDocBoardId', () => {
+  it('donne la fiche pour le sujet et la correction pour le corrigé', () => {
+    const row = { library_board_id: 'fiche', library_correction_board_id: 'corr' };
+    expect(linkedDocBoardId([row], 'subject')).toBe('fiche');
+    expect(linkedDocBoardId([row], 'correction')).toBe('corr');
+  });
+  it('prend la première éval reliée de la série, et rien sans lien', () => {
+    expect(linkedDocBoardId([{}, { library_correction_board_id: 'c2' }], 'correction')).toBe('c2');
+    expect(linkedDocBoardId([{ library_board_id: null }], 'subject')).toBeNull();
+    expect(linkedDocBoardId([], 'subject')).toBeNull();
+  });
+});
+
+describe('pickableMembers / documentsOf', () => {
+  const evalGroup = groupsForAssessment(sequences.find((s) => s.chapter === S1))[0];
+  it('met la fiche en tête pour le sujet, la correction pour le corrigé', () => {
+    expect(pickableMembers(evalGroup, 'subject').map((m) => [m.variant, m.preferred])).toEqual([
+      ['fiche', true], ['documents', false], ['correction', false],
+    ]);
+    expect(pickableMembers(evalGroup, 'correction')[0]).toMatchObject({ variant: 'correction', preferred: true });
+  });
+  it('ne propose ni la copie modèle ni les extraits', () => {
+    const lib = pickableActivities([
+      board('Activité 5 — Volcans', S1), board('Activité 5 — Volcans (copie modèle)', S1), board('Activité 5 — Volcans (extraits)', S1),
+    ], '3e');
+    const g = lib[0].groups.find((x) => x.title === 'Activité 5 — Volcans')!;
+    expect(pickableMembers(g, 'correction').map((m) => m.variant)).toEqual(['fiche']);
+    expect(pickableMembers(g, 'correction')[0].preferred).toBe(false);
+  });
+  it('les documents de l’activité accompagnent le sujet', () => {
+    expect(documentsOf(evalGroup)).toBe(byTitle('Évaluation — Micro-organismes (documents)'));
   });
 });

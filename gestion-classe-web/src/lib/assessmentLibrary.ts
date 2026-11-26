@@ -166,3 +166,41 @@ export function sequenceLabel(chapter: string): string {
   const m = /^\s*(s[ée]quence)\s+(\d+)(?!\d)/i.exec(chapter.normalize('NFC'));
   return m ? `Séquence ${m[2]}` : chapter.trim();
 }
+
+/**
+ * Cours de Mes cours qui tient lieu de sujet (la fiche) ou de corrigé (la correction) d'une éval
+ * reliée à une activité, quand aucun fichier n'a été ajouté à la main. Pour une série, la
+ * première éval reliée suffit (le lien suit la série).
+ */
+export function linkedDocBoardId(
+  rows: { library_board_id?: string | null; library_correction_board_id?: string | null }[],
+  kind: 'subject' | 'correction',
+): string | null {
+  for (const r of rows) {
+    const id = kind === 'subject' ? r.library_board_id : r.library_correction_board_id;
+    if (id) return id;
+  }
+  return null;
+}
+
+/**
+ * Cours d'une activité proposés comme sujet ou corrigé (« Choisir dans Mes cours ») : tous sauf
+ * la copie modèle et les extraits, le rôle attendu en tête et mis en avant (la fiche pour le
+ * sujet, la correction pour le corrigé).
+ */
+export function pickableMembers(
+  group: ActivityGroup,
+  kind: 'subject' | 'correction',
+): { variant: ActivityGroup['members'][number]['variant']; board: ActivityGroup['members'][number]['board']; preferred: boolean }[] {
+  const wanted = kind === 'subject' ? 'fiche' : 'correction';
+  const usable = group.members.filter((m) => m.variant !== 'copie' && m.variant !== 'extraits');
+  return [
+    ...usable.filter((m) => m.variant === wanted).map((m) => ({ ...m, preferred: true })),
+    ...usable.filter((m) => m.variant !== wanted).map((m) => ({ ...m, preferred: false })),
+  ];
+}
+
+/** Documents de l'activité d'un sujet choisi : ils accompagnent la fiche pour « Corriger ». */
+export function documentsOf(group: ActivityGroup): string | null {
+  return group.members.find((m) => m.variant === 'documents')?.board.id ?? null;
+}

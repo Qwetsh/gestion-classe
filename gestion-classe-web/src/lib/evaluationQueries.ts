@@ -554,6 +554,35 @@ export async function fetchKitSummaries(assessmentId: string): Promise<KitSummar
   return ((data || []) as KitSummaryRow[]).map(summarizeKit);
 }
 
+/**
+ * Pose (ou retire, `board` null) un cours de Mes cours comme sujet ou corrigé des évals données
+ * (une éval, ou toutes les classes d'une série) : colonnes de la migration 095, les mêmes que
+ * l'activité choisie dans la fenêtre de l'éval. Le sujet emporte les documents de son activité.
+ * Les kits préparés depuis l'ancien cours sont retirés : « Corriger » repart du nouveau.
+ */
+export async function setAssessmentLibraryDoc(
+  assessmentIds: string[],
+  kind: AssessmentDocKind,
+  board: { id: string; documentsId?: string | null } | null,
+): Promise<void> {
+  if (assessmentIds.length === 0) return;
+  const row = kind === 'subject'
+    ? { library_board_id: board?.id ?? null, library_documents_board_id: board?.documentsId ?? null }
+    : { library_correction_board_id: board?.id ?? null };
+  const { error } = await supabase.from('written_assessments').update(row).in('id', assessmentIds);
+  if (error) throw error;
+  await dropLibraryKits(assessmentIds, null);
+}
+
+/** Titres de cours de Mes cours (sujet et corrigé reliés à une éval, migration 095). */
+export async function fetchBoardTitles(ids: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return {};
+  const { data, error } = await supabase.from('boards').select('id, title').in('id', unique);
+  if (error) return {};
+  return Object.fromEntries(((data || []) as { id: string; title: string }[]).map((b) => [b.id, b.title]));
+}
+
 /** Dernière modification d'un cours de la bibliothèque (correction retouchée depuis le kit ?). */
 export async function fetchBoardUpdatedAt(boardId: string): Promise<string | null> {
   const { data, error } = await supabase.from('boards').select('updated_at').eq('id', boardId).maybeSingle();
