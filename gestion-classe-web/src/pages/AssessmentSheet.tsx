@@ -13,6 +13,7 @@ import { groupOf, hasCopies, hasCopyContent, neverScanned } from '../lib/assessm
 import { sequencesPresent } from '../lib/carnetView';
 import type { CopyOverview } from '../lib/copyStatus';
 import { describeGrades, type GradeEntry, type GradeStatus } from '../lib/gradeStats';
+import { linkFromRow } from '../lib/assessmentLibrary';
 import {
   ASSESSMENT_KIND_LABEL,
   fetchAssessmentGrades,
@@ -299,6 +300,8 @@ export function AssessmentSheet() {
             sequence: focus.sequence ?? '',
           }}
           sequences={sequencesPresent((rows ?? []).filter((r) => r.class_id === focus.class_id))}
+          userId={user?.id}
+          initialLibrary={linkFromRow(focus)}
           students={students}
           adaptedIds={adaptedIds}
           onToggleAdapted={toggleAdapted}
@@ -314,6 +317,7 @@ export function AssessmentSheet() {
               countsInAverage: values.countsInAverage,
               shortName: values.shortName,
               sequence: values.sequence,
+              library: values.library,
             };
             const oldBareme = Number(focus.bareme_total ?? 20);
             const convert = values.baremeMode === 'convert' && values.bareme !== oldBareme;

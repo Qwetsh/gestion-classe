@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal } from './Modal';
 import { levelFromClassName } from '../lib/boardsQueries';
+import { linkFromRow } from '../lib/assessmentLibrary';
 import {
   ASSESSMENT_KIND_LABEL,
   createAssessment,
@@ -74,6 +75,8 @@ export function DuplicateAssessmentDialog({
         countsInAverage: source.counts_in_average,
         shortName: source.short_name ?? null,
         sequence: source.sequence ?? null,
+        // Même activité de Mes cours (migration 095) : « Corriger » lit la même correction.
+        library: linkFromRow(source),
       };
       const docs: [AssessmentDocKind, string | null][] = [['subject', subjectPath], ['correction', correctionPath]];
       let firstId: string;

@@ -17,6 +17,17 @@ import {
   type TranscriptItem,
   type UsageTotals,
 } from "./correction.ts";
+import {
+  baremeFromGrades,
+  buildBaremeSchema,
+  buildLibraryCorrige,
+  buildLibraryKit,
+  formatBaremeTask,
+  isLibraryKit,
+  libraryImages,
+  validateBareme,
+  type LibraryBoard,
+} from "./libraryKit.ts";
 
 /**
  * Bouton « Corriger » / « Recorriger » de « Voir les copies » (migration 057).
@@ -29,6 +40,8 @@ import {
  *
  * Kit : celui de la version du sujet de l'élève (assessment_grades.subject_version, migration
  * 059) ; si on ne peut pas savoir lequel prendre, refus (409) plutôt qu'un mauvais barème.
+ * Sans kit du Correcteur, une évaluation reliée à une activité de Mes cours (migration 095) a son
+ * kit préparé ici depuis la fiche et sa correction (libraryKit.ts), une fois, puis réutilisé.
  *
  * Corps : { assessment_id, student_id, mode: "corriger" | "recorriger", confirm_validated? }.
  * Auth : JWT du prof propriétaire de l'éval. Réponse immédiate 202 { run_id } : la correction
@@ -38,6 +51,9 @@ import {
 
 const MODEL = "claude-opus-5-5";
 const BUCKET = "assessment-copies";
+const BOARD_BUCKET = "board-assets";
+// Une image plus lourde dépasserait la limite de l'API une fois encodée en base64.
+const MAX_IMAGE_BYTES = 3_700_000;
 const MAX_ATTEMPTS = 2;
 // Un deuxième appel n'est tenté que s'il a le temps de finir avant la limite d'exécution.
 const RETRY_DEADLINE_MS = 60_000;
@@ -65,9 +81,22 @@ interface Job {
   studentId: string;
   prenom: string;
   studentVersion: string | null;
-  kit: CorrectionKit;
+  /** Kit trouvé en base ; null = à préparer depuis la bibliothèque (`library`). */
+  kit: CorrectionKit | null;
+  library: LibraryPlan | null;
   pages: { storage_path: string }[];
 }
+
+/** Activité de Mes cours reliée à l'évaluation (migration 095), pour préparer le kit. */
+interface LibraryPlan {
+  evaluation: string;
+  baremeTotal: number;
+  boardId: string | null;
+  documentsId: string | null;
+  correctionId: string;
+}
+
+type KitRow = { kit: CorrectionKit; version_key: string };
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
@@ -99,7 +128,8 @@ Deno.serve(async (req: Request) => {
 
   const { data: assessment } = await sb
     .from("written_assessments")
-    .select("id, user_id")
+    // `*` : les colonnes de la migration 095 sont absentes tant qu'elle n'est pas appliquée.
+    .select("*")
     .eq("id", assessmentId)
     .maybeSingle();
   if (!assessment || assessment.user_id !== user.id) return json({ error: "not_found" }, 404);
@@ -131,15 +161,38 @@ Deno.serve(async (req: Request) => {
       .not("subject_version", "is", null),
   ]);
   const studentVersion = (grade?.subject_version as string | null | undefined) ?? null;
-  const choice = pickKit(
-    (kitRows ?? []) as { kit: CorrectionKit; version_key: string }[],
-    studentVersion,
-    (others ?? []).map((o) => o.subject_version as string | null),
+  const classVersions = (others ?? []).map((o) => o.subject_version as string | null);
+  const correctionId = (assessment.library_correction_board_id as string | null | undefined) ?? null;
+  const rows = (kitRows ?? []) as KitRow[];
+  const correcteurKits = rows.filter((r) => !isLibraryKit(r.kit));
+  // Un kit préparé pour une autre activité ne sert plus (l'interface les retire quand le lien change).
+  const libraryKits = rows.filter(
+    (r) => isLibraryKit(r.kit) && (!correctionId || r.kit.library.correction_board_id === correctionId),
   );
-  if (!choice.ok) {
-    return json({ error: choice.error, versions: choice.versions, student_version: studentVersion }, 409);
+  let kit: CorrectionKit | null = null;
+  let library: LibraryPlan | null = null;
+  if (correcteurKits.length > 0 || (!correctionId && libraryKits.length === 0)) {
+    // Le Correcteur a envoyé un kit : il passe avant la bibliothèque (calibrage de la classe).
+    const choice = pickKit(correcteurKits, studentVersion, classVersions);
+    if (!choice.ok) {
+      return json({ error: choice.error, versions: choice.versions, student_version: studentVersion }, 409);
+    }
+    kit = choice.kit.kit;
+  } else {
+    const choice = libraryKits.length > 0 ? pickKit(libraryKits, studentVersion, classVersions) : null;
+    if (choice?.ok) kit = choice.kit.kit;
+    else if (correctionId) {
+      library = {
+        evaluation: String(assessment.name ?? ""),
+        baremeTotal: Number(assessment.bareme_total ?? 20),
+        boardId: (assessment.library_board_id as string | null | undefined) ?? null,
+        documentsId: (assessment.library_documents_board_id as string | null | undefined) ?? null,
+        correctionId,
+      };
+    } else if (choice && !choice.ok) {
+      return json({ error: choice.error, versions: choice.versions, student_version: studentVersion }, 409);
+    }
   }
-  const kit = choice.kit.kit;
   const graded = grade?.grade !== null && grade?.grade !== undefined;
   if (mode === "corriger" && graded) return json({ error: "already_graded" }, 409);
   if (mode === "recorriger" && !graded) return json({ error: "not_graded" }, 409);
@@ -169,7 +222,7 @@ Deno.serve(async (req: Request) => {
     .single();
   if (runError || !run) return json({ error: "journal_failed" }, 500);
 
-  const job: Job = { runId: run.id, userId: user.id, assessmentId, studentId, prenom, studentVersion, kit, pages };
+  const job: Job = { runId: run.id, userId: user.id, assessmentId, studentId, prenom, studentVersion, kit, library, pages };
   const work = correct(sb, job).catch(async (e) => {
     console.error("corriger-copie", job.runId, e);
     await finish(sb, job.runId, { status: "error", error: describeError(e) });
@@ -192,7 +245,7 @@ async function finish(sb: SupabaseClient, runId: string, fields: Record<string, 
   await sb.from("assessment_ai_corrections").update({ ...fields, finished_at: new Date().toISOString() }).eq("id", runId);
 }
 
-async function loadReferences(sb: SupabaseClient, job: Job): Promise<ReferenceCandidate[]> {
+async function loadReferences(sb: SupabaseClient, job: Job, kit: CorrectionKit): Promise<ReferenceCandidate[]> {
   const { data: grades } = await sb
     .from("assessment_grades")
     .select("student_id, grade, is_validated, details, subject_version")
@@ -218,11 +271,11 @@ async function loadReferences(sb: SupabaseClient, job: Job): Promise<ReferenceCa
     transcript: byStudent.get(g.student_id) ?? null,
     subject_version: g.subject_version as string | null,
   }));
-  return pickReferences(candidates, job.kit, job.studentId, 5, job.studentVersion);
+  return pickReferences(candidates, kit, job.studentId, 5, job.studentVersion);
 }
 
-async function loadPage(sb: SupabaseClient, path: string): Promise<Anthropic.Beta.BetaImageBlockParam> {
-  const { data, error } = await sb.storage.from(BUCKET).download(path);
+async function loadPage(sb: SupabaseClient, path: string, bucket = BUCKET): Promise<Anthropic.Beta.BetaImageBlockParam> {
+  const { data, error } = await sb.storage.from(bucket).download(path);
   if (error || !data) throw new Error(`Page introuvable dans le stockage : ${path}`);
   const type = data.type || "";
   const media_type = (["image/png", "image/webp", "image/gif"].includes(type) ? type : "image/jpeg") as
@@ -230,16 +283,155 @@ async function loadPage(sb: SupabaseClient, path: string): Promise<Anthropic.Bet
   return { type: "image", source: { type: "base64", media_type, data: encodeBase64(new Uint8Array(await data.arrayBuffer())) } };
 }
 
+/** Images d'un cours de la bibliothèque : une image introuvable ou trop lourde est remplacée par un mot. */
+async function loadBoardImages(sb: SupabaseClient, paths: string[]): Promise<Anthropic.Beta.BetaContentBlockParam[]> {
+  const blocks = await Promise.all(paths.map(async (path, i): Promise<Anthropic.Beta.BetaContentBlockParam[]> => {
+    try {
+      const { data } = await sb.storage.from(BOARD_BUCKET).download(path);
+      if (!data || data.size > MAX_IMAGE_BYTES) return [{ type: "text", text: `Image ${i + 1} : non transmise.` }];
+      return [{ type: "text", text: `Image ${i + 1} :` }, await loadPage(sb, path, BOARD_BUCKET)];
+    } catch {
+      return [{ type: "text", text: `Image ${i + 1} : non transmise.` }];
+    }
+  }));
+  return blocks.flat();
+}
+
+type ApiUsage = {
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+};
+
+function addUsage(usage: UsageTotals, u: ApiUsage) {
+  usage.input_tokens += u.input_tokens ?? 0;
+  usage.output_tokens += u.output_tokens ?? 0;
+  usage.cache_creation_tokens += u.cache_creation_input_tokens ?? 0;
+  usage.cache_read_tokens += u.cache_read_input_tokens ?? 0;
+}
+
+/**
+ * Prépare le kit d'une évaluation reliée à une activité de Mes cours, le range en base et le
+ * renvoie. Si une autre correction l'a rangé entre-temps (deux copies lancées ensemble), c'est le
+ * sien qui sert : toutes les copies sont notées sur les mêmes lignes.
+ */
+async function prepareLibraryKit(
+  sb: SupabaseClient,
+  job: Job,
+  plan: LibraryPlan,
+  client: Anthropic,
+  usage: UsageTotals,
+): Promise<CorrectionKit> {
+  const ids = [plan.correctionId, plan.boardId, plan.documentsId].filter((x): x is string => !!x);
+  const { data: boards } = await sb.from("boards").select("id, user_id, title, doc, level, updated_at").in("id", ids);
+  // Le service_role voit tout : on ne lit que les cours du prof de l'évaluation.
+  const own = ((boards ?? []) as (LibraryBoard & { user_id: string })[]).filter((b) => b.user_id === job.userId);
+  const correction = own.find((b) => b.id === plan.correctionId);
+  if (!correction?.doc) {
+    throw new Error("Correction de l'activité introuvable dans Mes cours : choisis à nouveau l'activité de l'évaluation.");
+  }
+  const sujet = own.find((b) => b.id === plan.boardId) ?? null;
+  const documents = own.find((b) => b.id === plan.documentsId) ?? null;
+  const { corrige, images } = buildLibraryCorrige({ sujet, documents, correction });
+
+  // Barème : celui des copies déjà corrigées de la classe, sinon découpé dans la correction.
+  const { data: graded } = await sb
+    .from("assessment_grades")
+    .select("details, is_validated, subject_version")
+    .eq("assessment_id", job.assessmentId)
+    .neq("student_id", job.studentId)
+    .not("details", "is", null);
+  let bareme = baremeFromGrades(graded ?? [], job.studentVersion);
+  let from: "copies" | "claude" = "copies";
+  if (!bareme) {
+    from = "claude";
+    const imageBlocks = await loadBoardImages(sb, images);
+    const stream = client.beta.messages.stream({
+      model: MODEL,
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      thinking: { type: "adaptive" },
+      output_config: { effort: "medium", format: { type: "json_schema", schema: buildBaremeSchema() } },
+      system: "Tu prépares le barème de correction d'une évaluation de SVT de collège, à partir de son sujet et de sa correction.",
+      messages: [{
+        role: "user",
+        content: [{ type: "text", text: corrige }, ...imageBlocks, { type: "text", text: formatBaremeTask(plan.baremeTotal) }],
+      }],
+    });
+    const msg = await stream.finalMessage();
+    addUsage(usage, msg.usage);
+    if (msg.stop_reason === "refusal") throw new Error("Claude a refusé de préparer le barème depuis la correction.");
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(msg.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join(""));
+    } catch {
+      throw new Error("Barème illisible (JSON invalide) : relance la correction.");
+    }
+    const checked = validateBareme(parsed, plan.baremeTotal);
+    if (!checked.ok) throw new Error(`Barème impossible à préparer : ${checked.errors.slice(0, 4).join(" ; ")}.`);
+    bareme = checked.value;
+  }
+
+  // Consignes et calibrage : ceux du dernier kit envoyé par le Correcteur (la façon de noter de Thomas).
+  const { data: base } = await sb
+    .from("assessment_correction_kits")
+    .select("consignes:kit->>consignes, calibrage:kit->>calibrage")
+    .eq("user_id", job.userId)
+    .is("kit->>source", null)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const kit = buildLibraryKit({
+    evaluation: plan.evaluation,
+    niveau: correction.level ?? null,
+    version: job.studentVersion,
+    bareme,
+    baremeFrom: from,
+    corrige,
+    images,
+    base: (base ?? [])[0] ?? null,
+    correction: { id: correction.id, updated_at: correction.updated_at ?? null },
+  });
+  const { error } = await sb
+    .from("assessment_correction_kits")
+    .upsert({ assessment_id: job.assessmentId, user_id: job.userId, kit }, { onConflict: "assessment_id,version_key", ignoreDuplicates: true });
+  if (error) throw new Error(`Kit non enregistré : ${error.message}`);
+  const { data: stored } = await sb
+    .from("assessment_correction_kits")
+    .select("kit")
+    .eq("assessment_id", job.assessmentId)
+    .eq("version_key", (job.studentVersion ?? "").trim().toLowerCase())
+    .maybeSingle();
+  return (stored?.kit as CorrectionKit | undefined) ?? kit;
+}
+
 async function correct(sb: SupabaseClient, job: Job) {
   const started = Date.now();
-  const questions = job.kit.bareme.questions;
-  const refs = await loadReferences(sb, job);
+  const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY"), maxRetries: 1 });
+  const usage: UsageTotals = { input_tokens: 0, output_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 0 };
+  let kit = job.kit;
+  if (!kit && job.library) {
+    try {
+      kit = await prepareLibraryKit(sb, job, job.library, client, usage);
+    } catch (e) {
+      await finish(sb, job.runId, { ...usage, cost_usd: estimateCostUsd(usage), status: "error", error: describeError(e) });
+      return;
+    }
+  }
+  if (!kit) throw new Error("Pas de kit de correction.");
+  const questions = kit.bareme.questions;
+  const refs = await loadReferences(sb, job, kit);
   const images = await Promise.all(job.pages.map((p) => loadPage(sb, p.storage_path)));
+  // Kit de la bibliothèque : les images du sujet, des documents et de la correction.
+  const docImages = await loadBoardImages(sb, libraryImages(kit));
 
   const content: Anthropic.Beta.BetaContentBlockParam[] = [
-    // Stable pour toute la classe : mis en cache quand on corrige plusieurs copies d'affilée.
-    { type: "text", text: formatKitBlock(job.kit), cache_control: { type: "ephemeral" } },
+    { type: "text", text: formatKitBlock(kit) },
+    ...docImages,
   ];
+  // Stable pour toute la classe : mis en cache quand on corrige plusieurs copies d'affilée.
+  content[content.length - 1] = { ...content[content.length - 1], cache_control: { type: "ephemeral" } } as Anthropic.Beta.BetaContentBlockParam;
   if (refs.length > 0) {
     content.push({
       type: "text",
@@ -252,8 +444,6 @@ async function correct(sb: SupabaseClient, job: Job) {
   });
   content.push({ type: "text", text: formatTask(job.prenom, images.length, questions.length) });
 
-  const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY"), maxRetries: 1 });
-  const usage: UsageTotals = { input_tokens: 0, output_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 0 };
   let model = MODEL;
   let attempts = 0;
   let output: CorrectionOutput | null = null;
@@ -269,15 +459,12 @@ async function correct(sb: SupabaseClient, job: Job) {
       fallbacks: "default",
       thinking: { type: "adaptive" },
       output_config: { effort: "high", format: { type: "json_schema", schema: buildOutputSchema(questions) } },
-      system: job.kit.consignes,
+      system: kit.consignes,
       messages: [{ role: "user", content }],
     });
     const msg = await stream.finalMessage();
     model = msg.model;
-    usage.input_tokens += msg.usage.input_tokens ?? 0;
-    usage.output_tokens += msg.usage.output_tokens ?? 0;
-    usage.cache_creation_tokens += msg.usage.cache_creation_input_tokens ?? 0;
-    usage.cache_read_tokens += msg.usage.cache_read_input_tokens ?? 0;
+    addUsage(usage, msg.usage);
 
     if (msg.stop_reason === "refusal") {
       // Le repli serveur a déjà été tenté : la chaîne entière a refusé. Rien n'est écrit.
@@ -315,7 +502,7 @@ async function correct(sb: SupabaseClient, job: Job) {
     return;
   }
 
-  const g = buildGrade(job.kit, output);
+  const g = buildGrade(kit, output);
   const { error: gradeError } = await sb.from("assessment_grades").upsert(
     {
       user_id: job.userId,

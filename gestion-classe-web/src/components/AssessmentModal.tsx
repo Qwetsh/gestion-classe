@@ -1,7 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ASSESSMENT_KIND_LABEL, type AssessmentKind, type CarnetStudent, type ClassRow } from '../lib/evaluationQueries';
 import { accommodationTags, accommodationTitle } from '../lib/accommodations';
-import { levelFromClassName } from '../lib/boardsQueries';
+import { levelFromClassName, listBoards, type Board } from '../lib/boardsQueries';
+import { pickableActivities } from '../lib/activitySuggest';
+import {
+  NO_LIBRARY_LINK,
+  findLinkedActivity,
+  groupsForAssessment,
+  hasLibraryLink,
+  linkFromGroup,
+  matchLibrarySequence,
+  sameLink,
+  sequenceLabel,
+  type LibraryLink,
+} from '../lib/assessmentLibrary';
 
 /** Affichage d'un nombre à la française, sans zéro décimal inutile. */
 const showNum = (n: number) => String(n).replace('.', ',');
@@ -21,6 +33,11 @@ export interface AssessmentValues {
   shortName: string;
   /** Séquence du programme ('' = aucune). Migration 060. */
   sequence: string;
+  /**
+   * Activité de Mes cours (migration 095) : fiche, documents et correction. `undefined` = rien à
+   * écrire (création sans activité, ou édition sans changement) ; un lien vide efface le lien.
+   */
+  library?: LibraryLink;
   /** Création seulement : les classes sur lesquelles créer l'évaluation. */
   classIds?: string[];
   /** Édition seulement : répercuter sur les autres classes de la série. */
@@ -36,6 +53,7 @@ export interface AssessmentValues {
 export function AssessmentModal({
   title, className, initial, classes, currentClassId, seriesId, onSubmit, onClose, onDelete,
   students, adaptedIds, onToggleAdapted, gradeRaws, sequences = [], defaultSequence = '',
+  userId, initialLibrary,
 }: {
   title: string;
   className: string;
@@ -59,6 +77,10 @@ export function AssessmentModal({
   sequences?: string[];
   /** Création : séquence pré-remplie (celle du filtre du carnet). */
   defaultSequence?: string;
+  /** Propriétaire de la bibliothèque : présent = séquence et activité choisies dans Mes cours. */
+  userId?: string;
+  /** Édition : activité déjà reliée (migration 095). */
+  initialLibrary?: LibraryLink;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [bareme, setBareme] = useState(String(initial?.bareme ?? 20));
@@ -71,6 +93,54 @@ export function AssessmentModal({
   const [shortName, setShortName] = useState(initial?.shortName ?? '');
   const [sequence, setSequence] = useState(initial?.sequence ?? defaultSequence);
   const [busy, setBusy] = useState(false);
+
+  // --- Séquence puis activité de Mes cours (migration 095) ---
+  const [boards, setBoards] = useState<Board[] | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    listBoards(userId).then((list) => { if (!cancelled) setBoards(list); }, () => { if (!cancelled) setBoards([]); });
+    return () => { cancelled = true; };
+  }, [userId]);
+  const library = useMemo(() => (boards ? pickableActivities(boards, levelFromClassName(className)) : []), [boards, className]);
+  /** Séquence de la bibliothèque choisie ; null = saisie libre (ou bibliothèque pas encore lue). */
+  const [chapter, setChapter] = useState<string | null>(null);
+  const [groupKey, setGroupKey] = useState('');
+  /** Le lien a-t-il été changé dans la fenêtre ? Sinon, l'édition n'y touche pas. */
+  const [libraryTouched, setLibraryTouched] = useState(false);
+  const [libraryReady, setLibraryReady] = useState(false);
+  // Une fois la bibliothèque lue : séquence et activité déjà enregistrées, ou devinées d'après le texte.
+  useEffect(() => {
+    if (!boards || libraryReady) return;
+    setLibraryReady(true);
+    if (library.length === 0) return;
+    const linked = findLinkedActivity(library, initialLibrary);
+    if (linked) { setChapter(linked.chapter); setGroupKey(linked.group.key); return; }
+    const text = sequence.trim();
+    const matched = matchLibrarySequence(library, text);
+    if (matched) setChapter(matched);
+    else if (!text) setChapter('');
+  }, [boards, library, libraryReady, initialLibrary, sequence]);
+  const libraryMode = libraryReady && library.length > 0 && chapter !== null;
+  const currentSequence = library.find((s) => s.chapter === chapter);
+  const groups = groupsForAssessment(currentSequence);
+  const chosenGroup = groups.find((g) => g.key === groupKey) ?? null;
+  const linkedMissing = libraryReady && hasLibraryLink(initialLibrary) && !libraryTouched && !findLinkedActivity(library, initialLibrary);
+
+  const chooseChapter = (value: string) => {
+    setLibraryTouched(true);
+    setGroupKey('');
+    if (value === FREE_SEQUENCE) { setChapter(null); return; }
+    setChapter(value);
+    setSequence(sequenceLabel(value));
+  };
+  const chooseGroup = (key: string) => {
+    setLibraryTouched(true);
+    setGroupKey(key);
+    const g = groups.find((x) => x.key === key);
+    if (g && !name.trim()) setName(g.title);
+  };
+
   const [error, setError] = useState<string | null>(null);
 
   // --- Création multi-classes ---
@@ -109,10 +179,18 @@ export function AssessmentModal({
     if (!Number.isFinite(c) || c < 0) { setError('Coefficient invalide.'); return; }
     setBusy(true);
     setError(null);
+    const link = chosenGroup ? linkFromGroup(chosenGroup) : NO_LIBRARY_LINK;
+    const before = initialLibrary ?? NO_LIBRARY_LINK;
+    // Création : seulement si une activité est choisie. Édition : seulement si le lien a changé
+    // (une base sans la migration 095 accepte alors l'enregistrement).
+    const libraryValue = initial
+      ? (libraryTouched && !sameLink(link, before) ? link : undefined)
+      : (hasLibraryLink(link) ? link : undefined);
     try {
       await onSubmit({
         name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage,
-        shortName: shortName.trim(), sequence: sequence.trim(),
+        shortName: shortName.trim(), sequence: (libraryMode ? sequenceLabel(chapter ?? '') : sequence).trim(),
+        library: libraryValue,
         classIds: canSpread && spread && currentClassId ? [currentClassId, ...targets] : undefined,
         applyToSeries,
         baremeMode,
@@ -146,19 +224,60 @@ export function AssessmentModal({
         <label style={lbl}>Nom</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Éval Nutrition" style={inp} autoFocus />
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <label style={lbl} htmlFor="assessment-short-name">Titre court <span style={{ fontWeight: 400 }}>(en-tête du carnet)</span></label>
-            <input id="assessment-short-name" value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder={name.trim() ? name.trim().slice(0, 14) : 'Éval 1'} maxLength={24} style={inp} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={lbl} htmlFor="assessment-sequence">Séquence</label>
+        <label style={lbl} htmlFor="assessment-short-name">Titre court <span style={{ fontWeight: 400 }}>(en-tête du carnet)</span></label>
+        <input id="assessment-short-name" value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder={name.trim() ? name.trim().slice(0, 14) : 'Éval 1'} maxLength={24} style={inp} />
+
+        <label style={lbl} htmlFor="assessment-sequence">Séquence</label>
+        {userId && !libraryReady ? (
+          <select id="assessment-sequence" disabled style={inp}><option>Lecture de Mes cours…</option></select>
+        ) : libraryMode ? (
+          <select id="assessment-sequence" value={chapter ?? ''} onChange={(e) => chooseChapter(e.target.value)} style={inp}>
+            <option value="">Aucune séquence</option>
+            {library.map((s) => <option key={s.chapter} value={s.chapter}>{s.chapter}</option>)}
+            <option value={FREE_SEQUENCE}>Autre (saisie libre)…</option>
+          </select>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input id="assessment-sequence" value={sequence} onChange={(e) => setSequence(e.target.value)} placeholder="Séquence 1" list="assessment-sequences" style={inp} />
+            {library.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { setLibraryTouched(true); setChapter(matchLibrarySequence(library, sequence) ?? ''); }}
+                style={{ ...btnGhost, whiteSpace: 'nowrap' }}
+                title="Choisir la séquence et l’activité dans Mes cours"
+              >
+                Mes cours
+              </button>
+            )}
             <datalist id="assessment-sequences">
               {sequences.map((q) => <option key={q} value={q} />)}
             </datalist>
           </div>
-        </div>
+        )}
+
+        {libraryMode && chapter !== '' && (
+          <>
+            <label style={lbl} htmlFor="assessment-activity">Activité <span style={{ fontWeight: 400 }}>(sujet et correction pour « Corriger avec Claude »)</span></label>
+            <select id="assessment-activity" value={groupKey} onChange={(e) => chooseGroup(e.target.value)} style={inp}>
+              <option value="">Aucune activité</option>
+              {groups.map((g) => (
+                <option key={g.key} value={g.key}>
+                  {g.title}{g.members.some((m) => m.variant === 'correction') ? '' : ' (sans correction)'}
+                </option>
+              ))}
+            </select>
+            {chosenGroup && (
+              <div style={hint}>
+                {chosenGroup.members.some((m) => m.variant === 'correction')
+                  ? '« Corriger avec Claude » lira directement le sujet et la correction de cette activité.'
+                  : 'Pas de correction dans Mes cours pour cette activité : « Corriger avec Claude » aura besoin du kit du Correcteur.'}
+              </div>
+            )}
+          </>
+        )}
+        {linkedMissing && (
+          <div style={hint}>L’activité reliée à cette évaluation n’est plus dans Mes cours. Choisis-en une autre si besoin.</div>
+        )}
 
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
@@ -234,8 +353,8 @@ export function AssessmentModal({
               Appliquer aux autres classes de la série
             </label>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-              Nom, titre court, séquence, type, barème, coefficient et prise en compte dans la
-              moyenne. La date reste propre à chaque classe.
+              Nom, titre court, séquence, activité, type, barème, coefficient et prise en compte
+              dans la moyenne. La date reste propre à chaque classe.
             </div>
           </div>
         )}
@@ -320,6 +439,11 @@ export function AssessmentModal({
 // ============================================================
 // Styles (alignés sur le carnet)
 // ============================================================
+
+/** Valeur du choix « Autre (saisie libre) » de la liste des séquences. */
+const FREE_SEQUENCE = '__libre__';
+
+const hint: React.CSSProperties = { fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.45 };
 
 /** Petite pastille PAP / PPRE / PAI à côté d'un nom d'élève. */
 const tagStyle: React.CSSProperties = {
