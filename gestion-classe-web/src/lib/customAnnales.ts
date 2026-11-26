@@ -1,4 +1,5 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 import type { Brevet, Matiere } from './brevets';
 import type { Programme } from './annalesLibrary';
 
@@ -67,7 +68,7 @@ export async function fetchCustomAnnales(): Promise<BrevetItem[]> {
     .order('annee', { ascending: false })
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(rowToBrevet);
+  return fromDb<CustomAnnaleRow[]>(data ?? []).map(rowToBrevet);
 }
 
 /** Uploade le PDF dans le bucket puis insere la ligne. Reserve au prof connecte. */
@@ -103,7 +104,7 @@ export async function addCustomAnnale(input: NewAnnaleInput, file: File): Promis
     await supabase.storage.from(BUCKET).remove([filePath]);
     throw error;
   }
-  return rowToBrevet(data);
+  return rowToBrevet(fromDb<CustomAnnaleRow>(data));
 }
 
 /** Le sujet appartient à un autre compte : la base n'a rien supprimé. */

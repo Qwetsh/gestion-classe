@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { fetchAllPages, type PageResult } from './evaluationQueries';
+import { fetchAllPages, type PageResult } from './paging';
 
 /** Un événement de séance, avec la classe de sa séance. */
 export interface TeacherEvent {

@@ -8,7 +8,8 @@
 import type { JSONContent } from '@tiptap/core';
 import type { CourseLayer } from './courseLayer';
 import type { CourseLink } from './courseLinks';
-import { supabase } from '../supabaseUntyped';
+import { supabase } from '../supabase';
+import { toJson } from '../dbJson';
 import { createBoard, deleteBoard, type Board, type BoardMeta } from '../boardsQueries';
 import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
 
@@ -161,7 +162,7 @@ export async function saveCourseDoc(boardId: string, doc: CourseDoc): Promise<vo
   if (columnMissing) throw new Error('Les cours rédigés demandent la migration 071');
   const { error } = await supabase
     .from('boards')
-    .update({ doc, updated_at: new Date().toISOString() })
+    .update({ doc: toJson(doc), updated_at: new Date().toISOString() })
     .eq('id', boardId);
   if (isMissingColumn(error)) { columnMissing = true; throw new Error('Les cours rédigés demandent la migration 071'); }
   if (error) throw error;
@@ -182,7 +183,7 @@ export async function saveCourseDocGuarded(boardId: string, doc: CourseDoc, expe
   const rev = newRev();
   let q = supabase
     .from('boards')
-    .update({ doc: { ...doc, rev }, updated_at: new Date().toISOString() })
+    .update({ doc: toJson({ ...doc, rev }), updated_at: new Date().toISOString() })
     .eq('id', boardId);
   if (expectedRev === null) q = q.is('doc->rev', null);
   else if (expectedRev !== undefined) q = q.eq('doc->>rev', expectedRev);
@@ -207,7 +208,7 @@ export async function saveCourseLinks(boardId: string, links: CourseLink[]): Pro
   const next: CourseDoc = { ...doc, rev: newRev() };
   if (links.length) next.links = links;
   else delete next.links;
-  let q = supabase.from('boards').update({ doc: next }).eq('id', boardId);
+  let q = supabase.from('boards').update({ doc: toJson(next) }).eq('id', boardId);
   q = doc.rev == null ? q.is('doc->rev', null) : q.eq('doc->>rev', doc.rev);
   const res = await q.select('id');
   if (res.error) throw res.error;

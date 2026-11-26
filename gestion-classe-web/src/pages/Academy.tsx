@@ -8,7 +8,7 @@ import {
   type HouseId, type AcademyAssignment, type AcademyHouseBonus, type HousePoints,
 } from '../lib/academyQueries';
 import { calculateStudentScores, runSortingAlgorithm, saveSortingResults, type StudentScores, type SortingResult } from '../lib/sortingAlgorithm';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
 import { Starfield, Ornament, WaxSeal, GoldParticles, RollingNumber } from '../components/academy/Atmosphere';
 import { HouseCrest } from '../components/academy/HouseCrest';
 import { HOUSE_DATA, HOUSE_LIST, type HouseData } from '../components/academy/houses';
@@ -100,7 +100,7 @@ export function Academy() {
         : { data: [] };
 
       for (const sg of sessionGroups || []) {
-        const houseId = HOUSE_NAME_TO_ID[sg.name.toLowerCase()];
+        const houseId = HOUSE_NAME_TO_ID[(sg.name ?? '').toLowerCase()];
         if (!houseId) continue;
         if (!houseScoresMap[sg.session_id]) {
           houseScoresMap[sg.session_id] = { gryffondor: 0, serpentard: 0, serdaigle: 0, poufsouffle: 0 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fetchAllPages, type PageResult } from '../evaluationQueries';
+import { fetchAllPages, type PageResult } from '../paging';
 
 /**
  * Régression du bug le plus grave trouvé à la revue du 22/09/2026 : une requête sans

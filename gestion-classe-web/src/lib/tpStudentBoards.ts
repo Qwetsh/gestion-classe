@@ -1,4 +1,5 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { toJson } from './dbJson';
 import { activityIndex, sameStudentBoards, studentBoardsOfTp, type ActivityBoard, type TpStudentBoards } from './tpLibrary';
 
 /**
@@ -20,7 +21,7 @@ export async function syncTpStudentBoards(userId: string, boards: ActivityBoard[
   for (const tp of (data ?? []) as { id: string; level: string | null; chapter: string | null; activity: string | null; student_boards: TpStudentBoards | null }[]) {
     const next = studentBoardsOfTp(tp, boards, index);
     if (sameStudentBoards(next, tp.student_boards)) continue;
-    const { error: uErr } = await supabase.from('tp_templates').update({ student_boards: next }).eq('id', tp.id);
+    const { error: uErr } = await supabase.from('tp_templates').update({ student_boards: toJson(next) }).eq('id', tp.id);
     if (uErr) throw uErr;
     written += 1;
   }

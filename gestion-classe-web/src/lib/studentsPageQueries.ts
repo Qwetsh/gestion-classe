@@ -10,7 +10,7 @@
  *    notes sur des données partielles.
  */
 import { supabase } from './supabase';
-import { fetchAllPages } from './evaluationQueries';
+import { fetchAllPages } from './paging';
 import {
   buildStudentGrades,
   type ArchivedGradeRow,

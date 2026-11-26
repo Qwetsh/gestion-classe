@@ -6,9 +6,10 @@
  * parcourues page par page, et une lecture en échec lève une erreur au lieu de laisser calculer
  * sur des données partielles.
  */
-import type { Room } from '../components/RoomModal';
+import type { Room, TableGroup } from '../components/RoomModal';
 import { supabase } from './supabase';
-import { fetchAllPages } from './evaluationQueries';
+import { toJson } from './dbJson';
+import { fetchAllPages } from './paging';
 import { STUDENT_CHUNK, chunk } from './studentsPageQueries';
 import { buildSeatGrades, type SeatEventRow, type SeatGrade } from './seatGrades';
 import type { GradeRules } from './implicationGrades';
@@ -79,6 +80,15 @@ export async function fetchRooms(userId: string): Promise<Room[]> {
     ...room,
     disabled_cells: (room.disabled_cells as string[] | null) || [],
   })) as unknown as Room[];
+}
+
+/** Enregistre les liaisons entre tables d'une salle. Un échec est seulement journalisé, comme avant. */
+export async function saveRoomTableGroups(roomId: string, groups: TableGroup[]): Promise<void> {
+  const { error } = await supabase
+    .from('rooms')
+    .update({ table_groups: toJson(groups), updated_at: new Date().toISOString() })
+    .eq('id', roomId);
+  if (error) console.warn('[classesPageQueries] liaisons de tables non enregistrées :', error.message);
 }
 
 /** Les élèves d'une classe, par pseudonyme. */

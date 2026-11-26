@@ -3,7 +3,8 @@
  * d'une classe (table `class_binder_items`, migration 085). La décision de ce qui sort est dans
  * lib/binderRelease.ts ; ici, seulement la base.
  */
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { toJson } from './dbJson';
 import { levelFromClassName } from './boardsQueries';
 import type { BinderItemRow } from './binderRelease';
 
@@ -59,7 +60,7 @@ export async function saveBinderItems(userId: string, rows: BinderItemRow[]): Pr
   const { data, error } = await supabase
     .from('class_binder_items')
     .upsert(
-      rows.map(({ class_id, anchor_board_id, visible, correction_visible, released }) => ({ user_id: userId, class_id, anchor_board_id, visible, correction_visible, released, updated_at: now })),
+      rows.map(({ class_id, anchor_board_id, visible, correction_visible, released }) => ({ user_id: userId, class_id, anchor_board_id, visible, correction_visible, released: toJson(released), updated_at: now })),
       { onConflict: 'class_id,anchor_board_id' },
     )
     .select(COLUMNS);

@@ -8,7 +8,9 @@
  * Tant que la migration add_boards.sql n'est pas appliquée, la liste est vide et la création échoue
  * proprement : l'accueil garde son tableau libre local.
  */
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import type { TablesInsert } from './database.types';
+import { toJson } from './dbJson';
 import { fetchBoardPages, upsertBoardPages } from './boardQueries';
 import { importFilesToPages, type ImportProgress } from './boardImport';
 import type { BoardPage } from './boardRender';
@@ -118,7 +120,7 @@ export async function listBoards(userId: string): Promise<Board[]> {
 }
 
 export async function createBoard(userId: string, meta: BoardMeta, classId: string | null = null): Promise<Board> {
-  const row: Record<string, unknown> = { user_id: userId, title: meta.title.trim(), level: clean(meta.level), chapter: clean(meta.chapter), class_id: classId };
+  const row: TablesInsert<'boards'> = { user_id: userId, title: meta.title.trim(), level: clean(meta.level), chapter: clean(meta.chapter), class_id: classId };
   // Le rayon n'est écrit que s'il en faut un : sans la migration 082, un cours ordinaire se crée quand même
   if (meta.category) row.category = meta.category;
   const { data, error } = await supabase
@@ -317,7 +319,7 @@ export async function saveSessionCourseInk(userId: string, sessionId: string, bo
   if (linksMissing || inkColumnMissing) return;
   const { error } = await supabase
     .from('session_boards')
-    .upsert({ session_id: sessionId, board_id: boardId, user_id: userId, course_ink: { items } }, { onConflict: 'session_id' });
+    .upsert({ session_id: sessionId, board_id: boardId, user_id: userId, course_ink: toJson({ items }) }, { onConflict: 'session_id' });
   if (isMissingInkColumn(error)) { inkColumnMissing = true; return; }
   if (isMissingLinks(error)) { linksMissing = true; return; }
   if (error) console.warn('[boardsQueries] encre de séance :', error);

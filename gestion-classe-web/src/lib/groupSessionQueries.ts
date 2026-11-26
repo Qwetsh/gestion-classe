@@ -1,4 +1,6 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fromDb } from './dbJson';
+import type { TablesInsert } from './database.types';
 
 export interface TpTemplate {
   id: string;
@@ -64,7 +66,7 @@ export async function createGroupSession(
   templateId?: string | null,
 ): Promise<string> {
   // 1. Create session
-  const insertPayload: Record<string, unknown> = { user_id: userId, class_id: classId, name, status: 'active', created_at: new Date().toISOString() };
+  const insertPayload: TablesInsert<'group_sessions'> = { user_id: userId, class_id: classId, name, status: 'active', created_at: new Date().toISOString() };
   if (templateId) insertPayload.template_id = templateId;
   const { data: session, error: sessionError } = await supabase
     .from('group_sessions')
@@ -151,7 +153,7 @@ export async function loadGroupSession(sessionId: string): Promise<GroupSessionD
     allGrades = gradesData || [];
   }
 
-  const groupsData: GroupData[] = (groups || []).map(g => ({
+  const groupsData = fromDb<GroupData[]>((groups || []).map(g => ({
     ...g,
     members: allMembers
       .filter(m => m.group_id === g.id)
@@ -159,7 +161,7 @@ export async function loadGroupSession(sessionId: string): Promise<GroupSessionD
     grades: allGrades
       .filter(gr => gr.group_id === g.id)
       .map((gr: any) => ({ criteria_id: gr.criteria_id, points_awarded: gr.points_awarded })),
-  }));
+  })));
 
   return {
     ...session,

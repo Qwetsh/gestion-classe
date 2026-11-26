@@ -1,4 +1,5 @@
-import { supabase } from './supabaseUntyped';
+import { supabase } from './supabase';
+import { fromDb } from './dbJson';
 import type { TableGroup } from './seatingLayouts';
 
 export interface ClassInfo {
@@ -52,7 +53,7 @@ export async function fetchRoomsForUser(userId: string): Promise<RoomInfo[]> {
     .eq('user_id', userId)
     .order('name');
   if (error) throw error;
-  return data || [];
+  return fromDb<RoomInfo[]>(data || []);
 }
 
 export async function fetchStudentsForClass(classId: string): Promise<StudentInfo[]> {
@@ -62,7 +63,7 @@ export async function fetchStudentsForClass(classId: string): Promise<StudentInf
     .eq('class_id', classId)
     .order('pseudo');
   if (error) throw error;
-  return data || [];
+  return fromDb<StudentInfo[]>(data || []);
 }
 
 /**
