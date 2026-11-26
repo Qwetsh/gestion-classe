@@ -4,21 +4,32 @@ import { supabase } from '../lib/supabase';
 type Format = 'mp3' | 'mp4';
 
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
-const MP3_MONTHLY_LIMIT = 500;
-const MP4_MONTHLY_LIMIT = 10;
 const NOTIFY_THRESHOLD = 100;
 const NTFY_TOPIC = 'classit-yt-downloads';
 
-const RAPIDAPI_KEY = '1fb03c8ff1msh06089b15f0946bdp18c0d0jsn018a1f508aa7';
-const RAPIDAPI_HOST_MP3 = 'youtube-mp36.p.rapidapi.com';
-const RAPIDAPI_HOST_MP4 = 'youtube-mp4-downloader.p.rapidapi.com';
-const RAPIDAPI_USER_MD5 = 'd7126324c7b7c35bcb8455c4b84bb832';
+// La clé du service de conversion vit dans la fonction serveur `youtube-mp3`, jamais ici :
+// tout ce qui est écrit dans ce fichier est public. Plafond et droit au MP4 y sont appliqués.
+const CONVERTER_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/youtube-mp3`;
 
-// Users allowed to use MP4 (limited resource)
-const MP4_ALLOWED_EMAILS = [
-  'tomicharles@gmail.com',
-  'auralimar.marchand57@gmail.com',
-];
+interface ConverterInfo { configured: boolean; monthly_count: number; monthly_limit: number; mp4_allowed: boolean }
+interface Mp3Result { status?: string; link?: string; title?: string; msg?: string; run?: string; error?: string }
+interface Mp4Result { success?: boolean; title?: string; download?: string; error?: string }
+
+const CONVERTER_ERRORS: Record<string, string> = {
+  unauthorized: 'Reconnectez-vous pour utiliser le convertisseur.',
+  not_configured: "Le convertisseur attend sa clé : il n'est pas disponible pour le moment.",
+  mp4_not_allowed: "Le MP4 n'est pas activé pour votre compte.",
+  monthly_limit: 'Limite mensuelle atteinte. Réessayez le mois prochain.',
+  bad_request: 'Lien YouTube invalide.',
+};
+
+async function callConverter<T>(query: string): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${CONVERTER_URL}?${query}`, {
+    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+  });
+  return res.json();
+}
 
 function extractVideoId(url: string): string | null {
   const patterns = [
@@ -31,22 +42,6 @@ function extractVideoId(url: string): string | null {
     if (m) return m[1];
   }
   return null;
-}
-
-async function getMonthlyCount(): Promise<number> {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const { count } = await supabase
-    .from('yt_download_log')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', startOfMonth);
-  return count ?? 0;
-}
-
-async function logDownload() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase.from('yt_download_log').insert({ user_id: user.id });
 }
 
 async function notifyIfThreshold(count: number) {
@@ -67,31 +62,8 @@ async function notifyIfThreshold(count: number) {
   }
 }
 
-async function fetchMp3(videoId: string): Promise<{ status: string; link?: string; title?: string; msg?: string }> {
-  const res = await fetch(
-    `https://${RAPIDAPI_HOST_MP3}/dl?id=${encodeURIComponent(videoId)}`,
-    {
-      headers: {
-        'x-rapidapi-host': RAPIDAPI_HOST_MP3,
-        'x-rapidapi-key': RAPIDAPI_KEY,
-      },
-    }
-  );
-  return res.json();
-}
-
-async function fetchMp4(videoUrl: string): Promise<{ success: boolean; title?: string; download?: string; error?: string }> {
-  const res = await fetch(
-    `https://${RAPIDAPI_HOST_MP4}/mp4?url=${encodeURIComponent(videoUrl)}`,
-    {
-      headers: {
-        'x-rapidapi-host': RAPIDAPI_HOST_MP4,
-        'x-rapidapi-key': RAPIDAPI_KEY,
-      },
-    }
-  );
-  return res.json();
-}
+const fetchMp3 = (videoId: string) => callConverter<Mp3Result>(`format=mp3&id=${encodeURIComponent(videoId)}`);
+const fetchMp4 = (videoId: string) => callConverter<Mp4Result>(`format=mp4&id=${encodeURIComponent(videoId)}`);
 
 export default function YouTubeConverter() {
   const [url, setUrl] = useState('');
@@ -99,32 +71,37 @@ export default function YouTubeConverter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadRun, setDownloadRun] = useState('');
   const [title, setTitle] = useState('');
   const [monthlyCount, setMonthlyCount] = useState(0);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [monthlyLimit, setMonthlyLimit] = useState(500);
+  const [mp4Allowed, setMp4Allowed] = useState(false);
+  const [configured, setConfigured] = useState(true);
 
   useEffect(() => {
-    getMonthlyCount().then(setMonthlyCount);
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserEmail(user?.email ?? null);
-    });
+    callConverter<Partial<ConverterInfo>>('info=1')
+      .then((info) => {
+        setMonthlyCount(info.monthly_count ?? 0);
+        setMonthlyLimit(info.monthly_limit ?? 500);
+        setMp4Allowed(info.mp4_allowed === true);
+        setConfigured(info.configured !== false);
+      })
+      .catch(() => { /* l'outil reste utilisable : le serveur tranchera à la conversion */ });
   }, []);
-
-  const mp4Allowed = userEmail ? MP4_ALLOWED_EMAILS.includes(userEmail) : false;
 
   const isValidUrl = YOUTUBE_REGEX.test(url.trim());
 
   async function handleConvert() {
     if (!isValidUrl) return;
 
-    if (monthlyCount >= MP3_MONTHLY_LIMIT) {
-      setError(`Limite mensuelle atteinte. Réessayez le mois prochain.`);
+    if (monthlyCount >= monthlyLimit) {
+      setError(CONVERTER_ERRORS.monthly_limit);
       return;
     }
 
     const videoId = extractVideoId(url.trim());
     if (!videoId) {
-      setError('Impossible d\'extraire l\'ID de la vidéo.');
+      setError("Impossible d'extraire l'ID de la vidéo.");
       return;
     }
 
@@ -147,28 +124,26 @@ export default function YouTubeConverter() {
         }
 
         if (data.status === 'ok' && data.link) {
-          await logDownload();
           const newCount = monthlyCount + 1;
           setMonthlyCount(newCount);
           await notifyIfThreshold(newCount);
+          setDownloadRun(data.run ?? '');
           setDownloadUrl(data.link);
           setTitle(data.title || 'audio');
         } else {
-          setError(data.msg || 'Erreur lors de la conversion. Réessayez.');
+          setError((data.error && CONVERTER_ERRORS[data.error]) || data.msg || 'Erreur lors de la conversion. Réessayez.');
         }
       } else {
-        const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const data = await fetchMp4(ytUrl);
+        const data = await fetchMp4(videoId);
 
         if (data.success && data.download) {
-          await logDownload();
           const newCount = monthlyCount + 1;
           setMonthlyCount(newCount);
           await notifyIfThreshold(newCount);
           setDownloadUrl(data.download);
           setTitle(data.title || 'video');
         } else {
-          setError(data.error || 'Erreur lors de la conversion MP4. Réessayez.');
+          setError((data.error && CONVERTER_ERRORS[data.error]) || data.error || 'Erreur lors de la conversion MP4. Réessayez.');
         }
       }
     } catch {
@@ -196,7 +171,7 @@ export default function YouTubeConverter() {
     try {
       setLoading(true);
       const res = await fetch(downloadUrl, {
-        headers: { 'x-run': RAPIDAPI_USER_MD5 },
+        headers: { 'x-run': downloadRun },
       });
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
@@ -273,11 +248,6 @@ export default function YouTubeConverter() {
             MP4 : accès restreint. Contactez l'administrateur pour l'activer.
           </p>
         )}
-        {format === 'mp4' && mp4Allowed && (
-          <p className="mt-2 text-xs text-[var(--text-dim)]">
-            MP4 : limité à {MP4_MONTHLY_LIMIT}/mois
-          </p>
-        )}
       </div>
 
       {/* Convert button */}
@@ -285,7 +255,7 @@ export default function YouTubeConverter() {
         {!downloadUrl ? (
           <button
             onClick={handleConvert}
-            disabled={!isValidUrl || loading || monthlyCount >= MP3_MONTHLY_LIMIT}
+            disabled={!isValidUrl || loading || !configured || monthlyCount >= monthlyLimit}
             className="px-8 py-3 rounded-xl text-white font-medium text-base transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
             style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-sm)' }}
           >
@@ -321,6 +291,9 @@ export default function YouTubeConverter() {
         {error && (
           <p className="text-sm text-[var(--neg)] text-center max-w-md">{error}</p>
         )}
+        {!configured && !error && (
+          <p className="text-sm text-[var(--text-dim)] text-center max-w-md">{CONVERTER_ERRORS.not_configured}</p>
+        )}
       </div>
 
       {/* Info + usage */}
@@ -330,7 +303,7 @@ export default function YouTubeConverter() {
           Fonctionne avec les liens classiques et les Shorts.
         </p>
         <p className="text-xs text-[var(--text-dim)]">
-          Limites : {MP3_MONTHLY_LIMIT} MP3/mois • {MP4_MONTHLY_LIMIT} MP4/mois
+          Limite : {monthlyLimit} conversions par mois, tous comptes confondus ({monthlyCount} ce mois-ci).
         </p>
       </div>
     </div>
