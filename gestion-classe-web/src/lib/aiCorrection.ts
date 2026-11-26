@@ -91,6 +91,7 @@ const START_ERRORS: Record<string, string> = {
   no_kit_for_version: 'Pas de kit pour la version du sujet de cette copie : envoie-le depuis le Correcteur (push_grades.py --kit).',
   kit_version_unsure: 'Le kit n’indique pas sa version du sujet et cette copie a une version à elle : envoie un kit par version depuis le Correcteur.',
   not_found: 'Évaluation introuvable.',
+  not_allowed: 'Correction par Claude réservée aux comptes autorisés.',
   unauthorized: 'Session expirée : reconnecte-toi.',
 };
 

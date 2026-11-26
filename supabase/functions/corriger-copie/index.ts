@@ -113,6 +113,15 @@ Deno.serve(async (req: Request) => {
   const user = auth?.user;
   if (!user) return json({ error: "unauthorized" }, 401);
 
+  // La correction paie avec la clé Anthropic du propriétaire de l'app : réservée aux comptes
+  // listés dans ai_correction_allowed_users (migration 083). Table absente ou erreur = refus.
+  const { data: allowed, error: allowedError } = await sb
+    .from("ai_correction_allowed_users")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (allowedError || !allowed) return json({ error: "not_allowed" }, 403);
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
