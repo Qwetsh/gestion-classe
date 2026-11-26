@@ -47,7 +47,7 @@ Hors périmètre : les fonctionnalités et le modèle de données, la structure 
   bottom sheets) — voir `design_handoff_reskin_direction_b/`. C'est la surface la plus aboutie ; à
   **intégrer et prolonger**, pas à jeter.
 - **Espace élève** : thème « chaud sombre » propre à l'élève (palette `T` dans `StudentDashboard.tsx`),
-  avec l'univers *Quatre Maisons* (blasons dans `blason/`, direction artistique dans
+  avec l'univers *Quatre Maisons* (blasons dans `_references/blason/`, hors git, direction artistique dans
   `_bmad-output/planning-artifacts/`). À garder comme base et à professionnaliser.
 - **Tableau blanc** : traité séparément, en premier.
 
@@ -116,5 +116,5 @@ Hors périmètre : les fonctionnalités et le modèle de données, la structure 
 | Chantier design en cours (tableau blanc) | `BRIEF_claude_design.md`, `PLAN_tableau_blanc.md` |
 | Handoff design précédent (mobile, Direction B) | `design_handoff_reskin_direction_b/README.md` + canevas `.dc.html` |
 | Premier handoff (web) | `design_handoff_gestion_classe/` |
-| Univers Quatre Maisons (blasons, DA) | `blason/`, `_bmad-output/implementation-artifacts/10-*.md` |
+| Univers Quatre Maisons (blasons, DA) | `_references/blason/` (hors git), `_bmad-output/implementation-artifacts/10-*.md` |
 | Prototype validé du menu radial | `gestion-classe-proto/` |
