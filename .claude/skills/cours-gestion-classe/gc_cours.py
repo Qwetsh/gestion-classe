@@ -197,7 +197,9 @@ def EncadreFiche(titre, couleur, *blocs):
 
 
 def Zone(style='lignes', lignes=4):
-    """Zone d'écriture : 'seyes' | 'carreaux' | 'lignes' | 'pointilles' | 'blanc' ; lignes de 8 mm."""
+    """Zone d'écriture : 'seyes' | 'carreaux' | 'lignes' | 'pointilles' | 'blanc' ; lignes de 8 mm.
+    Pas sous les questions d'une fiche d'activité (Thomas, 24/11/2026) : les élèves répondent sur
+    une feuille à part, sauf cas précis (tableau ou schéma à compléter, document à annoter)."""
     return {'type': 'writingZone', 'attrs': {'style': style, 'lines': lignes}}
 
 
