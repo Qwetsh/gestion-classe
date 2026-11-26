@@ -1,0 +1,45 @@
+# Réglages des fonctions serveur de Gestion Classe (projet Supabase « Class'it »).
+#
+# verify_jwt dit si la passerelle Supabase exige un jeton avant d'appeler la fonction.
+#   false = la fonction est joignable sans jeton et fait elle-même ses contrôles
+#           (code élève, jeton de dépôt, jeton d'import, session d'enseignant vérifiée à la main).
+#   true  = la passerelle refuse tout appel sans jeton valide ; la clé publique de l'app en est un,
+#           donc ce réglage seul ne réserve rien aux enseignants.
+#
+# Ce fichier fait foi au déploiement : `npx supabase functions deploy <nom> --remote=<ref> --yes`
+# le lit, plus besoin de se souvenir de `--no-verify-jwt`. Valeurs relevées en production le
+# 26/11/2026. En changer une ici, c'est la changer en production au prochain déploiement.
+#
+# Cinq autres fonctions tournent sur le même projet et ne sont pas dans ce dépôt : elles
+# appartiennent à d'autres applications (bot-chat, bot-rejoindre, notify-signalement,
+# notion-proxy, search-proxy). Ne pas les redéployer d'ici.
+
+[functions.classeur-eleve]
+verify_jwt = false
+
+[functions.corriger-copie]
+verify_jwt = true
+
+[functions.depot-copie]
+verify_jwt = false
+
+[functions.depot-cours]
+verify_jwt = false
+
+[functions.pronote-proxy]
+verify_jwt = false
+
+[functions.purge-assessment-copies]
+verify_jwt = false
+
+[functions.student-doc]
+verify_jwt = false
+
+[functions.tp-eleve]
+verify_jwt = true
+
+[functions.version-mobile]
+verify_jwt = false
+
+[functions.youtube-mp3]
+verify_jwt = false
