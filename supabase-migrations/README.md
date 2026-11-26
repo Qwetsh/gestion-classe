@@ -10,6 +10,15 @@ Règle : **pas de migration en production sans son fichier dans `master`**, et i
 
 Prochain numéro libre : **098**.
 
+Après l'avoir appliquée, régénérer la description de la base que lit le code web, et la commiter dans la même PR :
+
+```
+cd gestion-classe-web
+npm run db:types
+```
+
+Elle ne contient que les tables et fonctions utilisées par `src/` ; une colonne remplie par un déclencheur se déclare dans `REMPLIES_PAR_LA_BASE` (`scripts/gen-db-types.mjs`).
+
 ## Ce que ce dossier ne contient pas
 
 - Les tables d'origine (`students`, `classes`, `sessions`, `events`…) et quelques fonctions anciennes, créées avant que ce dossier existe (pas de fichiers 001 et 002). Ce dossier ne suffit donc pas à reconstruire la base depuis zéro.

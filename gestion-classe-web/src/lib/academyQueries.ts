@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 
 // ============================================================
 // Academy Module — Queries Supabase

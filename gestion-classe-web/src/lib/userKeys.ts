@@ -4,7 +4,7 @@
  * l'enseignant sur tous ses appareils. Au démarrage du tableau, le compte alimente le navigateur ;
  * à chaque enregistrement, le navigateur alimente le compte.
  */
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 
 /** Entrées localStorage synchronisées, et leur nom dans la colonne `keys`. */
 const SYNCED: { storage: string; field: string; json: boolean }[] = [

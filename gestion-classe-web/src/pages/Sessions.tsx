@@ -2,7 +2,7 @@ import { classColor, classTone } from '../lib/classColors';
 import '../styles/refonte-seances.css';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { EVENT_CONFIG } from '../lib/constants';

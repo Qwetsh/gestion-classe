@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Archive, BookOpen, Box, ChevronLeft, ChevronRight, FlaskConical } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { studentBinderOpen } from '../lib/studentBinder';
 import { StudentBinderView } from '../components/binder/StudentBinderView';
 import { fetchStudentTps, type StudentTpItem } from '../lib/studentTp';

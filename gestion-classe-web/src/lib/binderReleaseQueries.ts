@@ -3,7 +3,7 @@
  * d'une classe (table `class_binder_items`, migration 085). La décision de ce qui sort est dans
  * lib/binderRelease.ts ; ici, seulement la base.
  */
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { levelFromClassName } from './boardsQueries';
 import type { BinderItemRow } from './binderRelease';
 

@@ -7,7 +7,7 @@
  * en local — la synchronisation reprend d'elle-même une fois la migration 042 appliquée.
  */
 
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 
 const CACHE_PREFIX = 'gc_pref_';
 

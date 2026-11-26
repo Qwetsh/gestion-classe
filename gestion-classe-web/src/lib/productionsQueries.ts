@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { createAssessment, saveGrade } from './evaluationQueries';
 import { toTwenty } from './gradeStats';
 import type { ClassWorkLite } from './carnetProductions';

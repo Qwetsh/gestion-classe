@@ -1,7 +1,7 @@
 import { classColor } from '../lib/classColors';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { generateAnalysisReport, prepareReportData, generateYearEndReport, prepareYearEndReportData } from '../lib/generateReport';
