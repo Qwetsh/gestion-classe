@@ -546,7 +546,7 @@ export function CarnetTab({ userId, account, onError }: {
               grade: row?.grade ?? null,
               status: (row?.status ?? 'noted') as GradeStatus,
             },
-            assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average },
+            assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average, onlyIfRaises: !!a.only_if_raises_average },
           };
         }),
       ),
@@ -1105,6 +1105,7 @@ export function CarnetTab({ userId, account, onError }: {
           currentClassId={classId}
           sequences={sequencesPresent(assessments)}
           defaultSequence={filters.sequence !== 'all' ? filters.sequence : ''}
+          userId={userId}
           onClose={() => setShowCreate(false)}
           onSubmit={async (values) => {
             const targets = values.classIds ?? [classId];
@@ -1122,8 +1123,10 @@ export function CarnetTab({ userId, account, onError }: {
                 period,
                 schoolYear,
                 countsInAverage: values.countsInAverage,
+                onlyIfRaisesAverage: values.onlyIfRaises,
                 shortName: values.shortName,
                 sequence: values.sequence,
+                library: values.library,
               });
             } else {
               await createAssessment({
@@ -1137,8 +1140,10 @@ export function CarnetTab({ userId, account, onError }: {
                 period,
                 schoolYear,
                 countsInAverage: values.countsInAverage,
+                onlyIfRaisesAverage: values.onlyIfRaises,
                 shortName: values.shortName,
                 sequence: values.sequence,
+                library: values.library,
               });
             }
             setShowCreate(false);

@@ -20,6 +20,7 @@ import { Students } from './pages/Students';
 import { Rewards } from './pages/Rewards';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { StudentBinder } from './pages/StudentBinder';
+import { MobileDocument } from './pages/MobileDocument';
 import { Classroom } from './pages/Classroom';
 import { Pronote } from './pages/Pronote';
 import { Academy } from './pages/Academy';
@@ -53,6 +54,8 @@ function App() {
         <Route path="/eleve" element={<StudentDashboard />} />
         {/* Classeur de la classe, par le lien de Pronote (jeton dans le chemin) */}
         <Route path="/classeur/c/:token" element={<StudentBinder />} />
+        {/* Version couleur d'un document imprimé, par son QR code (jeton dans le chemin) */}
+        <Route path="/d/:token" element={<MobileDocument />} />
         {/* Envoi d'une copie depuis le téléphone (QR code de « Ajouter une copie », jeton dans le #) */}
         <Route path="/depot" element={<CopyDepot />} />
 

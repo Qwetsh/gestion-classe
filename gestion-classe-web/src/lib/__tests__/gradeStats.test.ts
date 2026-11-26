@@ -315,3 +315,55 @@ describe('formatage', () => {
     expect(formatRate(0.756)).toBe('76 %');
   });
 });
+
+describe('studentAverage : éval qui ne compte que si elle monte la moyenne', () => {
+  const counted = (grade: number | null, coefficient = 1, status: GradeStatus = 'noted') =>
+    ({ entry: entry(grade, status), assessment: { coefficient, countsInAverage: true } });
+  const raising = (grade: number | null, coefficient = 1, status: GradeStatus = 'noted') =>
+    ({ entry: entry(grade, status), assessment: { coefficient, countsInAverage: true, onlyIfRaises: true } });
+
+  it('la retient quand elle monte la moyenne', () => {
+    expect(studentAverage([counted(10), raising(16)])).toBe(13);
+  });
+
+  it('l’ignore quand elle la baisse ou la laisse égale', () => {
+    expect(studentAverage([counted(12), raising(8)])).toBe(12);
+    expect(studentAverage([counted(12), raising(12)])).toBe(12);
+  });
+
+  it('tient compte des coefficients', () => {
+    expect(studentAverage([counted(10, 2), raising(16, 2)])).toBe(13);
+    expect(studentAverage([counted(10, 3), raising(18, 1)])).toBe(12);
+  });
+
+  it('donne la plus haute moyenne possible, quel que soit l’ordre', () => {
+    // 10 seul → 10 ; avec 18 → 14 ; 13 ne dépasse plus 14 : écartée. Dans l'ordre inverse aussi.
+    expect(studentAverage([counted(10), raising(13), raising(18)])).toBe(14);
+    expect(studentAverage([raising(18), raising(13), counted(10)])).toBe(14);
+    // Deux notes au-dessus de la moyenne obtenue : gardées toutes les deux.
+    expect(studentAverage([counted(10), raising(18), raising(16)])).toBeCloseTo(44 / 3, 10);
+  });
+
+  it('juge élève par élève : la même éval compte pour l’un, pas pour l’autre', () => {
+    expect(studentAverage([counted(8), raising(12)])).toBe(10);
+    expect(studentAverage([counted(15), raising(12)])).toBe(15);
+  });
+
+  it('un non rendu comptant zéro ne fait jamais baisser', () => {
+    expect(studentAverage([counted(11), raising(null, 1, 'non_rendu_zero')])).toBe(11);
+  });
+
+  it('absence, hors moyenne et coefficient nul restent écartés', () => {
+    expect(studentAverage([counted(10), raising(null, 1, 'absent')])).toBe(10);
+    expect(studentAverage([counted(10), raising(20, 0)])).toBe(10);
+    expect(studentAverage([
+      counted(10),
+      { entry: entry(20), assessment: { coefficient: 1, countsInAverage: false, onlyIfRaises: true } },
+    ])).toBe(10);
+  });
+
+  it('sans autre note, l’élève garde sa meilleure note de ce genre', () => {
+    expect(studentAverage([raising(9)])).toBe(9);
+    expect(studentAverage([raising(9), raising(15)])).toBe(15);
+  });
+});

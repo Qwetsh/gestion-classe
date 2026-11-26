@@ -8,7 +8,7 @@
  * Le même composant montre l'onglet « Fiches méthode » (`shelf="methodes"`) : chaque fiche y a son
  * bouton « Fiche », pour l'aperçu au survol, et les fiches sans niveau sont « Tous niveaux ».
  */
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ClipboardCheck, ExternalLink, FileText, FlaskConical, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
@@ -19,6 +19,8 @@ import {
 } from '../../lib/courseLibrary';
 import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu, type MoreMenuItem } from '../MoreMenu';
+import { ContextMenu } from '../ContextMenu';
+import { shareEligible } from '../../lib/mobileVersion';
 import { SequenceFiles } from './SequenceFiles';
 import { CoursePeek, prefetchPreview, type PeekTarget } from './CoursePeek';
 
@@ -46,6 +48,10 @@ interface Props {
   onDelete: (board: Board) => void;
   /** Sites ou applications de l'activité (cours rédigé seulement). */
   onEditLinks: (board: Board) => void;
+  /** Lien de partage en lecture seule (cahier de texte) : le créer s'il n'existe pas et le copier. */
+  onCopyShareLink?: (board: Board) => void;
+  /** Lien de partage en lecture seule : la fenêtre qui le montre et permet de le couper. */
+  onManageShareLink?: (board: Board) => void;
   onRenameSequence: (level: string | null, from: string, to: string) => Promise<void>;
   /** Fichiers des séquences (lot F1) ; null : le stockage des fichiers n'est pas disponible. */
   files: SequenceFilesApi | null;
@@ -69,7 +75,7 @@ export interface SequenceFilesApi {
 }
 
 
-export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onRenameSequence, files, tps, shelf = 'activites', onMoveShelf }: Props) {
+export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, onOpen, onPresent, onEdit, onDuplicate, onSaveAsTemplate, onDelete, onEditLinks, onCopyShareLink, onManageShareLink, onRenameSequence, files, tps, shelf = 'activites', onMoveShelf }: Props) {
   const methods = shelf === 'methodes';
   /** Sélecteur de fichiers unique : la séquence visée est notée au moment du clic. */
   const fileInput = useRef<HTMLInputElement>(null);
@@ -214,6 +220,34 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
     { label: 'Supprimer', onClick: () => onDelete(b), danger: true, group },
   ];
 
+  // ---- Clic droit (ou appui long) sur un bouton Fiche / Documents / Correction, ou sur le titre :
+  // les actions de ce document, dont le lien lecture seule, sans ouvrir le cours ----
+  const [ctx, setCtx] = useState<{ board: Board; x: number; y: number } | null>(null);
+  const contextProps = (b: Board) => ({
+    onContextMenu: (e: ReactMouseEvent<HTMLElement>) => {
+      e.preventDefault();
+      window.clearTimeout(peekTimer.current);
+      setPeek(null);
+      setCtx({ board: b, x: e.clientX, y: e.clientY });
+    },
+  });
+  const contextItems = (b: Board): MoreMenuItem[] => {
+    const shareable = b.is_course && shareEligible(b.title);
+    return [
+      { label: 'Ouvrir', onClick: () => onOpen(b), group: 'open' },
+      ...(b.is_course ? [{ label: 'Essayer en classe', onClick: () => onPresent(b), title: 'Rien n’est gardé en quittant', group: 'open' }] : []),
+      ...(shareable && onCopyShareLink ? [{
+        label: 'Copier le lien lecture seule',
+        onClick: () => onCopyShareLink(b),
+        title: 'À coller dans le cahier de texte : les élèves lisent, impriment ou enregistrent en PDF, sans compte. Le lien est créé s’il n’existe pas.',
+        group: 'share',
+      }] : []),
+      ...(shareable && onManageShareLink ? [{ label: 'Gérer le lien lecture seule…', onClick: () => onManageShareLink(b), title: 'Voir l’adresse, l’ouvrir ou couper le lien', group: 'share' }] : []),
+      ...(b.is_course && !shareable && onCopyShareLink ? [{ label: 'Lien lecture seule (pas pour une évaluation)', onClick: () => undefined, disabled: true, group: 'share' }] : []),
+      ...menuItems(b, 'actions'),
+    ];
+  };
+
   /** Titre d'une ligne ; une évaluation porte la pastille « Évaluation » à la place de son préfixe. */
   const rowTitle = (text: string, evaluation: boolean) => (evaluation ? (
     <span className="mc-row__title mc-row__title--eval">
@@ -324,7 +358,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                         const b = members[0].board;
                         return (
                           <li key={groupKey} className={`mc-row${evalClass}`}>
-                            <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours' : 'Ouvrir le tableau blanc'}>
+                            <button type="button" className="mc-row__open" onClick={() => onOpen(b)} title={b.is_course ? 'Ouvrir le cours (clic droit : autres actions, lien lecture seule)' : 'Ouvrir le tableau blanc'} {...contextProps(b)}>
                               {evaluation ? evalIcon : kindIcon(b)}
                               {rowTitle(b.title, evaluation)}
                             </button>
@@ -343,14 +377,14 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
                       const first = members[0];
                       return (
                         <li key={groupKey} className={`mc-row mc-row--activity${evalClass}`}>
-                          <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`}>
+                          <button type="button" className="mc-row__open" onClick={() => onOpen(first.board)} title={`Ouvrir ${first.board.title}`} {...contextProps(first.board)}>
                             {evaluation ? evalIcon : kindIcon(first.board)}
                             {rowTitle(title, evaluation)}
                           </button>
                           <span className="mc-variants">
                             {members.map(({ variant, board: b }) => (
                               <span key={b.id} className={`mc-variant mc-variant--${variant}`}>
-                                <button type="button" className="mc-variant__open" onClick={() => onOpen(b)} title={`Ouvrir ${b.title}`} {...peekProps(b)}>
+                                <button type="button" className="mc-variant__open" onClick={() => onOpen(b)} title={`Ouvrir ${b.title} (clic droit : autres actions, lien lecture seule)`} {...peekProps(b)} {...contextProps(b)}>
                                   {variantLabel(variant, evaluation)}
                                 </button>
                                 {renderChips(b, variant)}
@@ -391,6 +425,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
         );
       })}
       {peek && <CoursePeek target={peek} />}
+      {ctx && <ContextMenu x={ctx.x} y={ctx.y} title={ctx.board.title} items={contextItems(ctx.board)} onClose={() => setCtx(null)} />}
     </div>
   );
 }

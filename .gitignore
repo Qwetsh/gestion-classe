@@ -29,3 +29,18 @@ Thumbs.db
 
 # Cache Python (bibliothèque de la skill cours-gestion-classe)
 __pycache__/
+
+# État local de la CLI Supabase
+supabase/.temp/
+
+# Fichiers de travail posés à la racine (captures, instantanés d'écran, PDF d'essai) : le dépôt est
+# public, un « git add -A » ne doit pas les publier. Rien de ce type n'est suivi à la racine.
+/*.png
+/*.jpg
+/*.jpeg
+/*.pdf
+/_snapshot*.txt
+/_snap_*.txt
+/_ul*
+/_classeur_*/
+/AUDIT_SANTE_PROJET_*.md
