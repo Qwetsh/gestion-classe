@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { BookOpen, FlaskConical } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { studentBinderOpen } from '../lib/studentBinder';
 import { StudentBinderView } from '../components/binder/StudentBinderView';
 import { fetchStudentTps } from '../lib/studentTp';

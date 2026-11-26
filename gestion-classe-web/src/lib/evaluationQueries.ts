@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { getCurrentSchoolYear } from './constants';
 import type { StudentAccommodations } from './accommodations';
 import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, type GradeStatus } from './gradeStats';

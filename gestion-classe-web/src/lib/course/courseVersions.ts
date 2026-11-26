@@ -10,7 +10,7 @@
  * Table absente (migration non appliquée) : l'historique est simplement indisponible.
  */
 import type { JSONContent } from '@tiptap/core';
-import { supabase } from '../supabase';
+import { supabase } from '../supabaseUntyped';
 import type { CourseDoc } from './courseDoc';
 
 export type VersionKind = 'auto' | 'manual' | 'restore' | 'import' | 'conflict';
