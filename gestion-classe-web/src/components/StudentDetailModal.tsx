@@ -84,10 +84,10 @@ function sessionBars(events: StudentGrade['events'], max = 12): SessionBar[] {
     .slice(-max);
 }
 
-const dayMonth = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-const fullDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const dayMonth = (iso: string | null) =>
+  iso === null ? '' : new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+const fullDate = (iso: string | null) =>
+  iso === null ? '' : new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 const dayTime = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const slashDate = (iso: string) => {
