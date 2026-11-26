@@ -11,12 +11,15 @@ import { supabase } from './supabase';
  * - plan de classe : retiré des placements de l'ancienne classe (sinon siège fantôme) ;
  * - maisons : son affectation est copiée dans la nouvelle classe (si le module
  *   y est activé) puis retirée de l'ancienne ;
- * - groupes des séances de groupe encore actives de l'ancienne classe : retiré.
+ * - groupes des séances de groupe encore actives de l'ancienne classe : retiré ;
+ * - groupes de classe (demi-groupes) de l'ancienne classe : retiré. Sa place dans leurs plans se
+ *   vide d'elle-même : un plan de groupe n'affiche que les membres du groupe.
  */
 export interface TransferResult {
   seatRemoved: boolean;
   houseCopied: boolean;
   groupsLeft: number;
+  classGroupsLeft: number;
 }
 
 export async function transferStudent(
@@ -24,7 +27,7 @@ export async function transferStudent(
   toClassId: string,
   fromClassId: string | null,
 ): Promise<TransferResult> {
-  const result: TransferResult = { seatRemoved: false, houseCopied: false, groupsLeft: 0 };
+  const result: TransferResult = { seatRemoved: false, houseCopied: false, groupsLeft: 0, classGroupsLeft: 0 };
   if (fromClassId === toClassId) return result;
 
   // 1. Rattachement
@@ -110,6 +113,19 @@ export async function transferStudent(
     }
   }
 
+  // 5. Groupes de classe (demi-groupes) de l'ancienne classe
+  const { data: classGroups } = await supabase.from('class_groups').select('id').eq('class_id', fromClassId);
+  const classGroupIds = (classGroups || []).map(g => g.id);
+  if (classGroupIds.length > 0) {
+    const { data: removedMembers } = await supabase
+      .from('class_group_members')
+      .delete()
+      .eq('student_id', studentId)
+      .in('group_id', classGroupIds)
+      .select('group_id');
+    result.classGroupsLeft = (removedMembers || []).length;
+  }
+
   return result;
 }
 
@@ -119,5 +135,6 @@ export function describeTransfer(pseudo: string, className: string, r: TransferR
   if (r.seatRemoved) extras.push('place libérée dans l\'ancien plan');
   if (r.houseCopied) extras.push('maison conservée');
   if (r.groupsLeft > 0) extras.push('retiré de ses groupes');
+  if (r.classGroupsLeft > 0) extras.push('retiré de son groupe de classe');
   return `${pseudo} transféré(e) en ${className}${extras.length ? ` (${extras.join(', ')})` : ''}.`;
 }
