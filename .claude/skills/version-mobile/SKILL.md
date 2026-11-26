@@ -32,26 +32,22 @@ Ce qu'il faut savoir avant de commencer :
 
 ## 0. Les outils : un checkout à jour de master
 
-Les outils Python sont dans `.claude/skills/cours-gestion-classe/` du dépôt `Gestion classe`
-(`gc_envoi.py` pour le dépôt, `gc_mobile.py` pour fabriquer et contrôler, `gc_animation.py` pour
-les animations), et le gabarit de page dans `.claude/skills/version-mobile/`. Il faut un checkout
-**à jour de master** :
+Les outils Python sont dans le checkout des outils, `C:\Users\Utilisateur\gc-worktrees\outils-master`
+(noté `<checkout>` plus bas), copie de `master` hors OneDrive : `gc_envoi.py` pour le dépôt,
+`gc_mobile.py` pour fabriquer et contrôler, `gc_animation.py` pour les animations, tous dans
+`<checkout>\.claude\skills\cours-gestion-classe\`, et le gabarit de page dans
+`<checkout>\.claude\skills\version-mobile\`.
 
-1. Le dépôt principal est `C:\Users\Utilisateur\OneDrive\Code\Gestion classe`. Il est souvent sur
-   une autre branche, avec des modifications en cours : **ne jamais y changer de branche**.
-2. Chercher un worktree déjà sur master : `git -C "C:\Users\Utilisateur\OneDrive\Code\Gestion classe" worktree list`.
-3. Sinon, en créer un, détaché, et le remettre à jour à chaque session :
+En début de session, le remettre à jour (cela crée le checkout s'il manque, et réinstalle les
+skills du compte) :
 
-   ```
-   git -C "C:\Users\Utilisateur\OneDrive\Code\Gestion classe" fetch origin
-   git -C "C:\Users\Utilisateur\OneDrive\Code\Gestion classe" worktree add --detach C:\Users\Utilisateur\gc-worktrees\outils-master origin/master
-   # les fois suivantes :
-   git -C C:\Users\Utilisateur\gc-worktrees\outils-master fetch origin
-   git -C C:\Users\Utilisateur\gc-worktrees\outils-master checkout --detach origin/master
-   ```
+```
+python -I C:\Users\Utilisateur\gc-worktrees\outils-master\scripts\maj_outils_claude.py
+```
 
-4. Vérifier : `python -I gc_envoi.py` doit lister la commande `mobile`. Sinon, le checkout est
-   trop ancien.
+Ne jamais changer de branche dans le dépôt principal (`OneDrive\Code\Gestion classe`) pour
+produire du contenu, et ne jamais modifier une skill dans `~\.claude\skills` ni dans le checkout :
+une skill se modifie dans le dépôt, par une PR.
 
 Le jeton d'import est lu par `gc_envoi.py` dans `~/.gestion-classe/jeton-import.txt` : **ne jamais
 lire, afficher ni copier ce fichier**. Lancer Python avec `-I`.
