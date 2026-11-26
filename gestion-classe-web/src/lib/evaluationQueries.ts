@@ -115,6 +115,11 @@ export interface AssessmentRow {
   kind: AssessmentKind;
   group_id: string | null;
   counts_in_average: boolean;
+  /**
+   * Migration 093 : ne compte que pour l'élève dont elle fait monter la moyenne. Absent tant
+   * que la migration n'est pas appliquée.
+   */
+  only_if_raises_average?: boolean;
   /** TRUE : les élèves de la classe voient leur note, le sujet et le corrigé (migration 040). */
   published_to_students: boolean;
   /** Migration 064 : publiée sans les corrections (note seule). Absent avant la migration. */
@@ -140,10 +145,12 @@ export interface AssessmentRow {
   assessment_series?: AssessmentSeriesRow | null;
 }
 
-export type AssessmentKind = 'ecrit' | 'tp' | 'oral' | 'dm' | 'projet' | 'groupe';
+export type AssessmentKind = 'ecrit' | 'activite' | 'tp' | 'oral' | 'dm' | 'projet' | 'groupe';
 
 export const ASSESSMENT_KIND_LABEL: Record<AssessmentKind, string> = {
   ecrit: 'Évaluation écrite',
+  // Migration 093.
+  activite: 'Activité notée',
   tp: 'TP',
   oral: 'Oral',
   dm: 'Devoir maison',
@@ -237,6 +244,8 @@ export interface CreateAssessmentInput {
   /** Demi-classe concernee (NULL = classe entiere). */
   groupId?: string | null;
   countsInAverage?: boolean;
+  /** Migration 093 : envoye seulement s'il est vrai (une base sans la migration accepte le reste). */
+  onlyIfRaisesAverage?: boolean;
   /** Migration 060 : envoyes seulement s'ils sont renseignes (une base sans la migration accepte le reste). */
   shortName?: string | null;
   sequence?: string | null;
@@ -263,6 +272,7 @@ export async function createAssessment(input: CreateAssessmentInput): Promise<As
       series_id: input.seriesId ?? null,
       group_id: input.groupId ?? null,
       counts_in_average: input.countsInAverage ?? true,
+      ...(input.onlyIfRaisesAverage ? { only_if_raises_average: true } : {}),
       ...optionalLabels(input),
       ...libraryColumns(input.library),
     })
@@ -1126,6 +1136,8 @@ export interface UpdateAssessmentInput {
   coefficient?: number;
   kind?: AssessmentKind;
   countsInAverage?: boolean;
+  /** Migration 093. */
+  onlyIfRaisesAverage?: boolean;
   publishedToStudents?: boolean;
   /** Migration 064 : publiée sans les corrections. */
   correctionsWithheld?: boolean;
@@ -1147,6 +1159,7 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.coefficient !== undefined) row.coefficient = patch.coefficient;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
+  if (patch.onlyIfRaisesAverage !== undefined) row.only_if_raises_average = patch.onlyIfRaisesAverage;
   if (patch.publishedToStudents !== undefined) row.published_to_students = patch.publishedToStudents;
   if (patch.correctionsWithheld !== undefined) row.corrections_withheld = patch.correctionsWithheld;
   Object.assign(row, optionalLabels(patch, true), libraryColumns(patch.library, true));
@@ -1216,6 +1229,7 @@ export interface CreateSeriesInput {
   coefficient?: number;
   kind?: AssessmentKind;
   countsInAverage?: boolean;
+  onlyIfRaisesAverage?: boolean;
   shortName?: string | null;
   sequence?: string | null;
   library?: LibraryLink | null;
@@ -1265,6 +1279,7 @@ export async function createAssessmentSeries(input: CreateSeriesInput): Promise<
         kind: input.kind ?? 'ecrit',
         series_id: series.id,
         counts_in_average: input.countsInAverage ?? true,
+        ...(input.onlyIfRaisesAverage ? { only_if_raises_average: true } : {}),
         ...optionalLabels(input),
         ...libraryColumns(input.library),
       })),
@@ -1552,6 +1567,7 @@ export async function fetchStudentGradeReport(
           assessment: {
             coefficient: toNumber(l.assessment.coefficient) ?? 0,
             countsInAverage: l.assessment.counts_in_average,
+            onlyIfRaises: !!l.assessment.only_if_raises_average,
           },
         })),
     );
@@ -1587,6 +1603,7 @@ export async function updateSeriesAssessments(
   if (patch.coefficient !== undefined) row.coefficient = patch.coefficient;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
+  if (patch.onlyIfRaisesAverage !== undefined) row.only_if_raises_average = patch.onlyIfRaisesAverage;
   Object.assign(row, optionalLabels(patch, true), libraryColumns(patch.library, true));
   // La date n'est jamais propagée : chaque classe passe l'évaluation son jour.
   if (Object.keys(row).length === 0) return;

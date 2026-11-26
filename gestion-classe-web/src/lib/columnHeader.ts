@@ -10,6 +10,7 @@ import type { AssessmentKind, AssessmentRow } from './evaluationQueries';
 
 const KIND_SHORT: Record<AssessmentKind, string> = {
   ecrit: 'Écrit',
+  activite: 'Activité',
   dm: 'DM',
   tp: 'TP',
   oral: 'Oral',
@@ -71,6 +72,14 @@ export function columnLabels(items: readonly LabelInput[]): Map<string, ColumnLa
   return out;
 }
 
+/** Mention d'une éval qui ne compte que pour l'élève qu'elle avantage (migration 093). */
+export const RAISES_ONLY_LABEL = 'compte seulement si elle monte la moyenne';
+
+/** Vrai si l'éval compte dans la moyenne, mais seulement quand elle la fait monter. */
+export function raisesOnly(a: { counts_in_average: boolean; only_if_raises_average?: boolean | null }): boolean {
+  return a.counts_in_average && !!a.only_if_raises_average;
+}
+
 /** « coef 2 », « coef 1,5 ». */
 export function coefLabel(coefficient: number): string {
   return `coef ${String(coefficient).replace('.', ',')}`;
@@ -84,12 +93,15 @@ export function coefLabel(coefficient: number): string {
 export function columnDetailsSummary(d: {
   chip: string | null;
   countsInAverage: boolean;
+  /** Migration 093 : ne compte que si elle fait monter la moyenne de l'élève. */
+  onlyIfRaises?: boolean;
   coefficient: number | null;
   seriesSize: number;
 }): string {
   const parts: string[] = [];
   if (d.chip) parts.push(d.chip);
   if (!d.countsInAverage) parts.push('hors moyenne');
+  else if (d.onlyIfRaises) parts.push(RAISES_ONLY_LABEL);
   if (d.coefficient !== null) parts.push(coefLabel(d.coefficient));
   if (d.seriesSize > 1) parts.push(`${d.seriesSize} classes`);
   return parts.join(' · ');

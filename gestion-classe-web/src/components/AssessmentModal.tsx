@@ -29,6 +29,8 @@ export interface AssessmentValues {
   kind: AssessmentKind;
   date: string;
   countsInAverage: boolean;
+  /** Ne compte que pour l'élève dont elle fait monter la moyenne. Migration 093. */
+  onlyIfRaises: boolean;
   /** Titre court de l'en-tête de colonne du carnet ('' = le nom). Migration 060. */
   shortName: string;
   /** Séquence du programme ('' = aucune). Migration 060. */
@@ -90,6 +92,7 @@ export function AssessmentModal({
   const fromGroupSession = initial?.kind === 'groupe';
   const [date, setDate] = useState(initial?.date ?? '');
   const [countsInAverage, setCountsInAverage] = useState(initial?.countsInAverage ?? true);
+  const [onlyIfRaises, setOnlyIfRaises] = useState(initial?.onlyIfRaises ?? false);
   const [shortName, setShortName] = useState(initial?.shortName ?? '');
   const [sequence, setSequence] = useState(initial?.sequence ?? defaultSequence);
   const [busy, setBusy] = useState(false);
@@ -189,6 +192,8 @@ export function AssessmentModal({
     try {
       await onSubmit({
         name: trimmed, bareme: b, coefficient: c, kind, date, countsInAverage,
+        // Sans objet pour une éval hors moyenne : on ne garde pas une case cochée invisible.
+        onlyIfRaises: countsInAverage && onlyIfRaises,
         shortName: shortName.trim(), sequence: (libraryMode ? sequenceLabel(chapter ?? '') : sequence).trim(),
         library: libraryValue,
         classIds: canSpread && spread && currentClassId ? [currentClassId, ...targets] : undefined,
@@ -310,6 +315,13 @@ export function AssessmentModal({
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
           <input type="checkbox" checked={countsInAverage} onChange={(e) => setCountsInAverage(e.target.checked)} />
           Compte dans la moyenne
+        </label>
+        <label
+          title="Élève par élève : la note est retenue si elle fait monter sa moyenne, ignorée sinon."
+          style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 0 22px', fontSize: 13, color: countsInAverage ? 'var(--text)' : 'var(--text-dim)', cursor: countsInAverage ? 'pointer' : 'default' }}
+        >
+          <input type="checkbox" checked={countsInAverage && onlyIfRaises} disabled={!countsInAverage} onChange={(e) => setOnlyIfRaises(e.target.checked)} />
+          Seulement si elle fait monter la moyenne de l’élève
         </label>
 
         {/* Création : dupliquer l'évaluation sur d'autres classes */}

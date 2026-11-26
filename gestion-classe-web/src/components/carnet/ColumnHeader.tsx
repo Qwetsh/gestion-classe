@@ -6,7 +6,7 @@ import { PronoteColumnDialog } from '../PronoteColumnDialog';
 import { RelinkDialog } from '../RelinkDialog';
 import { ClassCopiesDialog, type ClassCopyStudent } from '../ClassCopiesDialog';
 import { hasCopies } from '../../lib/assessmentGroups';
-import { coefLabel, columnDetailsSummary, type ColumnLabel, type RelinkTarget } from '../../lib/columnHeader';
+import { coefLabel, columnDetailsSummary, raisesOnly, type ColumnLabel, type RelinkTarget } from '../../lib/columnHeader';
 import { exportAssessmentNotesXlsx } from '../../lib/gradeExport';
 import {
   downloadAssessmentDoc,
@@ -209,7 +209,8 @@ export function ColumnHeader({
   const canRelink = assessment.kind !== 'groupe';
   const coef = label.coefficient;
   const details = columnDetailsSummary({
-    chip: chip?.label ?? null, countsInAverage: assessment.counts_in_average, coefficient: coef, seriesSize,
+    chip: chip?.label ?? null, countsInAverage: assessment.counts_in_average, onlyIfRaises: !!assessment.only_if_raises_average,
+    coefficient: coef, seriesSize,
   });
   const pills = showDetails || !!suggestion || !!toCorrect;
 
@@ -255,6 +256,7 @@ export function ColumnHeader({
         )}
         {showDetails && chip && <span className="gc-pill" style={{ background: chip.background, color: chip.color }}>{chip.label}</span>}
         {showDetails && !assessment.counts_in_average && <span className="gc-pill gc-pill--outline">hors moy.</span>}
+        {showDetails && raisesOnly(assessment) && <span className="gc-pill gc-pill--outline" title="Ne compte que pour l’élève dont elle fait monter la moyenne">si monte la moy.</span>}
         {showDetails && seriesSize > 1 && <span className="gc-pill gc-pill--indigo" title="Même éval dans plusieurs classes">{seriesSize} classes</span>}
         {suggestion && (
           <button
