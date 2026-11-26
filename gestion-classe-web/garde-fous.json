@@ -7,7 +7,7 @@
     "src/components/course/CourseEditor.tsx": 1636,
     "src/lib/evaluationQueries.ts": 1734,
     "src/pages/Classes.tsx": 2160,
-    "src/pages/Students.tsx": 2490,
+    "src/pages/Students.tsx": 2113,
     "src/tools/timeline-templates.ts": 1534,
     "src/tools/TimelineGenerator.tsx": 1710
   },
@@ -34,7 +34,7 @@
     "src/pages/SessionDetail.tsx": 11,
     "src/pages/Sessions.tsx": 13,
     "src/pages/StudentDashboard.tsx": 6,
-    "src/pages/Students.tsx": 54
+    "src/pages/Students.tsx": 43
   },
   "clientSansTypes": [
     "src/components/academy/AcademyQuiz.tsx",
