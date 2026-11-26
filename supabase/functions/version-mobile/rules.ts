@@ -54,6 +54,23 @@ export function linkEligible(kind: LinkKind, title: string): boolean {
   return kind === 'share' ? shareEligible(title) : mobileEligible(title);
 }
 
+/** Un cours désigné par son identifiant et son titre (relu en base au moment du choix). */
+export interface CourseRef { id: string; title: string }
+
+/**
+ * Le document vers lequel pointe un lien de cette sorte : QR code imprimé (`qr`) ou lien de
+ * partage collé dans le cahier de texte (`share`, qui peut aussi ouvrir une correction d'activité).
+ * Toujours l'original de la bibliothèque : une copie posée pour une classe
+ * (`lesson_boards.source_board_id`) renvoie à son original ; un original introuvable (supprimé
+ * depuis) laisse la copie servir elle-même. Null si le cours ou son original ne peut pas sortir
+ * par ce lien. Sert aussi au dépôt d'une version sur mesure (depot-cours, action "mobile").
+ */
+export function linkTarget(kind: LinkKind, course: CourseRef, original: CourseRef | null): string | null {
+  if (!linkEligible(kind, course.title)) return null;
+  if (original && original.id !== course.id) return linkEligible(kind, original.title) ? original.id : null;
+  return course.id;
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /** Nœuds qui ne sortent pas : encarts (tableau blanc), zones d'écriture, pointillés de réponse. */

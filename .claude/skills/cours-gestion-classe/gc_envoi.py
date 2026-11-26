@@ -18,12 +18,17 @@ En ligne de commande (python -I gc_envoi.py ...) :
                                            lire_entree_cahier) ; --remplacer pour écraser une
                                            entrée différente (sur demande de Thomas),
                                            --reprise pour des fichiers anciens (source « import »)
+    mobile <id du cours> <page.html>       dépose la version mobile « sur mesure » du document (page
+                                           HTML autonome, 5 Mo au plus) ; remplace la précédente ;
+                                           affiche l'adresse /d/<jeton> du QR code (skill version-mobile)
+    mobile <id du cours> --retirer         retire la version sur mesure (retour à l'automatique)
 
 Placer sur l'emploi du temps : voir gc_semaine.py (agenda, bibliothèque, placer, retirer).
 
 Depuis un script : envoyer_image(chemin), envoyer_fichier(chemin), envoyer_cours(brouillon), envoyer_ecrans(id, pages),
 lire_agenda(depuis, jours), placer(id original, cours), retirer(id copie),
-lire_entree_cahier(chemin), envoyer_cahier(entrees, remplacer, source).
+lire_entree_cahier(chemin), envoyer_cahier(entrees, remplacer, source),
+envoyer_mobile(id, page_html, retirer=False), images_du_document(jeton du QR code, dossier).
 """
 import base64
 import hashlib
@@ -41,10 +46,13 @@ FICHIER_JETON = os.path.join(DOSSIER, 'jeton-import.txt')
 # Images déjà envoyées (empreinte du fichier -> chemin) : une image n'est jamais envoyée deux fois
 FICHIER_IMAGES = os.path.join(DOSSIER, 'images-envoyees.json')
 IMAGE_MAX = 8 * 1024 * 1024
+# Version mobile sur mesure (action "mobile", migration 093)
+PAGE_MOBILE_MAX = 5 * 1024 * 1024
+ADRESSE_APP = 'https://qwetsh.github.io/gestion-classe'
 
 MESSAGES = {
     'invalid_token': "Jeton refusé : il est révoqué, expiré ou mal copié. En créer un dans Réglages > Jeton d'import.",
-    'too_large': 'Envoi trop lourd (image : 8 Mo au plus).',
+    'too_large': 'Envoi trop lourd (image : 8 Mo au plus ; page mobile : 5 Mo au plus).',
     'bad_image': "Ce fichier n'est pas une image PNG, JPEG, WebP ou GIF.",
     'bad_file': "Fichier joint refusé : seulement image, modèle 3D GLB, son (MP3, OGG, WAV) ou vidéo (MP4, WebM).",
     'bad_doc': "Ce n'est pas un document de cours (version 1, contenu de type doc).",
@@ -60,6 +68,12 @@ MESSAGES = {
     'used_in_session': 'Une séance a déjà utilisé cette copie : elle reste (son encre en dépend).',
     'edited': 'Cette copie a été ouverte ou retouchée depuis sa pose : la retirer seulement si Thomas le demande (--forcer).',
     'bad_request': 'Demande mal formée.',
+    'not_eligible': "Une correction, une copie modèle ou une évaluation n'a pas de version mobile (ni le QR code).",
+    'not_a_page': 'Ce n\'est pas une page HTML complète : elle doit commencer par <!DOCTYPE html> ou <html>.',
+    'network': 'La page charge quelque chose hors d\'elle-même (tout doit être dans la page : images en data URI, '
+               'styles et scripts écrits dedans ; seuls les liens <a> peuvent viser un site).',
+    'not_a_course': "Ce n'est pas un cours rédigé : pas de version mobile.",
+    'migration_missing': 'Les versions sur mesure ne sont pas encore activées sur le serveur (migration 093).',
 }
 
 # Résultat d'une entrée de cahier de texte (action "journal")
@@ -112,6 +126,8 @@ def _appel(corps):
             message += ' Image : ' + str(detail['path'])
         if detail.get('page_id'):
             message += ' Page : ' + str(detail['page_id'])
+        if detail.get('detail'):
+            message += ' Repéré : ' + str(detail['detail'])
         raise EnvoiRefuse(message)
     except urllib.error.URLError as e:
         raise EnvoiRefuse('La fonction de dépôt ne répond pas : %s' % e.reason)
@@ -237,6 +253,60 @@ def retirer(copie, forcer=False):
     return _appel(corps)
 
 
+# ---- Version mobile sur mesure (action "mobile", migration 093, skill version-mobile) ----
+
+def adresse_mobile(jeton_qr):
+    """Adresse de la page du QR code (/d/<jeton>), à donner à Thomas."""
+    return '%s/d/%s' % (ADRESSE_APP, jeton_qr)
+
+
+def images_du_document(jeton_qr, dossier):
+    """Télécharge les images d'un document par le jeton de son QR code (table board_mobile_links,
+    lisible avec le connecteur Supabase), pour les intégrer en data URI dans la version sur mesure.
+    Passe par la fonction publique `version-mobile` (version simple : ce que voit qui scanne le QR
+    code), sans le jeton d'import. Rend { chemin de stockage : fichier local }."""
+    url = URL.rsplit('/', 1)[0] + '/version-mobile'
+    requete = urllib.request.Request(url, data=json.dumps({'token': jeton_qr, 'version': 'simple'}).encode('utf-8'),
+                                     headers={'Content-Type': 'application/json'}, method='POST')
+    try:
+        with urllib.request.urlopen(requete, timeout=60) as reponse:
+            images = json.loads(reponse.read().decode('utf-8')).get('images') or {}
+    except urllib.error.HTTPError as e:
+        raise EnvoiRefuse('Document illisible par ce jeton (%d) : lien coupé, correction ou évaluation ?' % e.code)
+    except urllib.error.URLError as e:
+        raise EnvoiRefuse('La fonction version-mobile ne répond pas : %s' % e.reason)
+    os.makedirs(dossier, exist_ok=True)
+    locaux = {}
+    for chemin, adresse in images.items():
+        local = os.path.join(dossier, os.path.basename(chemin))
+        with urllib.request.urlopen(adresse, timeout=60) as reponse, open(local, 'wb') as f:
+            f.write(reponse.read())
+        locaux[chemin] = local
+    return locaux
+
+
+def envoyer_mobile(cours_id, page_html=None, retirer=False):
+    """Dépose (ou remplace) la version mobile sur mesure d'un document : `page_html` est le chemin
+    d'une page HTML complète et autonome (rien du réseau, 5 Mo au plus). Une copie posée sur un cours
+    est ramenée à son original. Rend { board_id, token, bytes, replaced, adresse }.
+    retirer=True : retire la version sur mesure (le QR code sert de nouveau la version automatique) ;
+    rend { ok, board_id, removed }."""
+    if retirer:
+        return _appel({'action': 'mobile', 'board_id': cours_id, 'remove': True})
+    if not page_html:
+        raise EnvoiRefuse('Indiquer la page HTML à déposer.')
+    with open(page_html, 'rb') as f:
+        octets = f.read()
+    if len(octets) > PAGE_MOBILE_MAX:
+        raise EnvoiRefuse('Page trop lourde : %.1f Mo (5 Mo au plus). Alléger les images (JPEG, 1200 px de large au plus).'
+                          % (len(octets) / 1024 / 1024))
+    html = octets.decode('utf-8-sig')
+    r = _appel({'action': 'mobile', 'board_id': cours_id, 'html': html})
+    if r.get('token'):
+        r['adresse'] = adresse_mobile(r['token'])
+    return r
+
+
 # ---- Cahier de texte (action "journal", migration 084) ----
 
 # « 2026-11-23 11h15 4B — Activité 2 Wegener.txt »
@@ -331,6 +401,16 @@ def _principal(args):
                 print(__doc__)
                 return 2
             print('%d écrans posés.' % envoyer_ecrans(args[1], args[2], remplacer))
+        elif commande == 'mobile' and len(args) in (3, 4) and (len(args) == 3 or args[3] == '--retirer'):
+            if '--retirer' in args[2:]:
+                r = envoyer_mobile(args[1], retirer=True)
+                print('Version sur mesure retirée.' if r.get('removed') else 'Ce document n\'avait pas de version sur mesure.')
+            else:
+                r = envoyer_mobile(args[1], args[2])
+                print('Version mobile sur mesure %s (%d Ko)%s.' % ('remplacée' if r.get('replaced') else 'déposée', r.get('bytes', 0) // 1024,
+                                                                   ' sur l\'original %s' % r['board_id'] if r.get('copy_of') else ''))
+                print('Adresse du QR code : %s' % r['adresse'] if r.get('adresse')
+                      else 'Pas encore de QR code pour ce document (migration 090 absente ?).')
         elif commande == 'cahier' and len(args) >= 2 and set(args[2:]) <= {'--remplacer', '--reprise'}:
             fichiers, entrees, illisibles = _fichiers_cahier(args[1]), [], 0
             for chemin in fichiers:

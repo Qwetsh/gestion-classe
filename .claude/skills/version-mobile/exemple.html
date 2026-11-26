@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activité 3 — Des continents qui se déplacent ?</title>
+<!-- Exemple minimal de version mobile sur mesure (skill version-mobile), bâti sur gabarit.html. -->
+<style>
+  /* Charte des fiches de Thomas (gc_cours.py) */
+  :root {
+    --bleu-nuit: #1F4E79; --bleu: #2E75B6; --bleu-fonce: #1F3864;
+    --rouge: #C00000;                         /* bilans, titre compris */
+    --gris: #595959; --fond-gris: #F2F2F2;
+    --fond-bleu: #EAF1F9; --fond-rose: #FBE5E5;
+    --jaune: #B8860B; --jaune-titre: #8B6F00; --jaune-texte: #5C4A00; --fond-jaune: #FFF8DC;
+    --violet: #7030A0; --vert: #548235; --vert-titre: #385723;
+    --texte: #1d2433; --trait: #D6DEE8;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: #fff; color: var(--texte);
+    font: 17px/1.55 "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  }
+  /* 56 px libres en bas : le bouton « Version simple » de l'application s'y pose */
+  main { max-width: 640px; margin: 0 auto; padding: 16px 16px 72px; }
+  img, svg, video { max-width: 100%; height: auto; display: block; }
+  h1 { margin: 4px 0 6px; font-size: 24px; line-height: 1.25; color: var(--bleu-nuit); }
+  h2 { margin: 0 0 10px; font-size: 20px; line-height: 1.3; color: var(--bleu-nuit); }
+  p { margin: 0 0 12px; }
+  b, strong { font-weight: 700; }
+
+  /* En-tête : séquence, titre, problématique */
+  .entete { padding: 14px 16px; border-radius: 14px; background: var(--bleu-nuit); color: #fff; margin-bottom: 18px; }
+  .entete .sequence { font-size: 14px; opacity: .85; margin: 0 0 4px; }
+  .entete h1 { color: #fff; margin: 0; }
+  .problematique { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .35); font-weight: 700; }
+
+  /* Une idée par section */
+  section { margin: 0 0 22px; }
+  .carte { padding: 14px 16px; border: 1px solid var(--trait); border-radius: 14px; background: #fff; }
+  .document { background: var(--fond-bleu); border-color: #C9DAEE; }
+  .document figcaption, .legende { font-size: 15px; color: var(--gris); margin-top: 8px; }
+  .rappel { background: var(--fond-jaune); border-color: var(--jaune); color: var(--jaune-texte); }
+  .rappel h2 { color: var(--jaune-titre); }
+  .plus-loin { border-color: var(--violet); }
+  .plus-loin h2 { color: var(--violet); }
+  .bilan { border: 2px solid var(--rouge); background: #fff; }
+  .bilan, .bilan h2 { color: var(--rouge); }           /* un bilan s'écrit en rouge */
+
+  /* Questions : même numérotation que la feuille */
+  .question { display: flex; gap: 10px; margin: 0 0 14px; }
+  .question .n { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--bleu-nuit); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 15px; }
+
+  /* Boutons : 44 px au moins, faciles à toucher */
+  button { font: inherit; }
+  .bouton { min-height: 44px; padding: 8px 16px; border-radius: 12px; border: 1px solid var(--bleu-nuit); background: #fff; color: var(--bleu-nuit); font-weight: 700; cursor: pointer; }
+  .bouton.plein { background: var(--bleu-nuit); color: #fff; }
+  .bouton:disabled { opacity: .4; }
+
+  /* Révéler (vocabulaire, aide de méthode : jamais une réponse sur une fiche d'activité) */
+  .revele > .contenu { display: none; margin-top: 10px; }
+  .revele.ouvert > .contenu { display: block; }
+
+  /* Étapes : une à la fois */
+  .etapes .etape { display: none; }
+  .etapes .etape.active { display: block; }
+  .etapes .nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .etapes .compteur { font-size: 15px; color: var(--gris); }
+
+  /* Image qu'on touche pour l'agrandir */
+  .zoomable { cursor: zoom-in; }
+  .agrandie { position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, .88); display: grid; place-items: center; padding: 12px; cursor: zoom-out; }
+  .agrandie img { max-height: 100%; }
+
+  /* Animation du tableau (gc_animation) dans un cadre srcdoc, pilotée par la page */
+  .anim iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; background: #fff; }
+  .anim .titre-etape { font-weight: 700; color: var(--bleu-nuit); margin: 10px 0 4px; }
+  .anim .legende-etape { margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<main>
+  <header class="entete">
+    <p class="sequence">Séquence 2 — La Terre, une planète active</p>
+    <h1>Activité 3 — Des continents qui se déplacent ?</h1>
+    <p class="problematique">Quels indices ont conduit Wegener à proposer la dérive des continents ?</p>
+  </header>
+
+  <section class="carte">
+    <h2>Situation de départ</h2>
+    <p>En 1912, Alfred Wegener remarque que les côtes de l'Amérique du Sud et de l'Afrique semblent s'emboîter comme les pièces d'un puzzle.</p>
+  </section>
+
+  <section class="carte document">
+    <h2>Document 1 — Deux côtes qui se répondent</h2>
+    <figure style="margin:0">
+      <svg viewBox="0 0 340 220" role="img" aria-label="Schéma : côtes de l'Amérique du Sud et de l'Afrique">
+        <rect width="340" height="220" rx="10" fill="#D9E8F6"/>
+        <path d="M70 30 L130 40 L150 80 L140 130 L110 190 L85 200 L80 150 L60 100 Z" fill="#8DB580" stroke="#385723" stroke-width="2"/>
+        <path d="M200 30 L270 35 L300 90 L280 150 L250 195 L225 170 L215 120 L180 95 L185 55 Z" fill="#C9A66B" stroke="#5C4A00" stroke-width="2"/>
+        <text x="72" y="215" font-size="13" fill="#1F3864">Amérique du Sud</text>
+        <text x="225" y="215" font-size="13" fill="#1F3864">Afrique</text>
+      </svg>
+      <figcaption>Schéma simplifié (exemple de la skill version-mobile).</figcaption>
+    </figure>
+  </section>
+
+  <section class="carte rappel revele">
+    <h2>Rappel de vocabulaire</h2>
+    <button class="bouton" type="button" data-revele aria-expanded="false">Voir la définition de « fossile »</button>
+    <div class="contenu"><p>Un <b>fossile</b> est un reste ou une trace d'être vivant conservé dans une roche.</p></div>
+  </section>
+
+  <section class="carte etapes">
+    <h2>Méthode — Comparer deux documents</h2>
+    <div class="etape"><p><b>1.</b> Je repère ce qui est semblable dans les deux documents.</p></div>
+    <div class="etape"><p><b>2.</b> Je repère ce qui est différent.</p></div>
+    <div class="etape"><p><b>3.</b> J'en tire une conclusion, en une phrase.</p></div>
+    <div class="nav"></div>
+  </section>
+
+  <section>
+    <h2>Questions</h2>
+    <div class="question"><span class="n">1</span><p><b>Décris</b> la forme des côtes du <b>document 1</b>.</p></div>
+    <div class="question"><span class="n">2</span><p><b>Explique</b> pourquoi Wegener parle d'un « puzzle ».</p></div>
+    <p class="legende">Réponds sur ta feuille : cette page t'aide à lire, elle ne donne pas les réponses.</p>
+  </section>
+</main>
+
+<script>
+/* Petits outils de la page (aucun appel réseau, aucun stockage). */
+(function () {
+  'use strict';
+
+  // Révéler : <div class="revele"><button class="bouton" data-revele>Voir le mot</button><div class="contenu">…</div></div>
+  document.querySelectorAll('[data-revele]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var boite = b.closest('.revele');
+      var ouvert = boite.classList.toggle('ouvert');
+      b.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+    });
+  });
+
+  // Étapes : <div class="etapes"><div class="etape">…</div>…<div class="nav"></div></div>
+  document.querySelectorAll('.etapes').forEach(function (bloc) {
+    var etapes = bloc.querySelectorAll('.etape');
+    var nav = bloc.querySelector('.nav');
+    if (!etapes.length || !nav) return;
+    var i = 0;
+    nav.innerHTML = '<button class="bouton" type="button">◀ Précédent</button><span class="compteur"></span><button class="bouton plein" type="button">Suivant ▶</button>';
+    var prec = nav.children[0], compteur = nav.children[1], suiv = nav.children[2];
+    function montrer() {
+      etapes.forEach(function (e, k) { e.classList.toggle('active', k === i); });
+      compteur.textContent = (i + 1) + ' / ' + etapes.length;
+      prec.disabled = i === 0;
+      suiv.disabled = i === etapes.length - 1;
+    }
+    prec.addEventListener('click', function () { if (i > 0) { i--; montrer(); } });
+    suiv.addEventListener('click', function () { if (i < etapes.length - 1) { i++; montrer(); } });
+    montrer();
+  });
+
+  // Agrandir une image : <img class="zoomable" …>
+  document.querySelectorAll('img.zoomable').forEach(function (img) {
+    img.addEventListener('click', function () {
+      var voile = document.createElement('div');
+      voile.className = 'agrandie';
+      voile.innerHTML = '<img alt="">';
+      voile.firstChild.src = img.src;
+      voile.addEventListener('click', function () { voile.remove(); });
+      document.body.appendChild(voile);
+    });
+  });
+
+  /*
+   * Animation du tableau, dans un cadre srcdoc : le lecteur gc-anim s'y croit « dans le tableau »
+   * (pas de boutons) ; la page le pilote et affiche elle-même le titre et la légende de chaque
+   * étape, en grand. Balisage :
+   *   <div class="anim" data-etapes='[{"title":"…","caption":"…"}, …]'>
+   *     <iframe title="…" srcdoc="…"></iframe>
+   *     <p class="titre-etape"></p><p class="legende-etape"></p><div class="nav"></div>
+   *   </div>
+   */
+  document.querySelectorAll('.anim').forEach(function (bloc) {
+    var cadre = bloc.querySelector('iframe');
+    var etapes = JSON.parse(bloc.getAttribute('data-etapes') || '[]');
+    var nav = bloc.querySelector('.nav');
+    if (!cadre || !etapes.length || !nav) return;
+    var i = 0;
+    nav.className = 'nav';
+    nav.style.cssText = 'display:flex;gap:8px;justify-content:space-between;align-items:center';
+    nav.innerHTML = '<button class="bouton" type="button">◀</button><button class="bouton" type="button">↺ Rejouer</button><button class="bouton plein" type="button">Suivant ▶</button>';
+    var b = nav.children;
+    function envoyer(cmd) { cadre.contentWindow.postMessage({ gc: 'anim', cmd: cmd, step: i }, '*'); }
+    function montrer() {
+      var e = etapes[i] || {};
+      var titre = bloc.querySelector('.titre-etape'), legende = bloc.querySelector('.legende-etape');
+      if (titre) { titre.textContent = (i + 1) + ' / ' + etapes.length + ' — ' + (e.title || ''); titre.style.color = e.color || ''; }
+      if (legende) { legende.innerHTML = e.caption || ''; legende.style.color = e.captionColor || ''; }
+      b[0].disabled = i === 0;
+      b[2].disabled = i === etapes.length - 1;
+    }
+    b[0].addEventListener('click', function () { if (i > 0) { i--; envoyer('goto'); montrer(); } });
+    b[1].addEventListener('click', function () { envoyer('replay'); });
+    b[2].addEventListener('click', function () { if (i < etapes.length - 1) { i++; envoyer('goto'); montrer(); } });
+    window.addEventListener('message', function (ev) {
+      if (ev.source === cadre.contentWindow && ev.data && ev.data.gc === 'anim' && ev.data.ev === 'ready') envoyer('init');
+    });
+    montrer();
+  });
+})();
+</script>
+</body>
+</html>
