@@ -18,6 +18,7 @@ import { StudentNav, type StudentView } from '../components/student/StudentNav';
 import { StudentStamps, type StampData } from '../components/student/StudentStamps';
 import { fetchStudentGrades, type StudentAssessment } from '../lib/studentGrades';
 import type { HouseId } from '../lib/academyQueries';
+import { readStudentTheme, saveStudentTheme, studentTheme, studentThemeFontUrl, type StudentThemeId } from '../lib/studentThemes';
 import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
 import '../styles/eleve.css';
 
@@ -113,6 +114,14 @@ export function StudentDashboard() {
   const currentCodeRef = useRef('');
   const [muted, setMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  /** Thème de l'espace, gardé sur l'appareil (lib/studentThemes.ts). L'onglet Maison n'en dépend pas. */
+  const [theme, setTheme] = useState<StudentThemeId>(() => readStudentTheme());
+  const chooseTheme = useCallback((id: StudentThemeId) => {
+    setTheme(id);
+    saveStudentTheme(id);
+  }, []);
+  /** Attribut posé sur la racine : le thème de départ n'en a pas besoin. */
+  const themeAttr = theme === 'carnet' ? undefined : theme;
 
   /** Entrées de la barre ouvertes à cet élève. */
   const available: StudentView[] = ['home', 'notes', 'cours', ...(showStamps ? ['stamps' as const] : []), ...(academyData?.enabled ? ['academy' as const] : [])];
@@ -142,6 +151,26 @@ export function StudentDashboard() {
       }
     };
   }, [isAcademyActive, muted]);
+
+  // La police des titres d'un thème n'est chargée que s'il est choisi
+  useEffect(() => {
+    const url = studentThemeFontUrl(studentTheme(theme));
+    if (!url || document.querySelector(`link[data-el-theme-font="${theme}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    link.dataset.elThemeFont = theme;
+    document.head.appendChild(link);
+  }, [theme]);
+
+  // Le fond du navigateur suit le thème (on le voit quand la page rebondit en haut ou en bas) ;
+  // sur l'onglet Maison, il est rendu à l'Académie
+  useEffect(() => {
+    if (isAcademyActive) return;
+    const before = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = studentTheme(theme).bg;
+    return () => { document.body.style.backgroundColor = before; };
+  }, [theme, isAcademyActive]);
 
   const bonusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -340,7 +369,7 @@ export function StudentDashboard() {
   if (!data) {
     const complete = code.join('').length === 6;
     return (
-      <div className="el">
+      <div className="el" data-theme={themeAttr}>
         <div className="el-login">
           <form className="el-card el-login__card" onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -518,7 +547,7 @@ export function StudentDashboard() {
   const bonusToPick = showStamps && (stampData?.active_card?.stamp_count ?? 0) >= 10 && (stampData?.available_bonuses.length ?? 0) > 0;
 
   return (
-    <div className="el">
+    <div className="el" data-theme={themeAttr}>
       <main className="el-main">
         {current === 'home' && (
           <StudentHome
@@ -532,6 +561,8 @@ export function StudentDashboard() {
             onOpenImplication={() => { setNotesPart('implication'); goTo('notes'); }}
             onOpenStamps={() => goTo('stamps')}
             onLogout={handleLogout}
+            theme={theme}
+            onTheme={chooseTheme}
           />
         )}
 

@@ -28,21 +28,23 @@ import {
 import { tpGroupColor } from '../lib/tpGroupSheet';
 import { CourseReadOnly } from './student/CourseReadOnly';
 
-// Direction A de l'espace élève (26/11/2026) : fond gris clair, cartes blanches à bord fin, un seul indigo
+// Les couleurs sont celles de l'espace élève (styles/eleve.css, racine `.el`) : les TP suivent le
+// thème choisi. Les feuilles des fiches, elles, restent du papier blanc.
 const V = {
-  bg: '#F6F6F7',
-  card: '#FFFFFF',
-  line: '#E6E6E9',
-  text: '#18181B',
-  muted: '#6B6B74',
-  mid: '#52525B',
-  indigo: '#4F46E5',
-  indigoSoft: '#EEF0FF',
-  indigoText: '#4338CA',
-  tpSoft: '#FFF1E8',
-  tpText: '#9A3412',
-  okSoft: '#EAF6EE',
-  ok: '#166534',
+  bg: 'var(--el-bg)',
+  card: 'var(--el-surface)',
+  line: 'var(--el-line)',
+  text: 'var(--el-text)',
+  muted: 'var(--el-dim)',
+  mid: 'var(--el-muted)',
+  indigo: 'var(--el-indigo)',
+  onAccent: 'var(--el-on-accent)',
+  indigoSoft: 'var(--el-indigo-soft)',
+  indigoText: 'var(--el-indigo-ink)',
+  tpSoft: 'var(--el-warn-soft)',
+  tpText: 'var(--el-warn-ink)',
+  okSoft: 'var(--el-pos-soft)',
+  ok: 'var(--el-pos-ink)',
 };
 
 /** Lien de retour, en haut d'un écran. */
@@ -162,11 +164,11 @@ function TpList({ className, items, failed, onOpen, onClose }: {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {t.deposit_open && (
-                <button type="button" onClick={() => onOpen(t.session_id, 'photos')} style={{ flex: 1, height: 48, borderRadius: 6, border: 'none', background: V.indigo, color: '#FFFFFF', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <button type="button" onClick={() => onOpen(t.session_id, 'photos')} style={{ flex: 1, height: 48, borderRadius: 6, border: 'none', background: V.indigo, color: V.onAccent, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <CameraIcon />Déposer
                 </button>
               )}
-              <button type="button" onClick={() => onOpen(t.session_id)} style={{ flex: 1, height: 48, borderRadius: 6, border: t.deposit_open ? `1px solid ${V.line}` : 'none', background: t.deposit_open ? V.card : V.indigo, color: t.deposit_open ? V.text : '#FFFFFF', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => onOpen(t.session_id)} style={{ flex: 1, height: 48, borderRadius: 6, border: t.deposit_open ? `1px solid ${V.line}` : 'none', background: t.deposit_open ? V.card : V.indigo, color: t.deposit_open ? V.text : V.onAccent, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Ouvrir le TP
               </button>
             </div>
@@ -284,7 +286,7 @@ function TpDetail({ code, sessionId, initialPart, onBack }: { code: string; sess
                 type="button"
                 onClick={() => setPart(p.key)}
                 aria-current={part === p.key ? 'page' : undefined}
-                style={{ flex: 1, minHeight: 44, borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: 2, lineHeight: '15px', cursor: 'pointer', fontFamily: 'inherit', background: part === p.key ? V.indigo : 'transparent', color: part === p.key ? '#FFFFFF' : V.mid }}
+                style={{ flex: 1, minHeight: 44, borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: 2, lineHeight: '15px', cursor: 'pointer', fontFamily: 'inherit', background: part === p.key ? V.indigo : 'transparent', color: part === p.key ? V.onAccent : V.mid }}
               >
                 {p.label}
                 {p.badge ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 20, padding: '0 5px', borderRadius: 6, background: V.tpSoft, color: V.tpText, fontSize: 12, fontWeight: 700 }}>{p.badge}</span> : null}
@@ -318,7 +320,7 @@ function TpDetail({ code, sessionId, initialPart, onBack }: { code: string; sess
                         <button type="button" onClick={() => urls[ph.id] && setZoom(ph)} aria-label={`Photo de ${ph.mine ? 'toi' : ph.author}, ${fmtTime(ph.created_at)}`} style={{ position: 'absolute', inset: 0, border: 'none', padding: 0, background: 'transparent', cursor: urls[ph.id] ? 'zoom-in' : 'default' }}>
                           {urls[ph.id] && <img src={urls[ph.id]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
                         </button>
-                        <span style={{ position: 'absolute', left: 6, bottom: 6, height: 22, padding: '0 7px', borderRadius: 6, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', background: ph.author === 'Prof' ? V.indigo : 'rgba(24,24,27,0.82)', color: '#FFFFFF', pointerEvents: 'none' }}>{ph.whole_class ? 'Classe' : ph.mine ? 'Toi' : ph.author}</span>
+                        <span style={{ position: 'absolute', left: 6, bottom: 6, height: 22, padding: '0 7px', borderRadius: 6, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', background: ph.author === 'Prof' ? V.indigo : 'rgba(24,24,27,0.82)', color: ph.author === 'Prof' ? V.onAccent : '#FFFFFF', pointerEvents: 'none' }}>{ph.whole_class ? 'Classe' : ph.mine ? 'Toi' : ph.author}</span>
                         <span style={{ position: 'absolute', right: 6, bottom: 6, fontSize: 12, fontWeight: 600, color: '#FFFFFF', background: 'rgba(24,24,27,0.6)', padding: '2px 6px', borderRadius: 5, pointerEvents: 'none' }}>{fmtTime(ph.created_at)}</span>
                         {ph.mine && depositOpen && (
                           <button type="button" onClick={() => { void removeMine(ph); }} aria-label="Retirer ma photo" style={{ position: 'absolute', right: 4, top: 4, width: 36, height: 36, border: 0, borderRadius: 6, background: 'rgba(24,24,27,0.82)', color: '#FFFFFF', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}>×</button>
@@ -479,7 +481,7 @@ function DepositPanel({ code, sessionId, deposit, onDeposited, onClosed }: {
       <>
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
-            <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, background: '#EEF0F7', color: V.mid, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--el-track)', color: V.mid, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
             </span>
             <div>
@@ -500,7 +502,7 @@ function DepositPanel({ code, sessionId, deposit, onDeposited, onClosed }: {
         <span>Dépôt ouvert{closes ? ` · se ferme à ${closes}${deposit.mode === 'auto' ? ', fin de l’heure' : ''}` : ''}</span>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" onClick={() => cameraRef.current?.click()} style={{ flex: 1, height: 52, borderRadius: 6, border: 0, background: V.indigo, color: '#FFFFFF', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button type="button" onClick={() => cameraRef.current?.click()} style={{ flex: 1, height: 52, borderRadius: 6, border: 0, background: V.indigo, color: V.onAccent, fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit' }}>
           <CameraIcon />Prendre une photo
         </button>
         <button type="button" onClick={() => galleryRef.current?.click()} style={{ flex: 1, height: 52, borderRadius: 6, border: `1px solid ${V.line}`, background: V.card, color: V.text, fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -523,7 +525,7 @@ function UploadList({ uploads, onRetry, onDrop }: { uploads: Upload[]; onRetry: 
           <div key={u.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i > 0 ? `1px solid ${V.line}` : 'none' }}>
             <img src={u.preview} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', background: '#3B4152', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: u.state === 'failed' ? '#B91C1C' : u.state === 'waiting' ? '#B45309' : V.text }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: u.state === 'failed' ? 'var(--el-neg)' : u.state === 'waiting' ? 'var(--el-warn)' : V.text }}>
                 {u.state === 'preparing' ? 'Réduction de la photo…' : u.state === 'sending' ? 'Envoi en cours…' : u.state === 'waiting' ? 'En attente du réseau' : u.message ?? 'Envoi impossible'}
               </div>
               <div style={{ fontSize: 12, color: V.muted }}>
@@ -578,7 +580,7 @@ function DocPart({ doc, loadDoc, empty }: { doc: StudentTpDoc | null; loadDoc: (
         {mine && 'doc' in mine && (mine.doc
           ? (
             <>
-              <button type="button" onClick={() => setBig((b) => !b)} aria-pressed={big} style={{ alignSelf: 'flex-start', minHeight: 44, padding: '0 14px', borderRadius: 6, border: `1px solid ${big ? '#C7D2FE' : '#D4D4D8'}`, background: big ? V.indigoSoft : V.card, color: big ? V.indigoText : V.text, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => setBig((b) => !b)} aria-pressed={big} style={{ alignSelf: 'flex-start', minHeight: 44, padding: '0 14px', borderRadius: 6, border: `1px solid ${big ? V.indigo : 'var(--el-line-strong)'}`, background: big ? V.indigoSoft : V.card, color: big ? V.indigoText : V.text, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 {big ? 'Réduire la fiche' : 'Agrandir la fiche'}
               </button>
               <div style={{ borderRadius: 6, border: `1px solid ${V.line}`, overflow: big ? 'auto' : 'hidden', background: '#FFFFFF', WebkitOverflowScrolling: 'touch' }}>
@@ -601,7 +603,7 @@ function ProtocolCard({ template }: { template: StudentTpDetail['template'] }) {
   return (
     <Card>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {template.problem && <div style={{ fontSize: 14, lineHeight: '20px', padding: '8px 10px', background: '#F3F4F7', borderRadius: 8 }}>{template.problem}</div>}
+        {template.problem && <div style={{ fontSize: 14, lineHeight: '20px', padding: '8px 10px', background: V.bg, borderRadius: 8 }}>{template.problem}</div>}
         {template.materials.length > 0 && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: V.muted, marginBottom: 6 }}>Matériel</div>

@@ -29,7 +29,7 @@ const DETAILS_PALETTE: DetailsPalette = {
   muted: 'var(--el-muted)',
   dim: 'var(--el-dim)',
   border: 'var(--el-line)',
-  surface: '#E9E9EC',
+  surface: 'var(--el-track)',
   pos: 'var(--el-pos)',
   warn: 'var(--el-warn)',
   neg: 'var(--el-neg)',

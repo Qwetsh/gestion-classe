@@ -21,23 +21,24 @@ import {
  * est celui du prof (`questionScore`) : l'élève lit le même chiffre que sur la copie imprimée.
  */
 
-// Direction A (26/11/2026) : les teintes claires de l'espace élève (styles/eleve.css)
+// Les couleurs sont celles de l'espace élève (styles/eleve.css) : la copie suit le thème choisi.
+// Cet écran n'existe que dans l'espace élève, sous sa racine `.el`.
 const T = {
-  bg: '#F6F6F7',
-  card: '#FFFFFF',
-  cardBorder: '#E6E6E9',
-  inset: '#F6F6F7',
-  text: '#18181B',
-  textMuted: '#52525B',
-  textDim: '#6B6B74',
-  pos: '#15803D',
-  posSoft: '#EAF6EE',
-  neg: '#B91C1C',
-  negSoft: '#FBEAEA',
-  warn: '#B45309',
-  warnSoft: '#FDF1E3',
-  indigo: '#4338CA',
-  indigoSoft: '#EEF0FF',
+  bg: 'var(--el-bg)',
+  card: 'var(--el-surface)',
+  cardBorder: 'var(--el-line)',
+  inset: 'var(--el-bg)',
+  text: 'var(--el-text)',
+  textMuted: 'var(--el-muted)',
+  textDim: 'var(--el-dim)',
+  pos: 'var(--el-pos)',
+  posSoft: 'var(--el-pos-soft)',
+  neg: 'var(--el-neg)',
+  negSoft: 'var(--el-neg-soft)',
+  warn: 'var(--el-warn)',
+  warnSoft: 'var(--el-warn-soft)',
+  indigo: 'var(--el-indigo-ink)',
+  indigoSoft: 'var(--el-indigo-soft)',
 } as const;
 
 const SKILL_LEVELS = ['Insuffisante', 'Fragile', 'Satisfaisante', 'Très bonne'];
@@ -151,7 +152,7 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
           return (
             <li key={cr.id} style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px', borderRadius: 6,
-              background: on ? T.posSoft : T.inset, border: `1px solid ${on ? T.pos + '44' : T.cardBorder}`,
+              background: on ? T.posSoft : T.inset, border: `1px solid ${on ? 'color-mix(in srgb, var(--el-pos) 30%, transparent)' : T.cardBorder}`,
             }}>
               <span style={{ color: on ? T.pos : T.neg, fontWeight: 700, flexShrink: 0 }} role="img" aria-label={on ? 'obtenu' : 'non obtenu'}>{on ? '✓' : '✗'}</span>
               <span style={{ flex: 1, color: on ? T.text : T.textMuted, fontSize: 15, lineHeight: 1.4 }}>{cr.nom}</span>
@@ -162,7 +163,7 @@ function QuestionCard({ def, q, work }: { def: ActivityDefinition; q: ActivityQu
       </ul>
 
       {c?.remarque && (
-        <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 6, background: T.indigoSoft, color: '#312E81', fontSize: 15, lineHeight: 1.45 }}>
+        <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 6, background: T.indigoSoft, color: T.indigo, fontSize: 15, lineHeight: 1.45 }}>
           {c.remarque}
         </div>
       )}
@@ -224,7 +225,7 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
           </div>
         </div>
         {total !== null && (
-          <div style={{ flexShrink: 0, textAlign: 'right', background: T.indigoSoft, border: `1px solid ${T.indigo}55`, borderRadius: 6, padding: '6px 10px' }}>
+          <div style={{ flexShrink: 0, textAlign: 'right', background: T.indigoSoft, border: `1px solid ${T.cardBorder}`, borderRadius: 6, padding: '6px 10px' }}>
             <span style={{ color: T.indigo, fontWeight: 700, fontSize: 18 }}>{total}</span>
             <span style={{ color: T.textMuted, fontSize: 12 }}> / {bareme}</span>
           </div>
@@ -281,7 +282,7 @@ export function StudentWorkSheet({ code, assessmentId, assessmentName, onClose }
             )}
 
             {data.work.advice && (
-              <section style={{ background: T.indigoSoft, border: `1px solid ${T.indigo}55`, borderRadius: 8, padding: 14 }}>
+              <section style={{ background: T.indigoSoft, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: 14 }}>
                 <div style={{ color: T.indigo, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Conseils pour la prochaine fois</div>
                 <p style={{ margin: 0, color: T.text, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{data.work.advice}</p>
               </section>
