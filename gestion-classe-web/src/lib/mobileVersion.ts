@@ -13,9 +13,9 @@
 import QRCode from 'qrcode';
 import type { JSONContent } from '@tiptap/core';
 import { COL_W, MARGIN, MM } from './course/coursePage';
-import { MOBILE_TOKEN, mobileEligible } from '../../../supabase/functions/version-mobile/rules';
+import { MOBILE_TOKEN, linkEligible, mobileEligible, shareEligible, type LinkKind } from '../../../supabase/functions/version-mobile/rules';
 
-export { MOBILE_TOKEN, mobileEligible };
+export { MOBILE_TOKEN, linkEligible, mobileEligible, shareEligible, type LinkKind };
 
 // ---------------------------------------------------------------------------------------------
 // Lien
@@ -45,9 +45,19 @@ export interface CourseRef { id: string; title: string }
  * Pas de lien (null) si le cours imprimé ou son original est une correction ou une évaluation.
  */
 export function mobileTarget(printed: CourseRef, original: CourseRef | null): string | null {
-  if (!mobileEligible(printed.title)) return null;
-  if (original && original.id !== printed.id) return mobileEligible(original.title) ? original.id : null;
-  return printed.id;
+  return linkTarget('qr', printed, original);
+}
+
+/**
+ * Le document vers lequel pointe un lien de cette sorte : QR code imprimé (`qr`) ou lien de
+ * partage collé dans le cahier de texte (`share`, qui peut aussi ouvrir une correction d'activité).
+ * Toujours l'original de la bibliothèque, comme pour le QR code ; null si le cours ou son original
+ * ne peut pas sortir par ce lien.
+ */
+export function linkTarget(kind: LinkKind, course: CourseRef, original: CourseRef | null): string | null {
+  if (!linkEligible(kind, course.title)) return null;
+  if (original && original.id !== course.id) return linkEligible(kind, original.title) ? original.id : null;
+  return course.id;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -136,19 +146,26 @@ function flatCartouche(table: JSONContent): JSONContent[] {
   return out;
 }
 
+/** Zones d'écriture et pointillés (gardés par un lien de partage pour l'impression) : rien à faire d'eux sur un téléphone. */
+const PAPER_ONLY = new Set(['writingZone', 'dots']);
+
 function phoneNode(n: JSONContent): JSONContent {
   if (n.type === 'image' && !n.attrs?.page) {
     const width = n.attrs?.width;
     if (typeof width === 'number' && width < PHONE_FULL_IMAGE) return n;
     return { ...n, attrs: { ...n.attrs, width: null } };
   }
-  return n.content ? { ...n, content: n.content.map(phoneNode) } : n;
+  if (!n.content) return n;
+  const content = n.content.filter((c) => !PAPER_ONLY.has(c.type ?? '')).map(phoneNode);
+  // Un encadré qui ne portait qu'une zone d'écriture garde un paragraphe (le schéma refuse certains conteneurs vides)
+  if (content.length === 0 && n.content.length > 0 && n.type !== 'paragraph' && n.type !== 'heading') content.push({ type: 'paragraph' });
+  return { ...n, content };
 }
 
 /**
  * Le document tel qu'il se lit sur un téléphone : cartouche mis à plat (les trois premiers blocs),
- * images à toute la largeur. Les encarts, zones d'écriture et pointillés ont déjà été retirés par le
- * serveur.
+ * images à toute la largeur, sans zones d'écriture ni pointillés. Les encarts ont déjà été retirés
+ * par le serveur (et, pour le lien du QR code, les zones d'écriture et les pointillés aussi).
  */
 export function phoneContent(content: JSONContent): JSONContent {
   const blocks: JSONContent[] = [];
