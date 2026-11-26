@@ -22,6 +22,8 @@ import { useIsNarrowViewport } from '../hooks/useIsMobile';
 import type { AccommodationKey } from '../lib/accommodations';
 import { StudentDetailModal } from '../components/StudentDetailModal';
 import { BulletinAppreciationsPanel } from '../components/BulletinAppreciationsPanel';
+import { useStudentsLayout } from '../hooks/useStudentsLayout';
+import { getCurrentSchoolYear } from '../lib/constants';
 import { engagementInfo } from '../lib/engagement';
 import { loadStudentsPage } from '../lib/studentsPageQueries';
 import type { ClassConfig, ImplicationEvent as Event, StudentGrade, TrimesterSettings } from '../lib/implicationGrades';
@@ -162,28 +164,8 @@ export function Students() {
 
   // Layout and filter state
   // Vue liste par défaut (direction C) ; le choix de l'enseignant est mémorisé sur cet appareil.
-  // « bulletin » : appréciations du trimestre, modifiables sur place (BulletinAppreciationsPanel).
-  const [layout, setLayoutState] = useState<'grid' | 'list' | 'bulletin'>(() => {
-    try {
-      const saved = localStorage.getItem('gc-students-layout');
-      return saved === 'grid' || saved === 'bulletin' ? saved : 'list';
-    } catch { return 'list'; }
-  });
-  const setLayout = (next: 'grid' | 'list' | 'bulletin') => {
-    setLayoutState(next);
-    try { localStorage.setItem('gc-students-layout', next); } catch { /* stockage indisponible */ }
-  };
+  const [layout, setLayout] = useStudentsLayout();
   const [filter, setFilter] = useState<'all' | 'attention' | 'top'>('all');
-
-  function getCurrentSchoolYear(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (month >= 8) {
-      return `${year}-${year + 1}`;
-    }
-    return `${year - 1}-${year}`;
-  }
 
   const loadData = useCallback(async () => {
     if (!user) return;

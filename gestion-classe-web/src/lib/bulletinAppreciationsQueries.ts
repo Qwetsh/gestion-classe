@@ -3,6 +3,8 @@
  * Pronote n'a pas d'API professeur : l'application garde la copie, l'enseignant la recopie.
  */
 import { supabase } from './supabase';
+import { fromDb } from './dbJson';
+import { STUDENT_CHUNK, chunk } from './studentsPageQueries';
 
 /** Limite du champ « Appréciation » de Pronote (et de la colonne en base). */
 export const APPRECIATION_MAX_LENGTH = 300;
@@ -31,14 +33,17 @@ export async function fetchAppreciationsForStudents(
 ): Promise<Map<string, BulletinAppreciation>> {
   const map = new Map<string, BulletinAppreciation>();
   if (studentIds.length === 0) return map;
-  const { data, error } = await supabase
+  // Par paquets d'élèves : la liste des identifiants voyage dans l'adresse de la requête.
+  const results = await Promise.all(chunk(studentIds, STUDENT_CHUNK).map((ids) => supabase
     .from('bulletin_appreciations')
     .select(COLUMNS)
-    .in('student_id', studentIds)
+    .in('student_id', ids)
     .eq('school_year', schoolYear)
-    .eq('trimester', trimester);
-  if (error) throw error;
-  for (const row of (data ?? []) as BulletinAppreciation[]) map.set(row.student_id, row);
+    .eq('trimester', trimester)));
+  for (const { data, error } of results) {
+    if (error) throw error;
+    for (const row of fromDb<BulletinAppreciation[]>(data ?? [])) map.set(row.student_id, row);
+  }
   return map;
 }
 
@@ -51,7 +56,7 @@ export async function fetchStudentAppreciations(studentId: string): Promise<Bull
     .order('school_year', { ascending: false })
     .order('trimester', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as BulletinAppreciation[];
+  return fromDb<BulletinAppreciation[]>(data ?? []);
 }
 
 /** Enregistre (ou remplace) l'appréciation ; un texte vide la supprime. Retourne la ligne,
@@ -95,7 +100,7 @@ export async function saveAppreciation(params: {
     .select(COLUMNS)
     .single();
   if (error) throw error;
-  return data as BulletinAppreciation;
+  return fromDb<BulletinAppreciation>(data);
 }
 
 /** Marque l'appréciation comme recopiée dans Pronote (bouton « Copier »). */

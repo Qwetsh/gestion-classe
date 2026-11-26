@@ -1261,6 +1261,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bulletin_appreciations: {
+        Row: {
+          class_id: string | null
+          class_name: string | null
+          content: string
+          copied_at: string | null
+          created_at: string
+          id: string
+          school_year: string
+          source: string
+          student_id: string
+          trimester: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          class_id?: string | null
+          class_name?: string | null
+          content: string
+          copied_at?: string | null
+          created_at?: string
+          id?: string
+          school_year: string
+          source?: string
+          student_id: string
+          trimester: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          class_id?: string | null
+          class_name?: string | null
+          content?: string
+          copied_at?: string | null
+          created_at?: string
+          id?: string
+          school_year?: string
+          source?: string
+          student_id?: string
+          trimester?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulletin_appreciations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulletin_appreciations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_binder_items: {
         Row: {
           anchor_board_id: string

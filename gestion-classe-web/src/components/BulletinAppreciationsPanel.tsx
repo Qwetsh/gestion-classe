@@ -3,7 +3,7 @@
  * modifiable sur place (enregistrée en quittant le champ), avec compteur 300 caractères
  * (limite Pronote) et bouton « Copier » pour la recopier dans Pronote.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   APPRECIATION_MAX_LENGTH,
   fetchAppreciationsForStudents,
@@ -48,6 +48,9 @@ export function BulletinAppreciationsPanel({ userId, classId, className, schoolY
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => { setTrimester(currentTrimester); }, [currentTrimester]);
+  // Le trimestre affiché, lu par un enregistrement qui se termine après un changement de trimestre.
+  const shownTrimester = useRef(trimester);
+  useEffect(() => { shownTrimester.current = trimester; }, [trimester]);
 
   const studentIds = useMemo(() => students.map((s) => s.id), [students]);
   const studentKey = studentIds.join(',');
@@ -88,6 +91,9 @@ export function BulletinAppreciationsPanel({ userId, classId, className, schoolY
       const row = await saveAppreciation({
         userId, studentId, classId, className, schoolYear, trimester, content: draft,
       });
+      // Trimestre changé pendant l'enregistrement : la ligne est en base, mais elle n'a pas sa
+      // place dans la liste affichée, qui est celle d'un autre trimestre.
+      if (shownTrimester.current !== trimester) return;
       setRows((prev) => {
         const next = new Map(prev);
         if (row) next.set(studentId, row); else next.delete(studentId);
